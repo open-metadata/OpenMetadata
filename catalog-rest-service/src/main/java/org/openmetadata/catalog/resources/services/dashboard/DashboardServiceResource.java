@@ -16,13 +16,23 @@
 
 package org.openmetadata.catalog.resources.services.dashboard;
 
-import java.io.IOException;
-import java.security.GeneralSecurityException;
-import java.text.ParseException;
-import java.util.Date;
-import java.util.List;
-import java.util.Objects;
-import java.util.UUID;
+import com.google.inject.Inject;
+import io.swagger.annotations.Api;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import org.openmetadata.catalog.api.services.CreateDashboardService;
+import org.openmetadata.catalog.api.services.UpdateDashboardService;
+import org.openmetadata.catalog.entity.services.DashboardService;
+import org.openmetadata.catalog.jdbi3.CollectionDAO;
+import org.openmetadata.catalog.jdbi3.DashboardServiceRepository;
+import org.openmetadata.catalog.resources.Collection;
+import org.openmetadata.catalog.security.CatalogAuthorizer;
+import org.openmetadata.catalog.security.SecurityUtil;
+import org.openmetadata.catalog.util.RestUtil;
+import org.openmetadata.catalog.util.ResultList;
 
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
@@ -42,27 +52,13 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
-
-import com.google.inject.Inject;
-
-import org.openmetadata.catalog.api.services.CreateDashboardService;
-import org.openmetadata.catalog.api.services.UpdateDashboardService;
-import org.openmetadata.catalog.entity.services.DashboardService;
-import org.openmetadata.catalog.jdbi3.CollectionDAO;
-import org.openmetadata.catalog.jdbi3.DashboardServiceRepository;
-import org.openmetadata.catalog.resources.Collection;
-import org.openmetadata.catalog.security.CatalogAuthorizer;
-import org.openmetadata.catalog.security.SecurityUtil;
-import org.openmetadata.catalog.type.EntityReference;
-import org.openmetadata.catalog.util.RestUtil;
-import org.openmetadata.catalog.util.ResultList;
-
-import io.swagger.annotations.Api;
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.media.Content;
-import io.swagger.v3.oas.annotations.media.Schema;
-import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import java.io.IOException;
+import java.security.GeneralSecurityException;
+import java.text.ParseException;
+import java.util.Date;
+import java.util.List;
+import java.util.Objects;
+import java.util.UUID;
 
 @Path("/v1/services/dashboardServices")
 @Api(value = "Dashboard service collection", tags = "Services -> Dashboard service collection")
@@ -70,23 +66,9 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "dashboardServices")
 public class DashboardServiceResource {
+  public static final String COLLECTION_PATH = "v1/services/dashboardServices";
   private final DashboardServiceRepository dao;
   private final CatalogAuthorizer authorizer;
-
-  public static EntityReference addHref(UriInfo uriInfo, EntityReference service) {
-    return service.withHref(RestUtil.getHref(uriInfo, "v1/services/dashboardServices/", service.getId()));
-  }
-
-  private static List<DashboardService> addHref(UriInfo uriInfo, List<DashboardService> instances) {
-    instances.forEach(i -> addHref(uriInfo, i));
-    return instances;
-  }
-
-  private static DashboardService addHref(UriInfo uriInfo, DashboardService dashboardService) {
-    dashboardService.setHref(RestUtil.getHref(uriInfo, "v1/services/dashboardServices/",
-            dashboardService.getId()));
-    return dashboardService;
-  }
 
   @Inject
   public DashboardServiceResource(CollectionDAO dao, CatalogAuthorizer authorizer) {
@@ -126,12 +108,10 @@ public class DashboardServiceResource {
 
     ResultList<DashboardService> list;
     if (before != null) { // Reverse paging
-      list = dao.listBefore(null, null, limitParam, before);
+      list = dao.listBefore(uriInfo, null, null, limitParam, before);
     } else { // Forward paging or first page
-      list = dao.listAfter(null, null, limitParam, after);
+      list = dao.listAfter(uriInfo, null, null, limitParam, after);
     }
-    list.getData().forEach(d -> addHref(uriInfo, d));
-
     return list;
   }
 
@@ -148,7 +128,7 @@ public class DashboardServiceResource {
   public DashboardService get(@Context UriInfo uriInfo,
                              @Context SecurityContext securityContext,
                              @PathParam("id") String id) throws IOException, ParseException {
-    return addHref(uriInfo, dao.get(id, null));
+    return dao.get(uriInfo, id, null);
   }
 
   @GET
@@ -164,7 +144,7 @@ public class DashboardServiceResource {
   public DashboardService getByName(@Context UriInfo uriInfo,
                              @Context SecurityContext securityContext,
                              @PathParam("name") String name) throws IOException, ParseException {
-    return addHref(uriInfo, dao.getByName(name, null));
+    return dao.getByName(uriInfo, name, null);
   }
 
   @POST
@@ -190,7 +170,7 @@ public class DashboardServiceResource {
             .withUpdatedBy(securityContext.getUserPrincipal().getName())
             .withUpdatedAt(new Date());
 
-    addHref(uriInfo, dao.create(service));
+    dao.create(uriInfo, service);
     return Response.created(service.getHref()).entity(service).build();
   }
 
@@ -210,9 +190,8 @@ public class DashboardServiceResource {
                          @PathParam("id") String id,
                          @Valid UpdateDashboardService update) throws IOException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    DashboardService service = addHref(uriInfo,
-            dao.update(UUID.fromString(id), update.getDescription(), update.getDashboardUrl(), update.getUsername(),
-                    update.getPassword(), update.getIngestionSchedule()));
+    DashboardService service = dao.update(uriInfo, UUID.fromString(id), update.getDescription(),
+            update.getDashboardUrl(), update.getUsername(), update.getPassword(), update.getIngestionSchedule());
     return Response.ok(service).build();
   }
 

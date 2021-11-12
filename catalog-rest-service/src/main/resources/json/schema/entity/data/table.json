@@ -111,7 +111,6 @@
         }
       }
     },
-    "additionalProperties": false,
     "columnName": {
       "description": "Local name (not fully qualified name) of the column. ColumnName is `-` when the column is not named in struct dataType. For example, BigQuery supports struct with unnamed fields.",
       "type": "string",

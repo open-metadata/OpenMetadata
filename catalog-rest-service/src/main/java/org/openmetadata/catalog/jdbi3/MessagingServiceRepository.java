@@ -20,6 +20,7 @@ import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.services.MessagingService;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
+import org.openmetadata.catalog.resources.services.messaging.MessagingServiceResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Schedule;
@@ -29,6 +30,7 @@ import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
 
+import javax.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.net.URI;
 import java.text.ParseException;
@@ -42,12 +44,13 @@ public class MessagingServiceRepository extends EntityRepository<MessagingServic
   private final CollectionDAO dao;
 
   public MessagingServiceRepository(CollectionDAO dao) {
-    super(MessagingService.class, dao.messagingServiceDAO(), dao, Fields.EMPTY_FIELDS, Fields.EMPTY_FIELDS);
+    super(MessagingServiceResource.COLLECTION_PATH, MessagingService.class, dao.messagingServiceDAO(), dao,
+            Fields.EMPTY_FIELDS, Fields.EMPTY_FIELDS);
     this.dao = dao;
   }
 
   @Transaction
-  public MessagingService update(UUID id, String description, List<String> brokers, URI schemaRegistry,
+  public MessagingService update(UriInfo uriInfo, UUID id, String description, List<String> brokers, URI schemaRegistry,
                                  Schedule ingestionSchedule)
           throws IOException {
     EntityUtil.validateIngestionSchedule(ingestionSchedule);
@@ -56,7 +59,7 @@ public class MessagingServiceRepository extends EntityRepository<MessagingServic
     dbService.withDescription(description).withIngestionSchedule(ingestionSchedule)
             .withSchemaRegistry(schemaRegistry).withBrokers(brokers);
     dao.messagingServiceDAO().update(id, JsonUtils.pojoToJson(dbService));
-    return dbService;
+    return withHref(uriInfo, dbService);
   }
 
   @Transaction
@@ -184,6 +187,9 @@ public class MessagingServiceRepository extends EntityRepository<MessagingServic
 
     @Override
     public void setOwner(EntityReference owner) { }
+
+    @Override
+    public MessagingService withHref(URI href) { return entity.withHref(href); }
 
     @Override
     public void setTags(List<TagLabel> tags) { }

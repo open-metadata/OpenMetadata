@@ -123,11 +123,15 @@ export const ROUTES = {
   SIGNUP: '/signup',
   SIGNIN: '/signin',
   DATASET_DETAILS: `/dataset/${PLACEHOLDER_ROUTE_DATASET_FQN}`,
+  DATASET_DETAILS_WITH_TAB: `/dataset/${PLACEHOLDER_ROUTE_DATASET_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
   DATASET_VERSION: `/dataset/${PLACEHOLDER_ROUTE_DATASET_FQN}/versions/${PLAEHOLDER_ROUTE_VERSION}`,
   TOPIC_DETAILS: `/topic/${PLACEHOLDER_ROUTE_TOPIC_FQN}`,
+  TOPIC_DETAILS_WITH_TAB: `/topic/${PLACEHOLDER_ROUTE_TOPIC_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
   DASHBOARD_DETAILS: `/dashboard/${PLACEHOLDER_ROUTE_DASHBOARD_FQN}`,
+  DASHBOARD_DETAILS_WITH_TAB: `/dashboard/${PLACEHOLDER_ROUTE_DASHBOARD_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
   DATABASE_DETAILS: `/database/${PLACEHOLDER_ROUTE_DATABASE_FQN}`,
   PIPELINE_DETAILS: `/pipeline/${PLACEHOLDER_ROUTE_PIPELINE_FQN}`,
+  PIPELINE_DETAILS_WITH_TAB: `/pipeline/${PLACEHOLDER_ROUTE_PIPELINE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
   ONBOARDING: '/onboarding',
 };
 
@@ -144,11 +148,21 @@ export const getDatasetDetailsPath = (
 
   return `${path}${columnName ? `.${columnName}` : ''}`;
 };
+
 export const getDatasetVersionPath = (datasetFQN: string, version: string) => {
   let path = ROUTES.DATASET_VERSION;
   path = path
     .replace(PLACEHOLDER_ROUTE_DATASET_FQN, datasetFQN)
     .replace(PLAEHOLDER_ROUTE_VERSION, version);
+
+  return path;
+};
+
+export const getDatasetTabPath = (datasetFQN: string, tab = 'schema') => {
+  let path = ROUTES.DATASET_DETAILS_WITH_TAB;
+  path = path
+    .replace(PLACEHOLDER_ROUTE_DATASET_FQN, datasetFQN)
+    .replace(PLACEHOLDER_ROUTE_TAB, tab);
 
   return path;
 };
@@ -181,24 +195,39 @@ export const getDatabaseDetailsPath = (databaseFQN: string) => {
   return path;
 };
 
-export const getTopicDetailsPath = (topicFQN: string) => {
-  let path = ROUTES.TOPIC_DETAILS;
+export const getTopicDetailsPath = (topicFQN: string, tab?: string) => {
+  let path = tab ? ROUTES.TOPIC_DETAILS_WITH_TAB : ROUTES.TOPIC_DETAILS;
   path = path.replace(PLACEHOLDER_ROUTE_TOPIC_FQN, topicFQN);
 
+  if (tab) {
+    path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
+  }
+
   return path;
 };
-export const getDashboardDetailsPath = (dashboardFQN: string) => {
-  let path = ROUTES.DASHBOARD_DETAILS;
+
+export const getDashboardDetailsPath = (dashboardFQN: string, tab?: string) => {
+  let path = tab ? ROUTES.DASHBOARD_DETAILS_WITH_TAB : ROUTES.DASHBOARD_DETAILS;
   path = path.replace(PLACEHOLDER_ROUTE_DASHBOARD_FQN, dashboardFQN);
 
-  return path;
-};
-export const getPipelineDetailsPath = (pipelineFQN: string) => {
-  let path = ROUTES.PIPELINE_DETAILS;
-  path = path.replace(PLACEHOLDER_ROUTE_PIPELINE_FQN, pipelineFQN);
+  if (tab) {
+    path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
+  }
 
   return path;
 };
+
+export const getPipelineDetailsPath = (pipelineFQN: string, tab?: string) => {
+  let path = tab ? ROUTES.PIPELINE_DETAILS_WITH_TAB : ROUTES.PIPELINE_DETAILS;
+  path = path.replace(PLACEHOLDER_ROUTE_PIPELINE_FQN, pipelineFQN);
+
+  if (tab) {
+    path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
+  }
+
+  return path;
+};
+
 export const getTeamDetailsPath = (teamName: string) => {
   let path = ROUTES.TEAM_DETAILS;
   path = path.replace(PLACEHOLDER_ROUTE_TEAM, teamName);

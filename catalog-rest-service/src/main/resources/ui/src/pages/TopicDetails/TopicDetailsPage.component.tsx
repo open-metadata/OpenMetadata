@@ -3,7 +3,7 @@ import { compare } from 'fast-json-patch';
 import { observer } from 'mobx-react';
 import { EntityTags, TableDetail } from 'Models';
 import React, { FunctionComponent, useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useHistory, useParams } from 'react-router-dom';
 import AppState from '../../AppState';
 import { getServiceById } from '../../axiosAPIs/serviceAPI';
 import {
@@ -15,7 +15,10 @@ import {
 import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
 import Loader from '../../components/Loader/Loader';
 import TopicDetails from '../../components/TopicDetails/TopicDetails.component';
-import { getServiceDetailsPath } from '../../constants/constants';
+import {
+  getServiceDetailsPath,
+  getTopicDetailsPath,
+} from '../../constants/constants';
 import { EntityType } from '../../enums/entity.enum';
 import { Topic } from '../../generated/entity/data/topic';
 import { User } from '../../generated/entity/teams/user';
@@ -28,23 +31,28 @@ import {
   getTierFromTableTags,
 } from '../../utils/TableUtils';
 import { getTagCategories, getTaglist } from '../../utils/TagsUtils';
+import {
+  getCurrentTopicTab,
+  topicDetailsTabs,
+} from '../../utils/TopicDetailsUtils';
 
 const TopicDetailsPage: FunctionComponent = () => {
   const USERId = getCurrentUserId();
   const showToast = useToastContext();
+  const history = useHistory();
 
   const [tagList, setTagList] = useState<Array<string>>([]);
-  const { topicFQN } = useParams() as Record<string, string>;
+  const { topicFQN, tab } = useParams() as Record<string, string>;
   const [topicDetails, setTopicDetails] = useState<Topic>({} as Topic);
   const [topicId, setTopicId] = useState<string>('');
-  const [isLoading, setLoading] = useState<boolean>(false);
+  const [isLoading, setLoading] = useState<boolean>(true);
   const [description, setDescription] = useState<string>('');
   const [followers, setFollowers] = useState<Array<User>>([]);
   const [owner, setOwner] = useState<TableDetail['owner']>();
   const [tier, setTier] = useState<string>();
   const [schemaType, setSchemaType] = useState<string>('');
   const [tags, setTags] = useState<Array<EntityTags>>([]);
-  const [activeTab, setActiveTab] = useState<number>(1);
+  const [activeTab, setActiveTab] = useState<number>(getCurrentTopicTab(tab));
   const [partitions, setPartitions] = useState<number>(0);
   const [cleanupPolicies, setCleanupPolicies] = useState<Array<string>>([]);
   const [maximumMessageSize, setMaximumMessageSize] = useState<number>(0);
@@ -58,8 +66,23 @@ const TopicDetailsPage: FunctionComponent = () => {
   >([]);
 
   const activeTabHandler = (tabValue: number) => {
-    setActiveTab(tabValue);
+    const currentTabIndex = tabValue - 1;
+    if (topicDetailsTabs[currentTabIndex].path !== tab) {
+      setActiveTab(getCurrentTopicTab(topicDetailsTabs[currentTabIndex].path));
+      history.push({
+        pathname: getTopicDetailsPath(
+          topicFQN,
+          topicDetailsTabs[currentTabIndex].path
+        ),
+      });
+    }
   };
+
+  useEffect(() => {
+    if (topicDetailsTabs[activeTab - 1].path !== tab) {
+      setActiveTab(getCurrentTopicTab(tab));
+    }
+  }, [tab]);
 
   const saveUpdatedTopicData = (updatedData: Topic): Promise<AxiosResponse> => {
     const jsonPatch = compare(topicDetails, updatedData);
@@ -140,7 +163,6 @@ const TopicDetailsPage: FunctionComponent = () => {
               serviceType: serviceRes.data.serviceType,
               timestamp: 0,
             });
-            setLoading(false);
           })
           .catch((err: AxiosError) => {
             const errMsg =
@@ -149,7 +171,8 @@ const TopicDetailsPage: FunctionComponent = () => {
               variant: 'error',
               body: errMsg,
             });
-          });
+          })
+          .finally(() => setLoading(false));
       })
       .catch((err: AxiosError) => {
         const errMsg = err.message || 'Error while fetching topic details';
@@ -157,6 +180,7 @@ const TopicDetailsPage: FunctionComponent = () => {
           variant: 'error',
           body: errMsg,
         });
+        setLoading(false);
       });
   };
 

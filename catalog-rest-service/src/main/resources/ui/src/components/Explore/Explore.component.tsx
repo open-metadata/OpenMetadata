@@ -42,6 +42,7 @@ import {
   getAggrWithDefaultValue,
   getCurrentIndex,
   getCurrentTab,
+  getQueryParam,
   INITIAL_SORT_FIELD,
   INITIAL_SORT_ORDER,
   tabsInfo,
@@ -57,24 +58,6 @@ import { dropdownIcon as DropDownIcon } from '../../utils/svgconstant';
 import SVGIcons from '../../utils/SvgUtils';
 import { ExploreProps } from './explore.interface';
 
-const getQueryParam = (urlSearchQuery = ''): FilterObject => {
-  const arrSearchQuery = urlSearchQuery
-    ? urlSearchQuery.startsWith('?')
-      ? urlSearchQuery.substr(1).split('&')
-      : urlSearchQuery.split('&')
-    : [];
-
-  return arrSearchQuery
-    .map((filter) => {
-      const arrFilter = filter.split('=');
-
-      return { [arrFilter[0]]: [arrFilter[1]] };
-    })
-    .reduce((prev, curr) => {
-      return Object.assign(prev, curr);
-    }, {}) as FilterObject;
-};
-
 const Explore: React.FC<ExploreProps> = ({
   tabCounts,
   searchText,
@@ -83,6 +66,7 @@ const Explore: React.FC<ExploreProps> = ({
   searchResult,
   sortValue,
   error,
+  fetchCount,
   handlePathChange,
   handleSearchText,
   fetchData,
@@ -112,13 +96,10 @@ const Explore: React.FC<ExploreProps> = ({
   const [fieldList, setFieldList] =
     useState<Array<{ name: string; value: string }>>(tableSortingFields);
   const [isEntityLoading, setIsEntityLoading] = useState(true);
+  const [connectionError] = useState(error.includes('Connection refused'));
   const isMounting = useRef(true);
   const forceSetAgg = useRef(false);
   const previsouIndex = usePrevious(searchIndex);
-  const keyOfPreviousIndex = searchIndex.split(
-    '_'
-  )[0] as keyof ExploreProps['tabCounts'];
-  const previousIndexCount = usePrevious(tabCounts[keyOfPreviousIndex]);
 
   const handleSelectedFilter = (
     checked: boolean,
@@ -152,6 +133,7 @@ const Explore: React.FC<ExploreProps> = ({
     setFilters((prevFilters) => {
       return {
         ...prevFilters,
+        ...getQueryParam(location.search),
         [type]: [],
       };
     });
@@ -266,7 +248,7 @@ const Explore: React.FC<ExploreProps> = ({
   };
 
   const getFacetedFilter = () => {
-    const facetFilters: FilterObject = filterObject;
+    const facetFilters: FilterObject = cloneDeep(filterObject);
     for (const key in filters) {
       if (visibleFilters.includes(key)) {
         facetFilters[key as keyof typeof filterObject] =
@@ -370,14 +352,8 @@ const Explore: React.FC<ExploreProps> = ({
           searchQuery,
           tabsInfo[selectedTab - 1].path
         ),
+        search: location.search,
       });
-
-      if (previousIndexCount) {
-        // setTimeout because we need to reset previous index count after tab change
-        setTimeout(() => {
-          setCount(previousIndexCount as number, previsouIndex as string);
-        }, 100);
-      }
     }
   };
   const getTabs = () => {
@@ -428,6 +404,9 @@ const Explore: React.FC<ExploreProps> = ({
     setCurrentTab(getCurrentTab(tab));
     setSearchIndex(getCurrentIndex(tab));
     setCurrentPage(1);
+    if (!isMounting.current) {
+      fetchCount();
+    }
   }, [tab]);
 
   useEffect(() => {
@@ -503,9 +482,9 @@ const Explore: React.FC<ExploreProps> = ({
   };
 
   return (
-    <PageContainer leftPanelContent={fetchLeftPanel()}>
+    <PageContainer leftPanelContent={Boolean(!error) && fetchLeftPanel()}>
       <div className="container-fluid" data-testid="fluid-container">
-        {getTabs()}
+        {!connectionError && getTabs()}
         {error ? (
           <ErrorPlaceHolderES errorMessage={error} type="error" />
         ) : (

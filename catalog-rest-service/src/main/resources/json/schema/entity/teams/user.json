@@ -57,7 +57,8 @@
     },
     "deactivated" : {
       "description": "When true indicates the user has been deactivated. Users are deactivated instead of deleted.",
-      "type": "boolean"
+      "type": "boolean",
+      "default": false
     },
     "isBot" : {
       "description": "When true indicates a special type of user called Bot.",

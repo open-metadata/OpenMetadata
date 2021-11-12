@@ -16,13 +16,23 @@
 
 package org.openmetadata.catalog.resources.services.database;
 
-import java.io.IOException;
-import java.security.GeneralSecurityException;
-import java.text.ParseException;
-import java.util.Date;
-import java.util.List;
-import java.util.Objects;
-import java.util.UUID;
+import com.google.inject.Inject;
+import io.swagger.annotations.Api;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import org.openmetadata.catalog.api.services.CreateDatabaseService;
+import org.openmetadata.catalog.api.services.UpdateDatabaseService;
+import org.openmetadata.catalog.entity.services.DatabaseService;
+import org.openmetadata.catalog.jdbi3.CollectionDAO;
+import org.openmetadata.catalog.jdbi3.DatabaseServiceRepository;
+import org.openmetadata.catalog.resources.Collection;
+import org.openmetadata.catalog.security.CatalogAuthorizer;
+import org.openmetadata.catalog.security.SecurityUtil;
+import org.openmetadata.catalog.util.RestUtil;
+import org.openmetadata.catalog.util.ResultList;
 
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
@@ -42,27 +52,13 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
-
-import com.google.inject.Inject;
-
-import org.openmetadata.catalog.api.services.CreateDatabaseService;
-import org.openmetadata.catalog.api.services.UpdateDatabaseService;
-import org.openmetadata.catalog.entity.services.DatabaseService;
-import org.openmetadata.catalog.jdbi3.CollectionDAO;
-import org.openmetadata.catalog.jdbi3.DatabaseServiceRepository;
-import org.openmetadata.catalog.resources.Collection;
-import org.openmetadata.catalog.security.CatalogAuthorizer;
-import org.openmetadata.catalog.security.SecurityUtil;
-import org.openmetadata.catalog.type.EntityReference;
-import org.openmetadata.catalog.util.RestUtil;
-import org.openmetadata.catalog.util.ResultList;
-
-import io.swagger.annotations.Api;
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.media.Content;
-import io.swagger.v3.oas.annotations.media.Schema;
-import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import java.io.IOException;
+import java.security.GeneralSecurityException;
+import java.text.ParseException;
+import java.util.Date;
+import java.util.List;
+import java.util.Objects;
+import java.util.UUID;
 
 @Path("/v1/services/databaseServices")
 @Api(value = "Database service collection", tags = "Services -> Database service collection")
@@ -70,22 +66,9 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "databaseServices")
 public class DatabaseServiceResource {
+  public static final String COLLECTION_PATH = "v1/services/databaseServices/";
   private final DatabaseServiceRepository dao;
   private final CatalogAuthorizer authorizer;
-
-  public static EntityReference addHref(UriInfo uriInfo, EntityReference service) {
-    return service.withHref(RestUtil.getHref(uriInfo, "v1/services/databaseServices/", service.getId()));
-  }
-
-  private static List<DatabaseService> addHref(UriInfo uriInfo, List<DatabaseService> instances) {
-    instances.forEach(i -> addHref(uriInfo, i));
-    return instances;
-  }
-
-  private static DatabaseService addHref(UriInfo uriInfo, DatabaseService dbService) {
-    dbService.setHref(RestUtil.getHref(uriInfo, "v1/services/databaseServices/", dbService.getId()));
-    return dbService;
-  }
 
   @Inject
   public DatabaseServiceResource(CollectionDAO dao, CatalogAuthorizer authorizer) {
@@ -124,13 +107,11 @@ public class DatabaseServiceResource {
 
     ResultList<DatabaseService> list;
     if(before != null) {
-      list = dao.listBefore(null, null, limitParam, before);
+      list = dao.listBefore(uriInfo, null, null, limitParam, before);
     }
     else {
-      list = dao.listAfter(null, null, limitParam, after);
+      list = dao.listAfter(uriInfo, null, null, limitParam, after);
     }
-    list.getData().forEach(d -> addHref(uriInfo, d));
-    
     return list;
   }
 
@@ -147,7 +128,7 @@ public class DatabaseServiceResource {
   public DatabaseService get(@Context UriInfo uriInfo,
                              @Context SecurityContext securityContext,
                              @PathParam("id") String id) throws IOException, ParseException {
-    return addHref(uriInfo, dao.get(id, null));
+    return dao.get(uriInfo, id, null);
   }
 
   @GET
@@ -163,7 +144,7 @@ public class DatabaseServiceResource {
   public DatabaseService getByName(@Context UriInfo uriInfo,
                              @Context SecurityContext securityContext,
                              @PathParam("name") String name) throws IOException, ParseException {
-    return addHref(uriInfo, dao.getByName(name, null));
+    return dao.getByName(uriInfo, name, null);
   }
 
   @POST
@@ -186,7 +167,7 @@ public class DatabaseServiceResource {
             .withUpdatedBy(securityContext.getUserPrincipal().getName())
             .withUpdatedAt(new Date());
 
-    addHref(uriInfo, dao.create(databaseService));
+    dao.create(uriInfo, databaseService);
     return Response.created(databaseService.getHref()).entity(databaseService).build();
   }
 
@@ -206,8 +187,9 @@ public class DatabaseServiceResource {
                          @PathParam("id") String id,
                          @Valid UpdateDatabaseService update) throws IOException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    DatabaseService databaseService = addHref(uriInfo,
-            dao.update(UUID.fromString(id), update.getDescription(), update.getJdbc(), update.getIngestionSchedule()));
+    DatabaseService databaseService =
+            dao.update(uriInfo, UUID.fromString(id), update.getDescription(), update.getJdbc(),
+                    update.getIngestionSchedule());
     return Response.ok(databaseService).build();
   }
 

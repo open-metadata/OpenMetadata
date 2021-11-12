@@ -48,7 +48,7 @@ from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.models.table_metadata import DatasetProfile
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
-from metadata.utils.column_helpers import _handle_complex_data_types, get_column_type
+from metadata.utils.column_helpers import check_column_complex_type, get_column_type
 from metadata.utils.helpers import get_database_service_or_create
 
 logger: logging.Logger = logging.getLogger(__name__)
@@ -362,32 +362,17 @@ class SQLSource(Source):
                     column["raw_data_type"] = self.parse_raw_data_type(
                         column["raw_data_type"]
                     )
-                    if column["raw_data_type"].startswith("struct<"):
-                        col_type = "STRUCT"
-                        col_obj = _handle_complex_data_types(
-                            self.status,
-                            dataset_name,
-                            f"{column['name']}:{column['raw_data_type']}",
-                        )
-                        if "children" in col_obj and col_obj["children"] is not None:
-                            children = col_obj["children"]
-                    elif column["raw_data_type"].startswith("map<"):
-                        col_type = "MAP"
-                    elif column["raw_data_type"].startswith("array<"):
-                        col_type = "ARRAY"
-                        arr_data_type = re.match(
-                            r"(?:array<)(\w*)(?:.*)", column["raw_data_type"]
-                        )
-                        arr_data_type = arr_data_type.groups()[0].upper()
-                    elif column["raw_data_type"].startswith("uniontype<"):
-                        col_type = "UNION"
-                    else:
-                        col_type = get_column_type(
-                            self.status, dataset_name, column["type"]
-                        )
-                        data_type_display = col_type
-                    if data_type_display is None:
-                        data_type_display = column["raw_data_type"]
+                    (
+                        col_type,
+                        data_type_display,
+                        arr_data_type,
+                        children,
+                    ) = check_column_complex_type(
+                        self.status,
+                        dataset_name,
+                        column["raw_data_type"],
+                        column["name"],
+                    )
                 else:
                     col_type = get_column_type(
                         self.status, dataset_name, column["type"]
@@ -407,7 +392,7 @@ class SQLSource(Source):
                     col_constraint = Constraint.PRIMARY_KEY
                 elif column["name"] in unique_columns:
                     col_constraint = Constraint.UNIQUE
-                if col_type in ["CHAR", "VARCHAR", "BINARY", "VARBINARY"]:
+                if col_type.upper() in ["CHAR", "VARCHAR", "BINARY", "VARBINARY"]:
                     col_data_length = column["type"].length
                 if col_data_length is None:
                     col_data_length = 1

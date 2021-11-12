@@ -68,7 +68,7 @@ public class DefaultCatalogAuthorizer implements CatalogAuthorizer {
     adminUsers.stream()
             .filter(name -> {
               try {
-                User user = userRepository.getByName(name, fields);
+                User user = userRepository.getByName(null, name, fields);
                 if (user != null) {
                   LOG.debug("Entry for user '{}' already exists", name);
                   return false;
@@ -87,7 +87,7 @@ public class DefaultCatalogAuthorizer implements CatalogAuthorizer {
     botUsers.stream()
             .filter(name -> {
               try {
-                User user = userRepository.getByName(name, fields);
+                User user = userRepository.getByName(null, name, fields);
                 if (user != null) {
                   LOG.debug("Entry for user '{}' already exists", name);
                   return false;
@@ -111,7 +111,7 @@ public class DefaultCatalogAuthorizer implements CatalogAuthorizer {
     String userName = SecurityUtil.getUserName(ctx);
     EntityUtil.Fields fields = new EntityUtil.Fields(FIELD_LIST, fieldsParam);
     try {
-      User user = userRepository.getByName(userName, fields);
+      User user = userRepository.getByName(null, userName, fields);
       if (owner.getType().equals(Entity.TEAM)) {
         for (EntityReference team: user.getTeams()) {
           if (team.getName().equals(owner.getName())) {
@@ -133,7 +133,7 @@ public class DefaultCatalogAuthorizer implements CatalogAuthorizer {
     String userName = SecurityUtil.getUserName(ctx);
     EntityUtil.Fields fields = new EntityUtil.Fields(FIELD_LIST, fieldsParam);
     try {
-      User user = userRepository.getByName(userName, fields);
+      User user = userRepository.getByName(null, userName, fields);
       if (user.getIsAdmin() == null) {
         return false;
       }
@@ -149,7 +149,7 @@ public class DefaultCatalogAuthorizer implements CatalogAuthorizer {
     String userName = SecurityUtil.getUserName(ctx);
     EntityUtil.Fields fields = new EntityUtil.Fields(FIELD_LIST, fieldsParam);
     try {
-      User user = userRepository.getByName(userName, fields);
+      User user = userRepository.getByName(null, userName, fields);
       if (user.getIsBot() == null) {
         return false;
       }
@@ -174,7 +174,7 @@ public class DefaultCatalogAuthorizer implements CatalogAuthorizer {
             .withUpdatedAt(new Date());
 
     try {
-      User addedUser = userRepository.create(user);
+      User addedUser = userRepository.create(null, user);
       LOG.debug("Added bot user entry: {}", addedUser);
     } catch (DuplicateEntityException | IOException | ParseException exception) {
       // In HA setup the other server may have already added the user.

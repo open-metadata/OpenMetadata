@@ -17,12 +17,12 @@
 package org.openmetadata.catalog.util;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import org.openmetadata.catalog.type.ChangeEvent;
 import org.openmetadata.common.utils.CommonUtil;
 import org.reflections.ReflectionUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.ws.rs.core.Response;
+import javax.ws.rs.core.Response.ResponseBuilder;
 import javax.ws.rs.core.Response.Status;
 import javax.ws.rs.core.UriInfo;
 import java.lang.reflect.Field;
@@ -37,9 +37,15 @@ import java.util.TimeZone;
 import java.util.UUID;
 
 public final class RestUtil {
+  public static final String CHANGE_CUSTOM_HEADER = "X-OpenMetadata-Change";
+  public static final String ENTITY_CREATED = "entityCreated";
+  public static final String ENTITY_UPDATED = "entityUpdated";
+  public static final String ENTITY_FIELDS_CHANGED = "entityFieldsChanged";
+  public static final String ENTITY_NO_CHANGE = "entityNoChange";
+  public static final String ENTITY_DELETED = "entityDeleted";
+
   public static final DateFormat DATE_TIME_FORMAT;
   public static final DateFormat DATE_FORMAT;
-  private static final Logger LOG = LoggerFactory.getLogger(RestUtil.class);
 
   static {
     // Quoted "Z" to indicate UTC, no timezone offset
@@ -138,25 +144,40 @@ public final class RestUtil {
   }
 
   public static class PutResponse<T> {
-
-    private final T entity;
+    private T entity;
+    private ChangeEvent changeEvent;
     private final Response.Status status;
+    private final String changeType;
 
     /**
      * Response.Status.CREATED when PUT operation creates a new entity
      * or Response.Status.OK when PUT operation updates a new entity
      */
-    public PutResponse(Response.Status status, T entity) {
+    public PutResponse(Response.Status status, T entity, String changeType) {
       this.entity = entity;
       this.status = status;
+      this.changeType = changeType;
     }
 
-    public T getEntity() {
-      return entity;
+    /**
+     * When PUT response updates an entity
+     */
+    public PutResponse(Response.Status status, ChangeEvent changeEvent, String changeType) {
+      this.changeEvent = changeEvent;
+      this.status = status;
+      this.changeType = changeType;
     }
 
-    public Status getStatus() {
-      return status;
+    public T getEntity() { return entity; }
+
+    public Response toResponse() {
+      ResponseBuilder responseBuilder = Response.status(status).header(CHANGE_CUSTOM_HEADER, changeType);
+      if (changeType.equals(RestUtil.ENTITY_CREATED) || changeType.equals(RestUtil.ENTITY_UPDATED) ||
+              changeType.equals(RestUtil.ENTITY_NO_CHANGE)) {
+        return responseBuilder.entity(entity).build();
+      } else {
+        return responseBuilder.entity(changeEvent).build();
+      }
     }
   }
 }

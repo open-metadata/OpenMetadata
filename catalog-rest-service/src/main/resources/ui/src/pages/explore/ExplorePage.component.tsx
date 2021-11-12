@@ -27,11 +27,12 @@ import {
   UrlParams,
 } from '../../components/Explore/explore.interface';
 import Loader from '../../components/Loader/Loader';
-import { ERROR500, PAGE_SIZE } from '../../constants/constants';
+import { PAGE_SIZE } from '../../constants/constants';
 import {
   emptyValue,
   getCurrentIndex,
   getCurrentTab,
+  getQueryParam,
   INITIAL_FROM,
   INITIAL_SORT_FIELD,
   INITIAL_SORT_ORDER,
@@ -39,11 +40,15 @@ import {
   ZERO_SIZE,
 } from '../../constants/explore.constants';
 import { SearchIndex } from '../../enums/search.enum';
-import useToastContext from '../../hooks/useToastContext';
+import { getFilterString } from '../../utils/FilterUtils';
 import { getTotalEntityCountByService } from '../../utils/ServiceUtils';
 
 const ExplorePage: FunctionComponent = () => {
-  const showToast = useToastContext();
+  const initialFilter = getFilterString(
+    getQueryParam(location.search),
+    [],
+    true
+  );
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingForData, setIsLoadingForData] = useState(true);
   const [error, setError] = useState<string>('');
@@ -93,7 +98,15 @@ const ExplorePage: FunctionComponent = () => {
     ];
 
     const entityCounts = entities.map((entity) =>
-      searchData(searchText, 0, 0, emptyValue, emptyValue, emptyValue, entity)
+      searchData(
+        searchText,
+        0,
+        0,
+        initialFilter,
+        emptyValue,
+        emptyValue,
+        entity
+      )
     );
 
     Promise.allSettled(entityCounts)
@@ -175,10 +188,6 @@ const ExplorePage: FunctionComponent = () => {
       )
       .catch((err: AxiosError) => {
         setError(err.response?.data?.responseMessage);
-        showToast({
-          variant: 'error',
-          body: err.response?.data?.responseMessage ?? ERROR500,
-        });
         setIsLoadingForData(false);
       });
   };
@@ -193,7 +202,7 @@ const ExplorePage: FunctionComponent = () => {
         queryString: searchText,
         from: INITIAL_FROM,
         size: PAGE_SIZE,
-        filters: emptyValue,
+        filters: initialFilter,
         sortField: initialSortField,
         sortOrder: INITIAL_SORT_ORDER,
         searchIndex: getCurrentIndex(tab),
@@ -202,7 +211,7 @@ const ExplorePage: FunctionComponent = () => {
         queryString: searchText,
         from: INITIAL_FROM,
         size: ZERO_SIZE,
-        filters: emptyValue,
+        filters: initialFilter,
         sortField: initialSortField,
         sortOrder: INITIAL_SORT_ORDER,
         searchIndex: getCurrentIndex(tab),
@@ -211,7 +220,7 @@ const ExplorePage: FunctionComponent = () => {
         queryString: searchText,
         from: INITIAL_FROM,
         size: ZERO_SIZE,
-        filters: emptyValue,
+        filters: initialFilter,
         sortField: initialSortField,
         sortOrder: INITIAL_SORT_ORDER,
         searchIndex: getCurrentIndex(tab),
@@ -220,7 +229,7 @@ const ExplorePage: FunctionComponent = () => {
         queryString: searchText,
         from: INITIAL_FROM,
         size: ZERO_SIZE,
-        filters: emptyValue,
+        filters: initialFilter,
         sortField: initialSortField,
         sortOrder: INITIAL_SORT_ORDER,
         searchIndex: getCurrentIndex(tab),
@@ -235,6 +244,7 @@ const ExplorePage: FunctionComponent = () => {
       ) : (
         <Explore
           error={error}
+          fetchCount={fetchCounts}
           fetchData={fetchData}
           handlePathChange={handlePathChange}
           handleSearchText={handleSearchText}

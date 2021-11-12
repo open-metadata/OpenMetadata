@@ -31,7 +31,6 @@ from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.data.table import Table, TableProfile
-from metadata.generated.schema.entity.data.task import Task
 from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.tags.tagCategory import Tag
@@ -43,7 +42,6 @@ DatabaseServiceEntities = List[DatabaseService]
 DatabaseEntities = List[Database]
 Tags = List[Tag]
 TableProfiles = List[TableProfile]
-Tasks = List[Task]
 
 
 class TableEntities(BaseModel):

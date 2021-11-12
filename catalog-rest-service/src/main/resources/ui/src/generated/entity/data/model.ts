@@ -58,6 +58,14 @@ export interface Model {
    */
   id: string;
   /**
+   * Features used to train the ML Model.
+   */
+  mlFeatures?: MlFeature[];
+  /**
+   * Hyper Parameters used to train the ML Model.
+   */
+  mlHyperParameters?: MlHyperParameter[];
+  /**
    * Name that identifies this model.
    */
   name: string;
@@ -94,18 +102,35 @@ export interface Model {
  */
 export interface ChangeDescription {
   /**
-   * Fields added during the version changes.
+   * Names of fields added during the version changes.
    */
-  fieldsAdded?: string[];
+  fieldsAdded?: FieldChange[];
   /**
-   * Fields deleted during the version changes.
+   * Fields deleted during the version changes with old value before deleted.
    */
-  fieldsDeleted?: string[];
+  fieldsDeleted?: FieldChange[];
   /**
-   * Fields modified during the version changes.
+   * Fields modified during the version changes with old and new values.
    */
-  fieldsUpdated?: string[];
+  fieldsUpdated?: FieldChange[];
   previousVersion?: number;
+}
+
+export interface FieldChange {
+  /**
+   * Name of the entity field that changed
+   */
+  name?: string;
+  /**
+   * New value of the field. Note that this is a JSON string and use the corresponding field
+   * type to deserialize it.
+   */
+  newValue?: any;
+  /**
+   * Previous value of the field. Note that this is a JSON string and use the corresponding
+   * field type to deserialize it.
+   */
+  oldValue?: any;
 }
 
 /**
@@ -147,6 +172,80 @@ export interface EntityReference {
    * `bigquery`, `snowflake`...
    */
   type: string;
+}
+
+/**
+ * This schema defines the type for a ML Feature used in a Model.
+ */
+export interface MlFeature {
+  /**
+   * Data type of the column (numerical vs. categorical).
+   */
+  dataType?: FeatureType;
+  /**
+   * Description of the ML Feature.
+   */
+  description?: string;
+  /**
+   * Description of the algorithm used to compute the feature, e.g., PCA, bucketing...
+   */
+  featureAlgorithm?: string;
+  /**
+   * Columns used to create the ML Feature
+   */
+  featureSources?: FeatureSource[];
+  fullyQualifiedName?: string;
+  name?: string;
+  /**
+   * Tags associated with the feature.
+   */
+  tags?: TagLabel[];
+}
+
+/**
+ * Data type of the column (numerical vs. categorical).
+ *
+ * This enum defines the type of data stored in a ML Feature.
+ */
+export enum FeatureType {
+  Categorical = 'categorical',
+  Numerical = 'numerical',
+}
+
+/**
+ * This schema defines the sources of a ML Feature.
+ */
+export interface FeatureSource {
+  /**
+   * Data type of the source (int, date etc.).
+   */
+  dataType?: FeatureSourceDataType;
+  /**
+   * Description of the feature source.
+   */
+  description?: string;
+  fullyQualifiedName?: string;
+  name?: string;
+  /**
+   * Tags associated with the feature source.
+   */
+  tags?: TagLabel[];
+}
+
+/**
+ * Data type of the source (int, date etc.).
+ *
+ * This enum defines the type of data of a ML Feature source.
+ */
+export enum FeatureSourceDataType {
+  Array = 'array',
+  Boolean = 'boolean',
+  Date = 'date',
+  Integer = 'integer',
+  Number = 'number',
+  Object = 'object',
+  String = 'string',
+  Timestamp = 'timestamp',
 }
 
 /**
@@ -194,6 +293,24 @@ export enum LabelType {
 export enum State {
   Confirmed = 'Confirmed',
   Suggested = 'Suggested',
+}
+
+/**
+ * This schema defines the type for a ML HyperParameter used in a Model.
+ */
+export interface MlHyperParameter {
+  /**
+   * Description of the Hyper Parameter.
+   */
+  description?: string;
+  /**
+   * Hyper parameter name
+   */
+  name?: string;
+  /**
+   * Hyper parameter value
+   */
+  value?: string;
 }
 
 /**

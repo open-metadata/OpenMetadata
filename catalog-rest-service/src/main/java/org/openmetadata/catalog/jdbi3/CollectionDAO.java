@@ -21,6 +21,7 @@ import org.jdbi.v3.core.statement.StatementContext;
 import org.jdbi.v3.sqlobject.CreateSqlObject;
 import org.jdbi.v3.sqlobject.config.RegisterRowMapper;
 import org.jdbi.v3.sqlobject.customizer.Bind;
+import org.jdbi.v3.sqlobject.customizer.BindList;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
 import org.openmetadata.catalog.entity.Bots;
@@ -28,8 +29,8 @@ import org.openmetadata.catalog.entity.data.Chart;
 import org.openmetadata.catalog.entity.data.Dashboard;
 import org.openmetadata.catalog.entity.data.Database;
 import org.openmetadata.catalog.entity.data.Location;
+import org.openmetadata.catalog.entity.data.MLModel;
 import org.openmetadata.catalog.entity.data.Metrics;
-import org.openmetadata.catalog.entity.data.Model;
 import org.openmetadata.catalog.entity.data.Pipeline;
 import org.openmetadata.catalog.entity.data.Report;
 import org.openmetadata.catalog.entity.data.Table;
@@ -53,7 +54,7 @@ import org.openmetadata.catalog.jdbi3.DatabaseServiceRepository.DatabaseServiceE
 import org.openmetadata.catalog.jdbi3.LocationRepository.LocationEntityInterface;
 import org.openmetadata.catalog.jdbi3.MessagingServiceRepository.MessagingServiceEntityInterface;
 import org.openmetadata.catalog.jdbi3.MetricsRepository.MetricsEntityInterface;
-import org.openmetadata.catalog.jdbi3.ModelRepository.ModelEntityInterface;
+import org.openmetadata.catalog.jdbi3.MLModelRepository.MLModelEntityInterface;
 import org.openmetadata.catalog.jdbi3.PipelineRepository.PipelineEntityInterface;
 import org.openmetadata.catalog.jdbi3.PipelineServiceRepository.PipelineServiceEntityInterface;
 import org.openmetadata.catalog.jdbi3.PolicyRepository.PolicyEntityInterface;
@@ -63,6 +64,7 @@ import org.openmetadata.catalog.jdbi3.TableRepository.TableEntityInterface;
 import org.openmetadata.catalog.jdbi3.TeamRepository.TeamEntityInterface;
 import org.openmetadata.catalog.jdbi3.TopicRepository.TopicEntityInterface;
 import org.openmetadata.catalog.jdbi3.UserRepository.UserEntityInterface;
+import org.openmetadata.catalog.operations.workflows.Ingestion;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.type.UsageDetails;
@@ -121,13 +123,16 @@ public interface CollectionDAO {
   TopicDAO topicDAO();
 
   @CreateSqlObject
-  ModelDAO modelDAO();
+  MLModelDAO mlModelDAO();
 
   @CreateSqlObject
   BotsDAO botsDAO();
 
   @CreateSqlObject
   PolicyDAO policyDAO();
+
+  @CreateSqlObject
+  IngestionDAO ingestionDAO();
 
   @CreateSqlObject
   DatabaseServiceDAO dbServiceDAO();
@@ -149,6 +154,9 @@ public interface CollectionDAO {
 
   @CreateSqlObject
   LocationDAO locationDAO();
+
+  @CreateSqlObject
+  ChangeEventDAO changeEventDAO();
 
   interface DashboardDAO extends EntityDAO<Dashboard> {
     @Override
@@ -481,19 +489,19 @@ public interface CollectionDAO {
     }
   }
 
-  interface ModelDAO extends EntityDAO<Model>{
+  interface MLModelDAO extends EntityDAO<MLModel>{
     @Override
-    default String getTableName() { return "model_entity"; }
+    default String getTableName() { return "ml_model_entity"; }
 
     @Override
-    default Class<Model> getEntityClass() { return Model.class; }
+    default Class<MLModel> getEntityClass() { return MLModel.class; }
 
     @Override
     default String getNameColumn() { return "fullyQualifiedName"; }
 
     @Override
-    default EntityReference getEntityReference(Model entity) {
-      return new ModelEntityInterface(entity).getEntityReference();
+    default EntityReference getEntityReference(MLModel entity) {
+      return new MLModelEntityInterface(entity).getEntityReference();
     }
   }
 
@@ -596,6 +604,24 @@ public interface CollectionDAO {
     @Override
     default EntityReference getEntityReference(Location entity) {
       return new LocationEntityInterface(entity).getEntityReference();
+    }
+  }
+
+  interface IngestionDAO extends EntityDAO<Ingestion> {
+    @Override
+    default String getTableName() { return "ingestion_entity"; }
+
+    @Override
+    default Class<Ingestion> getEntityClass() {
+      return Ingestion.class;
+    }
+
+    @Override
+    default String getNameColumn() { return "fullyQualifiedName"; }
+
+    @Override
+    default EntityReference getEntityReference(Ingestion entity) {
+      return new IngestionRepository.IngestionEntityInterface(entity).getEntityReference();
     }
   }
 
@@ -775,5 +801,20 @@ public interface CollectionDAO {
 
     @SqlQuery("SELECT json FROM user_entity WHERE email = :email")
     String findByEmail(@Bind("email") String email);
+  }
+
+  interface ChangeEventDAO {
+    @SqlUpdate("INSERT INTO change_event (json) VALUES (:json)")
+    void insert(@Bind("json") String json);
+
+    @SqlQuery("SELECT json FROM change_event WHERE " +
+            "eventType = :eventType AND " +
+//            "(entityType IN (<entityTypes>) OR entityType IS NULL) " +
+            "(entityType IN (<entityTypes>) OR entityType IS NULL) AND " +
+            "dateTime >= :dateTime " +
+            "ORDER BY dateTime DESC")
+    List<String> list(@Bind("eventType") String eventType,
+                      @BindList("entityTypes") List<String> entityTypes,
+                      @Bind("dateTime") long dateTime);
   }
 }

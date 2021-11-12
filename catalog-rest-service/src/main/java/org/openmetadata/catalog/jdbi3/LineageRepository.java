@@ -17,6 +17,7 @@
 package org.openmetadata.catalog.jdbi3;
 
 import org.jdbi.v3.sqlobject.transaction.Transaction;
+import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.lineage.AddLineage;
 import org.openmetadata.catalog.type.Edge;
 import org.openmetadata.catalog.type.EntityLineage;
@@ -29,8 +30,6 @@ import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-import static org.openmetadata.catalog.util.EntityUtil.getEntityReference;
-
 public class LineageRepository {
   private final CollectionDAO dao;
 
@@ -38,14 +37,14 @@ public class LineageRepository {
 
   @Transaction
   public EntityLineage get(String entityType, String id, int upstreamDepth, int downstreamDepth) throws IOException {
-    EntityReference ref = getEntityReference(entityType, UUID.fromString(id), dao);
+    EntityReference ref = Entity.getEntityReference(entityType, UUID.fromString(id));
     return getLineage(ref, upstreamDepth, downstreamDepth);
   }
 
   @Transaction
   public EntityLineage getByName(String entityType, String fqn, int upstreamDepth, int downstreamDepth)
           throws IOException {
-    EntityReference ref = EntityUtil.getEntityReferenceByName(entityType, fqn, dao);
+    EntityReference ref = Entity.getEntityReferenceByName(entityType, fqn);
     return getLineage(ref, upstreamDepth, downstreamDepth);
   }
 
@@ -53,11 +52,11 @@ public class LineageRepository {
   public void addLineage(AddLineage addLineage) throws IOException {
     // Validate from entity
     EntityReference from = addLineage.getEdge().getFromEntity();
-    from = EntityUtil.getEntityReference(from.getType(), from.getId(), dao);
+    from = Entity.getEntityReference(from.getType(), from.getId());
 
     // Validate to entity
     EntityReference to = addLineage.getEdge().getToEntity();
-    to = EntityUtil.getEntityReference(to.getType(), to.getId(), dao);
+    to = Entity.getEntityReference(to.getType(), to.getId());
 
     // Finally, add lineage relationship
     dao.relationshipDAO().insert(from.getId().toString(), to.getId().toString(), from.getType(), to.getType(),
@@ -77,7 +76,7 @@ public class LineageRepository {
     // Add entityReference details
     for (int i = 0; i < lineage.getNodes().size(); i++) {
       EntityReference ref = lineage.getNodes().get(i);
-      ref = getEntityReference(ref.getType(), ref.getId(), dao);
+      ref = Entity.getEntityReference(ref.getType(), ref.getId());
       lineage.getNodes().set(i, ref);
     }
     return lineage;

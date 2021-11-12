@@ -184,7 +184,7 @@ CREATE TABLE IF NOT EXISTS dashboard_entity (
     INDEX (updatedAt)
 );
 
-CREATE TABLE IF NOT EXISTS model_entity (
+CREATE TABLE IF NOT EXISTS ml_model_entity (
     id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') STORED NOT NULL,
     fullyQualifiedName VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.fullyQualifiedName') NOT NULL,
     json JSON NOT NULL,
@@ -259,6 +259,22 @@ CREATE TABLE IF NOT EXISTS thread_entity (
 -- Policies related tables
 --
 CREATE TABLE IF NOT EXISTS policy_entity (
+    id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') STORED NOT NULL,
+    fullyQualifiedName VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.fullyQualifiedName') NOT NULL,
+    json JSON NOT NULL,
+    updatedAt TIMESTAMP GENERATED ALWAYS AS (TIMESTAMP(STR_TO_DATE(json ->> '$.updatedAt', '%Y-%m-%dT%T.%fZ'))) NOT NULL,
+    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.updatedBy') NOT NULL,
+    timestamp BIGINT,
+    PRIMARY KEY (id),
+    UNIQUE KEY unique_name(fullyQualifiedName),
+    INDEX (updatedBy),
+    INDEX (updatedAt)
+);
+
+--
+-- Ingestion related tables
+--
+CREATE TABLE IF NOT EXISTS ingestion_entity (
     id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') STORED NOT NULL,
     fullyQualifiedName VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.fullyQualifiedName') NOT NULL,
     json JSON NOT NULL,
@@ -374,10 +390,15 @@ CREATE TABLE IF NOT EXISTS tag_usage (
     UNIQUE KEY unique_name(tagFQN, targetFQN)
 );
 
-CREATE TABLE IF NOT EXISTS audit_log (
-    entityId VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.entityId') NOT NULL,
-    entityType VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.entityType') NOT NULL,
-    username VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.userName') NOT NULL,
+CREATE TABLE IF NOT EXISTS change_event (
+    eventType VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.eventType') NOT NULL,
+    entityType VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.entityType') NOT NULL,
+    userName VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.userName') NOT NULL,
+    dateTime TIMESTAMP GENERATED ALWAYS AS (TIMESTAMP(STR_TO_DATE(json ->> '$.dateTime', '%Y-%m-%dT%T.%fZ'))) NOT NULL,
+--    dateTime DATE GENERATED ALWAYS AS (STR_TO_DATE(json ->> '$.dateTime', '%Y-%m-%dT%T.%fZ')) NOT NULL,
     json JSON NOT NULL,
-    timestamp BIGINT
+    INDEX (dateTime),
+    INDEX (eventType),
+    INDEX (entityType)
+    -- TODO what are the other indexes required?
 );

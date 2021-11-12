@@ -40,7 +40,8 @@ public class MetricsRepository extends EntityRepository<Metrics> {
   private final CollectionDAO dao;
 
   public MetricsRepository(CollectionDAO dao) {
-    super(Metrics.class, dao.metricsDAO(), dao, Fields.EMPTY_FIELDS, METRICS_UPDATE_FIELDS);
+    super(MetricsResource.COLLECTION_PATH, Metrics.class, dao.metricsDAO(), dao, Fields.EMPTY_FIELDS,
+            METRICS_UPDATE_FIELDS);
     this.dao = dao;
   }
 
@@ -228,6 +229,9 @@ public class MetricsRepository extends EntityRepository<Metrics> {
 
     @Override
     public void setOwner(EntityReference owner) { entity.setOwner(owner); }
+
+    @Override
+    public Metrics withHref(URI href) { return entity.withHref(href); }
 
     @Override
     public void setTags(List<TagLabel> tags) {

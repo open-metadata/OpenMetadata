@@ -83,7 +83,7 @@ public class TableRepository extends EntityRepository<Table> {
   private final CollectionDAO dao;
 
   public TableRepository(CollectionDAO dao) {
-    super(Table.class, dao.tableDAO(), dao, TABLE_PATCH_FIELDS, TABLE_UPDATE_FIELDS);
+    super(TableResource.COLLECTION_PATH, Table.class, dao.tableDAO(), dao, TABLE_PATCH_FIELDS, TABLE_UPDATE_FIELDS);
     this.dao = dao;
   }
 
@@ -686,6 +686,9 @@ public class TableRepository extends EntityRepository<Table> {
 
     @Override
     public void setOwner(EntityReference owner) { entity.setOwner(owner); }
+
+    @Override
+    public Table withHref(URI href) { return entity.withHref(href); }
 
     @Override
     public void setTags(List<TagLabel> tags) {

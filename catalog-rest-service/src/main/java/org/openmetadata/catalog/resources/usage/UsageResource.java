@@ -17,21 +17,21 @@
 package org.openmetadata.catalog.resources.usage;
 
 import com.google.inject.Inject;
-import org.openmetadata.catalog.jdbi3.CollectionDAO;
-import org.openmetadata.catalog.jdbi3.UsageRepository;
-import org.openmetadata.catalog.resources.teams.UserResource;
-import org.openmetadata.catalog.resources.Collection;
-import org.openmetadata.catalog.type.EntityUsage;
-import org.openmetadata.catalog.type.DailyCount;
-import org.openmetadata.catalog.util.EntityUtil;
-import org.openmetadata.catalog.util.RestUtil;
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import org.openmetadata.catalog.Entity;
+import org.openmetadata.catalog.jdbi3.CollectionDAO;
+import org.openmetadata.catalog.jdbi3.UsageRepository;
+import org.openmetadata.catalog.resources.Collection;
+import org.openmetadata.catalog.resources.teams.UserResource;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
+import org.openmetadata.catalog.type.DailyCount;
+import org.openmetadata.catalog.type.EntityUsage;
+import org.openmetadata.catalog.util.RestUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -211,7 +211,7 @@ public class UsageResource {
   }
 
   public static EntityUsage addHref(UriInfo uriInfo, EntityUsage entityUsage) {
-    EntityUtil.addHref(uriInfo, entityUsage.getEntity());
+    Entity.withHref(uriInfo, entityUsage.getEntity());
     return entityUsage;
   }
 }

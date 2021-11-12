@@ -36,4 +36,5 @@ public interface EntityInterface<T> {
   void setUpdateDetails(String updatedBy, Date updatedAt);
   void setChangeDescription(Double newVersion, ChangeDescription changeDescription);
   void setOwner(EntityReference owner);
+  T withHref(URI href);
 }

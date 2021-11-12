@@ -20,7 +20,6 @@ import com.github.javafaker.Faker;
 import org.openmetadata.catalog.selenium.events.Events;
 import org.openmetadata.catalog.selenium.properties.Property;
 import org.openqa.selenium.By;
-import org.openqa.selenium.Keys;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
@@ -87,25 +86,20 @@ public class DatabaseServicePageTest {
         }
         Events.click(webDriver, By.cssSelector("[data-testid='selectService']"));
         Events.click(webDriver, By.cssSelector("[value='MySQL']"));
-        webDriver.findElement(By.cssSelector("[data-testid='name']")).sendKeys(serviceName);
-        webDriver.findElement(By.cssSelector("[data-testid='url']")).sendKeys("localhost:3306");
-        webDriver.findElement(By.cssSelector("[data-testid='database']")).sendKeys("openmetadata_db");
+        Events.sendKeys(webDriver, By.cssSelector("[data-testid='name']"), serviceName);
+        Events.sendKeys(webDriver, By.cssSelector("[data-testid='url']"), "localhost:3306");
+        Events.sendKeys(webDriver, By.cssSelector("[data-testid='database']"), "openmetadata_db");
 
         Events.click(webDriver, By.cssSelector("[data-testid='boldButton']"));
-        wait.until(ExpectedConditions.elementToBeClickable(
-                webDriver.findElement(By.xpath(enterDescription)))).sendKeys(faker.address().toString());
+        Events.sendKeys(webDriver, By.xpath(enterDescription), faker.address().toString());
         Events.click(webDriver, By.xpath(enterDescription));
-        wait.until(ExpectedConditions.elementToBeClickable(
-                webDriver.findElement(By.xpath(enterDescription)))).sendKeys(Keys.ENTER);
+        Events.sendEnter(webDriver, By.xpath(enterDescription));
         Events.click(webDriver, By.cssSelector("[data-testid='italicButton']"));
-        wait.until(ExpectedConditions.elementToBeClickable(
-                webDriver.findElement(By.xpath(enterDescription)))).sendKeys(faker.address().toString());
+        Events.sendKeys(webDriver, By.xpath(enterDescription), faker.address().toString());
         Events.click(webDriver, By.xpath(enterDescription));
-        wait.until(ExpectedConditions.elementToBeClickable(
-                webDriver.findElement(By.xpath(enterDescription)))).sendKeys(Keys.ENTER);
+        Events.sendEnter(webDriver, By.xpath(enterDescription));
         Events.click(webDriver, By.cssSelector("[data-testid='linkButton']"));
-        wait.until(ExpectedConditions.elementToBeClickable(
-                webDriver.findElement(By.xpath(enterDescription)))).sendKeys(faker.address().toString());
+        Events.sendKeys(webDriver, By.xpath(enterDescription), faker.address().toString());
         Events.click(webDriver, By.cssSelector("[data-testid='ingestion-switch']"));
         Events.click(webDriver, By.cssSelector("[data-testid='save-button']"));
     }
@@ -116,10 +110,8 @@ public class DatabaseServicePageTest {
         openDatabaseServicePage();
         Events.click(webDriver, By.xpath("(//button[@data-testid='edit-service'])[1]"));
         Events.click(webDriver, By.xpath(enterDescription));
-        wait.until(ExpectedConditions.elementToBeClickable(
-                webDriver.findElement(By.xpath(enterDescription)))).sendKeys(Keys.ENTER);
-        wait.until(ExpectedConditions.elementToBeClickable(
-                webDriver.findElement(By.xpath(enterDescription)))).sendKeys(faker.address().toString());
+        Events.sendEnter(webDriver, By.xpath(enterDescription));
+        Events.sendKeys(webDriver, By.xpath(enterDescription), faker.address().toString());
         Events.click(webDriver, By.cssSelector("[data-testid='ingestion-switch']"));
         Events.click(webDriver, By.cssSelector("[data-testid='save-button']"));
     }
@@ -132,10 +124,8 @@ public class DatabaseServicePageTest {
         Thread.sleep(waitTime);
         Events.click(webDriver, By.cssSelector("[data-testid='description-edit']"));
         Events.click(webDriver, By.xpath(enterDescription));
-        wait.until(ExpectedConditions.elementToBeClickable(
-                webDriver.findElement(By.xpath(enterDescription)))).sendKeys(Keys.ENTER);
-        wait.until(ExpectedConditions.elementToBeClickable(
-                webDriver.findElement(By.xpath(enterDescription)))).sendKeys(faker.address().toString());
+        Events.sendEnter(webDriver, By.xpath(enterDescription));
+        Events.sendKeys(webDriver, By.xpath(enterDescription), faker.address().toString());
         Events.click(webDriver, By.cssSelector("[data-testid='save']"));
     }
 
@@ -145,7 +135,7 @@ public class DatabaseServicePageTest {
         openDatabaseServicePage();
         Thread.sleep(2000);
         wait.until(ExpectedConditions.elementToBeClickable(By.cssSelector("[data-testid='searchbar']")));
-        webDriver.findElement(By.cssSelector("[data-testid='searchbar']")).sendKeys(serviceName);
+        Events.sendKeys(webDriver, By.cssSelector("[data-testid='searchbar']"), serviceName);
         Events.click(webDriver, By.cssSelector("[data-testid='service-name']"));
     }
 
@@ -155,7 +145,7 @@ public class DatabaseServicePageTest {
         openDatabaseServicePage();
         Thread.sleep(2000);
         wait.until(ExpectedConditions.elementToBeClickable(By.cssSelector("[data-testid='searchbar']")));
-        webDriver.findElement(By.cssSelector("[data-testid='searchbar']")).sendKeys(serviceName);
+        Events.sendKeys(webDriver, By.cssSelector("[data-testid='searchbar']"), serviceName);
         Events.click(webDriver, By.cssSelector("[data-testid='delete-service']"));
         Events.click(webDriver, By.cssSelector("[data-testid='save-button']"));
     }

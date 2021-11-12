@@ -131,11 +131,11 @@ const DashboardDetails = ({
 
   const onDescriptionUpdate = (updatedHTML: string) => {
     if (description !== updatedHTML) {
-      const updatedTopicDetails = {
+      const updatedDashboardDetails = {
         ...dashboardDetails,
         description: updatedHTML,
       };
-      descriptionUpdateHandler(updatedTopicDetails);
+      descriptionUpdateHandler(updatedDashboardDetails);
       setIsEdit(false);
     } else {
       setIsEdit(false);
@@ -157,7 +157,7 @@ const DashboardDetails = ({
             },
           ]
         : dashboardDetails.tags;
-      const updatedTopicDetails = {
+      const updatedDashboardDetails = {
         ...dashboardDetails,
         owner: newOwner
           ? {
@@ -168,7 +168,7 @@ const DashboardDetails = ({
         tags: tierTag,
       };
 
-      return settingsUpdateHandler(updatedTopicDetails);
+      return settingsUpdateHandler(updatedDashboardDetails);
     } else {
       return Promise.reject();
     }
@@ -190,8 +190,8 @@ const DashboardDetails = ({
           tagFQN: tag,
         }));
       const updatedTags = [...prevTags, ...newTags];
-      const updatedTopic = { ...dashboardDetails, tags: updatedTags };
-      tagUpdateHandler(updatedTopic);
+      const updatedDashboard = { ...dashboardDetails, tags: updatedTags };
+      tagUpdateHandler(updatedDashboard);
     }
   };
   const followDashboard = () => {
@@ -418,12 +418,8 @@ const DashboardDetails = ({
                                       />
                                     </button>
                                   ) : (
-                                    <span className="tw-opacity-0 group-hover:tw-opacity-100">
-                                      <Tags
-                                        className="tw-border-main"
-                                        tag="+ Add tag"
-                                        type="outlined"
-                                      />
+                                    <span className="tw-opacity-60 group-hover:tw-opacity-100 tw-text-grey-muted group-hover:tw-text-primary">
+                                      <Tags tag="+ Add tag" type="outlined" />
                                     </span>
                                   )}
                                 </TagsContainer>

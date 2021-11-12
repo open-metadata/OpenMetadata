@@ -98,7 +98,7 @@ public class MyDataPageTest {
         checkWhatsNew();
         wait.until(ExpectedConditions.elementToBeClickable(
                 webDriver.findElement(By.cssSelector("[id='searchBox']")))); // Search bar/dim
-        webDriver.findElement(By.cssSelector("[id='searchBox']")).sendKeys("dim"); // Search bar/dim
+        Events.sendKeys(webDriver, By.cssSelector("[id='searchBox']"), "dim"); // Search bar/dim
         Thread.sleep(waitTime);
         Events.click(webDriver, By.cssSelector("[data-testid='data-name']")); // Search bar/dim
     }

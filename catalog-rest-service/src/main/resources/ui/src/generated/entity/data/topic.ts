@@ -126,18 +126,35 @@ export interface Topic {
  */
 export interface ChangeDescription {
   /**
-   * Fields added during the version changes.
+   * Names of fields added during the version changes.
    */
-  fieldsAdded?: string[];
+  fieldsAdded?: FieldChange[];
   /**
-   * Fields deleted during the version changes.
+   * Fields deleted during the version changes with old value before deleted.
    */
-  fieldsDeleted?: string[];
+  fieldsDeleted?: FieldChange[];
   /**
-   * Fields modified during the version changes.
+   * Fields modified during the version changes with old and new values.
    */
-  fieldsUpdated?: string[];
+  fieldsUpdated?: FieldChange[];
   previousVersion?: number;
+}
+
+export interface FieldChange {
+  /**
+   * Name of the entity field that changed
+   */
+  name?: string;
+  /**
+   * New value of the field. Note that this is a JSON string and use the corresponding field
+   * type to deserialize it.
+   */
+  newValue?: any;
+  /**
+   * Previous value of the field. Note that this is a JSON string and use the corresponding
+   * field type to deserialize it.
+   */
+  oldValue?: any;
 }
 
 /**

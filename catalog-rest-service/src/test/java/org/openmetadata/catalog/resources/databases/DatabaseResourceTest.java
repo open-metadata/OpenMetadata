@@ -54,11 +54,12 @@ import static org.openmetadata.catalog.util.TestUtils.authHeaders;
 
 public class DatabaseResourceTest extends EntityResourceTest<Database> {
   public DatabaseResourceTest() {
-    super(Database.class, DatabaseList.class, "databases", DatabaseResource.FIELDS, false, true, false);
+    super(Entity.DATABASE, Database.class, DatabaseList.class, "databases",
+            DatabaseResource.FIELDS, false, true, false);
   }
 
   @BeforeAll
-  public static void setup(TestInfo test) throws HttpResponseException, URISyntaxException {
+  public static void setup(TestInfo test) throws IOException, URISyntaxException {
     EntityResourceTest.setup(test);
   }
 
@@ -89,7 +90,7 @@ public class DatabaseResourceTest extends EntityResourceTest<Database> {
   }
 
   @Test
-  public void post_validDatabases_as_admin_200_OK(TestInfo test) throws HttpResponseException {
+  public void post_validDatabases_as_admin_200_OK(TestInfo test) throws IOException {
     // Create team with different optional fields
     CreateDatabase create = create(test);
     createAndCheckEntity(create, adminAuthHeaders());
@@ -99,7 +100,7 @@ public class DatabaseResourceTest extends EntityResourceTest<Database> {
   }
 
   @Test
-  public void post_databaseFQN_as_admin_200_OK(TestInfo test) throws HttpResponseException {
+  public void post_databaseFQN_as_admin_200_OK(TestInfo test) throws IOException {
     // Create team with different optional fields
     CreateDatabase create = create(test);
     create.setService(new EntityReference().withId(SNOWFLAKE_REFERENCE.getId()).withType("databaseService"));
@@ -110,12 +111,12 @@ public class DatabaseResourceTest extends EntityResourceTest<Database> {
   }
 
   @Test
-  public void post_databaseWithUserOwner_200_ok(TestInfo test) throws HttpResponseException {
+  public void post_databaseWithUserOwner_200_ok(TestInfo test) throws IOException {
     createAndCheckEntity(create(test).withOwner(USER_OWNER1), adminAuthHeaders());
   }
 
   @Test
-  public void post_databaseWithTeamOwner_200_ok(TestInfo test) throws HttpResponseException {
+  public void post_databaseWithTeamOwner_200_ok(TestInfo test) throws IOException {
     createAndCheckEntity(create(test).withOwner(TEAM_OWNER1), adminAuthHeaders());
   }
 
@@ -155,7 +156,7 @@ public class DatabaseResourceTest extends EntityResourceTest<Database> {
   }
 
   @Test
-  public void post_databaseWithDifferentService_200_ok(TestInfo test) throws HttpResponseException {
+  public void post_databaseWithDifferentService_200_ok(TestInfo test) throws IOException {
     EntityReference[] differentServices = {MYSQL_REFERENCE, REDSHIFT_REFERENCE, BIGQUERY_REFERENCE,
             SNOWFLAKE_REFERENCE};
 
@@ -181,7 +182,7 @@ public class DatabaseResourceTest extends EntityResourceTest<Database> {
   }
 
   @Test
-  public void get_databaseWithDifferentFields_200_OK(TestInfo test) throws HttpResponseException {
+  public void get_databaseWithDifferentFields_200_OK(TestInfo test) throws IOException {
     CreateDatabase create = create(test).withDescription("description").withOwner(USER_OWNER1)
             .withService(SNOWFLAKE_REFERENCE);
     Database database = createAndCheckEntity(create, adminAuthHeaders());
@@ -189,7 +190,7 @@ public class DatabaseResourceTest extends EntityResourceTest<Database> {
   }
 
   @Test
-  public void get_databaseByNameWithDifferentFields_200_OK(TestInfo test) throws HttpResponseException {
+  public void get_databaseByNameWithDifferentFields_200_OK(TestInfo test) throws IOException {
     CreateDatabase create = create(test).withDescription("description").withOwner(USER_OWNER1)
             .withService(SNOWFLAKE_REFERENCE);
     Database database = createAndCheckEntity(create, adminAuthHeaders());
@@ -215,7 +216,7 @@ public class DatabaseResourceTest extends EntityResourceTest<Database> {
   }
 
   public static Database createAndCheckDatabase(CreateDatabase create,
-                                                Map<String, String> authHeaders) throws HttpResponseException {
+                                                Map<String, String> authHeaders) throws IOException {
     return new DatabaseResourceTest().createAndCheckEntity(create, authHeaders);
   }
 
@@ -317,7 +318,7 @@ public class DatabaseResourceTest extends EntityResourceTest<Database> {
   }
 
   @Override
-  public void validatePatchedEntity(Database expected, Database updated, Map<String, String> authHeaders) {
+  public void compareEntities(Database expected, Database updated, Map<String, String> authHeaders) {
     validateCommonEntityFields(getEntityInterface(updated), expected.getDescription(),
             TestUtils.getPrincipal(authHeaders), expected.getOwner());
     // Validate service

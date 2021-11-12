@@ -25,6 +25,7 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.apache.maven.shared.utils.io.IOUtil;
+import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.TagRepository;
 import org.openmetadata.catalog.resources.Collection;
@@ -93,7 +94,7 @@ public class TagResource {
   }
 
   @SuppressWarnings("unused") // Method used using reflection
-  public void initialize() throws IOException {
+  public void initialize(CatalogApplicationConfig config) throws IOException {
     // Find tag definitions and load tag categories from the json file, if necessary
     List<String> tagFiles = getTagDefinitions();
     tagFiles.forEach(tagFile -> {

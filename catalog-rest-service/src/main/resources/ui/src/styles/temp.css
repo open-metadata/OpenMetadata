@@ -690,3 +690,16 @@ body .public-DraftStyleDefault-ul li::marker {
 body .list-option.rdw-option-active {
   box-shadow: none;
 }
+
+/* Diff style */
+
+.diff-added {
+  background: rgba(0, 131, 118, 0.2);
+  color: #008376;
+  width: fit-content;
+}
+.diff-removed {
+  color: #008376;
+  text-decoration: line-through;
+  width: fit-content;
+}

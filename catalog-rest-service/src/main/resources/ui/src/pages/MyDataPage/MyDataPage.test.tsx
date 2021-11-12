@@ -26,9 +26,18 @@ jest.mock('../../components/MyData/MyData.component', () => {
 });
 
 jest.mock('../../axiosAPIs/miscAPI', () => ({
-  searchData: jest
-    .fn()
-    .mockImplementation(() => Promise.resolve({ data: { hits: [] } })),
+  searchData: jest.fn().mockImplementation(() =>
+    Promise.resolve({
+      data: {
+        aggregations: {
+          'sterms#Service': {
+            buckets: [],
+          },
+        },
+        hits: [],
+      },
+    })
+  ),
 }));
 
 jest.mock('../../utils/ServiceUtils', () => ({

@@ -8,7 +8,7 @@ from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.metrics import Metrics
-from metadata.generated.schema.entity.data.model import Model
+from metadata.generated.schema.entity.data.mlmodel import MLModel
 from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.data.report import Report
 from metadata.generated.schema.entity.data.table import Table
@@ -116,9 +116,9 @@ class OpenMetadata(OMetaLineageMixin, OMetaTableMixin, Generic[T, C]):
 
         # Entity Schemas
         if issubclass(
-            entity, get_args(Union[Model, self.get_create_entity_type(Model)])
+            entity, get_args(Union[MLModel, self.get_create_entity_type(MLModel)])
         ):
-            return "/models"
+            return "/mlmodels"
 
         if issubclass(
             entity, get_args(Union[Chart, self.get_create_entity_type(Chart)])

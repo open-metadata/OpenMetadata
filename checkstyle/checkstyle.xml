@@ -197,12 +197,10 @@
         <!-- Miscellaneous other checks.                   -->
         <!-- See http://checkstyle.sf.net/config_misc.html -->
         <module name="ArrayTypeStyle"/>
-        <!--
         <module name="Indentation">
-            <property name="basicOffset" value="4"/>
-            <property name="caseIndent" value="4"/>
+            <property name="basicOffset" value="2"/>
+            <property name="caseIndent" value="2"/>
         </module>
-        -->
         <!--<module name="TodoComment"/>-->
         <module name="UpperEll"/>
 

@@ -65,11 +65,12 @@ public class ChartResourceTest extends EntityResourceTest<Chart> {
   public static EntityReference LOOKER_REFERENCE;
 
   public ChartResourceTest() {
-    super(Chart.class, ChartList.class, "charts", ChartResource.FIELDS, true, true, true);
+    super(Entity.CHART, Chart.class, ChartList.class, "charts", ChartResource.FIELDS,
+            true, true, true);
   }
 
   @BeforeAll
-  public static void setup(TestInfo test) throws HttpResponseException, URISyntaxException {
+  public static void setup(TestInfo test) throws IOException, URISyntaxException {
     EntityResourceTest.setup(test);
 
     CreateDashboardService createService = new CreateDashboardService().withName("superset")
@@ -99,7 +100,7 @@ public class ChartResourceTest extends EntityResourceTest<Chart> {
   }
 
   @Test
-  public void post_validCharts_as_admin_200_OK(TestInfo test) throws HttpResponseException {
+  public void post_validCharts_as_admin_200_OK(TestInfo test) throws IOException {
     // Create team with different optional fields
     CreateChart create = create(test).withService(new EntityReference().
             withId(SUPERSET_REFERENCE.getId()).withType(SUPERSET_REFERENCE.getType()));
@@ -112,12 +113,12 @@ public class ChartResourceTest extends EntityResourceTest<Chart> {
   }
 
   @Test
-  public void post_chartWithUserOwner_200_ok(TestInfo test) throws HttpResponseException {
+  public void post_chartWithUserOwner_200_ok(TestInfo test) throws IOException {
     createAndCheckEntity(create(test).withOwner(USER_OWNER1), adminAuthHeaders());
   }
 
   @Test
-  public void post_chartWithTeamOwner_200_ok(TestInfo test) throws HttpResponseException {
+  public void post_chartWithTeamOwner_200_ok(TestInfo test) throws IOException {
     createAndCheckEntity(create(test).withOwner(TEAM_OWNER1).withDisplayName("chart1"), adminAuthHeaders());
   }
 
@@ -158,7 +159,7 @@ public class ChartResourceTest extends EntityResourceTest<Chart> {
   }
 
   @Test
-  public void post_chartWithDifferentService_200_ok(TestInfo test) throws HttpResponseException {
+  public void post_chartWithDifferentService_200_ok(TestInfo test) throws IOException {
     EntityReference[] differentServices = {SUPERSET_REFERENCE, LOOKER_REFERENCE};
 
     // Create chart for each service and test APIs
@@ -182,7 +183,7 @@ public class ChartResourceTest extends EntityResourceTest<Chart> {
   }
 
   @Test
-  public void get_chartWithDifferentFields_200_OK(TestInfo test) throws HttpResponseException {
+  public void get_chartWithDifferentFields_200_OK(TestInfo test) throws IOException {
     CreateChart create = create(test).withDescription("description").withOwner(USER_OWNER1)
             .withService(SUPERSET_REFERENCE);
     Chart chart = createAndCheckEntity(create, adminAuthHeaders());
@@ -190,7 +191,7 @@ public class ChartResourceTest extends EntityResourceTest<Chart> {
   }
 
   @Test
-  public void get_chartByNameWithDifferentFields_200_OK(TestInfo test) throws HttpResponseException {
+  public void get_chartByNameWithDifferentFields_200_OK(TestInfo test) throws IOException {
     CreateChart create = create(test).withDescription("description").withOwner(USER_OWNER1)
             .withService(SUPERSET_REFERENCE);
     Chart chart = createAndCheckEntity(create, adminAuthHeaders());
@@ -306,7 +307,7 @@ public class ChartResourceTest extends EntityResourceTest<Chart> {
   }
 
   @Override
-  public void validatePatchedEntity(Chart expected, Chart patched, Map<String, String> authHeaders) {
+  public void compareEntities(Chart expected, Chart patched, Map<String, String> authHeaders) {
     validateCommonEntityFields(getEntityInterface(patched), expected.getDescription(),
             TestUtils.getPrincipal(authHeaders), expected.getOwner());
     assertService(expected.getService(), patched.getService());
