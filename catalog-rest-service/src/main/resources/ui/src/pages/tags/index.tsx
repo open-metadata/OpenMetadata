@@ -16,6 +16,7 @@
 */
 
 import { AxiosError, AxiosResponse } from 'axios';
+import classNames from 'classnames';
 import { EntityTags } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -44,12 +45,14 @@ import {
   TagCategoryType,
 } from '../../generated/api/tags/createTagCategory';
 import { TagCategory, TagClass } from '../../generated/entity/tags/tagCategory';
+import { useAuth } from '../../hooks/authHooks';
 import { isEven } from '../../utils/CommonUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import { getTagCategories, getTaglist } from '../../utils/TagsUtils';
 import Form from './Form';
 // import { Tag, TagsCategory } from './tagsTypes';
 const TagsPage = () => {
+  const { isAuthDisabled, isAdminUser } = useAuth();
   const [categories, setCategoreis] = useState<Array<TagCategory>>([]);
   const [currentCategory, setCurrentCategory] = useState<TagCategory>();
   const [isEditCategory, setIsEditCategory] = useState<boolean>(false);
@@ -183,7 +186,9 @@ const TagsPage = () => {
           <h6 className="tw-heading">Tag Categories</h6>
           <NonAdminAction position="bottom" title={TITLE_FOR_NON_ADMIN_ACTION}>
             <Button
-              className="tw-h-7 tw-px-2"
+              className={classNames('tw-h-7 tw-px-2', {
+                'tw-opacity-40': !isAdminUser && !isAuthDisabled,
+              })}
               data-testid="add-category"
               size="small"
               theme="primary"
@@ -238,9 +243,11 @@ const TagsPage = () => {
                   </div>
                   <NonAdminAction
                     position="bottom"
-                    title="Only Admin is allowed for the action">
+                    title={TITLE_FOR_NON_ADMIN_ACTION}>
                     <Button
-                      className="tw-h-8 tw-rounded tw-mb-2"
+                      className={classNames('tw-h-8 tw-rounded tw-mb-2', {
+                        'tw-opacity-40': !isAdminUser && !isAuthDisabled,
+                      })}
                       data-testid="add-new-tag-button"
                       size="small"
                       theme="primary"
@@ -261,7 +268,7 @@ const TagsPage = () => {
                   <div className="tw-flex-initial">
                     <NonAdminAction
                       position="bottom"
-                      title="Only Admin is allowed for the action">
+                      title={TITLE_FOR_NON_ADMIN_ACTION}>
                       <button
                         className="focus:tw-outline-none"
                         data-testid="add-description"
