@@ -35,6 +35,9 @@
 .ingestion-rounder.active {
   border-color: #7147e8;
 }
+.ingestion-rounder.completed {
+  background-color: #d9ceee;
+}
 
 .ingestion-rounder.completed::after {
   content: '\2713';
@@ -49,7 +52,7 @@
   bottom: 0;
   position: absolute;
   content: ' ';
-  width: 76%;
+  width: 78%;
   height: 2px;
   left: 64px;
   background-color: #d9ceee;

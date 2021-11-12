@@ -317,6 +317,22 @@
     box-shadow: 0 0 0 0.5px #7147e8;
   }
 
+  /* Cron editor css */
+  .my-project-cron {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  .my-project-cron-select {
+    @apply tw-rounded tw-border tw-border-main
+    focus:tw-outline-none focus:tw-border-focus hover:tw-border-hover focus:tw-shadow-none hover:tw-shadow-none;
+  }
+  .my-project-cron-clear-button {
+    background-color: #7147e8 !important;
+    border: none;
+    border-radius: 4px;
+  }
+
   /* react-slick */
 
   .slick-dots {
