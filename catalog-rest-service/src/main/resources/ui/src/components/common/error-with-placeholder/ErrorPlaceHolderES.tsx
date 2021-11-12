@@ -45,9 +45,9 @@ const ErrorPlaceHolderES = ({ type, errorMessage, query = '' }: Props) => {
   const getUserDisplayName = () => {
     return isAuthDisabled
       ? AppState.users?.length > 0
-        ? AppState.users[0].displayName
+        ? AppState.users[0].displayName || AppState.users[0].name
         : 'User'
-      : AppState.userDetails.displayName;
+      : AppState.userDetails.displayName || AppState.userDetails.name;
   };
   const noRecordForES = () => {
     return (
