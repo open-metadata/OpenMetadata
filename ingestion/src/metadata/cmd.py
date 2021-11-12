@@ -17,13 +17,15 @@ import os
 import pathlib
 import subprocess
 import sys
+import time
+from datetime import timedelta
 
 import click
 import requests as requests
 from pydantic import ValidationError
 
 try:
-    import docker
+    import docker as sys_docker
 except ImportError:
     raise ImportError(
         "docker package not found, can you try `pip install 'openmetadata-ingestion[docker]'`"
@@ -35,6 +37,8 @@ from metadata.ingestion.api.workflow import Workflow
 logger = logging.getLogger(__name__)
 
 logging.getLogger("urllib3").setLevel(logging.WARN)
+min_memory_limit = 3 * 1024 * 1024 * 1000
+calc_gb = 1024 * 1024 * 1000
 
 # Configure logger.
 BASE_LOGGING_FORMAT = (
@@ -131,80 +135,91 @@ def report(config: str) -> None:
         ) from exc
 
 
+def get_containers(client):
+    stop_containers = client.containers.list(
+        all=True, filters={"label": "com.docker.compose.project=local-metadata"}
+    )
+    if len(stop_containers) == 0:
+        return client.containers.list(
+            all=True, filters={"label": "com.docker.compose.project=tmp"}
+        )
+    return stop_containers
+
+
 @metadata.command()
+@click.option("--run", is_flag=True)
+@click.option("--stop", is_flag=True)
+@click.option("--clean", is_flag=True)
 @click.option(
     "-t",
     "--type",
-    help="Workflow config",
-    required=True,
+    default="release",
+    required=False,
 )
 @click.option(
     "-p",
     "--path",
-    help="Workflow config",
+    type=click.Path(exists=True, dir_okay=False),
     required=False,
 )
-def docker_run(type: str, path: str = "") -> None:
+def docker(run, stop, clean, type, path) -> None:
     """
     Checks Docker Memory Allocation
-    Run Local Docker - metadata docker-run -t local
-    Run Latest Release Docker - metadata docker-run -t latest
+    Run Latest Release Docker - metadata docker --run
+    Run Local Docker - metadata docker --run -t local -p path/to/docker-compose.yml
     """
     try:
-        client = docker.from_env()
+        try:
+            client = sys_docker.from_env()
+        except sys_docker.errors.DockerException as err:
+            logger.error(f"Error: Docker service is not up and running. {err}")
         docker_info = client.info()
-        calc_gb = 1024 * 1024 * 1000
-        if docker_info["MemTotal"] < (3 * 1024 * 1024 * 1000):
+        if docker_info["MemTotal"] < min_memory_limit:
             raise MemoryError(
                 f"Please Allocate More memory to Docker.\nRecommended: 4GB\nCurrent: "
                 f"{round(float(docker_info['MemTotal']) / calc_gb, 2)}"
             )
-        if type == "local":
-            logger.info("Running Local Docker")
-            if path == "":
-                raise ValueError("Please Provide Path to local docker-compose.yml file")
-            else:
+        if run:
+            if type == "local":
+                logger.info("Running Local Docker")
+                if path == "":
+                    raise ValueError(
+                        "Please Provide Path to local docker-compose.yml file"
+                    )
+                start_time = time.time()
                 subprocess.run(
                     f"docker compose -f {path} up --build -d",
                     shell=True,
                 )
-        elif type == "latest":
-            logger.info("Running Latest Release Docker")
-            r = requests.get(
-                "https://raw.githubusercontent.com/open-metadata/OpenMetadata/main/docker/metadata/docker-compose.yml"
-            )
-            open("/tmp/docker-compose.yml", "wb").write(r.content)
-            subprocess.run(f"docker compose -f /tmp/docker-compose.yml up", shell=True)
-        else:
-            raise ValueError("Please Enter one of the following. 'local' or 'latest'")
+                elapsed = time.time() - start_time
+                logger.info(
+                    f"Time took to get containers running: {str(timedelta(seconds=elapsed))}"
+                )
+            else:
+                logger.info("Running Latest Release Docker")
+                r = requests.get(
+                    "https://raw.githubusercontent.com/open-metadata/OpenMetadata/main/docker/metadata/docker-compose.yml"
+                )
+                open("/tmp/docker-compose.yml", "wb").write(r.content)
+                start_time = time.time()
+                subprocess.run(
+                    f"docker compose -f /tmp/docker-compose.yml up -d", shell=True
+                )
+                elapsed = time.time() - start_time
+                logger.info(
+                    f"Time took to get containers running: {str(timedelta(seconds=elapsed))}"
+                )
+        elif stop:
+            for container in get_containers(client):
+                logger.info(f"Stopping {container.name}")
+                container.stop()
+        elif clean:
+            client.containers.prune()
+            client.images.prune()
+            client.volumes.prune()
+            client.networks.prune()
     except Exception as err:
-        logger.error(err)
-
-
-@metadata.command()
-def docker_stop() -> None:
-    """
-    Stops all the running containers
-    metadata docker-stop
-    """
-    client = docker.from_env()
-    running_containers = client.containers.list()
-    logger.info("Stopping Running Containers")
-    for container in running_containers:
-        logger.info(f"Stopping {container.name}")
-        container.stop()
-
-
-@metadata.command()
-def docker_clean() -> None:
-    """
-    Cleans All Dangling Docker Containers, Images and Volumes
-    metadata docker-clean
-    """
-    client = docker.from_env()
-    client.containers.prune()
-    client.images.prune()
-    client.volumes.prune()
+        logger.error(repr(err))
 
 
 metadata.add_command(check)
