@@ -16,9 +16,11 @@
 */
 
 import classNames from 'classnames';
-import { isNil, lowerCase } from 'lodash';
+import { isNil, isUndefined, lowerCase } from 'lodash';
 import React, { FunctionComponent, useEffect, useRef, useState } from 'react';
+import { useWindowDimensions } from '../../hooks/useWindowDimensions';
 import { getCountBadge } from '../../utils/CommonUtils';
+import { getTopPosition } from '../../utils/DropDownUtils';
 import { DropDownListItem, DropDownListProp } from './types';
 
 const DropDownList: FunctionComponent<DropDownListProp> = ({
@@ -30,10 +32,15 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
   value,
   onSelect,
   groupType = 'label',
+  domPosition,
 }: DropDownListProp) => {
+  const { height: windowHeight } = useWindowDimensions();
   const isMounted = useRef<boolean>(false);
   const [searchedList, setSearchedList] = useState(dropDownList);
   const [searchText, setSearchText] = useState(searchString);
+  const [dropDownPosition, setDropDownPosition] = useState<
+    { bottom: string } | {}
+  >({});
 
   const setCurrentTabOnMount = () => {
     const selectedItem = dropDownList.find((l) => l.value === value);
@@ -110,6 +117,14 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
   }, [searchText]);
 
   useEffect(() => {
+    if (!isUndefined(domPosition)) {
+      setDropDownPosition(
+        getTopPosition(windowHeight, domPosition.bottom, domPosition.height)
+      );
+    }
+  }, [domPosition, searchText]);
+
+  useEffect(() => {
     setActiveTab(setCurrentTabOnMount());
     isMounted.current = true;
   }, []);
@@ -134,7 +149,8 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
               horzPosRight ? 'dd-horz-right' : 'dd-horz-left'
             )}
             data-testid="dropdown-list"
-            role="menu">
+            role="menu"
+            style={dropDownPosition}>
             {showSearchBar && (
               <div className="has-search tw-p-4 tw-pb-2">
                 <input

@@ -16,7 +16,7 @@
 */
 
 import classNames from 'classnames';
-import { capitalize, isEmpty } from 'lodash';
+import { capitalize, isEmpty, isNull } from 'lodash';
 import { EntityTags } from 'Models';
 import React, { FunctionComponent, useEffect, useRef, useState } from 'react';
 import { Button } from '../buttons/Button/Button';
@@ -43,6 +43,7 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
   const [hasFocus, setFocus] = useState<boolean>(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const node = useRef<HTMLDivElement>(null);
+  const [inputDomRect, setInputDomRect] = useState<DOMRect>();
   // const [inputWidth, setInputWidth] = useState(INPUT_COLLAPED);
   // const [inputMinWidth, setInputMinWidth] = useState(INPUT_AUTO);
 
@@ -63,6 +64,12 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
       setFocus(true);
     }
   };
+
+  useEffect(() => {
+    if (!isNull(inputRef.current)) {
+      setInputDomRect(inputRef.current.getBoundingClientRect());
+    }
+  }, [newTag]);
 
   const getTagList = () => {
     const newTags = tagList
@@ -227,6 +234,7 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
             {newTag && (
               <DropDownList
                 horzPosRight
+                domPosition={inputDomRect}
                 dropDownList={getTagList()}
                 searchString={newTag}
                 onSelect={handleTagSelection}
