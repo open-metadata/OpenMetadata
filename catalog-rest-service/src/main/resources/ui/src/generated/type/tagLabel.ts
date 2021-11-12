@@ -21,6 +21,10 @@
  */
 export interface TagLabel {
   /**
+   * Unique name of the tag category.
+   */
+  description?: string;
+  /**
    * Link to the tag resource.
    */
   href?: string;
@@ -31,13 +35,13 @@ export interface TagLabel {
    * was propagated from upstream based on lineage. 'Automated' is used when a tool was used
    * to determine the tag label.
    */
-  labelType?: LabelType;
+  labelType: LabelType;
   /**
    * 'Suggested' state is used when a tag label is suggested by users or tools. Owner of the
    * entity must confirm the suggested labels before it is marked as 'Confirmed'.
    */
-  state?: State;
-  tagFQN?: string;
+  state: State;
+  tagFQN: string;
 }
 
 /**
