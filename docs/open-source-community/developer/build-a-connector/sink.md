@@ -1,6 +1,6 @@
 # Sink
 
-Sink will get the event emitted by the source, one at a time. It can use this record to make external service calls to store or index etc.. For OpenMetadata we have [MetadataRestTablesSink](https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/src/metadata/ingestion/sink/metadata_rest_tables.py)
+The Sink will get the event emitted by the source, one at a time. It can use this record to make external service calls to store or index etc.For OpenMetadata we have [MetadataRestTablesSink](https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/src/metadata/ingestion/sink/metadata_rest.py)
 
 ## API
 
@@ -30,17 +30,17 @@ class Sink(Closeable, metaclass=ABCMeta):
         pass
 ```
 
-**create** method is called during the workflow instantiation and creates a instance of the sink
+**create** method is called during the workflow instantiation and creates an instance of the sink
 
-**write\_record** this method is called for each record coming down in workflow chain and can be used to store the record in external services etc..
+**write_record** this method is called for each record coming down in the workflow chain and can be used to store the record in external services etc.
 
-**get\_status** to report the status of the sink ex: how many records, failures or warnings etc..
+**get_status** to report the status of the sink ex: how many records, failures or warnings etc.
 
-**close** gets called before the workflow stops. Can be used to cleanup any connections or other resources.
+**close** gets called before the workflow stops. Can be used to clean up any connections or other resources.
 
 ## Example
 
-Example implmentation
+Example implementation
 
 ```python
 class MetadataRestTablesSink(Sink):
@@ -89,4 +89,3 @@ class MetadataRestTablesSink(Sink):
     def close(self):
         pass
 ```
-

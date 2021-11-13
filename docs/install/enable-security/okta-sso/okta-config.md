@@ -4,7 +4,7 @@
 
 * Once the **Client Id**, **Client secret**, **issuer,** and the **audience** are generated, add those details in `openmetadata-security.yaml` file in the respective field.
 
-```text
+```
 authenticationConfiguration:
   provider: "google"
   publicKey: "https://www.googleapis.com/oauth2/v3/certs"
@@ -15,7 +15,7 @@ authenticationConfiguration:
 
 * Update `authorizerConfiguration` to add `adminPrincipals`
 
-```text
+```
 authorizerConfiguration:
   className: "org.openmetadata.catalog.security.DefaultCatalogAuthorizer"
   # JWT Filter
@@ -24,6 +24,5 @@ authorizerConfiguration:
     - "suresh"
   botPrincipals:
     - "ingestion-bot"
-  principalDomain: "open-metadata.org"
+  prinicipalDomain: "open-metadata.org"
 ```
-

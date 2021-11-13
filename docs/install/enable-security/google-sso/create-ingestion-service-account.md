@@ -14,7 +14,7 @@ description: This is a guide to create ingestion bot service account.
 
 ![Alt text](https://user-images.githubusercontent.com/83201188/125935630-254cc611-f959-4c5e-b33d-73c1a09cc384.png)
 
-* Click on **Manage service accounts** available on the center-right side.
+* Click on **Manage service accounts** available on the centre-right side.
 
 ![Alt text](https://user-images.githubusercontent.com/83201188/125935633-cfcc4c3f-3a68-4886-a291-fd98521bc3ad.png)
 
@@ -28,7 +28,7 @@ description: This is a guide to create ingestion bot service account.
 Make sure the Service Account Id is **ingestion-bot** and click on **CREATE AND CONTINUE**. If you chose a different Service Account Id, add it to the default bots list in [Configure OpenMetadata Server](https://github.com/StreamlineData/catalog/tree/3d53fa7c645ea55f846b06d0210ac63f8c38463f/docs/install/install/google-catalog-config.md)
 {% endhint %}
 
-![](../../../../.gitbook/assets/ingestion-bot-service-account.png)
+![](../../../.gitbook/assets/ingestion-bot-service-account.png)
 
 * Click on **Select a role** and give the **Owner** role. Then click **Continue.**
 
@@ -62,7 +62,7 @@ Make sure the Service Account Id is **ingestion-bot** and click on **CREATE AND 
 
 ![Alt text](https://user-images.githubusercontent.com/83201188/125935657-df55ad24-303f-4c65-931b-39ebf65acf09.png)
 
-* Click on **ADD KEY** and then **Create new key**
+* Click on **ADD KEY** and then **Create a new key**
 
 ![Alt text](https://user-images.githubusercontent.com/83201188/125935661-ce32b714-a67a-42fa-b989-395a29678e84.png)
 

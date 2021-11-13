@@ -3,7 +3,7 @@
 ## Step 1: Create the account
 
 * If you don't have an account, [Sign up](https://auth0.com/signup) to create one.
-* Select the Accout Type, click `I need advanced settings` and click `next`.
+* Select the Account Type, click `I need advanced settings` and click `next`.
 
 ![Alt text](https://user-images.githubusercontent.com/83201188/130019106-366f192e-6591-470c-85f1-def0c821fe7b.png)
 
@@ -17,9 +17,9 @@
 
 ## Step 2: Create a new Application
 
-* Once you are on the Dashboard Page, click on `Application > Application` \
+*   Once you are on the Dashboard page, click on `Application > Application` \\
 
-  available on the left-hand side panel.
+    available on the left-hand side panel.
 
 ![Alt text](https://user-images.githubusercontent.com/83201188/130019122-2435ada0-3321-46a6-a17b-dfb6bb589182.png)
 
@@ -40,4 +40,3 @@
 * You will find you `Client ID`, `Client Secret` and `Domain`.
 
 ![Alt text](https://user-images.githubusercontent.com/83201188/130020071-63828d70-a809-4869-b7c1-7284d648bd59.png)
-
