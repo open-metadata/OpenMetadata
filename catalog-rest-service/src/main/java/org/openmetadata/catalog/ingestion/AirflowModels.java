@@ -42,6 +42,23 @@ class AirflowAuthResponse {
     String refreshToken;
 }
 
+@Getter
+class AirflowDagRun {
+    String state;
+    String startDate;
+    String endDate;
+}
+
+@Getter
+class AirflowListResponse {
+    @JsonProperty("status")
+    String status;
+    @JsonProperty("next_run")
+    String nextRun;
+    @JsonProperty("dag_runs")
+    List<AirflowDagRun> dagRuns;
+}
+
 @Builder
 @Getter
 class OpenMetadataIngestionComponent {
@@ -109,7 +126,6 @@ class IngestionPipeline {
     Integer retries = 3;
     @Builder.Default
     Integer retryDelay = 300;
-    @JsonProperty("schedule_interval")
-    String schedulerInterval;
+    String scheduleInterval;
     List<OpenMetadataIngestionTask> tasks;
 }

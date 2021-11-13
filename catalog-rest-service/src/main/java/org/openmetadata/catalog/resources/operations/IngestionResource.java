@@ -42,6 +42,8 @@ import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -81,6 +83,8 @@ import java.util.UUID;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "ingestion")
 public class IngestionResource {
+  private static final Logger LOG = LoggerFactory.getLogger(IngestionResource.class);
+
   public static final String COLLECTION_PATH = "operations/v1/ingestion/";
   private final IngestionRepository dao;
   private final CatalogAuthorizer authorizer;
@@ -126,7 +130,7 @@ public class IngestionResource {
     }
   }
 
-  static final String FIELDS = "owner,service,tags";
+  static final String FIELDS = "owner,service,tags,status";
   public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replaceAll(" ", "")
           .split(","));
 
@@ -168,7 +172,11 @@ public class IngestionResource {
     } else { // Forward paging or first page
       ingestions = dao.listAfter(uriInfo, fields, null, limitParam, after);
     }
-    addHref(uriInfo, ingestions.getData());
+    List<Ingestion> ingestionList = ingestions.getData();
+    if (fieldsParam != null && fieldsParam.contains("status")) {
+      ingestionList = addStatus(ingestions.getData());
+    }
+    addHref(uriInfo, ingestionList);
     return ingestions;
   }
 
@@ -205,7 +213,11 @@ public class IngestionResource {
                                schema = @Schema(type = "string", example = FIELDS))
                        @QueryParam("fields") String fieldsParam) throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
-    return addHref(uriInfo, dao.get(uriInfo, id, fields));
+    Ingestion ingestion = dao.get(uriInfo, id, fields);
+    if (fieldsParam != null && fieldsParam.contains("status")) {
+      ingestion = addStatus(ingestion);
+    }
+    return addHref(uriInfo, ingestion);
   }
 
   @GET
@@ -245,7 +257,11 @@ public class IngestionResource {
                                      schema = @Schema(type = "string", example = FIELDS))
                              @QueryParam("fields") String fieldsParam) throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
-    return addHref(uriInfo, dao.getByName(uriInfo, fqn, fields));
+    Ingestion ingestion = dao.getByName(uriInfo, fqn, fields);
+    if (fieldsParam != null && fieldsParam.contains("status")) {
+      ingestion = addStatus(ingestion);
+    }
+    return addHref(uriInfo, ingestion);
   }
 
 
@@ -347,27 +363,42 @@ public class IngestionResource {
 
   private Ingestion getIngestion(SecurityContext securityContext, CreateIngestion create) {
     return new Ingestion().withId(UUID.randomUUID()).withName(create.getName())
-        .withDisplayName(create.getDisplayName())
-        .withDescription(create.getDescription())
-        .withForceDeploy(create.getForceDeploy())
-        .withConcurrency(create.getConcurrency())
-        .withPauseWorkflow(create.getPauseWorkflow())
-        .withStartDate(create.getStartDate())
-        .withEndDate(create.getEndDate())
-        .withRetries(create.getRetries())
-        .withRetryDelay(create.getRetryDelay())
-        .withConnectorConfig(create.getConnectorConfig())
-        .withWorkflowCatchup(create.getWorkflowCatchup())
-        .withTags(create.getTags())
-        .withOwner(create.getOwner())
-        .withService(create.getService())
-        .withUpdatedBy(securityContext.getUserPrincipal().getName())
-        .withUpdatedAt(new Date());
+          .withDisplayName(create.getDisplayName())
+          .withDescription(create.getDescription())
+          .withForceDeploy(create.getForceDeploy())
+          .withConcurrency(create.getConcurrency())
+          .withPauseWorkflow(create.getPauseWorkflow())
+          .withStartDate(create.getStartDate())
+          .withEndDate(create.getEndDate())
+          .withRetries(create.getRetries())
+          .withRetryDelay(create.getRetryDelay())
+          .withConnectorConfig(create.getConnectorConfig())
+          .withWorkflowCatchup(create.getWorkflowCatchup())
+          .withScheduleInterval(create.getScheduleInterval())
+          .withTags(create.getTags())
+          .withOwner(create.getOwner())
+          .withService(create.getService())
+          .withUpdatedBy(securityContext.getUserPrincipal().getName())
+          .withUpdatedAt(new Date());
   }
 
   private void deploy(Ingestion ingestion) {
     if (ingestion.getForceDeploy()) {
       airflowRESTClient.deploy(ingestion, config);
     }
+  }
+
+  public List<Ingestion> addStatus(List<Ingestion> ingestions) {
+    Optional.ofNullable(ingestions).orElse(Collections.emptyList()).forEach(this::addStatus);
+    return ingestions;
+  }
+
+  private Ingestion addStatus(Ingestion ingestion) {
+    try {
+      ingestion = airflowRESTClient.getStatus(ingestion);
+    } catch (Exception e) {
+      LOG.error("Failed to fetch status for {}", ingestion.getName());
+    }
+    return ingestion;
   }
 }
