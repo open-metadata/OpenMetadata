@@ -687,13 +687,24 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
 
     // Validate information returned in patch response has the updates
     T returned = patchEntity(entityInterface.getId(), originalJson, updated, authHeaders);
+    entityInterface = getEntityInterface(returned);
+
     compareEntities(updated, returned, authHeaders);
     validateChangeDescription(returned, updateType, expectedChange);
+    validateEntityHistory(entityInterface.getId(), updateType, expectedChange, authHeaders);
+    validateLatestVersion(entityInterface, updateType, expectedChange, authHeaders);
 
     // GET the entity and Validate information returned
     T getEntity = getEntity(entityInterface.getId(), authHeaders);
     compareEntities(updated, getEntity, authHeaders);
     validateChangeDescription(getEntity, updateType, expectedChange);
+
+    // Check if the entity change events are record
+    if (updateType != NO_CHANGE) {
+      EventType expectedEventType = updateType == UpdateType.CREATED ?
+              EventType.ENTITY_CREATED : EventType.ENTITY_UPDATED;
+      validateChangeEvents(entityInterface, expectedEventType, expectedChange, authHeaders);
+    }
     return returned;
   }
 

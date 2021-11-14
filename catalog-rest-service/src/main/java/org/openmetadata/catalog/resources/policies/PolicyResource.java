@@ -36,6 +36,7 @@ import org.openmetadata.catalog.security.CatalogAuthorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.RestUtil;
+import org.openmetadata.catalog.util.RestUtil.PatchResponse;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
 
@@ -230,10 +231,10 @@ public class PolicyResource {
           externalDocs = @ExternalDocumentation(description = "JsonPatch RFC",
                   url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
-  public Policy updateDescription(@Context UriInfo uriInfo,
-                                  @Context SecurityContext securityContext,
-                                  @PathParam("id") String id,
-                                  @RequestBody(description = "JsonPatch with array of operations",
+  public Response updateDescription(@Context UriInfo uriInfo,
+                                    @Context SecurityContext securityContext,
+                                    @PathParam("id") String id,
+                                    @RequestBody(description = "JsonPatch with array of operations",
                                           content = @Content(mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
                                                   examples = {@ExampleObject("[" +
                                                           "{op:remove, path:/a}," +
@@ -243,8 +244,11 @@ public class PolicyResource {
     Fields fields = new Fields(FIELD_LIST, FIELDS);
     Policy policy = dao.get(uriInfo, id, fields);
     SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, dao.getOwnerReference(policy));
-    policy = dao.patch(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
-    return addHref(uriInfo, policy);
+
+    PatchResponse<Policy> response =
+            dao.patch(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
+    addHref(uriInfo, response.getEntity());
+    return response.toResponse();
   }
 
   @PUT

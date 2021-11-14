@@ -39,6 +39,7 @@ import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.RestUtil;
+import org.openmetadata.catalog.util.RestUtil.PatchResponse;
 import org.openmetadata.catalog.util.ResultList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -296,15 +297,14 @@ public class UserResource {
   }
 
   @PATCH
-  @Valid
   @Path("/{id}")
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
   @Operation(summary = "Update a user", tags = "users",
           description = "Update an existing user using JsonPatch.",
           externalDocs = @ExternalDocumentation(description = "JsonPatch RFC",
                   url = "https://tools.ietf.org/html/rfc6902"))
-  public User patch(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("id") String id,
-                    @RequestBody(description = "JsonPatch with array of operations",
+  public Response patch(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("id") String id,
+                        @RequestBody(description = "JsonPatch with array of operations",
                             content = @Content(mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
                                     examples = {@ExampleObject("[" +
                                             "{op:remove, path:/a}," +
@@ -314,8 +314,10 @@ public class UserResource {
     User user = dao.get(uriInfo, id, new Fields(FIELD_LIST, null));
     SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext,
             new UserEntityInterface(user).getEntityReference());
-    return addHref(uriInfo, dao.patch(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(),
-            patch));
+    PatchResponse<User> response = dao.patch(uriInfo, UUID.fromString(id),
+            securityContext.getUserPrincipal().getName(), patch);
+    addHref(uriInfo, response.getEntity());
+    return response.toResponse();
   }
 
   @DELETE

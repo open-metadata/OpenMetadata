@@ -851,7 +851,6 @@ public interface CollectionDAO {
 
     @SqlQuery("SELECT json FROM change_event WHERE " +
             "eventType = :eventType AND " +
-//            "(entityType IN (<entityTypes>) OR entityType IS NULL) " +
             "(entityType IN (<entityTypes>) OR entityType IS NULL) AND " +
             "dateTime >= :dateTime " +
             "ORDER BY dateTime DESC")

@@ -37,6 +37,7 @@ import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.RestUtil;
+import org.openmetadata.catalog.util.RestUtil.PatchResponse;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
 
@@ -261,10 +262,10 @@ public class TopicResource {
           externalDocs = @ExternalDocumentation(description = "JsonPatch RFC",
                   url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
-  public Topic updateDescription(@Context UriInfo uriInfo,
-                                 @Context SecurityContext securityContext,
-                                 @PathParam("id") String id,
-                                 @RequestBody(description = "JsonPatch with array of operations",
+  public Response updateDescription(@Context UriInfo uriInfo,
+                                    @Context SecurityContext securityContext,
+                                    @PathParam("id") String id,
+                                    @RequestBody(description = "JsonPatch with array of operations",
                                          content = @Content(mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
                                                  examples = {@ExampleObject("[" +
                                                          "{op:remove, path:/a}," +
@@ -273,10 +274,11 @@ public class TopicResource {
                                          JsonPatch patch) throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, FIELDS);
     Topic topic = dao.get(uriInfo, id, fields);
-    SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext,
-            dao.getOwnerReference(topic));
-    topic = dao.patch(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
-    return addHref(uriInfo, topic);
+    SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, dao.getOwnerReference(topic));
+    PatchResponse<Topic> response =
+            dao.patch(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
+    addHref(uriInfo, response.getEntity());
+    return response.toResponse();
   }
 
   @PUT
