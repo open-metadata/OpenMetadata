@@ -28,10 +28,14 @@ import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
+import org.openmetadata.catalog.util.ResultList;
+import org.openmetadata.common.utils.CipherText;
 
 import java.io.IOException;
 import java.net.URI;
+import java.security.GeneralSecurityException;
 import java.text.ParseException;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Objects;
@@ -69,13 +73,64 @@ public class LocationRepository extends EntityRepository<Location> {
             .withId(original.getId());
   }
 
+  @Transaction
+  public final ResultList<Location> listPrefixesBefore(Fields fields, String fqn, int limitParam, String before)
+          throws GeneralSecurityException, IOException {
+    String service = fqn.split("\\.")[0];
+    // Reverse scrolling - Get one extra result used for computing before cursor
+    List<String> jsons = dao.locationDAO().listPrefixesBefore(dao.locationDAO().getTableName(),
+            dao.locationDAO().getNameColumn(), fqn, service, limitParam + 1,
+            CipherText.instance().decrypt(before));
+
+    List<Location> entities = new ArrayList<>();
+    for (String json : jsons) {
+      entities.add(setFields(JsonUtils.readValue(json, Location.class), fields));
+    }
+    int total = dao.locationDAO().listPrefixesCount(dao.locationDAO().getTableName(),
+            dao.locationDAO().getNameColumn(), fqn, service);
+
+    String beforeCursor = null, afterCursor;
+    if (entities.size() > limitParam) { // If extra result exists, then previous page exists - return before cursor
+      entities.remove(0);
+      beforeCursor = getFullyQualifiedName(entities.get(0));
+    }
+    afterCursor = getFullyQualifiedName(entities.get(entities.size() - 1));
+    return getResultList(entities, beforeCursor, afterCursor, total);
+  }
+
+
+  @Transaction
+  public final ResultList<Location> listPrefixesAfter(Fields fields, String fqn, int limitParam, String after)
+          throws GeneralSecurityException, IOException {
+    String service = fqn.split("\\.")[0];
+    // forward scrolling, if after == null then first page is being asked
+    List<String> jsons = dao.locationDAO().listPrefixesAfter(dao.locationDAO().getTableName(),
+            dao.locationDAO().getNameColumn(), fqn, service, limitParam + 1, after == null ? "" :
+                    CipherText.instance().decrypt(after));
+
+    List<Location> entities = new ArrayList<>();
+    for (String json : jsons) {
+      entities.add(setFields(JsonUtils.readValue(json, Location.class), fields));
+    }
+    int total = dao.locationDAO().listPrefixesCount(dao.locationDAO().getTableName(),
+            dao.locationDAO().getNameColumn(), fqn, service);
+
+    String beforeCursor, afterCursor = null;
+    beforeCursor = after == null ? null : getFullyQualifiedName(entities.get(0));
+    if (entities.size() > limitParam) { // If extra result exists, then next page exists - return after cursor
+      entities.remove(limitParam);
+      afterCursor = getFullyQualifiedName(entities.get(limitParam - 1));
+    }
+    return getResultList(entities, beforeCursor, afterCursor, total);
+  }
+
   @Override
   public EntityInterface<Location> getEntityInterface(Location entity) {
     return new LocationEntityInterface(entity);
   }
 
   public static String getFQN(Location location) {
-    return (location.getService().getName() + ":/" + location.getName());
+    return (location.getService().getName() + "." + location.getName());
   }
 
   @Transaction
@@ -299,6 +354,5 @@ public class LocationRepository extends EntityRepository<Location> {
     private void updateLocationType(Location origLocation, Location updatedLocation) throws JsonProcessingException {
       recordChange("locationType", origLocation.getLocationType(), updatedLocation.getLocationType());
     }
-
   }
 }

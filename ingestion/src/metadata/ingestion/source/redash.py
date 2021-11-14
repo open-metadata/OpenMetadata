@@ -13,7 +13,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 import uuid
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, Dict
 from typing import Iterable, List
 
 import requests
@@ -26,7 +26,7 @@ from metadata.generated.schema.entity.services.dashboardService import (
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.common import ConfigModel, Record, WorkflowContext
 from metadata.ingestion.api.source import Source, SourceStatus
-from metadata.ingestion.models.table_metadata import Dashboard
+from metadata.ingestion.models.table_metadata import Dashboard, Chart as ModelChart
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.utils.helpers import get_dashboard_service_or_create
 
@@ -56,6 +56,7 @@ class RedashSource(Source):
     metadata_config: MetadataServerConfig
     status: RedashSourceStatus
     platform = "redash"
+    dashboards_to_charts: Dict[str, List[str]]
 
     def __init__(
         self,
@@ -76,6 +77,7 @@ class RedashSource(Source):
             config.uri,
             metadata_config,
         )
+        self.dashboards_to_charts = {}
 
     @classmethod
     def create(
@@ -90,7 +92,9 @@ class RedashSource(Source):
 
     def next_record(self) -> Iterable[Record]:
         yield from self.get_redash_charts()
-        yield from self.get_redash_dashboard()
+        dashboard_info = self.client.dashboards()
+        yield from self.get_redash_dashboard_charts(dashboard_info)
+        yield from self.get_redash_dashboard(dashboard_info)
 
     def get_redash_charts(self) -> Chart:
         query_info = self.client.queries()
@@ -118,12 +122,32 @@ class RedashSource(Source):
                     description=chart_description,
                 )
 
-    def get_redash_dashboard(self) -> Dashboard:
-        charts: List[Chart] = []
-        dashboard_info = self.client.dashboards()
+    def get_redash_dashboard_charts(self, dashboard_info) -> Chart:
         for dashboard_info in dashboard_info["results"]:
             dashboard_id = dashboard_info["id"]
-            if dashboard_info["id"] is not None:
+            if dashboard_id is not None:
+                dashboard_data = self.client.dashboard(dashboard_info["slug"])
+                self.dashboards_to_charts[dashboard_id] = []
+                for widgets in dashboard_data.get("widgets", []):
+                    visualization = widgets.get("visualization")
+                    self.dashboards_to_charts[dashboard_id].append(widgets["id"])
+                    yield ModelChart(
+                        name=widgets["id"],
+                        displayName=visualization["query"]["name"],
+                        chart_type=visualization["type"],
+                        service=EntityReference(
+                            id=self.service.id, type="dashboardService"
+                        ),
+                        url=(
+                            f"{self.config.uri}/dashboard/{dashboard_data.get('slug', '')}"
+                        ),
+                        description=visualization["description"],
+                    )
+
+    def get_redash_dashboard(self, dashboard_info) -> Dashboard:
+        for dashboard_info in dashboard_info["results"]:
+            dashboard_id = dashboard_info["id"]
+            if dashboard_id is not None:
                 self.status.item_scanned_status()
                 dashboard_data = self.client.dashboard(dashboard_info["slug"])
                 dashboard_url = (
@@ -133,10 +157,10 @@ class RedashSource(Source):
                     dashboard_description = widgets.get("text")
                 yield Dashboard(
                     id=uuid.uuid4(),
-                    name=dashboard_info["id"],
+                    name=dashboard_id,
                     displayName=dashboard_info["name"],
                     description=dashboard_description if dashboard_info else "",
-                    charts=charts,
+                    charts=self.dashboards_to_charts[dashboard_id],
                     usageSummary=None,
                     service=EntityReference(
                         id=self.service.id, type="dashboardService"

@@ -100,7 +100,7 @@ public final class AirflowUtils {
                 .forceDeploy(ingestion.getForceDeploy())
                 .pauseWorkflow(ingestion.getPauseWorkflow())
                 .owner(ingestion.getOwner().getName())
-                .schedulerInterval(ingestion.getScheduleInterval())
+                .scheduleInterval(ingestion.getScheduleInterval())
                 .concurrency(ingestion.getConcurrency())
                 .startDate(ingestion.getStartDate())
                 .tasks(taskList).build();

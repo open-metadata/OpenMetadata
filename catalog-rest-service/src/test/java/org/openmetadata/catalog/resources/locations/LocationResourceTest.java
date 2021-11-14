@@ -52,6 +52,7 @@ import javax.ws.rs.core.Response.Status;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -109,6 +110,27 @@ public class LocationResourceTest extends CatalogApplicationTest {
     service = StorageServiceResourceTest.createService(createService, adminAuthHeaders());
     GCP_REFERENCE = new EntityReference().withName(service.getName()).withId(service.getId())
             .withType(Entity.STORAGE_SERVICE);
+  }
+
+  @Test
+  public void get_locationListWithPrefix_2xx(TestInfo test) throws HttpResponseException {
+    // Create some nested locations.
+    List<String> paths = Arrays.asList("/" + test.getDisplayName(), "/dwh", "/catalog", "/schema", "/table");
+    String locationName = paths.stream()
+            .reduce("", (subtotal, element) -> {
+              try {
+                CreateLocation create = new CreateLocation().withName(subtotal + element).withService(AWS_REFERENCE);
+                createLocation(create, adminAuthHeaders());
+              } catch (HttpResponseException e) {
+                throw new RuntimeException(e);
+              }
+              return subtotal + element;
+            });
+
+    // List all locations
+    LocationList allLocations = listPrefixes(null, AWS_REFERENCE.getName() + "." + locationName, 1000000, null,
+            null, adminAuthHeaders());
+    assertEquals(5, allLocations.getData().size(), "Wrong number of prefix locations");
   }
 
   @Test
@@ -231,6 +253,79 @@ public class LocationResourceTest extends CatalogApplicationTest {
     HttpResponseException exception = assertThrows(HttpResponseException.class, ()
             -> listLocations(null, null, 1, "", "", adminAuthHeaders()));
     assertResponse(exception, BAD_REQUEST, "Only one of before or after query parameter allowed");
+  }
+
+  @Test
+  public void get_locationPrefixesListWithValidLimitOffset_4xx(TestInfo test) throws HttpResponseException {
+        /*
+            /a
+            /b
+            /b/a
+            /b/b
+            /b/b/a
+            /b/b/b
+            /b/b/b/a
+            /b/b/b/b
+            ...
+        */
+    int maxLocations = 40;
+    String location = "";
+    for (int i = 0; i < maxLocations; i++) {
+      CreateLocation create = new CreateLocation().withName(location + "/a").withService(AWS_REFERENCE);
+      createLocation(create, adminAuthHeaders());
+      location = location + "/b";
+      create = new CreateLocation().withName(location).withService(AWS_REFERENCE);
+      createLocation(create, adminAuthHeaders());
+    }
+    String fqn = AWS_REFERENCE.getName() + "." + location;
+
+    // List all locations
+    LocationList allLocations = listPrefixes(null, fqn, 1000000, null,
+            null, adminAuthHeaders());
+    int totalRecords = allLocations.getData().size();
+    printLocations(allLocations);
+
+    // List limit number locations at a time at various offsets and ensure right results are returned
+    for (int limit = 1; limit < maxLocations; limit++) {
+      String after = null;
+      String before;
+      int pageCount = 0;
+      int indexInAllLocations = 0;
+      LocationList forwardPage;
+      LocationList backwardPage;
+      do { // For each limit (or page size) - forward scroll till the end
+        LOG.info("Limit {} forward scrollCount {} afterCursor {}", limit, pageCount, after);
+        forwardPage = listPrefixes(null, fqn, limit, null, after, adminAuthHeaders());
+        printLocations(forwardPage);
+        after = forwardPage.getPaging().getAfter();
+        before = forwardPage.getPaging().getBefore();
+        assertEntityPagination(allLocations.getData(), forwardPage, limit, indexInAllLocations);
+
+        if (pageCount == 0) {  // CASE 0 - First page is being returned. There is no before cursor
+          assertNull(before);
+        } else {
+          // Make sure scrolling back based on before cursor returns the correct result
+          backwardPage = listPrefixes(null, fqn, limit, before, null, adminAuthHeaders());
+          assertEntityPagination(allLocations.getData(), backwardPage, limit, (indexInAllLocations - limit));
+        }
+
+        indexInAllLocations += forwardPage.getData().size();
+        pageCount++;
+      } while (after != null);
+
+      // We have now reached the last page - test backward scroll till the beginning
+      pageCount = 0;
+      indexInAllLocations = totalRecords - limit - forwardPage.getData().size();
+      do {
+        LOG.info("Limit {} backward scrollCount {} beforeCursor {}", limit, pageCount, before);
+        forwardPage = listPrefixes(null, fqn, limit, before, null, adminAuthHeaders());
+        printLocations(forwardPage);
+        before = forwardPage.getPaging().getBefore();
+        assertEntityPagination(allLocations.getData(), forwardPage, limit, indexInAllLocations);
+        pageCount++;
+        indexInAllLocations -= forwardPage.getData().size();
+      } while (before != null);
+    }
   }
 
   @Test
@@ -687,6 +782,18 @@ public class LocationResourceTest extends CatalogApplicationTest {
     WebTarget target = getResource("locations");
     target = fields != null ? target.queryParam("fields", fields) : target;
     target = fqnPrefixParam != null ? target.queryParam("fqnPrefix", fqnPrefixParam) : target;
+    target = limitParam != null ? target.queryParam("limit", limitParam) : target;
+    target = before != null ? target.queryParam("before", before) : target;
+    target = after != null ? target.queryParam("after", after) : target;
+    return TestUtils.get(target, LocationList.class, authHeaders);
+  }
+
+  public static LocationList listPrefixes(String fields, String fqn, Integer limitParam,
+                                          String before, String after, Map<String, String> authHeaders)
+          throws HttpResponseException {
+    String encodedFqn = URLEncoder.encode(fqn, StandardCharsets.UTF_8);
+    WebTarget target = getResource("locations/prefixes/" + encodedFqn);
+    target = fields != null ? target.queryParam("fields", fields) : target;
     target = limitParam != null ? target.queryParam("limit", limitParam) : target;
     target = before != null ? target.queryParam("before", before) : target;
     target = after != null ? target.queryParam("after", after) : target;

@@ -22,6 +22,7 @@ import org.jdbi.v3.sqlobject.CreateSqlObject;
 import org.jdbi.v3.sqlobject.config.RegisterRowMapper;
 import org.jdbi.v3.sqlobject.customizer.Bind;
 import org.jdbi.v3.sqlobject.customizer.BindList;
+import org.jdbi.v3.sqlobject.customizer.Define;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
 import org.openmetadata.catalog.entity.Bots;
@@ -400,7 +401,8 @@ public interface CollectionDAO {
                                   @Bind("toType") String toType, @Bind("relation") int relation);
 
     @SqlQuery("SELECT fromFQN, toFQN, json FROM field_relationship WHERE " +
-            "fromFQN LIKE CONCAT(:fqnPrefix, '%') AND fromType = :fromType AND toType = :toType AND relation = :relation")
+            "fromFQN LIKE CONCAT(:fqnPrefix, '%') AND fromType = :fromType AND toType = :toType " +
+            "AND relation = :relation")
     @RegisterRowMapper(ToFieldMapper.class)
     List<List<String>> listToByPrefix(@Bind("fqnPrefix") String fqnPrefix, @Bind("fromType") String fromType,
                                 @Bind("toType") String toType, @Bind("relation") int relation);
@@ -605,6 +607,46 @@ public interface CollectionDAO {
     default EntityReference getEntityReference(Location entity) {
       return new LocationEntityInterface(entity).getEntityReference();
     }
+
+    @SqlQuery("SELECT count(*) FROM <table> WHERE " +
+                    "LEFT(:fqn, LENGTH(<nameColumn>)) = <nameColumn> AND " +
+                    "<nameColumn> >= CONCAT(:service, '.') AND " +
+                    "<nameColumn> <= :fqn")
+    int listPrefixesCount(@Define("table") String table,
+                          @Define("nameColumn") String nameColumn,
+                          @Bind("fqn") String fqn,
+                          @Bind("service") String service);
+
+    @SqlQuery(
+            "SELECT json FROM (" +
+                    "SELECT <nameColumn>, json FROM <table> WHERE " +
+                    "LEFT(:fqn, LENGTH(<nameColumn>)) = <nameColumn> AND " +
+                    "<nameColumn> >= CONCAT(:service, '.') AND " +
+                    "<nameColumn> <= :fqn AND " +
+                    "<nameColumn> < :before " +
+                    "ORDER BY <nameColumn> DESC " + // Pagination ordering by chart fullyQualifiedName
+                    "LIMIT :limit" +
+                    ") last_rows_subquery ORDER BY <nameColumn>")
+    List<String> listPrefixesBefore(@Define("table") String table,
+                           @Define("nameColumn") String nameColumn,
+                           @Bind("fqn") String fqn,
+                           @Bind("service") String service,
+                           @Bind("limit") int limit,
+                           @Bind("before") String before);
+
+    @SqlQuery("SELECT json FROM <table> WHERE " +
+            "LEFT(:fqn, LENGTH(<nameColumn>)) = <nameColumn> AND " +
+            "<nameColumn> >= CONCAT(:service, '.') AND " +
+            "<nameColumn> <= :fqn AND " +
+            "<nameColumn> > :after " +
+            "ORDER BY <nameColumn> " +
+            "LIMIT :limit")
+    List<String> listPrefixesAfter(@Define("table") String table,
+                           @Define("nameColumn") String nameColumn,
+                           @Bind("fqn") String fqn,
+                           @Bind("service") String service,
+                           @Bind("limit") int limit,
+                           @Bind("after") String after);
   }
 
   interface IngestionDAO extends EntityDAO<Ingestion> {

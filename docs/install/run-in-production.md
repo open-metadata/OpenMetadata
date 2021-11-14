@@ -6,13 +6,13 @@ description: >-
 
 # Run in Production
 
-Please refer to the previous section [Run Openmetadata](https://github.com/open-metadata/OpenMetadata/blob/63c66391cf27d4d77c4b5c21750d9c09bfa44049/docs/install/run-openmetadata.md) for configuring OpenMetadata.
+Please refer to the previous section [Run Openmetadata](run-openmetadata.md) for configuring OpenMetadata.
 
 {% hint style="info" %}
 **Prerequisites**
 
-* MySQL &gt;= 8.x
-* ElasticSearch &gt;= 7.x
+* MySQL >= 8.x
+* ElasticSearch >= 7.x
 * Airflow or other schedulers to run Ingestion Connectors
 {% endhint %}
 
@@ -20,12 +20,12 @@ Please refer to the previous section [Run Openmetadata](https://github.com/open-
 
 OpenMetadata release ships with `./bin/openmetadata` init.d style script.
 
-```text
-cd openmetdata-0.3.0
+```
+cd openmetdata-0.5.0
 ./bin/openmetdata start
 ```
 
-We recommend configuring serviced to monitor openmetadata command to restart in case of any failures.
+We recommend configuring serviced to monitor the OpenMetadata command to restart in case of any failures.
 
 ## Running with a load balancer
 
@@ -33,7 +33,7 @@ One or more OpenMetadata instances can be put behind a load balancer for reverse
 
 For example, in case Apache mod proxy the VirtualHost tag in the configuration file should be edited out with the following
 
-```text
+```
   <VirtualHost *:80>
   <Proxy balancer://mycluster>
       BalancerMember http://127.0.0.1:8585 <!-- First OpenMetadata server -->
@@ -46,4 +46,3 @@ For example, in case Apache mod proxy the VirtualHost tag in the configuration f
       ProxyPassReverse / balancer://mycluster/
   </VirtualHost>
 ```
-
