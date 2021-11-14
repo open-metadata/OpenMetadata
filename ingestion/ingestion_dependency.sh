@@ -25,4 +25,7 @@ airflow users create \
     --email spiderman@superhero.org \
     --password admin
 airflow db upgrade
+(while ! wget -O /dev/null -o /dev/null http://ingestion:8080; do sleep 5; done; curl -u admin:admin --data '{"dag_run_id":"sample_data_1"}' -H "Content-type: application/json" -X POST http://ingestion:8080/api/v1/dags/sample_data/dagRuns) &
+(while ! wget -O /dev/null -o /dev/null http://localhost:8080; do sleep 5; done; curl -u admin:admin --data '{"dag_run_id":"sample_usage_1"}' -H "Content-type: application/json" -X POST http://ingestion:8080/api/v1/dags/sample_usage/dagRuns) &
+(while ! wget -O /dev/null -o /dev/null http://localhost:8080; do sleep 5; done; curl -u admin:admin --data '{"dag_run_id":"index_metadata_1"}' -H "Content-type: application/json" -X POST http://ingestion:8080/api/v1/dags/index_metadata/dagRuns) &
 airflow standalone
