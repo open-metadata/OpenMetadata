@@ -17,6 +17,7 @@
 package org.openmetadata.catalog.selenium.pages.teams;
 
 import com.github.javafaker.Faker;
+import org.junit.jupiter.api.*;
 import org.openmetadata.catalog.selenium.events.Events;
 import org.openmetadata.catalog.selenium.properties.Property;
 import org.openqa.selenium.By;
@@ -26,12 +27,6 @@ import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.interactions.Actions;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.Order;
-import org.junit.jupiter.api.TestMethodOrder;
-import org.junit.jupiter.api.MethodOrderer;
 
 import java.time.Duration;
 import java.util.ArrayList;
@@ -89,8 +84,7 @@ public class TeamsPageTest {
     @Order(3)
     public void addUser() throws InterruptedException {
         openTeamsPage();
-        Events.click(webDriver, By.xpath(
-                "//*[text()[contains(.,'"+ teamDisplayName +"')]] "));// Select the created listed team
+        Events.click(webDriver, By.xpath("//*[text()[contains(.,'"+ teamDisplayName +"')]] "));
         for(int i = 0; i <=10; i++) {
             Events.click(webDriver, By.cssSelector("[data-testid='add-new-user-button']")); // select add user button
             Events.click(webDriver, By.cssSelector("[data-testid='checkboxAddUser']"));
