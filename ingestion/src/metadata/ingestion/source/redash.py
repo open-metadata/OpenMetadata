@@ -141,7 +141,7 @@ class RedashSource(Source):
                         url=(
                             f"{self.config.uri}/dashboard/{dashboard_data.get('slug', '')}"
                         ),
-                        description=visualization["description"]
+                        description=visualization["description"],
                     )
 
     def get_redash_dashboard(self, dashboard_info) -> Dashboard:
