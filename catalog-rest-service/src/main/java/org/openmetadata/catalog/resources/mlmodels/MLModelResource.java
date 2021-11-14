@@ -119,7 +119,7 @@ public class MLModelResource {
 
   @GET
   @Valid
-  @Operation(summary = "List Models", tags = "models",
+  @Operation(summary = "List Models", tags = "MLModels",
           description = "Get a list of models. Use `fields` parameter to get only necessary fields. " +
                   " Use cursor-based pagination to limit the number " +
                   "entries in the list using `limit` and `before` or `after` query params.",
@@ -161,7 +161,7 @@ public class MLModelResource {
 
   @GET
   @Path("/{id}")
-  @Operation(summary = "Get a model", tags = "models",
+  @Operation(summary = "Get a model", tags = "MLModels",
           description = "Get a model by `id`.",
           responses = {
                   @ApiResponse(responseCode = "200", description = "The model",
@@ -181,7 +181,7 @@ public class MLModelResource {
 
   @GET
   @Path("/name/{fqn}")
-  @Operation(summary = "Get a model by name", tags = "models",
+  @Operation(summary = "Get a model by name", tags = "MLModels",
           description = "Get a model by fully qualified name.",
           responses = {
                   @ApiResponse(responseCode = "200", description = "The model",
@@ -201,7 +201,7 @@ public class MLModelResource {
 
 
   @POST
-  @Operation(summary = "Create a model", tags = "models",
+  @Operation(summary = "Create a model", tags = "MLModels",
           description = "Create a new model.",
           responses = {
                   @ApiResponse(responseCode = "200", description = "The model",
@@ -219,7 +219,7 @@ public class MLModelResource {
 
   @PATCH
   @Path("/{id}")
-  @Operation(summary = "Update a model", tags = "models",
+  @Operation(summary = "Update a model", tags = "MLModels",
           description = "Update an existing model using JsonPatch.",
           externalDocs = @ExternalDocumentation(description = "JsonPatch RFC",
                   url = "https://tools.ietf.org/html/rfc6902"))
@@ -243,7 +243,7 @@ public class MLModelResource {
   }
 
   @PUT
-  @Operation(summary = "Create or update a model", tags = "models",
+  @Operation(summary = "Create or update a model", tags = "MLModels",
           description = "Create a new model, if it does not exist or update an existing model.",
           responses = {
                   @ApiResponse(responseCode = "200", description = "The model",
@@ -262,7 +262,7 @@ public class MLModelResource {
 
   @PUT
   @Path("/{id}/followers")
-  @Operation(summary = "Add a follower", tags = "models",
+  @Operation(summary = "Add a follower", tags = "MLModels",
           description = "Add a user identified by `userId` as follower of this model",
           responses = {
                   @ApiResponse(responseCode = "200", description = "OK"),
@@ -281,7 +281,7 @@ public class MLModelResource {
 
   @DELETE
   @Path("/{id}/followers/{userId}")
-  @Operation(summary = "Remove a follower", tags = "models",
+  @Operation(summary = "Remove a follower", tags = "MLModels",
           description = "Remove the user identified `userId` as a follower of the model.")
   public Response deleteFollower(@Context UriInfo uriInfo,
                               @Context SecurityContext securityContext,
@@ -297,7 +297,7 @@ public class MLModelResource {
 
   @DELETE
   @Path("/{id}")
-  @Operation(summary = "Delete a Model", tags = "models",
+  @Operation(summary = "Delete a Model", tags = "MLModels",
           description = "Delete a model by `id`.",
           responses = {
                   @ApiResponse(responseCode = "200", description = "OK"),
