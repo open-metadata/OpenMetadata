@@ -27,19 +27,19 @@
           "name": "bigquery"
         },
         {
-          "name": "bigquery-usage"
+          "name": "bigquery_usage"
         },
         {
           "name": "redshift"
         },
         {
-          "name": "redshift-usage"
+          "name": "redshift_usage"
         },
         {
           "name": "snowflake"
         },
         {
-          "name": "snowflake-usage"
+          "name": "snowflake_usage"
         },
         {
           "name": "hive"
@@ -170,6 +170,9 @@
       "type": "string",
       "minLength": 1,
       "maxLength": 128
+    },
+    "ingestionType": {
+      "$ref": "#/definitions/ingestionType"
     },
     "tags": {
       "description": "Tags associated with the Ingestion.",

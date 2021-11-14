@@ -365,6 +365,7 @@ public class IngestionResource {
     return new Ingestion().withId(UUID.randomUUID()).withName(create.getName())
           .withDisplayName(create.getDisplayName())
           .withDescription(create.getDescription())
+          .withIngestionType(create.getIngestionType())
           .withForceDeploy(create.getForceDeploy())
           .withConcurrency(create.getConcurrency())
           .withPauseWorkflow(create.getPauseWorkflow())
