@@ -119,8 +119,8 @@ public class MLModelResource {
 
   @GET
   @Valid
-  @Operation(summary = "List Models", tags = "MLModels",
-          description = "Get a list of models. Use `fields` parameter to get only necessary fields. " +
+  @Operation(summary = "List ML Models", tags = "MLModels",
+          description = "Get a list of ML Models. Use `fields` parameter to get only necessary fields. " +
                   " Use cursor-based pagination to limit the number " +
                   "entries in the list using `limit` and `before` or `after` query params.",
           responses = {
@@ -161,8 +161,8 @@ public class MLModelResource {
 
   @GET
   @Path("/{id}")
-  @Operation(summary = "Get a model", tags = "MLModels",
-          description = "Get a model by `id`.",
+  @Operation(summary = "Get an ML Model", tags = "MLModels",
+          description = "Get an ML Model by `id`.",
           responses = {
                   @ApiResponse(responseCode = "200", description = "The model",
                           content = @Content(mediaType = "application/json",
@@ -181,8 +181,8 @@ public class MLModelResource {
 
   @GET
   @Path("/name/{fqn}")
-  @Operation(summary = "Get a model by name", tags = "MLModels",
-          description = "Get a model by fully qualified name.",
+  @Operation(summary = "Get an ML Model by name", tags = "MLModels",
+          description = "Get an ML Model by fully qualified name.",
           responses = {
                   @ApiResponse(responseCode = "200", description = "The model",
                           content = @Content(mediaType = "application/json",
@@ -201,8 +201,8 @@ public class MLModelResource {
 
 
   @POST
-  @Operation(summary = "Create a model", tags = "MLModels",
-          description = "Create a new model.",
+  @Operation(summary = "Create an ML Model", tags = "MLModels",
+          description = "Create a new ML Model.",
           responses = {
                   @ApiResponse(responseCode = "200", description = "The model",
                           content = @Content(mediaType = "application/json",
@@ -219,8 +219,8 @@ public class MLModelResource {
 
   @PATCH
   @Path("/{id}")
-  @Operation(summary = "Update a model", tags = "MLModels",
-          description = "Update an existing model using JsonPatch.",
+  @Operation(summary = "Update an ML Model", tags = "MLModels",
+          description = "Update an existing ML Model using JsonPatch.",
           externalDocs = @ExternalDocumentation(description = "JsonPatch RFC",
                   url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
@@ -243,8 +243,8 @@ public class MLModelResource {
   }
 
   @PUT
-  @Operation(summary = "Create or update a model", tags = "MLModels",
-          description = "Create a new model, if it does not exist or update an existing model.",
+  @Operation(summary = "Create or update an ML Model", tags = "MLModels",
+          description = "Create a new ML Model, if it does not exist or update an existing model.",
           responses = {
                   @ApiResponse(responseCode = "200", description = "The model",
                           content = @Content(mediaType = "application/json",
@@ -297,8 +297,8 @@ public class MLModelResource {
 
   @DELETE
   @Path("/{id}")
-  @Operation(summary = "Delete a Model", tags = "MLModels",
-          description = "Delete a model by `id`.",
+  @Operation(summary = "Delete an ML Model", tags = "MLModels",
+          description = "Delete an ML Model by `id`.",
           responses = {
                   @ApiResponse(responseCode = "200", description = "OK"),
                   @ApiResponse(responseCode = "404", description = "model for instance {id} is not found")
