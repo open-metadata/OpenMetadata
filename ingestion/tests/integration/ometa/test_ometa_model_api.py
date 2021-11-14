@@ -6,7 +6,14 @@ from unittest import TestCase
 
 from metadata.generated.schema.api.data.createMLModel import CreateMLModelEntityRequest
 from metadata.generated.schema.api.teams.createUser import CreateUserEntityRequest
-from metadata.generated.schema.entity.data.mlmodel import MLModel
+from metadata.generated.schema.entity.data.mlmodel import (
+    FeatureSource,
+    FeatureSourceDataType,
+    FeatureType,
+    MlFeature,
+    MlHyperParameter,
+    MLModel,
+)
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
@@ -154,3 +161,52 @@ class OMetaModelTest(TestCase):
             ),
             None,
         )
+
+    def test_model_properties(self):
+        """
+        Check that we can create models with MLFeatures and MLHyperParams
+        """
+
+        model = CreateMLModelEntityRequest(
+            name="test-model-properties",
+            algorithm="algo",
+            mlFeatures=[
+                MlFeature(
+                    name="age",
+                    dataType=FeatureType.numerical,
+                    featureSources=[
+                        FeatureSource(
+                            name="age",
+                            dataType=FeatureSourceDataType.integer,
+                            fullyQualifiedName="my_service.my_db.my_table.age",
+                        )
+                    ],
+                ),
+                MlFeature(
+                    name="persona",
+                    dataType=FeatureType.categorical,
+                    featureSources=[
+                        FeatureSource(
+                            name="age",
+                            dataType=FeatureSourceDataType.integer,
+                            fullyQualifiedName="my_service.my_db.my_table.age",
+                        ),
+                        FeatureSource(
+                            name="education",
+                            dataType=FeatureSourceDataType.string,
+                            fullyQualifiedName="my_api.education",
+                        ),
+                    ],
+                    featureAlgorithm="PCA",
+                ),
+            ],
+            mlHyperParameters=[
+                MlHyperParameter(name="regularisation", value="0.5"),
+                MlHyperParameter(name="random", value="hello"),
+            ],
+        )
+
+        res = self.metadata.create_or_update(data=model)
+
+        self.assertIsNotNone(res.mlFeatures)
+        self.assertIsNotNone(res.mlHyperParameters)
