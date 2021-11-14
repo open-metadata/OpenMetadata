@@ -251,55 +251,53 @@ export const getTotalEntityCountByService = (buckets: Array<Bucket> = []) => {
   return entityCounts;
 };
 
-export const getIngestionTypeList = (serviceType: string) => {
-  const ingestionType: Array<string> = [];
+export const getIngestionTypeList = (
+  serviceType: string
+): Array<string> | undefined => {
+  let ingestionType: Array<string> | undefined;
   switch (serviceType) {
     case DatabaseServiceType.BIGQUERY:
-      ingestionType.push(
-        ...[IngestionType.BIGQUERY, IngestionType.BIGQUERY_USAGE]
-      );
+      ingestionType = [IngestionType.BIGQUERY, IngestionType.BIGQUERY_USAGE];
 
       break;
     case DatabaseServiceType.HIVE:
-      ingestionType.push(IngestionType.HIVE);
+      ingestionType = [IngestionType.HIVE];
 
       break;
 
     case DatabaseServiceType.MSSQL:
-      ingestionType.push(IngestionType.MSSQL);
+      ingestionType = [IngestionType.MSSQL];
 
       break;
 
     case DatabaseServiceType.MYSQL:
-      ingestionType.push(IngestionType.MYSQL);
+      ingestionType = [IngestionType.MYSQL];
 
       break;
 
     case DatabaseServiceType.POSTGRES:
-      ingestionType.push(IngestionType.POSTGRES);
+      ingestionType = [IngestionType.POSTGRES];
 
       break;
 
     case DatabaseServiceType.REDSHIFT:
-      ingestionType.push(
-        ...[IngestionType.REDSHIFT, IngestionType.REDSHIFT_USAGE]
-      );
+      ingestionType = [IngestionType.REDSHIFT, IngestionType.REDSHIFT_USAGE];
 
       break;
 
     case DatabaseServiceType.TRINO:
-      ingestionType.push(IngestionType.TRINO);
+      ingestionType = [IngestionType.TRINO];
 
       break;
 
     case DatabaseServiceType.SNOWFLAKE:
-      ingestionType.push(
-        ...[IngestionType.SNOWFLAKE, IngestionType.SNOWFLAKE_USAGE]
-      );
+      ingestionType = [IngestionType.SNOWFLAKE, IngestionType.SNOWFLAKE_USAGE];
 
       break;
 
     default:
       break;
   }
+
+  return ingestionType;
 };

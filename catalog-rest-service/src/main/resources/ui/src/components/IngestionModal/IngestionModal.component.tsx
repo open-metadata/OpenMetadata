@@ -1,7 +1,8 @@
 import classNames from 'classnames';
 import { capitalize } from 'lodash';
 import React, { Fragment, useState } from 'react';
-import { serviceTypes } from '../../constants/services.const';
+// import { serviceTypes } from '../../constants/services.const';
+import { getIngestionTypeList } from '../../utils/ServiceUtils';
 import { Button } from '../buttons/Button/Button';
 import CronEditor from '../common/CronEditor/CronEditor.component';
 import IngestionStepper from '../IngestionStepper/IngestionStepper.component';
@@ -23,11 +24,47 @@ const requiredField = (label: string) => (
 
 const IngestionModal: React.FC<IngestionModalProps> = ({
   header,
-  onCancel,
+  name = '',
+  service = '',
   serviceList = [], // TODO: remove default assignment after resolving prop validation warning
+  type = '',
+  schedule = '',
+  connectorConfig,
+  onCancel,
+  onSave,
 }: IngestionModalProps) => {
   const [activeStep, setActiveStep] = useState<number>(1);
-  const [schedule, setschedule] = useState<string>('*/5 * * * *');
+
+  const [ingestionName, setIngestionName] = useState<string>(name || '');
+  const [ingestionType, setIngestionType] = useState<string>(type);
+  const [ingestionService, setIngestionService] = useState<string>(service);
+
+  const [username, setUsername] = useState<string>(
+    connectorConfig?.username || ''
+  );
+  const [password, setPassword] = useState<string>(
+    connectorConfig?.password || ''
+  );
+  const [host, setHost] = useState<string>(connectorConfig?.host || '');
+  const [database, setDatabase] = useState<string>(
+    connectorConfig?.database || ''
+  );
+  const [includeFilterPattern, setIncludeFilterPattern] = useState<
+    Array<string>
+  >(connectorConfig?.includeFilterPattern || []);
+  const [excludeFilterPattern, setExcludeFilterPattern] = useState<
+    Array<string>
+  >(connectorConfig?.excludeFilterPattern || []);
+  const [includeViews, setIncludeViews] = useState<boolean>(
+    connectorConfig?.includeViews || true
+  );
+  const [excludeDataProfiler, setExcludeDataProfiler] = useState<boolean>(
+    connectorConfig?.excludeDataProfiler || false
+  );
+
+  const [ingestionSchedule, setIngestionSchedule] = useState<string>(
+    schedule || '*/5 * * * *'
+  );
 
   const Field = ({ children }: { children: React.ReactNode }) => {
     return <div className="tw-mt-6">{children}</div>;
@@ -77,8 +114,8 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
                 name="name"
                 placeholder="Ingestion name"
                 type="text"
-                value=""
-                // onChange={(e) => setSiteName(e.target.value)}
+                value={ingestionName}
+                onChange={(e) => setIngestionName(e.target.value)}
               />
             </Field>
 
@@ -91,12 +128,11 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
                 data-testid="selectService"
                 id="selectService"
                 name="selectService"
-                value=""
-                // onChange={handleValidation}
-              >
+                value={ingestionService}
+                onChange={(e) => setIngestionService(e.target.value)}>
                 <option value="">Select Service</option>
                 {serviceList.map((service, index) => (
-                  <option key={index} value={service.name}>
+                  <option key={index} value={service.serviceType}>
                     {capitalize(service.name)}
                   </option>
                 ))}
@@ -111,15 +147,16 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
                 data-testid="selectService"
                 id="ingestionType"
                 name="ingestionType"
-                value=""
-                // onChange={handleValidation}
-              >
+                value={ingestionType}
+                onChange={(e) => setIngestionType(e.target.value)}>
                 <option value="">Select ingestion type</option>
-                {serviceTypes['databaseServices'].map((service, index) => (
-                  <option key={index} value={service}>
-                    {service}
-                  </option>
-                ))}
+                {(getIngestionTypeList(ingestionService) || []).map(
+                  (service, index) => (
+                    <option key={index} value={service}>
+                      {service}
+                    </option>
+                  )
+                )}
               </select>
             </Field>
           </Fragment>
@@ -138,8 +175,8 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
                 name="username"
                 placeholder="User name"
                 type="text"
-                value=""
-                // onChange={(e) => setSiteName(e.target.value)}
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
               />
             </Field>
             <Field>
@@ -152,8 +189,8 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
                 name="password"
                 placeholder="Password"
                 type="password"
-                value=""
-                // onChange={(e) => setSiteName(e.target.value)}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
               />
             </Field>
             <Field>
@@ -166,8 +203,8 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
                 name="host"
                 placeholder="Host"
                 type="text"
-                value=""
-                // onChange={(e) => setSiteName(e.target.value)}
+                value={host}
+                onChange={(e) => setHost(e.target.value)}
               />
             </Field>
             <Field>
@@ -180,8 +217,8 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
                 name="database"
                 placeholder="Database"
                 type="text"
-                value=""
-                // onChange={(e) => setSiteName(e.target.value)}
+                value={database}
+                onChange={(e) => setDatabase(e.target.value)}
               />
             </Field>
             <Field>
@@ -194,8 +231,8 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
                 name="includeFilterPattern"
                 placeholder="Include filter pattern comma seperated"
                 type="text"
-                value=""
-                // onChange={(e) => setSiteName(e.target.value)}
+                value={includeFilterPattern}
+                onChange={(e) => setIncludeFilterPattern([e.target.value])}
               />
             </Field>
             <Field>
@@ -208,8 +245,8 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
                 name="excludeFilterPattern"
                 placeholder="Exclude filter pattern comma seperated"
                 type="text"
-                value=""
-                // onChange={(e) => setSiteName(e.target.value)}
+                value={excludeFilterPattern}
+                onChange={(e) => setExcludeFilterPattern([e.target.value])}
               />
             </Field>
             <Field>
@@ -217,18 +254,24 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
                 <Fragment>
                   <label>Include views:</label>
                   <div
-                    className={classNames('toggle-switch open')}
-                    // onClick={() => setIngestion(!ingestion)}
-                  >
+                    className={classNames(
+                      'toggle-switch',
+                      includeViews ? 'open' : null
+                    )}
+                    onClick={() => setIncludeViews(!includeViews)}>
                     <div className="switch" />
                   </div>
                 </Fragment>
                 <Fragment>
                   <label>Enable data profiler:</label>
                   <div
-                    className={classNames('toggle-switch open')}
-                    // onClick={() => setIngestion(!ingestion)}
-                  >
+                    className={classNames(
+                      'toggle-switch',
+                      excludeDataProfiler ? 'open' : null
+                    )}
+                    onClick={() =>
+                      setExcludeDataProfiler(!excludeDataProfiler)
+                    }>
                     <div className="switch" />
                   </div>
                 </Fragment>
@@ -243,13 +286,13 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
               <CronEditor
                 className="tw-mt-10"
                 defaultValue={schedule}
-                onChangeHandler={(v) => setschedule(v)}>
+                onChangeHandler={(v) => setIngestionSchedule(v)}>
                 <input
                   className="tw-form-inputs tw-px-3 tw-py-1"
                   id="schedule"
                   name="schedule"
                   type="text"
-                  value={schedule}
+                  value={ingestionSchedule}
                   // onChange={(e) => setSiteName(e.target.value)}
                 />
                 <p className="tw-text-grey-muted tw-text-xs tw-mt-1">
@@ -289,7 +332,7 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
                 data={[]}
                 header="Scheduling"
               />
-              <CronEditor isReadOnly defaultValue={schedule} />
+              <CronEditor isReadOnly defaultValue={ingestionSchedule} />
             </div>
           </Fragment>
         );
@@ -346,18 +389,29 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
             <span>Previous</span>
           </Button>
 
-          <Button
-            data-testid="save-button"
-            size="regular"
-            theme="primary"
-            type="submit"
-            variant="contained"
-            onClick={() =>
-              setActiveStep((pre) => (pre < STEPS.length ? pre + 1 : pre))
-            }>
-            <span>Next</span>
-            <i className="fas fa-arrow-right tw-text-sm tw-align-middle tw-pl-1.5" />
-          </Button>
+          {activeStep === 4 ? (
+            <Button
+              data-testid="save-button"
+              size="regular"
+              theme="primary"
+              type="submit"
+              variant="contained"
+              onClick={() => onSave()}>
+              <span>Save</span>
+            </Button>
+          ) : (
+            <Button
+              data-testid="next-button"
+              size="regular"
+              theme="primary"
+              variant="contained"
+              onClick={() =>
+                setActiveStep((pre) => (pre < STEPS.length ? pre + 1 : pre))
+              }>
+              <span>Next</span>
+              <i className="fas fa-arrow-right tw-text-sm tw-align-middle tw-pl-1.5" />
+            </Button>
+          )}
         </div>
       </div>
     </dialog>
