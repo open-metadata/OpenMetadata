@@ -19,6 +19,9 @@
       "description": "Description of the workflow.",
       "type": "string"
     },
+    "ingestionType": {
+      "$ref": "../../../operations/workflows/ingestion.json#/definitions/ingestionType"
+    },
     "owner": {
       "description": "Owner of this Ingestion.",
       "$ref": "../../../type/entityReference.json",

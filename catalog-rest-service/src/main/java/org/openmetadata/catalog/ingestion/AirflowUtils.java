@@ -27,23 +27,25 @@ public final class AirflowUtils {
 
     private AirflowUtils() {}
 
-    public static OpenMetadataIngestionComponent makeDatasourceComponent(Ingestion ingestion) {
+    public static OpenMetadataIngestionComponent makeOpenMetadataDatasourceComponent(Ingestion ingestion) {
         Map<String, Object> dbConfig = new HashMap<>();
         dbConfig.put("host_port", ingestion.getConnectorConfig().getHost());
         dbConfig.put("username", ingestion.getConnectorConfig().getUsername());
         dbConfig.put("password", ingestion.getConnectorConfig().getPassword());
         dbConfig.put("database", ingestion.getConnectorConfig().getDatabase());
         dbConfig.put("service_name", ingestion.getService().getName());
-        dbConfig.put("filter_pattern", ingestion.getConnectorConfig().getIncludeFilterPattern());
+        if (ingestion.getConnectorConfig().getIncludeFilterPattern() != null) {
+            dbConfig.put("filter_pattern", ingestion.getConnectorConfig().getIncludeFilterPattern());
+        }
         return OpenMetadataIngestionComponent.builder()
-                .type(ingestion.getService().getType())
+                .type(ingestion.getIngestionType().value())
                 .config(dbConfig).build();
     }
 
-    public static OpenMetadataIngestionComponent makeMetadataSourceComponent(Ingestion ingestion) {
+    public static OpenMetadataIngestionComponent makeOpenMetadataSourceComponent(Ingestion ingestion) {
         Map<String, Object> dbConfig = new HashMap<>();
         return OpenMetadataIngestionComponent.builder()
-                .type("metadata")
+                .type(ingestion.getIngestionType().value())
                 .config(dbConfig)
                 .build();
     }
@@ -76,7 +78,7 @@ public final class AirflowUtils {
     public static OpenMetadataIngestionConfig buildDatabaseIngestion(Ingestion ingestion,
                                                                      AirflowConfiguration airflowConfiguration) {
         return  OpenMetadataIngestionConfig.builder()
-                    .source(makeDatasourceComponent(ingestion))
+                    .source(makeOpenMetadataDatasourceComponent(ingestion))
                     .sink(makeOpenMetadataSinkComponent(ingestion))
                     .metadataServer(makeOpenMetadataConfigComponent(ingestion, airflowConfiguration)).build();
 
