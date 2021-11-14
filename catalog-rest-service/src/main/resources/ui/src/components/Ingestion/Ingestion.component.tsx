@@ -1,7 +1,10 @@
+import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
 import { capitalize } from 'lodash';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { getServices } from '../../axiosAPIs/serviceAPI';
 import { TITLE_FOR_NON_ADMIN_ACTION } from '../../constants/constants';
+import { DatabaseService } from '../../generated/entity/services/databaseService';
 import { useAuth } from '../../hooks/authHooks';
 import { isEven } from '../../utils/CommonUtils';
 import { Button } from '../buttons/Button/Button';
@@ -58,9 +61,24 @@ const Ingestion = () => {
   const [searchText, setSearchText] = useState('');
   const [isAdding, setIsAdding] = useState<boolean>(false);
 
+  const [serviceList, setServiceList] = useState<Array<DatabaseService>>([]);
+  const getDatabaseServices = () => {
+    getServices('databaseServices')
+      .then((res: AxiosResponse) => {
+        setServiceList(res.data.data);
+      })
+      .catch((err: AxiosError) => {
+        // eslint-disable-next-line
+        console.log(err);
+      });
+  };
+
   const handleSearchAction = (searchValue: string) => {
     setSearchText(searchValue);
   };
+  useEffect(() => {
+    getDatabaseServices();
+  }, []);
 
   return (
     <PageContainer className="tw-bg-white">
@@ -158,6 +176,10 @@ const Ingestion = () => {
       {isAdding ? (
         <IngestionModal
           header="Add Ingestion"
+          serviceList={serviceList.map((s) => ({
+            name: s.name,
+            serviceType: s.serviceType,
+          }))}
           onCancel={() => setIsAdding(false)}
           onSave={() => setIsAdding(false)}
         />
