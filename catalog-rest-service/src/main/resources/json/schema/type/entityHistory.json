@@ -60,7 +60,7 @@
           }
         },
         "previousVersion" : {
-          "definitions": "When a change did not result in change, this could be same as the current version",
+          "description": "When a change did not result in change, this could be same as the current version",
           "$ref" : "#/definitions/entityVersion"
         }
       },
