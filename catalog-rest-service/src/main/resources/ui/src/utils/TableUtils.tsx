@@ -93,7 +93,7 @@ export const getOwnerFromId = (
     const user = AppState.users.find((item) => item.id === id);
     if (user) {
       retVal = {
-        name: user.displayName,
+        name: user.displayName || user.name,
         id: user.id,
         type: 'user',
       };

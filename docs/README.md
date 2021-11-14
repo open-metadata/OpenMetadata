@@ -1,11 +1,10 @@
 # Introduction
 
-Metadata enables you to unlock the value of data assets in the common use cases of data discovery and governance, but also in emerging use cases related to data quality, observability, and people collaboration. However, poorly organized and managed metadata leads to redundant efforts within organizations and other inefficiencies that are expensive in time and dollars.  
-
+Metadata enables you to unlock the value of data assets in the common use cases of data discovery and governance, but also in emerging use cases related to data quality, observability, and people collaboration. However, poorly organized and managed metadata leads to redundant efforts within organizations and other inefficiencies that are expensive in time and dollars.
 
 ### **OpenMetadata is an open standard with a centralized metadata store that unifies all your data assets end-to-end to enable data discovery, user collaboration, and tool interoperability.**
 
-![](<../.gitbook/assets/openmetadata-overview (1).png>)
+![](<.gitbook/assets/openmetadata-overview (1).png>)
 
 OpenMetadata includes the following:
 

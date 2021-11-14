@@ -1056,7 +1056,7 @@ public class TableResourceTest extends EntityResourceTest<Table> {
             new EntityReference().withName(service.getName()).withId(service.getId()).withType(Entity.STORAGE_SERVICE);
     CreateLocation create = new CreateLocation().withName(getLocationName(test)).withService(serviceRef);
     Location location = createLocation(create, adminAuthHeaders());
-    addAndCheckLocation(table, location.getId(), CREATED, userAuthHeaders());
+    addAndCheckLocation(table, location.getId(), OK, userAuthHeaders());
     // Delete location and make sure it is deleted
     deleteAndCheckLocation(table, userAuthHeaders());
   }

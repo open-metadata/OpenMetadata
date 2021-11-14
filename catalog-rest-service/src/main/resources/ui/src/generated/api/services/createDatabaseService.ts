@@ -67,6 +67,7 @@ export interface JDBCInfo {
 export enum DatabaseServiceType {
   Athena = 'Athena',
   BigQuery = 'BigQuery',
+  Glue = 'Glue',
   Hive = 'Hive',
   Mssql = 'MSSQL',
   MySQL = 'MySQL',

@@ -120,6 +120,25 @@
           "default": null
         }
       }
+    },
+    "ingestionStatus": {
+      "type": "object",
+      "javaType": "org.openmetadata.catalog.operations.workflows.IngestionStatus",
+      "description": "This defines the runtime status of Ingestion.",
+      "properties": {
+        "state": {
+          "description": "Workflow status denotes if its failed or succeeded",
+          "type": "string"
+        },
+        "startDate": {
+          "description": "startDate of the Ingestion Pipeline run for this particular execution",
+          "type": "string"
+        },
+        "endDate": {
+          "description": "endDate of the Ingestion pipeline run for this particular execution.",
+          "type": "string"
+        }
+      }
     }
   },
   "properties" : {
@@ -183,6 +202,10 @@
       "description": "End Date of the workflow.",
       "$ref": "../../type/basic.json#/definitions/date"
     },
+    "nextExecutionDate": {
+      "description": "Next execution date from the underlying workflow platform once the ingestion scheduled.",
+      "$ref": "../../type/basic.json#/definitions/date"
+    },
     "workflowTimezone": {
       "description": "Timezone in which workflow going to be scheduled.",
       "type": "string",
@@ -214,6 +237,14 @@
     },
     "connectorConfig": {
       "$ref": "#/definitions/connectorConfig"
+    },
+    "ingestionStatuses": {
+      "description": "List of executions and status for the Ingestion Pipeline.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/ingestionStatus"
+      },
+      "default": null
     },
     "service" : {
       "description": "Link to the database service where this database is hosted in.",

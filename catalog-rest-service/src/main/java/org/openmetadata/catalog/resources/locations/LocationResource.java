@@ -28,7 +28,6 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.data.CreateLocation;
-import org.openmetadata.catalog.entity.data.Dashboard;
 import org.openmetadata.catalog.entity.data.Location;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.LocationRepository;
@@ -40,6 +39,8 @@ import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -77,6 +78,7 @@ import java.util.UUID;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "locations")
 public class LocationResource {
+  private static final Logger LOG = LoggerFactory.getLogger(LocationResource.class);
   public static final String COLLECTION_PATH = "v1/locations/";
   private final LocationRepository dao;
   private final CatalogAuthorizer authorizer;
@@ -116,7 +118,7 @@ public class LocationResource {
                   "parameter to get only necessary fields. Use cursor-based pagination to limit the number " +
                   "entries in the list using `limit` and `before` or `after` query params.",
           responses = {@ApiResponse(responseCode = "200", description = "List of locations",
-                  content = @Content(mediaType = "application/json",
+                          content = @Content(mediaType = "application/json",
                           schema = @Schema(implementation = LocationList.class)))})
   public ResultList<Location> list(@Context UriInfo uriInfo,
                                    @Context SecurityContext securityContext,
@@ -158,8 +160,7 @@ public class LocationResource {
           description = "Get a list of all the versions of a location identified by `id`",
           responses = {@ApiResponse(responseCode = "200", description = "List of location versions",
                   content = @Content(mediaType = "application/json",
-                          schema = @Schema(implementation = EntityHistory.class)))
-          })
+                  schema = @Schema(implementation = EntityHistory.class)))})
   public EntityHistory listVersions(@Context UriInfo uriInfo,
                                     @Context SecurityContext securityContext,
                                     @Parameter(description = "location Id", schema = @Schema(type = "string"))
@@ -174,7 +175,7 @@ public class LocationResource {
           description = "Get a location by `id`.",
           responses = {@ApiResponse(responseCode = "200", description = "The location",
                   content = @Content(mediaType = "application/json",
-                          schema = @Schema(implementation = Location.class))), @ApiResponse(responseCode = "404",
+                  schema = @Schema(implementation = Location.class))), @ApiResponse(responseCode = "404",
                   description = "Location for instance {id} is not found")})
   public Location get(@Context UriInfo uriInfo,
                       @Context SecurityContext securityContext,
@@ -188,17 +189,59 @@ public class LocationResource {
   }
 
   @GET
+  @Path("prefixes/{fqn}")
+  @Operation(summary = "List locations that are prefixes", tags = "locations",
+          description = "Get a list of locations. Use `fields` parameter to get only necessary fields. " +
+                  "Use cursor-based pagination to limit the number entries in the list using `limit` and `before` " +
+                  "or `after` query params.",
+          responses = {@ApiResponse(responseCode = "200", description = "List of ancestor locations",
+                  content = @Content(mediaType = "application/json",
+                  schema = @Schema(implementation = LocationList.class)))})
+  public ResultList<Location> listPrefixes(@Context UriInfo uriInfo,
+                                           @Context SecurityContext securityContext,
+                                           @Parameter(description = "Fully qualified name of the location urlencoded " +
+                                                   "if needed", schema = @Schema(type = "string"))
+                                           @PathParam("fqn") String fqn,
+                                           @Parameter(description = "Fields requested in the returned resource",
+                                                   schema = @Schema(type = "string", example = FIELDS))
+                                           @QueryParam("fields") String fieldsParam,
+                                           @Parameter(description = "Limit the number locations returned. " +
+                                                   "(1 to 1000000, default = 10)")
+                                           @DefaultValue("10")
+                                           @Min(1)
+                                           @Max(1000000)
+                                           @QueryParam("limit") int limitParam,
+                                           @Parameter(description = "Returns list of locations before this cursor",
+                                                   schema = @Schema(type = "string"))
+                                           @QueryParam("before") String before,
+                                           @Parameter(description = "Returns list of locations after this cursor",
+                                                   schema = @Schema(type = "string"))
+                                           @QueryParam("after") String after
+  ) throws IOException, GeneralSecurityException, ParseException {
+    RestUtil.validateCursors(before, after);
+    Fields fields = new Fields(FIELD_LIST, fieldsParam);
+
+    ResultList<Location> locations;
+    if (before != null) { // Reverse paging
+      locations = dao.listPrefixesBefore(fields, fqn, limitParam, before); // Ask for one extra entry
+    } else { // Forward paging or first page
+      locations = dao.listPrefixesAfter(fields, fqn, limitParam, after);
+    }
+    locations.getData().forEach(l -> addHref(uriInfo, l));
+    return locations;
+  }
+
+  @GET
   @Path("/name/{fqn}")
   @Operation(summary = "Get a location by name", tags = "locations",
           description = "Get a location by fully qualified name.",
           responses = {@ApiResponse(responseCode = "200", description = "The location",
-                  content = @Content(mediaType = "application/json",
-                          schema = @Schema(implementation = Dashboard.class))),
-                  @ApiResponse(responseCode = "404", description = "Location for instance {id} is not found")
-          })
+                          content = @Content(mediaType = "application/json",
+                          schema = @Schema(implementation = Location.class))),
+                       @ApiResponse(responseCode = "404", description = "Location for instance {id} is not found")})
   public Location getByName(@Context UriInfo uriInfo,
                             @Context SecurityContext securityContext,
-                            @Parameter(description = "Fully qualified name of the table",
+                            @Parameter(description = "Fully qualified name of the location urlencoded if needed",
                                     schema = @Schema(type = "string"))
                             @PathParam("fqn") String fqn,
                             @Parameter(description = "Fields requested in the returned resource",
@@ -213,11 +256,10 @@ public class LocationResource {
   @Operation(summary = "Get a version of the location", tags = "locations",
           description = "Get a version of the location by given `id`",
           responses = {@ApiResponse(responseCode = "200", description = "location",
-                  content = @Content(mediaType = "application/json",
+                          content = @Content(mediaType = "application/json",
                           schema = @Schema(implementation = Location.class))),
-                  @ApiResponse(responseCode = "404",
-                          description = "Location for instance {id} and version {version} is not found")
-          })
+                       @ApiResponse(responseCode = "404", description = "Location for instance {id} and version " +
+                          "{version} is not found")})
   public Location getVersion(@Context UriInfo uriInfo,
                              @Context SecurityContext securityContext,
                              @Parameter(description = "location Id", schema = @Schema(type = "string"))
@@ -232,9 +274,9 @@ public class LocationResource {
   @Operation(summary = "Create a location", tags = "locations",
           description = "Create a location under an existing `service`.",
           responses = {@ApiResponse(responseCode = "200", description = "The location",
-                  content = @Content(mediaType = "application/json",
+                          content = @Content(mediaType = "application/json",
                           schema = @Schema(implementation = Location.class))),
-                  @ApiResponse(responseCode = "400", description = "Bad request")})
+                       @ApiResponse(responseCode = "400", description = "Bad request")})
   public Response create(@Context UriInfo uriInfo,
                          @Context SecurityContext securityContext,
                          @Valid CreateLocation create) throws IOException, ParseException {
@@ -248,10 +290,9 @@ public class LocationResource {
   @Operation(summary = "Create or update location", tags = "locations",
           description = "Create a location, it it does not exist or update an existing location.",
           responses = {@ApiResponse(responseCode = "200", description = "The updated location ",
-                  content = @Content(mediaType = "application/json",
+                          content = @Content(mediaType = "application/json",
                           schema = @Schema(implementation = Location.class))),
-                  @ApiResponse(responseCode = "400", description = "Bad request")
-          })
+                       @ApiResponse(responseCode = "400", description = "Bad request")})
   public Response createOrUpdate(@Context UriInfo uriInfo,
                                  @Context SecurityContext securityContext,
                                  @Valid CreateLocation create) throws IOException, ParseException {
@@ -291,8 +332,8 @@ public class LocationResource {
   @Path("/{id}")
   @Operation(summary = "Delete a location", tags = "locations",
           description = "Delete a location by `id`.",
-          responses = {@ApiResponse(responseCode = "200", description = "OK"), @ApiResponse(responseCode = "404",
-                  description = "Location for instance {id} is not found")})
+          responses = {@ApiResponse(responseCode = "200", description = "OK"),
+                       @ApiResponse(responseCode = "404", description = "Location for instance {id} is not found")})
   public Response delete(@Context UriInfo uriInfo,
                          @Context SecurityContext securityContext,
                          @Parameter(description = "Id of the location", schema = @Schema(type = "string"))
@@ -306,10 +347,8 @@ public class LocationResource {
   @Path("/{id}/followers")
   @Operation(summary = "Add a follower", tags = "locations",
           description = "Add a user identified by `userId` as followed of this location",
-          responses = {
-                  @ApiResponse(responseCode = "200", description = "OK"),
-                  @ApiResponse(responseCode = "404", description = "Location for instance {id} is not found")
-          })
+          responses = {@ApiResponse(responseCode = "200", description = "OK"),
+                       @ApiResponse(responseCode = "404", description = "Location for instance {id} is not found")})
   public Response addFollower(@Context UriInfo uriInfo,
                               @Context SecurityContext securityContext,
                               @Parameter(description = "Id of the location", schema = @Schema(type = "string"))

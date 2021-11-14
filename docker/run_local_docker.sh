@@ -15,6 +15,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-mvn -DskipTests clean package
-cd docker/local-metadata/
-docker-compose up --build
+cd "$( dirname "${BASH_SOURCE[0]}" )"
+echo "Maven Build - Skipping Tests"
+cd ../ && mvn -DskipTests clean package
+cd docker/local-metadata
+echo "Starting Local Docker Containers"
+docker-compose down && docker-compose up --build -d

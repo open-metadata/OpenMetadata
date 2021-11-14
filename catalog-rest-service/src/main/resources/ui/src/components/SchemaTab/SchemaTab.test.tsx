@@ -19,7 +19,12 @@ import { getByTestId, getByText, render } from '@testing-library/react';
 import { TableDetail } from 'Models';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { Column, DataType } from '../../generated/entity/data/table';
+import {
+  Column,
+  DataType,
+  LabelType,
+  State,
+} from '../../generated/entity/data/table';
 import SchemaTab from './SchemaTab.component';
 const mockColumns: Column[] = [
   {
@@ -27,7 +32,14 @@ const mockColumns: Column[] = [
     dataType: DataType.String,
     description: 'string',
     fullyQualifiedName: 'string',
-    tags: [{ tagFQN: 'string' }, { tagFQN: 'string2' }],
+    tags: [
+      { tagFQN: 'string', labelType: LabelType.Manual, state: State.Confirmed },
+      {
+        tagFQN: 'string2',
+        labelType: LabelType.Derived,
+        state: State.Confirmed,
+      },
+    ],
     ordinalPosition: 2,
   },
 ];

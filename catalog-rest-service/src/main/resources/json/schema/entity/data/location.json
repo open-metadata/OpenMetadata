@@ -38,7 +38,7 @@
       "$ref": "../../type/basic.json#/definitions/uuid"
     },
     "name": {
-      "description": "Name of a location without the service. s3://bucket/path1/path2 -> /bucket/path1/path2",
+      "description": "Name of a location without the service. For example s3://bucket/path1/path2",
       "type": "string"
     },
     "displayName": {
@@ -46,7 +46,7 @@
       "type": "string"
     },
     "fullyQualifiedName": {
-      "description": "Fully qualified name of a location in the form `serviceName:/name`.",
+      "description": "Fully qualified name of a location in the form `serviceName.locationName`.",
       "type": "string"
     },
     "description": {
