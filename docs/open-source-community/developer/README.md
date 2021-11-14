@@ -2,15 +2,26 @@
 
 This document summarizes information relevant to OpenMetadata committers and contributors. It includes information about the development processes and policies as well as the tools we use to facilitate those.
 
-{% page-ref page="ux-style-guide.md" %}
+{% content-ref url="how-to-contribute.md" %}
+[how-to-contribute.md](how-to-contribute.md)
+{% endcontent-ref %}
 
-{% page-ref page="coding-style.md" %}
+{% content-ref url="coding-style.md" %}
+[coding-style.md](coding-style.md)
+{% endcontent-ref %}
 
-{% page-ref page="how-to-contribute.md" %}
+{% content-ref url="build-code-run-tests.md" %}
+[build-code-run-tests.md](build-code-run-tests.md)
+{% endcontent-ref %}
 
-{% page-ref page="build-code-run-tests.md" %}
+{% content-ref url="build-a-connector/" %}
+[build-a-connector](build-a-connector/)
+{% endcontent-ref %}
 
-{% page-ref page="run-integration-tests.md" %}
+{% content-ref url="run-integration-tests.md" %}
+[run-integration-tests.md](run-integration-tests.md)
+{% endcontent-ref %}
 
-
-
+{% content-ref url="ux-style-guide.md" %}
+[ux-style-guide.md](ux-style-guide.md)
+{% endcontent-ref %}

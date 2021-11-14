@@ -21,20 +21,19 @@ description: >-
 
 1. Apache license headers. Make sure you have Apache License headers in your files. 
 2. Tabs vs. spaces. We are using 4 spaces for indentation, not tabs. 
-3. Blocks. All statements after if, for, while, do, … must always be encapsulated in a block with curly braces \(even if the block contains one statement\):
+3.  Blocks. All statements after if, for, while, do, … must always be encapsulated in a block with curly braces (even if the block contains one statement):
 
-   for \(...\) {
+    for (...) {
 
-   ```text
-    ...
-   ```
+    ```
+     ...
+    ```
 
-   }
-
+    }
 4. No wildcard imports.
 5. No unused imports. Remove all unused imports.
-6. No raw types. Do not use raw generic types, unless strictly necessary \(sometimes necessary for signature matches, arrays\).
-7. Suppress warnings. Add annotations to suppress warnings, if they cannot be avoided \(such as “unchecked”, or “serial”\).
+6. No raw types. Do not use raw generic types, unless strictly necessary (sometimes necessary for signature matches, arrays).
+7. Suppress warnings. Add annotations to suppress warnings, if they cannot be avoided (such as “unchecked”, or “serial”).
 8. Comments.  Add JavaDocs to public methods or inherit them by not adding any comments to the methods. 
 9. logger instance should be upper case LOG.  
 10. When in doubt refer to existing code or  [Java Coding Style](http://google.github.io/styleguide/javaguide.html) except line breaking, which is described above. 
@@ -42,28 +41,26 @@ description: >-
 ## Logging
 
 1. Please take the time to assess the logs when making a change to ensure that the important things are getting logged and there is no junk there.
-2. There are six levels of logging TRACE, DEBUG, INFO, WARN, ERROR, and FATAL, they should be used as follows.
+2.  There are six levels of logging TRACE, DEBUG, INFO, WARN, ERROR, and FATAL, they should be used as follows.
 
-   ```text
-   2.1 INFO is the level you should assume the software will be run in. 
-    INFO messages are things which are not bad but which the user will definitely want to know about
-    every time they occur.
+    ```
+    2.1 INFO is the level you should assume the software will be run in. 
+     INFO messages are things which are not bad but which the user will definitely want to know about
+     every time they occur.
 
-   2.2 TRACE and DEBUG are both things you turn on when something is wrong and you want to figure out 
-   what is going on. DEBUG should not be so fine grained that it will seriously effect the performance 
-   of the server. TRACE can be anything. Both DEBUG and TRACE statements should be 
-   wrapped in an if(logger.isDebugEnabled) if an expensive computation in the argument list of log method call.
+    2.2 TRACE and DEBUG are both things you turn on when something is wrong and you want to figure out 
+    what is going on. DEBUG should not be so fine grained that it will seriously effect the performance 
+    of the server. TRACE can be anything. Both DEBUG and TRACE statements should be 
+    wrapped in an if(logger.isDebugEnabled) if an expensive computation in the argument list of log method call.
 
-   2.3 WARN and ERROR indicate something that is bad. Use WARN if you aren't totally sure it is bad,
-    and ERROR if you are.
+    2.3 WARN and ERROR indicate something that is bad. Use WARN if you aren't totally sure it is bad,
+     and ERROR if you are.
 
-   2.4 Use FATAL only right before calling System.exit().
-   ```
-
+    2.4 Use FATAL only right before calling System.exit().
+    ```
 3. Logging statements should be complete sentences with proper capitalization that are written to be read by a person not necessarily familiar with the source code.
-4. String appending using StringBuilders should not be used for building log messages.
+4.  String appending using StringBuilder should not be used for building log messages.
 
-   Formatting should be used. For example:
+    Formatting should be used. For example:
 
-   LOG.debug\("Loaded class \[{}\] from jar \[{}\]", className, jarFile\);
-
+    LOG.debug("Loaded class \[{}] from jar \[{}]", className, jarFile);

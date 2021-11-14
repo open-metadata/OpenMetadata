@@ -19,7 +19,13 @@ import { getAllByTestId, render } from '@testing-library/react';
 import { TableDetail } from 'Models';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { Constraint, DataType, Table } from '../../generated/entity/data/table';
+import {
+  Constraint,
+  DataType,
+  LabelType,
+  State,
+  Table,
+} from '../../generated/entity/data/table';
 import SchemaTable from './SchemaTable';
 
 jest.mock('../common/rich-text-editor/RichTextEditorPreviewer', () => {
@@ -35,7 +41,14 @@ const mockColumns: Table['columns'] = [
     fullyQualifiedName: 'bigquery.shopify.dim_address.address_id',
     name: 'address_id',
     ordinalPosition: 1,
-    tags: [{ tagFQN: 'string' }, { tagFQN: 'string2' }],
+    tags: [
+      { tagFQN: 'string', labelType: LabelType.Manual, state: State.Confirmed },
+      {
+        tagFQN: 'string2',
+        labelType: LabelType.Derived,
+        state: State.Confirmed,
+      },
+    ],
   },
 ];
 

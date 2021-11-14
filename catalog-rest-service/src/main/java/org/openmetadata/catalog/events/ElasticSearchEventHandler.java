@@ -155,7 +155,10 @@ public class ElasticSearchEventHandler implements EventHandler {
         jsonMap.put("tier", tierTag);
       }
       jsonMap.put("tags", tagsList);
+    } else {
+      jsonMap.put("tags", tags);
     }
+
     if (!columnNames.isEmpty()) {
       jsonMap.put("column_names", columnNames);
     }
@@ -200,6 +203,8 @@ public class ElasticSearchEventHandler implements EventHandler {
         jsonMap.put("tier", tierTag);
       }
       jsonMap.put("tags", tagsList);
+    } else {
+      jsonMap.put("tags", tags);
     }
 
     if(instance.getOwner() != null) {
@@ -240,6 +245,8 @@ public class ElasticSearchEventHandler implements EventHandler {
         jsonMap.put("tier", tierTag);
       }
       jsonMap.put("tags", tagsList);
+    } else {
+      jsonMap.put("tags", tags);
     }
 
     if(instance.getOwner() != null) {
@@ -280,6 +287,8 @@ public class ElasticSearchEventHandler implements EventHandler {
         jsonMap.put("tier", tierTag);
       }
       jsonMap.put("tags", tagsList);
+    } else {
+      jsonMap.put("tags", tags);
     }
 
     if(instance.getOwner() != null) {

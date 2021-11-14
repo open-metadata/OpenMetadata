@@ -16,16 +16,16 @@ OpenMetadata is built using Java, DropWizard, Jetty, and MySQL.
 1. Python 3.7 or above
 {% endhint %}
 
-### Install from PyPI or Source
+### Run OpenMetadata Server
+
+Please refer to the [Run OpenMetadata ](../run-openmetadata.md#install-on-your-local-machine)section to run the server manually or using [Docker](../run-openmetadata.md#run-docker).
+
+### Install from PyPI
 
 {% tabs %}
 {% tab title="Install Using PyPI" %}
 ```bash
-python3 -m pip install 'openmetadata-ingestion[sample-tables, elasticsearch]'
-python3 -m spacy download en_core_web_sm
-
-git clone https://github.com/open-metadata/OpenMetadata.git
-cd OpenMetadata/ingestion
+python3 -m pip install 'openmetadata-ingestion[sample-data, elasticsearch]'
 ```
 {% endtab %}
 {% endtabs %}
@@ -35,12 +35,11 @@ cd OpenMetadata/ingestion
 Sample Data, Tables, Usage, Users, Topics, and Dashboards.
 
 ```bash
-metadata ingest -c ./pipelines/sample_tables.json
+#Make sure the OpenMetadata Server is up and running
+cd openmetadata-0.5.0/ingestion
+metadata ingest -c ./pipelines/sample_data.json
 metadata ingest -c ./pipelines/sample_usage.json
 metadata ingest -c ./pipelines/sample_users.json
-metadata ingest -c ./pipelines/sample_topics.json
-metadata ingest -c ./pipelines/sample_dashboards.json
-metadata ingest -c ./pipelines/sample_data.json
 ```
 
 ### Index Sample Data into ElasticSearch
@@ -58,7 +57,7 @@ docker run -p 9200:9200 -p 9300:9300 -e "discovery.type=single-node" docker.elas
 Index sample data in ElasticSearch:
 
 ```bash
-cd OpenMetadata/ingestion
+#Make sure the OpenMetadata Server is up and running
+cd openmetadata-0.5.0/ingestion
 metadata ingest -c ./pipelines/metadata_to_es.json
 ```
-

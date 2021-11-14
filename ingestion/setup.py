@@ -80,6 +80,7 @@ plugins: Dict[str, Set[str]] = {
     "athena": {"PyAthena[SQLAlchemy]"},
     "bigquery": {"openmetadata-sqlalchemy-bigquery==0.2.0"},
     "bigquery-usage": {"google-cloud-logging", "cachetools"},
+    "docker": {"docker==5.0.3"},
     "elasticsearch": {"elasticsearch~=7.13.1"},
     "glue": {"boto3~=1.19.12"},
     "hive": {

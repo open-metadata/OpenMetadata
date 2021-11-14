@@ -6,7 +6,7 @@ description: >-
 
 # Run OpenMetadata
 
-## Run Docker
+## Run Docker (Latest Release)
 
 [Docker](https://docs.docker.com/get-started/overview/) is an open platform for developing, shipping, and running applications that enables you to separate your applications from your infrastructure so you can deliver software quickly using OS-level virtualization to deliver software in packages called containers.
 
@@ -14,7 +14,7 @@ description: >-
 **Prerequisites**
 
 * Docker >= 20.10.x
-* Minimum allocated memory to Docker >= 4GB  (Preferences -> Advanced -> Resources)
+* Minimum allocated memory to Docker >= 4GB (Preferences -> Resources -> Advanced)
 {% endhint %}
 
 ```bash
@@ -26,24 +26,40 @@ docker-compose up
 ### Next Steps
 
 1. Docker for OpenMetadata will depend on Mysql Container to be up, It may take few seconds to run.
-2. Once OpenMetadata UI is accessible, Go to Scheduler UI -[ http://localhost:7777](http://localhost:7777), to invoke the pipelines to ingest data. 
-
-![Scheduler UI (http://localhost:7777)](../../.gitbook/assets/localhost\_7777\_.png)
-
-![Invoking a Pipeline for Ingestion](../../.gitbook/assets/localhost\_7777\_-1-.png)
+2. Once OpenMetadata UI is accessible, Go to [Airflow UI](http://localhost:8080) to invoke the pipelines to ingest data.
 
 The above command brings up all the necessary services
 
 1. MySQL
 2. ElasticSearch
 3. OpenMetadata Sever
-4. Ingestion with SimpleScheduler
+4. Ingestion with Airflow
 
 To access the OpenMetadata
 
 Open [http://localhost:8585](http://localhost:8585) in your browser
 
-Scheduler UI available at [http://localhost:7777](http://localhost:7777)
+Airflow UI available at [http://localhost:8080](http://localhost)
+
+## Run Docker (Local Server)
+
+{% hint style="info" %}
+This Docker will enable users to access the Local OpenMetadata Server and Ingestion.
+
+**Prerequisites**
+
+* Docker >= 20.10.x
+* Minimum allocated memory to Docker >= 4GB (Preferences -> Advanced -> Resources)
+{% endhint %}
+
+Run the below script to create the latest Maven build of the local and run the Docker with the respective Maven build and Ingestion.
+
+```
+#Run Script to initialize Maven Build and start building Docker
+git clone https://github.com/open-metadata/OpenMetadata
+cd OpenMetadata
+./docker/run_local_docker.sh
+```
 
 ## Run Manually
 
@@ -51,7 +67,7 @@ Scheduler UI available at [http://localhost:7777](http://localhost:7777)
 This is a quick start guide that will show you how to quickly start a standalone server.
 {% endhint %}
 
-### Build from source or download the distribution
+### Download the distribution
 
 **Prerequisites**
 
@@ -64,38 +80,14 @@ OpenMetadata is built using Java, DropWizard, Jetty, and MySQL.
 
 {% tabs %}
 {% tab title="Download the release" %}
-Download the latest binary release from [OpenMetadata](https://open-metadata.org/download/), Once you have the tar file,
+Download the latest binary release from [OpenMetadata](https://github.com/open-metadata/OpenMetadata/releases/download/0.5.0/openmetadata-0.5.0.tar.gz), Once you have the tar file,
 
 ```bash
 # untar it
-tar -zxvf openmetadata-0.3.0.tar.gz
+tar -zxvf openmetadata-0.5.0.tar.gz
 
 # navigate to directory containing the launcher scripts
-cd openmetadata-0.3.0
-```
-{% endtab %}
-
-{% tab title="Build from source " %}
-Follow these steps to checkout code from [Github](https://github.com/open-metadata/OpenMetadata) and build OpenMetadata locally
-
-{% hint style="info" %}
-**Prerequisites**
-
-Install [Apache Maven](https://maven.apache.org/install.html) 3.6 or higher
-{% endhint %}
-
-```bash
-# checkout OpenMetadata
-git clone https://github.com/open-metadata/OpenMetadata
-cd OpenMetadata
-
-# build OpenMetadata
-mvn install package -DskipTests
-
-# navigate to directory containing the setup scripts
-cd dist/target/
-tar -zxvf openmetadata-0.3.0-SNAPSHOT.tar.gz
-cd openmetadata-0.3.0-SNAPSHOT
+cd openmetadata-0.5.0
 ```
 {% endtab %}
 {% endtabs %}
@@ -128,13 +120,13 @@ cd openmetadata-0.3.0-SNAPSHOT
 2.  Run bootstrap scripts to initialize the database and tables
 
     ```
-       cd openmetadata-0.4.0
+       cd openmetadata-0.5.0
        ./bootstrap/bootstrap_storage.sh migrate
     ```
 3.  Start the OpenMetadata Server
 
     ```
-       cd openmetadata-0.4.0 
+       cd openmetadata-0.5.0 
        ./bin/openmetadata.sh start
     ```
 

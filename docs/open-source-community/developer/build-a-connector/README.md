@@ -14,15 +14,15 @@ Please look at our framework [APIs](https://github.com/open-metadata/OpenMetadat
 
 A workflow consists of [Source](source.md), [Processor](processor.md) and [Sink](sink.md). It also provides support for [Stage](stage.md) and [BulkSink](bulksink.md).
 
-Workflow execution happens in serial fashion.
+Workflow execution happens in a serial fashion.
 
 1. The** Workflow** runs the **source** component first.  The **source** retrieves a record from external sources and emits the record downstream.
 2. If the **processor** component is configured, the **workflow** sends the record to the **processor** next.
 3. There can be multiple **processor** components attached to the **workflow**.  The **workflow** passes a record to each **processor** in the order they are configured.
-4. Once a **processor** is finished, it sends the modified record to **sink**.
+4. Once a **processor** is finished, it sends the modified record to the **sink**.
 5. The above steps are repeated for each record emitted from the **source**.
 
-In the cases where we need aggregation over the records, we can use **stage** to write to a file or other store. Use the file written to in **stage** and pass it to **bulksink** to publish to external services such as **openmetadata** or **elasticsearch**.
+In the cases where we need aggregation over the records, we can use the **stage** to write to a file or other store. Use the file written to in **stage** and pass it to **bulk sink** to publish to external services such as **openmetadata** or **elasticsearch**.
 
 {% content-ref url="source.md" %}
 [source.md](source.md)

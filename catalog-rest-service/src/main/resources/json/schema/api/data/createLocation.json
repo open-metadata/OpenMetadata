@@ -17,7 +17,7 @@
       "$ref": "../../entity/data/location.json#/definitions/locationType"
     },
     "tags": {
-      "description": "Tags for this chart",
+      "description": "Tags for this location",
       "type": "array",
       "items": {
         "$ref": "../../type/tagLabel.json"
