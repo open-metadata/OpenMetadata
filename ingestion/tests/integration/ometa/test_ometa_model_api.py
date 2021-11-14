@@ -4,9 +4,9 @@ OpenMetadata high-level API Model test
 import uuid
 from unittest import TestCase
 
-from metadata.generated.schema.api.data.createModel import CreateModelEntityRequest
+from metadata.generated.schema.api.data.createMLModel import CreateMLModelEntityRequest
 from metadata.generated.schema.api.teams.createUser import CreateUserEntityRequest
-from metadata.generated.schema.entity.data.model import Model
+from metadata.generated.schema.entity.data.mlmodel import MLModel
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
@@ -28,13 +28,13 @@ class OMetaModelTest(TestCase):
     )
     owner = EntityReference(id=user.id, type="user")
 
-    entity = Model(
+    entity = MLModel(
         id=uuid.uuid4(),
         name="test-model",
         algorithm="algo",
         fullyQualifiedName="test-model",
     )
-    create = CreateModelEntityRequest(name="test-model", algorithm="algo")
+    create = CreateMLModelEntityRequest(name="test-model", algorithm="algo")
 
     def test_create(self):
         """
@@ -56,7 +56,7 @@ class OMetaModelTest(TestCase):
 
         updated = self.create.dict(exclude_unset=True)
         updated["owner"] = self.owner
-        updated_entity = CreateModelEntityRequest(**updated)
+        updated_entity = CreateMLModelEntityRequest(**updated)
 
         res = self.metadata.create_or_update(data=updated_entity)
 
@@ -67,13 +67,13 @@ class OMetaModelTest(TestCase):
 
         # Getting without owner field does not return it by default
         res_none = self.metadata.get_by_name(
-            entity=Model, fqdn=self.entity.fullyQualifiedName
+            entity=MLModel, fqdn=self.entity.fullyQualifiedName
         )
         self.assertIsNone(res_none.owner)
 
         # We can request specific fields to be added
         res_owner = self.metadata.get_by_name(
-            entity=Model,
+            entity=MLModel,
             fqdn=self.entity.fullyQualifiedName,
             fields=["owner", "followers"],
         )
@@ -87,7 +87,7 @@ class OMetaModelTest(TestCase):
         self.metadata.create_or_update(data=self.create)
 
         res = self.metadata.get_by_name(
-            entity=Model, fqdn=self.entity.fullyQualifiedName
+            entity=MLModel, fqdn=self.entity.fullyQualifiedName
         )
         self.assertEqual(res.name, self.entity.name)
 
@@ -100,10 +100,12 @@ class OMetaModelTest(TestCase):
 
         # First pick up by name
         res_name = self.metadata.get_by_name(
-            entity=Model, fqdn=self.entity.fullyQualifiedName
+            entity=MLModel, fqdn=self.entity.fullyQualifiedName
         )
         # Then fetch by ID
-        res = self.metadata.get_by_id(entity=Model, entity_id=str(res_name.id.__root__))
+        res = self.metadata.get_by_id(
+            entity=MLModel, entity_id=str(res_name.id.__root__)
+        )
 
         self.assertEqual(res_name.id, res.id)
 
@@ -114,7 +116,7 @@ class OMetaModelTest(TestCase):
 
         self.metadata.create_or_update(data=self.create)
 
-        res = self.metadata.list_entities(entity=Model)
+        res = self.metadata.list_entities(entity=MLModel)
 
         # Fetch our test model. We have already inserted it, so we should find it
         data = next(
@@ -131,18 +133,18 @@ class OMetaModelTest(TestCase):
 
         # Find by name
         res_name = self.metadata.get_by_name(
-            entity=Model, fqdn=self.entity.fullyQualifiedName
+            entity=MLModel, fqdn=self.entity.fullyQualifiedName
         )
         # Then fetch by ID
         res_id = self.metadata.get_by_id(
-            entity=Model, entity_id=str(res_name.id.__root__)
+            entity=MLModel, entity_id=str(res_name.id.__root__)
         )
 
         # Delete
-        self.metadata.delete(entity=Model, entity_id=str(res_id.id.__root__))
+        self.metadata.delete(entity=MLModel, entity_id=str(res_id.id.__root__))
 
         # Then we should not find it
-        res = self.metadata.list_entities(entity=Model)
+        res = self.metadata.list_entities(entity=MLModel)
 
         assert not next(
             iter(
