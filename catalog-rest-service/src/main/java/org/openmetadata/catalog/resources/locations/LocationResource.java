@@ -37,10 +37,9 @@ import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.RestUtil;
+import org.openmetadata.catalog.util.RestUtil.PatchResponse;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -78,7 +77,6 @@ import java.util.UUID;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "locations")
 public class LocationResource {
-  private static final Logger LOG = LoggerFactory.getLogger(LocationResource.class);
   public static final String COLLECTION_PATH = "v1/locations/";
   private final LocationRepository dao;
   private final CatalogAuthorizer authorizer;
@@ -310,7 +308,7 @@ public class LocationResource {
           externalDocs = @ExternalDocumentation(description = "JsonPatch RFC",
                   url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
-  public Location patch(@Context UriInfo uriInfo,
+  public Response patch(@Context UriInfo uriInfo,
                         @Context SecurityContext securityContext,
                         @PathParam("id") String id,
                         @RequestBody(description = "JsonPatch with array of operations",
@@ -323,8 +321,10 @@ public class LocationResource {
     Fields fields = new Fields(FIELD_LIST, FIELDS);
     Location location = dao.get(uriInfo, id, fields);
     SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, dao.getOwnerReference(location));
-    location = dao.patch(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
-    return addHref(uriInfo, location);
+    PatchResponse<Location> response =
+            dao.patch(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
+    addHref(uriInfo, response.getEntity());
+    return response.toResponse();
   }
 
 

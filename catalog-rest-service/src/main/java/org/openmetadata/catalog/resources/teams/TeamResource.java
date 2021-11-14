@@ -38,6 +38,7 @@ import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.RestUtil;
+import org.openmetadata.catalog.util.RestUtil.PatchResponse;
 import org.openmetadata.catalog.util.ResultList;
 
 import javax.json.JsonPatch;
@@ -263,17 +264,16 @@ public class TeamResource {
   }
 
   @PATCH
-  @Valid
   @Path("/{id}")
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
   @Operation(summary = "Update a team", tags = "teams",
           description = "Update an existing team with JsonPatch.",
           externalDocs = @ExternalDocumentation(description = "JsonPatch RFC",
                   url = "https://tools.ietf.org/html/rfc6902"))
-  public Team patch(@Context UriInfo uriInfo,
-                    @Context SecurityContext securityContext,
-                    @PathParam("id") String id,
-                    @RequestBody(description = "JsonPatch with array of operations",
+  public Response patch(@Context UriInfo uriInfo,
+                        @Context SecurityContext securityContext,
+                        @PathParam("id") String id,
+                        @RequestBody(description = "JsonPatch with array of operations",
                     content = @Content(mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
                     examples = {@ExampleObject("[" +
                                         "{op:remove, path:/a}," +
@@ -282,8 +282,10 @@ public class TeamResource {
                     JsonPatch patch) throws IOException, ParseException {
 
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    return addHref(uriInfo, dao.patch(uriInfo, UUID.fromString(id),
-            securityContext.getUserPrincipal().getName(), patch));
+    PatchResponse<Team> response =
+            dao.patch(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
+    addHref(uriInfo, response.getEntity());
+    return response.toResponse();
   }
 
   @DELETE

@@ -39,6 +39,7 @@ import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.RestUtil;
+import org.openmetadata.catalog.util.RestUtil.PatchResponse;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
 
@@ -273,7 +274,7 @@ public class DatabaseResource {
           externalDocs = @ExternalDocumentation(description = "JsonPatch RFC",
                   url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
-  public Database updateDescription(@Context UriInfo uriInfo,
+  public Response updateDescription(@Context UriInfo uriInfo,
                                     @Context SecurityContext securityContext,
                                     @PathParam("id") String id,
                                     @RequestBody(description = "JsonPatch with array of operations",
@@ -283,10 +284,12 @@ public class DatabaseResource {
                                                             "{op:add, path: /b, value: val}" +
                                                             "]")}))
                                             JsonPatch patch) throws IOException, ParseException {
-    Database database = dao.patch(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
+    PatchResponse<Database> response = dao.patch(uriInfo, UUID.fromString(id),
+            securityContext.getUserPrincipal().getName(), patch);
     SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext,
-            new DatabaseEntityInterface(database).getEntityReference());
-    return addHref(uriInfo, database);
+            new DatabaseEntityInterface(response.getEntity()).getEntityReference());
+    addHref(uriInfo, response.getEntity());
+    return response.toResponse();
   }
 
   @PUT
