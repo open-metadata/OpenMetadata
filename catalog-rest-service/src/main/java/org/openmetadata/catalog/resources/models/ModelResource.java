@@ -61,7 +61,6 @@ import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
-import javax.ws.rs.core.Response.Status;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import java.io.IOException;
@@ -175,11 +174,10 @@ public class ModelResource {
   @Path("/{id}")
   @Operation(summary = "Get a model", tags = "models",
           description = "Get a model by `id`",
-          responses = {
-                  @ApiResponse(responseCode = "200", description = "model",
-                          content = @Content(mediaType = "application/json",
-                          schema = @Schema(implementation = Model.class))),
-                  @ApiResponse(responseCode = "404", description = "Model for instance {id} is not found")
+          responses = {@ApiResponse(responseCode = "200", description = "model",
+                       content = @Content(mediaType = "application/json",
+                       schema = @Schema(implementation = Model.class))),
+                       @ApiResponse(responseCode = "404", description = "Model for instance {id} is not found")
           })
   public Model get(@Context UriInfo uriInfo,
                    @Context SecurityContext securityContext,
@@ -196,11 +194,10 @@ public class ModelResource {
   @Path("/name/{fqn}")
   @Operation(summary = "Get a model by name", tags = "models",
           description = "Get a model by fully qualified model name.",
-          responses = {
-                  @ApiResponse(responseCode = "200", description = "model",
-                          content = @Content(mediaType = "application/json",
-                          schema = @Schema(implementation = Model.class))),
-                  @ApiResponse(responseCode = "404", description = "Model for instance {id} is not found")
+          responses = {@ApiResponse(responseCode = "200", description = "model",
+                       content = @Content(mediaType = "application/json",
+                       schema = @Schema(implementation = Model.class))),
+                       @ApiResponse(responseCode = "404", description = "Model for instance {id} is not found")
           })
   public Model getByName(@Context UriInfo uriInfo,
                          @Context SecurityContext securityContext,
@@ -218,12 +215,11 @@ public class ModelResource {
   @Path("/{id}/versions/{version}")
   @Operation(summary = "Get a version of the table", tags = "tables",
           description = "Get a version of the table by given `id`",
-          responses = {
-                  @ApiResponse(responseCode = "200", description = "table",
-                          content = @Content(mediaType = "application/json",
-                                  schema = @Schema(implementation = Model.class))),
-                  @ApiResponse(responseCode = "404", description = "Table for instance {id} and version {version} is " +
-                          "not found")
+          responses = {@ApiResponse(responseCode = "200", description = "table",
+                       content = @Content(mediaType = "application/json",
+                       schema = @Schema(implementation = Model.class))),
+                       @ApiResponse(responseCode = "404", description = "Table for instance {id} and version {version}"+
+                          " is not found")
           })
   public Model getVersion(@Context UriInfo uriInfo,
                           @Context SecurityContext securityContext,
@@ -238,11 +234,10 @@ public class ModelResource {
   @POST
   @Operation(summary = "Create a Model", tags = "models",
           description = "Create a new model under an existing `database`.",
-          responses = {
-                  @ApiResponse(responseCode = "200", description = "table",
-                          content = @Content(mediaType = "application/json",
-                          schema = @Schema(implementation = CreateModel.class))),
-                  @ApiResponse(responseCode = "400", description = "Bad request")
+          responses = {@ApiResponse(responseCode = "200", description = "table",
+                       content = @Content(mediaType = "application/json",
+                       schema = @Schema(implementation = CreateModel.class))),
+                       @ApiResponse(responseCode = "400", description = "Bad request")
           })
   public Response create(@Context UriInfo uriInfo,
                          @Context SecurityContext securityContext,
@@ -256,11 +251,10 @@ public class ModelResource {
   @PUT
   @Operation(summary = "Create or update a table", tags = "tables",
           description = "Create a table, if it does not exist. If a table already exists, update the table.",
-          responses = {
-                  @ApiResponse(responseCode = "200", description = "The table",
-                          content = @Content(mediaType = "application/json",
-                          schema = @Schema(implementation = CreateTable.class))),
-                  @ApiResponse(responseCode = "400", description = "Bad request")
+          responses = {@ApiResponse(responseCode = "200", description = "The table",
+                       content = @Content(mediaType = "application/json",
+                       schema = @Schema(implementation = CreateTable.class))),
+                       @ApiResponse(responseCode = "400", description = "Bad request")
           })
   public Response createOrUpdate(@Context UriInfo uriInfo,
                                  @Context SecurityContext securityContext,
