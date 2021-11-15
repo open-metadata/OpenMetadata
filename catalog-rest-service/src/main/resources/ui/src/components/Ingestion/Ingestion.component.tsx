@@ -1,7 +1,12 @@
 import classNames from 'classnames';
+import cronstrue from 'cronstrue';
 import { capitalize } from 'lodash';
-import React, { Fragment, useState } from 'react';
-import { TITLE_FOR_NON_ADMIN_ACTION } from '../../constants/constants';
+import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
+import {
+  getServiceDetailsPath,
+  TITLE_FOR_NON_ADMIN_ACTION,
+} from '../../constants/constants';
 import { useAuth } from '../../hooks/authHooks';
 import { isEven } from '../../utils/CommonUtils';
 import { Button } from '../buttons/Button/Button';
@@ -120,41 +125,55 @@ const Ingestion: React.FC<Props> = ({
     setIsConfirmationModalOpen(true);
   };
 
-  const getStatuses = (ingestion: IngestionData) => {
-    const lastFiveIngestions = ingestion.ingestionStatuses?.slice(
-      Math.max(ingestion.ingestionStatuses.length - 5, 0)
-    );
-
+  const getServiceTypeFromName = (serviceName = ''): string => {
     return (
-      lastFiveIngestions
-        // .sort(() => Math.random() - 0.5)
-        ?.map((r, i) => {
-          return (
-            <PopOver
-              html={
-                <Fragment>
-                  <p>Start Date: {r.startDate}</p>
-                  <p>End Date: {r.endDate}</p>
-                </Fragment>
-              }
-              key={i}
-              position="bottom"
-              theme="light"
-              trigger="mouseenter">
-              {i === lastFiveIngestions.length - 1 ? (
-                <p
-                  className={`tw-h-5 tw-w-16 tw-rounded-sm tw-bg-status-${r.state} tw-mr-1 tw-px-1 tw-text-white tw-text-center`}>
-                  {capitalize(r.state)}
-                </p>
-              ) : (
-                <p
-                  className={`tw-w-4 tw-h-5 tw-rounded-sm tw-bg-status-${r.state} tw-mr-1`}
-                />
-              )}
-            </PopOver>
-          );
-        })
+      serviceList.find((service) => service.name === serviceName)
+        ?.serviceType || ''
     );
+  };
+
+  const getStatuses = (ingestion: IngestionData) => {
+    const lastFiveIngestions = ingestion.ingestionStatuses
+      ?.sort((a, b) => {
+        // Turn your strings into millis, and then subtract them
+        // to get a value that is either negative, positive, or zero.
+        const date1 = new Date(a.startDate);
+        const date2 = new Date(b.startDate);
+
+        return date1.getTime() - date2.getTime();
+      })
+      .slice(Math.max(ingestion.ingestionStatuses.length - 5, 0));
+
+    return lastFiveIngestions?.map((r, i) => {
+      return (
+        <PopOver
+          html={
+            <div className="tw-text-left">
+              {r.startDate ? (
+                <p>Start Date: {new Date(r.startDate).toUTCString()}</p>
+              ) : null}
+              {r.endDate ? (
+                <p>End Date: {new Date(r.endDate).toUTCString()}</p>
+              ) : null}
+            </div>
+          }
+          key={i}
+          position="bottom"
+          theme="light"
+          trigger="mouseenter">
+          {i === lastFiveIngestions.length - 1 ? (
+            <p
+              className={`tw-h-5 tw-w-16 tw-rounded-sm tw-bg-status-${r.state} tw-mr-1 tw-px-1 tw-text-white tw-text-center`}>
+              {capitalize(r.state)}
+            </p>
+          ) : (
+            <p
+              className={`tw-w-4 tw-h-5 tw-rounded-sm tw-bg-status-${r.state} tw-mr-1`}
+            />
+          )}
+        </PopOver>
+      );
+    });
   };
 
   return (
@@ -210,9 +229,33 @@ const Ingestion: React.FC<Props> = ({
                   key={index}>
                   <td className="tableBody-cell">{ingestion.displayName}</td>
                   <td className="tableBody-cell">{ingestion.ingestionType}</td>
-                  <td className="tableBody-cell">{ingestion.service.name}</td>
                   <td className="tableBody-cell">
-                    {ingestion.scheduleInterval}
+                    <Link
+                      to={getServiceDetailsPath(
+                        ingestion.service.name as string,
+                        getServiceTypeFromName(ingestion.service.name)
+                      )}>
+                      {ingestion.service.name}
+                    </Link>
+                  </td>
+                  <td className="tableBody-cell">
+                    <PopOver
+                      html={
+                        <div>
+                          {cronstrue.toString(
+                            ingestion.scheduleInterval || '',
+                            {
+                              use24HourTimeFormat: true,
+                              verbose: true,
+                            }
+                          )}
+                        </div>
+                      }
+                      position="bottom"
+                      theme="light"
+                      trigger="mouseenter">
+                      <span>{ingestion.scheduleInterval}</span>
+                    </PopOver>
                   </td>
                   <td className="tableBody-cell">
                     <div className="tw-flex">{getStatuses(ingestion)}</div>
