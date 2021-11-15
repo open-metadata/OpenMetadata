@@ -3,11 +3,10 @@ import uuid
 from dataclasses import dataclass, field
 from typing import List
 
-from metadata.config.common import ConfigModel
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import Column, Table
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.api.common import IncludeFilterPattern, WorkflowContext
+from metadata.ingestion.api.common import WorkflowContext
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
@@ -112,14 +111,14 @@ class AtlasSource(Source):
             col_guid = col["guid"]
             col_ref_entity = referred_entities[col_guid]
             column = col_ref_entity["attributes"]
-            data_type_display = get_column_type(
-                self.status, dataset_name, column["dataType"].upper()
-            )
+            data_type_display = tbl_entity["attributes"]["name"]
             col_data_length = "1"
             om_column = Column(
                 name=column["name"],
                 description=column.get("comment", None),
-                dataType=column["dataType"].upper(),
+                dataType=get_column_type(
+                    self.status, dataset_name, column["dataType"].upper()
+                ),
                 dataTypeDisplay="{}({})".format(column["dataType"], "1")
                 if data_type_display is None
                 else f"{data_type_display}",
