@@ -81,11 +81,9 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
   }) => {
     return (
       <div className={className}>
-        <hr className="tw-border-t-2 tw-border-separator" />
-        <p className="tw-font-normal preview-header tw-text-grey-muted tw-px-1">
-          {header}
-        </p>
-        <div className="tw-grid tw-gap-2 tw-grid-cols-3 tw-place-content-center tw-mb-1 tw-pl-6">
+        {/* <hr className="tw-border-separator" /> */}
+        <p className="preview-header tw-px-1">{header}</p>
+        <div className="tw-grid tw-gap-4 tw-grid-cols-3 tw-place-content-center tw-pl-6">
           {data.map((d, i) => (
             <div key={i}>
               <p className="tw-text-xs tw-font-normal tw-text-grey-muted">
@@ -307,7 +305,7 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
           <Fragment>
             <div className="tw-flex tw-flex-col tw-mt-6">
               <PreviewSection
-                className="tw-my-3"
+                className="tw-mb-4 tw-mt-4"
                 data={[
                   { key: 'Name', value: 'SnowFlake Ingest' },
                   { key: 'Service Type', value: 'SnowFlake' },
@@ -316,7 +314,7 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
                 header="Ingestion Details"
               />
               <PreviewSection
-                className="tw-my-3"
+                className="tw-mb-4 tw-mt-6"
                 data={[
                   { key: 'Username', value: 'Sachin.c' },
                   { key: 'Password', value: 'sachin.c' },
@@ -328,11 +326,15 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
                 header="Connector Config"
               />
               <PreviewSection
-                className="tw-my-3"
+                className="tw-mb-3 tw-mt-6"
                 data={[]}
                 header="Scheduling"
               />
-              <CronEditor isReadOnly defaultValue={ingestionSchedule} />
+              <CronEditor
+                isReadOnly
+                className="tw-flex tw-justify-items-start tw-pl-6"
+                defaultValue={ingestionSchedule}
+              />
             </div>
           </Fragment>
         );

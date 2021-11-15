@@ -1,7 +1,7 @@
 .preview-header {
   transform: translateY(-13px);
-  margin-left: 20px;
-  font-size: 12px;
+  /* margin-left: 20px; */
+  font-size: 14px;
   display: inline-block;
   background: white;
 }
