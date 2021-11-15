@@ -35,6 +35,7 @@ import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil;
+import org.openmetadata.catalog.util.RestUtil.PatchResponse;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.common.utils.CipherText;
@@ -216,7 +217,8 @@ public abstract class EntityRepository<T> {
   }
 
   @Transaction
-  public final T patch(UriInfo uriInfo, UUID id, String user, JsonPatch patch) throws IOException, ParseException {
+  public final PatchResponse<T> patch(UriInfo uriInfo, UUID id, String user, JsonPatch patch) throws IOException,
+          ParseException {
     T original = setFields(dao.findEntityById(id), patchFields);
     T updated = JsonUtils.applyPatch(original, patch, entityClass);
     EntityInterface<T> updatedEntity = getEntityInterface(updated);
@@ -227,7 +229,8 @@ public abstract class EntityRepository<T> {
     EntityUpdater entityUpdater = getUpdater(original, updated, true);
     entityUpdater.update();
     entityUpdater.store();
-    return withHref(uriInfo, updated);
+    String change = entityUpdater.fieldsChanged() ? RestUtil.ENTITY_UPDATED : RestUtil.ENTITY_NO_CHANGE;
+    return new PatchResponse<T>(Status.OK, withHref(uriInfo, updated), change);
   }
 
   @Transaction
@@ -249,6 +252,7 @@ public abstract class EntityRepository<T> {
     ChangeDescription change = new ChangeDescription().withPreviousVersion(entityInterface.getVersion());
     change.getFieldsAdded().add(new FieldChange().withName("followers")
             .withNewValue(List.of(Entity.getEntityReference(user))));
+
     ChangeEvent changeEvent = new ChangeEvent().withChangeDescription(change).withEventType(EventType.ENTITY_UPDATED)
             .withEntityType(entityName).withEntityId(entityId).withUserName(updatedBy)
             .withDateTime(new Date()).withCurrentVersion(entityInterface.getVersion())

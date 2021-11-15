@@ -42,6 +42,7 @@ import org.openmetadata.catalog.type.TableJoins;
 import org.openmetadata.catalog.type.TableProfile;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.RestUtil;
+import org.openmetadata.catalog.util.RestUtil.PatchResponse;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
 
@@ -283,11 +284,11 @@ public class TableResource {
           externalDocs = @ExternalDocumentation(description = "JsonPatch RFC",
                   url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
-  public Table patch(@Context UriInfo uriInfo,
-                     @Context SecurityContext securityContext,
-                     @Parameter(description = "Id of the table", schema = @Schema(type = "string"))
+  public Response patch(@Context UriInfo uriInfo,
+                        @Context SecurityContext securityContext,
+                        @Parameter(description = "Id of the table", schema = @Schema(type = "string"))
                      @PathParam("id") String id,
-                     @RequestBody(description = "JsonPatch with array of operations",
+                        @RequestBody(description = "JsonPatch with array of operations",
                              content = @Content(mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
                                      examples = {@ExampleObject("[" +
                                              "{op:remove, path:/a}," +
@@ -297,8 +298,10 @@ public class TableResource {
     Fields fields = new Fields(FIELD_LIST, FIELDS);
     Table table = dao.get(uriInfo, id, fields);
     SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, dao.getOwnerReference(table));
-    table = dao.patch(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
-    return addHref(uriInfo, table);
+    PatchResponse<Table> response = dao.patch(uriInfo, UUID.fromString(id),
+            securityContext.getUserPrincipal().getName(), patch);
+    addHref(uriInfo, response.getEntity());
+    return response.toResponse();
   }
 
   @DELETE

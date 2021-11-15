@@ -23,7 +23,6 @@ import org.reflections.ReflectionUtils;
 
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.ResponseBuilder;
-import javax.ws.rs.core.Response.Status;
 import javax.ws.rs.core.UriInfo;
 import java.lang.reflect.Field;
 import java.net.URI;
@@ -178,6 +177,28 @@ public final class RestUtil {
       } else {
         return responseBuilder.entity(changeEvent).build();
       }
+    }
+  }
+
+  public static class PatchResponse<T> {
+    private T entity;
+    private final Response.Status status;
+    private final String changeType;
+
+    /**
+     * Response.Status.CREATED when PUT operation creates a new entity
+     * or Response.Status.OK when PUT operation updates a new entity
+     */
+    public PatchResponse(Response.Status status, T entity, String changeType) {
+      this.entity = entity;
+      this.status = status;
+      this.changeType = changeType;
+    }
+
+    public T getEntity() { return entity; }
+
+    public Response toResponse() {
+      return Response.status(status).header(CHANGE_CUSTOM_HEADER, changeType).entity(entity).build();
     }
   }
 }

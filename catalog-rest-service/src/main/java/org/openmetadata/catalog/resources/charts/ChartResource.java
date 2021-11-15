@@ -38,6 +38,7 @@ import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.RestUtil;
+import org.openmetadata.catalog.util.RestUtil.PatchResponse;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
 
@@ -261,10 +262,10 @@ public class ChartResource {
           externalDocs = @ExternalDocumentation(description = "JsonPatch RFC",
                   url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
-  public Chart updateDescription(@Context UriInfo uriInfo,
-                                 @Context SecurityContext securityContext,
-                                 @PathParam("id") String id,
-                                 @RequestBody(description = "JsonPatch with array of operations",
+  public Response updateDescription(@Context UriInfo uriInfo,
+                                    @Context SecurityContext securityContext,
+                                    @PathParam("id") String id,
+                                    @RequestBody(description = "JsonPatch with array of operations",
                                          content = @Content(mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
                                                  examples = {@ExampleObject("[" +
                                                          "{op:remove, path:/a}," +
@@ -275,8 +276,10 @@ public class ChartResource {
     Chart chart = dao.get(uriInfo, id, fields);
     SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext,
             new ChartEntityInterface(chart).getEntityReference());
-    chart = dao.patch(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
-    return addHref(uriInfo, chart);
+    PatchResponse<Chart> response =
+            dao.patch(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
+    addHref(uriInfo, response.getEntity());
+    return response.toResponse();
   }
 
   @PUT
@@ -312,8 +315,8 @@ public class ChartResource {
                               @Parameter(description = "Id of the user to be added as follower",
                                       schema = @Schema(type = "string"))
                                       String userId) throws IOException, ParseException {
-    return dao.addFollower(securityContext.getUserPrincipal().getName(),
-            UUID.fromString(id), UUID.fromString(userId)).toResponse();
+    return dao.addFollower(securityContext.getUserPrincipal().getName(), UUID.fromString(id),
+            UUID.fromString(userId)).toResponse();
   }
 
   @DELETE

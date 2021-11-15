@@ -40,6 +40,7 @@ import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.RestUtil;
+import org.openmetadata.catalog.util.RestUtil.PatchResponse;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
 import org.slf4j.Logger;
@@ -291,10 +292,10 @@ public class IngestionResource {
           externalDocs = @ExternalDocumentation(description = "JsonPatch RFC",
                   url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
-  public Ingestion updateDescription(@Context UriInfo uriInfo,
-                                     @Context SecurityContext securityContext,
-                                     @PathParam("id") String id,
-                                     @RequestBody(description = "JsonPatch with array of operations",
+  public Response updateDescription(@Context UriInfo uriInfo,
+                                    @Context SecurityContext securityContext,
+                                    @PathParam("id") String id,
+                                    @RequestBody(description = "JsonPatch with array of operations",
                                              content = @Content(mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
                                                      examples = {@ExampleObject("[" +
                                                              "{op:remove, path:/a}," +
@@ -303,10 +304,11 @@ public class IngestionResource {
                                              JsonPatch patch) throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, FIELDS);
     Ingestion ingestion = dao.get(uriInfo, id, fields);
-    SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext,
-            dao.getOwnerReference(ingestion));
-    ingestion = dao.patch(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
-    return addHref(uriInfo, ingestion);
+    SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, dao.getOwnerReference(ingestion));
+    PatchResponse<Ingestion> response =
+            dao.patch(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
+    addHref(uriInfo, response.getEntity());
+    return response.toResponse();
   }
 
   @PUT
