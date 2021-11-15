@@ -222,13 +222,10 @@ public final class TestUtils {
     assertNotNull(ref.getName());
     assertNotNull(ref.getType());
     // Ensure data entities use fully qualified name
-    if (List.of("table", "database", "metrics", "dashboard", "pipeline", "report", "topic", "chart")
+    if (List.of("table", "database", "metrics", "dashboard", "pipeline", "report", "topic", "chart", "location")
             .contains(ref.getType())) {
       // FullyQualifiedName has "." as separator
       assertTrue(ref.getName().contains("."), "entity name is not fully qualified - " + ref.getName());
-    }
-    if (List.of("location").contains(ref.getName())) {
-      ref.getName().contains(":/"); // FullyQualifiedName has ":/" as separator
     }
   }
 

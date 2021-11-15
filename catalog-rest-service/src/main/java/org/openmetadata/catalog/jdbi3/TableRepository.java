@@ -102,7 +102,7 @@ public class TableRepository extends EntityRepository<Table> {
     table.setSampleData(fields.contains("sampleData") ? getSampleData(table) : null);
     table.setViewDefinition(fields.contains("viewDefinition") ? table.getViewDefinition() : null);
     table.setTableProfile(fields.contains("tableProfile") ? getTableProfile(table) : null);
-    table.setLocation(fields.contains("location") ? getLocation(table): null);
+    table.setLocation(fields.contains("location") ? getLocation(table.getId()): null);
     table.setTableQueries(fields.contains("tableQueries") ? getQueries(table): null);
     return table;
   }
@@ -374,13 +374,11 @@ public class TableRepository extends EntityRepository<Table> {
     return dao.databaseDAO().findEntityReferenceById(UUID.fromString(result.get(0)));
   }
 
-  private EntityReference getLocation(Table table) throws IOException {
-    // Find database for the table
-    String id = table.getId().toString();
-    List<String> result = dao.relationshipDAO().findTo(id, Relationship.HAS.ordinal(), Entity.LOCATION);
+  private EntityReference getLocation(UUID tableId) throws IOException {
+    // Find the location of the table
+    List<String> result = dao.relationshipDAO().findTo(tableId.toString(), Relationship.HAS.ordinal(), Entity.LOCATION);
     if (result.size() == 1) {
-      Location location = dao.locationDAO().findEntityById(UUID.fromString(result.get(0)));
-      return new EntityReference().withName(location.getName()).withId(location.getId()).withType("location");
+      return dao.locationDAO().findEntityReferenceById(UUID.fromString(result.get(0)));
     } else {
       return null;
     }
