@@ -1,6 +1,6 @@
 import classNames from 'classnames';
 import { capitalize } from 'lodash';
-import React, { useState } from 'react';
+import React, { Fragment, useState } from 'react';
 import { TITLE_FOR_NON_ADMIN_ACTION } from '../../constants/constants';
 import { useAuth } from '../../hooks/authHooks';
 import { isEven } from '../../utils/CommonUtils';
@@ -132,13 +132,13 @@ const Ingestion: React.FC<Props> = ({
           return (
             <PopOver
               html={
-                <>
+                <Fragment>
                   <p>Start Date: {r.startDate}</p>
                   <p>End Date: {r.endDate}</p>
-                </>
+                </Fragment>
               }
               key={i}
-              position="top"
+              position="bottom"
               theme="light"
               trigger="mouseenter">
               {i === lastFiveIngestions.length - 1 ? (
