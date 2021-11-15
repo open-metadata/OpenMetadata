@@ -1,3 +1,5 @@
+import { IngestionData } from '../Ingestion/ingestion.interface';
+
 interface ServiceData {
   serviceType: string;
   name: string;
@@ -15,6 +17,7 @@ interface ConnectorConfig {
 }
 
 export interface IngestionModalProps {
+  ingestionList: Array<IngestionData>;
   header: string;
   name?: string;
   service?: string;
@@ -35,4 +38,5 @@ export interface ValidationErrorMsg {
   host: boolean;
   database: boolean;
   ingestionSchedule: boolean;
+  isPipelineExists: boolean;
 }

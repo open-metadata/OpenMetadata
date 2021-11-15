@@ -1,5 +1,5 @@
 import classNames from 'classnames';
-import React, { Fragment, useState } from 'react';
+import React, { Fragment, useEffect, useState } from 'react';
 import { CronError } from 'react-js-cron';
 // import { serviceTypes } from '../../constants/services.const';
 import { getIngestionTypeList } from '../../utils/ServiceUtils';
@@ -65,11 +65,16 @@ const PreviewSection = ({
   );
 };
 
+const getServiceName = (service: string) => {
+  return service.split('$$').splice(1).join('$$');
+};
+
 const IngestionModal: React.FC<IngestionModalProps> = ({
   header,
   name = '',
   service = '',
   serviceList = [], // TODO: remove default assignment after resolving prop validation warning
+  ingestionList,
   type = '',
   schedule = '',
   connectorConfig,
@@ -119,7 +124,16 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
     host: false,
     database: false,
     ingestionSchedule: false,
+    isPipelineExists: false,
   });
+
+  const isPipelineExists = () => {
+    return ingestionList.some(
+      (i) =>
+        i.service.name === getServiceName(ingestionService) &&
+        i.ingestionType === ingestionType
+    );
+  };
 
   const handleValidation = (
     event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
@@ -127,7 +141,6 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
     const value = event.target.value;
     const name = event.target.name;
 
-    setShowErrorMsg({ ...showErrorMsg, [name]: !value });
     switch (name) {
       case 'name':
         setIngestionName(value);
@@ -166,13 +179,22 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
       default:
         break;
     }
+    setShowErrorMsg({
+      ...showErrorMsg,
+      [name]: !value,
+    });
   };
 
   const forwardStepHandler = (activeStep: number) => {
     let isValid = false;
     switch (activeStep) {
       case 1:
-        isValid = Boolean(ingestionName && ingestionService && ingestionType);
+        isValid = Boolean(
+          ingestionName &&
+            ingestionService &&
+            ingestionType &&
+            !isPipelineExists()
+        );
         setShowErrorMsg({
           ...showErrorMsg,
           name: !ingestionName,
@@ -275,6 +297,12 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
               </select>
               {showErrorMsg.ingestionType &&
                 errorMsg('Ingestion Type is required')}
+              {showErrorMsg.isPipelineExists &&
+                errorMsg(
+                  `Ingestion with service ${getServiceName(
+                    ingestionService
+                  )} and ingestiontype ${ingestionType} already exists `
+                )}
             </Field>
           </Fragment>
         );
@@ -437,7 +465,7 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
                   { key: 'Name', value: ingestionName },
                   {
                     key: 'Service Type',
-                    value: ingestionService?.split('$$').splice(1).join('$$'),
+                    value: getServiceName(ingestionService),
                   },
                   { key: 'Ingestion Type', value: ingestionType },
                 ]}
@@ -477,7 +505,9 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
     }
   };
 
-  // const forwardStepHandler = () => {};
+  useEffect(() => {
+    setShowErrorMsg({ ...showErrorMsg, isPipelineExists: isPipelineExists() });
+  }, [ingestionType, ingestionService]);
 
   return (
     <dialog className="tw-modal" data-testid="service-modal">

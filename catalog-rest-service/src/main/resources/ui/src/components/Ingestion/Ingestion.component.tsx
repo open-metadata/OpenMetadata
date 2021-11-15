@@ -314,6 +314,7 @@ const Ingestion: React.FC<Props> = ({
       {isAdding ? (
         <IngestionModal
           header="Add Ingestion"
+          ingestionList={ingestionList}
           name=""
           service=""
           serviceList={serviceList.map((s) => ({
