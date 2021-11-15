@@ -16,7 +16,7 @@
 */
 
 import classNames from 'classnames';
-import { cloneDeep, lowerCase, upperCase } from 'lodash';
+import { cloneDeep, isUndefined, lowerCase, upperCase } from 'lodash';
 import { EntityTags } from 'Models';
 import React, { Fragment, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -371,17 +371,41 @@ const EntityTable = ({
     );
   };
 
+  const searchInColumns = (table: Column[], searchText: string): Column[] => {
+    const searchedValue: Column[] = table.reduce((searchedCols, column) => {
+      const isContainData =
+        lowerCase(column.name).includes(searchText) ||
+        lowerCase(column.description).includes(searchText) ||
+        lowerCase(getDataTypeString(column.dataType)).includes(searchText);
+
+      if (isContainData) {
+        return [...searchedCols, column];
+      } else if (!isUndefined(column.children)) {
+        const searchedChildren = searchInColumns(column.children, searchText);
+        if (searchedChildren.length > 0) {
+          toggleAllRowsExpanded(true);
+
+          return [
+            ...searchedCols,
+            {
+              ...column,
+              children: searchedChildren,
+            },
+          ];
+        }
+      }
+
+      return searchedCols;
+    }, [] as Column[]);
+
+    return searchedValue;
+  };
+
   useEffect(() => {
     if (!searchText) {
       setSearchedColumns(tableColumns);
     } else {
-      const searchCols = tableColumns.filter((column) => {
-        return (
-          lowerCase(column.name).includes(searchText) ||
-          lowerCase(column.description).includes(searchText) ||
-          lowerCase(getDataTypeString(column.dataType)).includes(searchText)
-        );
-      });
+      const searchCols = searchInColumns(tableColumns, searchText);
       setSearchedColumns(searchCols);
     }
   }, [searchText, tableColumns]);
