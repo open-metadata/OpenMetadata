@@ -300,6 +300,11 @@ a:focus {
   height: 100%;
 }
 
+/* redoc css */
+.menu-content {
+  height: calc(100vh - 65px) !important;
+}
+
 /* Widget Box */
 .sl-box {
   display: -webkit-box;
