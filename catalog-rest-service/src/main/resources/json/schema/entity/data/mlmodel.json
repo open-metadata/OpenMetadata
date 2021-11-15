@@ -46,7 +46,7 @@
       "pattern": "^[^.]*$"
     },
     "featureSourceName": {
-      "description": "Local name (not fully qualified name) of a ML Feature source",
+      "description": "Local name (not fully qualified name) of a ML Feature source.",
       "type": "string",
       "minLength": 1,
       "maxLength": 64,
@@ -115,7 +115,7 @@
           "$ref": "#/definitions/fullyQualifiedFeatureName"
         },
         "featureSources": {
-          "description": "Columns used to create the ML Feature",
+          "description": "Columns used to create the ML Feature.",
           "type": "array",
           "items": {
             "$ref": "#/definitions/featureSource"
@@ -143,11 +143,11 @@
       "additionalProperties": false,
       "properties": {
         "name": {
-          "description": "Hyper parameter name",
+          "description": "Hyper parameter name.",
           "type": "string"
         },
         "value": {
-          "description": "Hyper parameter value",
+          "description": "Hyper parameter value.",
           "type": "string"
         },
         "description": {

@@ -9,7 +9,7 @@
   "definitions": {
     "eventType" :{
       "javaType": "org.openmetadata.catalog.type.EventType",
-      "description": "Type of event",
+      "description": "Type of event.",
       "type": "string",
       "enum": [
         "entityCreated",
@@ -26,7 +26,7 @@
           "$ref": "#/definitions/eventType"
         },
         "entities": {
-          "description": "Entities for which the events are needed. Example - `table`, `topic`, etc. **When not set, events for all the entities will be provided.**",
+          "description": "Entities for which the events are needed. Example - `table`, `topic`, etc. **When not set, events for all the entities will be provided**.",
           "type": "array",
           "items": {
             "type": "string"
@@ -49,11 +49,11 @@
       "$ref": "basic.json#/definitions/uuid"
     },
     "previousVersion" : {
-      "description" : "Version of the entity before this change. Note that not all changes result in entity version change. When entity version is not changed, `previousVersion` is same as `currentVersion`",
+      "description" : "Version of the entity before this change. Note that not all changes result in entity version change. When entity version is not changed, `previousVersion` is same as `currentVersion`.",
       "$ref" : "entityHistory.json#/definitions/entityVersion"
     },
     "currentVersion" : {
-      "description" : "Current version of the entity after this change. Note that not all changes result in entity version change. When entity version is not changed, `previousVersion` is same as `currentVersion`",
+      "description" : "Current version of the entity after this change. Note that not all changes result in entity version change. When entity version is not changed, `previousVersion` is same as `currentVersion`.",
       "$ref" : "entityHistory.json#/definitions/entityVersion"
     },
     "userName": {
@@ -69,7 +69,7 @@
       "$ref" : "entityHistory.json#/definitions/changeDescription"
     },
     "entity" : {
-      "description": "For `eventType` `entityCreated`, this field captures JSON coded string of the entity using the schema corresponding to `entityType`"
+      "description": "For `eventType` `entityCreated`, this field captures JSON coded string of the entity using the schema corresponding to `entityType`."
     }
   },
   "required": ["eventType", "entityType", "entityId", "dateTime"],
