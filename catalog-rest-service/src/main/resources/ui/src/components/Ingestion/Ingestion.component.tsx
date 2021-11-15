@@ -209,7 +209,7 @@ const Ingestion: React.FC<Props> = ({
                   )}
                   key={index}>
                   <td className="tableBody-cell">{ingestion.displayName}</td>
-                  <td className="tableBody-cell">{ingestion.type}</td>
+                  <td className="tableBody-cell">{ingestion.ingestionType}</td>
                   <td className="tableBody-cell">{ingestion.service.name}</td>
                   <td className="tableBody-cell">
                     {ingestion.scheduleInterval}

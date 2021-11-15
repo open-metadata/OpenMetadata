@@ -6,7 +6,7 @@ export interface IngestionData {
   id: string;
   name: string;
   displayName: string;
-  type: IngestionType;
+  ingestionType: IngestionType;
   service: EntityReference;
   scheduleInterval: string;
   ingestionStatuses: Array<{

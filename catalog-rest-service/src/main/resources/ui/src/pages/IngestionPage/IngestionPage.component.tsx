@@ -46,9 +46,7 @@ const IngestionPage = () => {
         .then((res) => {
           if (res.data) {
             resolve();
-            setTimeout(() => {
-              getAllIngestionWorkflows();
-            }, 1000);
+            getAllIngestionWorkflows();
           } else {
             reject();
           }
