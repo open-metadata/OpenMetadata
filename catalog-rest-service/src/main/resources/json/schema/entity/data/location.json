@@ -2,7 +2,7 @@
   "$id": "https://open-metadata.org/schema/entity/data/location.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Table",
-  "description": "This schema defines the Location entity. A Location can contain the data of a table or group other sublocation together",
+  "description": "This schema defines the Location entity. A Location can contain the data of a table or group other sublocation together.",
   "type": "object",
   "javaType": "org.openmetadata.catalog.entity.data.Location",
   "definitions": {
@@ -38,7 +38,7 @@
       "$ref": "../../type/basic.json#/definitions/uuid"
     },
     "name": {
-      "description": "Name of a location without the service. For example s3://bucket/path1/path2",
+      "description": "Name of a location without the service. For example s3://bucket/path1/path2.",
       "type": "string"
     },
     "displayName": {

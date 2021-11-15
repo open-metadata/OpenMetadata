@@ -14,14 +14,14 @@
       "minimum": 0.1
     },
     "fieldName" : {
-      "description" : "Name of the field of an entity",
+      "description" : "Name of the field of an entity.",
       "type" : "string"
     },
     "fieldChange" : {
       "type": "object",
       "properties": {
         "name": {
-          "description": "Name of the entity field that changed",
+          "description": "Name of the entity field that changed.",
           "$ref": "#/definitions/fieldName"
         },
         "oldValue": {
@@ -60,7 +60,7 @@
           }
         },
         "previousVersion" : {
-          "description": "When a change did not result in change, this could be same as the current version",
+          "description": "When a change did not result in change, this could be same as the current version.",
           "$ref" : "#/definitions/entityVersion"
         }
       },
