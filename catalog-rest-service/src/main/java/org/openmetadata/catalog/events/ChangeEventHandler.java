@@ -55,7 +55,7 @@ public class ChangeEventHandler implements  EventHandler {
         Object entity = responseContext.getEntity();
         String changeType = responseContext.getHeaderString(RestUtil.CHANGE_CUSTOM_HEADER);
 
-        if (responseCode == Status.CREATED.getStatusCode()) {
+        if (responseCode == Status.CREATED.getStatusCode() && !RestUtil.ENTITY_FIELDS_CHANGED.equals(changeType)) {
           EntityInterface entityInterface = Entity.getEntityInterface(entity);
           EntityReference entityReference = Entity.getEntityReference(entity);
           changeEvent = new ChangeEvent()
