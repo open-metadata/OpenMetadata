@@ -177,15 +177,18 @@ const PipelineDetailsPage = () => {
 
   const followPipeline = () => {
     addFollower(pipelineId, USERId).then((res: AxiosResponse) => {
-      const { followers } = res.data;
-      setFollowers(followers);
+      const { newValue } = res.data.changeDescription.fieldsAdded[0];
+
+      setFollowers([...followers, ...newValue]);
     });
   };
   const unfollowPipeline = () => {
     removeFollower(pipelineId, USERId).then((res: AxiosResponse) => {
-      const { followers } = res.data;
+      const { oldValue } = res.data.changeDescription.fieldsDeleted[0];
 
-      setFollowers(followers);
+      setFollowers(
+        followers.filter((follower) => follower.id !== oldValue[0].id)
+      );
     });
   };
 

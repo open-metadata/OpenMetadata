@@ -207,15 +207,18 @@ const DashboardDetailsPage = () => {
 
   const followDashboard = () => {
     addFollower(dashboardId, USERId).then((res: AxiosResponse) => {
-      const { followers } = res.data;
-      setFollowers(followers);
+      const { newValue } = res.data.changeDescription.fieldsAdded[0];
+
+      setFollowers([...followers, ...newValue]);
     });
   };
   const unfollowDashboard = () => {
     removeFollower(dashboardId, USERId).then((res: AxiosResponse) => {
-      const { followers } = res.data;
+      const { oldValue } = res.data.changeDescription.fieldsDeleted[0];
 
-      setFollowers(followers);
+      setFollowers(
+        followers.filter((follower) => follower.id !== oldValue[0].id)
+      );
     });
   };
 
