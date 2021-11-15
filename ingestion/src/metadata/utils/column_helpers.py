@@ -38,6 +38,7 @@ _column_type_mapping: Dict[Type[types.TypeEngine], str] = {
 _column_string_mapping = {
     "INT": "INT",
     "BOOLEAN": "BOOLEAN",
+    "BOOL": "BOOLEAN",
     "ENUM": "ENUM",
     "BYTES": "BYTES",
     "ARRAY": "ARRAY",
@@ -60,6 +61,7 @@ _column_string_mapping = {
     "INTEGER": "INT",
     "SMALLINT": "SMALLINT",
     "TIMESTAMP WITHOUT TIME ZONE": "TIMESTAMP",
+    "FLOAT64": "DOUBLE",
 }
 
 _known_unknown_column_types: Set[Type[types.TypeEngine]] = {
