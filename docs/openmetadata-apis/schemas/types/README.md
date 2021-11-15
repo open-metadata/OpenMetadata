@@ -10,8 +10,16 @@ OpenMetadata supports many common types reused across different schemas. Definin
 [basic.md](basic.md)
 {% endcontent-ref %}
 
+{% content-ref url="changeevent.md" %}
+[changeevent.md](changeevent.md)
+{% endcontent-ref %}
+
 {% content-ref url="dailycount.md" %}
 [dailycount.md](dailycount.md)
+{% endcontent-ref %}
+
+{% content-ref url="entityhistory.md" %}
+[entityhistory.md](entityhistory.md)
 {% endcontent-ref %}
 
 {% content-ref url="entitylineage.md" %}
