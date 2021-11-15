@@ -33,6 +33,7 @@ default_args = {
     "retries": 3,
     "retry_delay": timedelta(minutes=2),
     "execution_timeout": timedelta(minutes=60),
+    "schedule_interval": "*/5 * * * *",
 }
 
 config = """

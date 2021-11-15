@@ -85,19 +85,19 @@ public class TeamsPageTest {
         Events.click(webDriver, By.cssSelector("[data-testid='saveButton']"));
     }
 
-//    @Test
-//    @Order(3)
-//    public void addUser() throws InterruptedException {
-//        openTeamsPage();
-//        Events.click(webDriver, By.xpath("//*[text()[contains(.,'"+ teamDisplayName +"')]] "));
-//        // Select the created listed team
-//        for(int i = 0; i <=10; i++) {
-//            Events.click(webDriver, By.cssSelector("[data-testid='add-new-user-button']")); // select add user button
-//            Events.click(webDriver, By.cssSelector("[data-testid='checkboxAddUser']"));
-//            Events.click(webDriver, By.cssSelector("[data-testid='AddUserSave']"));
-//            Thread.sleep(waitTime);
-//        }
-//    }
+  @Test
+  @Order(3)
+  public void addUser() throws InterruptedException {
+    openTeamsPage();
+    Events.click(webDriver, By.xpath("//*[text()[contains(.,'" + teamDisplayName + "')]] "));
+    // Select the created listed team
+    for (int i = 0; i <= 10; i++) {
+      Events.click(webDriver, By.cssSelector("[data-testid='add-new-user-button']")); // select add user button
+      Events.click(webDriver, By.cssSelector("[data-testid='checkboxAddUser']"));
+      Events.click(webDriver, By.cssSelector("[data-testid='AddUserSave']"));
+      Thread.sleep(waitTime);
+    }
+  }
 
     @Test
     @Order(4)
