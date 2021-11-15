@@ -30,7 +30,6 @@ import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.data.CreateModel;
 import org.openmetadata.catalog.api.data.CreateTable;
 import org.openmetadata.catalog.entity.data.Model;
-import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.ModelRepository;
 import org.openmetadata.catalog.resources.Collection;
@@ -99,11 +98,11 @@ public class ModelResource {
     this.authorizer = authorizer;
   }
 
-  public static class ModelList extends ResultList<Table> {
+  public static class ModelList extends ResultList<Model> {
     @SuppressWarnings("unused") /* Required for tests */
     public ModelList() {}
 
-    public ModelList(List<Table> data, String beforeCursor, String afterCursor, int total)
+    public ModelList(List<Model> data, String beforeCursor, String afterCursor, int total)
             throws GeneralSecurityException, UnsupportedEncodingException {
       super(data, beforeCursor, afterCursor, total);
     }
@@ -200,7 +199,7 @@ public class ModelResource {
           responses = {
                   @ApiResponse(responseCode = "200", description = "model",
                           content = @Content(mediaType = "application/json",
-                          schema = @Schema(implementation = Table.class))),
+                          schema = @Schema(implementation = Model.class))),
                   @ApiResponse(responseCode = "404", description = "Model for instance {id} is not found")
           })
   public Model getByName(@Context UriInfo uriInfo,
@@ -275,14 +274,14 @@ public class ModelResource {
 
   @PATCH
   @Path("/{id}")
-  @Operation(summary = "Update a table", tags = "tables",
-          description = "Update an existing table using JsonPatch.",
+  @Operation(summary = "Update a model", tags = "models",
+          description = "Update an existing model using JsonPatch.",
           externalDocs = @ExternalDocumentation(description = "JsonPatch RFC",
                   url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
-  public Model patch(@Context UriInfo uriInfo,
+  public Response patch(@Context UriInfo uriInfo,
                      @Context SecurityContext securityContext,
-                     @Parameter(description = "Id of the table", schema = @Schema(type = "string"))
+                     @Parameter(description = "Id of the model", schema = @Schema(type = "string"))
                      @PathParam("id") String id,
                      @RequestBody(description = "JsonPatch with array of operations",
                              content = @Content(mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
@@ -294,21 +293,23 @@ public class ModelResource {
     Fields fields = new Fields(FIELD_LIST, FIELDS);
     Model model = dao.get(uriInfo, id, fields);
     SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, dao.getOwnerReference(model));
-    model = dao.patch(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
-    return addHref(uriInfo, model);
+    RestUtil.PatchResponse<Model> response =
+            dao.patch(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
+    addHref(uriInfo, response.getEntity());
+    return response.toResponse();
   }
 
   @DELETE
   @Path("/{id}")
-  @Operation(summary = "Delete a table", tags = "tables",
-          description = "Delete a table by `id`. Table is not immediately deleted and is only marked as deleted.",
+  @Operation(summary = "Delete a model", tags = "models",
+          description = "Delete a model by `id`. Model is not immediately deleted and is only marked as deleted.",
           responses = {
                   @ApiResponse(responseCode = "200", description = "OK"),
-                  @ApiResponse(responseCode = "404", description = "Table for instance {id} is not found")
+                  @ApiResponse(responseCode = "404", description = "Model for instance {id} is not found")
           })
   public Response delete(@Context UriInfo uriInfo,
                          @Context SecurityContext securityContext,
-                         @Parameter(description = "Id of the table", schema = @Schema(type = "string"))
+                         @Parameter(description = "Id of the Model", schema = @Schema(type = "string"))
                          @PathParam("id") String id) {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     dao.delete(UUID.fromString(id));
@@ -317,15 +318,15 @@ public class ModelResource {
 
   @PUT
   @Path("/{id}/followers")
-  @Operation(summary = "Add a follower", tags = "tables",
-          description = "Add a user identified by `userId` as followed of this table",
+  @Operation(summary = "Add a follower", tags = "models",
+          description = "Add a user identified by `userId` as followed of this model",
           responses = {
                   @ApiResponse(responseCode = "200", description = "OK"),
-                  @ApiResponse(responseCode = "404", description = "Table for instance {id} is not found")
+                  @ApiResponse(responseCode = "404", description = "Model for instance {id} is not found")
           })
   public Response addFollower(@Context UriInfo uriInfo,
                               @Context SecurityContext securityContext,
-                              @Parameter(description = "Id of the table", schema = @Schema(type = "string"))
+                              @Parameter(description = "Id of the model", schema = @Schema(type = "string"))
                               @PathParam("id") String id,
                               @Parameter(description = "Id of the user to be added as follower",
                                       schema = @Schema(type = "string"))
@@ -336,11 +337,11 @@ public class ModelResource {
 
   @DELETE
   @Path("/{id}/followers/{userId}")
-  @Operation(summary = "Remove a follower", tags = "tables",
-          description = "Remove the user identified `userId` as a follower of the table.")
+  @Operation(summary = "Remove a follower", tags = "models",
+          description = "Remove the user identified `userId` as a follower of the model.")
   public Response deleteFollower(@Context UriInfo uriInfo,
                                  @Context SecurityContext securityContext,
-                                 @Parameter(description = "Id of the table",
+                                 @Parameter(description = "Id of the model",
                                          schema = @Schema(type = "string"))
                                  @PathParam("id") String id,
                                  @Parameter(description = "Id of the user being removed as follower",
@@ -352,6 +353,7 @@ public class ModelResource {
 
   public static Model validateNewModel(Model model) {
     model.setId(UUID.randomUUID());
+    DatabaseUtil.validateColumns(model);
     return model;
   }
 

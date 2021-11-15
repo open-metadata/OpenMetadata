@@ -425,13 +425,13 @@ public class ModelRepository extends EntityRepository<Model> {
         public void entitySpecificUpdate() throws IOException {
             Model origModel = original.getEntity();
             Model updatedModel = updated.getEntity();
-            updateModelType(origModel, updatedModel);
+            updateNodeType(origModel, updatedModel);
             updateColumns("columns", origModel.getColumns(),
                     updated.getEntity().getColumns(), EntityUtil.columnMatch);
         }
 
-        private void updateModelType(Model origModel, Model updatedModel) throws JsonProcessingException {
-            recordChange("modelType", origModel.getNodeType(), updatedModel.getNodeType());
+        private void updateNodeType(Model origModel, Model updatedModel) throws JsonProcessingException {
+            recordChange("nodeType", origModel.getNodeType(), updatedModel.getNodeType());
         }
 
         private void updateColumns(String fieldName, List<Column> origColumns, List<Column> updatedColumns,
