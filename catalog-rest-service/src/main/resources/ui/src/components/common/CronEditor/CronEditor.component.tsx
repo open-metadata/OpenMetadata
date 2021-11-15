@@ -1,7 +1,7 @@
 import { Divider } from 'antd';
 import 'antd/dist/antd.css';
 import React, { useCallback, useEffect, useState } from 'react';
-import Cron from 'react-js-cron';
+import Cron, { CronError } from 'react-js-cron';
 
 type Props = {
   defaultValue: string;
@@ -9,6 +9,7 @@ type Props = {
   children?: React.ReactNode;
   isReadOnly?: boolean;
   className?: string;
+  onError?: (v: CronError) => void;
 };
 
 const CronEditor = ({
@@ -17,6 +18,7 @@ const CronEditor = ({
   children,
   isReadOnly = false,
   className,
+  onError,
 }: Props) => {
   const [value, setValue] = useState(defaultValue);
   const customSetValue = useCallback((newValue) => {
@@ -35,10 +37,14 @@ const CronEditor = ({
         readOnly={isReadOnly}
         setValue={customSetValue}
         value={value}
+        onError={onError}
       />
-      {children ? <Divider>OR</Divider> : null}
-
-      {children}
+      {children ? (
+        <>
+          <Divider>OR</Divider>
+          {children}
+        </>
+      ) : null}
     </div>
   );
 };

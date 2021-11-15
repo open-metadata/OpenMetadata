@@ -1,5 +1,6 @@
 import classNames from 'classnames';
 import React, { Fragment, useState } from 'react';
+import { CronError } from 'react-js-cron';
 // import { serviceTypes } from '../../constants/services.const';
 import { getIngestionTypeList } from '../../utils/ServiceUtils';
 import { Button } from '../buttons/Button/Button';
@@ -107,6 +108,7 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
   const [ingestionSchedule, setIngestionSchedule] = useState<string>(
     schedule || '*/5 * * * *'
   );
+  const [cronError, setCronError] = useState<CronError>();
 
   const [showErrorMsg, setShowErrorMsg] = useState<ValidationErrorMsg>({
     selectService: false,
@@ -116,6 +118,7 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
     ingestionType: false,
     host: false,
     database: false,
+    ingestionSchedule: false,
   });
 
   const handleValidation = (
@@ -123,6 +126,7 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
   ) => {
     const value = event.target.value;
     const name = event.target.name;
+
     setShowErrorMsg({ ...showErrorMsg, [name]: !value });
     switch (name) {
       case 'name':
@@ -154,13 +158,54 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
         setDatabase(value);
 
         break;
+      case 'ingestionSchedule':
+        setIngestionSchedule(value);
+
+        break;
 
       default:
         break;
     }
   };
 
-  // const forwardStepHandler = () => {};
+  const forwardStepHandler = (activeStep: number) => {
+    let isValid = false;
+    switch (activeStep) {
+      case 1:
+        isValid = Boolean(ingestionName && ingestionService && ingestionType);
+        setShowErrorMsg({
+          ...showErrorMsg,
+          name: !ingestionName,
+          ingestionType: !ingestionType,
+          selectService: !ingestionService,
+        });
+
+        break;
+      case 2:
+        isValid = Boolean(username && password && host && database);
+        setShowErrorMsg({
+          ...showErrorMsg,
+          username: !username,
+          password: !password,
+          host: !host,
+          database: !database,
+        });
+
+        break;
+      case 3:
+        isValid = Boolean(ingestionSchedule && !cronError);
+        setShowErrorMsg({
+          ...showErrorMsg,
+          ingestionSchedule: !ingestionSchedule,
+        });
+
+        break;
+
+      default:
+        break;
+    }
+    setActiveStep((pre) => (pre < STEPS.length && isValid ? pre + 1 : pre));
+  };
 
   const getActiveStepFields = (activeStep: number) => {
     switch (activeStep) {
@@ -362,18 +407,22 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
               <CronEditor
                 className="tw-mt-10"
                 defaultValue={ingestionSchedule}
-                onChangeHandler={(v) => setIngestionSchedule(v)}>
+                onChangeHandler={(v) => setIngestionSchedule(v)}
+                onError={setCronError}>
                 <input
                   className="tw-form-inputs tw-px-3 tw-py-1"
-                  id="schedule"
-                  name="schedule"
+                  id="ingestionSchedule"
+                  name="ingestionSchedule"
                   type="text"
                   value={ingestionSchedule}
-                  onChange={(e) => setIngestionSchedule(e.target.value)}
+                  onChange={handleValidation}
                 />
                 <p className="tw-text-grey-muted tw-text-xs tw-mt-1">
                   Note : TimeZone is in UTC
                 </p>
+                {showErrorMsg.ingestionSchedule &&
+                  errorMsg('Ingestion schedule is required')}
+                {cronError && errorMsg(cronError.description)}
               </CronEditor>
             </div>
           </Fragment>
@@ -386,7 +435,10 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
                 className="tw-mb-4 tw-mt-4"
                 data={[
                   { key: 'Name', value: ingestionName },
-                  { key: 'Service Type', value: ingestionService },
+                  {
+                    key: 'Service Type',
+                    value: ingestionService?.split('$$').splice(1).join('$$'),
+                  },
                   { key: 'Ingestion Type', value: ingestionType },
                 ]}
                 header="Ingestion Details"
@@ -500,9 +552,7 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
               size="regular"
               theme="primary"
               variant="contained"
-              onClick={() =>
-                setActiveStep((pre) => (pre < STEPS.length ? pre + 1 : pre))
-              }>
+              onClick={() => forwardStepHandler(activeStep)}>
               <span>Next</span>
               <i className="fas fa-arrow-right tw-text-sm tw-align-middle tw-pl-1.5" />
             </Button>

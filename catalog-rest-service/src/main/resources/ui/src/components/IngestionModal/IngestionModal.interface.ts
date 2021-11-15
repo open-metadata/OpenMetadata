@@ -34,4 +34,5 @@ export interface ValidationErrorMsg {
   ingestionType: boolean;
   host: boolean;
   database: boolean;
+  ingestionSchedule: boolean;
 }
