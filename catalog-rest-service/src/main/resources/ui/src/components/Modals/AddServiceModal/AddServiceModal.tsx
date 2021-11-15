@@ -15,7 +15,7 @@
   * limitations under the License.
 */
 
-import classNames from 'classnames';
+// import classNames from 'classnames';
 import { ServiceTypes } from 'Models';
 import React, { FunctionComponent, useEffect, useRef, useState } from 'react';
 import { serviceTypes } from '../../../constants/services.const';
@@ -28,14 +28,14 @@ import {
 import { DatabaseService } from '../../../generated/entity/services/databaseService';
 import { MessagingService } from '../../../generated/entity/services/messagingService';
 import { PipelineService } from '../../../generated/entity/services/pipelineService';
-import { fromISOString } from '../../../utils/ServiceUtils';
+// import { fromISOString } from '../../../utils/ServiceUtils';
 import { Button } from '../../buttons/Button/Button';
 import MarkdownWithPreview from '../../common/editor/MarkdownWithPreview';
 // import { serviceType } from '../../../constants/services.const';
 
 export type DataObj = {
   description: string | undefined;
-  ingestionSchedule:
+  ingestionSchedule?:
     | {
         repeatFrequency: string;
         startDate: string;
@@ -128,15 +128,15 @@ const requiredField = (label: string) => (
   </>
 );
 
-const generateOptions = (count: number, initialValue = 0) => {
-  return Array(count)
-    .fill(null)
-    .map((_, i) => (
-      <option key={i + initialValue} value={i + initialValue}>
-        {i + initialValue}
-      </option>
-    ));
-};
+// const generateOptions = (count: number, initialValue = 0) => {
+//   return Array(count)
+//     .fill(null)
+//     .map((_, i) => (
+//       <option key={i + initialValue} value={i + initialValue}>
+//         {i + initialValue}
+//       </option>
+//     ));
+// };
 
 const generateName = (data: Array<ServiceDataObj>) => {
   const newArr: string[] = [];
@@ -187,7 +187,7 @@ export const AddServiceModal: FunctionComponent<Props> = ({
   );
   const [parseUrl] = useState(seprateUrl(data?.jdbc?.connectionUrl) || {});
   const [existingNames] = useState(generateName(serviceList));
-  const [ingestion, setIngestion] = useState(!!data?.ingestionSchedule);
+  // const [ingestion, setIngestion] = useState(!!data?.ingestionSchedule);
   const [selectService, setSelectService] = useState(data?.serviceType || '');
   const [name, setName] = useState(data?.name || '');
   // const [userName, setUserName] = useState(parseUrl?.userName || '');
@@ -214,9 +214,9 @@ export const AddServiceModal: FunctionComponent<Props> = ({
   const [server, setServer] = useState(data?.server || '');
   const [env, setEnv] = useState(data?.env || '');
   const [pipelineUrl, setPipelineUrl] = useState(data?.pipelineUrl || '');
-  const [frequency, setFrequency] = useState(
-    fromISOString(data?.ingestionSchedule?.repeatFrequency)
-  );
+  // const [frequency, setFrequency] = useState(
+  //   fromISOString(data?.ingestionSchedule?.repeatFrequency)
+  // );
   const [showErrorMsg, setShowErrorMsg] = useState<ErrorMsg>({
     selectService: false,
     name: false,
@@ -242,13 +242,13 @@ export const AddServiceModal: FunctionComponent<Props> = ({
       : 'hostname1:port1, hostname2:port2';
   };
 
-  const handleChangeFrequency = (
-    event: React.ChangeEvent<HTMLSelectElement>
-  ) => {
-    const name = event.target.name,
-      value = +event.target.value;
-    setFrequency({ ...frequency, [name]: value });
-  };
+  // const handleChangeFrequency = (
+  //   event: React.ChangeEvent<HTMLSelectElement>
+  // ) => {
+  //   const name = event.target.name,
+  //     value = +event.target.value;
+  //   setFrequency({ ...frequency, [name]: value });
+  // };
 
   const handleValidation = (
     event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
@@ -420,16 +420,16 @@ export const AddServiceModal: FunctionComponent<Props> = ({
     }
     setShowErrorMsg(setMsg);
     if (onSaveHelper(setMsg)) {
-      const { day, hour, minute } = frequency;
-      const date = new Date();
+      // const { day, hour, minute } = frequency;
+      // const date = new Date();
       let dataObj: DataObj = {
         description: markdownRef.current?.getEditorContent(),
-        ingestionSchedule: ingestion
-          ? {
-              repeatFrequency: `P${day}DT${hour}H${minute}M`,
-              startDate: date.toISOString(),
-            }
-          : undefined,
+        // ingestionSchedule: ingestion
+        //   ? {
+        //       repeatFrequency: `P${day}DT${hour}H${minute}M`,
+        //       startDate: date.toISOString(),
+        //     }
+        //   : undefined,
         name: name,
         serviceType: selectService,
       };
@@ -956,7 +956,7 @@ export const AddServiceModal: FunctionComponent<Props> = ({
                 value={data?.description || ''}
               />
             </div>
-            <div className="tw-mt-4 tw-flex tw-items-center">
+            {/* <div className="tw-mt-4 tw-flex tw-items-center">
               <label className="tw-form-label tw-mb-0">Enable Ingestion</label>
               <div
                 className={classNames(
@@ -967,8 +967,8 @@ export const AddServiceModal: FunctionComponent<Props> = ({
                 onClick={() => setIngestion(!ingestion)}>
                 <div className="switch" />
               </div>
-            </div>
-            {ingestion && (
+            </div> */}
+            {/* {ingestion && (
               <div className="tw-grid tw-grid-cols-3 tw-gap-2 tw-gap-y-0 tw-mt-4">
                 <div className="tw-col-span-3">
                   <label className="tw-block tw-form-label" htmlFor="frequency">
@@ -1024,7 +1024,7 @@ export const AddServiceModal: FunctionComponent<Props> = ({
                   </select>
                 </div>
               </div>
-            )}
+            )} */}
           </form>
         </div>
         <div className="tw-modal-footer tw-justify-end">
