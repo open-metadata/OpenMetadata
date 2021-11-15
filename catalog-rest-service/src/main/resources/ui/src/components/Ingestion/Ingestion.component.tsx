@@ -133,8 +133,8 @@ const Ingestion: React.FC<Props> = ({
             <PopOver
               html={
                 <Fragment>
-                  <p>Start Date: {r.startDate}</p>
-                  <p>End Date: {r.endDate}</p>
+                  <p>Start Date: {new Date(r.startDate).toUTCString()}</p>
+                  <p>End Date: {new Date(r.endDate).toUTCString()}</p>
                 </Fragment>
               }
               key={i}
@@ -271,6 +271,7 @@ const Ingestion: React.FC<Props> = ({
       {isAdding ? (
         <IngestionModal
           header="Add Ingestion"
+          ingestionList={ingestionList}
           name=""
           service=""
           serviceList={serviceList.map((s) => ({
