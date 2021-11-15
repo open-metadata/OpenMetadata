@@ -372,7 +372,7 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
                   onChange={(e) => setIngestionSchedule(e.target.value)}
                 />
                 <p className="tw-text-grey-muted tw-text-xs tw-mt-1">
-                  Note : Time formate is in UTC
+                  Note : TimeZone is in UTC
                 </p>
               </CronEditor>
             </div>
@@ -385,21 +385,24 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
               <PreviewSection
                 className="tw-mb-4 tw-mt-4"
                 data={[
-                  { key: 'Name', value: 'SnowFlake Ingest' },
-                  { key: 'Service Type', value: 'SnowFlake' },
-                  { key: 'Ingestion Type', value: 'snowflake-ingest' },
+                  { key: 'Name', value: ingestionName },
+                  { key: 'Service Type', value: ingestionService },
+                  { key: 'Ingestion Type', value: ingestionType },
                 ]}
                 header="Ingestion Details"
               />
               <PreviewSection
                 className="tw-mb-4 tw-mt-6"
                 data={[
-                  { key: 'Username', value: 'Sachin.c' },
-                  { key: 'Password', value: 'sachin.c' },
-                  { key: 'Host', value: 'sachin.com' },
-                  { key: 'Database', value: 'SnowSachinC' },
-                  { key: 'Include views', value: 'Yes' },
-                  { key: 'Enable Data Profiler', value: 'No' },
+                  { key: 'Username', value: username },
+                  { key: 'Password', value: password },
+                  { key: 'Host', value: host },
+                  { key: 'Database', value: database },
+                  { key: 'Include views', value: includeViews ? 'Yes' : 'No' },
+                  {
+                    key: 'Enable Data Profiler',
+                    value: excludeDataProfiler ? 'Yes' : 'No',
+                  },
                 ]}
                 header="Connector Config"
               />
@@ -470,15 +473,27 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
           </Button>
 
           {activeStep === 4 ? (
-            <Button
-              data-testid="save-button"
-              size="regular"
-              theme="primary"
-              type="submit"
-              variant="contained"
-              onClick={() => onSave()}>
-              <span>Deploy</span>
-            </Button>
+            <div className="tw-flex">
+              <Button
+                className="tw-mr-1"
+                data-testid="save-button"
+                size="regular"
+                theme="primary"
+                type="submit"
+                variant="contained"
+                onClick={() => onSave()}>
+                <span>Deploy and Run</span>
+              </Button>
+              <Button
+                data-testid="save-button"
+                size="regular"
+                theme="primary"
+                type="submit"
+                variant="contained"
+                onClick={() => onSave()}>
+                <span>Deploy</span>
+              </Button>
+            </div>
           ) : (
             <Button
               data-testid="next-button"
