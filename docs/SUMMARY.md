@@ -78,6 +78,7 @@
 
 * [Run OpenMetadata](install/run-openmetadata.md)
 * [Run in Production](install/run-in-production.md)
+* [Run in Kubernetes](install/run-in-kubernetes.md)
 * [Configuration](install/configuration.md)
 * [Enable Security](install/enable-security/README.md)
   * [Google SSO](install/enable-security/google-sso/README.md)
