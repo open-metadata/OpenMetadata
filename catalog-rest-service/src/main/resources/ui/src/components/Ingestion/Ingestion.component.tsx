@@ -121,14 +121,14 @@ const Ingestion: React.FC<Props> = ({
   };
 
   const getStatuses = (ingestion: IngestionData) => {
-    const lastFiveIngestions = ingestion.ingestionStatuses.slice(
+    const lastFiveIngestions = ingestion.ingestionStatuses?.slice(
       Math.max(ingestion.ingestionStatuses.length - 5, 0)
     );
 
     return (
       lastFiveIngestions
         // .sort(() => Math.random() - 0.5)
-        .map((r, i) => {
+        ?.map((r, i) => {
           return (
             <PopOver
               html={
