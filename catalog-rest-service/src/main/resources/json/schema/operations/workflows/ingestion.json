@@ -127,11 +127,11 @@
       "description": "This defines the runtime status of Ingestion.",
       "properties": {
         "state": {
-          "description": "Workflow status denotes if its failed or succeeded",
+          "description": "Workflow status denotes if its failed or succeeded.",
           "type": "string"
         },
         "startDate": {
-          "description": "startDate of the Ingestion Pipeline run for this particular execution",
+          "description": "startDate of the Ingestion Pipeline run for this particular execution.",
           "type": "string"
         },
         "endDate": {
@@ -215,7 +215,7 @@
       "default": "UTC"
     },
     "retries": {
-      "description": "Retry workflow in case of failure",
+      "description": "Retry workflow in case of failure.",
       "type": "integer",
       "default": 1
     },
