@@ -108,24 +108,28 @@ class AtlasSource(Source):
         dataset_name = tbl_entity["attributes"]["name"]
         ordinal_pos = 1
         for col in col_entities:
-            col_guid = col["guid"]
-            col_ref_entity = referred_entities[col_guid]
-            column = col_ref_entity["attributes"]
-            data_type_display = tbl_entity["attributes"]["name"]
-            col_data_length = "1"
-            om_column = Column(
-                name=column["name"],
-                description=column.get("comment", None),
-                dataType=get_column_type(
-                    self.status, dataset_name, column["dataType"].upper()
-                ),
-                dataTypeDisplay="{}({})".format(column["dataType"], "1")
-                if data_type_display is None
-                else f"{data_type_display}",
-                dataLength=col_data_length,
-                ordinalPosition=ordinal_pos,
-            )
-            om_cols.append(om_column)
+            try:
+                col_guid = col["guid"]
+                col_ref_entity = referred_entities[col_guid]
+                column = col_ref_entity["attributes"]
+                data_type_display = tbl_entity["attributes"]["name"]
+                col_data_length = "1"
+                om_column = Column(
+                    name=column["name"],
+                    description=column.get("comment", None),
+                    dataType=get_column_type(
+                        self.status, dataset_name, column["dataType"].upper()
+                    ),
+                    dataTypeDisplay="{}({})".format(column["dataType"], "1")
+                    if data_type_display is None
+                    else f"{data_type_display}",
+                    dataLength=col_data_length,
+                    ordinalPosition=ordinal_pos,
+                )
+                om_cols.append(om_column)
+            except Exception as err:
+                logger.error(f"{err}")
+                continue
         return om_cols
 
     def _get_database(self, database_name: str) -> Database:
