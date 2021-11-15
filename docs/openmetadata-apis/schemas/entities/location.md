@@ -1,28 +1,26 @@
-# Dashboard
+# Table
 
-This schema defines the Dashboard entity. Dashboards are computed from data and visually present data, metrics, and KPIs. They are updated in real-time and allow interactive data exploration.
+This schema defines the Location entity. A Location can contain the data of a table or group other sublocation together.
 
-**$id:**[**https://open-metadata.org/schema/entity/data/dashboard.json**](https://open-metadata.org/schema/entity/data/dashboard.json)
+**$id:**[**https://open-metadata.org/schema/entity/data/location.json**](https://open-metadata.org/schema/entity/data/location.json)
 
 Type: `object`
 
 ## Properties
-- **id** `required`
-  - Unique identifier that identifies a dashboard instance.
+- **id**
+  - Unique identifier of this location instance.
   - $ref: [../../type/basic.json#/definitions/uuid](../types/basic.md#uuid)
 - **name** `required`
-  - Name that identifies this dashboard.
+  - Name of a location without the service. For example s3://bucket/path1/path2.
   - Type: `string`
-  - Length: between 1 and 64
 - **displayName**
-  - Display Name that identifies this Dashboard. It could be title or label from the source services.
+  - Display Name that identifies this table. It could be title or label from the source services.
   - Type: `string`
 - **fullyQualifiedName**
-  - A unique name that identifies a dashboard in the format 'ServiceName.DashboardName'.
+  - Fully qualified name of a location in the form `serviceName.locationName`.
   - Type: `string`
-  - Length: between 1 and 64
 - **description**
-  - Description of the dashboard, what it is, and how to use it.
+  - Description of a location.
   - Type: `string`
 - **version**
   - Metadata version of the entity.
@@ -33,38 +31,41 @@ Type: `object`
 - **updatedBy**
   - User who made the update.
   - Type: `string`
-- **dashboardUrl**
-  - Dashboard URL.
-  - Type: `string`
-  - String format must be a "uri"
-- **charts**
-  - All the charts included in this Dashboard.
-  - Type: `array`
-    - **Items**
-    - $ref: [../../type/entityReference.json](../types/entityreference.md)
 - **href**
-  - Link to the resource corresponding to this entity.
+  - Link to this location resource.
   - $ref: [../../type/basic.json#/definitions/href](../types/basic.md#href)
+- **locationType**
+  - $ref: [#/definitions/locationType](#locationtype)
 - **owner**
-  - Owner of this dashboard.
+  - Owner of this location.
   - $ref: [../../type/entityReference.json](../types/entityreference.md)
 - **followers**
-  - Followers of this dashboard.
+  - Followers of this location.
   - $ref: [../../type/entityReference.json#/definitions/entityReferenceList](../types/entityreference.md#entityreferencelist)
 - **tags**
-  - Tags for this dashboard.
+  - Tags for this location.
   - Type: `array`
     - **Items**
     - $ref: [../../type/tagLabel.json](../types/taglabel.md)
 - **service** `required`
-  - Link to service where this dashboard is hosted in.
+  - Link to the database cluster/service where this database is hosted in.
   - $ref: [../../type/entityReference.json](../types/entityreference.md)
-- **usageSummary**
-  - Latest usage information for this database.
-  - $ref: [../../type/usageDetails.json](../types/usagedetails.md)
 - **changeDescription**
   - Change that lead to this version of the entity.
   - $ref: [../../type/entityHistory.json#/definitions/changeDescription](../types/entityhistory.md#changedescription)
 
+
+## Type definitions in this schema
+
+### locationType
+
+- This schema defines the type used for describing different types of Location.
+- Type: `string`
+- The value is restricted to the following: 
+  1. _"Bucket"_
+  2. _"Prefix"_
+  3. _"Database"_
+  4. _"Table"_
+   
 
 _This document was updated on: Monday, November 15, 2021_
