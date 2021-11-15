@@ -18,6 +18,7 @@
 import { RedocStandalone } from '@deuex-solutions/redoc';
 import React from 'react';
 import PageContainer from '../../components/containers/PageContainer';
+import './swagger.css';
 
 const SwaggerPage = () => {
   // return (<RedocStandalone
