@@ -14,54 +14,12 @@ import Loader from '../Loader/Loader';
 import ConfirmationModal from '../Modals/ConfirmationModal/ConfirmationModal';
 import { IngestionData, Props } from './ingestion.interface';
 
-// const MOCK_INGESTIONS = [
-//   {
-//     name: 'BigQuery Ingest',
-//     type: 'Usage',
-//     service: 'BigQuery',
-//     schedule: '1 day, 00:00:00',
-//     reecentRuns: ['failed', 'success', 'failed', 'success', 'failed'],
-//     nextRun: '2021-11-19 14:00:00',
-//   },
-//   {
-//     name: 'Snowflake Ingest',
-//     type: 'Profiler',
-//     service: 'Snowflake',
-//     schedule: '1 day, 00:00:00',
-//     reecentRuns: ['failed', 'success', 'failed', 'success', 'failed'],
-//     nextRun: '2021-11-19 14:00:00',
-//   },
-//   {
-//     name: 'Some Random Name',
-//     type: 'Metadata',
-//     service: 'Snowflake',
-//     schedule: '1 day, 00:00:00',
-//     reecentRuns: ['failed', 'success', 'failed', 'success', 'failed'],
-//     nextRun: '2021-11-19 14:00:00',
-//   },
-//   {
-//     name: 'Untitled Ingestion',
-//     type: 'Metadata',
-//     service: 'Snowflake',
-//     schedule: '1 day, 00:00:00',
-//     reecentRuns: ['failed', 'success', 'failed', 'success', 'failed'],
-//     nextRun: '2021-11-19 14:00:00',
-//   },
-//   {
-//     name: 'Redshift Ingest',
-//     type: 'Usage',
-//     service: 'Redshift',
-//     schedule: '1 day, 00:00:00',
-//     reecentRuns: ['failed', 'success', 'failed', 'success', 'failed'],
-//     nextRun: '2021-11-19 14:00:00',
-//   },
-// ];
-
 const Ingestion: React.FC<Props> = ({
   ingestionList,
   serviceList,
   deleteIngestion,
   triggerIngestion,
+  addIngestion,
 }: Props) => {
   const { isAdminUser, isAuthDisabled } = useAuth();
   const [searchText, setSearchText] = useState('');
@@ -229,7 +187,7 @@ const Ingestion: React.FC<Props> = ({
                           className="link-text tw-mr-2"
                           onClick={() =>
                             handleTriggerIngestion(
-                              ingestion.id,
+                              ingestion.id as string,
                               ingestion.displayName
                             )
                           }>
@@ -247,7 +205,10 @@ const Ingestion: React.FC<Props> = ({
                         <div
                           className="link-text tw-mr-2"
                           onClick={() =>
-                            ConfirmDelete(ingestion.id, ingestion.displayName)
+                            ConfirmDelete(
+                              ingestion.id as string,
+                              ingestion.displayName
+                            )
                           }>
                           {deleteSelection.id === ingestion.id ? (
                             deleteSelection.state === 'success' ? (
@@ -270,6 +231,10 @@ const Ingestion: React.FC<Props> = ({
       </div>
       {isAdding ? (
         <IngestionModal
+          addIngestion={(data) => {
+            setIsAdding(false);
+            addIngestion(data);
+          }}
           header="Add Ingestion"
           ingestionList={ingestionList}
           name=""
@@ -280,7 +245,6 @@ const Ingestion: React.FC<Props> = ({
           }))}
           type=""
           onCancel={() => setIsAdding(false)}
-          onSave={() => setIsAdding(false)}
         />
       ) : null}
       {isConfirmationModalOpen && (

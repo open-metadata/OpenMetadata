@@ -1,19 +1,11 @@
-import { IngestionData } from '../Ingestion/ingestion.interface';
+import {
+  ConnectorConfig,
+  IngestionData,
+} from '../Ingestion/ingestion.interface';
 
 interface ServiceData {
   serviceType: string;
   name: string;
-}
-
-interface ConnectorConfig {
-  username: string;
-  password: string;
-  host: string;
-  database: string;
-  includeFilterPattern: Array<string>;
-  excludeFilterPattern: Array<string>;
-  includeViews: boolean;
-  excludeDataProfiler: boolean;
 }
 
 export interface IngestionModalProps {
@@ -25,7 +17,7 @@ export interface IngestionModalProps {
   type?: string;
   schedule?: string;
   connectorConfig?: ConnectorConfig;
-  onSave: () => void;
+  addIngestion: (data: IngestionData) => void;
   onCancel: () => void;
 }
 
@@ -39,4 +31,5 @@ export interface ValidationErrorMsg {
   database: boolean;
   ingestionSchedule: boolean;
   isPipelineExists: boolean;
+  isPipelineNameExists: boolean;
 }

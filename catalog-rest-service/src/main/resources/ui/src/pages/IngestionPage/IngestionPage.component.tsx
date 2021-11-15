@@ -1,15 +1,20 @@
 import { AxiosError, AxiosResponse } from 'axios';
 import React, { useEffect, useState } from 'react';
 import {
+  addIngestionWorkflow,
   deleteIngestionWorkflowsById,
   getIngestionWorkflows,
   triggerIngestionWorkflowsById,
 } from '../../axiosAPIs/ingestionWorkflowAPI';
 import { getServices } from '../../axiosAPIs/serviceAPI';
 import Ingestion from '../../components/Ingestion/Ingestion.component';
+import { IngestionData } from '../../components/Ingestion/ingestion.interface';
 import Loader from '../../components/Loader/Loader';
 import { DatabaseService } from '../../generated/entity/services/databaseService';
+import { EntityReference } from '../../generated/type/entityReference';
 import useToastContext from '../../hooks/useToastContext';
+import { getCurrentUserId } from '../../utils/CommonUtils';
+import { getOwnerFromId } from '../../utils/TableUtils';
 
 const IngestionPage = () => {
   const showToast = useToastContext();
@@ -85,6 +90,32 @@ const IngestionPage = () => {
     });
   };
 
+  const addIngestionWorkflowHandler = (data: IngestionData) => {
+    setIsLoading(true);
+    const service = serviceList.find((s) => s.name === data.service.name);
+    const owner = getOwnerFromId(getCurrentUserId());
+    const ingestionData = {
+      ...data,
+      service: {
+        id: service?.id,
+        type: 'databaseService',
+        name: data.service.name,
+      } as EntityReference,
+      owner: {
+        id: owner?.id,
+        name: owner?.name,
+        type: 'user',
+      },
+    };
+
+    addIngestionWorkflow(ingestionData)
+      .then(() => {
+        setIsLoading(false);
+        getAllIngestionWorkflows();
+      })
+      .catch(() => setIsLoading(false));
+  };
+
   useEffect(() => {
     getDatabaseServices();
     getAllIngestionWorkflows();
@@ -96,6 +127,7 @@ const IngestionPage = () => {
         <Loader />
       ) : (
         <Ingestion
+          addIngestion={addIngestionWorkflowHandler}
           deleteIngestion={deleteIngestionById}
           ingestionList={ingestions}
           serviceList={serviceList}

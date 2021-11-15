@@ -16,10 +16,24 @@
 */
 
 import { AxiosResponse } from 'axios';
+import { IngestionData } from '../components/Ingestion/ingestion.interface';
 import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
 
 const operationsBaseUrl = '/api/operations/v1';
+
+export const addIngestionWorkflow = (
+  data: IngestionData
+): Promise<AxiosResponse> => {
+  const url = '/ingestion';
+
+  return APIClient({
+    method: 'post',
+    url,
+    baseURL: operationsBaseUrl,
+    data: data,
+  });
+};
 
 export const getIngestionWorkflows = (
   arrQueryFields: string

@@ -1,6 +1,7 @@
 import classNames from 'classnames';
 import React, { Fragment, useEffect, useState } from 'react';
 import { CronError } from 'react-js-cron';
+import { IngestionType } from '../../enums/service.enum';
 // import { serviceTypes } from '../../constants/services.const';
 import { getIngestionTypeList } from '../../utils/ServiceUtils';
 import { Button } from '../buttons/Button/Button';
@@ -69,6 +70,12 @@ const getServiceName = (service: string) => {
   return service.split('$$').splice(1).join('$$');
 };
 
+const getIngestionName = (name: string) => {
+  const nameString = name.trim().replace(/\s+/g, '');
+
+  return nameString.toLowerCase();
+};
+
 const IngestionModal: React.FC<IngestionModalProps> = ({
   header,
   name = '',
@@ -79,7 +86,7 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
   schedule = '',
   connectorConfig,
   onCancel,
-  onSave,
+  addIngestion,
 }: IngestionModalProps) => {
   const [activeStep, setActiveStep] = useState<number>(1);
 
@@ -125,6 +132,7 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
     database: false,
     ingestionSchedule: false,
     isPipelineExists: false,
+    isPipelineNameExists: false,
   });
 
   const isPipelineExists = () => {
@@ -132,6 +140,12 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
       (i) =>
         i.service.name === getServiceName(ingestionService) &&
         i.ingestionType === ingestionType
+    );
+  };
+
+  const isPipeLineNameExists = () => {
+    return ingestionList.some(
+      (i) => i.name === getIngestionName(ingestionName)
     );
   };
 
@@ -248,6 +262,12 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
                 onChange={handleValidation}
               />
               {showErrorMsg.name && errorMsg('Ingestion Name is required')}
+              {showErrorMsg.isPipelineNameExists &&
+                errorMsg(
+                  `Ingestion with name ${getIngestionName(
+                    ingestionName
+                  )} already exists.`
+                )}
             </Field>
 
             <Field>
@@ -301,7 +321,7 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
                 errorMsg(
                   `Ingestion with service ${getServiceName(
                     ingestionService
-                  )} and ingestiontype ${ingestionType} already exists `
+                  )} and ingestion-type ${ingestionType} already exists `
                 )}
             </Field>
           </Fragment>
@@ -448,9 +468,9 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
                 <p className="tw-text-grey-muted tw-text-xs tw-mt-1">
                   Note : TimeZone is in UTC
                 </p>
-                {showErrorMsg.ingestionSchedule &&
-                  errorMsg('Ingestion schedule is required')}
-                {cronError && errorMsg(cronError.description)}
+                {showErrorMsg.ingestionSchedule
+                  ? errorMsg('Ingestion schedule is required')
+                  : cronError && errorMsg(cronError.description)}
               </CronEditor>
             </div>
           </Fragment>
@@ -462,7 +482,7 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
               <PreviewSection
                 className="tw-mb-4 tw-mt-4"
                 data={[
-                  { key: 'Name', value: ingestionName },
+                  { key: 'Name', value: getIngestionName(ingestionName) },
                   {
                     key: 'Service Type',
                     value: getServiceName(ingestionService),
@@ -505,9 +525,36 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
     }
   };
 
+  const onSaveHandler = () => {
+    const ingestionData = {
+      ingestionType: ingestionType as IngestionType,
+      displayName: ingestionName,
+      name: getIngestionName(ingestionName),
+      service: { name: getServiceName(ingestionService), id: '', type: '' },
+      startDate: `${new Date().getFullYear()}-${new Date().getMonth()}-${new Date().getDate()}`,
+      scheduleInterval: ingestionSchedule,
+      forceDeploy: true,
+      connectorConfig: {
+        database: database,
+        enableDataProfiler: excludeDataProfiler,
+        excludeFilterPattern: excludeFilterPattern,
+        host: host,
+        includeFilterPattern: includeFilterPattern,
+        includeViews: includeViews,
+        password: password,
+        username: username,
+      },
+    };
+    addIngestion(ingestionData);
+  };
+
   useEffect(() => {
-    setShowErrorMsg({ ...showErrorMsg, isPipelineExists: isPipelineExists() });
-  }, [ingestionType, ingestionService]);
+    setShowErrorMsg({
+      ...showErrorMsg,
+      isPipelineExists: isPipelineExists(),
+      isPipelineNameExists: isPipeLineNameExists(),
+    });
+  }, [ingestionType, ingestionService, ingestionName]);
 
   return (
     <dialog className="tw-modal" data-testid="service-modal">
@@ -563,7 +610,7 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
                 theme="primary"
                 type="submit"
                 variant="contained"
-                onClick={() => onSave()}>
+                onClick={() => onSaveHandler()}>
                 <span>Deploy and Run</span>
               </Button>
               <Button
@@ -572,7 +619,7 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
                 theme="primary"
                 type="submit"
                 variant="contained"
-                onClick={() => onSave()}>
+                onClick={() => onSaveHandler()}>
                 <span>Deploy</span>
               </Button>
             </div>
