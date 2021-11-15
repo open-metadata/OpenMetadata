@@ -315,8 +315,8 @@ public class ChartResource {
                               @Parameter(description = "Id of the user to be added as follower",
                                       schema = @Schema(type = "string"))
                                       String userId) throws IOException, ParseException {
-    return dao.addFollower(securityContext.getUserPrincipal().getName(),
-            UUID.fromString(id), UUID.fromString(userId)).toResponse();
+    return dao.addFollower(securityContext.getUserPrincipal().getName(), UUID.fromString(id),
+            UUID.fromString(userId)).toResponse();
   }
 
   @DELETE

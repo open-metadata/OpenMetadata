@@ -252,6 +252,7 @@ public abstract class EntityRepository<T> {
     ChangeDescription change = new ChangeDescription().withPreviousVersion(entityInterface.getVersion());
     change.getFieldsAdded().add(new FieldChange().withName("followers")
             .withNewValue(List.of(Entity.getEntityReference(user))));
+
     ChangeEvent changeEvent = new ChangeEvent().withChangeDescription(change).withEventType(EventType.ENTITY_UPDATED)
             .withEntityType(entityName).withEntityId(entityId).withUserName(updatedBy)
             .withDateTime(new Date()).withCurrentVersion(entityInterface.getVersion())

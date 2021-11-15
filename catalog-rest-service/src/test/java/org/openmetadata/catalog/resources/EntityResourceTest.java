@@ -619,7 +619,8 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     validateCreatedEntity(getEntity, create, authHeaders);
 
     // Validate that change event was created
-    validateChangeEvents(entityInterface, EventType.ENTITY_CREATED, null, authHeaders);
+    validateChangeEvents(entityInterface, entityInterface.getUpdatedAt(), EventType.ENTITY_CREATED,
+            null, authHeaders);
     return entity;
   }
 
@@ -642,7 +643,8 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     if (updateType != NO_CHANGE) {
       EventType expectedEventType = updateType == UpdateType.CREATED ?
               EventType.ENTITY_CREATED : EventType.ENTITY_UPDATED;
-      validateChangeEvents(entityInterface, expectedEventType, changeDescription, authHeaders);
+      validateChangeEvents(entityInterface, entityInterface.getUpdatedAt(), expectedEventType, changeDescription,
+              authHeaders);
     }
     return updated;
   }
@@ -703,7 +705,8 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     if (updateType != NO_CHANGE) {
       EventType expectedEventType = updateType == UpdateType.CREATED ?
               EventType.ENTITY_CREATED : EventType.ENTITY_UPDATED;
-      validateChangeEvents(entityInterface, expectedEventType, expectedChange, authHeaders);
+      validateChangeEvents(entityInterface, entityInterface.getUpdatedAt(), expectedEventType, expectedChange,
+              authHeaders);
     }
     return returned;
   }
@@ -743,9 +746,11 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
    * and ensures entityCreate, entityUpdated, and entityDeleted change events are created in the system with
    * valid date.
    */
-  protected final void validateChangeEvents(EntityInterface<T> entityInterface, EventType expectedEventType,
+  protected final void validateChangeEvents(EntityInterface<T> entityInterface,
+                                            Date updateTime, EventType expectedEventType,
                                             ChangeDescription expectedChangeDescription,
                                             Map<String, String> authHeaders) throws IOException {
+    String updatedBy = TestUtils.getPrincipal(authHeaders);
     ResultList<ChangeEvent> changeEvents;
     ChangeEvent changeEvent = null;
 
@@ -753,12 +758,11 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     while (iteration < 10) {
       // Some times change event is not returned on quickly querying with a millisecond
       // Try multiple times before giving up
-      changeEvents = getChangeEvents(entityName, entityName, null,
-              entityInterface.getUpdatedAt(), authHeaders);
+      changeEvents = getChangeEvents(entityName, entityName, null, updateTime, authHeaders);
 
       assertTrue(changeEvents.getData().size() > 0);
       for (ChangeEvent event : changeEvents.getData()) {
-        if (event.getDateTime().getTime() == entityInterface.getUpdatedAt().getTime()) {
+        if (event.getDateTime().getTime() == updateTime.getTime()) {
           changeEvent = event;
           break;
         }
@@ -774,21 +778,21 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
       iteration++;
     }
 
-    LOG.info("Did not find change event {} {} {}", entityInterface.getUpdatedAt().getTime(), entityInterface.getId(),
+    LOG.info("Did not find change event {} {} {}", updateTime.getTime(), entityInterface.getId(),
             expectedEventType);
 
     assertNotNull(changeEvent, "Expected change event " + expectedEventType + " at "
-            + entityInterface.getUpdatedAt().getTime() + " was not found for entity " + entityInterface.getId());
+            + updateTime.getTime() + " was not found for entity " + entityInterface.getId());
 
-    // Top most changeEvent corresponds to the update
     assertEquals(expectedEventType, changeEvent.getEventType());
     assertEquals(entityName, changeEvent.getEntityType());
     assertEquals(entityInterface.getId(), changeEvent.getEntityId());
     assertEquals(entityInterface.getVersion(), changeEvent.getCurrentVersion());
-    assertEquals(entityInterface.getUpdatedBy(), changeEvent.getUserName());
+    assertEquals(updatedBy, changeEvent.getUserName());
 
+    //
     // previous, entity, changeDescription
-
+    //
     if (expectedEventType == EventType.ENTITY_CREATED) {
       assertEquals(changeEvent.getEventType(), EventType.ENTITY_CREATED);
       assertEquals(changeEvent.getPreviousVersion(), 0.1);
@@ -798,7 +802,6 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     } else if (expectedEventType == EventType.ENTITY_UPDATED) {
       assertNull(changeEvent.getEntity());
       assertChangeDescription(expectedChangeDescription, changeEvent.getChangeDescription());
-      assertEquals(entityInterface.getChangeDescription().getPreviousVersion(), changeEvent.getPreviousVersion());
     } else if (expectedEventType == EventType.ENTITY_DELETED) {
       assertNull(changeEvent.getEntity());
       assertNull(changeEvent.getChangeDescription());
@@ -900,9 +903,9 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
   }
 
   public void addAndCheckFollower(UUID entityId, UUID userId, Status status, int totalFollowerCount,
-                                  Map<String, String> authHeaders) throws HttpResponseException {
+                                  Map<String, String> authHeaders) throws IOException {
     WebTarget target = getFollowersCollection(entityId);
-    TestUtils.put(target, userId.toString(), status, authHeaders);
+    ChangeEvent event = TestUtils.put(target, userId.toString(), ChangeEvent.class, status, authHeaders);
 
     // GET .../entity/{entityId} returns newly added follower
     T getEntity = getEntity(entityId, authHeaders);
@@ -915,17 +918,26 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
 
     // GET .../users/{userId} shows user as following the entity
     checkUserFollowing(userId, entityId, true, authHeaders);
+
+    // Validate change events
+    validateChangeEvents(entityInterface, event.getDateTime(), EventType.ENTITY_UPDATED, event.getChangeDescription(),
+            authHeaders);
   }
 
   protected void deleteAndCheckFollower(UUID entityId, UUID userId, int totalFollowerCount,
-                                      Map<String, String> authHeaders) throws HttpResponseException {
+                                      Map<String, String> authHeaders) throws IOException {
     // Delete the follower
     WebTarget target = getFollowerResource(entityId, userId);
-    TestUtils.delete(target, authHeaders);
+    ChangeEvent change = TestUtils.delete(target, ChangeEvent.class, authHeaders);
 
     // Get the entity and ensure the deleted follower is not in the followers list
     T getEntity = checkFollowerDeleted(entityId, userId, authHeaders);
+    EntityInterface entityInterface = getEntityInterface(getEntity);
     assertEquals(totalFollowerCount, getEntityInterface(getEntity).getFollowers().size());
+
+    // Validate change events
+    validateChangeEvents(entityInterface, change.getDateTime(), EventType.ENTITY_UPDATED,
+            change.getChangeDescription(), authHeaders);
   }
 
   public T checkFollowerDeleted(UUID entityId, UUID userId, Map<String, String> authHeaders)
