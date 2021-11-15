@@ -12,6 +12,7 @@ from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.utils.atlas_client import AtlasClient, AtlasSourceConfig
+from metadata.utils.column_helpers import get_column_type
 from metadata.utils.helpers import get_database_service_or_create
 
 logger: logging.Logger = logging.getLogger(__name__)
@@ -105,12 +106,15 @@ class AtlasSource(Source):
         om_cols = []
         col_entities = tbl_entity["relationshipAttributes"]["columns"]
         referred_entities = table_response["referredEntities"]
+        dataset_name = tbl_entity["attributes"]["name"]
         ordinal_pos = 1
         for col in col_entities:
             col_guid = col["guid"]
             col_ref_entity = referred_entities[col_guid]
             column = col_ref_entity["attributes"]
-            data_type_display = column["dataType"].upper()
+            data_type_display = get_column_type(
+                self.status, dataset_name, column["dataType"].upper()
+            )
             col_data_length = "1"
             om_column = Column(
                 name=column["name"],
