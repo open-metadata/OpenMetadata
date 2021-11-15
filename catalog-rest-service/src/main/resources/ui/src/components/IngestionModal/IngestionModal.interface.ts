@@ -25,3 +25,13 @@ export interface IngestionModalProps {
   onSave: () => void;
   onCancel: () => void;
 }
+
+export interface ValidationErrorMsg {
+  selectService: boolean;
+  name: boolean;
+  username: boolean;
+  password: boolean;
+  ingestionType: boolean;
+  host: boolean;
+  database: boolean;
+}

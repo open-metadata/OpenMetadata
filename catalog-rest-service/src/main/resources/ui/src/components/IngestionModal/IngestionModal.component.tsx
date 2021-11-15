@@ -7,7 +7,18 @@ import CronEditor from '../common/CronEditor/CronEditor.component';
 import IngestionStepper from '../IngestionStepper/IngestionStepper.component';
 import { Steps } from '../IngestionStepper/IngestionStepper.interface';
 import './IngestionModal.css';
-import { IngestionModalProps } from './IngestionModal.interface';
+import {
+  IngestionModalProps,
+  ValidationErrorMsg,
+} from './IngestionModal.interface';
+
+const errorMsg = (value: string) => {
+  return (
+    <div className="tw-mt-1">
+      <strong className="tw-text-red-500 tw-text-xs tw-italic">{value}</strong>
+    </div>
+  );
+};
 
 const STEPS: Array<Steps> = [
   { name: 'Ingestion details', step: 1 },
@@ -15,11 +26,43 @@ const STEPS: Array<Steps> = [
   { name: 'Scheduling', step: 3 },
   { name: 'Review and Deploy', step: 4 },
 ];
+
 const requiredField = (label: string) => (
   <>
     {label} <span className="tw-text-red-500">&nbsp;*</span>
   </>
 );
+
+const Field = ({ children }: { children: React.ReactNode }) => {
+  return <div className="tw-mt-6">{children}</div>;
+};
+
+const PreviewSection = ({
+  header,
+  data,
+  className,
+}: {
+  header: string;
+  data: Array<{ key: string; value: string }>;
+  className: string;
+}) => {
+  return (
+    <div className={className}>
+      {/* <hr className="tw-border-separator" /> */}
+      <p className="preview-header tw-px-1">{header}</p>
+      <div className="tw-grid tw-gap-4 tw-grid-cols-3 tw-place-content-center tw-pl-6">
+        {data.map((d, i) => (
+          <div key={i}>
+            <p className="tw-text-xs tw-font-normal tw-text-grey-muted">
+              {d.key}
+            </p>
+            <p>{d.value}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
 
 const IngestionModal: React.FC<IngestionModalProps> = ({
   header,
@@ -65,36 +108,59 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
     schedule || '*/5 * * * *'
   );
 
-  const Field = ({ children }: { children: React.ReactNode }) => {
-    return <div className="tw-mt-6">{children}</div>;
+  const [showErrorMsg, setShowErrorMsg] = useState<ValidationErrorMsg>({
+    selectService: false,
+    name: false,
+    username: false,
+    password: false,
+    ingestionType: false,
+    host: false,
+    database: false,
+  });
+
+  const handleValidation = (
+    event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  ) => {
+    const value = event.target.value;
+    const name = event.target.name;
+    setShowErrorMsg({ ...showErrorMsg, [name]: !value });
+    switch (name) {
+      case 'name':
+        setIngestionName(value);
+
+        break;
+      case 'selectService':
+        setIngestionService(value);
+        setIngestionType('');
+
+        break;
+      case 'ingestionType':
+        setIngestionType(value);
+
+        break;
+      case 'username':
+        setUsername(value);
+
+        break;
+      case 'password':
+        setPassword(value);
+
+        break;
+      case 'host':
+        setHost(value);
+
+        break;
+      case 'database':
+        setDatabase(value);
+
+        break;
+
+      default:
+        break;
+    }
   };
 
-  const PreviewSection = ({
-    header,
-    data,
-    className,
-  }: {
-    header: string;
-    data: Array<{ key: string; value: string }>;
-    className: string;
-  }) => {
-    return (
-      <div className={className}>
-        {/* <hr className="tw-border-separator" /> */}
-        <p className="preview-header tw-px-1">{header}</p>
-        <div className="tw-grid tw-gap-4 tw-grid-cols-3 tw-place-content-center tw-pl-6">
-          {data.map((d, i) => (
-            <div key={i}>
-              <p className="tw-text-xs tw-font-normal tw-text-grey-muted">
-                {d.key}
-              </p>
-              <p>{d.value}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  };
+  // const forwardStepHandler = () => {};
 
   const getActiveStepFields = (activeStep: number) => {
     switch (activeStep) {
@@ -112,8 +178,9 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
                 placeholder="Ingestion name"
                 type="text"
                 value={ingestionName}
-                onChange={(e) => setIngestionName(e.target.value)}
+                onChange={handleValidation}
               />
+              {showErrorMsg.name && errorMsg('Ingestion Name is required')}
             </Field>
 
             <Field>
@@ -126,7 +193,7 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
                 id="selectService"
                 name="selectService"
                 value={ingestionService}
-                onChange={(e) => setIngestionService(e.target.value)}>
+                onChange={handleValidation}>
                 <option value="">Select Service</option>
                 {serviceList.map((service, index) => (
                   <option
@@ -136,6 +203,7 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
                   </option>
                 ))}
               </select>
+              {showErrorMsg.selectService && errorMsg('Service is required')}
             </Field>
             <Field>
               <label className="tw-block " htmlFor="ingestionType">
@@ -150,7 +218,7 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
                 id="ingestionType"
                 name="ingestionType"
                 value={ingestionType}
-                onChange={(e) => setIngestionType(e.target.value)}>
+                onChange={handleValidation}>
                 <option value="">Select ingestion type</option>
                 {(
                   getIngestionTypeList(ingestionService?.split('$$')?.[0]) || []
@@ -160,6 +228,8 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
                   </option>
                 ))}
               </select>
+              {showErrorMsg.ingestionType &&
+                errorMsg('Ingestion Type is required')}
             </Field>
           </Fragment>
         );
@@ -178,8 +248,9 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
                 placeholder="User name"
                 type="text"
                 value={username}
-                onChange={(e) => setUsername(e.target.value)}
+                onChange={handleValidation}
               />
+              {showErrorMsg.username && errorMsg('Username is required')}
             </Field>
             <Field>
               <label className="tw-block" htmlFor="password">
@@ -192,8 +263,9 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
                 placeholder="Password"
                 type="password"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={handleValidation}
               />
+              {showErrorMsg.password && errorMsg('Password is required')}
             </Field>
             <Field>
               <label className="tw-block" htmlFor="host">
@@ -206,8 +278,9 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
                 placeholder="Host"
                 type="text"
                 value={host}
-                onChange={(e) => setHost(e.target.value)}
+                onChange={handleValidation}
               />
+              {showErrorMsg.host && errorMsg('Host is required')}
             </Field>
             <Field>
               <label className="tw-block" htmlFor="database">
@@ -220,8 +293,9 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
                 placeholder="Database"
                 type="text"
                 value={database}
-                onChange={(e) => setDatabase(e.target.value)}
+                onChange={handleValidation}
               />
+              {showErrorMsg.database && errorMsg('Database is required')}
             </Field>
             <Field>
               <label className="tw-block" htmlFor="includeFilterPattern">
