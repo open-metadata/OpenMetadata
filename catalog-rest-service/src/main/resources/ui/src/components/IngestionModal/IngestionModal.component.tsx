@@ -1,5 +1,4 @@
 import classNames from 'classnames';
-import { capitalize } from 'lodash';
 import React, { Fragment, useState } from 'react';
 // import { serviceTypes } from '../../constants/services.const';
 import { getIngestionTypeList } from '../../utils/ServiceUtils';
@@ -130,8 +129,10 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
                 onChange={(e) => setIngestionService(e.target.value)}>
                 <option value="">Select Service</option>
                 {serviceList.map((service, index) => (
-                  <option key={index} value={service.serviceType}>
-                    {capitalize(service.name)}
+                  <option
+                    key={index}
+                    value={`${service.serviceType}$$${service.name}`}>
+                    {service.name}
                   </option>
                 ))}
               </select>
@@ -141,20 +142,23 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
                 {requiredField('Type of ingestion:')}
               </label>
               <select
-                className="tw-form-inputs tw-px-3 tw-py-1"
+                className={classNames('tw-form-inputs tw-px-3 tw-py-1', {
+                  'tw-cursor-not-allowed': !ingestionService,
+                })}
                 data-testid="selectService"
+                disabled={!ingestionService}
                 id="ingestionType"
                 name="ingestionType"
                 value={ingestionType}
                 onChange={(e) => setIngestionType(e.target.value)}>
                 <option value="">Select ingestion type</option>
-                {(getIngestionTypeList(ingestionService) || []).map(
-                  (service, index) => (
-                    <option key={index} value={service}>
-                      {service}
-                    </option>
-                  )
-                )}
+                {(
+                  getIngestionTypeList(ingestionService?.split('$$')?.[0]) || []
+                ).map((service, index) => (
+                  <option key={index} value={service}>
+                    {service}
+                  </option>
+                ))}
               </select>
             </Field>
           </Fragment>
@@ -221,13 +225,13 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
             </Field>
             <Field>
               <label className="tw-block" htmlFor="includeFilterPattern">
-                Include Filter Pattern:
+                Include Filter Patterns:
               </label>
               <input
                 className="tw-form-inputs tw-px-3 tw-py-1"
                 id="includeFilterPattern"
                 name="includeFilterPattern"
-                placeholder="Include filter pattern comma seperated"
+                placeholder="Include filter patterns comma seperated"
                 type="text"
                 value={includeFilterPattern}
                 onChange={(e) => setIncludeFilterPattern([e.target.value])}
@@ -235,13 +239,13 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
             </Field>
             <Field>
               <label className="tw-block" htmlFor="excludeFilterPattern">
-                Exclude Filter Pattern:
+                Exclude Filter Patterns:
               </label>
               <input
                 className="tw-form-inputs tw-px-3 tw-py-1"
                 id="excludeFilterPattern"
                 name="excludeFilterPattern"
-                placeholder="Exclude filter pattern comma seperated"
+                placeholder="Exclude filter patterns comma seperated"
                 type="text"
                 value={excludeFilterPattern}
                 onChange={(e) => setExcludeFilterPattern([e.target.value])}
@@ -283,7 +287,7 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
             <div className="">
               <CronEditor
                 className="tw-mt-10"
-                defaultValue={schedule}
+                defaultValue={ingestionSchedule}
                 onChangeHandler={(v) => setIngestionSchedule(v)}>
                 <input
                   className="tw-form-inputs tw-px-3 tw-py-1"
@@ -291,7 +295,7 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
                   name="schedule"
                   type="text"
                   value={ingestionSchedule}
-                  // onChange={(e) => setSiteName(e.target.value)}
+                  onChange={(e) => setIngestionSchedule(e.target.value)}
                 />
                 <p className="tw-text-grey-muted tw-text-xs tw-mt-1">
                   Note : Time formate is in UTC
@@ -399,7 +403,7 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
               type="submit"
               variant="contained"
               onClick={() => onSave()}>
-              <span>Save</span>
+              <span>Deploy</span>
             </Button>
           ) : (
             <Button

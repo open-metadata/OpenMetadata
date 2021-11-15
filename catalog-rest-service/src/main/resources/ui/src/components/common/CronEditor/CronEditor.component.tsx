@@ -1,6 +1,6 @@
 import { Divider } from 'antd';
 import 'antd/dist/antd.css';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import Cron from 'react-js-cron';
 
 type Props = {
@@ -23,6 +23,10 @@ const CronEditor = ({
     setValue(newValue);
     onChangeHandler?.(newValue);
   }, []);
+
+  useEffect(() => {
+    setValue(defaultValue);
+  }, [defaultValue]);
 
   return (
     <div className={className}>
