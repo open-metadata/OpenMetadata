@@ -7,6 +7,6 @@ RUN apt-get update -y && \
     rm -rf /var/lib/apt/lists/*
 COPY openmetadata-start.sh /
 COPY openmetadata.yaml /
-RUN wget https://github.com/open-metadata/OpenMetadata/releases/download/0.5.0/openmetadata-0.5.0.tar.gz
+RUN wget https://github.com/open-metadata/OpenMetadata/releases/download/0.6.0/openmetadata-0.6.0.tar.gz
 RUN chmod 777 openmetadata-start.sh && tar zxvf openmetadata-*.tar.gz
 CMD ["./openmetadata-start.sh"]
