@@ -26,9 +26,17 @@
 .tw-link:hover {
   text-decoration: none !important;
 }
-.pagination > .disabled > .tw-link,
+.pagination > .disabled > .tw-link {
+  cursor: not-allowed;
+  color: #7147e8;
+}
+
 .pagination > .disabled > .tw-link:hover,
 .pagination > .disabled > .tw-link:focus {
   cursor: not-allowed;
-  color: #7147e8;
+  color: white;
+}
+.pagination > li > .tw-link:hover,
+.pagination > li > .tw-link:focus {
+  color: white;
 }
