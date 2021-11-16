@@ -8,6 +8,7 @@ import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.services.CreateStorageService;
 import org.openmetadata.catalog.api.services.UpdateStorageService;
 import org.openmetadata.catalog.entity.services.StorageService;
+import org.openmetadata.catalog.type.StorageServiceType;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.TestUtils;
@@ -160,12 +161,12 @@ public class StorageServiceResourceTest extends CatalogApplicationTest {
     
     public static CreateStorageService create(TestInfo test) {
         return new CreateStorageService().withName(getName(test))
-                .withServiceType(CreateStorageService.StorageServiceType.S3);
+                .withServiceType(StorageServiceType.S3);
     }
 
     private static CreateStorageService create(TestInfo test, int index) {
         return new CreateStorageService().withName(getName(test, index))
-                .withServiceType(CreateStorageService.StorageServiceType.S3);
+                .withServiceType(StorageServiceType.S3);
     }
 
     public static String getName(TestInfo test) {

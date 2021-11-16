@@ -1,0 +1,150 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/type/storage.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "description": "Definitions related to Storage Service",
+  "definitions": {
+    "storageServiceType": {
+      "description": "Type of storage service such as S3, GCS, HDFS...",
+      "type": "string",
+      "javaType": "org.openmetadata.catalog.type.StorageServiceType",
+      "enum": [
+        "S3",
+        "GCS",
+        "HDFS",
+        "ABFS"
+      ],
+      "javaEnums": [
+        {
+          "name": "S3"
+        },
+        {
+          "name": "GCS"
+        },
+        {
+          "name": "HDFS"
+        },
+        {
+          "name": "ABFS"
+        }
+      ]
+    },
+    "storageClassType": {
+      "description": "Type of storage class for the storage service",
+      "type": "string",
+      "javaType": "org.openmetadata.catalog.type.StorageClassType",
+      "oneOf": [
+        {
+          "$ref": "#/definitions/s3StorageClass"
+        },
+        {
+          "$ref": "#/definitions/gcsStorageClass"
+        },
+        {
+          "$ref": "#/definitions/abfsStorageClass"
+        }
+      ]
+    },
+    "s3StorageClass": {
+      "$comment": "https://sdk.amazonaws.com/java/api/latest/software/amazon/awssdk/services/s3/model/StorageClass.html",
+      "description": "Type of storage class offered by S3",
+      "type": "string",
+      "javaType": "org.openmetadata.catalog.type.S3StorageClassType",
+      "enum": [
+        "DEEP_ARCHIVE",
+        "GLACIER",
+        "INTELLIGENT_TIERING",
+        "ONEZONE_IA",
+        "OUTPOSTS",
+        "REDUCED_REDUNDANCY",
+        "STANDARD",
+        "STANDARD_IA"
+      ],
+      "javaEnums": [
+        {
+          "name": "DEEP_ARCHIVE"
+        },
+        {
+          "name": "GLACIER"
+        },
+        {
+          "name": "INTELLIGENT_TIERING"
+        },
+        {
+          "name": "ONEZONE_IA"
+        },
+        {
+          "name": "OUTPOSTS"
+        },
+        {
+          "name": "REDUCED_REDUNDANCY"
+        },
+        {
+          "name": "STANDARD"
+        },
+        {
+          "name": "STANDARD_IA"
+        }
+      ]
+    },
+    "gcsStorageClass": {
+      "$comment": "https://googleapis.dev/java/google-cloud-storage/latest/index.html",
+      "description": "Type of storage class offered by GCS",
+      "type": "string",
+      "javaType": "org.openmetadata.catalog.type.GCSStorageClassType",
+      "enum": [
+        "ARCHIVE",
+        "COLDLINE",
+        "DURABLE_REDUCED_AVAILABILITY",
+        "MULTI_REGIONAL",
+        "NEARLINE",
+        "REGIONAL",
+        "STANDARD"
+      ],
+      "javaEnums": [
+        {
+          "name": "ARCHIVE"
+        },
+        {
+          "name": "COLDLINE"
+        },
+        {
+          "name": "DURABLE_REDUCED_AVAILABILITY"
+        },
+        {
+          "name": "MULTI_REGIONAL"
+        },
+        {
+          "name": "NEARLINE"
+        },
+        {
+          "name": "REGIONAL"
+        },
+        {
+          "name": "STANDARD"
+        }
+      ]
+    },
+    "abfsStorageClass": {
+      "$comment": "https://docs.microsoft.com/en-us/java/api/com.azure.storage.blob.models.accesstier?view=azure-java-stable",
+      "description": "Type of storage class offered by ABFS",
+      "type": "string",
+      "javaType": "org.openmetadata.catalog.type.ABFSStorageClassType",
+      "enum": [
+        "ARCHIVE",
+        "HOT",
+        "COOL"
+      ],
+      "javaEnums": [
+        {
+          "name": "ARCHIVE"
+        },
+        {
+          "name": "HOT"
+        },
+        {
+          "name": "COOL"
+        }
+      ]
+    }
+  }
+}

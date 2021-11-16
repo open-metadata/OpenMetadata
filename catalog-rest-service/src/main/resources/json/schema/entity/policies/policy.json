@@ -1,5 +1,5 @@
 {
-  "$id": "https://open-metadata.org/schema/entity/data/policy.json",
+  "$id": "https://open-metadata.org/schema/entity/data/policies/policy.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Policy",
   "description": "This schema defines the Policy entity. A Policy defines lifecycle or access control that needs to be applied across different Data Entities.",
@@ -71,21 +71,36 @@
       "type": "boolean",
       "default": true
     },
-    "version" : {
+    "version": {
       "description": "Metadata version of the Policy.",
       "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
     },
-    "updatedAt" : {
+    "updatedAt": {
       "description": "Last update time corresponding to the new version of the Policy.",
       "$ref": "../../type/basic.json#/definitions/dateTime"
     },
-    "updatedBy" : {
+    "updatedBy": {
       "description": "User who made the update.",
       "type": "string"
     },
     "changeDescription": {
-      "description" : "Change that led to this version of the entity.",
+      "description": "Change that led to this version of the Policy.",
       "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "rules": {
+      "description": "A set of rules associated with this Policy.",
+      "type": "array",
+      "minLength": 1,
+      "items": {
+        "anyOf": [
+          {
+            "$ref": "accessControl/rule.json"
+          },
+          {
+            "$ref": "lifecycle/rule.json"
+          }
+        ]
+      }
     }
   },
   "required": [
