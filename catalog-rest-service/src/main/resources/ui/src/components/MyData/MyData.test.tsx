@@ -252,7 +252,6 @@ jest.mock('../../utils/ServiceUtils', () => ({
 }));
 
 const fetchData = jest.fn();
-const errorHandler = jest.fn();
 
 describe('Test MyData page', () => {
   it('Check if there is an element in the page', async () => {
@@ -266,10 +265,8 @@ describe('Test MyData page', () => {
           pipelineCount: 1,
         }}
         error=""
-        errorHandler={errorHandler}
         fetchData={fetchData}
-        rejectedResult={[]}
-        searchResult={[mockData] as unknown as SearchResponse[]}
+        searchResult={mockData as unknown as SearchResponse}
         userDetails={mockUserDetails as unknown as User}
       />,
       {
