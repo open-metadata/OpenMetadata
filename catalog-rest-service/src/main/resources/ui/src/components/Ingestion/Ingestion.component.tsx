@@ -1,8 +1,8 @@
 import classNames from 'classnames';
 import cronstrue from 'cronstrue';
 import { compare } from 'fast-json-patch';
-import { capitalize } from 'lodash';
-import React, { useState } from 'react';
+import { capitalize, lowerCase } from 'lodash';
+import React, { useCallback, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   getServiceDetailsPath,
@@ -148,6 +148,18 @@ const Ingestion: React.FC<Props> = ({
     );
   };
 
+  const getSearchedIngestions = useCallback(() => {
+    const sText = lowerCase(searchText);
+
+    return sText
+      ? ingestionList.filter(
+          (ing) =>
+            lowerCase(ing.displayName).includes(sText) ||
+            lowerCase(ing.name).includes(sText)
+        )
+      : ingestionList;
+  }, [searchText, ingestionList]);
+
   const getStatuses = (ingestion: IngestionData) => {
     const lastFiveIngestions = ingestion.ingestionStatuses
       ?.sort((a, b) => {
@@ -236,7 +248,7 @@ const Ingestion: React.FC<Props> = ({
               </tr>
             </thead>
             <tbody className="tableBody">
-              {ingestionList.map((ingestion, index) => (
+              {getSearchedIngestions().map((ingestion, index) => (
                 <tr
                   className={classNames(
                     'tableBody-row',
