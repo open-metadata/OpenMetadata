@@ -18,7 +18,6 @@ package org.openmetadata.catalog.jdbi3;
 
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
-import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.operations.workflows.Ingestion;
 import org.openmetadata.catalog.resources.operations.IngestionResource;
