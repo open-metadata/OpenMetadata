@@ -21,7 +21,8 @@
         "Presto",
         "Trino",
         "Vertica",
-        "Glue"
+        "Glue",
+        "MariaDB"
       ],
       "javaEnums": [
         {
@@ -62,6 +63,9 @@
         },
         {
           "name": "Glue"
+        },
+        {
+          "name": "MariaDB"
         }
       ]
     }
