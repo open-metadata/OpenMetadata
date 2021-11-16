@@ -375,7 +375,7 @@ const Ingestion: React.FC<Props> = ({
       {isUpdating ? (
         <IngestionModal
           isUpdating
-          header={<p>{`Update Ingestion ${updateSelection.name}`}</p>}
+          header={<p>{`Edit ${updateSelection.name}`}</p>}
           ingestionList={ingestionList}
           selectedIngestion={updateSelection.ingestion}
           serviceList={serviceList.map((s) => ({

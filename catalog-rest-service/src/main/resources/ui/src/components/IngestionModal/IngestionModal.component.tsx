@@ -5,6 +5,7 @@ import { CronError } from 'react-js-cron';
 import { IngestionType } from '../../enums/service.enum';
 // import { serviceTypes } from '../../constants/services.const';
 import { getIngestionTypeList } from '../../utils/ServiceUtils';
+import SVGIcons from '../../utils/SvgUtils';
 import { Button } from '../buttons/Button/Button';
 import CronEditor from '../common/CronEditor/CronEditor.component';
 import IngestionStepper from '../IngestionStepper/IngestionStepper.component';
@@ -298,11 +299,7 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
               />
               {showErrorMsg.name && errorMsg('Ingestion Name is required')}
               {showErrorMsg.isPipelineNameExists &&
-                errorMsg(
-                  `Ingestion with name ${getIngestionName(
-                    ingestionName
-                  )} already exists.`
-                )}
+                errorMsg(`Ingestion with similar name already exists.`)}
             </Field>
 
             <Field>
@@ -678,7 +675,8 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
                 type="submit"
                 variant="contained"
                 onClick={() => onSaveHandler()}>
-                <span>Deploy</span>
+                <span className="tw-mr-2">Deploy</span>
+                <SVGIcons alt="Deploy" icon="icon-deploy" />
               </Button>
             </div>
           ) : (
