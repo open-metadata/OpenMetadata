@@ -143,7 +143,7 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
     selectedIngestion?.connectorConfig?.includeViews || true
   );
   const [excludeDataProfiler, setExcludeDataProfiler] = useState<boolean>(
-    selectedIngestion?.connectorConfig?.excludeDataProfiler || false
+    selectedIngestion?.connectorConfig?.enableDataProfiler || false
   );
 
   const [ingestionSchedule, setIngestionSchedule] = useState<string>(
