@@ -26,6 +26,6 @@ airflow users create \
     --password admin
 airflow db upgrade
 (while ! wget -O /dev/null -o /dev/null http://ingestion:8080; do sleep 5; done; sleep 5; curl -u admin:admin --data '{"dag_run_id":"sample_data_1"}' -H "Content-type: application/json" -X POST http://ingestion:8080/api/v1/dags/sample_data/dagRuns) &
-(while ! wget -O /dev/null -o /dev/null http://ingestion:8080; do sleep 5; done; sleep 6; curl -u admin:admin --data '{"dag_run_id":"sample_usage_1"}' -H "Content-type: application/json" -X POST http://ingestion:8080/api/v1/dags/sample_usage/dagRuns) &
-(while ! wget -O /dev/null -o /dev/null http://ingestion:8080; do sleep 5; done; sleep 7; curl -u admin:admin --data '{"dag_run_id":"index_metadata_1"}' -H "Content-type: application/json" -X POST http://ingestion:8080/api/v1/dags/index_metadata/dagRuns) &
+(while ! wget -O /dev/null -o /dev/null http://localhost:8585/api/v1/tables/name/bigquery.shopify.fact_sale; do sleep 5; done; sleep 6; curl -u admin:admin --data '{"dag_run_id":"sample_usage_1"}' -H "Content-type: application/json" -X POST http://ingestion:8080/api/v1/dags/sample_usage/dagRuns) &
+(while ! wget -O /dev/null -o /dev/null http://localhost:8585/api/v1/tables/name/bigquery.shopify.fact_sale; do sleep 5; done; sleep 7; curl -u admin:admin --data '{"dag_run_id":"index_metadata_1"}' -H "Content-type: application/json" -X POST http://ingestion:8080/api/v1/dags/index_metadata/dagRuns) &
 airflow standalone

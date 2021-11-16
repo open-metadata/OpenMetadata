@@ -337,7 +337,7 @@ class OpenMetadata(OMetaLineageMixin, OMetaTableMixin, Generic[T, C]):
             return entity(**resp)
         except APIError as err:
             logger.error(
-                f"Error {err.status_code} trying to GET {entity.__class__.__name__} for {path}"
+                f"Creating new {entity.__class__.__name__} for {path}. Error {err.status_code}"
             )
             return None
 
