@@ -32,6 +32,7 @@ import org.openmetadata.catalog.entity.data.Database;
 import org.openmetadata.catalog.entity.data.Location;
 import org.openmetadata.catalog.entity.data.MLModel;
 import org.openmetadata.catalog.entity.data.Metrics;
+import org.openmetadata.catalog.entity.data.Model;
 import org.openmetadata.catalog.entity.data.Pipeline;
 import org.openmetadata.catalog.entity.data.Report;
 import org.openmetadata.catalog.entity.data.Table;
@@ -56,6 +57,7 @@ import org.openmetadata.catalog.jdbi3.LocationRepository.LocationEntityInterface
 import org.openmetadata.catalog.jdbi3.MessagingServiceRepository.MessagingServiceEntityInterface;
 import org.openmetadata.catalog.jdbi3.MetricsRepository.MetricsEntityInterface;
 import org.openmetadata.catalog.jdbi3.MLModelRepository.MLModelEntityInterface;
+import org.openmetadata.catalog.jdbi3.ModelRepository.ModelEntityInterface;
 import org.openmetadata.catalog.jdbi3.PipelineRepository.PipelineEntityInterface;
 import org.openmetadata.catalog.jdbi3.PipelineServiceRepository.PipelineServiceEntityInterface;
 import org.openmetadata.catalog.jdbi3.PolicyRepository.PolicyEntityInterface;
@@ -122,6 +124,9 @@ public interface CollectionDAO {
 
   @CreateSqlObject
   TopicDAO topicDAO();
+
+  @CreateSqlObject
+  ModelDAO modelDAO();
 
   @CreateSqlObject
   MLModelDAO mlModelDAO();
@@ -504,6 +509,22 @@ public interface CollectionDAO {
     @Override
     default EntityReference getEntityReference(MLModel entity) {
       return new MLModelEntityInterface(entity).getEntityReference();
+    }
+  }
+
+  interface ModelDAO extends EntityDAO<Model>{
+    @Override
+    default String getTableName() { return "model_entity"; }
+
+    @Override
+    default Class<Model> getEntityClass() { return Model.class; }
+
+    @Override
+    default String getNameColumn() { return "fullyQualifiedName"; }
+
+    @Override
+    default EntityReference getEntityReference(Model entity) {
+      return new ModelEntityInterface(entity).getEntityReference();
     }
   }
 

@@ -1,0 +1,166 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/data/model.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Model",
+  "description": "This schema defines the Model entity. A Model organizes data modeling details , sql and columns ",
+  "type": "object",
+  "javaType": "org.openmetadata.catalog.entity.data.Model",
+  "definitions": {
+    "nodeType": {
+      "javaType": "org.openmetadata.catalog.type.NodeType",
+      "description": "This schema defines the type used for describing different types of Nodes.",
+      "type": "string",
+      "enum": [
+        "Seed",
+        "Model"
+      ],
+      "javaEnums": [
+        {
+          "name": "Seed"
+        },
+        {
+          "name": "Model"
+        }
+      ]
+    },
+    "catalogType": {
+      "javaType": "org.openmetadata.catalog.type.CatalogType",
+      "description": "This schema defines the type used for describing different catalog type.",
+      "type": "string",
+      "enum": [
+        "BaseTable"
+      ],
+      "javaEnums": [
+        {
+          "name": "BaseTable"
+        }
+      ]
+    },
+    "materializationType": {
+      "javaType": "org.openmetadata.catalog.type.MaterializationType",
+      "description": "This schema defines the type used for describing different materialization type.",
+      "type": "string",
+      "enum": [
+        "Table",
+        "Seed"
+      ],
+      "javaEnums": [
+        {
+          "name": "BaseTable"
+        }
+      ]
+    },
+    "modelName": {
+      "description": "Local name (not fully qualified name) of a table.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "pattern": "^[^.]*$"
+    },
+    "fullyQualifiedColumnName": {
+      "description": "Fully qualified name of the column that includes `serviceName.databaseName.tableName.columnName[.nestedColumnName]`. When columnName is null for dataType struct fields, `field_#` where `#` is field index is used. For map dataType, for key the field name `key` is used and for the value field `value` is used.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    }
+  },
+  "properties": {
+    "id": {
+      "description": "Unique identifier of this model instance.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "description": "Name of a model. Expected to be unique within a database.",
+      "$ref": "#/definitions/modelName"
+    },
+    "displayName": {
+      "description": "Display Name that identifies this model. It could be title or label from the source services.",
+      "type": "string"
+    },
+    "fullyQualifiedName": {
+      "description": "Fully qualified name of a model in the form `serviceName.databaseName.modelName`.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of a model.",
+      "type": "string"
+    },
+    "version" : {
+      "description": "Metadata version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
+    },
+    "updatedAt" : {
+      "description": "Last update time corresponding to the new version of the entity.",
+      "$ref": "../../type/basic.json#/definitions/dateTime"
+    },
+    "updatedBy" : {
+      "description": "User who made the update.",
+      "type": "string"
+    },
+    "href": {
+      "description": "Link to this table resource.",
+      "$ref": "../../type/basic.json#/definitions/href"
+    },
+    "nodeType": {
+      "$ref": "#/definitions/nodeType"
+    },
+    "catalogType": {
+      "$ref": "#/definitions/catalogType"
+    },
+    "materializationType": {
+      "$ref": "#/definitions/materializationType"
+    },
+    "columns": {
+      "description": "Columns in this table.",
+      "type": "array",
+      "items": {
+        "$ref": "./table.json#/definitions/column"
+      },
+      "default": null
+    },
+    "owner": {
+      "description": "Owner of this table.",
+      "$ref": "../../type/entityReference.json",
+      "default": null
+    },
+    "database": {
+      "description": "Reference to Database that contains this table.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "location": {
+      "description": "Reference to the Location that contains this table.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "viewDefinition": {
+      "description": "View Definition in SQL. Applies to TableType.View only.",
+      "$ref": "../../type/basic.json#/definitions/sqlQuery"
+    },
+    "tags": {
+      "description": "Tags for this table.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      },
+      "default": null
+    },
+    "usageSummary": {
+      "description": "Latest usage information for this table.",
+      "$ref": "../../type/usageDetails.json",
+      "default": null
+    },
+    "followers": {
+      "description": "Followers of this table.",
+      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+    },
+    "changeDescription": {
+      "description" : "Change that lead to this version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    }
+  },
+  "required": [
+    "id",
+    "name",
+    "columns"
+  ],
+  "additionalProperties": false
+}

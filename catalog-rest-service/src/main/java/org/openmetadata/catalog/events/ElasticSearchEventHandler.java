@@ -18,7 +18,6 @@ package org.openmetadata.catalog.events;
 
 import lombok.Builder;
 import lombok.Getter;
-import lombok.Setter;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.http.HttpHost;
 import org.apache.http.auth.AuthScope;
@@ -32,6 +31,8 @@ import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.client.RestClient;
 import org.elasticsearch.client.RestClientBuilder;
 import org.elasticsearch.client.RestHighLevelClient;
+import org.elasticsearch.script.Script;
+import org.elasticsearch.script.ScriptType;
 import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.ElasticSearchConfiguration;
@@ -40,8 +41,11 @@ import org.openmetadata.catalog.entity.data.Dashboard;
 import org.openmetadata.catalog.entity.data.Pipeline;
 import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.entity.data.Topic;
+import org.openmetadata.catalog.type.ChangeDescription;
+import org.openmetadata.catalog.type.ChangeEvent;
 import org.openmetadata.catalog.type.Column;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.type.TagLabel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -55,8 +59,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
+
 
 public class ElasticSearchEventHandler implements EventHandler {
   private static final Logger LOG = LoggerFactory.getLogger(AuditEventHandler.class);
@@ -91,6 +97,7 @@ public class ElasticSearchEventHandler implements EventHandler {
                       ContainerResponseContext responseContext) {
     try {
       LOG.info("request Context "+ requestContext.toString());
+      String changeEventClazz = ChangeEvent.class.toString();
       if (responseContext.getEntity() != null) {
         Object entity = responseContext.getEntity();
         UpdateRequest updateRequest = null;
@@ -107,6 +114,9 @@ public class ElasticSearchEventHandler implements EventHandler {
         }  else if (entityClass.toLowerCase().endsWith(Entity.PIPELINE.toLowerCase())) {
           Pipeline instance = (Pipeline) entity;
           updateRequest = updatePipeline(instance);
+        } else if (entityClass.toLowerCase().equalsIgnoreCase(ChangeEvent.class.toString())) {
+          ChangeEvent changeEvent = (ChangeEvent) entity;
+          updateRequest = applyChangeEvent(changeEvent);
         }
         if (updateRequest != null) {
           client.updateAsync(updateRequest, RequestOptions.DEFAULT, listener);
@@ -116,6 +126,49 @@ public class ElasticSearchEventHandler implements EventHandler {
       LOG.error("failed to update ES doc", e);
     }
     return null;
+  }
+
+  private UpdateRequest applyChangeEvent(ChangeEvent event) {
+    String entityType = event.getEntityType();
+    String esIndex = getESIndex(entityType);
+    UUID entityId = event.getEntityId();
+    ChangeDescription changeDescription = event.getChangeDescription();
+    List<FieldChange> fieldsAdded = changeDescription.getFieldsAdded();
+    StringBuilder scriptTxt = new StringBuilder();
+    Map<String, Object> fieldAddParams = new HashMap<>();
+    for (FieldChange fieldChange: fieldsAdded) {
+      if (fieldChange.getName().equalsIgnoreCase("followers")) {
+        List<EntityReference> entityReferences = (List<EntityReference>) fieldChange.getNewValue();
+        List<String> newFollowers = new ArrayList<>();
+        for (EntityReference follower : entityReferences) {
+          newFollowers.add(follower.getId().toString());
+        }
+        fieldAddParams.put(fieldChange.getName(), newFollowers);
+        scriptTxt.append("ctx._source.followers.addAll(params.followers);");
+      }
+    }
+
+    for (FieldChange fieldChange: changeDescription.getFieldsDeleted()) {
+      if (fieldChange.getName().equalsIgnoreCase("followers")) {
+        List<EntityReference> entityReferences = (List<EntityReference>) fieldChange.getOldValue();
+        for (EntityReference follower : entityReferences) {
+          fieldAddParams.put(fieldChange.getName(), follower.getId().toString());
+        }
+
+        scriptTxt.append("ctx._source.followers.removeAll(Collections.singleton(params.followers))");
+      }
+    }
+
+    if (!scriptTxt.toString().isEmpty()) {
+      Script script = new Script(ScriptType.INLINE, "painless",
+          scriptTxt.toString(),
+          fieldAddParams);
+      UpdateRequest updateRequest = new UpdateRequest(esIndex, entityId.toString());
+      updateRequest.script(script);
+      return updateRequest;
+    } else {
+      return null;
+    }
   }
 
   private UpdateRequest updateTable(Table instance) {
@@ -334,6 +387,18 @@ public class ElasticSearchEventHandler implements EventHandler {
     return flattenColumns;
   }
 
+  private String getESIndex(String type) {
+    if (type.toLowerCase().equals("table")) {
+      return "table_search_index";
+    } else if (type.equalsIgnoreCase("dashboard")) {
+      return "dashboard_search_index";
+    } else if (type.equalsIgnoreCase("pipeline")) {
+      return "pipeline_search_index";
+    } else if (type.equalsIgnoreCase("topic")) {
+      return "topic_search_index";
+    }
+    throw new RuntimeException("Failed to find index doc for type {}".format(type));
+  }
   @Getter
   @Builder
   public static class FlattenColumn {
