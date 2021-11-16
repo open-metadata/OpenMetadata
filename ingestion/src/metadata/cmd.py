@@ -25,13 +25,6 @@ import click
 import requests as requests
 from pydantic import ValidationError
 
-try:
-    import docker as sys_docker
-except ImportError:
-    raise ImportError(
-        "docker package not found, can you try `pip install 'openmetadata-ingestion[docker]'`"
-    )
-
 from metadata.config.common import load_config_file
 from metadata.ingestion.api.workflow import Workflow
 
@@ -151,7 +144,7 @@ def get_list(docker_type, all_check: bool = None):
 
 
 @metadata.command()
-@click.option("--run", help="Start release Docker containers", is_flag=True)
+@click.option("--start", help="Start release Docker containers", is_flag=True)
 @click.option("--stop", help="Stop Docker containers (local and release)", is_flag=True)
 @click.option(
     "--clean",
@@ -172,24 +165,20 @@ def get_list(docker_type, all_check: bool = None):
     type=click.Path(exists=True, dir_okay=False),
     required=False,
 )
-def docker(run, stop, clean, type, path) -> None:
+def docker(start, stop, clean, type, path) -> None:
     """
     Checks Docker Memory Allocation
     Run Latest Release Docker - metadata docker --run
     Run Local Docker - metadata docker --run -t local -p path/to/docker-compose.yml
     """
     try:
-        try:
-            client = sys_docker.from_env()
-        except sys_docker.errors.DockerException as err:
-            logger.error(f"Error: Docker service is not up and running. {err}")
+        import docker as sys_docker
+
+        client = sys_docker.from_env()
         docker_info = client.info()
         if docker_info["MemTotal"] < min_memory_limit:
-            raise MemoryError(
-                f"Please Allocate More memory to Docker.\nRecommended: 4GB\nCurrent: "
-                f"{round(float(docker_info['MemTotal']) / calc_gb, 2)}"
-            )
-        if run:
+            raise MemoryError
+        if start:
             if type == "local":
                 logger.info("Running Local Docker")
                 if path == "":
@@ -219,6 +208,30 @@ def docker(run, stop, clean, type, path) -> None:
                 logger.info(
                     f"Time took to get containers running: {str(timedelta(seconds=elapsed))}"
                 )
+            subprocess.run(
+                """
+                    while ! wget -O /dev/null -o /dev/null 
+                    \ http://localhost:8585/api/v1/tables/name/bigquery.shopify.dim_address; do 
+                        printf '.'
+                        sleep 2
+                    done
+                """,
+                shell=True,
+            )
+            click.secho(
+                "✔ OpenMetadata is up and running",
+                fg="bright_green",
+            )
+            click.secho(
+                """\nHead to http://localhost:8585 to play around with OpenMetadata UI.
+                \nTo checkout Ingestion via Airflow, go to http://localhost:8080 \n(username: admin, password: admin)
+                """,
+                fg="bright_white",
+            )
+            click.secho(
+                "Need support? Get in touch on Slack: https://slack.open-metadata.org/",
+                fg="bright_magenta",
+            )
         elif stop:
             for container in get_list(client.containers):
                 logger.info(f"Stopping {container.name}")
@@ -233,11 +246,24 @@ def docker(run, stop, clean, type, path) -> None:
             logger.info("Removing Networks")
             for network in get_list(client.networks):
                 network.remove()
+    except (ImportError, ModuleNotFoundError):
+        click.secho(
+            "Docker package not found, can you try `pip install 'openmetadata-ingestion[docker]'`",
+            fg="yellow",
+        )
+    except MemoryError:
+        click.secho(
+            f"Please Allocate More memory to Docker.\nRecommended: 4GB\nCurrent: "
+            f"{round(float(docker_info['MemTotal']) / calc_gb, 2)}",
+            fg="red",
+        )
 
+    except sys_docker.errors.DockerException as err:
+        click.secho(f"Error: Docker service is not up and running. {err}", fg="red")
     except Exception as err:
         logger.error(traceback.format_exc())
         logger.error(traceback.print_exc())
-        logger.error(repr(err))
+        click.secho(str(err), fg="red")
 
 
 metadata.add_command(check)

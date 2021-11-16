@@ -56,10 +56,7 @@ const FacetFilter: FunctionComponent<FacetProp> = ({
     return buckets.sort((a, b) => (a.key > b.key ? 1 : -1));
   };
   const getBuckets = (buckets: Array<Bucket>, state: boolean) => {
-    return sortBuckets(buckets).slice(
-      0,
-      state ? buckets.length - 1 : LIST_SIZE
-    );
+    return sortBuckets(buckets).slice(0, state ? buckets.length : LIST_SIZE);
   };
 
   const getLinkTextByTitle = (title: string, bucketLength: number) => {

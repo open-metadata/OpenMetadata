@@ -48,7 +48,7 @@ const TableDataCard: FunctionComponent<Props> = ({
   name,
   owner = '--',
   description,
-  tier = 'No Tier',
+  tier = '',
   usage,
   serviceType,
   fullyQualifiedName,
@@ -66,8 +66,17 @@ const TableDataCard: FunctionComponent<Props> = ({
           ? getUsagePercentile(usage)
           : undefined,
     },
-    { key: 'Tier', value: tier },
+    { key: 'Tier', value: tier ? tier : 'No Tier' },
   ];
+
+  const getAssetTags = () => {
+    const assetTags = [...(tags as Array<string>)];
+    if (tier) {
+      assetTags.unshift(tier);
+    }
+
+    return [...new Set(assetTags)];
+  };
 
   return (
     <div
@@ -91,7 +100,7 @@ const TableDataCard: FunctionComponent<Props> = ({
         <TableDataCardBody
           description={description || ''}
           extraInfo={OtherDetails}
-          tags={[...new Set(tags)]}
+          tags={getAssetTags()}
         />
       </div>
       {matches && matches.length > 0 ? (

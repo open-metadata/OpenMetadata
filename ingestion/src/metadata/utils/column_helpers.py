@@ -33,11 +33,13 @@ _column_type_mapping: Dict[Type[types.TypeEngine], str] = {
     types.NullType: "NULL",
     types.JSON: "JSON",
     types.CHAR: "CHAR",
+    types.DECIMAL: "DECIMAL",
 }
 
 _column_string_mapping = {
     "INT": "INT",
     "BOOLEAN": "BOOLEAN",
+    "BOOL": "BOOLEAN",
     "ENUM": "ENUM",
     "BYTES": "BYTES",
     "ARRAY": "ARRAY",
@@ -60,6 +62,8 @@ _column_string_mapping = {
     "INTEGER": "INT",
     "SMALLINT": "SMALLINT",
     "TIMESTAMP WITHOUT TIME ZONE": "TIMESTAMP",
+    "FLOAT64": "DOUBLE",
+    "DECIMAL": "DECIMAL",
 }
 
 _known_unknown_column_types: Set[Type[types.TypeEngine]] = {
@@ -119,7 +123,7 @@ def get_column_type(status: SourceStatus, dataset_name: str, column_type: Any) -
                 type_class = "NULL"
                 break
         for col_type in _column_string_mapping.keys():
-            if str(column_type).upper() in col_type:
+            if str(column_type).split("(")[0].upper() in col_type:
                 type_class = _column_string_mapping.get(col_type)
                 break
             else:

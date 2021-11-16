@@ -93,7 +93,7 @@ class MetadataUsageBulkSink(BulkSink):
                 )
                 try:
                     self.metadata.publish_table_usage(table_entity, table_usage_request)
-                except APIError as err:
+                except Exception as err:
                     self.status.failures.append(table_usage_request)
                     logger.error(
                         "Failed to update usage for {} {}".format(
