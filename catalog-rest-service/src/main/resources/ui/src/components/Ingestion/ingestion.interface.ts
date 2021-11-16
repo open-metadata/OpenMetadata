@@ -35,5 +35,5 @@ export interface Props {
   serviceList: Array<DatabaseService>;
   deleteIngestion: (id: string, displayName: string) => Promise<void>;
   triggerIngestion: (id: string, displayName: string) => Promise<void>;
-  addIngestion: (data: IngestionData) => void;
+  addIngestion: (data: IngestionData, triggerIngestion?: boolean) => void;
 }

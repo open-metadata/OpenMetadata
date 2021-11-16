@@ -90,7 +90,10 @@ const IngestionPage = () => {
     });
   };
 
-  const addIngestionWorkflowHandler = (data: IngestionData) => {
+  const addIngestionWorkflowHandler = (
+    data: IngestionData,
+    triggerIngestion?: boolean
+  ) => {
     setIsLoading(true);
     const service = serviceList.find((s) => s.name === data.service.name);
     const owner = getOwnerFromId(getCurrentUserId());
@@ -109,9 +112,13 @@ const IngestionPage = () => {
     };
 
     addIngestionWorkflow(ingestionData)
-      .then(() => {
+      .then((res: AxiosResponse) => {
+        const { id, displayName } = res.data;
         setIsLoading(false);
         getAllIngestionWorkflows();
+        if (triggerIngestion) {
+          triggerIngestionById(id, displayName).then();
+        }
       })
       .catch(() => setIsLoading(false));
   };

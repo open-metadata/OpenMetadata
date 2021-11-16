@@ -17,7 +17,7 @@ export interface IngestionModalProps {
   type?: string;
   schedule?: string;
   connectorConfig?: ConnectorConfig;
-  addIngestion: (data: IngestionData) => void;
+  addIngestion: (data: IngestionData, triggerIngestion?: boolean) => void;
   onCancel: () => void;
 }
 

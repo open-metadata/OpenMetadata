@@ -274,9 +274,9 @@ const Ingestion: React.FC<Props> = ({
       </div>
       {isAdding ? (
         <IngestionModal
-          addIngestion={(data) => {
+          addIngestion={(data, triggerIngestion) => {
             setIsAdding(false);
-            addIngestion(data);
+            addIngestion(data, triggerIngestion);
           }}
           header="Add Ingestion"
           ingestionList={ingestionList}

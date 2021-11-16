@@ -1,4 +1,5 @@
 import classNames from 'classnames';
+import cronstrue from 'cronstrue';
 import React, { Fragment, useEffect, useState } from 'react';
 import { CronError } from 'react-js-cron';
 import { IngestionType } from '../../enums/service.enum';
@@ -507,15 +508,16 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
                 header="Connector Config"
               />
               <PreviewSection
-                className="tw-mb-3 tw-mt-6"
+                className="tw-mt-6"
                 data={[]}
                 header="Scheduling"
               />
-              <CronEditor
-                isReadOnly
-                className="tw-flex tw-justify-items-start tw-pl-6"
-                defaultValue={ingestionSchedule}
-              />
+              <p className="tw-pl-6">
+                {cronstrue.toString(ingestionSchedule || '', {
+                  use24HourTimeFormat: true,
+                  verbose: true,
+                })}
+              </p>
             </div>
           </Fragment>
         );
@@ -525,7 +527,7 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
     }
   };
 
-  const onSaveHandler = () => {
+  const onSaveHandler = (triggerIngestion = false) => {
     const ingestionData = {
       ingestionType: ingestionType as IngestionType,
       displayName: ingestionName,
@@ -545,7 +547,7 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
         username: username,
       },
     };
-    addIngestion(ingestionData);
+    addIngestion(ingestionData, triggerIngestion);
   };
 
   useEffect(() => {
@@ -610,7 +612,7 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
                 theme="primary"
                 type="submit"
                 variant="contained"
-                onClick={() => onSaveHandler()}>
+                onClick={() => onSaveHandler(true)}>
                 <span>Deploy and Run</span>
               </Button>
               <Button
