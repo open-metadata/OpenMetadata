@@ -18,7 +18,6 @@ package org.openmetadata.catalog.events;
 
 import lombok.Builder;
 import lombok.Getter;
-import lombok.Setter;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.http.HttpHost;
 import org.apache.http.auth.AuthScope;
@@ -64,7 +63,6 @@ import java.util.UUID;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
-import static java.util.Collections.singletonMap;
 
 public class ElasticSearchEventHandler implements EventHandler {
   private static final Logger LOG = LoggerFactory.getLogger(AuditEventHandler.class);
