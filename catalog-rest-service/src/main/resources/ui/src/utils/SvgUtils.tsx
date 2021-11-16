@@ -10,6 +10,7 @@ import IconConfig from '../assets/svg/config.svg';
 import IconDashboardGrey from '../assets/svg/dashboard-grey.svg';
 import IconDashboard from '../assets/svg/dashboard.svg';
 import IconAsstest from '../assets/svg/data-assets.svg';
+import IconDeploy from '../assets/svg/deploy-icon.svg';
 import IconDoc from '../assets/svg/doc.svg';
 import IconError from '../assets/svg/error.svg';
 import IconExternalLink from '../assets/svg/external-link.svg';
@@ -146,6 +147,7 @@ export const Icons = {
   PIPELINE_GREY: 'pipeline-grey',
   VERSION: 'icon-version',
   VERSION_WHITE: 'icon-version-white',
+  ICON_DEPLOY: 'icon-deploy',
 };
 
 const SVGIcons: FunctionComponent<Props> = ({
@@ -434,6 +436,10 @@ const SVGIcons: FunctionComponent<Props> = ({
       break;
     case Icons.VERSION_WHITE:
       IconComponent = IconVersionWhite;
+
+      break;
+    case Icons.ICON_DEPLOY:
+      IconComponent = IconDeploy;
 
       break;
 

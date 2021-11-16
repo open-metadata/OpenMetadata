@@ -1,0 +1,66 @@
+/*
+  * Licensed to the Apache Software Foundation (ASF) under one or more
+  * contributor license agreements. See the NOTICE file distributed with
+  * this work for additional information regarding copyright ownership.
+  * The ASF licenses this file to You under the Apache License, Version 2.0
+  * (the "License"); you may not use this file except in compliance with
+  * the License. You may obtain a copy of the License at
+
+  * http://www.apache.org/licenses/LICENSE-2.0
+
+  * Unless required by applicable law or agreed to in writing, software
+  * distributed under the License is distributed on an "AS IS" BASIS,
+  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  * See the License for the specific language governing permissions and
+  * limitations under the License.
+*/
+
+.ingestion-content {
+  display: flex;
+  justify-content: space-around;
+}
+.ingestion-wrapper {
+  display: flex;
+}
+.ingestion-rounder {
+  display: block;
+  width: 18px;
+  height: 18px;
+  border: 3px solid #d9ceee;
+  background: white;
+  border-radius: 50%;
+  margin-top: 0.15rem;
+  z-index: 100;
+}
+.ingestion-rounder.active {
+  border-color: #7147e8;
+}
+.ingestion-rounder.completed {
+  background-color: #d9ceee;
+}
+
+.ingestion-rounder.completed::after {
+  content: '\2713';
+  display: block;
+  margin-top: -5px;
+  font-weight: 900;
+  color: #7147e8;
+}
+
+.ingestion-line::before {
+  top: 10px;
+  bottom: 0;
+  position: absolute;
+  content: ' ';
+  width: 78%;
+  height: 2px;
+  left: 64px;
+  background-color: #d9ceee;
+}
+.ingestion-line-se {
+  display: block;
+  width: 2px;
+  height: 15px;
+  background-color: #d9ceee;
+  transform: translate(8px, 0);
+}

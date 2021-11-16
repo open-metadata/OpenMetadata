@@ -26,6 +26,7 @@ import DatabaseDetails from '../pages/database-details/index';
 import DatasetDetailsPage from '../pages/DatasetDetailsPage/DatasetDetailsPage.component';
 import EntityVersionPage from '../pages/EntityVersionPage/EntityVersionPage.component';
 import ExplorePage from '../pages/explore/ExplorePage.component';
+import IngestionPage from '../pages/IngestionPage/IngestionPage.component';
 import MyDataPage from '../pages/MyDataPage/MyDataPage.component';
 import PipelineDetailsPage from '../pages/PipelineDetails/PipelineDetailsPage.component';
 import ReportsPage from '../pages/reports';
@@ -110,6 +111,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         component={EntityVersionPage}
         path={ROUTES.DATASET_VERSION}
       />
+      <Route exact component={IngestionPage} path={ROUTES.INGESTION} />
 
       <Redirect to={ROUTES.NOT_FOUND} />
     </Switch>

@@ -52,3 +52,18 @@ export enum PipelineServiceType {
   AIRFLOW = 'Airflow',
   PREFECT = 'Prefect',
 }
+
+export enum IngestionType {
+  BIGQUERY = 'bigquery',
+  BIGQUERY_USAGE = 'bigquery-usage',
+  REDSHIFT = 'redshift',
+  REDSHIFT_USAGE = 'redshift-usage',
+  SNOWFLAKE = 'snowflake',
+  SNOWFLAKE_USAGE = 'snowflake-usage',
+  HIVE = 'hive',
+  MSSQL = 'mssql',
+  MYSQL = 'mysql',
+  POSTGRES = 'postgres',
+  TRINO = 'trino',
+  VERTICA = 'vertica',
+}

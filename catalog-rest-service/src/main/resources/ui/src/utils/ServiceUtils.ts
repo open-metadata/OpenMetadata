@@ -28,6 +28,7 @@ import {
 import {
   DashboardServiceType,
   DatabaseServiceType,
+  IngestionType,
   MessagingServiceType,
   PipelineServiceType,
 } from '../enums/service.enum';
@@ -248,4 +249,55 @@ export const getTotalEntityCountByService = (buckets: Array<Bucket> = []) => {
   });
 
   return entityCounts;
+};
+
+export const getIngestionTypeList = (
+  serviceType: string
+): Array<string> | undefined => {
+  let ingestionType: Array<string> | undefined;
+  switch (serviceType) {
+    case DatabaseServiceType.BIGQUERY:
+      ingestionType = [IngestionType.BIGQUERY, IngestionType.BIGQUERY_USAGE];
+
+      break;
+    case DatabaseServiceType.HIVE:
+      ingestionType = [IngestionType.HIVE];
+
+      break;
+
+    case DatabaseServiceType.MSSQL:
+      ingestionType = [IngestionType.MSSQL];
+
+      break;
+
+    case DatabaseServiceType.MYSQL:
+      ingestionType = [IngestionType.MYSQL];
+
+      break;
+
+    case DatabaseServiceType.POSTGRES:
+      ingestionType = [IngestionType.POSTGRES];
+
+      break;
+
+    case DatabaseServiceType.REDSHIFT:
+      ingestionType = [IngestionType.REDSHIFT, IngestionType.REDSHIFT_USAGE];
+
+      break;
+
+    case DatabaseServiceType.TRINO:
+      ingestionType = [IngestionType.TRINO];
+
+      break;
+
+    case DatabaseServiceType.SNOWFLAKE:
+      ingestionType = [IngestionType.SNOWFLAKE, IngestionType.SNOWFLAKE_USAGE];
+
+      break;
+
+    default:
+      break;
+  }
+
+  return ingestionType;
 };

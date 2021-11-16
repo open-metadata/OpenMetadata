@@ -133,6 +133,7 @@ export const ROUTES = {
   PIPELINE_DETAILS: `/pipeline/${PLACEHOLDER_ROUTE_PIPELINE_FQN}`,
   PIPELINE_DETAILS_WITH_TAB: `/pipeline/${PLACEHOLDER_ROUTE_PIPELINE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
   ONBOARDING: '/onboarding',
+  INGESTION: '/ingestion',
 };
 
 export const IN_PAGE_SEARCH_ROUTES: Record<string, Array<string>> = {
@@ -253,6 +254,7 @@ export const navLinkSettings = [
   { name: 'Tags', to: '/tags', disabled: false },
   // { name: 'Store', to: '/store', disabled: false },
   { name: 'Services', to: '/services', disabled: false },
+  { name: 'Ingestions', to: '/ingestion', disabled: false },
   // { name: 'Marketplace', to: '/marketplace', disabled: true },
   // { name: 'Preferences', to: '/preference', disabled: true },
 ];
