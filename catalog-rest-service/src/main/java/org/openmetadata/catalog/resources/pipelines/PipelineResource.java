@@ -297,8 +297,7 @@ public class PipelineResource {
   public Response createOrUpdate(@Context UriInfo uriInfo,
                                  @Context SecurityContext securityContext,
                                  @Valid CreatePipeline create) throws IOException, ParseException {
-    Pipeline pipeline = getPipeline(securityContext, create).withConcurrency(create.getConcurrency())
-            .withStartDate(create.getStartDate());
+    Pipeline pipeline = getPipeline(securityContext, create);
     PutResponse<Pipeline> response = dao.createOrUpdate(uriInfo, pipeline);
     addHref(uriInfo, response.getEntity());
     return response.toResponse();
@@ -354,11 +353,14 @@ public class PipelineResource {
 
   private Pipeline getPipeline(SecurityContext securityContext, CreatePipeline create) {
     return new Pipeline().withId(UUID.randomUUID()).withName(create.getName())
-            .withDisplayName(create.getDisplayName())
-            .withDescription(create.getDescription()).withService(create.getService()).withTasks(create.getTasks())
-            .withPipelineUrl(create.getPipelineUrl()).withTags(create.getTags())
-            .withOwner(create.getOwner())
-            .withUpdatedBy(securityContext.getUserPrincipal().getName())
-            .withUpdatedAt(new Date());
+        .withDisplayName(create.getDisplayName())
+        .withDescription(create.getDescription()).withService(create.getService()).withTasks(create.getTasks())
+        .withPipelineUrl(create.getPipelineUrl()).withTags(create.getTags())
+        .withConcurrency(create.getConcurrency())
+        .withStartDate(create.getStartDate())
+        .withPipelineLocation(create.getPipelineLocation())
+        .withOwner(create.getOwner())
+        .withUpdatedBy(securityContext.getUserPrincipal().getName())
+        .withUpdatedAt(new Date());
   }
 }
