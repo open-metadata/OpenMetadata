@@ -49,7 +49,7 @@ export const button = {
     },
     primary: {
       base: 'tw-text-primary tw-border-primary tw-border dark:tw-text-blue-300 focus:tw-outline-none',
-      active: `active:tw-bg-transparent hover:tw-bg-primary-hover-lite hover:tw-text-white focus:tw-bg-primary 
+      active: `active:tw-bg-transparent hover:tw-bg-primary hover:tw-text-white focus:tw-bg-primary 
       active:tw-bg-primary active:tw-text-white focus:tw-ring focus:tw-ring-purple-300`,
       disabled: 'tw-opacity-50 tw-cursor-not-allowed',
     },
