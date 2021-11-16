@@ -221,19 +221,23 @@ public class IngestionResourceTest extends EntityResourceTest<Ingestion> {
   @Test
   public void put_IngestionUrlUpdate_200(TestInfo test) throws IOException {
     CreateIngestion request = create(test).withService(new EntityReference().withId(BIGQUERY_REFERENCE.getId())
-            .withType("databaseService")).withDescription("description");
+            .withType("databaseService")).withDescription("description").withScheduleInterval("5 * * * *");
     createAndCheckEntity(request, adminAuthHeaders());
     Integer pipelineConcurrency = 110;
     Date startDate = new DateTime("2021-11-13T20:20:39+00:00").toDate();
-
+    String expectedScheduleInterval = "7 * * * *";
     // Updating description is ignored when backend already has description
     Ingestion ingestion = updateIngestion(request.withConnectorConfig(INGESTION_CONFIG)
-            .withConcurrency(pipelineConcurrency)
-            .withStartDate(startDate.toString()), OK, adminAuthHeaders());
+        .withConcurrency(pipelineConcurrency)
+        .withScheduleInterval(expectedScheduleInterval)
+        .withStartDate(startDate.toString()), OK, adminAuthHeaders());
     String expectedFQN = BIGQUERY_REFERENCE.getName() + "." + ingestion.getName();
     assertEquals(startDate.toString(), ingestion.getStartDate());
     assertEquals(pipelineConcurrency, ingestion.getConcurrency());
     assertEquals(expectedFQN, ingestion.getFullyQualifiedName());
+    assertEquals(expectedScheduleInterval, ingestion.getScheduleInterval());
+    ingestion = getIngestion(ingestion.getId(), "owner,service", adminAuthHeaders());
+    assertEquals(expectedScheduleInterval, ingestion.getScheduleInterval());
   }
 
   @Test
