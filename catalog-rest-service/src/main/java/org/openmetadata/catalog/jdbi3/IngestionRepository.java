@@ -290,7 +290,7 @@ public class IngestionRepository extends EntityRepository<Ingestion> {
     public void entitySpecificUpdate() throws IOException {
       Ingestion origIngestion = original.getEntity();
       Ingestion updatedIngestion = updated.getEntity();
-      recordChange("scheduleInterval", origIngestion.getScheduleInterval(), updatedIngestion.getDisplayName());
+      recordChange("scheduleInterval", origIngestion.getScheduleInterval(), updatedIngestion.getScheduleInterval());
       recordChange("connectorConfig", origIngestion.getConnectorConfig(), updatedIngestion.getConnectorConfig());
       recordChange("startDate", origIngestion.getStartDate(), updatedIngestion.getStartDate());
       recordChange("endDate", origIngestion.getEndDate(), updatedIngestion.getEndDate());
