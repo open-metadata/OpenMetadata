@@ -25,6 +25,7 @@ import {
   getServiceDetailsPath,
   TITLE_FOR_NON_ADMIN_ACTION,
 } from '../../constants/constants';
+import { NoDataFoundPlaceHolder } from '../../constants/services.const';
 import { useAuth } from '../../hooks/authHooks';
 import { isEven } from '../../utils/CommonUtils';
 import { Button } from '../buttons/Button/Button';
@@ -229,12 +230,14 @@ const Ingestion: React.FC<Props> = ({
       <div className="tw-px-4">
         <div className="tw-flex">
           <div className="tw-w-4/12">
-            <Searchbar
-              placeholder="Search for ingestion..."
-              searchValue={searchText}
-              typingInterval={500}
-              onSearch={handleSearchAction}
-            />
+            {searchText || getSearchedIngestions().length > 0 ? (
+              <Searchbar
+                placeholder="Search for ingestion..."
+                searchValue={searchText}
+                typingInterval={500}
+                onSearch={handleSearchAction}
+              />
+            ) : null}
           </div>
           <div className="tw-w-8/12 tw-flex tw-justify-end">
             <NonAdminAction
@@ -254,128 +257,145 @@ const Ingestion: React.FC<Props> = ({
             </NonAdminAction>
           </div>
         </div>
-        <div className="tw-table-responsive tw-my-6">
-          <table className="tw-w-full" data-testid="ingestion-table">
-            <thead>
-              <tr className="tableHead-row">
-                <th className="tableHead-cell">Name</th>
-                <th className="tableHead-cell">Type</th>
-                <th className="tableHead-cell">Service</th>
-                <th className="tableHead-cell">Schedule</th>
-                <th className="tableHead-cell">Recent Runs</th>
-                {/* <th className="tableHead-cell">Next Run</th> */}
-                <th className="tableHead-cell">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="tableBody">
-              {getSearchedIngestions().map((ingestion, index) => (
-                <tr
-                  className={classNames(
-                    'tableBody-row',
-                    !isEven(index + 1) ? 'odd-row' : null
-                  )}
-                  key={index}>
-                  <td className="tableBody-cell">{ingestion.displayName}</td>
-                  <td className="tableBody-cell">{ingestion.ingestionType}</td>
-                  <td className="tableBody-cell">
-                    <Link
-                      to={getServiceDetailsPath(
-                        ingestion.service.name as string,
-                        getServiceTypeFromName(ingestion.service.name)
-                      )}>
-                      {ingestion.service.name}
-                    </Link>
-                  </td>
-                  <td className="tableBody-cell">
-                    <PopOver
-                      html={
-                        <div>
-                          {cronstrue.toString(
-                            ingestion.scheduleInterval || '',
-                            {
-                              use24HourTimeFormat: true,
-                              verbose: true,
-                            }
-                          )}
-                        </div>
-                      }
-                      position="bottom"
-                      theme="light"
-                      trigger="mouseenter">
-                      <span>{ingestion.scheduleInterval}</span>
-                    </PopOver>
-                  </td>
-                  <td className="tableBody-cell">
-                    <div className="tw-flex">{getStatuses(ingestion)}</div>
-                  </td>
-                  {/* <td className="tableBody-cell">
+        {getSearchedIngestions().length ? (
+          <div className="tw-table-responsive tw-my-6">
+            <table className="tw-w-full" data-testid="ingestion-table">
+              <thead>
+                <tr className="tableHead-row">
+                  <th className="tableHead-cell">Name</th>
+                  <th className="tableHead-cell">Type</th>
+                  <th className="tableHead-cell">Service</th>
+                  <th className="tableHead-cell">Schedule</th>
+                  <th className="tableHead-cell">Recent Runs</th>
+                  {/* <th className="tableHead-cell">Next Run</th> */}
+                  <th className="tableHead-cell">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="tableBody">
+                {getSearchedIngestions().map((ingestion, index) => (
+                  <tr
+                    className={classNames(
+                      'tableBody-row',
+                      !isEven(index + 1) ? 'odd-row' : null
+                    )}
+                    key={index}>
+                    <td className="tableBody-cell">{ingestion.displayName}</td>
+                    <td className="tableBody-cell">
+                      {ingestion.ingestionType}
+                    </td>
+                    <td className="tableBody-cell">
+                      <Link
+                        to={getServiceDetailsPath(
+                          ingestion.service.name as string,
+                          getServiceTypeFromName(ingestion.service.name)
+                        )}>
+                        {ingestion.service.name}
+                      </Link>
+                    </td>
+                    <td className="tableBody-cell">
+                      <PopOver
+                        html={
+                          <div>
+                            {cronstrue.toString(
+                              ingestion.scheduleInterval || '',
+                              {
+                                use24HourTimeFormat: true,
+                                verbose: true,
+                              }
+                            )}
+                          </div>
+                        }
+                        position="bottom"
+                        theme="light"
+                        trigger="mouseenter">
+                        <span>{ingestion.scheduleInterval}</span>
+                      </PopOver>
+                    </td>
+                    <td className="tableBody-cell">
+                      <div className="tw-flex">{getStatuses(ingestion)}</div>
+                    </td>
+                    {/* <td className="tableBody-cell">
                     {ingestion.nextExecutionDate || '--'}
                   </td> */}
-                  <td className="tableBody-cell">
-                    <NonAdminAction
-                      position="bottom"
-                      title={TITLE_FOR_NON_ADMIN_ACTION}>
-                      <div className="tw-flex">
-                        <div
-                          className="link-text tw-mr-2"
-                          onClick={() =>
-                            handleTriggerIngestion(
-                              ingestion.id as string,
-                              ingestion.displayName
-                            )
-                          }>
-                          {currTriggerId.id === ingestion.id ? (
-                            currTriggerId.state === 'success' ? (
-                              <i aria-hidden="true" className="fa fa-check" />
+                    <td className="tableBody-cell">
+                      <NonAdminAction
+                        position="bottom"
+                        title={TITLE_FOR_NON_ADMIN_ACTION}>
+                        <div className="tw-flex">
+                          <div
+                            className="link-text tw-mr-2"
+                            onClick={() =>
+                              handleTriggerIngestion(
+                                ingestion.id as string,
+                                ingestion.displayName
+                              )
+                            }>
+                            {currTriggerId.id === ingestion.id ? (
+                              currTriggerId.state === 'success' ? (
+                                <i aria-hidden="true" className="fa fa-check" />
+                              ) : (
+                                <Loader size="small" type="default" />
+                              )
                             ) : (
-                              <Loader size="small" type="default" />
-                            )
-                          ) : (
-                            'Run'
-                          )}
+                              'Run'
+                            )}
+                          </div>
+                          <p
+                            className="link-text tw-mr-2"
+                            onClick={() => handleUpdate(ingestion)}>
+                            {updateSelection.id === ingestion.id ? (
+                              updateSelection.state === 'success' ? (
+                                <i aria-hidden="true" className="fa fa-check" />
+                              ) : (
+                                <Loader size="small" type="default" />
+                              )
+                            ) : (
+                              'Edit'
+                            )}
+                          </p>
+                          <div
+                            className="link-text tw-mr-2"
+                            onClick={() =>
+                              ConfirmDelete(
+                                ingestion.id as string,
+                                ingestion.displayName
+                              )
+                            }>
+                            {deleteSelection.id === ingestion.id ? (
+                              deleteSelection.state === 'success' ? (
+                                <i aria-hidden="true" className="fa fa-check" />
+                              ) : (
+                                <Loader size="small" type="default" />
+                              )
+                            ) : (
+                              'Delete'
+                            )}
+                          </div>
                         </div>
-                        <p
-                          className="link-text tw-mr-2"
-                          onClick={() => handleUpdate(ingestion)}>
-                          {updateSelection.id === ingestion.id ? (
-                            updateSelection.state === 'success' ? (
-                              <i aria-hidden="true" className="fa fa-check" />
-                            ) : (
-                              <Loader size="small" type="default" />
-                            )
-                          ) : (
-                            'Edit'
-                          )}
-                        </p>
-                        <div
-                          className="link-text tw-mr-2"
-                          onClick={() =>
-                            ConfirmDelete(
-                              ingestion.id as string,
-                              ingestion.displayName
-                            )
-                          }>
-                          {deleteSelection.id === ingestion.id ? (
-                            deleteSelection.state === 'success' ? (
-                              <i aria-hidden="true" className="fa fa-check" />
-                            ) : (
-                              <Loader size="small" type="default" />
-                            )
-                          ) : (
-                            'Delete'
-                          )}
-                        </div>
-                      </div>
-                    </NonAdminAction>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {Boolean(!isNil(paging.after) || !isNil(paging.before)) && (
-            <NextPrevious paging={paging} pagingHandler={pagingHandler} />
-          )}
-        </div>
+                      </NonAdminAction>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {Boolean(!isNil(paging.after) || !isNil(paging.before)) && (
+              <NextPrevious paging={paging} pagingHandler={pagingHandler} />
+            )}
+          </div>
+        ) : (
+          <div className="tw-flex tw-items-center tw-flex-col">
+            <div className="tw-mt-24">
+              <img alt="No Service" src={NoDataFoundPlaceHolder} width={250} />
+            </div>
+            <div className="tw-mt-11">
+              <p className="tw-text-lg tw-text-center">
+                {`No ingestion workflows found ${
+                  searchText ? `for "${searchText}"` : ''
+                }`}
+              </p>
+            </div>
+          </div>
+        )}
       </div>
       {isAdding ? (
         <IngestionModal
