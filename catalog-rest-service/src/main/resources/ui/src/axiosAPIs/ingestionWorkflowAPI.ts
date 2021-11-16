@@ -37,9 +37,12 @@ export const addIngestionWorkflow = (
 };
 
 export const getIngestionWorkflows = (
-  arrQueryFields: string
+  arrQueryFields: Array<string>,
+  paging?: string
 ): Promise<AxiosResponse> => {
-  const url = getURLWithQueryFields('/ingestion', arrQueryFields);
+  const url = `${getURLWithQueryFields('/ingestion', arrQueryFields)}${
+    paging ? paging : ''
+  }`;
 
   return APIClient({ method: 'get', url, baseURL: operationsBaseUrl });
 };

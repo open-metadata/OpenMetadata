@@ -1,4 +1,5 @@
 import { Operation } from 'fast-json-patch';
+import { Paging } from 'Models';
 import { IngestionType } from '../../enums/service.enum';
 import { DatabaseService } from '../../generated/entity/services/databaseService';
 import { EntityReference } from '../../generated/type/entityReference';
@@ -35,8 +36,10 @@ export interface IngestionData {
 }
 
 export interface Props {
+  paging: Paging;
   ingestionList: Array<IngestionData>;
   serviceList: Array<DatabaseService>;
+  pagingHandler: (value: string) => void;
   deleteIngestion: (id: string, displayName: string) => Promise<void>;
   triggerIngestion: (id: string, displayName: string) => Promise<void>;
   addIngestion: (data: IngestionData, triggerIngestion?: boolean) => void;

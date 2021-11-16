@@ -1,7 +1,7 @@
 import classNames from 'classnames';
 import cronstrue from 'cronstrue';
 import { compare } from 'fast-json-patch';
-import { capitalize, lowerCase } from 'lodash';
+import { capitalize, isNil, lowerCase } from 'lodash';
 import React, { useCallback, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
@@ -11,6 +11,7 @@ import {
 import { useAuth } from '../../hooks/authHooks';
 import { isEven } from '../../utils/CommonUtils';
 import { Button } from '../buttons/Button/Button';
+import NextPrevious from '../common/next-previous/NextPrevious';
 import NonAdminAction from '../common/non-admin-action/NonAdminAction';
 import PopOver from '../common/popover/PopOver';
 import Searchbar from '../common/searchbar/Searchbar';
@@ -27,6 +28,8 @@ const Ingestion: React.FC<Props> = ({
   triggerIngestion,
   addIngestion,
   updateIngestion,
+  paging,
+  pagingHandler,
 }: Props) => {
   const { isAdminUser, isAuthDisabled } = useAuth();
   const [searchText, setSearchText] = useState('');
@@ -352,6 +355,9 @@ const Ingestion: React.FC<Props> = ({
               ))}
             </tbody>
           </table>
+          {Boolean(!isNil(paging.after) || !isNil(paging.before)) && (
+            <NextPrevious paging={paging} pagingHandler={pagingHandler} />
+          )}
         </div>
       </div>
       {isAdding ? (

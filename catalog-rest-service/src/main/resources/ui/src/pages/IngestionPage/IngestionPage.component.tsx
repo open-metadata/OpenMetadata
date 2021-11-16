@@ -1,5 +1,6 @@
 import { AxiosError, AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
+import { Paging } from 'Models';
 import React, { useEffect, useState } from 'react';
 import {
   addIngestionWorkflow,
@@ -23,7 +24,7 @@ const IngestionPage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [ingestions, setIngestions] = useState([]);
   const [serviceList, setServiceList] = useState<Array<DatabaseService>>([]);
-
+  const [paging, setPaging] = useState<Paging>({} as Paging);
   const getDatabaseServices = () => {
     getServices('databaseServices')
       .then((res: AxiosResponse) => {
@@ -35,13 +36,24 @@ const IngestionPage = () => {
       });
   };
 
-  const getAllIngestionWorkflows = () => {
-    getIngestionWorkflows('owner, service, tags, status').then((res) => {
-      if (res.data.data) {
-        setIngestions(res.data.data);
-        setIsLoading(false);
-      }
-    });
+  const getAllIngestionWorkflows = (paging?: string) => {
+    getIngestionWorkflows(['owner, service, tags, status'], paging)
+      .then((res) => {
+        if (res.data.data) {
+          setIngestions(res.data.data);
+          setPaging(res.data.paging);
+          setIsLoading(false);
+        } else {
+          setPaging({} as Paging);
+        }
+      })
+      .catch((err: AxiosError) => {
+        const msg = err.message;
+        showToast({
+          variant: 'error',
+          body: msg ?? `Error while getting ingestion workflow`,
+        });
+      });
   };
 
   const triggerIngestionById = (
@@ -159,6 +171,13 @@ const IngestionPage = () => {
       });
   };
 
+  const pagingHandler = (cursorType: string) => {
+    const pagingString = `&${cursorType}=${
+      paging[cursorType as keyof typeof paging]
+    }`;
+    getAllIngestionWorkflows(pagingString);
+  };
+
   useEffect(() => {
     getDatabaseServices();
     getAllIngestionWorkflows();
@@ -173,6 +192,8 @@ const IngestionPage = () => {
           addIngestion={addIngestionWorkflowHandler}
           deleteIngestion={deleteIngestionById}
           ingestionList={ingestions}
+          paging={paging}
+          pagingHandler={pagingHandler}
           serviceList={serviceList}
           triggerIngestion={triggerIngestionById}
           updateIngestion={updateIngestionById}
