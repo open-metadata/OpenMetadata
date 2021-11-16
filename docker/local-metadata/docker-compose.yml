@@ -17,8 +17,8 @@ version: "3.9"
 services:
   mysql:
     build:
-      context: .
-      dockerfile: Dockerfile_mysql
+      context: ../../.
+      dockerfile: docker/local-metadata/Dockerfile_mysql
     restart: always
     environment:
       MYSQL_ROOT_PASSWORD: password

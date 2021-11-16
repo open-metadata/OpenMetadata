@@ -21,3 +21,8 @@ cd ../ && mvn -DskipTests clean package
 cd docker/local-metadata
 echo "Starting Local Docker Containers"
 docker-compose down && docker-compose up --build -d
+while ! wget -O /dev/null -o /dev/null http://localhost:8585/api/v1/tables/name/bigquery.shopify.fact_sale; do 
+    printf '.'
+    sleep 2
+done
+tput setaf 2; echo "✔ OpenMetadata is up and running"
