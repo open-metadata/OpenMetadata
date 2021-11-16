@@ -28,6 +28,7 @@ from metadata.generated.schema.api.data.createDatabase import (
     CreateDatabaseEntityRequest,
 )
 from metadata.generated.schema.api.data.createMLModel import CreateMLModelEntityRequest
+from metadata.generated.schema.api.data.createModel import CreateModelEntityRequest
 from metadata.generated.schema.api.data.createPipeline import (
     CreatePipelineEntityRequest,
 )
@@ -42,7 +43,10 @@ from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.common import Record, WorkflowContext
 from metadata.ingestion.api.sink import Sink, SinkStatus
-from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
+from metadata.ingestion.models.ometa_table_db import (
+    OMetaDatabaseAndModel,
+    OMetaDatabaseAndTable,
+)
 from metadata.ingestion.models.table_metadata import Chart, Dashboard
 from metadata.ingestion.models.user import MetadataTeam, User
 from metadata.ingestion.ometa.client import APIError
@@ -116,6 +120,8 @@ class MetadataRestSink(Sink):
             self.write_users(record)
         elif isinstance(record, MLModel):
             self.write_ml_model(record)
+        elif isinstance(record, OMetaDatabaseAndModel):
+            self.write_models(record)
         else:
             logging.info(
                 f"Ignoring the record due to unknown Record type {type(record)}"
@@ -180,6 +186,44 @@ class MetadataRestSink(Sink):
             )
             logger.error(err)
             self.status.failure(f"Table: {table_and_db.table.name.__root__}")
+
+    def write_models(self, model_and_db: OMetaDatabaseAndModel):
+        try:
+            db_request = CreateDatabaseEntityRequest(
+                name=model_and_db.database.name,
+                description=model_and_db.database.description,
+                service=EntityReference(
+                    id=model_and_db.database.service.id, type="databaseService"
+                ),
+            )
+            db = self.metadata.create_or_update(db_request)
+            model = model_and_db.model
+            model_request = CreateModelEntityRequest(
+                name=model.name,
+                description=model.description,
+                viewDefinition=model.viewDefinition,
+                database=db.id,
+                nodeType=model.nodeType,
+                columns=model.columns,
+            )
+            created_model = self.metadata.create_or_update(model_request)
+            logger.info(
+                "Successfully ingested model {}.{}".format(
+                    db.name.__root__, created_model.name.__root__
+                )
+            )
+            self.status.records_written(
+                f"Model: {db.name.__root__}.{created_model.name.__root__}"
+            )
+        except (APIError, ValidationError) as err:
+            logger.error(
+                "Failed to ingest model {} in database {} ".format(
+                    model_and_db.model.name.__root__,
+                    model_and_db.database.name.__root__,
+                )
+            )
+            logger.error(err)
+            self.status.failure(f"Model: {model_and_db.model.name.__root__}")
 
     def write_topics(self, topic: CreateTopicEntityRequest) -> None:
         try:
