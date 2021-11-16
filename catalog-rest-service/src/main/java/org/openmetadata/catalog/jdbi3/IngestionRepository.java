@@ -18,6 +18,7 @@ package org.openmetadata.catalog.jdbi3;
 
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
+import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.operations.workflows.Ingestion;
 import org.openmetadata.catalog.resources.operations.IngestionResource;
@@ -41,9 +42,9 @@ import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityN
 
 public class IngestionRepository extends EntityRepository<Ingestion> {
   private static final Fields INGESTION_UPDATE_FIELDS = new Fields(IngestionResource.FIELD_LIST,
-          "owner,tags");
+          "scheduleInterval,owner,tags");
   private static final Fields INGESTION_PATCH_FIELDS = new Fields(IngestionResource.FIELD_LIST,
-          "owner,tags");
+          "scheduleInterval,owner,tags");
   private final CollectionDAO dao;
 
   public IngestionRepository(CollectionDAO dao) {
@@ -76,6 +77,8 @@ public class IngestionRepository extends EntityRepository<Ingestion> {
   public Ingestion setFields(Ingestion ingestion, Fields fields) throws IOException {
     ingestion.setDisplayName(ingestion.getDisplayName());
     ingestion.setService(getService(ingestion));
+    ingestion.setConnectorConfig(ingestion.getConnectorConfig());
+    ingestion.setScheduleInterval(ingestion.getScheduleInterval());
     ingestion.setOwner(fields.contains("owner") ? getOwner(ingestion) : null);
     ingestion.setTags(fields.contains("tags") ? getTags(ingestion.getFullyQualifiedName()) : null);
     return ingestion;
@@ -285,7 +288,12 @@ public class IngestionRepository extends EntityRepository<Ingestion> {
 
     @Override
     public void entitySpecificUpdate() throws IOException {
-
+      Ingestion origIngestion = original.getEntity();
+      Ingestion updatedIngestion = updated.getEntity();
+      recordChange("scheduleInterval", origIngestion.getScheduleInterval(), updatedIngestion.getDisplayName());
+      recordChange("connectorConfig", origIngestion.getConnectorConfig(), updatedIngestion.getConnectorConfig());
+      recordChange("startDate", origIngestion.getStartDate(), updatedIngestion.getStartDate());
+      recordChange("endDate", origIngestion.getEndDate(), updatedIngestion.getEndDate());
     }
 
   }
