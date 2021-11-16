@@ -1,23 +1,27 @@
+import React from 'react';
 import {
   ConnectorConfig,
   IngestionData,
 } from '../Ingestion/ingestion.interface';
 
-interface ServiceData {
+export interface ServiceData {
   serviceType: string;
   name: string;
 }
 
 export interface IngestionModalProps {
+  isUpdating?: boolean;
   ingestionList: Array<IngestionData>;
-  header: string;
+  header: string | React.ReactNode;
   name?: string;
   service?: string;
   serviceList: Array<ServiceData>;
   type?: string;
   schedule?: string;
   connectorConfig?: ConnectorConfig;
-  addIngestion: (data: IngestionData, triggerIngestion?: boolean) => void;
+  selectedIngestion?: IngestionData;
+  addIngestion?: (data: IngestionData, triggerIngestion?: boolean) => void;
+  updateIngestion?: (data: IngestionData, triggerIngestion?: boolean) => void;
   onCancel: () => void;
 }
 

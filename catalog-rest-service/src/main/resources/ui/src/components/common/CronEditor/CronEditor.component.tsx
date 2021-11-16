@@ -1,4 +1,3 @@
-import { Divider } from 'antd';
 import 'antd/dist/antd.css';
 import React, { useCallback, useEffect, useState } from 'react';
 import Cron, { CronError } from 'react-js-cron';
@@ -39,12 +38,7 @@ const CronEditor = ({
         value={value}
         onError={onError}
       />
-      {children ? (
-        <>
-          <Divider>OR</Divider>
-          {children}
-        </>
-      ) : null}
+      {children ? <>{children}</> : null}
     </div>
   );
 };

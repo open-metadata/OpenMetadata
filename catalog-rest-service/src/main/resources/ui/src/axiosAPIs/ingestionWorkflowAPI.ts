@@ -16,6 +16,7 @@
 */
 
 import { AxiosResponse } from 'axios';
+import { Operation } from 'fast-json-patch';
 import { IngestionData } from '../components/Ingestion/ingestion.interface';
 import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
@@ -59,4 +60,19 @@ export const deleteIngestionWorkflowsById = (
   const url = getURLWithQueryFields(`/ingestion/${id}`, arrQueryFields);
 
   return APIClient({ method: 'delete', url, baseURL: operationsBaseUrl });
+};
+
+export const patchIngestionWorkflowBtId = (
+  id: string,
+  data: Array<Operation>
+): Promise<AxiosResponse> => {
+  const url = `/ingestion/${id}`;
+
+  return APIClient({
+    method: 'patch',
+    url,
+    baseURL: operationsBaseUrl,
+    data: data,
+    headers: { 'Content-type': 'application/json-patch+json' },
+  });
 };

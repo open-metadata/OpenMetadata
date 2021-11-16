@@ -1,3 +1,4 @@
+import { Operation } from 'fast-json-patch';
 import { IngestionType } from '../../enums/service.enum';
 import { DatabaseService } from '../../generated/entity/services/databaseService';
 import { EntityReference } from '../../generated/type/entityReference';
@@ -28,6 +29,9 @@ export interface IngestionData {
   nextExecutionDate?: string;
   connectorConfig?: ConnectorConfig;
   forceDeploy?: boolean;
+  owner?: { id: string; name?: string; type: string };
+  startDate?: string;
+  endDate?: string;
 }
 
 export interface Props {
@@ -36,4 +40,10 @@ export interface Props {
   deleteIngestion: (id: string, displayName: string) => Promise<void>;
   triggerIngestion: (id: string, displayName: string) => Promise<void>;
   addIngestion: (data: IngestionData, triggerIngestion?: boolean) => void;
+  updateIngestion: (
+    id: string,
+    displayName: string,
+    patch: Array<Operation>,
+    triggerIngestion?: boolean
+  ) => Promise<void>;
 }

@@ -1,9 +1,11 @@
 import { AxiosError, AxiosResponse } from 'axios';
+import { Operation } from 'fast-json-patch';
 import React, { useEffect, useState } from 'react';
 import {
   addIngestionWorkflow,
   deleteIngestionWorkflowsById,
   getIngestionWorkflows,
+  patchIngestionWorkflowBtId,
   triggerIngestionWorkflowsById,
 } from '../../axiosAPIs/ingestionWorkflowAPI';
 import { getServices } from '../../axiosAPIs/serviceAPI';
@@ -90,6 +92,33 @@ const IngestionPage = () => {
     });
   };
 
+  const updateIngestionById = (
+    id: string,
+    displayName: string,
+    patch: Array<Operation>,
+    triggerIngestion?: boolean
+  ): Promise<void> => {
+    return new Promise<void>((resolve, reject) => {
+      patchIngestionWorkflowBtId(id, patch)
+        .then(() => {
+          resolve();
+          getAllIngestionWorkflows();
+          if (triggerIngestion) {
+            triggerIngestionById(id, displayName).then();
+          }
+        })
+        .catch((err: AxiosError) => {
+          const msg = err.message;
+          showToast({
+            variant: 'error',
+            body:
+              msg ?? `Error while updating ingestion workflow ${displayName}`,
+          });
+          reject();
+        });
+    });
+  };
+
   const addIngestionWorkflowHandler = (
     data: IngestionData,
     triggerIngestion?: boolean
@@ -105,7 +134,7 @@ const IngestionPage = () => {
         name: data.service.name,
       } as EntityReference,
       owner: {
-        id: owner?.id,
+        id: owner?.id as string,
         name: owner?.name,
         type: 'user',
       },
@@ -120,7 +149,14 @@ const IngestionPage = () => {
           triggerIngestionById(id, displayName).then();
         }
       })
-      .catch(() => setIsLoading(false));
+      .catch((err: AxiosError) => {
+        const msg = err.message;
+        showToast({
+          variant: 'error',
+          body: msg ?? `Something went wrong`,
+        });
+        setIsLoading(false);
+      });
   };
 
   useEffect(() => {
@@ -139,6 +175,7 @@ const IngestionPage = () => {
           ingestionList={ingestions}
           serviceList={serviceList}
           triggerIngestion={triggerIngestionById}
+          updateIngestion={updateIngestionById}
         />
       )}
     </>

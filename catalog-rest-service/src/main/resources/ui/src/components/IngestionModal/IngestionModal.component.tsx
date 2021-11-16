@@ -12,6 +12,7 @@ import { Steps } from '../IngestionStepper/IngestionStepper.interface';
 import './IngestionModal.css';
 import {
   IngestionModalProps,
+  ServiceData,
   ValidationErrorMsg,
 } from './IngestionModal.interface';
 
@@ -72,54 +73,80 @@ const getServiceName = (service: string) => {
 };
 
 const getIngestionName = (name: string) => {
-  const nameString = name.trim().replace(/\s+/g, '');
+  const nameString = name.trim().replace(/\s+/g, '_');
 
   return nameString.toLowerCase();
 };
 
+const getCurrentDate = () => {
+  return `${new Date().toLocaleDateString('en-CA')}`;
+};
+
+const setService = (
+  serviceList: Array<ServiceData>,
+  currentservice: string
+) => {
+  const service = serviceList.find((s) => s.name === currentservice);
+
+  return service ? `${service?.serviceType}$$${service?.name}` : '';
+};
+
 const IngestionModal: React.FC<IngestionModalProps> = ({
+  isUpdating,
   header,
-  name = '',
-  service = '',
   serviceList = [], // TODO: remove default assignment after resolving prop validation warning
   ingestionList,
-  type = '',
-  schedule = '',
-  connectorConfig,
   onCancel,
   addIngestion,
+  updateIngestion,
+  selectedIngestion,
 }: IngestionModalProps) => {
   const [activeStep, setActiveStep] = useState<number>(1);
 
-  const [ingestionName, setIngestionName] = useState<string>(name || '');
-  const [ingestionType, setIngestionType] = useState<string>(type);
-  const [ingestionService, setIngestionService] = useState<string>(service);
+  const [startDate, setStartDate] = useState<string>(
+    selectedIngestion?.startDate || getCurrentDate()
+  );
+  const [endDate, setEndDate] = useState<string>(
+    selectedIngestion?.endDate || ''
+  );
+
+  const [ingestionName, setIngestionName] = useState<string>(
+    selectedIngestion?.displayName || ''
+  );
+  const [ingestionType, setIngestionType] = useState<string>(
+    selectedIngestion?.ingestionType || ''
+  );
+  const [ingestionService, setIngestionService] = useState<string>(
+    setService(serviceList, selectedIngestion?.service?.name as string) || ''
+  );
 
   const [username, setUsername] = useState<string>(
-    connectorConfig?.username || ''
+    selectedIngestion?.connectorConfig?.username || ''
   );
   const [password, setPassword] = useState<string>(
-    connectorConfig?.password || ''
+    selectedIngestion?.connectorConfig?.password || ''
   );
-  const [host, setHost] = useState<string>(connectorConfig?.host || '');
+  const [host, setHost] = useState<string>(
+    selectedIngestion?.connectorConfig?.host || ''
+  );
   const [database, setDatabase] = useState<string>(
-    connectorConfig?.database || ''
+    selectedIngestion?.connectorConfig?.database || ''
   );
   const [includeFilterPattern, setIncludeFilterPattern] = useState<
     Array<string>
-  >(connectorConfig?.includeFilterPattern || []);
+  >(selectedIngestion?.connectorConfig?.includeFilterPattern || []);
   const [excludeFilterPattern, setExcludeFilterPattern] = useState<
     Array<string>
-  >(connectorConfig?.excludeFilterPattern || []);
+  >(selectedIngestion?.connectorConfig?.excludeFilterPattern || []);
   const [includeViews, setIncludeViews] = useState<boolean>(
-    connectorConfig?.includeViews || true
+    selectedIngestion?.connectorConfig?.includeViews || true
   );
   const [excludeDataProfiler, setExcludeDataProfiler] = useState<boolean>(
-    connectorConfig?.excludeDataProfiler || false
+    selectedIngestion?.connectorConfig?.excludeDataProfiler || false
   );
 
   const [ingestionSchedule, setIngestionSchedule] = useState<string>(
-    schedule || '*/5 * * * *'
+    selectedIngestion?.scheduleInterval || '*/5 * * * *'
   );
   const [cronError, setCronError] = useState<CronError>();
 
@@ -140,13 +167,17 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
     return ingestionList.some(
       (i) =>
         i.service.name === getServiceName(ingestionService) &&
-        i.ingestionType === ingestionType
+        i.ingestionType === ingestionType &&
+        i.service.name !== selectedIngestion?.name &&
+        i.service.displayName === selectedIngestion?.ingestionType
     );
   };
 
   const isPipeLineNameExists = () => {
     return ingestionList.some(
-      (i) => i.name === getIngestionName(ingestionName)
+      (i) =>
+        i.name === getIngestionName(ingestionName) &&
+        i.name !== selectedIngestion?.name
     );
   };
 
@@ -254,10 +285,13 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
                 {requiredField('Name:')}
               </label>
               <input
-                className="tw-form-inputs tw-px-3 tw-py-1"
+                className={classNames('tw-form-inputs tw-px-3 tw-py-1', {
+                  'tw-cursor-not-allowed': isUpdating,
+                })}
                 id="name"
                 name="name"
                 placeholder="Ingestion name"
+                readOnly={isUpdating}
                 type="text"
                 value={ingestionName}
                 onChange={handleValidation}
@@ -276,8 +310,11 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
                 {requiredField('Select Service:')}
               </label>
               <select
-                className="tw-form-inputs tw-px-3 tw-py-1"
+                className={classNames('tw-form-inputs tw-px-3 tw-py-1', {
+                  'tw-cursor-not-allowed': isUpdating,
+                })}
                 data-testid="selectService"
+                disabled={isUpdating}
                 id="selectService"
                 name="selectService"
                 value={ingestionService}
@@ -302,7 +339,7 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
                   'tw-cursor-not-allowed': !ingestionService,
                 })}
                 data-testid="selectService"
-                disabled={!ingestionService}
+                disabled={!ingestionService || isUpdating}
                 id="ingestionType"
                 name="ingestionType"
                 value={ingestionType}
@@ -452,28 +489,45 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
       case 3:
         return (
           <Fragment>
-            <div className="">
-              <CronEditor
-                className="tw-mt-10"
-                defaultValue={ingestionSchedule}
-                onChangeHandler={(v) => setIngestionSchedule(v)}
-                onError={setCronError}>
-                <input
-                  className="tw-form-inputs tw-px-3 tw-py-1"
-                  id="ingestionSchedule"
-                  name="ingestionSchedule"
-                  type="text"
-                  value={ingestionSchedule}
-                  onChange={handleValidation}
-                />
-                <p className="tw-text-grey-muted tw-text-xs tw-mt-1">
-                  Note : TimeZone is in UTC
-                </p>
-                {showErrorMsg.ingestionSchedule
-                  ? errorMsg('Ingestion schedule is required')
-                  : cronError && errorMsg(cronError.description)}
-              </CronEditor>
+            <div className="tw-mt-4">
+              <label htmlFor="">{requiredField('Schedule interval:')}</label>
+              <div className="tw-flex tw-justify-items-start tw-mt-2">
+                <CronEditor
+                  defaultValue={ingestionSchedule}
+                  onChangeHandler={(v) => setIngestionSchedule(v)}
+                  onError={setCronError}>
+                  <p className="tw-text-grey-muted tw-text-xs tw-mt-1">
+                    <span>( </span>
+                    <span className="tw-font-normal">{ingestionSchedule}</span>
+                    <span> in UTC Timezone ) </span>
+                  </p>
+                  {showErrorMsg.ingestionSchedule
+                    ? errorMsg('Ingestion schedule is required')
+                    : cronError && errorMsg(cronError.description)}
+                </CronEditor>
+              </div>
             </div>
+            <Field>
+              <label htmlFor="startDate">Start date:</label>
+              <input
+                className="tw-form-inputs tw-px-3 tw-py-1"
+                pattern="YY-MM-DD"
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+              />
+            </Field>
+            <Field>
+              <label htmlFor="endDate">End date:</label>
+              <input
+                className="tw-form-inputs tw-px-3 tw-py-1"
+                min={startDate}
+                pattern="YY-MM-DD"
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+              />
+            </Field>
           </Fragment>
         );
       case 4:
@@ -483,7 +537,7 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
               <PreviewSection
                 className="tw-mb-4 tw-mt-4"
                 data={[
-                  { key: 'Name', value: getIngestionName(ingestionName) },
+                  { key: 'Name', value: ingestionName },
                   {
                     key: 'Service Type',
                     value: getServiceName(ingestionService),
@@ -533,7 +587,8 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
       displayName: ingestionName,
       name: getIngestionName(ingestionName),
       service: { name: getServiceName(ingestionService), id: '', type: '' },
-      startDate: `${new Date().getFullYear()}-${new Date().getMonth()}-${new Date().getDate()}`,
+      startDate: startDate || getCurrentDate(),
+      endDate: endDate || '',
       scheduleInterval: ingestionSchedule,
       forceDeploy: true,
       connectorConfig: {
@@ -547,7 +602,8 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
         username: username,
       },
     };
-    addIngestion(ingestionData, triggerIngestion);
+    addIngestion?.(ingestionData, triggerIngestion);
+    updateIngestion?.(ingestionData, triggerIngestion);
   };
 
   useEffect(() => {
@@ -557,6 +613,16 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
       isPipelineNameExists: isPipeLineNameExists(),
     });
   }, [ingestionType, ingestionService, ingestionName]);
+
+  useEffect(() => {
+    if (endDate) {
+      const startDt = new Date(startDate);
+      const endDt = new Date(endDate);
+      if (endDt.getTime() < startDt.getTime()) {
+        setEndDate('');
+      }
+    }
+  }, [startDate]);
 
   return (
     <dialog className="tw-modal" data-testid="service-modal">
@@ -605,16 +671,6 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
 
           {activeStep === 4 ? (
             <div className="tw-flex">
-              <Button
-                className="tw-mr-1"
-                data-testid="save-button"
-                size="regular"
-                theme="primary"
-                type="submit"
-                variant="contained"
-                onClick={() => onSaveHandler(true)}>
-                <span>Deploy and Run</span>
-              </Button>
               <Button
                 data-testid="save-button"
                 size="regular"

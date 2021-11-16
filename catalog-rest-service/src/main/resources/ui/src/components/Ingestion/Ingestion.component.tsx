@@ -1,5 +1,6 @@
 import classNames from 'classnames';
 import cronstrue from 'cronstrue';
+import { compare } from 'fast-json-patch';
 import { capitalize } from 'lodash';
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -25,16 +26,24 @@ const Ingestion: React.FC<Props> = ({
   deleteIngestion,
   triggerIngestion,
   addIngestion,
+  updateIngestion,
 }: Props) => {
   const { isAdminUser, isAuthDisabled } = useAuth();
   const [searchText, setSearchText] = useState('');
   const [currTriggerId, setCurrTriggerId] = useState({ id: '', state: '' });
   const [isAdding, setIsAdding] = useState<boolean>(false);
+  const [isUpdating, setIsUpdating] = useState<boolean>(false);
   const [isConfirmationModalOpen, setIsConfirmationModalOpen] = useState(false);
   const [deleteSelection, setDeleteSelection] = useState({
     id: '',
     name: '',
     state: '',
+  });
+  const [updateSelection, setUpdateSelection] = useState({
+    id: '',
+    name: '',
+    state: '',
+    ingestion: {} as IngestionData,
   });
 
   const handleSearchAction = (searchValue: string) => {
@@ -58,6 +67,55 @@ const Ingestion: React.FC<Props> = ({
       name: '',
       state: '',
     });
+  };
+
+  const handleUpdate = (ingestion: IngestionData) => {
+    setUpdateSelection({
+      id: ingestion.id as string,
+      name: ingestion.displayName,
+      state: '',
+      ingestion: ingestion,
+    });
+    setIsUpdating(true);
+  };
+
+  const handleCancelUpdate = () => {
+    setUpdateSelection({
+      id: '',
+      name: '',
+      state: '',
+      ingestion: {} as IngestionData,
+    });
+    setIsUpdating(false);
+  };
+  const handleUpdateIngestion = (
+    data: IngestionData,
+    triggerIngestion?: boolean
+  ) => {
+    const { service, owner } = updateSelection.ingestion;
+    const updatedData = {
+      ...updateSelection.ingestion,
+      ...data,
+      service,
+      owner,
+    };
+    const patch = compare(updateSelection.ingestion, updatedData);
+    setUpdateSelection((prev) => ({ ...prev, state: 'waiting' }));
+    updateIngestion(
+      updateSelection.id,
+      updateSelection.name,
+      patch,
+      triggerIngestion
+    )
+      .then(() => {
+        setTimeout(() => {
+          setUpdateSelection((prev) => ({ ...prev, state: 'success' }));
+          handleCancelUpdate();
+        }, 500);
+      })
+      .catch(() => {
+        handleCancelUpdate();
+      });
   };
 
   const handleDelete = (id: string, displayName: string) => {
@@ -244,7 +302,19 @@ const Ingestion: React.FC<Props> = ({
                             'Run'
                           )}
                         </div>
-                        <p className="link-text tw-mr-2">Edit</p>
+                        <p
+                          className="link-text tw-mr-2"
+                          onClick={() => handleUpdate(ingestion)}>
+                          {updateSelection.id === ingestion.id ? (
+                            updateSelection.state === 'success' ? (
+                              <i aria-hidden="true" className="fa fa-check" />
+                            ) : (
+                              <Loader size="small" type="default" />
+                            )
+                          ) : (
+                            'Edit'
+                          )}
+                        </p>
                         <div
                           className="link-text tw-mr-2"
                           onClick={() =>
@@ -288,6 +358,23 @@ const Ingestion: React.FC<Props> = ({
           }))}
           type=""
           onCancel={() => setIsAdding(false)}
+        />
+      ) : null}
+      {isUpdating ? (
+        <IngestionModal
+          isUpdating
+          header={<p>{`Update Ingestion ${updateSelection.name}`}</p>}
+          ingestionList={ingestionList}
+          selectedIngestion={updateSelection.ingestion}
+          serviceList={serviceList.map((s) => ({
+            name: s.name,
+            serviceType: s.serviceType,
+          }))}
+          updateIngestion={(data, triggerIngestion) => {
+            setIsUpdating(false);
+            handleUpdateIngestion(data, triggerIngestion);
+          }}
+          onCancel={() => handleCancelUpdate()}
         />
       ) : null}
       {isConfirmationModalOpen && (
