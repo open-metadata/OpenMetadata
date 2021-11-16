@@ -264,11 +264,8 @@ public class TableDetailsPageTest {
         openExplorePage();
         webDriver.findElement(By.cssSelector("[data-testid='searchBox']")).sendKeys("fact_sale");
         Events.click(webDriver, By.cssSelector("[data-testid='data-name']"));
-        for (int i = 1; i<=3; i++) {
-            Events.click(webDriver, By.xpath(
-                    "(//div[@data-testid='frequently-joined-columns']//span//a)" + "[" + i + "]"));
-            webDriver.navigate().back();
-        }
+      Events.click(webDriver, By.xpath(
+          "(//div[@data-testid='frequently-joined-columns']//span//a)"));
     }
 
     @AfterEach
