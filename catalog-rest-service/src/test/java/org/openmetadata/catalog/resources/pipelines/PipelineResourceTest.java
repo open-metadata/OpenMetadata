@@ -275,17 +275,22 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline> {
   }
 
   @Test
-  public void put_AddRemovePipelineTasksUpdate_200(TestInfo test) throws IOException {
-    CreatePipeline request = create(test).withService(AIRFLOW_REFERENCE).withDescription(null).withTasks(null);
+  public void put_AddRemovePipelineTasksUpdate_200(TestInfo test) throws IOException, URISyntaxException {
+    CreatePipeline request = create(test).withService(AIRFLOW_REFERENCE).withDescription(null)
+        .withTasks(null).withConcurrency(null).withPipelineUrl(new URI("http://localhost:8080"));
     Pipeline pipeline = createAndCheckEntity(request, adminAuthHeaders());
 
     // Add tasks and description
     ChangeDescription change = getChangeDescription(pipeline.getVersion());
     change.getFieldsAdded().add(new FieldChange().withName("description").withNewValue("newDescription"));
     change.getFieldsAdded().add(new FieldChange().withName("tasks").withNewValue(TASKS));
-    pipeline = updateAndCheckEntity(request.withDescription("newDescription").withTasks(TASKS),
-            OK, adminAuthHeaders(), MINOR_UPDATE, change);
-
+    change.getFieldsAdded().add(new FieldChange().withName("concurrency")
+        .withNewValue(5));
+    change.getFieldsUpdated().add(new FieldChange().withName("pipelineUrl")
+        .withNewValue("https://airflow.open-metadata.org").withOldValue("http://localhost:8080"));
+    pipeline = updateAndCheckEntity(request.withDescription("newDescription").withTasks(TASKS)
+            .withConcurrency(5).withPipelineUrl(new URI("https://airflow.open-metadata.org")),
+        OK, adminAuthHeaders(), MINOR_UPDATE, change);
     // TODO update this once task removal is figured out
     // remove a task
     // TASKS.remove(0);
