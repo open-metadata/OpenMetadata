@@ -95,7 +95,6 @@ public class PipelineServiceTestPage {
         Events.sendEnter(webDriver, By.xpath(enterDescription));
         Events.click(webDriver, By.cssSelector("[data-testid='linkButton']"));
         Events.sendKeys(webDriver, By.xpath(enterDescription), faker.address().toString());
-        Events.click(webDriver, By.cssSelector("[data-testid='ingestion-switch']"));
         Events.click(webDriver, By.cssSelector("[data-testid='save-button']"));
     }
 
@@ -107,7 +106,6 @@ public class PipelineServiceTestPage {
         Events.click(webDriver, By.xpath(enterDescription));
         Events.sendEnter(webDriver, By.xpath(enterDescription));
         Events.sendKeys(webDriver, By.xpath(enterDescription), faker.address().toString());
-        Events.click(webDriver, By.cssSelector("[data-testid='ingestion-switch']"));
         Events.click(webDriver, By.cssSelector("[data-testid='save-button']"));
     }
 
