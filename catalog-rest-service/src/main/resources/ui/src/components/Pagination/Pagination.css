@@ -23,20 +23,27 @@
   margin-bottom: 1rem;
 }
 
-.tw-link:hover {
+.button-text:hover .tw-link {
   text-decoration: none !important;
 }
-.pagination > .disabled > .tw-link {
+
+.disabled {
   cursor: not-allowed;
+}
+
+.button-text:not(.disabled) {
+  cursor: pointer;
+}
+
+.pagination > .disabled > .tw-link {
   color: #7147e8;
 }
 
-.pagination > .disabled > .tw-link:hover,
-.pagination > .disabled > .tw-link:focus {
-  cursor: not-allowed;
+.pagination > .disabled:hover > .tw-link,
+.pagination > .disabled:focus > .tw-link {
   color: white;
 }
-.pagination > li > .tw-link:hover,
-.pagination > li > .tw-link:focus {
+.pagination > .button-text:hover > .tw-link,
+.pagination > .button-text:focus > .tw-link {
   color: white;
 }
