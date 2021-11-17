@@ -70,7 +70,9 @@ const TableDataCard: FunctionComponent<Props> = ({
   ];
 
   const getAssetTags = () => {
-    const assetTags = [...(tags as Array<string>)];
+    const assetTags = [
+      ...(tags as Array<string>).filter((tag) => !tag.includes(tier)),
+    ];
     if (tier) {
       assetTags.unshift(tier);
     }
