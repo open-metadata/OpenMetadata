@@ -50,7 +50,7 @@ import java.util.List;
 import java.util.Objects;
 
 @Path("/v1/events")
-@Api(value = "Events resource", tags = "Events resource")
+@Api(value = "Events resource", tags = "events")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "events")
@@ -75,7 +75,7 @@ public class EventResource {
 
   @GET
   @Valid
-  @Operation(summary = "Get change events", tags = "usage",
+  @Operation(summary = "Get change events", tags = "events",
           description = "Get a list of change events matching event types, entity type, from a given date",
           responses = {@ApiResponse(responseCode = "200", description = "Entity events",
                   content = @Content(mediaType = "application/json",
