@@ -17,7 +17,8 @@
 
 import classNames from 'classnames';
 import cronstrue from 'cronstrue';
-import React, { Fragment, useEffect, useState } from 'react';
+import { utc } from 'moment';
+import React, { Fragment, ReactNode, useEffect, useState } from 'react';
 import { CronError } from 'react-js-cron';
 import { IngestionType } from '../../enums/service.enum';
 import { getIngestionTypeList } from '../../utils/ServiceUtils';
@@ -26,7 +27,6 @@ import { Button } from '../buttons/Button/Button';
 import CronEditor from '../common/CronEditor/CronEditor.component';
 import IngestionStepper from '../IngestionStepper/IngestionStepper.component';
 import { Steps } from '../IngestionStepper/IngestionStepper.interface';
-import './IngestionModal.css';
 import {
   IngestionModalProps,
   ServiceData,
@@ -64,13 +64,13 @@ const PreviewSection = ({
   className,
 }: {
   header: string;
-  data: Array<{ key: string; value: string }>;
+  data: Array<{ key: string; value: string | ReactNode }>;
   className: string;
 }) => {
   return (
     <div className={className}>
       {/* <hr className="tw-border-separator" /> */}
-      <p className="preview-header tw-px-1">{header}</p>
+      <p className="tw-font-medium tw-px-1 tw-mb-2">{header}</p>
       <div className="tw-grid tw-gap-4 tw-grid-cols-3 tw-place-content-center tw-pl-6">
         {data.map((d, i) => (
           <div key={i}>
@@ -96,7 +96,7 @@ const getIngestionName = (name: string) => {
 };
 
 const getCurrentDate = () => {
-  return `${new Date().toLocaleDateString('en-CA')}`;
+  return `${utc(new Date()).format('YYYY-MM-DD')}`;
 };
 
 const setService = (
@@ -118,13 +118,15 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
   updateIngestion,
   selectedIngestion,
 }: IngestionModalProps) => {
-  const [activeStep, setActiveStep] = useState<number>(1);
+  const [activeStep, setActiveStep] = useState<number>(isUpdating ? 2 : 1);
 
   const [startDate, setStartDate] = useState<string>(
-    selectedIngestion?.startDate || getCurrentDate()
+    utc(selectedIngestion?.startDate).format('YYYY-MM-DD') || getCurrentDate()
   );
   const [endDate, setEndDate] = useState<string>(
-    selectedIngestion?.endDate || ''
+    selectedIngestion?.endDate
+      ? utc(selectedIngestion?.endDate).format('YYYY-MM-DD')
+      : ''
   );
 
   const [ingestionName, setIngestionName] = useState<string>(
@@ -166,7 +168,7 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
     selectedIngestion?.scheduleInterval || '*/5 * * * *'
   );
   const [cronError, setCronError] = useState<CronError>();
-
+  const [isPasswordVisible, setIspasswordVisible] = useState<boolean>(false);
   const [showErrorMsg, setShowErrorMsg] = useState<ValidationErrorMsg>({
     selectService: false,
     name: false,
@@ -511,8 +513,15 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
                   onError={setCronError}>
                   <p className="tw-text-grey-muted tw-text-xs tw-mt-1">
                     <span>( </span>
-                    <span className="tw-font-normal">{ingestionSchedule}</span>
-                    <span> in UTC Timezone ) </span>
+                    <span className="tw-font-normal">
+                      <span>
+                        {cronstrue.toString(ingestionSchedule || '', {
+                          use24HourTimeFormat: true,
+                          verbose: true,
+                        })}
+                      </span>
+                    </span>
+                    <span> ) </span>
                   </p>
                   {showErrorMsg.ingestionSchedule
                     ? errorMsg('Ingestion schedule is required')
@@ -520,27 +529,27 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
                 </CronEditor>
               </div>
             </div>
-            <Field>
-              <label htmlFor="startDate">Start date:</label>
-              <input
-                className="tw-form-inputs tw-px-3 tw-py-1"
-                pattern="YY-MM-DD"
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-              />
-            </Field>
-            <Field>
-              <label htmlFor="endDate">End date:</label>
-              <input
-                className="tw-form-inputs tw-px-3 tw-py-1"
-                min={startDate}
-                pattern="YY-MM-DD"
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-              />
-            </Field>
+            <div className="tw-grid tw-grid-cols-2 tw-gap-x-2">
+              <Field>
+                <label htmlFor="startDate">Start date (UTC):</label>
+                <input
+                  className="tw-form-inputs tw-px-3 tw-py-1"
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                />
+              </Field>
+              <Field>
+                <label htmlFor="endDate">End date (UTC):</label>
+                <input
+                  className="tw-form-inputs tw-px-3 tw-py-1"
+                  min={startDate}
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                />
+              </Field>
+            </div>
           </Fragment>
         );
       case 4:
@@ -563,7 +572,32 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
                 className="tw-mb-4 tw-mt-6"
                 data={[
                   { key: 'Username', value: username },
-                  { key: 'Password', value: password },
+                  {
+                    key: 'Password',
+                    value: (
+                      <div>
+                        <span
+                          className={classNames({
+                            'tw-align-middle': !isPasswordVisible,
+                          })}>
+                          {isPasswordVisible
+                            ? password
+                            : ''.padStart(password.length, '*')}
+                        </span>
+                        <i
+                          className={classNames(
+                            'far tw-text-grey-body tw-ml-2',
+                            {
+                              'fa-eye-slash': isPasswordVisible,
+                            },
+
+                            { 'fa-eye ': !isPasswordVisible }
+                          )}
+                          onClick={() => setIspasswordVisible((pre) => !pre)}
+                        />
+                      </div>
+                    ),
+                  },
                   { key: 'Host', value: host },
                   { key: 'Database', value: database },
                   { key: 'Include views', value: includeViews ? 'Yes' : 'No' },
