@@ -27,7 +27,6 @@ import { Button } from '../buttons/Button/Button';
 import CronEditor from '../common/CronEditor/CronEditor.component';
 import IngestionStepper from '../IngestionStepper/IngestionStepper.component';
 import { Steps } from '../IngestionStepper/IngestionStepper.interface';
-import './IngestionModal.css';
 import {
   IngestionModalProps,
   ServiceData,
