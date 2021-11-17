@@ -32,6 +32,7 @@ import { postFeed } from '../../axiosAPIs/feedsAPI';
 import { getServiceById } from '../../axiosAPIs/serviceAPI';
 import { getDatabaseTables } from '../../axiosAPIs/tableAPI';
 import NextPrevious from '../../components/common/next-previous/NextPrevious';
+import NonAdminAction from '../../components/common/non-admin-action/NonAdminAction';
 import PopOver from '../../components/common/popover/PopOver';
 import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
 import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-breadcrumb.component';
@@ -45,6 +46,7 @@ import {
   getExplorePathWithSearch,
   getServiceDetailsPath,
   pagingObject,
+  TITLE_FOR_NON_ADMIN_ACTION,
 } from '../../constants/constants';
 import { Database } from '../../generated/entity/data/database';
 import { Table } from '../../generated/entity/data/table';
@@ -258,17 +260,21 @@ const DatabaseDetails: FunctionComponent = () => {
                       Description
                     </span>
                     <div className="tw-flex-initial">
-                      <button
-                        className="focus:tw-outline-none"
-                        data-testid="description-edit-button"
-                        onClick={onDescriptionEdit}>
-                        <SVGIcons
-                          alt="edit"
-                          icon="icon-edit"
-                          title="Edit"
-                          width="12px"
-                        />
-                      </button>
+                      <NonAdminAction
+                        position="left"
+                        title={TITLE_FOR_NON_ADMIN_ACTION}>
+                        <button
+                          className="focus:tw-outline-none"
+                          data-testid="description-edit-button"
+                          onClick={onDescriptionEdit}>
+                          <SVGIcons
+                            alt="edit"
+                            icon="icon-edit"
+                            title="Edit"
+                            width="12px"
+                          />
+                        </button>
+                      </NonAdminAction>
                     </div>
                   </div>
                   <div className="tw-px-3 tw-pl-5 tw-py-2 tw-overflow-y-auto">

@@ -27,6 +27,7 @@ import { getPipelines } from '../../axiosAPIs/pipelineAPI';
 import { getServiceByFQN, updateService } from '../../axiosAPIs/serviceAPI';
 import { getTopics } from '../../axiosAPIs/topicsAPI';
 import NextPrevious from '../../components/common/next-previous/NextPrevious';
+import NonAdminAction from '../../components/common/non-admin-action/NonAdminAction';
 import PopOver from '../../components/common/popover/PopOver';
 import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
 import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-breadcrumb.component';
@@ -35,7 +36,10 @@ import PageContainer from '../../components/containers/PageContainer';
 import Loader from '../../components/Loader/Loader';
 import { ModalWithMarkdownEditor } from '../../components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import Tags from '../../components/tags/tags';
-import { pagingObject } from '../../constants/constants';
+import {
+  pagingObject,
+  TITLE_FOR_NON_ADMIN_ACTION,
+} from '../../constants/constants';
 import { SearchIndex } from '../../enums/search.enum';
 import {
   DashboardServiceType,
@@ -695,17 +699,21 @@ const ServicePage: FunctionComponent = () => {
                       Description
                     </span>
                     <div className="tw-flex-initial">
-                      <button
-                        className="focus:tw-outline-none"
-                        data-testid="description-edit"
-                        onClick={onDescriptionEdit}>
-                        <SVGIcons
-                          alt="edit"
-                          icon="icon-edit"
-                          title="Edit"
-                          width="12px"
-                        />
-                      </button>
+                      <NonAdminAction
+                        position="left"
+                        title={TITLE_FOR_NON_ADMIN_ACTION}>
+                        <button
+                          className="focus:tw-outline-none"
+                          data-testid="description-edit"
+                          onClick={onDescriptionEdit}>
+                          <SVGIcons
+                            alt="edit"
+                            icon="icon-edit"
+                            title="Edit"
+                            width="12px"
+                          />
+                        </button>
+                      </NonAdminAction>
                     </div>
                   </div>
                   <div className="tw-px-3 tw-pl-5 tw-py-2 tw-overflow-y-auto">

@@ -361,30 +361,39 @@ const DashboardDetails = ({
                               {chart.chartType}
                             </td>
                             <td className="tw-group tableBody-cell tw-relative">
-                              <div
-                                className="tw-cursor-pointer hover:tw-underline tw-flex"
-                                data-testid="description"
-                                onClick={() => handleUpdateChart(chart, index)}>
-                                <div>
-                                  {chart.description ? (
-                                    <RichTextEditorPreviewer
-                                      markdown={chart.description}
-                                    />
-                                  ) : (
-                                    <span className="tw-no-description">
-                                      No description added
-                                    </span>
-                                  )}
+                              <NonAdminAction
+                                html={getHtmlForNonAdminAction(Boolean(owner))}
+                                isOwner={hasEditAccess()}
+                                position="top">
+                                <div className="tw-inline-block">
+                                  <div
+                                    className="tw-cursor-pointer hover:tw-underline tw-flex"
+                                    data-testid="description"
+                                    onClick={() =>
+                                      handleUpdateChart(chart, index)
+                                    }>
+                                    <div>
+                                      {chart.description ? (
+                                        <RichTextEditorPreviewer
+                                          markdown={chart.description}
+                                        />
+                                      ) : (
+                                        <span className="tw-no-description">
+                                          No description added
+                                        </span>
+                                      )}
+                                    </div>
+                                    <button className="tw-self-start tw-w-8 tw-h-auto tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none">
+                                      <SVGIcons
+                                        alt="edit"
+                                        icon="icon-edit"
+                                        title="Edit"
+                                        width="10px"
+                                      />
+                                    </button>
+                                  </div>
                                 </div>
-                                <button className="tw-self-start tw-w-8 tw-h-auto tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none">
-                                  <SVGIcons
-                                    alt="edit"
-                                    icon="icon-edit"
-                                    title="Edit"
-                                    width="10px"
-                                  />
-                                </button>
-                              </div>
+                              </NonAdminAction>
                             </td>
                             <td
                               className="tw-group tw-relative tableBody-cell"

@@ -347,46 +347,50 @@ const TagsPage = () => {
                                 setIsEditTag(true);
                                 setEditTag(tag);
                               }}>
-                              <div className="tw-cursor-pointer hover:tw-underline tw-flex">
-                                <div>
-                                  {tag.description ? (
-                                    <RichTextEditorPreviewer
-                                      markdown={tag.description}
+                              <NonAdminAction
+                                position="left"
+                                title={TITLE_FOR_NON_ADMIN_ACTION}>
+                                <div className="tw-cursor-pointer hover:tw-underline tw-flex">
+                                  <div>
+                                    {tag.description ? (
+                                      <RichTextEditorPreviewer
+                                        markdown={tag.description}
+                                      />
+                                    ) : (
+                                      <span className="tw-no-description">
+                                        No description added
+                                      </span>
+                                    )}
+                                  </div>
+                                  <button className="tw-self-start tw-w-8 tw-h-auto tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none">
+                                    <SVGIcons
+                                      alt="edit"
+                                      data-testid="editTagDescription"
+                                      icon="icon-edit"
+                                      title="Edit"
+                                      width="10px"
                                     />
+                                  </button>
+                                </div>
+                                <div className="tw-mt-1">
+                                  <span className="tw-text-grey-muted tw-mr-1">
+                                    Usage:
+                                  </span>
+                                  {tag.usageCount ? (
+                                    <Link
+                                      className="link-text tw-align-middle"
+                                      to={getUsageCountLink(
+                                        tag.fullyQualifiedName || ''
+                                      )}>
+                                      {tag.usageCount}
+                                    </Link>
                                   ) : (
                                     <span className="tw-no-description">
-                                      No description added
+                                      Not used
                                     </span>
                                   )}
                                 </div>
-                                <button className="tw-self-start tw-w-8 tw-h-auto tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none">
-                                  <SVGIcons
-                                    alt="edit"
-                                    data-testid="editTagDescription"
-                                    icon="icon-edit"
-                                    title="Edit"
-                                    width="10px"
-                                  />
-                                </button>
-                              </div>
-                              <div className="tw-mt-1">
-                                <span className="tw-text-grey-muted tw-mr-1">
-                                  Usage:
-                                </span>
-                                {tag.usageCount ? (
-                                  <Link
-                                    className="link-text tw-align-middle"
-                                    to={getUsageCountLink(
-                                      tag.fullyQualifiedName || ''
-                                    )}>
-                                    {tag.usageCount}
-                                  </Link>
-                                ) : (
-                                  <span className="tw-no-description">
-                                    Not used
-                                  </span>
-                                )}
-                              </div>
+                              </NonAdminAction>
                             </td>
                             <td
                               className="tw-group tableBody-cell"
