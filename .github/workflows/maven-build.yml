@@ -37,7 +37,7 @@ jobs:
         run: |
          sudo apt update
          sudo apt list libssl*
-         sudo apt -y install libssl
+         sudo apt -y install libssl1.1
 
       - name: Checkout
         uses: actions/checkout@v2
