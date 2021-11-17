@@ -29,7 +29,7 @@ import org.slf4j.LoggerFactory;
 import java.time.ZoneId;
 import java.util.TimeZone;
 
-import static com.wix.mysql.distribution.Version.v5_7_27;
+import static com.wix.mysql.distribution.Version.v8_latest;
 
 public class EmbeddedMySqlSupport implements BeforeAllCallback, AfterAllCallback {
   public static final Logger LOG = LoggerFactory.getLogger(EmbeddedMySqlSupport.class);
@@ -38,7 +38,7 @@ public class EmbeddedMySqlSupport implements BeforeAllCallback, AfterAllCallback
   @Override
   public void beforeAll(ExtensionContext extensionContext) {
     if (embeddedMysql == null) {
-      MysqldConfig config = MysqldConfig.aMysqldConfig(v5_7_27)
+      MysqldConfig config = MysqldConfig.aMysqldConfig(v8_latest)
               .withPort(3307)
               .withTimeZone(TimeZone.getTimeZone(ZoneId.of("UTC")))
               .withUser("test", "")

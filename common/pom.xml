@@ -87,14 +87,14 @@
     <dependency>
       <groupId>com.auth0</groupId>
       <artifactId>java-jwt</artifactId>
-      <version>3.16.0</version>
+      <version>3.18.2</version>
     </dependency>
 
     <!-- https://mvnrepository.com/artifact/com.auth0/jwks-rsa -->
     <dependency>
       <groupId>com.auth0</groupId>
       <artifactId>jwks-rsa</artifactId>
-      <version>0.18.0</version>
+      <version>0.20.0</version>
     </dependency>
 
     <!--test dependencies-->
@@ -111,7 +111,7 @@
     <dependency>
       <groupId>com.networknt</groupId>
       <artifactId>json-schema-validator</artifactId>
-      <version>1.0.56</version>
+      <version>1.0.64</version>
     </dependency>
     <dependency>
       <groupId>com.fasterxml.jackson.datatype</groupId>

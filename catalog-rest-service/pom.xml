@@ -14,7 +14,7 @@
   <properties>
     <dropwizard.swagger.version>2.0.12-1</dropwizard.swagger.version>
     <testng.version>7.4.0</testng.version>
-    <selenium.version>4.0.0-rc-1</selenium.version>
+    <selenium.version>4.0.0</selenium.version>
   </properties>
 
   <dependencies>
@@ -281,14 +281,14 @@
     <dependency>
       <groupId>com.auth0</groupId>
       <artifactId>java-jwt</artifactId>
-      <version>3.18.1</version>
+      <version>3.18.2</version>
     </dependency>
 
     <!-- https://mvnrepository.com/artifact/com.auth0/jwks-rsa -->
     <dependency>
       <groupId>com.auth0</groupId>
       <artifactId>jwks-rsa</artifactId>
-      <version>0.19.0</version>
+      <version>0.20.0</version>
     </dependency>
 
 
