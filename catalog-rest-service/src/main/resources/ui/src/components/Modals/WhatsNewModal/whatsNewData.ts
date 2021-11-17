@@ -17,9 +17,9 @@
 
 /* eslint-disable max-len */
 
-export const LATEST_VERSION_ID = 1;
+export const LATEST_VERSION_ID = 2;
 
-export const COOKIE_VERSION = 'VERSION_0_5_0'; // To be changed with each release.
+export const COOKIE_VERSION = 'VERSION_0_6_0'; // To be changed with each release.
 
 export const dummyImg = 'https://via.placeholder.com/725x278';
 
@@ -109,6 +109,75 @@ export const WHATS_NEW = [
       'Complex Data types': `- Schema and API support to capture complex data types\n- Ingestion support to capture complex data types from Redshift, BigQuery, Snowflake and Hive\n- UI Support for nested complex data types, users can add description, tags to nested fields`,
       'New Connectors': `- Trino connector\n- Redash connector\n- Amazon Glue - In progress`,
       'User Interface': `- UI now completely built on top of JsonSchema generated code\n- Expand complex data types and allow users to update descriptions and tags\n- Pipeline Service and Details page\n- Pipeline Explore & Search integration\n- Search results will show if the query matches description or column names, description `,
+    },
+  },
+  {
+    id: 2,
+    version: 'v0.6.0',
+    description: 'Released on 17 Nov 2021.',
+    features: [
+      {
+        title: 'Metadata Versioning',
+        description: '{Metadata Versioning description}',
+        isImage: false,
+        path: 'https://www.youtube.com/embed/8-CwuKsf8Oc',
+      },
+      {
+        title: 'Events API',
+        description: '{Events API description}',
+        isImage: false,
+        path: 'https://www.youtube.com/embed/8-CwuKsf8Oc',
+      },
+      {
+        title: 'One-Click Deployment of Ingestion Pipelines',
+        description:
+          '{One-Click Deployment of Ingestion Pipelines description}',
+        isImage: false,
+        path: 'https://www.youtube.com/embed/8-CwuKsf8Oc',
+      },
+      {
+        title: 'New Entities: ML Models and Data Models',
+        description: '{New Entities: ML Models and Data Models description}',
+        isImage: false,
+        path: 'https://www.youtube.com/embed/8-CwuKsf8Oc',
+      },
+      {
+        title: 'New Connectors',
+        description: '{New Connectors description}',
+        isImage: false,
+        path: 'https://www.youtube.com/embed/8-CwuKsf8Oc',
+      },
+      {
+        title: 'User Interface',
+        description: '{User Interface description}',
+        isImage: false,
+        path: 'https://www.youtube.com/embed/8-CwuKsf8Oc',
+      },
+      {
+        title: 'OpenMetadata Quickstart',
+        description: '{OpenMetadata Quickstart description}',
+        isImage: false,
+        path: 'https://www.youtube.com/embed/8-CwuKsf8Oc',
+      },
+      {
+        title: 'Helm Charts',
+        description: '{Helm Charts description}',
+        isImage: false,
+        path: 'https://www.youtube.com/embed/8-CwuKsf8Oc',
+      },
+    ],
+    changeLogs: {
+      'Metadata Versioning': `- OpenMetadata captures the changes in metadata as new versions of an entity.\n- The version history for all entities is maintained in the _Major.Minor_ number.\n- The initial version of an entity is 0.1\n- A backward compatible change will result in a _Minor_ version change (e.g., from 0.1 to 0.2)\n- A backward incompatible changes result in a _Major_ version change (e.g., from 0.2 to 1.2)\n- Timeline visualization tracks all the metadata changes from version to version.\n- Built _Versions_ APIs for developers to access a list of all versions, and also to get a specific version of an entity.\n- Helps debugging as users can identify changes that led to a data issue.\n- Helps crowdsourcing and collaboration within organizations as more users can be given access to change metadata and to be held accountable.`,
+      'Events API': `- When the state of metadata changes, an event is produced that indicates which entity changed, who changed it, and how it changed.\n- Events can be used to integrate metadata into other tools, or to trigger actions.\n- Followers of data assets can be notified of events that interest them.\n- Alerts can be sent to followers and downstream consumers about table schema changes, or backward incompatible changes, like when a column is deleted.\n- Events can be used to build powerful apps and automation that respond to the changes from activities.\n- See issue-[1138](https://github.com/open-metadata/OpenMetadata/issues/1138) for more details about this feature.`,
+      'One-Click Deployment of Ingestion Pipelines': `- OpenMetadata is providing a UI integration with Apache Airflow as a workflow engine to run ingestion, data profiling, data quality and other automation jobs.\n- From the UI, admins can configure a service to run the OpenMetadata pipelines, and add an ingestion schedule to automatically kick off the ingestion jobs.\n- This deploys a workflow onto the cluster.\n- This forms the basis for all the future automation workflows.`,
+      'New Entities: ML Models and Data Models': `- Two new data assets have been added - ML Models and Data Models.\n- ML Models are algorithms trained on data to find patterns or to make predictions.\n- We’ve added support for dbt to get the data models into OpenMetadata, so that users get to see what models are being used to generate the tables.`,
+      'New Connectors': `- AWS Glue\n- DBT\n- Maria DB`,
+      'User Interface': `- UI displays all the metadata changes of an entity over time as Version History. Clicking on the Version button, users can view the change log of an entity from the very beginning.\n- The UI supports setting up metadata ingestion workflows.\n- Improvements have been made in drawing the entity node details for lineage.\n- Entity link is supported for each tab on the details page.\n- Guided steps have been added for setting up ElasticSearch.\n- The entity details, search results page (Explore), landing pages, and components have been redesigned for better project structure and code maintenance.`,
+      'OpenMetadata Quickstart':
+        '- Shipped a Python package to simplify OpenMetadata docker installation.\n<code class="tw-bg-grey-muted-lite tw-text-grey-body tw-font-medium">pip install openmetadata-ingestion[docker]\n\nmetadata docker --run</code>',
+      'Helm Charts': `- Installing OpenMetadata in your cloud provider or on-premise got easier.\n- We worked on Helm charts to get the OpenMetadata and dependencies up and running on Kubernetes.`,
+      'Other Features':
+        '- Upgraded from JDBI 2 to JDBI 3, which will support newer versions.',
     },
   },
 ];
