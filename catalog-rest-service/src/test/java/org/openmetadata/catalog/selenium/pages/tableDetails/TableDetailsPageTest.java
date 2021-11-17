@@ -245,17 +245,18 @@ public class TableDetailsPageTest {
     openExplorePage();
     webDriver.findElement(By.cssSelector("[data-testid='searchBox']")).sendKeys("fact_sale");
     Events.click(webDriver, By.cssSelector("[data-testid='data-name']"));
-    for (int i = 1; i <= 3; i++) {
-      Events.click(webDriver, By.xpath("(//div[@data-testid='related-tables-data']//a)" + "[" + i + "]"));
-      webDriver.navigate().back();
-      Thread.sleep(waitTime);
-    }
-    for (int i = 1; i <= 3; i++) {
-      Events.click(webDriver, By.xpath("(//div[@data-testid='related-tables-data']//div//span)"));
-      Events.click(webDriver, By.xpath("(//span[@data-testid='more-related-tables-data'])" + "[" + i + "]"));
-      webDriver.navigate().back();
-      Thread.sleep(waitTime);
-    }
+    Events.click(webDriver, By.xpath("(//div[@data-testid='related-tables-data']//a)"));
+//    for (int i = 1; i <= 3; i++) {
+//      Events.click(webDriver, By.xpath("(//div[@data-testid='related-tables-data']//a)" + "[" + i + "]"));
+//      webDriver.navigate().back();
+//      Thread.sleep(waitTime);
+//    }
+//    for (int i = 1; i <= 3; i++) {
+//      Events.click(webDriver, By.xpath("(//div[@data-testid='related-tables-data']//div//span)"));
+//      Events.click(webDriver, By.xpath("(//span[@data-testid='more-related-tables-data'])" + "[" + i + "]"));
+//      webDriver.navigate().back();
+//      Thread.sleep(waitTime);
+//    }
   }
 
   @Test
