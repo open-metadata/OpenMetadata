@@ -55,7 +55,7 @@ const EntityVersionTimeLine: React.FC<Props> = ({
                 })}>
                 v{parseFloat(currV?.version).toFixed(1)}
               </p>
-              <div className="tw-text-xs tw-font-normal">
+              <div className="tw-text-xs tw-font-normal tw-break-all">
                 {getSummary(currV?.changeDescription)}
               </div>
               <p className="tw-text-xs tw-italic">

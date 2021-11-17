@@ -166,9 +166,9 @@ export const summaryFormatter = (v: FieldChange) => {
       : '{}'
   );
   if (v.name === 'columns') {
-    return `columns ${value?.map((val: any) => val?.name).join(',')}`;
+    return `columns ${value?.map((val: any) => val?.name).join(', ')}`;
   } else if (v.name === 'tags' || v.name?.endsWith('tags')) {
-    return `tags ${value?.map((val: any) => val?.tagFQN)?.join(',')}`;
+    return `tags ${value?.map((val: any) => val?.tagFQN)?.join(', ')}`;
   } else {
     return v.name;
   }
@@ -182,13 +182,19 @@ export const getSummary = (changeDescription: ChangeDescription) => {
   return (
     <Fragment>
       {fieldsAdded?.length > 0 ? (
-        <p>{fieldsAdded?.map(summaryFormatter)} has been added</p>
+        <p className="tw-mb-2">
+          {fieldsAdded?.map(summaryFormatter)} has been added
+        </p>
       ) : null}
       {fieldsUpdated?.length ? (
-        <p>{fieldsUpdated?.map(summaryFormatter)} has been updated</p>
+        <p className="tw-mb-2">
+          {fieldsUpdated?.map(summaryFormatter)} has been updated
+        </p>
       ) : null}
       {fieldsDeleted?.length ? (
-        <p>{fieldsDeleted?.map(summaryFormatter)} has been deleted</p>
+        <p className="tw-mb-2">
+          {fieldsDeleted?.map(summaryFormatter)} has been deleted
+        </p>
       ) : null}
     </Fragment>
   );
