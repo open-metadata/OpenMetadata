@@ -1,9 +1,10 @@
 import classNames from 'classnames';
 import React from 'react';
+import { ReactNode } from 'react-markdown';
 import { Button } from '../../buttons/Button/Button';
 type Props = {
   cancelText: string;
-  confirmText: string;
+  confirmText: string | ReactNode;
   bodyText: string;
   header: string;
   headerClassName?: string;

@@ -33,6 +33,13 @@ const info = '#1890FF';
 const warning = '#FFC34E';
 const warningBG = '#FFC34E40';
 
+// status colors
+
+const statusSuccess = '#07A35A';
+const statusFailed = '#E54937';
+const statusRunning = '#276EF1';
+const statusQueued = '#777777';
+
 // Background colors
 const bodyBG = '#FCFBFE';
 const bodyHoverBG = '#F9F8FD';
@@ -94,6 +101,10 @@ module.exports = {
         error: error,
         warning: warning,
         'warning-lite': warningBG,
+        'status-success': statusSuccess,
+        'status-failed': statusFailed,
+        'status-running': statusRunning,
+        'status-queued': statusQueued,
         info: info,
         separator: mainSeparator,
       },

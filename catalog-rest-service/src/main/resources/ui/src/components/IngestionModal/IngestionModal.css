@@ -15,28 +15,9 @@
   * limitations under the License.
 */
 
-.pagination {
-  width: 100%;
-  display: flex;
-  justify-content: center;
-  margin-top: 0.5rem;
-  margin-bottom: 1rem;
-}
-
-.tw-link:hover {
-  text-decoration: none !important;
-}
-.pagination > .disabled > .tw-link {
-  cursor: not-allowed;
-  color: #7147e8;
-}
-
-.pagination > .disabled > .tw-link:hover,
-.pagination > .disabled > .tw-link:focus {
-  cursor: not-allowed;
-  color: white;
-}
-.pagination > li > .tw-link:hover,
-.pagination > li > .tw-link:focus {
-  color: white;
+.preview-header {
+  transform: translateY(-13px);
+  font-size: 14px;
+  display: inline-block;
+  background: white;
 }

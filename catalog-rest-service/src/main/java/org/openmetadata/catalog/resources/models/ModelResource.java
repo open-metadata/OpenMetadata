@@ -128,7 +128,7 @@ public class ModelResource {
                                 @Parameter(description = "Filter models by database fully qualified name",
                                 schema = @Schema(type = "string", example = "snowflakeWestCoast.financeDB"))
                         @QueryParam("database") String databaseParam,
-                                @Parameter(description = "Limit the number tables returned. (1 to 1000000, default = 10) ",
+                                @Parameter(description = "Limit the number models returned. (1 to 1000000, default = 10) ",
                                 schema = @Schema(type = "string", example = "snowflakeWestCoast.financeDB"))
                         @DefaultValue("10")
                         @Min(1)
@@ -164,7 +164,7 @@ public class ModelResource {
           })
   public EntityHistory listVersions(@Context UriInfo uriInfo,
                                     @Context SecurityContext securityContext,
-                                    @Parameter(description = "table Id", schema = @Schema(type = "string"))
+                                    @Parameter(description = "model Id", schema = @Schema(type = "string"))
                                     @PathParam("id") String id)
           throws IOException, ParseException, GeneralSecurityException {
     return dao.listVersions(id);
@@ -213,9 +213,9 @@ public class ModelResource {
 
   @GET
   @Path("/{id}/versions/{version}")
-  @Operation(summary = "Get a version of the table", tags = "tables",
-          description = "Get a version of the table by given `id`",
-          responses = {@ApiResponse(responseCode = "200", description = "table",
+  @Operation(summary = "Get a version of the model", tags = "models",
+          description = "Get a version of the model by given `id`",
+          responses = {@ApiResponse(responseCode = "200", description = "model",
                        content = @Content(mediaType = "application/json",
                        schema = @Schema(implementation = Model.class))),
                        @ApiResponse(responseCode = "404", description = "Table for instance {id} and version {version}"+
@@ -223,9 +223,9 @@ public class ModelResource {
           })
   public Model getVersion(@Context UriInfo uriInfo,
                           @Context SecurityContext securityContext,
-                          @Parameter(description = "table Id", schema = @Schema(type = "string"))
+                          @Parameter(description = "model Id", schema = @Schema(type = "string"))
                           @PathParam("id") String id,
-                          @Parameter(description = "table version number in the form `major`.`minor`",
+                          @Parameter(description = "model version number in the form `major`.`minor`",
                                   schema = @Schema(type = "string", example = "0.1 or 1.1"))
                           @PathParam("version") String version) throws IOException, ParseException {
     return dao.getVersion(id, version);
@@ -234,7 +234,7 @@ public class ModelResource {
   @POST
   @Operation(summary = "Create a Model", tags = "models",
           description = "Create a new model under an existing `database`.",
-          responses = {@ApiResponse(responseCode = "200", description = "table",
+          responses = {@ApiResponse(responseCode = "200", description = "model",
                        content = @Content(mediaType = "application/json",
                        schema = @Schema(implementation = CreateModel.class))),
                        @ApiResponse(responseCode = "400", description = "Bad request")
@@ -249,9 +249,9 @@ public class ModelResource {
   }
 
   @PUT
-  @Operation(summary = "Create or update a table", tags = "tables",
-          description = "Create a table, if it does not exist. If a table already exists, update the table.",
-          responses = {@ApiResponse(responseCode = "200", description = "The table",
+  @Operation(summary = "Create or update a model", tags = "models",
+          description = "Create a model, if it does not exist. If a model already exists, update the model.",
+          responses = {@ApiResponse(responseCode = "200", description = "The model",
                        content = @Content(mediaType = "application/json",
                        schema = @Schema(implementation = CreateTable.class))),
                        @ApiResponse(responseCode = "400", description = "Bad request")

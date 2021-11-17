@@ -15,28 +15,52 @@
   * limitations under the License.
 */
 
-.pagination {
-  width: 100%;
+.ingestion-content {
   display: flex;
-  justify-content: center;
-  margin-top: 0.5rem;
-  margin-bottom: 1rem;
+  justify-content: space-around;
+}
+.ingestion-wrapper {
+  display: flex;
+}
+.ingestion-rounder {
+  display: block;
+  width: 18px;
+  height: 18px;
+  border: 3px solid #d9ceee;
+  background: white;
+  border-radius: 50%;
+  margin-top: 0.15rem;
+  z-index: 100;
+}
+.ingestion-rounder.active {
+  border-color: #7147e8;
+}
+.ingestion-rounder.completed {
+  background-color: #d9ceee;
 }
 
-.tw-link:hover {
-  text-decoration: none !important;
-}
-.pagination > .disabled > .tw-link {
-  cursor: not-allowed;
+.ingestion-rounder.completed::after {
+  content: '\2713';
+  display: block;
+  margin-top: -5px;
+  font-weight: 900;
   color: #7147e8;
 }
 
-.pagination > .disabled > .tw-link:hover,
-.pagination > .disabled > .tw-link:focus {
-  cursor: not-allowed;
-  color: white;
+.ingestion-line::before {
+  top: 10px;
+  bottom: 0;
+  position: absolute;
+  content: ' ';
+  width: 78%;
+  height: 2px;
+  left: 64px;
+  background-color: #d9ceee;
 }
-.pagination > li > .tw-link:hover,
-.pagination > li > .tw-link:focus {
-  color: white;
+.ingestion-line-se {
+  display: block;
+  width: 2px;
+  height: 15px;
+  background-color: #d9ceee;
+  transform: translate(8px, 0);
 }

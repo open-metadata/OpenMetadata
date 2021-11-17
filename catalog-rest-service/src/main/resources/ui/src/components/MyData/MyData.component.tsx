@@ -30,10 +30,8 @@ import { MyDataProps } from './MyData.interface';
 
 const MyData: React.FC<MyDataProps> = ({
   error,
-  errorHandler,
   countServices,
   userDetails,
-  rejectedResult,
   searchResult,
   fetchData,
   entityCounts,
@@ -122,19 +120,16 @@ const MyData: React.FC<MyDataProps> = ({
 
   useEffect(() => {
     if (searchResult) {
-      const formatedData: Array<FormatedTableData> = [];
-      let totalValue = 0;
-      searchResult.forEach((res) => {
-        totalValue = totalValue + res.data.hits.total.value;
-        formatedData.push(...formatDataResponse(res.data.hits.hits));
-      });
-
-      if (formatedData.length === 0 && rejectedResult.length > 0) {
-        errorHandler(rejectedResult[0].response?.data?.responseMessage);
+      const hits = searchResult.data.hits.hits;
+      if (hits.length > 0) {
+        setTotalNumberOfValues(searchResult.data.hits.total.value);
+        setData(formatDataResponse(hits));
+      } else {
+        setData([]);
+        setTotalNumberOfValues(0);
       }
-      setTotalNumberOfValues(totalValue);
-      setData(formatedData);
     }
+
     setIsEntityLoading(false);
   }, [searchResult]);
 
