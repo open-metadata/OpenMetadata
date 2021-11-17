@@ -104,7 +104,11 @@ public class DashboardServiceTestPage {
     @Order(3)
     public void editDashboardService() throws InterruptedException {
         openDashboardServicePage();
-        Events.click(webDriver, By.xpath("(//button[@data-testid='edit-service'])[1]"));
+        Thread.sleep(2000);
+        wait.until(ExpectedConditions.elementToBeClickable(By.cssSelector("[data-testid='searchbar']")));
+        Events.sendKeys(webDriver, By.cssSelector("[data-testid='searchbar']"), serviceName);
+        Thread.sleep(2000);
+        Events.click(webDriver, By.cssSelector("[data-testid='edit-service']"));
         Events.click(webDriver, By.xpath(enterDescription));
         Events.sendEnter(webDriver, By.xpath(enterDescription));
         Events.sendKeys(webDriver, By.xpath(enterDescription), faker.address().toString());
@@ -115,7 +119,11 @@ public class DashboardServiceTestPage {
     @Order(4)
     public void checkDashboardServiceDetails() throws InterruptedException {
         openDashboardServicePage();
-        Events.click(webDriver, By.xpath("(//h6[@data-testid='service-name'])[1]"));
+        Thread.sleep(2000);
+        wait.until(ExpectedConditions.elementToBeClickable(By.cssSelector("[data-testid='searchbar']")));
+        Events.sendKeys(webDriver, By.cssSelector("[data-testid='searchbar']"), serviceName);
+        Thread.sleep(2000);
+        Events.click(webDriver, By.cssSelector("[data-testid='service-name']"));
         Thread.sleep(waitTime);
         Events.click(webDriver, By.cssSelector("[data-testid='description-edit']"));
         Events.click(webDriver, By.xpath(enterDescription));
@@ -131,6 +139,7 @@ public class DashboardServiceTestPage {
         Thread.sleep(2000);
         wait.until(ExpectedConditions.elementToBeClickable(By.cssSelector("[data-testid='searchbar']")));
         Events.sendKeys(webDriver, By.cssSelector("[data-testid='searchbar']"), serviceName);
+        Thread.sleep(2000);
         Events.click(webDriver, By.cssSelector("[data-testid='service-name']"));
     }
 
@@ -141,6 +150,7 @@ public class DashboardServiceTestPage {
         Thread.sleep(2000);
         wait.until(ExpectedConditions.elementToBeClickable(By.cssSelector("[data-testid='searchbar']")));
         Events.sendKeys(webDriver, By.cssSelector("[data-testid='searchbar']"), serviceName);
+        Thread.sleep(2000);
         Events.click(webDriver, By.cssSelector("[data-testid='delete-service']"));
         Events.click(webDriver, By.cssSelector("[data-testid='save-button']"));
     }
