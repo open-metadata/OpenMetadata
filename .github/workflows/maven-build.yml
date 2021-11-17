@@ -35,9 +35,10 @@ jobs:
     steps:
       - name: install libssl
         run: |
+         sudo echo "deb http://security.ubuntu.com/ubuntu xenial-security main" >> /etc/apt/sources.list
          sudo apt update
          sudo apt list libssl*
-         sudo apt -y install libssl1.1
+         sudo apt -y install libssl1.0.0
 
       - name: Checkout
         uses: actions/checkout@v2
