@@ -17,6 +17,7 @@
 package org.openmetadata.catalog.selenium.pages.dashboardDetails;
 
 import com.github.javafaker.Faker;
+import io.github.artsok.RepeatedIfExceptionsTest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.AfterEach;
@@ -61,6 +62,7 @@ public class DashboardDetailsPageTest {
     }
 
     @Test
+    @RepeatedIfExceptionsTest(repeats = 2)
     @Order(1)
     public void openExplorePage() throws InterruptedException {
         Events.click(webDriver, By.cssSelector("[data-testid='closeWhatsNew']")); // Close What's new
@@ -70,6 +72,7 @@ public class DashboardDetailsPageTest {
     }
 
     @Test
+    @RepeatedIfExceptionsTest(repeats = 2)
     @Order(2)
     public void editDescription() throws InterruptedException {
         openExplorePage();
@@ -82,6 +85,7 @@ public class DashboardDetailsPageTest {
     }
 
     @Test
+    @RepeatedIfExceptionsTest(repeats = 2)
     @Order(3)
     public void addTag() throws InterruptedException {
         openExplorePage();
@@ -101,6 +105,7 @@ public class DashboardDetailsPageTest {
     }
 
     @Test
+    @RepeatedIfExceptionsTest(repeats = 2)
     @Order(4)
     public void removeTag() throws InterruptedException {
         openExplorePage();
@@ -114,6 +119,7 @@ public class DashboardDetailsPageTest {
     }
 
     @Test
+    @RepeatedIfExceptionsTest(repeats = 2)
     @Order(5)
     public void editChartDescription() throws InterruptedException {
         openExplorePage();
@@ -128,14 +134,15 @@ public class DashboardDetailsPageTest {
     }
 
     @Test
+    @RepeatedIfExceptionsTest(repeats = 2)
     @Order(6)
     public void addChartTags() throws InterruptedException {
         openExplorePage();
         Events.sendKeys(webDriver, By.cssSelector("[data-testid='searchBox']"), dashboardName);
         Events.click(webDriver, By.cssSelector("[data-testid='data-name']"));
         Thread.sleep(waitTime);
-        actions.moveToElement(webDriver.findElement(
-                By.xpath("//table[@data-testid='schema-table']//div[@data-testid='tag-conatiner']//span"))).perform();
+//        actions.moveToElement(webDriver.findElement(
+//                By.xpath("//table[@data-testid='schema-table']//div[@data-testid='tag-conatiner']//span"))).perform();
         Events.click(
                 webDriver, By.xpath("//table[@data-testid='schema-table']//div[@data-testid='tag-conatiner']//span"));
         Events.click(webDriver, By.cssSelector("[data-testid='associatedTagName']"));
@@ -147,6 +154,7 @@ public class DashboardDetailsPageTest {
     }
 
     @Test
+    @RepeatedIfExceptionsTest(repeats = 2)
     @Order(7)
     public void removeChartTag() throws InterruptedException {
         openExplorePage();
@@ -165,6 +173,7 @@ public class DashboardDetailsPageTest {
     }
 
     @Test
+    @RepeatedIfExceptionsTest(repeats = 2)
     @Order(8)
     public void checkManage() throws InterruptedException {
         openExplorePage();
@@ -182,6 +191,7 @@ public class DashboardDetailsPageTest {
     }
 
     @Test
+    @RepeatedIfExceptionsTest(repeats = 2)
     @Order(9)
     public void checkBreadCrumb() throws InterruptedException {
         openExplorePage();
