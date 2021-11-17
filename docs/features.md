@@ -97,7 +97,8 @@ Versioning also helps in **broader collaboration** among consumers and producers
 
 ![](<.gitbook/assets/versioning-wrapping-text.2021-11-17 16\_29\_01.gif>)
 
+### One-Click Ingestion Pipelines
 
+OpenMetadata provides a UI integration with Apache Airflow as a workflow engine to run ingestion, data profiling, data quality and other automation jobs. Admins can configure a service to run the OpenMetadata pipelines and add an ingestion schedule to automatically kick off the ingestion jobs directly from the OpenMetadata UI.
 
-
-
+![](<.gitbook/assets/ingestion for gif.2021-11-17 17\_50\_37.gif>)
