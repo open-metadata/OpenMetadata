@@ -340,7 +340,7 @@ const Ingestion: React.FC<Props> = ({
                               'Run'
                             )}
                           </div>
-                          <p
+                          <div
                             className="link-text tw-mr-2"
                             onClick={() => handleUpdate(ingestion)}>
                             {updateSelection.id === ingestion.id ? (
@@ -352,7 +352,7 @@ const Ingestion: React.FC<Props> = ({
                             ) : (
                               'Edit'
                             )}
-                          </p>
+                          </div>
                           <div
                             className="link-text tw-mr-2"
                             onClick={() =>
@@ -418,7 +418,7 @@ const Ingestion: React.FC<Props> = ({
       {isUpdating ? (
         <IngestionModal
           isUpdating
-          header={<p>{`Edit ${updateSelection.name}`}</p>}
+          header={<span>{`Edit ${updateSelection.name}`}</span>}
           ingestionList={ingestionList}
           selectedIngestion={updateSelection.ingestion}
           serviceList={serviceList.map((s) => ({
