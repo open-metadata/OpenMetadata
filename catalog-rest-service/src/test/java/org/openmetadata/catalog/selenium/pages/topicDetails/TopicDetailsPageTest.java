@@ -46,7 +46,7 @@ public class TopicDetailsPageTest {
 
     @BeforeMethod
     public void openMetadataWindow() {
-        System.setProperty("webdriver.chrome.driver", "src/test/resources/drivers/macM1/chromedriver");
+        System.setProperty("webdriver.chrome.driver", "src/test/resources/drivers/linux/chromedriver");
         webDriver = new ChromeDriver();
         actions = new Actions(webDriver);
         wait = new WebDriverWait(webDriver, Duration.ofSeconds(30));
