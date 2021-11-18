@@ -26,10 +26,10 @@
 }
 .cron-string {
   margin-top: 15px;
-  background: #1890ff40;
-  color: #1890ff;
+  background: #7147e840;
+  color: #37352f;
   padding: 7px 10px;
-  border-left: 3px solid #1890ff;
+  border-left: 3px solid #7147e8;
 }
 .cron-badge-option-container {
   display: inline-block;
