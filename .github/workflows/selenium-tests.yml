@@ -5,7 +5,7 @@ name: Selenium Java CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, selenium-parallel-trial]
   pull_request:
     branches: [main]
   create:
