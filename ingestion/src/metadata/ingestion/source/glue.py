@@ -94,8 +94,10 @@ class GlueSource(Source):
             ) = check_column_complex_type(
                 self.status, self.dataset_name, column["Type"].lower(), column["Name"]
             )
+            column_name = column["Name"]
+            column_name = column_name if len(column_name) <= 64 else column_name[:64]
             yield Column(
-                name=column["Name"],
+                name=column_name,
                 description="",
                 dataType=col_type,
                 dataTypeDisplay="{}({})".format(col_type, 1)
@@ -124,12 +126,15 @@ class GlueSource(Source):
                         id=self.service.id, type=self.config.service_type
                     ),
                 )
-                fqn = f"{self.config.service_name}.{self.config.database}.{tables['Name']}"
+                table_name = tables["Name"]
+                table_name = table_name if len(table_name) <= 64 else table_name[:64]
+                fqn = f"{self.config.service_name}.{self.config.database}.{table_name}"
                 self.dataset_name = fqn
                 table_columns = self.get_columns(tables["StorageDescriptor"])
                 table_entity = Table(
                     id=uuid.uuid4(),
-                    name=tables["Name"],
+                    name=table_name,
+                    displayName=tables["Name"],
                     description=tables["Description"]
                     if hasattr(tables, "Description")
                     else "",
@@ -164,9 +169,11 @@ class GlueSource(Source):
         for task in tasks["Graph"]["Nodes"]:
             self.task_id_mapping[task["Name"]] = task["UniqueId"]
         for task in tasks["Graph"]["Nodes"]:
+            task_name = task["Name"]
+            task_name = task_name if len(task_name) <= 64 else task_name[:64]
             taskList.append(
                 Task(
-                    name=task["Name"],
+                    name=task_name,
                     displayName=task["Name"],
                     taskType=task["Type"],
                     downstreamTasks=self.get_downstream_tasks(
@@ -183,9 +190,13 @@ class GlueSource(Source):
                     "Workflow"
                 ]
                 tasks = self.get_tasks(jobs)
+                pipeline_name = jobs["Name"]
+                pipeline_name = (
+                    pipeline_name if len(pipeline_name) <= 64 else pipeline_name[:64]
+                )
                 pipeline_ev = Pipeline(
                     id=uuid.uuid4(),
-                    name=jobs["Name"],
+                    name=pipeline_name,
                     displayName=jobs["Name"],
                     description="",
                     tasks=tasks,
