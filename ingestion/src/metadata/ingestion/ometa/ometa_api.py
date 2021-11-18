@@ -117,9 +117,9 @@ class OpenMetadata(OMetaLineageMixin, OMetaTableMixin, Generic[T, C]):
 
         # Entity Schemas
         if issubclass(
-            entity, get_args(Union[MLModel, self.get_create_entity_type(MLModel)])
+            entity, get_args(Union[Model, self.get_create_entity_type(Model)])
         ):
-            return "/mlmodels"
+            return "/models"
 
         if issubclass(
             entity, get_args(Union[Chart, self.get_create_entity_type(Chart)])
