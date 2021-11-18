@@ -76,7 +76,7 @@ const MyDataHeader: FunctionComponent<Props> = ({
         dataTestId: 'service',
       },
       ingestion: {
-        icon: Icons.SERVICE,
+        icon: Icons.INGESTION,
         data: `${ingestionCount} Ingestion`,
         link: `/ingestion`,
         dataTestId: 'ingestion',
