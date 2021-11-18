@@ -41,124 +41,134 @@ import java.util.List;
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class DatabaseServicePageTest {
 
-    static WebDriver webDriver;
-    static String url = Property.getInstance().getURL();
-    Integer waitTime = Property.getInstance().getSleepTime();
-    static Faker faker = new Faker();
-    static String serviceName = faker.name().firstName();
-    static String enterDescription = "//div[@data-testid='enterDescription']/div/div[2]/div/div/div/div/div/div";
-    static Actions actions;
-    static WebDriverWait wait;
+  static WebDriver webDriver;
+  static String url = Property.getInstance().getURL();
+  static Faker faker = new Faker();
+  static String serviceName = faker.name().firstName();
+  static String enterDescription = "//div[@data-testid='enterDescription']/div/div[2]/div/div/div/div/div/div";
+  static Actions actions;
+  static WebDriverWait wait;
+  Integer waitTime = Property.getInstance().getSleepTime();
 
-    @BeforeEach
-    public void openMetadataWindow() {
-        System.setProperty("webdriver.chrome.driver", "src/test/resources/drivers/linux/chromedriver");
-        ChromeOptions options = new ChromeOptions();
-        options.addArguments("--headless");
-        webDriver = new ChromeDriver(options);
-        actions = new Actions(webDriver);
-        wait = new WebDriverWait(webDriver, Duration.ofSeconds(30));
-        webDriver.manage().window().maximize();
-        webDriver.get(url);
+  @BeforeEach
+  public void openMetadataWindow() {
+    System.setProperty("webdriver.chrome.driver", "src/test/resources/drivers/linux/chromedriver");
+    ChromeOptions options = new ChromeOptions();
+    options.addArguments("--headless");
+    webDriver = new ChromeDriver(options);
+    actions = new Actions(webDriver);
+    wait = new WebDriverWait(webDriver, Duration.ofSeconds(30));
+    webDriver.manage().window().maximize();
+    webDriver.get(url);
+  }
+
+  @Test
+  @Order(1)
+  public void openDatabaseServicePage() throws InterruptedException {
+    Events.click(webDriver, By.cssSelector("[data-testid='closeWhatsNew']")); // Close What's new
+    Thread.sleep(waitTime);
+    Events.click(webDriver, By.cssSelector(
+        "[data-testid='menu-button'][id='menu-button-Settings']")); // Setting
+    Events.click(webDriver, By.cssSelector("[data-testid='menu-item-Services']")); // Setting/Services
+    Thread.sleep(waitTime);
+  }
+
+  @Test
+  @Order(2)
+  public void addDatabaseService() throws InterruptedException {
+    openDatabaseServicePage();
+    Thread.sleep(2000);
+    List<WebElement> webElementList = webDriver.findElements(By.cssSelector("[data-testid='add-new-user-button']"));
+    if (webElementList.isEmpty()) {
+      Events.click(webDriver, By.cssSelector("[data-testid='add-service-button']"));
+    } else {
+      Events.click(webDriver, By.cssSelector("[data-testid='add-new-user-button']"));
     }
+    Events.click(webDriver, By.cssSelector("[data-testid='selectService']"));
+    Events.click(webDriver, By.cssSelector("[value='MySQL']"));
+    Events.sendKeys(webDriver, By.cssSelector("[data-testid='name']"), serviceName);
+    Events.sendKeys(webDriver, By.cssSelector("[data-testid='url']"), "localhost:3306");
+    Events.sendKeys(webDriver, By.cssSelector("[data-testid='database']"), "openmetadata_db");
 
-    @Test
-    @Order(1)
-    public void openDatabaseServicePage() throws InterruptedException {
-        Events.click(webDriver, By.cssSelector("[data-testid='closeWhatsNew']")); // Close What's new
-        Thread.sleep(waitTime);
-        Events.click(webDriver, By.cssSelector(
-                "[data-testid='menu-button'][id='menu-button-Settings']")); // Setting
-        Events.click(webDriver, By.cssSelector("[data-testid='menu-item-Services']")); // Setting/Services
-        Thread.sleep(waitTime);
+    Events.click(webDriver, By.cssSelector("[data-testid='boldButton']"));
+    Events.sendKeys(webDriver, By.xpath(enterDescription), faker.address().toString());
+    Events.click(webDriver, By.xpath(enterDescription));
+    Events.sendEnter(webDriver, By.xpath(enterDescription));
+    Events.click(webDriver, By.cssSelector("[data-testid='italicButton']"));
+    Events.sendKeys(webDriver, By.xpath(enterDescription), faker.address().toString());
+    Events.click(webDriver, By.xpath(enterDescription));
+    Events.sendEnter(webDriver, By.xpath(enterDescription));
+    Events.click(webDriver, By.cssSelector("[data-testid='linkButton']"));
+    Events.sendKeys(webDriver, By.xpath(enterDescription), faker.address().toString());
+    Events.click(webDriver, By.cssSelector("[data-testid='save-button']"));
+  }
+
+  @Test
+  @Order(3)
+  public void editDatabaseService() throws InterruptedException {
+    openDatabaseServicePage();
+    Thread.sleep(2000);
+    wait.until(ExpectedConditions.elementToBeClickable(By.cssSelector("[data-testid='searchbar']")));
+    Events.sendKeys(webDriver, By.cssSelector("[data-testid='searchbar']"), serviceName);
+    Thread.sleep(2000);
+    Events.click(webDriver, By.cssSelector("[data-testid='edit-service']"));
+    Events.click(webDriver, By.xpath(enterDescription));
+    Events.sendEnter(webDriver, By.xpath(enterDescription));
+    Events.sendKeys(webDriver, By.xpath(enterDescription), faker.address().toString());
+    Events.click(webDriver, By.cssSelector("[data-testid='save-button']"));
+  }
+
+  @Test
+  @Order(4)
+  public void checkDatabaseServiceDetails() throws InterruptedException {
+    openDatabaseServicePage();
+    Thread.sleep(2000);
+    wait.until(ExpectedConditions.elementToBeClickable(By.cssSelector("[data-testid='searchbar']")));
+    Events.sendKeys(webDriver, By.cssSelector("[data-testid='searchbar']"), serviceName);
+    Thread.sleep(2000);
+    Events.click(webDriver, By.cssSelector("[data-testid='service-name']"));
+    Thread.sleep(waitTime);
+    Events.click(webDriver, By.cssSelector("[data-testid='description-edit']"));
+    Events.click(webDriver, By.xpath(enterDescription));
+    Events.sendEnter(webDriver, By.xpath(enterDescription));
+    Events.sendKeys(webDriver, By.xpath(enterDescription), faker.address().toString());
+    Events.click(webDriver, By.cssSelector("[data-testid='save']"));
+  }
+
+  @Test
+  @Order(5)
+  public void searchDatabaseService() throws InterruptedException {
+    openDatabaseServicePage();
+    Thread.sleep(2000);
+    wait.until(ExpectedConditions.elementToBeClickable(By.cssSelector("[data-testid='searchbar']")));
+    Events.sendKeys(webDriver, By.cssSelector("[data-testid='searchbar']"), serviceName);
+    Thread.sleep(2000);
+    Events.click(webDriver, By.cssSelector("[data-testid='service-name']"));
+  }
+
+  @Test
+  @Order(6)
+  public void deleteDatabaseService() throws InterruptedException {
+    openDatabaseServicePage();
+    Thread.sleep(2000);
+    wait.until(ExpectedConditions.elementToBeClickable(By.cssSelector("[data-testid='searchbar']")));
+    Events.sendKeys(webDriver, By.cssSelector("[data-testid='searchbar']"), serviceName);
+    Thread.sleep(2000);
+    Events.click(webDriver, By.cssSelector("[data-testid='delete-service']"));
+    Events.click(webDriver, By.cssSelector("[data-testid='save-button']"));
+  }
+
+
+  @AfterEach
+  public void closeTabs() {
+    ArrayList<String> tabs = new ArrayList<>(webDriver.getWindowHandles());
+    String originalHandle = webDriver.getWindowHandle();
+    for (String handle : webDriver.getWindowHandles()) {
+      if (!handle.equals(originalHandle)) {
+        webDriver.switchTo().window(handle);
+        webDriver.close();
+      }
     }
-
-    @Test
-    @Order(2)
-    public void addDatabaseService() throws InterruptedException {
-        openDatabaseServicePage();
-        Thread.sleep(2000);
-        List<WebElement> webElementList = webDriver.findElements(By.cssSelector("[data-testid='add-new-user-button']"));
-        if(webElementList.isEmpty()) {
-            Events.click(webDriver, By.cssSelector("[data-testid='add-service-button']"));
-        } else {
-            Events.click(webDriver, By.cssSelector("[data-testid='add-new-user-button']"));
-        }
-        Events.click(webDriver, By.cssSelector("[data-testid='selectService']"));
-        Events.click(webDriver, By.cssSelector("[value='MySQL']"));
-        Events.sendKeys(webDriver, By.cssSelector("[data-testid='name']"), serviceName);
-        Events.sendKeys(webDriver, By.cssSelector("[data-testid='url']"), "localhost:3306");
-        Events.sendKeys(webDriver, By.cssSelector("[data-testid='database']"), "openmetadata_db");
-
-        Events.click(webDriver, By.cssSelector("[data-testid='boldButton']"));
-        Events.sendKeys(webDriver, By.xpath(enterDescription), faker.address().toString());
-        Events.click(webDriver, By.xpath(enterDescription));
-        Events.sendEnter(webDriver, By.xpath(enterDescription));
-        Events.click(webDriver, By.cssSelector("[data-testid='italicButton']"));
-        Events.sendKeys(webDriver, By.xpath(enterDescription), faker.address().toString());
-        Events.click(webDriver, By.xpath(enterDescription));
-        Events.sendEnter(webDriver, By.xpath(enterDescription));
-        Events.click(webDriver, By.cssSelector("[data-testid='linkButton']"));
-        Events.sendKeys(webDriver, By.xpath(enterDescription), faker.address().toString());
-        Events.click(webDriver, By.cssSelector("[data-testid='save-button']"));
-    }
-
-    @Test
-    @Order(3)
-    public void editDatabaseService() throws InterruptedException {
-        openDatabaseServicePage();
-        Events.click(webDriver, By.xpath("(//button[@data-testid='edit-service'])[1]"));
-        Events.click(webDriver, By.xpath(enterDescription));
-        Events.sendEnter(webDriver, By.xpath(enterDescription));
-        Events.sendKeys(webDriver, By.xpath(enterDescription), faker.address().toString());
-        Events.click(webDriver, By.cssSelector("[data-testid='save-button']"));
-    }
-
-    @Test
-    @Order(4)
-    public void checkDatabaseServiceDetails() throws InterruptedException {
-        openDatabaseServicePage();
-        Events.click(webDriver, By.xpath("(//h6[@data-testid='service-name'])[2]"));
-        Thread.sleep(waitTime);
-        Events.click(webDriver, By.cssSelector("[data-testid='description-edit']"));
-        Events.click(webDriver, By.xpath(enterDescription));
-        Events.sendEnter(webDriver, By.xpath(enterDescription));
-        Events.sendKeys(webDriver, By.xpath(enterDescription), faker.address().toString());
-        Events.click(webDriver, By.cssSelector("[data-testid='save']"));
-    }
-
-    @Test
-    @Order(5)
-    public void searchDatabaseService() throws InterruptedException {
-        openDatabaseServicePage();
-        Thread.sleep(2000);
-        wait.until(ExpectedConditions.elementToBeClickable(By.cssSelector("[data-testid='searchbar']")));
-        Events.sendKeys(webDriver, By.cssSelector("[data-testid='searchbar']"), serviceName);
-        Events.click(webDriver, By.cssSelector("[data-testid='service-name']"));
-    }
-
-    @Test
-    @Order(6)
-    public void deleteDatabaseService() throws InterruptedException {
-        openDatabaseServicePage();
-        Thread.sleep(2000);
-        wait.until(ExpectedConditions.elementToBeClickable(By.cssSelector("[data-testid='searchbar']")));
-        Events.sendKeys(webDriver, By.cssSelector("[data-testid='searchbar']"), serviceName);
-        Events.click(webDriver, By.cssSelector("[data-testid='delete-service']"));
-        Events.click(webDriver, By.cssSelector("[data-testid='save-button']"));
-    }
-
-
-    @AfterEach
-    public void closeTabs() {
-        ArrayList<String> tabs = new ArrayList<>(webDriver.getWindowHandles());
-        String originalHandle = webDriver.getWindowHandle();
-        for (String handle : webDriver.getWindowHandles()) {
-            if (!handle.equals(originalHandle)) {
-                webDriver.switchTo().window(handle);
-                webDriver.close();
-            }
-        }
-        webDriver.switchTo().window(tabs.get(0)).close();
-    }
+    webDriver.switchTo().window(tabs.get(0)).close();
+  }
 }
