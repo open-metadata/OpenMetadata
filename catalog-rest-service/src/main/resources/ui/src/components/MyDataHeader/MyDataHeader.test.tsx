@@ -31,6 +31,7 @@ describe('Test MyDataHeader Component', () => {
           dashboardCount: 10,
           pipelineCount: 3,
         }}
+        ingestionCount={0}
       />,
       {
         wrapper: MemoryRouter,
@@ -52,6 +53,7 @@ describe('Test MyDataHeader Component', () => {
           dashboardCount: 10,
           pipelineCount: 3,
         }}
+        ingestionCount={0}
       />,
       {
         wrapper: MemoryRouter,
@@ -73,6 +75,7 @@ describe('Test MyDataHeader Component', () => {
           dashboardCount: 10,
           pipelineCount: 3,
         }}
+        ingestionCount={0}
       />,
       {
         wrapper: MemoryRouter,
@@ -94,6 +97,7 @@ describe('Test MyDataHeader Component', () => {
           dashboardCount: 10,
           pipelineCount: 3,
         }}
+        ingestionCount={0}
       />,
       {
         wrapper: MemoryRouter,
@@ -117,6 +121,7 @@ describe('Test MyDataHeader Component', () => {
           dashboardCount: 10,
           pipelineCount: 3,
         }}
+        ingestionCount={0}
       />,
       {
         wrapper: MemoryRouter,

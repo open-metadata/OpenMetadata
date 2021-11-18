@@ -51,6 +51,7 @@ import IconKey from '../assets/svg/icon-key.svg';
 import IconNotNull from '../assets/svg/icon-notnull.svg';
 import IconUnique from '../assets/svg/icon-unique.svg';
 import IconInfo from '../assets/svg/info.svg';
+import IconIngestion from '../assets/svg/ingestion.svg';
 import LogoMonogram from '../assets/svg/logo-monogram.svg';
 import Logo from '../assets/svg/logo.svg';
 import IconPipelineGrey from '../assets/svg/pipeline-grey.svg';
@@ -127,6 +128,7 @@ export const Icons = {
   UNIQUE: 'unique',
   ASSETS: 'assets',
   SERVICE: 'service',
+  INGESTION: 'ingestion',
   USERS: 'users',
   TERMS: 'terms',
   DOC: 'doc',
@@ -356,6 +358,10 @@ const SVGIcons: FunctionComponent<Props> = ({
       break;
     case Icons.SERVICE:
       IconComponent = IconSetting;
+
+      break;
+    case Icons.INGESTION:
+      IconComponent = IconIngestion;
 
       break;
     case Icons.USERS:

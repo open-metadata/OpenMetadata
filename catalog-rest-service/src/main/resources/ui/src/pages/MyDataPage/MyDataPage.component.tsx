@@ -21,6 +21,7 @@ import { observer } from 'mobx-react';
 import { EntityCounts, SearchDataFunctionType, SearchResponse } from 'Models';
 import React, { useEffect, useState } from 'react';
 import AppState from '../../AppState';
+import { getIngestionWorkflows } from '../../axiosAPIs/ingestionWorkflowAPI';
 import { searchData } from '../../axiosAPIs/miscAPI';
 import Loader from '../../components/Loader/Loader';
 import MyData from '../../components/MyData/MyData.component';
@@ -37,6 +38,7 @@ import {
 const MyDataPage = () => {
   const [error, setError] = useState<string>('');
   const [countServices, setCountServices] = useState<number>();
+  const [ingestionCount, setIngestionCount] = useState<number>();
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [searchResult, setSearchResult] = useState<SearchResponse>();
   const [entityCounts, setEntityCounts] = useState<EntityCounts>();
@@ -72,6 +74,9 @@ const MyDataPage = () => {
       getAllServices()
         .then((res) => setCountServices(res.length))
         .catch(() => setCountServices(0));
+      getIngestionWorkflows(['owner, service, tags, status'])
+        .then((res) => setIngestionCount(res.data.data.length))
+        .catch(() => setIngestionCount(0));
     }
     setIsLoading(false);
   };
@@ -93,12 +98,14 @@ const MyDataPage = () => {
     <>
       {!isUndefined(countServices) &&
       !isUndefined(entityCounts) &&
+      !isUndefined(ingestionCount) &&
       !isLoading ? (
         <MyData
           countServices={countServices}
           entityCounts={entityCounts}
           error={error}
           fetchData={fetchData}
+          ingestionCount={ingestionCount}
           searchResult={searchResult}
           userDetails={AppState.userDetails}
         />

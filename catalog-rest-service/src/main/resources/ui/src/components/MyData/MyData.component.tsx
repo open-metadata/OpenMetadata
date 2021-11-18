@@ -31,6 +31,7 @@ import { MyDataProps } from './MyData.interface';
 const MyData: React.FC<MyDataProps> = ({
   error,
   countServices,
+  ingestionCount,
   userDetails,
   searchResult,
   fetchData,
@@ -143,6 +144,7 @@ const MyData: React.FC<MyDataProps> = ({
         <MyDataHeader
           countServices={countServices}
           entityCounts={entityCounts}
+          ingestionCount={ingestionCount}
         />
         {getTabs()}
         {error && Boolean(currentTab === 2 || currentTab === 3) ? (
