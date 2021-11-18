@@ -23,6 +23,8 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.catalog.selenium.events.Events;
 import org.openmetadata.catalog.selenium.properties.Property;
 import org.openqa.selenium.By;
@@ -36,6 +38,7 @@ import org.openqa.selenium.support.ui.WebDriverWait;
 import java.time.Duration;
 import java.util.ArrayList;
 
+@Execution(ExecutionMode.CONCURRENT)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class DashboardDetailsPageTest {
     static WebDriver webDriver;
@@ -49,7 +52,7 @@ public class DashboardDetailsPageTest {
 
   @BeforeEach
   public void openMetadataWindow() {
-    System.setProperty("webdriver.chrome.driver", "src/test/resources/drivers/linux/chromedriver");
+    System.setProperty("webdriver.chrome.driver", "src/test/resources/drivers/macM1/chromedriver");
     ChromeOptions options = new ChromeOptions();
     options.addArguments("--headless");
     options.addArguments("--window-size=1280,800");

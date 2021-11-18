@@ -17,6 +17,8 @@
 package org.openmetadata.catalog.selenium.pages.teams;
 
 import com.github.javafaker.Faker;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.catalog.selenium.events.Events;
 import org.openmetadata.catalog.selenium.properties.Property;
 import org.openqa.selenium.By;
@@ -36,6 +38,7 @@ import org.junit.jupiter.api.MethodOrderer;
 import java.time.Duration;
 import java.util.ArrayList;
 
+@Execution(ExecutionMode.CONCURRENT)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class TeamsPageTest {
 
@@ -50,7 +53,7 @@ public class TeamsPageTest {
 
     @BeforeEach
     public void openMetadataWindow() {
-        System.setProperty("webdriver.chrome.driver", "src/test/resources/drivers/linux/chromedriver");
+        System.setProperty("webdriver.chrome.driver", "src/test/resources/drivers/macM1/chromedriver");
         ChromeOptions options = new ChromeOptions();
         options.addArguments("--no-sandbox");
         options.addArguments("--disable-dev-shm-usage");

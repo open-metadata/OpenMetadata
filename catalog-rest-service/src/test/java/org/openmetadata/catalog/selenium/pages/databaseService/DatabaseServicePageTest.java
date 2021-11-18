@@ -17,6 +17,9 @@
 package org.openmetadata.catalog.selenium.pages.databaseService;
 
 import com.github.javafaker.Faker;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.api.parallel.ResourceLock;
 import org.openmetadata.catalog.selenium.events.Events;
 import org.openmetadata.catalog.selenium.properties.Property;
 import org.openqa.selenium.By;
@@ -38,6 +41,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 
+@Execution(ExecutionMode.CONCURRENT)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class DatabaseServicePageTest {
 
@@ -52,7 +56,7 @@ public class DatabaseServicePageTest {
 
   @BeforeEach
   public void openMetadataWindow() {
-    System.setProperty("webdriver.chrome.driver", "src/test/resources/drivers/linux/chromedriver");
+    System.setProperty("webdriver.chrome.driver", "src/test/resources/drivers/macM1/chromedriver");
     ChromeOptions options = new ChromeOptions();
     options.addArguments("--headless");
     webDriver = new ChromeDriver(options);

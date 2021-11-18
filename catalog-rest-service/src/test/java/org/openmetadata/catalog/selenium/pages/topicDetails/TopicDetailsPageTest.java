@@ -17,6 +17,8 @@
 package org.openmetadata.catalog.selenium.pages.topicDetails;
 
 import com.github.javafaker.Faker;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.catalog.selenium.events.Events;
 import org.openmetadata.catalog.selenium.properties.Property;
 import org.openqa.selenium.By;
@@ -32,6 +34,7 @@ import org.testng.annotations.Test;
 import java.time.Duration;
 import java.util.ArrayList;
 
+@Execution(ExecutionMode.CONCURRENT)
 public class TopicDetailsPageTest {
     static WebDriver webDriver;
     static String url = Property.getInstance().getURL();
@@ -43,7 +46,7 @@ public class TopicDetailsPageTest {
 
     @BeforeMethod
     public void openMetadataWindow() {
-        System.setProperty("webdriver.chrome.driver", "src/test/resources/drivers/linux/chromedriver");
+        System.setProperty("webdriver.chrome.driver", "src/test/resources/drivers/macM1/chromedriver");
         webDriver = new ChromeDriver();
         actions = new Actions(webDriver);
         wait = new WebDriverWait(webDriver, Duration.ofSeconds(30));

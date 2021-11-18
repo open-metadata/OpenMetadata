@@ -16,6 +16,8 @@
 
 package org.openmetadata.catalog.selenium.pages.myData;
 
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.catalog.selenium.events.Events;
 import org.openmetadata.catalog.selenium.properties.Property;
 import org.openqa.selenium.By;
@@ -33,6 +35,7 @@ import org.junit.jupiter.api.Order;
 import java.time.Duration;
 import java.util.ArrayList;
 
+@Execution(ExecutionMode.CONCURRENT)
 public class MyDataPageTest {
 
     static WebDriver webDriver;
@@ -42,9 +45,10 @@ public class MyDataPageTest {
     static WebDriverWait wait;
 
 
+    @Execution(ExecutionMode.CONCURRENT)
     @BeforeEach
     public void openMetadataWindow() {
-        System.setProperty("webdriver.chrome.driver", "src/test/resources/drivers/linux/chromedriver");
+        System.setProperty("webdriver.chrome.driver", "src/test/resources/drivers/macM1/chromedriver");
         ChromeOptions options = new ChromeOptions();
         options.addArguments("--headless");
         webDriver = new ChromeDriver(options);
@@ -57,6 +61,7 @@ public class MyDataPageTest {
     @Test
     @Order(1)
     public void checkWhatsNew() {
+        openMetadataWindow();
         Events.click(webDriver, By.xpath("//ul[@class='slick-dots testid-dots-button']//li[2]")); // What's new page 2
         Events.click(webDriver, By.xpath("//ul[@class='slick-dots testid-dots-button']//li[3]")); // What's new page 3
         Events.click(webDriver, By.xpath("//ul[@class='slick-dots testid-dots-button']//li[4]")); // What's new page 4
@@ -68,6 +73,7 @@ public class MyDataPageTest {
     @Test
     @Order(2)
     public void checkTabs() {
+        openMetadataWindow();
         checkWhatsNew();
         Events.click(webDriver, By.cssSelector("[data-testid='tab'][id='myDataTab']")); // My Data
         Events.click(webDriver, By.cssSelector("[data-testid='tab'][id='followingTab']")); // Following
@@ -76,6 +82,7 @@ public class MyDataPageTest {
     @Test
     @Order(3)
     public void checkOverview() throws InterruptedException {
+        openMetadataWindow();
         checkWhatsNew();
         Events.click(webDriver, By.cssSelector("[data-testid='tables']")); // Tables
         webDriver.navigate().back();
@@ -95,6 +102,7 @@ public class MyDataPageTest {
     @Test
     @Order(4)
     public void checkSearchBar() throws InterruptedException {
+        openMetadataWindow();
         checkWhatsNew();
         wait.until(ExpectedConditions.elementToBeClickable(
                 webDriver.findElement(By.cssSelector("[id='searchBox']")))); // Search bar/dim
@@ -107,6 +115,7 @@ public class MyDataPageTest {
     @Test
     @Order(5)
     public void checkHeaders() {
+        openMetadataWindow();
         checkWhatsNew();
         ArrayList<String> tabs = new ArrayList<>(webDriver.getWindowHandles());
         Events.click(webDriver, By.cssSelector("[data-testid='appbar-item'][id='explore']")); // Explore
@@ -137,21 +146,22 @@ public class MyDataPageTest {
     @Test
     @Order(6)
     public void checkLogout() {
+        openMetadataWindow();
         checkWhatsNew();
         Events.click(webDriver, By.cssSelector("[data-testid='greeting-text']"));
         Events.click(webDriver, By.cssSelector("[data-testid='menu-item-Logout']"));
     }
 
-    @AfterEach
-    public void closeTabs() {
-        ArrayList<String> tabs = new ArrayList<>(webDriver.getWindowHandles());
-        String originalHandle = webDriver.getWindowHandle();
-        for (String handle : webDriver.getWindowHandles()) {
-            if (!handle.equals(originalHandle)) {
-                webDriver.switchTo().window(handle);
-                webDriver.close();
-            }
-        }
-        webDriver.switchTo().window(tabs.get(0)).close();
-    }
+//    @AfterEach
+//    public void closeTabs() {
+//        ArrayList<String> tabs = new ArrayList<>(webDriver.getWindowHandles());
+//        String originalHandle = webDriver.getWindowHandle();
+//        for (String handle : webDriver.getWindowHandles()) {
+//            if (!handle.equals(originalHandle)) {
+//                webDriver.switchTo().window(handle);
+//                webDriver.close();
+//            }
+//        }
+//        webDriver.switchTo().window(tabs.get(0)).close();
+//    }
 }
