@@ -6,6 +6,11 @@ on:
       - main
     paths:
       - 'catalog-rest-service/src/main/resources/json/**'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'catalog-rest-service/src/main/resources/json/**'
 
 jobs:
   generate:
@@ -24,11 +29,14 @@ jobs:
           python3 -m venv env
           source env/bin/activate
           make install_dev
-      - name: Commit Models
+      - name: Generate models
         run: |
-          set -ex
           source env/bin/activate
           make generate
+      - name: Push models
+        # Push the generated models if we are running in a push to main
+        if: ${{ github.event_name == 'push' }}
+        run: |
           git config --global user.name 'open-metadata'
           git config --global user.email 'open-metadata@users.noreply.github.com'
           git add -A
