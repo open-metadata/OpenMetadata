@@ -90,12 +90,15 @@ export interface ChangeDescription {
    * Fields modified during the version changes with old and new values.
    */
   fieldsUpdated?: FieldChange[];
+  /**
+   * When a change did not result in change, this could be same as the current version.
+   */
   previousVersion?: number;
 }
 
 export interface FieldChange {
   /**
-   * Name of the entity field that changed
+   * Name of the entity field that changed.
    */
   name?: string;
   /**
@@ -145,6 +148,7 @@ export enum DatabaseServiceType {
   BigQuery = 'BigQuery',
   Glue = 'Glue',
   Hive = 'Hive',
+  MariaDB = 'MariaDB',
   Mssql = 'MSSQL',
   MySQL = 'MySQL',
   Oracle = 'Oracle',

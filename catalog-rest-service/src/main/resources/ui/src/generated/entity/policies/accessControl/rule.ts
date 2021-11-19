@@ -17,64 +17,81 @@
  */
 
 /**
- * This schema defines the Dashboard entity. Dashboards are computed from data and visually
- * present data, metrics, and KPIs. They are updated in real-time and allow interactive data
- * exploration.
+ * Describes an entity Access Control Rule used within a Policy
  */
-export interface Dashboard {
+export interface Rule {
+  /**
+   * A set of access control enforcements to take on the entities.
+   */
+  actions: TagBased[];
+  filters: Array<TagLabel | string>;
+}
+
+/**
+ * Describes an Access Control Rule to selectively grant access to Teams/Users to tagged
+ * entities.
+ */
+export interface TagBased {
+  /**
+   * Teams and Users who are able to access the tagged entities.
+   */
+  allow: Team[];
+  /**
+   * Tags that are associated with the entities.
+   */
+  tags: TagLabel[];
+}
+
+/**
+ * This schema defines the Team entity. A Team is a group of zero or more users. Teams can
+ * own zero or more data assets.
+ *
+ * This schema defines the User entity. A user can be part of 0 or more teams. A special
+ * type of user called Bot is used for automation. A user can be an owner of zero or more
+ * data assets. A user can also follow zero or more data assets.
+ */
+export interface Team {
   /**
    * Change that lead to this version of the entity.
    */
   changeDescription?: ChangeDescription;
   /**
-   * All the charts included in this Dashboard.
+   * When true the team has been deleted.
    */
-  charts?: EntityReference[];
+  deleted?: boolean;
   /**
-   * Dashboard URL.
-   */
-  dashboardUrl?: string;
-  /**
-   * Description of the dashboard, what it is, and how to use it.
+   * Description of the team.
+   *
+   * Used for user biography.
    */
   description?: string;
   /**
-   * Display Name that identifies this Dashboard. It could be title or label from the source
-   * services.
+   * Name used for display purposes. Example 'Data Science team'.
+   *
+   * Name used for display purposes. Example 'FirstName LastName'.
    */
   displayName?: string;
   /**
-   * Followers of this dashboard.
-   */
-  followers?: EntityReference[];
-  /**
-   * A unique name that identifies a dashboard in the format 'ServiceName.DashboardName'.
-   */
-  fullyQualifiedName?: string;
-  /**
    * Link to the resource corresponding to this entity.
    */
-  href?: string;
+  href: string;
   /**
-   * Unique identifier that identifies a dashboard instance.
+   * Unique identifier that identifies a user entity instance.
    */
   id: string;
-  /**
-   * Name that identifies this dashboard.
-   */
   name: string;
   /**
-   * Owner of this dashboard.
+   * List of entities owned by the team.
+   *
+   * List of entities owned by the user.
    */
-  owner?: EntityReference;
+  owns?: EntityReference[];
   /**
-   * Link to service where this dashboard is hosted in.
+   * Team profile information.
+   *
+   * Profile of the user.
    */
-  service: EntityReference;
-  /**
-   * Tags for this dashboard.
-   */
-  tags?: TagLabel[];
+  profile?: Profile;
   /**
    * Last update time corresponding to the new version of the entity.
    */
@@ -84,13 +101,42 @@ export interface Dashboard {
    */
   updatedBy?: string;
   /**
-   * Latest usage information for this database.
+   * Users that are part of the team.
    */
-  usageSummary?: TypeUsedToReturnUsageDetailsOfAnEntity;
+  users?: EntityReference[];
   /**
    * Metadata version of the entity.
    */
   version?: number;
+  /**
+   * When true indicates the user has been deactivated. Users are deactivated instead of
+   * deleted.
+   */
+  deactivated?: boolean;
+  /**
+   * Email address of the user.
+   */
+  email?: string;
+  /**
+   * List of entities followed by the user.
+   */
+  follows?: EntityReference[];
+  /**
+   * When true indicates user is an administrator for the system with superuser privileges.
+   */
+  isAdmin?: boolean;
+  /**
+   * When true indicates a special type of user called Bot.
+   */
+  isBot?: boolean;
+  /**
+   * Teams that the user belongs to.
+   */
+  teams?: EntityReference[];
+  /**
+   * Timezone of the user.
+   */
+  timezone?: string;
 }
 
 /**
@@ -135,16 +181,12 @@ export interface FieldChange {
 }
 
 /**
+ * List of entities owned by the team.
+ *
  * This schema defines the EntityReference type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
- *
- * Followers of this dashboard.
- *
- * Owner of this dashboard.
- *
- * Link to service where this dashboard is hosted in.
  */
 export interface EntityReference {
   /**
@@ -176,7 +218,33 @@ export interface EntityReference {
 }
 
 /**
+ * Team profile information.
+ *
+ * This schema defines the type for a profile of a user, team, or organization.
+ *
+ * Profile of the user.
+ */
+export interface Profile {
+  images?: ImageList;
+}
+
+/**
+ * Links to a list of images of varying resolutions/sizes.
+ */
+export interface ImageList {
+  image?: string;
+  image192?: string;
+  image24?: string;
+  image32?: string;
+  image48?: string;
+  image512?: string;
+  image72?: string;
+}
+
+/**
  * This schema defines the type for labeling an entity with a Tag.
+ *
+ * Entity tags to match on.
  */
 export interface TagLabel {
   /**
@@ -224,49 +292,4 @@ export enum LabelType {
 export enum State {
   Confirmed = 'Confirmed',
   Suggested = 'Suggested',
-}
-
-/**
- * Latest usage information for this database.
- *
- * This schema defines the type for usage details. Daily, weekly, and monthly aggregation of
- * usage is computed along with the percentile rank based on the usage for a given day.
- */
-export interface TypeUsedToReturnUsageDetailsOfAnEntity {
-  /**
-   * Daily usage stats of a data asset on the start date.
-   */
-  dailyStats: UsageStats;
-  /**
-   * Date in UTC.
-   */
-  date: Date;
-  /**
-   * Monthly (last 30 days) rolling usage stats of a data asset on the start date.
-   */
-  monthlyStats?: UsageStats;
-  /**
-   * Weekly (last 7 days) rolling usage stats of a data asset on the start date.
-   */
-  weeklyStats?: UsageStats;
-}
-
-/**
- * Daily usage stats of a data asset on the start date.
- *
- * Type used to return usage statistics.
- *
- * Monthly (last 30 days) rolling usage stats of a data asset on the start date.
- *
- * Weekly (last 7 days) rolling usage stats of a data asset on the start date.
- */
-export interface UsageStats {
-  /**
-   * Usage count of a data asset on the start date.
-   */
-  count: number;
-  /**
-   * Optional daily percentile rank data asset use when relevant.
-   */
-  percentileRank?: number;
 }
