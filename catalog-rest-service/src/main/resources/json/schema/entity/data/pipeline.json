@@ -68,7 +68,9 @@
     },
     "name": {
       "description": "Name that identifies this pipeline instance uniquely.",
-      "type": "string"
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
     },
     "displayName": {
       "description": "Display Name that identifies this Pipeline. It could be title or label from the source services.",
