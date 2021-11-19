@@ -11,9 +11,7 @@
       "properties": {
         "name": {
           "description": "Name that identifies this task instance uniquely.",
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 64
+          "type": "string"
         },
         "displayName": {
           "description": "Display Name that identifies this Task. It could be title or label from the pipeline services.",
@@ -21,9 +19,7 @@
         },
         "fullyQualifiedName": {
           "description": "A unique name that identifies a pipeline in the format 'ServiceName.PipelineName.TaskName'.",
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 64
+          "type": "string"
         },
         "description": {
           "description": "Description of this Task.",
@@ -38,9 +34,7 @@
           "description": "All the tasks that are downstream of this task.",
           "type": "array",
           "items": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 64
+            "type": "string"
           },
           "default": null
         },
@@ -76,7 +70,7 @@
       "description": "Name that identifies this pipeline instance uniquely.",
       "type": "string",
       "minLength": 1,
-      "maxLength": 64
+      "maxLength": 256
     },
     "displayName": {
       "description": "Display Name that identifies this Pipeline. It could be title or label from the source services.",
@@ -84,9 +78,7 @@
     },
     "fullyQualifiedName": {
       "description": "A unique name that identifies a pipeline in the format 'ServiceName.PipelineName'.",
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 64
+      "type": "string"
     },
     "description": {
       "description": "Description of this Pipeline.",
