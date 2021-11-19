@@ -72,6 +72,9 @@ TABLE_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
             "service_category": {
               "type": "keyword"
             },
+            "entity_type": {
+              "type": "keyword"
+            },
             "database": {
               "type": "text"
             },
@@ -150,6 +153,9 @@ TOPIC_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
             "service_category": {
               "type": "keyword"
             },
+            "entity_type": {
+              "type": "keyword"
+            },
             "suggest": {
               "type": "completion"
             }
@@ -202,6 +208,9 @@ DASHBOARD_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
               "type": "keyword"
             },
             "service_category": {
+              "type": "keyword"
+            },
+            "entity_type": {
               "type": "keyword"
             },
             "suggest": {
@@ -274,6 +283,9 @@ PIPELINE_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
               "type": "keyword"
             },
             "service_category": {
+              "type": "keyword"
+            },
+            "entity_type": {
               "type": "keyword"
             },
             "suggest": {

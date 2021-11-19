@@ -35,6 +35,7 @@ class TableESDocument(BaseModel):
     service: str
     service_type: str
     service_category: str
+    entity_type: str = "table"
     table_name: str
     suggest: List[dict]
     description: Optional[str] = None
@@ -63,6 +64,7 @@ class TopicESDocument(BaseModel):
     service: str
     service_type: str
     service_category: str
+    entity_type: str = "topic"
     topic_name: str
     suggest: List[dict]
     description: Optional[str] = None
@@ -82,6 +84,7 @@ class DashboardESDocument(BaseModel):
     service: str
     service_type: str
     service_category: str
+    entity_type: str = "dashboard"
     dashboard_name: str
     suggest: List[dict]
     description: Optional[str] = None
@@ -108,6 +111,7 @@ class PipelineESDocument(BaseModel):
     service: str
     service_type: str
     service_category: str
+    entity_type: str = "pipeline"
     pipeline_name: str
     suggest: List[dict]
     description: Optional[str] = None
