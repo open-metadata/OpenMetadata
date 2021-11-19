@@ -8,13 +8,26 @@ on:
       - 'catalog-rest-service/src/main/resources/json/**'
 
 jobs:
-  report:
+  generate:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
+      - name: Install Ubuntu related dependencies
+        run: |
+          sudo apt-get install -y libsasl2-dev unixodbc-dev python3-venv
+      - name: Install Python & dev dependencies
+        run: |
+          python3 -m venv env
+          source env/bin/activate
+          make install_dev
       - name: Commit Models
         run: |
           set -ex
+          source env/bin/activate
           make generate
           git config --global user.name 'open-metadata'
           git config --global user.email 'open-metadata@users.noreply.github.com'
