@@ -49,6 +49,7 @@ import IconWhatsNew from '../assets/svg/ic-whats-new.svg';
 import IconWorkflows from '../assets/svg/ic-workflows.svg';
 import IconKey from '../assets/svg/icon-key.svg';
 import IconNotNull from '../assets/svg/icon-notnull.svg';
+import IconTour from '../assets/svg/icon-tour.svg';
 import IconUnique from '../assets/svg/icon-unique.svg';
 import IconInfo from '../assets/svg/info.svg';
 import LogoMonogram from '../assets/svg/logo-monogram.svg';
@@ -148,6 +149,7 @@ export const Icons = {
   VERSION: 'icon-version',
   VERSION_WHITE: 'icon-version-white',
   ICON_DEPLOY: 'icon-deploy',
+  TOUR: 'tour',
 };
 
 const SVGIcons: FunctionComponent<Props> = ({
@@ -176,6 +178,10 @@ const SVGIcons: FunctionComponent<Props> = ({
       break;
     case Icons.WORKFLOWS:
       IconComponent = IconWorkflows;
+
+      break;
+    case Icons.TOUR:
+      IconComponent = IconTour;
 
       break;
     case Icons.SQL_BUILDER:

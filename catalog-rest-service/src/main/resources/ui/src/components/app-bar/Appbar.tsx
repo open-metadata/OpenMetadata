@@ -123,6 +123,19 @@ const Appbar: React.FC = (): JSX.Element => {
         />
       ),
     },
+    {
+      name: `Tour`,
+      to: ROUTES.TOUR,
+      disabled: false,
+      icon: (
+        <SVGIcons
+          alt="tour icon"
+          className="tw-align-middle tw-mr-0.5"
+          icon={Icons.TOUR}
+          width="12"
+        />
+      ),
+    },
   ];
 
   const getUserDisplayName = () => {
