@@ -364,15 +364,15 @@ class MetadataRestSink(Sink):
             self._create_team(record)
         teams = [self.team_entities[record.team_name]]
         metadata_user = CreateUserEntityRequest(
-            name=record.github_username,
+            name=record.name,
             displayName=record.name,
             email=record.email,
             teams=teams,
         )
         try:
             self.metadata.create_or_update(metadata_user)
-            self.status.records_written(record.github_username)
-            logger.info("Sink: {}".format(record.github_username))
+            self.status.records_written(record.name)
+            logger.info("Sink: {}".format(record.name))
         except Exception as err:
             logger.error(traceback.format_exc())
             logger.error(traceback.print_exc())
