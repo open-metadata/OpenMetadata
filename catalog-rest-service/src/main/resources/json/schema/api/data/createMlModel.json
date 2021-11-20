@@ -1,7 +1,7 @@
 {
   "$id": "https://open-metadata.org/schema/api/data/createMLModel.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Create ML Model entity request",
+  "title": "Create MlModel entity request",
   "description": "Create ML Model entity request",
   "type": "object",
   "properties" : {
@@ -20,7 +20,7 @@
       "type": "string"
     },
     "algorithm": {
-      "description": "Algorithm used to train the ML model",
+      "description": "Algorithm used to train the ML Model",
       "type": "string"
     },
     "mlFeatures": {
