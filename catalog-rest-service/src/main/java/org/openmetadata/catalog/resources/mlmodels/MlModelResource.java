@@ -26,11 +26,11 @@ import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import org.openmetadata.catalog.api.data.CreateMLModel;
-import org.openmetadata.catalog.entity.data.MLModel;
+import org.openmetadata.catalog.api.data.CreateMlModel;
+import org.openmetadata.catalog.entity.data.MlModel;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
-import org.openmetadata.catalog.jdbi3.MLModelRepository;
+import org.openmetadata.catalog.jdbi3.MlModelRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
@@ -73,21 +73,21 @@ import java.util.Optional;
 import java.util.UUID;
 
 @Path("/v1/mlmodels")
-@Api(value = "MLModels collection", tags = "MLModels collection")
+@Api(value = "MlModels collection", tags = "MlModels collection")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "mlmodels")
-public class MLModelResource {
+public class MlModelResource {
   public static final String COLLECTION_PATH = "v1/mlmodels/";
-  private final MLModelRepository dao;
+  private final MlModelRepository dao;
   private final CatalogAuthorizer authorizer;
 
-  public static List<MLModel> addHref(UriInfo uriInfo, List<MLModel> models) {
+  public static List<MlModel> addHref(UriInfo uriInfo, List<MlModel> models) {
     Optional.ofNullable(models).orElse(Collections.emptyList()).forEach(i -> addHref(uriInfo, i));
     return models;
   }
 
-  public static MLModel addHref(UriInfo uriInfo, MLModel mlmodel) {
+  public static MlModel addHref(UriInfo uriInfo, MlModel mlmodel) {
     mlmodel.setHref(RestUtil.getHref(uriInfo, COLLECTION_PATH, mlmodel.getId()));
     Entity.withHref(uriInfo, mlmodel.getOwner());
     Entity.withHref(uriInfo, mlmodel.getDashboard()); // Dashboard HREF
@@ -96,19 +96,19 @@ public class MLModelResource {
   }
 
   @Inject
-  public MLModelResource(CollectionDAO dao, CatalogAuthorizer authorizer) {
+  public MlModelResource(CollectionDAO dao, CatalogAuthorizer authorizer) {
     Objects.requireNonNull(dao, "ModelRepository must not be null");
-    this.dao = new MLModelRepository(dao);
+    this.dao = new MlModelRepository(dao);
     this.authorizer = authorizer;
   }
 
-  public static class MLModelList extends ResultList<MLModel> {
+  public static class MlModelList extends ResultList<MlModel> {
     @SuppressWarnings("unused")
-    MLModelList() {
+    MlModelList() {
       // Empty constructor needed for deserialization
     }
 
-    public MLModelList(List<MLModel> data, String beforeCursor, String afterCursor, int total)
+    public MlModelList(List<MlModel> data, String beforeCursor, String afterCursor, int total)
             throws GeneralSecurityException, UnsupportedEncodingException {
       super(data, beforeCursor, afterCursor, total);
     }
@@ -127,9 +127,9 @@ public class MLModelResource {
           responses = {
                   @ApiResponse(responseCode = "200", description = "List of models",
                                content = @Content(mediaType = "application/json",
-                                       schema = @Schema(implementation = MLModelList.class)))
+                                       schema = @Schema(implementation = MlModelList.class)))
           })
-  public ResultList<MLModel> list(@Context UriInfo uriInfo,
+  public ResultList<MlModel> list(@Context UriInfo uriInfo,
                                       @Context SecurityContext securityContext,
                                       @Parameter(description = "Fields requested in the returned resource",
                                               schema = @Schema(type = "string", example = FIELDS))
@@ -150,7 +150,7 @@ public class MLModelResource {
     RestUtil.validateCursors(before, after);
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
 
-    ResultList<MLModel> mlmodels;
+    ResultList<MlModel> mlmodels;
     if (before != null) { // Reverse paging
       mlmodels = dao.listBefore(uriInfo, fields, null, limitParam, before); // Ask for one extra entry
     } else { // Forward paging or first page
@@ -167,10 +167,10 @@ public class MLModelResource {
           responses = {
                   @ApiResponse(responseCode = "200", description = "The model",
                           content = @Content(mediaType = "application/json",
-                          schema = @Schema(implementation = MLModel.class))),
+                          schema = @Schema(implementation = MlModel.class))),
                   @ApiResponse(responseCode = "404", description = "Model for instance {id} is not found")
           })
-  public MLModel get(@Context UriInfo uriInfo,
+  public MlModel get(@Context UriInfo uriInfo,
                        @Context SecurityContext securityContext,
                        @PathParam("id") String id,
                        @Parameter(description = "Fields requested in the returned resource",
@@ -187,16 +187,16 @@ public class MLModelResource {
           responses = {
                   @ApiResponse(responseCode = "200", description = "The model",
                           content = @Content(mediaType = "application/json",
-                                  schema = @Schema(implementation = MLModel.class))),
+                                  schema = @Schema(implementation = MlModel.class))),
                   @ApiResponse(responseCode = "404", description = "Model for instance {id} is not found")
           })
-  public MLModel getByName(@Context UriInfo uriInfo, @PathParam("fqn") String fqn,
+  public MlModel getByName(@Context UriInfo uriInfo, @PathParam("fqn") String fqn,
                             @Context SecurityContext securityContext,
                             @Parameter(description = "Fields requested in the returned resource",
                                     schema = @Schema(type = "string", example = FIELDS))
                             @QueryParam("fields") String fieldsParam) throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
-    MLModel mlmodel = dao.getByName(uriInfo, fqn, fields);
+    MlModel mlmodel = dao.getByName(uriInfo, fqn, fields);
     return addHref(uriInfo, mlmodel);
   }
 
@@ -207,13 +207,13 @@ public class MLModelResource {
           responses = {
                   @ApiResponse(responseCode = "200", description = "The model",
                           content = @Content(mediaType = "application/json",
-                          schema = @Schema(implementation = CreateMLModel.class))),
+                          schema = @Schema(implementation = CreateMlModel.class))),
                   @ApiResponse(responseCode = "400", description = "Bad request")
           })
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext,
-                         @Valid CreateMLModel create) throws IOException, ParseException {
+                         @Valid CreateMlModel create) throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    MLModel mlModel = getMLModel(securityContext, create);
+    MlModel mlModel = getMlModel(securityContext, create);
     mlModel = addHref(uriInfo, dao.create(uriInfo, mlModel));
     return Response.created(mlModel.getHref()).entity(mlModel).build();
   }
@@ -236,10 +236,10 @@ public class MLModelResource {
                                                          "]")}))
                                          JsonPatch patch) throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, FIELDS);
-    MLModel mlModel = dao.get(uriInfo, id, fields);
+    MlModel mlModel = dao.get(uriInfo, id, fields);
     SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext,
             dao.getOwnerReference(mlModel));
-    PatchResponse<MLModel> response =
+    PatchResponse<MlModel> response =
             dao.patch(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
     addHref(uriInfo, response.getEntity());
     return response.toResponse();
@@ -251,14 +251,14 @@ public class MLModelResource {
           responses = {
                   @ApiResponse(responseCode = "200", description = "The model",
                           content = @Content(mediaType = "application/json",
-                          schema = @Schema(implementation = MLModel.class))),
+                          schema = @Schema(implementation = MlModel.class))),
                   @ApiResponse(responseCode = "400", description = "Bad request")
           })
   public Response createOrUpdate(@Context UriInfo uriInfo,
                                  @Context SecurityContext securityContext,
-                                 @Valid CreateMLModel create) throws IOException, ParseException {
-    MLModel mlModel = getMLModel(securityContext, create);
-    PutResponse<MLModel> response = dao.createOrUpdate(uriInfo, mlModel);
+                                 @Valid CreateMlModel create) throws IOException, ParseException {
+    MlModel mlModel = getMlModel(securityContext, create);
+    PutResponse<MlModel> response = dao.createOrUpdate(uriInfo, mlModel);
     addHref(uriInfo, response.getEntity());
     return response.toResponse();
   }
@@ -311,8 +311,8 @@ public class MLModelResource {
     return Response.ok().build();
   }
 
-  private MLModel getMLModel(SecurityContext securityContext, CreateMLModel create) {
-    return new MLModel().withId(UUID.randomUUID()).withName(create.getName())
+  private MlModel getMlModel(SecurityContext securityContext, CreateMlModel create) {
+    return new MlModel().withId(UUID.randomUUID()).withName(create.getName())
               .withDisplayName(create.getDisplayName())
               .withDescription(create.getDescription())
               .withDashboard(create.getDashboard())
