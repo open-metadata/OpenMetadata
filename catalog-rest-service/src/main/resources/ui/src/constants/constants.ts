@@ -41,6 +41,7 @@ const PLACEHOLDER_ROUTE_DASHBOARD_FQN = ':dashboardFQN';
 const PLACEHOLDER_ROUTE_DATABASE_FQN = ':databaseFQN';
 const PLACEHOLDER_ROUTE_SERVICE_FQN = ':serviceFQN';
 const PLACEHOLDER_ROUTE_SERVICE_TYPE = ':serviceType';
+const PLACEHOLDER_ROUTE_SERVICE_CAT = ':serviceCategory';
 const PLACEHOLDER_ROUTE_SEARCHQUERY = ':searchQuery';
 const PLACEHOLDER_ROUTE_TAB = ':tab';
 const PLACEHOLDER_ROUTE_TEAM = ':team';
@@ -114,7 +115,7 @@ export const ROUTES = {
   STORE: '/store',
   FEEDS: '/feeds',
   DUMMY: '/dummy',
-  SERVICE: `/service/${PLACEHOLDER_ROUTE_SERVICE_TYPE}/${PLACEHOLDER_ROUTE_SERVICE_FQN}`,
+  SERVICE: `/service/${PLACEHOLDER_ROUTE_SERVICE_CAT}/${PLACEHOLDER_ROUTE_SERVICE_TYPE}/${PLACEHOLDER_ROUTE_SERVICE_FQN}`,
   SERVICES: '/services',
   USERS: '/users',
   SCORECARD: '/scorecard',
@@ -170,10 +171,12 @@ export const getDatasetTabPath = (datasetFQN: string, tab = 'schema') => {
 
 export const getServiceDetailsPath = (
   serviceFQN: string,
-  serviceType: string
+  serviceType: string,
+  serviceCat: string
 ) => {
   let path = ROUTES.SERVICE;
   path = path
+    .replace(PLACEHOLDER_ROUTE_SERVICE_CAT, serviceCat)
     .replace(PLACEHOLDER_ROUTE_SERVICE_TYPE, serviceType)
     .replace(PLACEHOLDER_ROUTE_SERVICE_FQN, serviceFQN);
 

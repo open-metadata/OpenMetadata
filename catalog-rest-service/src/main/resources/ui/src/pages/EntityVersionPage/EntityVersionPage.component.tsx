@@ -17,6 +17,7 @@ import {
   getDatasetVersionPath,
   getServiceDetailsPath,
 } from '../../constants/constants';
+import { ServiceCategory } from '../../enums/service.enum';
 import { Table } from '../../generated/entity/data/table';
 import { EntityHistory } from '../../generated/type/entityHistory';
 import useToastContext from '../../hooks/useToastContext';
@@ -72,7 +73,8 @@ const EntityVersionPage: FunctionComponent = () => {
                   url: resService.data.name
                     ? getServiceDetailsPath(
                         resService.data.name,
-                        resService.data.serviceType
+                        resService.data.serviceType,
+                        ServiceCategory.DATABASE_SERVICES
                       )
                     : '',
                   imgSrc: resService.data.serviceType
@@ -131,7 +133,8 @@ const EntityVersionPage: FunctionComponent = () => {
                   url: resService.data.name
                     ? getServiceDetailsPath(
                         resService.data.name,
-                        resService.data.serviceType
+                        resService.data.serviceType,
+                        ServiceCategory.DATABASE_SERVICES
                       )
                     : '',
                   imgSrc: resService.data.serviceType

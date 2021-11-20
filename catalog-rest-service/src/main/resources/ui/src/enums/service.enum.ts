@@ -34,6 +34,9 @@ export enum DatabaseServiceType {
   ATHENA = 'Athena',
   PRESTO = 'Presto',
   TRINO = 'Trino',
+  GLUE = 'Glue',
+  MARIADB = 'MariaDB',
+  VERTICA = 'Vertica',
 }
 
 export enum MessagingServiceType {

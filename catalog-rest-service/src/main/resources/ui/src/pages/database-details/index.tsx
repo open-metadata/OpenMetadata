@@ -48,6 +48,7 @@ import {
   pagingObject,
   TITLE_FOR_NON_ADMIN_ACTION,
 } from '../../constants/constants';
+import { ServiceCategory } from '../../enums/service.enum';
 import { Database } from '../../generated/entity/data/database';
 import { Table } from '../../generated/entity/data/table';
 import useToastContext from '../../hooks/useToastContext';
@@ -125,7 +126,8 @@ const DatabaseDetails: FunctionComponent = () => {
                 url: resService.data.name
                   ? getServiceDetailsPath(
                       resService.data.name,
-                      resService.data.serviceType
+                      resService.data.serviceType,
+                      ServiceCategory.DATABASE_SERVICES
                     )
                   : '',
                 imgSrc: resService.data.serviceType
