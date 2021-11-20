@@ -19,9 +19,9 @@ package org.openmetadata.catalog.jdbi3;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
-import org.openmetadata.catalog.entity.data.MLModel;
+import org.openmetadata.catalog.entity.data.MlModel;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
-import org.openmetadata.catalog.resources.mlmodels.MLModelResource;
+import org.openmetadata.catalog.resources.mlmodels.MlModelResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.TagLabel;
@@ -41,22 +41,22 @@ import java.util.UUID;
 
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 
-public class MLModelRepository extends EntityRepository<MLModel> {
-  private static final Logger LOG = LoggerFactory.getLogger(MLModelRepository.class);
-  private static final Fields MODEL_UPDATE_FIELDS = new Fields(MLModelResource.FIELD_LIST,
+public class MlModelRepository extends EntityRepository<MlModel> {
+  private static final Logger LOG = LoggerFactory.getLogger(MlModelRepository.class);
+  private static final Fields MODEL_UPDATE_FIELDS = new Fields(MlModelResource.FIELD_LIST,
           "owner,dashboard,mlHyperParameters,mlFeatures,tags");
-  private static final Fields MODEL_PATCH_FIELDS = new Fields(MLModelResource.FIELD_LIST,
+  private static final Fields MODEL_PATCH_FIELDS = new Fields(MlModelResource.FIELD_LIST,
           "owner,dashboard,mlHyperParameters,mlFeatures,tags");
   private final CollectionDAO dao;
 
-  public MLModelRepository(CollectionDAO dao) {
-    super(MLModelResource.COLLECTION_PATH, MLModel.class, dao.mlModelDAO(), dao,
+  public MlModelRepository(CollectionDAO dao) {
+    super(MlModelResource.COLLECTION_PATH, MlModel.class, dao.mlModelDAO(), dao,
             MODEL_PATCH_FIELDS, MODEL_UPDATE_FIELDS);
     this.dao = dao;
   }
 
 
-  public static String getFQN(MLModel model) {
+  public static String getFQN(MlModel model) {
     return (model.getName());
   }
 
@@ -72,12 +72,12 @@ public class MLModelRepository extends EntityRepository<MLModel> {
   }
 
   @Transaction
-  public EntityReference getOwnerReference(MLModel mlModel) throws IOException {
+  public EntityReference getOwnerReference(MlModel mlModel) throws IOException {
     return EntityUtil.populateOwner(dao.userDAO(), dao.teamDAO(), mlModel.getOwner());
   }
 
   @Override
-  public MLModel setFields(MLModel mlModel, Fields fields) throws IOException {
+  public MlModel setFields(MlModel mlModel, Fields fields) throws IOException {
     mlModel.setDisplayName(mlModel.getDisplayName());
     mlModel.setOwner(fields.contains("owner") ? getOwner(mlModel) : null);
     mlModel.setDashboard(fields.contains("dashboard") ? getDashboard(mlModel) : null);
@@ -91,13 +91,13 @@ public class MLModelRepository extends EntityRepository<MLModel> {
   }
 
   @Override
-  public void restorePatchAttributes(MLModel original, MLModel updated) throws IOException, ParseException {
+  public void restorePatchAttributes(MlModel original, MlModel updated) throws IOException, ParseException {
 
   }
 
   @Override
-  public EntityInterface<MLModel> getEntityInterface(MLModel entity) {
-    return new MLModelEntityInterface(entity);
+  public EntityInterface<MlModel> getEntityInterface(MlModel entity) {
+    return new MlModelEntityInterface(entity);
   }
 
   private List<TagLabel> getTags(String fqn) {
@@ -106,7 +106,7 @@ public class MLModelRepository extends EntityRepository<MLModel> {
 
 
   @Override
-  public void validate(MLModel model) throws IOException {
+  public void validate(MlModel model) throws IOException {
     model.setFullyQualifiedName(getFQN(model));
     EntityUtil.populateOwner(dao.userDAO(), dao.teamDAO(), model.getOwner()); // Validate owner
     if (model.getDashboard() != null) {
@@ -117,7 +117,7 @@ public class MLModelRepository extends EntityRepository<MLModel> {
   }
 
   @Override
-  public void store(MLModel mlModel, boolean update) throws IOException {
+  public void store(MlModel mlModel, boolean update) throws IOException {
     // Relationships and fields such as href are derived and not stored as part of json
     EntityReference owner = mlModel.getOwner();
     List<TagLabel> tags = mlModel.getTags();
@@ -137,28 +137,28 @@ public class MLModelRepository extends EntityRepository<MLModel> {
   }
 
   @Override
-  public void storeRelationships(MLModel mlModel) throws IOException {
+  public void storeRelationships(MlModel mlModel) throws IOException {
     setOwner(mlModel, mlModel.getOwner());
     setDashboard(mlModel, mlModel.getDashboard());
     applyTags(mlModel);
   }
 
   @Override
-  public EntityUpdater getUpdater(MLModel original, MLModel updated, boolean patchOperation) throws IOException {
-    return new MLModelUpdater(original, updated, patchOperation);
+  public EntityUpdater getUpdater(MlModel original, MlModel updated, boolean patchOperation) throws IOException {
+    return new MlModelUpdater(original, updated, patchOperation);
   }
 
-  private EntityReference getOwner(MLModel mlModel) throws IOException {
+  private EntityReference getOwner(MlModel mlModel) throws IOException {
     return mlModel == null ? null : EntityUtil.populateOwner(mlModel.getId(), dao.relationshipDAO(),
             dao.userDAO(), dao.teamDAO());
   }
 
-  public void setOwner(MLModel mlModel, EntityReference owner) {
+  public void setOwner(MlModel mlModel, EntityReference owner) {
     EntityUtil.setOwner(dao.relationshipDAO(), mlModel.getId(), Entity.MLMODEL, owner);
     mlModel.setOwner(owner);
   }
 
-  private EntityReference getDashboard(MLModel mlModel) throws IOException {
+  private EntityReference getDashboard(MlModel mlModel) throws IOException {
     if (mlModel != null) {
       List<EntityReference> ids = dao.relationshipDAO().findTo(mlModel.getId().toString(), Relationship.USES.ordinal());
       if (ids.size() > 1) {
@@ -172,31 +172,31 @@ public class MLModelRepository extends EntityRepository<MLModel> {
     return null;
   }
 
-  public void setDashboard(MLModel mlModel, EntityReference dashboard) {
+  public void setDashboard(MlModel mlModel, EntityReference dashboard) {
     if (dashboard != null) {
       dao.relationshipDAO().insert(mlModel.getId().toString(), mlModel.getDashboard().getId().toString(),
               Entity.MLMODEL, Entity.DASHBOARD, Relationship.USES.ordinal());
     }
   }
 
-  public void removeDashboard(MLModel mlModel) {
+  public void removeDashboard(MlModel mlModel) {
     dao.relationshipDAO().deleteFrom(mlModel.getId().toString(), Relationship.USES.ordinal(), Entity.DASHBOARD);
   }
 
-  private void applyTags(MLModel mlModel) throws IOException {
+  private void applyTags(MlModel mlModel) throws IOException {
     // Add model level tags by adding tag to model relationship
     EntityUtil.applyTags(dao.tagDAO(), mlModel.getTags(), mlModel.getFullyQualifiedName());
     mlModel.setTags(getTags(mlModel.getFullyQualifiedName())); // Update tag to handle additional derived tags
   }
 
-  private List<EntityReference> getFollowers(MLModel model) throws IOException {
+  private List<EntityReference> getFollowers(MlModel model) throws IOException {
     return model == null ? null : EntityUtil.getFollowers(model.getId(), dao.relationshipDAO(), dao.userDAO());
   }
 
-  static class MLModelEntityInterface implements EntityInterface<MLModel> {
-    private final MLModel entity;
+  static class MlModelEntityInterface implements EntityInterface<MlModel> {
+    private final MlModel entity;
 
-    MLModelEntityInterface(MLModel entity) {
+    MlModelEntityInterface(MlModel entity) {
       this.entity = entity;
     }
 
@@ -255,7 +255,7 @@ public class MLModelRepository extends EntityRepository<MLModel> {
     }
 
     @Override
-    public MLModel getEntity() { return entity; }
+    public MlModel getEntity() { return entity; }
 
     @Override
     public void setId(UUID id) { entity.setId(id); }
@@ -286,7 +286,7 @@ public class MLModelRepository extends EntityRepository<MLModel> {
     public void setOwner(EntityReference owner) { entity.setOwner(owner); }
 
     @Override
-    public MLModel withHref(URI href) { return entity.withHref(href); }
+    public MlModel withHref(URI href) { return entity.withHref(href); }
 
     @Override
     public void setTags(List<TagLabel> tags) {
@@ -297,8 +297,8 @@ public class MLModelRepository extends EntityRepository<MLModel> {
   /**
    * Handles entity updated from PUT and POST operation.
    */
-  public class MLModelUpdater extends EntityUpdater {
-    public MLModelUpdater(MLModel original, MLModel updated, boolean patchOperation) {
+  public class MlModelUpdater extends EntityUpdater {
+    public MlModelUpdater(MlModel original, MlModel updated, boolean patchOperation) {
       super(original, updated, patchOperation);
     }
 
@@ -310,19 +310,19 @@ public class MLModelRepository extends EntityRepository<MLModel> {
       updateMlHyperParameters(original.getEntity(), updated.getEntity());
     }
 
-    private void updateAlgorithm(MLModel origModel, MLModel updatedModel) throws JsonProcessingException {
+    private void updateAlgorithm(MlModel origModel, MlModel updatedModel) throws JsonProcessingException {
       recordChange("algorithm", origModel.getAlgorithm(), updatedModel.getAlgorithm());
     }
 
-    private void updateMlFeatures(MLModel origModel, MLModel updatedModel) throws JsonProcessingException {
+    private void updateMlFeatures(MlModel origModel, MlModel updatedModel) throws JsonProcessingException {
       recordChange("mlFeatures", origModel.getMlFeatures(), updatedModel.getMlFeatures());
     }
 
-    private void updateMlHyperParameters(MLModel origModel, MLModel updatedModel) throws JsonProcessingException {
+    private void updateMlHyperParameters(MlModel origModel, MlModel updatedModel) throws JsonProcessingException {
       recordChange("mlHyperParameters", origModel.getMlHyperParameters(), updatedModel.getMlHyperParameters());
     }
 
-    private void updateDashboard(MLModel origModel, MLModel updatedModel) throws JsonProcessingException {
+    private void updateDashboard(MlModel origModel, MlModel updatedModel) throws JsonProcessingException {
       // Remove existing dashboards
       removeDashboard(origModel);
 

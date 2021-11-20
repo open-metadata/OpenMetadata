@@ -1,13 +1,13 @@
 {
   "$id": "https://open-metadata.org/schema/entity/data/mlmodel.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "MLModel",
+  "title": "MlModel",
   "description": "This schema defines the Model entity. Models are algorithms trained on data to find patterns or make predictions.",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.entity.data.MLModel",
+  "javaType": "org.openmetadata.catalog.entity.data.MlModel",
   "definitions": {
     "featureType": {
-      "javaType": "org.openmetadata.catalog.type.MLFeatureDataType",
+      "javaType": "org.openmetadata.catalog.type.MlFeatureDataType",
       "description": "This enum defines the type of data stored in a ML Feature.",
       "type": "string",
       "enum": [
@@ -66,7 +66,7 @@
     },
     "featureSource": {
       "type": "object",
-      "javaType": "org.openmetadata.catalog.type.MLFeatureSource",
+      "javaType": "org.openmetadata.catalog.type.MlFeatureSource",
       "description": "This schema defines the sources of a ML Feature.",
       "additionalProperties": false,
       "properties": {
@@ -96,8 +96,8 @@
     },
     "mlFeature": {
       "type": "object",
-      "javaType": "org.openmetadata.catalog.type.MLFeature",
-      "description": "This schema defines the type for a ML Feature used in a MLModel.",
+      "javaType": "org.openmetadata.catalog.type.MlFeature",
+      "description": "This schema defines the type for an ML Feature used in an ML Model.",
       "additionalProperties": false,
       "properties": {
         "name": {
@@ -138,8 +138,8 @@
     },
     "mlHyperParameter": {
       "type": "object",
-      "javaType": "org.openmetadata.catalog.type.MLHyperParameter",
-      "description": "This schema defines the type for a ML HyperParameter used in a MLModel.",
+      "javaType": "org.openmetadata.catalog.type.MlHyperParameter",
+      "description": "This schema defines the type for an ML HyperParameter used in an ML Model.",
       "additionalProperties": false,
       "properties": {
         "name": {
@@ -159,31 +159,31 @@
   },
   "properties" : {
     "id": {
-      "description": "Unique identifier of a MLModel instance.",
+      "description": "Unique identifier of an ML Model instance.",
       "$ref": "../../type/basic.json#/definitions/uuid"
     },
     "name": {
-      "description": "Name that identifies this MLModel.",
+      "description": "Name that identifies this ML Model.",
       "type": "string",
       "minLength": 1,
       "maxLength": 64
     },
     "fullyQualifiedName": {
-      "description": "A unique name that identifies a MLModel.",
+      "description": "A unique name that identifies an ML Model.",
       "type": "string",
       "minLength": 1,
       "maxLength": 64
     },
     "displayName": {
-      "description": "Display Name that identifies this MLModel.",
+      "description": "Display Name that identifies this ML Model.",
       "type": "string"
     },
     "description": {
-      "description": "Description of the MLModel, what it is, and how to use it.",
+      "description": "Description of the ML Model, what it is, and how to use it.",
       "type": "string"
     },
     "algorithm": {
-      "description": "Algorithm used to train the MLModel.",
+      "description": "Algorithm used to train the ML Model.",
       "type": "string"
     },
     "mlFeatures": {
@@ -211,15 +211,15 @@
       "$ref": "../../type/basic.json#/definitions/href"
     },
     "owner": {
-      "description": "Owner of this MLModel.",
+      "description": "Owner of this ML Model.",
       "$ref": "../../type/entityReference.json"
     },
     "followers": {
-      "description": "Followers of this MLModel.",
+      "description": "Followers of this ML Model.",
       "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
     },
     "tags": {
-      "description": "Tags for this MLModel.",
+      "description": "Tags for this ML Model.",
       "type": "array",
       "items": {
         "$ref": "../../type/tagLabel.json"
@@ -227,7 +227,7 @@
       "default": null
     },
     "usageSummary" : {
-      "description": "Latest usage information for this MLModel.",
+      "description": "Latest usage information for this ML Model.",
       "$ref": "../../type/usageDetails.json",
       "default": null
     },
