@@ -118,52 +118,17 @@ export const WHATS_NEW = [
     features: [
       {
         title: 'Metadata Versioning',
-        description: '{Metadata Versioning description}',
+        description:
+          'OpenMetadata captures the changes in metadata as new versions of an entity. The version history for all entities is maintained in the Major.Minor number.',
         isImage: false,
-        path: 'https://www.youtube.com/embed/8-CwuKsf8Oc',
-      },
-      {
-        title: 'Events API',
-        description: '{Events API description}',
-        isImage: false,
-        path: 'https://www.youtube.com/embed/8-CwuKsf8Oc',
+        path: 'https://www.youtube.com/embed/0O0IbGerHtA',
       },
       {
         title: 'One-Click Deployment of Ingestion Pipelines',
         description:
-          '{One-Click Deployment of Ingestion Pipelines description}',
+          'OpenMetadata is providing a UI integration with Apache Airflow as a workflow engine to run ingestion, data profiling, data quality and other automation jobs.',
         isImage: false,
-        path: 'https://www.youtube.com/embed/8-CwuKsf8Oc',
-      },
-      {
-        title: 'New Entities: ML Models and Data Models',
-        description: '{New Entities: ML Models and Data Models description}',
-        isImage: false,
-        path: 'https://www.youtube.com/embed/8-CwuKsf8Oc',
-      },
-      {
-        title: 'New Connectors',
-        description: '{New Connectors description}',
-        isImage: false,
-        path: 'https://www.youtube.com/embed/8-CwuKsf8Oc',
-      },
-      {
-        title: 'User Interface',
-        description: '{User Interface description}',
-        isImage: false,
-        path: 'https://www.youtube.com/embed/8-CwuKsf8Oc',
-      },
-      {
-        title: 'OpenMetadata Quickstart',
-        description: '{OpenMetadata Quickstart description}',
-        isImage: false,
-        path: 'https://www.youtube.com/embed/8-CwuKsf8Oc',
-      },
-      {
-        title: 'Helm Charts',
-        description: '{Helm Charts description}',
-        isImage: false,
-        path: 'https://www.youtube.com/embed/8-CwuKsf8Oc',
+        path: 'https://www.youtube.com/embed/eDTDT_ZLeyk',
       },
     ],
     changeLogs: {
