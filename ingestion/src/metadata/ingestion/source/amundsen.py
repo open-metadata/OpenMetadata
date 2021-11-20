@@ -217,7 +217,6 @@ class AmundsenSource(Source):
 
     def create_user_entity(self, user):
         try:
-            print(user)
             user_metadata = User(
                 email=user["email"],
                 first_name=user["first_name"],
@@ -227,7 +226,6 @@ class AmundsenSource(Source):
                 is_active=user["is_active"],
             )
             self.status.scanned(user_metadata.email)
-            print(user_metadata)
             yield user_metadata
         except Exception as err:
             logger.error(err)
