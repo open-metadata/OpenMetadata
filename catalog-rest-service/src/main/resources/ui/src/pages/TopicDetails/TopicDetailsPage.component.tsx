@@ -20,6 +20,7 @@ import {
   getTopicDetailsPath,
 } from '../../constants/constants';
 import { EntityType } from '../../enums/entity.enum';
+import { ServiceCategory } from '../../enums/service.enum';
 import { Topic } from '../../generated/entity/data/topic';
 import { User } from '../../generated/entity/teams/user';
 import useToastContext from '../../hooks/useToastContext';
@@ -143,7 +144,8 @@ const TopicDetailsPage: FunctionComponent = () => {
                 url: serviceRes.data.name
                   ? getServiceDetailsPath(
                       serviceRes.data.name,
-                      serviceRes.data.serviceType
+                      serviceRes.data.serviceType,
+                      ServiceCategory.MESSAGING_SERVICES
                     )
                   : '',
                 imgSrc: serviceRes.data.serviceType

@@ -25,15 +25,12 @@ import { getIngestionWorkflows } from '../../axiosAPIs/ingestionWorkflowAPI';
 import { searchData } from '../../axiosAPIs/miscAPI';
 import Loader from '../../components/Loader/Loader';
 import MyData from '../../components/MyData/MyData.component';
-import { PAGE_SIZE } from '../../constants/constants';
 import {
   myDataEntityCounts,
   myDataSearchIndex,
 } from '../../constants/Mydata.constants';
-import {
-  getAllServices,
-  getEntityCountByService,
-} from '../../utils/ServiceUtils';
+import { getEntityCountByType } from '../../utils/EntityUtils';
+import { getAllServices } from '../../utils/ServiceUtils';
 
 const MyDataPage = () => {
   const [error, setError] = useState<string>('');
@@ -49,7 +46,7 @@ const MyDataPage = () => {
     searchData(
       value.queryString,
       value.from,
-      PAGE_SIZE,
+      0,
       value.filters,
       value.sortField,
       value.sortOrder,
@@ -59,8 +56,8 @@ const MyDataPage = () => {
         setSearchResult(res);
         if (isUndefined(entityCounts)) {
           setEntityCounts(
-            getEntityCountByService(
-              res.data.aggregations?.['sterms#Service']?.buckets
+            getEntityCountByType(
+              res.data.aggregations?.['sterms#EntityType']?.buckets
             )
           );
         }
