@@ -213,6 +213,9 @@ class ElasticsearchSink(Sink):
         if table.followers:
             for follower in table.followers.__root__:
                 table_followers.append(str(follower.id.__root__))
+        table_type = None
+        if hasattr(table.tableType, "name"):
+            table_type = table.tableType.name
         table_doc = TableESDocument(
             table_id=str(table.id.__root__),
             database=str(database_entity.name.__root__),
@@ -222,7 +225,7 @@ class ElasticsearchSink(Sink):
             table_name=table.name.__root__,
             suggest=suggest,
             description=table.description,
-            table_type=table.tableType.name,
+            table_type=table_type,
             last_updated_timestamp=timestamp,
             column_names=column_names,
             column_descriptions=column_descriptions,
