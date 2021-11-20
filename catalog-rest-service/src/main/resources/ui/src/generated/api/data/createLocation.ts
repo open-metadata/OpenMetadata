@@ -38,7 +38,7 @@ export interface CreateLocation {
    */
   service: EntityReference;
   /**
-   * Tags for this chart
+   * Tags for this location
    */
   tags?: TagLabel[];
 }

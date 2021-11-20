@@ -17,26 +17,16 @@
  */
 
 /**
- * Create Storage service entity request
+ * An action to delete or expire the entity.
  */
-export interface CreateStorageService {
+export interface DeleteAction {
   /**
-   * Description of Storage entity.
+   * Number of days after creation of the entity that the deletion should be triggered.
    */
-  description?: string;
+  daysAfterCreation?: number;
   /**
-   * Name that identifies the this entity instance uniquely
+   * Number of days after last modification of the entity that the deletion should be
+   * triggered.
    */
-  name: string;
-  serviceType?: StorageServiceType;
-}
-
-/**
- * Type of storage service such as S3, GCS, HDFS...
- */
-export enum StorageServiceType {
-  Abfs = 'ABFS',
-  Gcs = 'GCS',
-  Hdfs = 'HDFS',
-  S3 = 'S3',
+  daysAfterModification?: number;
 }

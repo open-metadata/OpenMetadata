@@ -80,12 +80,15 @@ export interface ChangeDescription {
    * Fields modified during the version changes with old and new values.
    */
   fieldsUpdated?: FieldChange[];
+  /**
+   * When a change did not result in change, this could be same as the current version.
+   */
   previousVersion?: number;
 }
 
 export interface FieldChange {
   /**
-   * Name of the entity field that changed
+   * Name of the entity field that changed.
    */
   name?: string;
   /**
@@ -104,6 +107,7 @@ export interface FieldChange {
  * Type of storage service such as S3, GCS, HDFS...
  */
 export enum StorageServiceType {
+  Abfs = 'ABFS',
   Gcs = 'GCS',
   Hdfs = 'HDFS',
   S3 = 'S3',

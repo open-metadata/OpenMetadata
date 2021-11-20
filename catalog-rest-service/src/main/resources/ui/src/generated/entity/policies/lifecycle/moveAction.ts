@@ -17,62 +17,93 @@
  */
 
 /**
- * This schema defines the Dashboard entity. Dashboards are computed from data and visually
- * present data, metrics, and KPIs. They are updated in real-time and allow interactive data
- * exploration.
+ * An action to move the entity to a different location. For eg: Move from Standard storage
+ * tier to Archive storage tier.
  */
-export interface Dashboard {
+export interface MoveAction {
+  /**
+   * Number of days after creation of the entity that the move should be triggered.
+   */
+  daysAfterCreation?: number;
+  /**
+   * Number of days after last modification of the entity that the move should be triggered.
+   */
+  daysAfterModification?: number;
+  /**
+   * Location where this entity needs to be moved to.
+   */
+  destination: Destination;
+}
+
+/**
+ * Location where this entity needs to be moved to.
+ */
+export interface Destination {
+  /**
+   * The location where to move this entity to.
+   */
+  location?: Table;
+  /**
+   * The storage class to move this entity to.
+   */
+  storageClassType?: StorageClassType;
+  /**
+   * The storage service to move this entity to.
+   */
+  storageServiceType?: StorageService;
+}
+
+/**
+ * The location where to move this entity to.
+ *
+ * This schema defines the Location entity. A Location can contain the data of a table or
+ * group other sublocation together.
+ */
+export interface Table {
   /**
    * Change that lead to this version of the entity.
    */
   changeDescription?: ChangeDescription;
   /**
-   * All the charts included in this Dashboard.
-   */
-  charts?: EntityReference[];
-  /**
-   * Dashboard URL.
-   */
-  dashboardUrl?: string;
-  /**
-   * Description of the dashboard, what it is, and how to use it.
+   * Description of a location.
    */
   description?: string;
   /**
-   * Display Name that identifies this Dashboard. It could be title or label from the source
+   * Display Name that identifies this table. It could be title or label from the source
    * services.
    */
   displayName?: string;
   /**
-   * Followers of this dashboard.
+   * Followers of this location.
    */
   followers?: EntityReference[];
   /**
-   * A unique name that identifies a dashboard in the format 'ServiceName.DashboardName'.
+   * Fully qualified name of a location in the form `serviceName.locationName`.
    */
   fullyQualifiedName?: string;
   /**
-   * Link to the resource corresponding to this entity.
+   * Link to this location resource.
    */
   href?: string;
   /**
-   * Unique identifier that identifies a dashboard instance.
+   * Unique identifier of this location instance.
    */
-  id: string;
+  id?: string;
+  locationType?: LocationType;
   /**
-   * Name that identifies this dashboard.
+   * Name of a location without the service. For example s3://bucket/path1/path2.
    */
   name: string;
   /**
-   * Owner of this dashboard.
+   * Owner of this location.
    */
   owner?: EntityReference;
   /**
-   * Link to service where this dashboard is hosted in.
+   * Link to the database cluster/service where this database is hosted in.
    */
   service: EntityReference;
   /**
-   * Tags for this dashboard.
+   * Tags for this location.
    */
   tags?: TagLabel[];
   /**
@@ -83,10 +114,6 @@ export interface Dashboard {
    * User who made the update.
    */
   updatedBy?: string;
-  /**
-   * Latest usage information for this database.
-   */
-  usageSummary?: TypeUsedToReturnUsageDetailsOfAnEntity;
   /**
    * Metadata version of the entity.
    */
@@ -135,16 +162,16 @@ export interface FieldChange {
 }
 
 /**
+ * Followers of this location.
+ *
  * This schema defines the EntityReference type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
  *
- * Followers of this dashboard.
+ * Owner of this location.
  *
- * Owner of this dashboard.
- *
- * Link to service where this dashboard is hosted in.
+ * Link to the database cluster/service where this database is hosted in.
  */
 export interface EntityReference {
   /**
@@ -173,6 +200,16 @@ export interface EntityReference {
    * `bigquery`, `snowflake`...
    */
   type: string;
+}
+
+/**
+ * This schema defines the type used for describing different types of Location.
+ */
+export enum LocationType {
+  Bucket = 'Bucket',
+  Database = 'Database',
+  Prefix = 'Prefix',
+  Table = 'Table',
 }
 
 /**
@@ -227,46 +264,111 @@ export enum State {
 }
 
 /**
- * Latest usage information for this database.
+ * The storage class to move this entity to.
  *
- * This schema defines the type for usage details. Daily, weekly, and monthly aggregation of
- * usage is computed along with the percentile rank based on the usage for a given day.
+ * Type of storage class for the storage service
+ *
+ * Name of the entity field that changed.
+ *
+ * Name of the field of an entity.
+ *
+ * Link to the entity resource.
+ *
+ * URI that points to a resource.
+ *
+ * Link to this location resource.
+ *
+ * Link to the tag resource.
+ *
+ * Link to the resource corresponding to this storage service.
+ *
+ * Unique identifier that identifies an entity instance.
+ *
+ * Unique id used to identify an entity.
+ *
+ * Unique identifier of this location instance.
+ *
+ * Unique identifier of this storage service instance.
+ *
+ * Type of storage class offered by S3
+ *
+ * Type of storage class offered by GCS
+ *
+ * Type of storage class offered by ABFS
  */
-export interface TypeUsedToReturnUsageDetailsOfAnEntity {
-  /**
-   * Daily usage stats of a data asset on the start date.
-   */
-  dailyStats: UsageStats;
-  /**
-   * Date in UTC.
-   */
-  date: Date;
-  /**
-   * Monthly (last 30 days) rolling usage stats of a data asset on the start date.
-   */
-  monthlyStats?: UsageStats;
-  /**
-   * Weekly (last 7 days) rolling usage stats of a data asset on the start date.
-   */
-  weeklyStats?: UsageStats;
+export enum StorageClassType {
+  Archive = 'ARCHIVE',
+  Coldline = 'COLDLINE',
+  Cool = 'COOL',
+  DeepArchive = 'DEEP_ARCHIVE',
+  DurableReducedAvailability = 'DURABLE_REDUCED_AVAILABILITY',
+  Glacier = 'GLACIER',
+  Hot = 'HOT',
+  IntelligentTiering = 'INTELLIGENT_TIERING',
+  MultiRegional = 'MULTI_REGIONAL',
+  Nearline = 'NEARLINE',
+  OnezoneIa = 'ONEZONE_IA',
+  Outposts = 'OUTPOSTS',
+  ReducedRedundancy = 'REDUCED_REDUNDANCY',
+  Regional = 'REGIONAL',
+  Standard = 'STANDARD',
+  StandardIa = 'STANDARD_IA',
 }
 
 /**
- * Daily usage stats of a data asset on the start date.
+ * The storage service to move this entity to.
  *
- * Type used to return usage statistics.
- *
- * Monthly (last 30 days) rolling usage stats of a data asset on the start date.
- *
- * Weekly (last 7 days) rolling usage stats of a data asset on the start date.
+ * This schema defines the Storage Service entity, such as S3, GCS, HDFS.
  */
-export interface UsageStats {
+export interface StorageService {
   /**
-   * Usage count of a data asset on the start date.
+   * Change that lead to this version of the entity.
    */
-  count: number;
+  changeDescription?: ChangeDescription;
   /**
-   * Optional daily percentile rank data asset use when relevant.
+   * Description of a storage service instance.
    */
-  percentileRank?: number;
+  description?: string;
+  /**
+   * Display Name that identifies this storage service.
+   */
+  displayName?: string;
+  /**
+   * Link to the resource corresponding to this storage service.
+   */
+  href: string;
+  /**
+   * Unique identifier of this storage service instance.
+   */
+  id: string;
+  /**
+   * Name that identifies this storage service.
+   */
+  name: string;
+  /**
+   * Type of storage service such as S3, GCS, HDFS...
+   */
+  serviceType: StorageServiceType;
+  /**
+   * Last update time corresponding to the new version of the entity.
+   */
+  updatedAt?: Date;
+  /**
+   * User who made the update.
+   */
+  updatedBy?: string;
+  /**
+   * Metadata version of the entity.
+   */
+  version?: number;
+}
+
+/**
+ * Type of storage service such as S3, GCS, HDFS...
+ */
+export enum StorageServiceType {
+  Abfs = 'ABFS',
+  Gcs = 'GCS',
+  Hdfs = 'HDFS',
+  S3 = 'S3',
 }

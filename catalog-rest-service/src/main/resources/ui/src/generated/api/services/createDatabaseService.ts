@@ -69,6 +69,7 @@ export enum DatabaseServiceType {
   BigQuery = 'BigQuery',
   Glue = 'Glue',
   Hive = 'Hive',
+  MariaDB = 'MariaDB',
   Mssql = 'MSSQL',
   MySQL = 'MySQL',
   Oracle = 'Oracle',

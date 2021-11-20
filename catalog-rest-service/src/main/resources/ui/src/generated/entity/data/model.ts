@@ -17,62 +17,64 @@
  */
 
 /**
- * This schema defines the Dashboard entity. Dashboards are computed from data and visually
- * present data, metrics, and KPIs. They are updated in real-time and allow interactive data
- * exploration.
+ * This schema defines the Model entity. A Model organizes data modeling details , sql and
+ * columns
  */
-export interface Dashboard {
+export interface Model {
+  catalogType?: CatalogType;
   /**
    * Change that lead to this version of the entity.
    */
   changeDescription?: ChangeDescription;
   /**
-   * All the charts included in this Dashboard.
+   * Columns in this table.
    */
-  charts?: EntityReference[];
+  columns: Column[];
   /**
-   * Dashboard URL.
+   * Reference to Database that contains this table.
    */
-  dashboardUrl?: string;
+  database?: EntityReference;
   /**
-   * Description of the dashboard, what it is, and how to use it.
+   * Description of a model.
    */
   description?: string;
   /**
-   * Display Name that identifies this Dashboard. It could be title or label from the source
+   * Display Name that identifies this model. It could be title or label from the source
    * services.
    */
   displayName?: string;
   /**
-   * Followers of this dashboard.
+   * Followers of this table.
    */
   followers?: EntityReference[];
   /**
-   * A unique name that identifies a dashboard in the format 'ServiceName.DashboardName'.
+   * Fully qualified name of a model in the form `serviceName.databaseName.modelName`.
    */
   fullyQualifiedName?: string;
   /**
-   * Link to the resource corresponding to this entity.
+   * Link to this table resource.
    */
   href?: string;
   /**
-   * Unique identifier that identifies a dashboard instance.
+   * Unique identifier of this model instance.
    */
   id: string;
   /**
-   * Name that identifies this dashboard.
+   * Reference to the Location that contains this table.
+   */
+  location?: EntityReference;
+  materializationType?: MaterializationType;
+  /**
+   * Name of a model. Expected to be unique within a database.
    */
   name: string;
+  nodeType?: NodeType;
   /**
-   * Owner of this dashboard.
+   * Owner of this table.
    */
   owner?: EntityReference;
   /**
-   * Link to service where this dashboard is hosted in.
-   */
-  service: EntityReference;
-  /**
-   * Tags for this dashboard.
+   * Tags for this table.
    */
   tags?: TagLabel[];
   /**
@@ -84,13 +86,24 @@ export interface Dashboard {
    */
   updatedBy?: string;
   /**
-   * Latest usage information for this database.
+   * Latest usage information for this table.
    */
   usageSummary?: TypeUsedToReturnUsageDetailsOfAnEntity;
   /**
    * Metadata version of the entity.
    */
   version?: number;
+  /**
+   * View Definition in SQL. Applies to TableType.View only.
+   */
+  viewDefinition?: string;
+}
+
+/**
+ * This schema defines the type used for describing different catalog type.
+ */
+export enum CatalogType {
+  BaseTable = 'BaseTable',
 }
 
 /**
@@ -135,44 +148,111 @@ export interface FieldChange {
 }
 
 /**
- * This schema defines the EntityReference type used for referencing an entity.
- * EntityReference is used for capturing relationships from one entity to another. For
- * example, a table has an attribute called database of type EntityReference that captures
- * the relationship of a table `belongs to a` database.
- *
- * Followers of this dashboard.
- *
- * Owner of this dashboard.
- *
- * Link to service where this dashboard is hosted in.
+ * This schema defines the type for a column in a table.
  */
-export interface EntityReference {
+export interface Column {
   /**
-   * Optional description of entity.
+   * Data type used array in dataType. For example, `array<int>` has dataType as `array` and
+   * arrayDataType as `int`.
+   */
+  arrayDataType?: DataType;
+  /**
+   * Child columns if dataType or arrayDataType is `map`, `struct`, or `union` else `null`.
+   */
+  children?: Column[];
+  /**
+   * Column level constraint.
+   */
+  constraint?: Constraint;
+  /**
+   * Length of `char`, `varchar`, `binary`, `varbinary` `dataTypes`, else null. For example,
+   * `varchar(20)` has dataType as `varchar` and dataLength as `20`.
+   */
+  dataLength?: number;
+  /**
+   * Data type of the column (int, date etc.).
+   */
+  dataType: DataType;
+  /**
+   * Display name used for dataType. This is useful for complex types, such as `array<int>,
+   * map<int,string>, struct<>, and union types.
+   */
+  dataTypeDisplay?: string;
+  /**
+   * Description of the column.
    */
   description?: string;
+  fullyQualifiedName?: string;
   /**
-   * Display Name that identifies this entity.
+   * Json schema only if the dataType is JSON else null.
    */
-  displayName?: string;
+  jsonSchema?: string;
+  name: string;
   /**
-   * Link to the entity resource.
+   * Ordinal position of the column.
    */
-  href?: string;
+  ordinalPosition?: number;
   /**
-   * Unique identifier that identifies an entity instance.
+   * Tags associated with the column.
    */
-  id: string;
-  /**
-   * Name of the entity instance. For entities such as tables, databases where the name is not
-   * unique, fullyQualifiedName is returned in this field.
-   */
-  name?: string;
-  /**
-   * Entity type/class name - Examples: `database`, `table`, `metrics`, `redshift`, `mysql`,
-   * `bigquery`, `snowflake`...
-   */
-  type: string;
+  tags?: TagLabel[];
+}
+
+/**
+ * Data type used array in dataType. For example, `array<int>` has dataType as `array` and
+ * arrayDataType as `int`.
+ *
+ * This enum defines the type of data stored in a column.
+ *
+ * Data type of the column (int, date etc.).
+ */
+export enum DataType {
+  Array = 'ARRAY',
+  Bigint = 'BIGINT',
+  Binary = 'BINARY',
+  Blob = 'BLOB',
+  Boolean = 'BOOLEAN',
+  Byteint = 'BYTEINT',
+  Char = 'CHAR',
+  Date = 'DATE',
+  Datetime = 'DATETIME',
+  Decimal = 'DECIMAL',
+  Double = 'DOUBLE',
+  Enum = 'ENUM',
+  Float = 'FLOAT',
+  Geography = 'GEOGRAPHY',
+  Int = 'INT',
+  Interval = 'INTERVAL',
+  JSON = 'JSON',
+  Longblob = 'LONGBLOB',
+  Map = 'MAP',
+  Mediumblob = 'MEDIUMBLOB',
+  Mediumtext = 'MEDIUMTEXT',
+  Number = 'NUMBER',
+  Numeric = 'NUMERIC',
+  Set = 'SET',
+  Smallint = 'SMALLINT',
+  String = 'STRING',
+  Struct = 'STRUCT',
+  Text = 'TEXT',
+  Time = 'TIME',
+  Timestamp = 'TIMESTAMP',
+  Tinyint = 'TINYINT',
+  Union = 'UNION',
+  Varbinary = 'VARBINARY',
+  Varchar = 'VARCHAR',
+}
+
+/**
+ * Column level constraint.
+ *
+ * This enum defines the type for column constraint.
+ */
+export enum Constraint {
+  NotNull = 'NOT_NULL',
+  Null = 'NULL',
+  PrimaryKey = 'PRIMARY_KEY',
+  Unique = 'UNIQUE',
 }
 
 /**
@@ -227,7 +307,66 @@ export enum State {
 }
 
 /**
- * Latest usage information for this database.
+ * Reference to Database that contains this table.
+ *
+ * This schema defines the EntityReference type used for referencing an entity.
+ * EntityReference is used for capturing relationships from one entity to another. For
+ * example, a table has an attribute called database of type EntityReference that captures
+ * the relationship of a table `belongs to a` database.
+ *
+ * Followers of this table.
+ *
+ * Reference to the Location that contains this table.
+ *
+ * Owner of this table.
+ */
+export interface EntityReference {
+  /**
+   * Optional description of entity.
+   */
+  description?: string;
+  /**
+   * Display Name that identifies this entity.
+   */
+  displayName?: string;
+  /**
+   * Link to the entity resource.
+   */
+  href?: string;
+  /**
+   * Unique identifier that identifies an entity instance.
+   */
+  id: string;
+  /**
+   * Name of the entity instance. For entities such as tables, databases where the name is not
+   * unique, fullyQualifiedName is returned in this field.
+   */
+  name?: string;
+  /**
+   * Entity type/class name - Examples: `database`, `table`, `metrics`, `redshift`, `mysql`,
+   * `bigquery`, `snowflake`...
+   */
+  type: string;
+}
+
+/**
+ * This schema defines the type used for describing different materialization type.
+ */
+export enum MaterializationType {
+  Seed = 'Seed',
+  Table = 'Table',
+}
+
+/**
+ * This schema defines the type used for describing different types of Nodes.
+ */
+export enum NodeType {
+  Model = 'Model',
+  Seed = 'Seed',
+}
+
+/**
+ * Latest usage information for this table.
  *
  * This schema defines the type for usage details. Daily, weekly, and monthly aggregation of
  * usage is computed along with the percentile rank based on the usage for a given day.

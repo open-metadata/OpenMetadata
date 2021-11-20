@@ -115,7 +115,7 @@ export interface MlFeature {
    */
   featureAlgorithm?: string;
   /**
-   * Columns used to create the ML Feature
+   * Columns used to create the ML Feature.
    */
   featureSources?: FeatureSource[];
   fullyQualifiedName?: string;
@@ -232,11 +232,11 @@ export interface MlHyperParameter {
    */
   description?: string;
   /**
-   * Hyper parameter name
+   * Hyper parameter name.
    */
   name?: string;
   /**
-   * Hyper parameter value
+   * Hyper parameter value.
    */
   value?: string;
 }
