@@ -77,6 +77,7 @@ base_plugins = {
     "sql-metadata~=2.0.0",
 }
 plugins: Dict[str, Set[str]] = {
+    "amundsen": {"neo4j~=4.4.0"},
     "athena": {"PyAthena[SQLAlchemy]"},
     "bigquery": {"openmetadata-sqlalchemy-bigquery==0.2.0"},
     "bigquery-usage": {"google-cloud-logging", "cachetools"},
