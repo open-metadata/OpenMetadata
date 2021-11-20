@@ -1,11 +1,6 @@
-name: Generate Pydantic Models
+name: Validate Pydantic Models
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - 'catalog-rest-service/src/main/resources/json/**'
   pull_request:
     branches:
       - main
@@ -13,7 +8,7 @@ on:
       - 'catalog-rest-service/src/main/resources/json/**'
 
 jobs:
-  generate:
+  validate:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -33,12 +28,3 @@ jobs:
         run: |
           source env/bin/activate
           make generate
-      - name: Push models
-        # Push the generated models if we are running in a push to main
-        if: ${{ github.event_name == 'push' }}
-        run: |
-          git config --global user.name 'open-metadata'
-          git config --global user.email 'open-metadata@users.noreply.github.com'
-          git add -A
-          git commit -m "Automated Pydantic Models generation"
-          git push
