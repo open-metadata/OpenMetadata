@@ -97,7 +97,7 @@
     "mlFeature": {
       "type": "object",
       "javaType": "org.openmetadata.catalog.type.MlFeature",
-      "description": "This schema defines the type for a ML Feature used in a MLModel.",
+      "description": "This schema defines the type for an ML Feature used in an ML Model.",
       "additionalProperties": false,
       "properties": {
         "name": {
@@ -139,7 +139,7 @@
     "mlHyperParameter": {
       "type": "object",
       "javaType": "org.openmetadata.catalog.type.MlHyperParameter",
-      "description": "This schema defines the type for a ML HyperParameter used in a MLModel.",
+      "description": "This schema defines the type for an ML HyperParameter used in an ML Model.",
       "additionalProperties": false,
       "properties": {
         "name": {
@@ -159,7 +159,7 @@
   },
   "properties" : {
     "id": {
-      "description": "Unique identifier of a MLModel instance.",
+      "description": "Unique identifier of an ML Model instance.",
       "$ref": "../../type/basic.json#/definitions/uuid"
     },
     "name": {
