@@ -18,8 +18,12 @@ name: py-checkstyle
 on:
   push:
     branches: [main]
+    paths:
+      - 'ingestion/**'
   pull_request:
     branches: [main]
+    paths:
+      - 'ingestion/**'
 
 jobs:
   build:
