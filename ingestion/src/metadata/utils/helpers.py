@@ -24,9 +24,13 @@ from metadata.generated.schema.api.services.createDatabaseService import (
 from metadata.generated.schema.api.services.createMessagingService import (
     CreateMessagingServiceEntityRequest,
 )
+from metadata.generated.schema.api.services.createPipelineService import (
+    CreatePipelineServiceEntityRequest,
+)
 from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.messagingService import MessagingService
+from metadata.generated.schema.entity.services.pipelineService import PipelineService
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 
@@ -47,10 +51,13 @@ def snake_to_camel(s):
     return "".join(a)
 
 
-def get_database_service_or_create(config, metadata_config) -> DatabaseService:
+def get_database_service_or_create(
+    config, metadata_config, service_name=None
+) -> DatabaseService:
     metadata = OpenMetadata(metadata_config)
+    config.service_name = service_name if service_name else config.service_name
     service = metadata.get_by_name(entity=DatabaseService, fqdn=config.service_name)
-    if service is not None:
+    if service:
         return service
     else:
         service = {
@@ -112,6 +119,18 @@ def get_dashboard_service_or_create(
                 password=password,
                 dashboardUrl=dashboard_url,
             )
+        )
+        return created_service
+
+
+def get_pipeline_service_or_create(service_json, metadata_config) -> PipelineService:
+    metadata = OpenMetadata(metadata_config)
+    service = metadata.get_by_name(entity=PipelineService, fqdn=service_json["name"])
+    if service is not None:
+        return service
+    else:
+        created_service = metadata.create_or_update(
+            CreatePipelineServiceEntityRequest(**service_json)
         )
         return created_service
 

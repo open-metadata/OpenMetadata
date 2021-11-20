@@ -34,6 +34,7 @@ _column_type_mapping: Dict[Type[types.TypeEngine], str] = {
     types.JSON: "JSON",
     types.CHAR: "CHAR",
     types.DECIMAL: "DECIMAL",
+    types.Interval: "INTERVAL",
 }
 
 _column_string_mapping = {
@@ -64,6 +65,12 @@ _column_string_mapping = {
     "TIMESTAMP WITHOUT TIME ZONE": "TIMESTAMP",
     "FLOAT64": "DOUBLE",
     "DECIMAL": "DECIMAL",
+    "DOUBLE": "DOUBLE",
+    "INTERVAL": "INTERVAL",
+    "SET": "SET",
+    "BINARY": "BINARY",
+    "SMALLINT": "SMALLINT",
+    "TINYINT": "TINYINT",
 }
 
 _known_unknown_column_types: Set[Type[types.TypeEngine]] = {
@@ -123,7 +130,7 @@ def get_column_type(status: SourceStatus, dataset_name: str, column_type: Any) -
                 type_class = "NULL"
                 break
         for col_type in _column_string_mapping.keys():
-            if str(column_type).split("(")[0].upper() in col_type:
+            if str(column_type).split("(")[0].split("<")[0].upper() in col_type:
                 type_class = _column_string_mapping.get(col_type)
                 break
             else:
