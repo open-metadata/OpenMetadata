@@ -42,10 +42,10 @@ jobs:
         run: |
           python3 -m venv env
           source env/bin/activate
-          make install install_test
+          make install install_test install_dev
           
       - name: Code style check
         run: |
           source env/bin/activate
-          make black_check
-          make lint
+          make generate
+          make black_check lint
