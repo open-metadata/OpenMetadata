@@ -122,6 +122,8 @@ plugins: Dict[str, Set[str]] = {
     "vertica": {"sqlalchemy-vertica[vertica-python]>=0.0.5"},
     "report-server": report_requirements,
     "airflow": {"apache-airflow >= 1.10.2"},
+    "salesforce": {"simple_salesforce~=1.11.4"},
+    "okta": {"okta~=2.3.0"},
 }
 
 build_options = {"includes": ["_cffi_backend"]}
