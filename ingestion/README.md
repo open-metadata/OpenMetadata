@@ -76,3 +76,10 @@ metadata ingest -c ./pipelines/metadata_to_es.json
 We are using `datamodel-codegen` to get some `pydantic` classes inside the `generated` module from the JSON Schemas defining the API and Entities.
 
 This tool bases the class name on the `title` of the JSON Schema (vs. Java POJO, which uses the file name). Note that this convention is important for us, as having a standardized approach in creating the titles helps us create generic code capable of tackling multiple Type Variables.
+
+## Local Development
+
+In order to set up your project for local development on the Ingestion Framework, you are going to need to prepare the `pydantic` models.
+
+You can get them by running `make install_dev generate` from the project root directory. You can install the package locally once
+the source generation runs successfully.
