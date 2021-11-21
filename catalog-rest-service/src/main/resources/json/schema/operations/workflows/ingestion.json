@@ -274,5 +274,6 @@
       "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
     }
   },
-  "required": ["name", "service", "connectorConfig", "startDate"]
+  "required": ["name", "service", "connectorConfig", "startDate"],
+  "additionalProperties": false
 }

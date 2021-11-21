@@ -19,5 +19,6 @@
       "type" : "integer"
     }
   },
-  "required": ["total"]
+  "required": ["total"],
+  "additionalProperties": false
 }

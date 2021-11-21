@@ -154,5 +154,6 @@
     "name",
     "partitions",
     "service"
-  ]
+  ],
+  "additionalProperties": false
 }

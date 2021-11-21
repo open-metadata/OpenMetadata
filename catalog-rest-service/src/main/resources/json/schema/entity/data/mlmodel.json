@@ -248,5 +248,6 @@
       "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
     }
   },
-  "required": ["id", "name", "algorithm"]
+  "required": ["id", "name", "algorithm"],
+  "additionalProperties": false
 }

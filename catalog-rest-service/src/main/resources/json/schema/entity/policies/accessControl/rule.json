@@ -25,5 +25,6 @@
   "required": [
     "filters",
     "actions"
-  ]
+  ],
+  "additionalProperties": false
 }
