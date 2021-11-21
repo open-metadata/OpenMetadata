@@ -243,7 +243,7 @@ def _handle_complex_data_types(status, dataset_name, raw_type: str, level=0):
         col["dataType"] = get_column_type(
             status,
             dataset_name,
-            re.match("([\w\s]*)(?:.*)", col_type).groups()[0],
+            re.match(r"([\w\s]*)(?:.*)", col_type).groups()[0],
         )
         col["dataTypeDisplay"] = col_type.rstrip(">")
     return col
