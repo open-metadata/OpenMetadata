@@ -13,8 +13,8 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 import uuid
-from dataclasses import dataclass, field, Dict
-from typing import Iterable, List
+from dataclasses import dataclass, field
+from typing import Iterable, List, Dict
 
 import requests
 from redash_toolbelt import Redash

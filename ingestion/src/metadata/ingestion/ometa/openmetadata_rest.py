@@ -24,6 +24,7 @@ import google.auth
 import google.auth.transport.requests
 from google.oauth2 import service_account
 from jose import jwt
+from okta.jwt import JWT
 from pydantic import BaseModel
 
 from metadata.config.common import ConfigModel
