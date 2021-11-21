@@ -53,6 +53,7 @@
     }
   },
 
-  "required": ["driverClass", "connectionUrl", "userName", "password"]
+  "required": ["driverClass", "connectionUrl", "userName", "password"],
+  "additionalProperties": false
 }
 

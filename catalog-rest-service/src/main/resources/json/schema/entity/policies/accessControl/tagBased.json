@@ -35,5 +35,6 @@
   "required": [
     "tags",
     "allow"
-  ]
+  ],
+  "additionalProperties": false
 }
