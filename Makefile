@@ -37,8 +37,7 @@ generate:
 	datamodel-codegen  --input catalog-rest-service/src/main/resources/json  --input-file-type jsonschema --output ingestion/src/metadata/generated
 
 publish:
-	make install_dev
-	make generate
+	make install_dev generate
 	cd ingestion; \
 	  python setup.py install sdist bdist_wheel; \
 	  twine check dist/*; \
