@@ -56,5 +56,6 @@
       }
     }
   },
-  "required": ["id", "about", "posts"]
+  "required": ["id", "about", "posts"],
+  "additionalProperties": false
 }

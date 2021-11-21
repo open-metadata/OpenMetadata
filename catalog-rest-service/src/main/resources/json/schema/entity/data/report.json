@@ -64,5 +64,6 @@
       "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
     }
   },
-  "required": ["id", "name", "service"]
+  "required": ["id", "name", "service"],
+  "additionalProperties": false
 }
