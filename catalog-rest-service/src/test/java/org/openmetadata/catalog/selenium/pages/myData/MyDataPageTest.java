@@ -58,9 +58,6 @@ public class MyDataPageTest {
     @Order(1)
     public void checkWhatsNew() {
         Events.click(webDriver, By.xpath("//ul[@class='slick-dots testid-dots-button']//li[2]")); // What's new page 2
-        Events.click(webDriver, By.xpath("//ul[@class='slick-dots testid-dots-button']//li[3]")); // What's new page 3
-        Events.click(webDriver, By.xpath("//ul[@class='slick-dots testid-dots-button']//li[4]")); // What's new page 4
-        Events.click(webDriver, By.xpath("//ul[@class='slick-dots testid-dots-button']//li[5]")); // What's new page 5
         Events.click(webDriver, By.cssSelector("[data-testid='WhatsNewModalChangeLogs']")); // Change Logs
         Events.click(webDriver, By.cssSelector("[data-testid='closeWhatsNew']")); // Close What's new
     }
