@@ -34,7 +34,6 @@ import {
   getYearCron,
   toDisplay,
 } from './CronEditor.constant';
-import './CronEditor.css';
 
 const getCron = (state) => {
   const {
