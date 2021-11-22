@@ -19,10 +19,10 @@ package org.openmetadata.catalog.jdbi3;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
-import org.openmetadata.catalog.entity.data.Model;
+import org.openmetadata.catalog.entity.data.DbtModel;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
-import org.openmetadata.catalog.resources.models.ModelResource;
+import org.openmetadata.catalog.resources.dbtmodels.DbtModelResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.Column;
 import org.openmetadata.catalog.type.EntityReference;
@@ -47,59 +47,60 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.function.BiPredicate;
 
-public class ModelRepository extends EntityRepository<Model> {
-  static final Logger LOG = LoggerFactory.getLogger(ModelRepository.class);
+public class DbtModelRepository extends EntityRepository<DbtModel> {
+  static final Logger LOG = LoggerFactory.getLogger(DbtModelRepository.class);
   // Model fields that can be patched in a PATCH request
-  static final Fields MODEL_PATCH_FIELDS = new Fields(ModelResource.FIELD_LIST,
+  static final Fields DBT_MODEL_PATCH_FIELDS = new Fields(DbtModelResource.FIELD_LIST,
            "owner,columns,database,tags");
     // Model fields that can be updated in a PUT request
-  static final Fields MODEL_UPDATE_FIELDS = new Fields(ModelResource.FIELD_LIST,
+  static final Fields DBT_MODEL_UPDATE_FIELDS = new Fields(DbtModelResource.FIELD_LIST,
            "owner,columns,database,tags");
 
   private final CollectionDAO dao;
 
-  public ModelRepository(CollectionDAO dao) {
-    super(ModelResource.COLLECTION_PATH, Model.class, dao.modelDAO(), dao, MODEL_PATCH_FIELDS, MODEL_UPDATE_FIELDS);
+  public DbtModelRepository(CollectionDAO dao) {
+    super(DbtModelResource.COLLECTION_PATH, DbtModel.class, dao.dbtModelDAO(), dao,
+        DBT_MODEL_PATCH_FIELDS, DBT_MODEL_UPDATE_FIELDS);
     this.dao = dao;
   }
 
   @Override
-   public Model setFields(Model model, Fields fields) throws IOException, ParseException {
-      model.setColumns(model.getColumns());
-      model.setOwner(fields.contains("owner") ? getOwner(model) : null);
-      model.setFollowers(fields.contains("followers") ? getFollowers(model) : null);
-      model.setDatabase(fields.contains("database") ? getDatabase(model.getId()) : null);
-      model.setTags(fields.contains("tags") ? getTags(model.getFullyQualifiedName()) : null);
-      getColumnTags(fields.contains("tags"), model.getColumns());
-      model.setViewDefinition(fields.contains("viewDefinition") ? model.getViewDefinition() : null);
-      return model;
+   public DbtModel setFields(DbtModel dbtModel, Fields fields) throws IOException, ParseException {
+      dbtModel.setColumns(dbtModel.getColumns());
+      dbtModel.setOwner(fields.contains("owner") ? getOwner(dbtModel) : null);
+      dbtModel.setFollowers(fields.contains("followers") ? getFollowers(dbtModel) : null);
+      dbtModel.setDatabase(fields.contains("database") ? getDatabase(dbtModel.getId()) : null);
+      dbtModel.setTags(fields.contains("tags") ? getTags(dbtModel.getFullyQualifiedName()) : null);
+      getColumnTags(fields.contains("tags"), dbtModel.getColumns());
+      dbtModel.setViewDefinition(fields.contains("viewDefinition") ? dbtModel.getViewDefinition() : null);
+      return dbtModel;
   }
 
   @Override
-  public void restorePatchAttributes(Model original, Model updated) throws IOException, ParseException {
+  public void restorePatchAttributes(DbtModel original, DbtModel updated) throws IOException, ParseException {
       // Patch can't make changes to following fields. Ignore the changes
       updated.withFullyQualifiedName(original.getFullyQualifiedName()).withName(original.getName())
               .withDatabase(original.getDatabase()).withId(original.getId());
   }
 
   @Override
-  public EntityInterface<Model> getEntityInterface(Model entity) {
-        return new ModelEntityInterface(entity);
+  public EntityInterface<DbtModel> getEntityInterface(DbtModel entity) {
+        return new DbtModelEntityInterface(entity);
     }
 
-  public static String getFQN(Model model) {
-        return (model.getDatabase().getName() + "." + model.getName());
+  public static String getFQN(DbtModel DbtModel) {
+        return (DbtModel.getDatabase().getName() + "." + DbtModel.getName());
     }
 
   @Transaction
   public void delete(UUID id) {
-      dao.modelDAO().delete(id);
+      dao.dbtModelDAO().delete(id);
       dao.relationshipDAO().deleteAll(id.toString()); // Remove all relationships
   }
 
   @Transaction
-  public EntityReference getOwnerReference(Model model) throws IOException {
-      return EntityUtil.populateOwner(dao.userDAO(), dao.teamDAO(), model.getOwner());
+  public EntityReference getOwnerReference(DbtModel dbtModel) throws IOException {
+      return EntityUtil.populateOwner(dao.userDAO(), dao.teamDAO(), dbtModel.getOwner());
   }
 
   private void setColumnFQN(String parentFQN, List<Column> columns) {
@@ -126,66 +127,66 @@ public class ModelRepository extends EntityRepository<Model> {
   }
 
   @Override
-  public void validate(Model model) throws IOException {
-      model.setDatabase(dao.databaseDAO().findEntityReferenceById(model.getDatabase().getId()));
+  public void validate(DbtModel dbtModel) throws IOException {
+      dbtModel.setDatabase(dao.databaseDAO().findEntityReferenceById(dbtModel.getDatabase().getId()));
 
       // Set data in table entity based on database relationship
-      model.setFullyQualifiedName(getFQN(model));
-      setColumnFQN(model.getFullyQualifiedName(), model.getColumns());
+      dbtModel.setFullyQualifiedName(getFQN(dbtModel));
+      setColumnFQN(dbtModel.getFullyQualifiedName(), dbtModel.getColumns());
 
       // Check if owner is valid and set the relationship
-      model.setOwner(EntityUtil.populateOwner(dao.userDAO(), dao.teamDAO(), model.getOwner()));
+      dbtModel.setOwner(EntityUtil.populateOwner(dao.userDAO(), dao.teamDAO(), dbtModel.getOwner()));
 
       // Validate table tags and add derived tags to the list
-      model.setTags(EntityUtil.addDerivedTags(dao.tagDAO(), model.getTags()));
+      dbtModel.setTags(EntityUtil.addDerivedTags(dao.tagDAO(), dbtModel.getTags()));
 
       // Validate column tags
-      addDerivedTags(model.getColumns());
+      addDerivedTags(dbtModel.getColumns());
   }
 
   @Override
-  public void store(Model model, boolean update) throws IOException {
+  public void store(DbtModel dbtModel, boolean update) throws IOException {
       // Relationships and fields such as href are derived and not stored as part of json
-      EntityReference owner = model.getOwner();
-      EntityReference database = model.getDatabase();
-      List<TagLabel> tags = model.getTags();
+      EntityReference owner = dbtModel.getOwner();
+      EntityReference database = dbtModel.getDatabase();
+      List<TagLabel> tags = dbtModel.getTags();
 
       // Don't store owner, database, href and tags as JSON. Build it on the fly based on relationships
-      model.withOwner(null).withDatabase(null).withHref(null).withTags(null);
+      dbtModel.withOwner(null).withDatabase(null).withHref(null).withTags(null);
 
       // Don't store column tags as JSON but build it on the fly based on relationships
-      List<Column> columnWithTags = model.getColumns();
-      model.setColumns(cloneWithoutTags(columnWithTags));
-      model.getColumns().forEach(column -> column.setTags(null));
+      List<Column> columnWithTags = dbtModel.getColumns();
+      dbtModel.setColumns(cloneWithoutTags(columnWithTags));
+      dbtModel.getColumns().forEach(column -> column.setTags(null));
 
       if (update) {
-          dao.modelDAO().update(model.getId(), JsonUtils.pojoToJson(model));
+          dao.dbtModelDAO().update(dbtModel.getId(), JsonUtils.pojoToJson(dbtModel));
       } else {
-          dao.modelDAO().insert(model);
+          dao.dbtModelDAO().insert(dbtModel);
       }
 
       // Restore the relationships
-      model.withOwner(owner).withDatabase(database).withTags(tags);
-      model.setColumns(columnWithTags);
+      dbtModel.withOwner(owner).withDatabase(database).withTags(tags);
+      dbtModel.setColumns(columnWithTags);
   }
 
   @Override
-  public void storeRelationships(Model model) throws IOException {
+  public void storeRelationships(DbtModel dbtModel) throws IOException {
       // Add relationship from database to model
-      String databaseId = model.getDatabase().getId().toString();
-      dao.relationshipDAO().insert(databaseId, model.getId().toString(), Entity.DATABASE, Entity.MODEL,
+      String databaseId = dbtModel.getDatabase().getId().toString();
+      dao.relationshipDAO().insert(databaseId, dbtModel.getId().toString(), Entity.DATABASE, Entity.DBTMODEL,
               Relationship.CONTAINS.ordinal());
 
       // Add table owner relationship
-      EntityUtil.setOwner(dao.relationshipDAO(), model.getId(), Entity.MODEL, model.getOwner());
+      EntityUtil.setOwner(dao.relationshipDAO(), dbtModel.getId(), Entity.DBTMODEL, dbtModel.getOwner());
 
       // Add tag to model relationship
-      applyTags(model);
+      applyTags(dbtModel);
   }
 
   @Override
-  public EntityUpdater getUpdater(Model original, Model updated, boolean patchOperation) throws IOException {
-      return new ModelUpdater(original, updated, patchOperation);
+  public EntityUpdater getUpdater(DbtModel original, DbtModel updated, boolean patchOperation) throws IOException {
+      return new DbtModelUpdater(original, updated, patchOperation);
   }
 
   List<Column> cloneWithoutTags(List<Column> columns) {
@@ -209,24 +210,22 @@ public class ModelRepository extends EntityRepository<Model> {
               .withOrdinalPosition(column.getOrdinalPosition())
               .withChildren(children);
   }
-
-  // TODO remove this
   private void applyTags(List<Column> columns) throws IOException {
-      // Add column level tags by adding tag to column relationship
-      for (Column column : columns) {
-          EntityUtil.applyTags(dao.tagDAO(), column.getTags(), column.getFullyQualifiedName());
-          column.setTags(getTags(column.getFullyQualifiedName())); // Update tag list to handle derived tags
-          if (column.getChildren() != null) {
-              applyTags(column.getChildren());
-          }
+    // Add column level tags by adding tag to column relationship
+    for (Column column : columns) {
+      EntityUtil.applyTags(dao.tagDAO(), column.getTags(), column.getFullyQualifiedName());
+      column.setTags(getTags(column.getFullyQualifiedName())); // Update tag list to handle derived tags
+      if (column.getChildren() != null) {
+        applyTags(column.getChildren());
       }
+    }
   }
 
-  private void applyTags(Model model) throws IOException {
+  private void applyTags(DbtModel dbtModel) throws IOException {
       // Add table level tags by adding tag to model relationship
-      EntityUtil.applyTags(dao.tagDAO(), model.getTags(), model.getFullyQualifiedName());
-      model.setTags(getTags(model.getFullyQualifiedName())); // Update tag to handle additional derived tags
-      applyTags(model.getColumns());
+      EntityUtil.applyTags(dao.tagDAO(), dbtModel.getTags(), dbtModel.getFullyQualifiedName());
+      dbtModel.setTags(getTags(dbtModel.getFullyQualifiedName())); // Update tag to handle additional derived tags
+      applyTags(dbtModel.getColumns());
   }
 
   private EntityReference getDatabase(UUID tableId) throws IOException {
@@ -239,13 +238,13 @@ public class ModelRepository extends EntityRepository<Model> {
       return dao.databaseDAO().findEntityReferenceById(UUID.fromString(result.get(0)));
   }
 
-  private EntityReference getOwner(Model model) throws IOException {
-      return model == null ? null : EntityUtil.populateOwner(model.getId(), dao.relationshipDAO(), dao.userDAO(),
+  private EntityReference getOwner(DbtModel dbtModel) throws IOException {
+      return dbtModel == null ? null : EntityUtil.populateOwner(dbtModel.getId(), dao.relationshipDAO(), dao.userDAO(),
               dao.teamDAO());
   }
 
-  private List<EntityReference> getFollowers(Model model) throws IOException {
-      return model == null ? null : EntityUtil.getFollowers(model.getId(), dao.relationshipDAO(), dao.userDAO());
+  private List<EntityReference> getFollowers(DbtModel dbtModel) throws IOException {
+      return dbtModel == null ? null : EntityUtil.getFollowers(dbtModel.getId(), dao.relationshipDAO(), dao.userDAO());
   }
 
   private List<TagLabel> getTags(String fqn) {
@@ -260,9 +259,9 @@ public class ModelRepository extends EntityRepository<Model> {
   }
 
   // Validate if a given column exists in the model
-  private void validateColumn(Model model, String columnName) {
+  private void validateColumn(DbtModel DbtModel, String columnName) {
       boolean validColumn = false;
-      for (Column column : model.getColumns()) {
+      for (Column column : DbtModel.getColumns()) {
           if (column.getName().equals(columnName)) {
               validColumn = true;
               break;
@@ -274,9 +273,9 @@ public class ModelRepository extends EntityRepository<Model> {
   }
 
   // Validate if a given column exists in the model
-  private void validateColumnFQN(Model model, String columnFQN) {
+  private void validateColumnFQN(DbtModel DbtModel, String columnFQN) {
       boolean validColumn = false;
-      for (Column column : model.getColumns()) {
+      for (Column column : DbtModel.getColumns()) {
           if (column.getFullyQualifiedName().equals(columnFQN)) {
               validColumn = true;
               break;
@@ -290,15 +289,15 @@ public class ModelRepository extends EntityRepository<Model> {
   private void validateColumnFQNs(List<JoinedWith> joinedWithList) throws IOException {
       for (JoinedWith joinedWith : joinedWithList) {
           // Validate model
-          String modelFQN = getModelFQN(joinedWith.getFullyQualifiedName());
-          Model joinedWithModel = dao.modelDAO().findEntityByName(modelFQN);
+          String modelFQN = getDbtModelFQN(joinedWith.getFullyQualifiedName());
+          DbtModel joinedWithModel = dao.dbtModelDAO().findEntityByName(modelFQN);
 
           // Validate column
           validateColumnFQN(joinedWithModel, joinedWith.getFullyQualifiedName());
       }
   }
 
-  private String getModelFQN(String columnFQN) {
+  private String getDbtModelFQN(String columnFQN) {
       // Split columnFQN of format databaseServiceName.databaseName.model.columnName
       String[] split = columnFQN.split("\\.");
       if (split.length != 4) {
@@ -309,10 +308,10 @@ public class ModelRepository extends EntityRepository<Model> {
   }
 
 
-  public static class ModelEntityInterface implements EntityInterface<Model> {
-      private final Model entity;
+  public static class DbtModelEntityInterface implements EntityInterface<DbtModel> {
+      private final DbtModel entity;
 
-      public ModelEntityInterface(Model entity) {
+      public DbtModelEntityInterface(DbtModel entity) {
             this.entity = entity;
         }
 
@@ -357,7 +356,7 @@ public class ModelRepository extends EntityRepository<Model> {
       @Override
       public EntityReference getEntityReference() {
           return new EntityReference().withId(getId()).withName(getFullyQualifiedName()).withDescription(getDescription())
-                  .withDisplayName(getDisplayName()).withType(Entity.MODEL);
+                  .withDisplayName(getDisplayName()).withType(Entity.DBTMODEL);
       }
 
       @Override
@@ -369,7 +368,7 @@ public class ModelRepository extends EntityRepository<Model> {
       public List<EntityReference> getFollowers() { return entity.getFollowers(); }
 
       @Override
-      public Model getEntity() { return entity; }
+      public DbtModel getEntity() { return entity; }
 
       @Override
       public ChangeDescription getChangeDescription() {
@@ -405,7 +404,7 @@ public class ModelRepository extends EntityRepository<Model> {
       public void setOwner(EntityReference owner) { entity.setOwner(owner); }
 
       @Override
-      public Model withHref(URI href) { return entity.withHref(href); }
+      public DbtModel withHref(URI href) { return entity.withHref(href); }
 
       @Override
       public void setTags(List<TagLabel> tags) {
@@ -416,22 +415,22 @@ public class ModelRepository extends EntityRepository<Model> {
   /**
    * Handles entity updated from PUT and POST operation.
    */
-  public class ModelUpdater extends EntityUpdater {
-      public ModelUpdater(Model original, Model updated, boolean patchOperation) {
+  public class DbtModelUpdater extends EntityUpdater {
+      public DbtModelUpdater(DbtModel original, DbtModel updated, boolean patchOperation) {
           super(original, updated, patchOperation);
       }
 
       @Override
       public void entitySpecificUpdate() throws IOException {
-          Model origModel = original.getEntity();
-          Model updatedModel = updated.getEntity();
-          updateNodeType(origModel, updatedModel);
-          updateColumns("columns", origModel.getColumns(),
+          DbtModel origDbtModel = original.getEntity();
+          DbtModel updatedDbtModel = updated.getEntity();
+          updateDBTNodeType(origDbtModel, updatedDbtModel);
+          updateColumns("columns", origDbtModel.getColumns(),
                   updated.getEntity().getColumns(), EntityUtil.columnMatch);
       }
 
-      private void updateNodeType(Model origModel, Model updatedModel) throws JsonProcessingException {
-          recordChange("nodeType", origModel.getNodeType(), updatedModel.getNodeType());
+      private void updateDBTNodeType(DbtModel origModel, DbtModel updatedModel) throws JsonProcessingException {
+          recordChange("dbtNodeType", origModel.getDbtNodeType(), updatedModel.getDbtNodeType());
       }
 
       private void updateColumns(String fieldName, List<Column> origColumns, List<Column> updatedColumns,
