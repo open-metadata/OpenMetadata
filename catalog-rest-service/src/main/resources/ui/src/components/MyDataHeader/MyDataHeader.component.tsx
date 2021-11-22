@@ -96,32 +96,36 @@ const MyDataHeader: FunctionComponent<Props> = ({
     <section
       className="tw-flex tw-flex-col tw-items-center tw-py-7"
       data-testid="data-header-container">
-      <h3 className="tw-mb-7 tw-font-semibold" data-testid="main-title">
-        <span className="tw-text-primary-II">Open</span>
-        <span className="tw-text-primary">Metadata</span>
-      </h3>
-      <div className="tw-flex tw-mb-4" data-testid="data-summary-container">
-        {Object.values(dataSummary).map((data, index) => (
-          <div
-            className={classNames('tw-flex tw-items-center', {
-              'tw-pl-5': Boolean(index),
-            })}
-            key={index}>
-            <SVGIcons alt="icon" className="tw-h-4 tw-w-4" icon={data.icon} />
-            {data.link ? (
-              <Link
-                className="tw-font-medium tw-pl-2"
-                data-testid={data.dataTestId}
-                to={data.link}>
-                <button className="tw-text-grey-body hover:tw-text-primary-hover hover:tw-underline">
-                  {data.data}
-                </button>
-              </Link>
-            ) : (
-              <p className="tw-font-medium tw-pl-2">{data.data}</p>
-            )}
-          </div>
-        ))}
+      <div id="statesHeader">
+        <h3
+          className="tw-mb-7 tw-font-semibold tw-text-center"
+          data-testid="main-title">
+          <span className="tw-text-primary-II">Open</span>
+          <span className="tw-text-primary">Metadata</span>
+        </h3>
+        <div className="tw-flex tw-mb-4" data-testid="data-summary-container">
+          {Object.values(dataSummary).map((data, index) => (
+            <div
+              className={classNames('tw-flex tw-items-center', {
+                'tw-pl-5': Boolean(index),
+              })}
+              key={index}>
+              <SVGIcons alt="icon" className="tw-h-4 tw-w-4" icon={data.icon} />
+              {data.link ? (
+                <Link
+                  className="tw-font-medium tw-pl-2"
+                  data-testid={data.dataTestId}
+                  to={data.link}>
+                  <button className="tw-text-grey-body hover:tw-text-primary-hover hover:tw-underline">
+                    {data.data}
+                  </button>
+                </Link>
+              ) : (
+                <p className="tw-font-medium tw-pl-2">{data.data}</p>
+              )}
+            </div>
+          ))}
+        </div>
       </div>
     </section>
   );

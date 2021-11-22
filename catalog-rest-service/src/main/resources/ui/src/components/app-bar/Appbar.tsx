@@ -37,6 +37,7 @@ import {
 } from '../../constants/constants';
 import { urlGitbookDocs, urlJoinSlack } from '../../constants/url.const';
 import { useAuth } from '../../hooks/authHooks';
+import { useTour } from '../../hooks/useTour';
 import { userSignOut } from '../../utils/AuthUtils';
 import {
   inPageSearchOptions,
@@ -57,6 +58,7 @@ const cookieStorage = new CookieStorage();
 const Appbar: React.FC = (): JSX.Element => {
   const location = useLocation();
   const history = useHistory();
+  const { handleIsTourOpen } = useTour();
   const { isAuthenticatedRoute, isSignedIn, isFirstTimeUser, isAuthDisabled } =
     useAuth(location.pathname);
   const match: Match | null = useRouteMatch({
@@ -135,6 +137,7 @@ const Appbar: React.FC = (): JSX.Element => {
           width="12"
         />
       ),
+      method: () => handleIsTourOpen(true),
     },
   ];
 
@@ -353,7 +356,6 @@ const Appbar: React.FC = (): JSX.Element => {
           )}
         </div>
       ) : null}
-      {/* <Tour /> */}
     </>
   );
 };

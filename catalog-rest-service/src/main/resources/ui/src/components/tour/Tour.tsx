@@ -1,104 +1,114 @@
-import { AxiosResponse } from 'axios';
 import { observer } from 'mobx-react';
 import React, { useEffect, useState } from 'react';
-// import ReactTutorial from 'react-tutorial';
-import { searchData } from '../../axiosAPIs/miscAPI';
-import { PAGE_SIZE } from '../../constants/constants';
-import { SearchIndex } from '../../enums/search.enum';
-// import { useTour } from '../../hooks/useTour';
+import ReactTutorial from 'react-tutorial';
+import { useTour } from '../../hooks/useTour';
 
 type Steps = {
-  content: string;
-  actionType: string;
-  position: string;
-  selector: string;
+  content?: string;
+  actionType?: string;
+  position?: string | number[];
+  selector?: string;
   userTypeText?: string;
   waitTimer?: number;
 };
 
 const getSteps = (value: string) => {
+  const modifiedValue = value.substr(0, 6);
+
   return [
     {
-      content: 'Click on the next.',
-      actionType: 'click',
-      position: 'bottom',
-      selector: '#next',
+      content: `OpenMetadata is a Centralized Metadata Store. Discover all your data assets in a single place, collaborate with your co-workers.
+         Understand your data assets and contribute to make it richer.`,
+      actionType: 'wait',
+      position: [775, 240],
+      waitTimer: 8000,
+      selector: '#statesHeader',
     },
     {
-      content: 'Click on the next.',
-      actionType: 'click',
-      position: 'bottom',
-      selector: '#next',
-    },
-    {
-      content: 'Click on Explore OpenMetadata.',
-      actionType: 'click',
-      position: 'bottom',
-      selector: '#take-tour',
-    },
-    {
-      content: 'Click on explore.',
-      actionType: 'click',
-      position: 'bottom',
-      selector: '#explore',
-    },
-    {
-      content: `Type "${value}" in search box.`,
-      actionType: 'typing',
-      userTypeText: value,
+      content: `This is a search box where you can type "name", "description", "column name", etc. to find any matching data asset. For example, type "${modifiedValue}". Hit Enter.`,
+      actionType: 'enter',
       position: 'bottom',
       selector: '#searchBox',
     },
     {
-      content: 'Click on the table.',
-      actionType: 'click',
-      position: 'bottom',
-      selector: '#bigqueryshopifydim_address',
-    },
-    {
-      content:
-        'Understand the schema of the table and add description, Claim ownership. Add tags etc..',
-      position: 'bottom',
-      selector: '#tabs',
       actionType: 'wait',
-      waitTimer: 10000,
+      waitTimer: 100,
     },
     {
-      content: 'Click here to explore more',
+      content: 'Click on the assets title for more details.',
       actionType: 'click',
       position: 'bottom',
-      selector: '#openmetadata_logo',
+      selector: '#tabledatacard0',
+    },
+    {
+      content: 'Understand the schema of the table and add description.',
+      position: 'bottom',
+      selector: '#schema',
+      actionType: 'wait',
+      waitTimer: 8000,
+    },
+    {
+      content: 'Click on profiler.',
+      position: 'bottom',
+      selector: '#profiler',
+      actionType: 'click',
+    },
+    {
+      content: 'Understand the profiler tab.',
+      position: 'bottom',
+      selector: '#profiler',
+      actionType: 'wait',
+      waitTimer: 8000,
+    },
+    {
+      content: 'Click on manage tab.',
+      position: 'bottom',
+      selector: '#manage',
+      actionType: 'click',
+    },
+    {
+      content: 'claim ownership.',
+      position: 'bottom',
+      selector: '#manage',
+      actionType: 'wait',
+      waitTimer: 8000,
+    },
+    {
+      content: 'Click on explore to access all the assests.',
+      actionType: 'click',
+      position: 'bottom',
+      selector: '#explore',
     },
   ];
 };
 
 const Tour = () => {
-  // const { isTourOpen, handleIsTourOpen } = useTour();
-  const [, setSteps] = useState<Steps[]>([]);
+  const { isTourOpen, handleIsTourOpen } = useTour();
+  const [steps, setSteps] = useState<Steps[]>([]);
 
   useEffect(() => {
-    searchData('', 1, PAGE_SIZE, '', '', '', SearchIndex.TABLE).then(
-      (res: AxiosResponse) => {
-        const table = res.data.hits.hits[0];
-        setSteps(getSteps(table._source.table_name));
-      }
-    );
+    // searchData('', 1, PAGE_SIZE, '', '', '', SearchIndex.TABLE).then(
+    //   (res: AxiosResponse) => {
+    //     const table = res.data.hits.hits[0];
+    //     setSteps(getSteps(table._source.table_name));
+    //   }
+    //   );
+    setSteps(getSteps('dim_c'));
   }, []);
 
   return (
     <div>
-      {/* {isTourOpen ? (
+      {isTourOpen ? (
         <ReactTutorial
           disableKeyboardNavigation
           showNumber
+          accentColor="#7147E8"
           maskColor="#302E36"
           playTour={isTourOpen}
-          showButtons={false}
-          showNavigation={false}
           steps={steps}
           onRequestClose={() => handleIsTourOpen(false)}
         />
-      ) : null} */}
+      ) : null}
     </div>
   );
 };

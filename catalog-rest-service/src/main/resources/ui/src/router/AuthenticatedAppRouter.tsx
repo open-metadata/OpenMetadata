@@ -41,7 +41,7 @@ import SwaggerPage from '../pages/swagger';
 import TagsPage from '../pages/tags';
 import TeamsPage from '../pages/teams';
 import TopicDetailsPage from '../pages/TopicDetails/TopicDetailsPage.component';
-import TourPage from '../pages/tour-page';
+import TourPage from '../pages/TourPage/TourPage.component';
 import UsersPage from '../pages/users';
 import WorkflowsPage from '../pages/workflows';
 const AuthenticatedAppRouter: FunctionComponent = () => {
