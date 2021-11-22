@@ -7,7 +7,6 @@ import { getSummary, isMajorVersion } from '../../utils/EntityVersionUtils';
 import { dropdownIcon as DropDownIcon } from '../../utils/svgconstant';
 import { Button } from '../buttons/Button/Button';
 import DropDownList from '../dropdown/DropDownList';
-import './EntityVersionTimeLine.css';
 
 type Props = {
   versionList: EntityHistory;
@@ -142,7 +141,7 @@ const EntityVersionTimeLine: React.FC<Props> = ({
       })
     ) : (
       <p className="tw-text-grey-muted tw-flex tw-justify-center tw-items-center tw-mt-10">
-        No records available
+        {`No ${capitalize(versionType)} versions change available`}
       </p>
     );
   };
@@ -161,7 +160,7 @@ const EntityVersionTimeLine: React.FC<Props> = ({
     <div className={classNames('timeline-drawer', { open: show })}>
       <header className="tw-flex tw-justify-between">
         <div className="tw-flex">
-          <p className="tw-font-medium tw-mr-2">Versions history</p>
+          <p className="tw-font-medium tw-mr-2">Versions History</p>
           <Button
             className="tw-underline"
             data-testid="versiontype-dropdown"
