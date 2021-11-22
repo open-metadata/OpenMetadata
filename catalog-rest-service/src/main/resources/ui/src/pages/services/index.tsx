@@ -17,8 +17,8 @@
 
 import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
-import { isNull, lowerCase } from 'lodash';
-import { ServiceCollection, ServiceData, ServiceTypes } from 'Models';
+import { isNil, isNull, lowerCase } from 'lodash';
+import { Paging, ServiceCollection, ServiceData, ServiceTypes } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
@@ -29,6 +29,7 @@ import {
   updateService,
 } from '../../axiosAPIs/serviceAPI';
 import { Button } from '../../components/buttons/Button/Button';
+import NextPrevious from '../../components/common/next-previous/NextPrevious';
 import NonAdminAction from '../../components/common/non-admin-action/NonAdminAction';
 import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
 import Searchbar from '../../components/common/searchbar/Searchbar';
@@ -43,6 +44,7 @@ import {
 import ConfirmationModal from '../../components/Modals/ConfirmationModal/ConfirmationModal';
 import {
   getServiceDetailsPath,
+  pagingObject,
   TITLE_FOR_NON_ADMIN_ACTION,
 } from '../../constants/constants';
 import {
@@ -71,6 +73,13 @@ type ServiceRecord = {
   pipelineServices: Array<PipelineService>;
 };
 
+type ServicePagingRecord = {
+  databaseServices: Paging;
+  messagingServices: Paging;
+  dashboardServices: Paging;
+  pipelineServices: Paging;
+};
+
 export type ApiData = {
   description: string;
   href: string;
@@ -92,6 +101,12 @@ const ServicesPage = () => {
   });
   const [serviceName, setServiceName] =
     useState<ServiceTypes>('databaseServices');
+  const [paging, setPaging] = useState<ServicePagingRecord>({
+    databaseServices: pagingObject,
+    messagingServices: pagingObject,
+    dashboardServices: pagingObject,
+    pipelineServices: pagingObject,
+  });
   const [services, setServices] = useState<ServiceRecord>({
     databaseServices: [],
     messagingServices: [],
@@ -122,20 +137,29 @@ const ServicesPage = () => {
         (result: PromiseSettledResult<AxiosResponse>[]) => {
           if (result.length) {
             let serviceArr = [];
+            let servicePagingArr = [];
             const serviceRecord = {} as ServiceRecord;
+            const servicePaging = {} as ServicePagingRecord;
             serviceArr = result.map((service) =>
               service.status === 'fulfilled' ? service.value?.data?.data : []
+            );
+            servicePagingArr = result.map((service) =>
+              service.status === 'fulfilled' ? service.value?.data?.paging : {}
             );
             for (let i = 0; i < serviceArr.length; i++) {
               serviceRecord[allServiceCollectionArr[i].value as ServiceTypes] =
                 serviceArr[i];
+              servicePaging[allServiceCollectionArr[i].value as ServiceTypes] =
+                servicePagingArr[i];
             }
             setServices(serviceRecord);
+
+            setPaging(servicePaging);
             setServicesCount({
-              databaseServices: serviceRecord.databaseServices.length,
-              messagingServices: serviceRecord.messagingServices.length,
-              dashboardServices: serviceRecord.dashboardServices.length,
-              pipelineServices: serviceRecord.pipelineServices.length,
+              databaseServices: servicePaging.databaseServices.total || 0,
+              messagingServices: servicePaging.messagingServices.total || 0,
+              dashboardServices: servicePaging.dashboardServices.total || 0,
+              pipelineServices: servicePaging.pipelineServices.total || 0,
             });
             setServiceList(
               serviceRecord[serviceName] as unknown as Array<ServiceDataObj>
@@ -382,6 +406,34 @@ const ServicesPage = () => {
     }
   };
 
+  const pagingHandler = (cursorType: string) => {
+    setIsLoading(true);
+    const currentServicePaging = paging[serviceName];
+    const pagingString = `${serviceName}?${cursorType}=${
+      currentServicePaging[cursorType as keyof Paging]
+    }`;
+    getServices(pagingString)
+      .then((result: AxiosResponse) => {
+        const totalServices = [...services[serviceName], ...result.data.data];
+        setServiceList(totalServices);
+
+        setServices({
+          ...services,
+          [serviceName]: totalServices,
+        });
+
+        setPaging({
+          ...paging,
+          [serviceName]: result.data.paging,
+        });
+        // setServicesCount({
+        //   ...servicesCount,
+        //   [serviceName]: result.data.data.length,
+        // });
+      })
+      .finally(() => setIsLoading(false));
+  };
+
   useEffect(() => {
     //   fetch all service collection
     setIsLoading(true);
@@ -587,6 +639,16 @@ const ServicesPage = () => {
                   </p>
                 </div>
               </div>
+            )}
+
+            {Boolean(
+              !isNil(paging[serviceName].after) ||
+                !isNil(paging[serviceName].before)
+            ) && (
+              <NextPrevious
+                paging={paging[serviceName]}
+                pagingHandler={pagingHandler}
+              />
             )}
 
             {isModalOpen && (
