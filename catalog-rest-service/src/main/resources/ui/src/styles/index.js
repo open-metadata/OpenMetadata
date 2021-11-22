@@ -15,7 +15,6 @@
   * limitations under the License.
 */
 
-/* easlint-disable */
 import 'bootstrap/dist/css/bootstrap.min.css';
 import 'tailwindcss/tailwind.css';
 import './code-mirror.css';
