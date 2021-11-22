@@ -717,3 +717,20 @@ body .list-option.rdw-option-active {
 .tw-bg-status-queued {
   background-color: #777777;
 }
+
+/* react-slick */
+
+.slick-dots {
+  bottom: -2.5rem !important;
+}
+
+.slick-dots li button:before {
+  font-size: 12px !important;
+  color: #d9ceee !important;
+  opacity: 1 !important;
+}
+
+.slick-dots li.slick-active button:before {
+  color: #7147e8 !important;
+  opacity: 1 !important;
+}

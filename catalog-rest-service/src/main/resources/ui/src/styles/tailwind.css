@@ -333,20 +333,6 @@
     border-radius: 4px;
   }
 
-  /* react-slick */
-
-  .slick-dots {
-    @apply tw--bottom-10 !important;
-  }
-
-  .slick-dots li button:before {
-    @apply tw-text-sm tw-text-separator tw-opacity-100 !important;
-  }
-
-  .slick-dots li.slick-active button:before {
-    @apply tw-text-primary tw-opacity-100 !important;
-  }
-
   .column-highlight {
     animation: highlight 3000ms ease-out;
   }

@@ -17,11 +17,11 @@
  */
 
 /**
- * Create ML Model entity request
+ * Create Ml Model entity request
  */
-export interface CreateMLModel {
+export interface CreateMlModel {
   /**
-   * Algorithm used to train the ML model
+   * Algorithm used to train the ML Model
    */
   algorithm: string;
   /**
@@ -99,7 +99,7 @@ export interface EntityReference {
 }
 
 /**
- * This schema defines the type for a ML Feature used in a MLModel.
+ * This schema defines the type for an ML Feature used in an ML Model.
  */
 export interface MlFeature {
   /**
@@ -224,7 +224,7 @@ export enum State {
 }
 
 /**
- * This schema defines the type for a ML HyperParameter used in a MLModel.
+ * This schema defines the type for an ML HyperParameter used in an ML Model.
  */
 export interface MlHyperParameter {
   /**

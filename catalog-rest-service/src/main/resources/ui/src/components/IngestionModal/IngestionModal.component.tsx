@@ -19,12 +19,11 @@ import classNames from 'classnames';
 import cronstrue from 'cronstrue';
 import { utc } from 'moment';
 import React, { Fragment, ReactNode, useEffect, useState } from 'react';
-import { CronError } from 'react-js-cron';
 import { IngestionType } from '../../enums/service.enum';
 import { getIngestionTypeList } from '../../utils/ServiceUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import { Button } from '../buttons/Button/Button';
-import CronEditor from '../common/CronEditor/CronEditor.component';
+import CronEditor from '../common/CronEditor/CronEditor';
 import IngestionStepper from '../IngestionStepper/IngestionStepper.component';
 import { Steps } from '../IngestionStepper/IngestionStepper.interface';
 import {
@@ -69,15 +68,14 @@ const PreviewSection = ({
 }) => {
   return (
     <div className={className}>
-      {/* <hr className="tw-border-separator" /> */}
       <p className="tw-font-medium tw-px-1 tw-mb-2">{header}</p>
       <div className="tw-grid tw-gap-4 tw-grid-cols-3 tw-place-content-center tw-pl-6">
         {data.map((d, i) => (
           <div key={i}>
-            <p className="tw-text-xs tw-font-normal tw-text-grey-muted">
+            <div className="tw-text-xs tw-font-normal tw-text-grey-muted">
               {d.key}
-            </p>
-            <p>{d.value}</p>
+            </div>
+            <div>{d.value}</div>
           </div>
         ))}
       </div>
@@ -165,9 +163,8 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
   );
 
   const [ingestionSchedule, setIngestionSchedule] = useState<string>(
-    selectedIngestion?.scheduleInterval || '*/5 * * * *'
+    selectedIngestion?.scheduleInterval || '5 * * * *'
   );
-  const [cronError, setCronError] = useState<CronError>();
   const [isPasswordVisible, setIspasswordVisible] = useState<boolean>(false);
   const [showErrorMsg, setShowErrorMsg] = useState<ValidationErrorMsg>({
     selectService: false,
@@ -280,7 +277,7 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
 
         break;
       case 3:
-        isValid = Boolean(ingestionSchedule && !cronError);
+        isValid = Boolean(ingestionSchedule);
         setShowErrorMsg({
           ...showErrorMsg,
           ingestionSchedule: !ingestionSchedule,
@@ -506,27 +503,13 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
           <Fragment>
             <div className="tw-mt-4">
               <label htmlFor="">{requiredField('Schedule interval:')}</label>
-              <div className="tw-flex tw-justify-items-start tw-mt-2">
+              <div className="tw-flex tw-mt-2 tw-ml-3">
                 <CronEditor
-                  defaultValue={ingestionSchedule}
-                  onChangeHandler={(v) => setIngestionSchedule(v)}
-                  onError={setCronError}>
-                  <p className="tw-text-grey-muted tw-text-xs tw-mt-1">
-                    <span>( </span>
-                    <span className="tw-font-normal">
-                      <span>
-                        {cronstrue.toString(ingestionSchedule || '', {
-                          use24HourTimeFormat: true,
-                          verbose: true,
-                        })}
-                      </span>
-                    </span>
-                    <span> ) </span>
-                  </p>
-                  {showErrorMsg.ingestionSchedule
-                    ? errorMsg('Ingestion schedule is required')
-                    : cronError && errorMsg(cronError.description)}
-                </CronEditor>
+                  value={ingestionSchedule}
+                  onChange={(v: string) => setIngestionSchedule(v)}
+                />
+                {showErrorMsg.ingestionSchedule &&
+                  errorMsg('Ingestion schedule is required')}
               </div>
             </div>
             <div className="tw-grid tw-grid-cols-2 tw-gap-x-2">
