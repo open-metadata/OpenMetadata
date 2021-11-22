@@ -34,6 +34,8 @@ black_check:
 	black --check --diff $(PY_SOURCE) --exclude $(PY_SOURCE)/metadata/generated
 
 generate:
+	@echo "Installing Python Data Model Generator"
+	pip install datamodel-code-generator
 	datamodel-codegen  --input catalog-rest-service/src/main/resources/json  --input-file-type jsonschema --output ingestion/src/metadata/generated
 
 publish:
