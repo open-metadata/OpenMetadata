@@ -17,11 +17,12 @@
 
 import 'bootstrap/dist/css/bootstrap.min.css';
 import 'tailwindcss/tailwind.css';
-import './code-mirror.css';
 import './fonts.css';
 import './myDataDetailsTemp.css';
 import './slick-carousel.scss';
-import './stepper.css';
 import './tailwind.css';
 import './temp.css';
+import './x-custom/code-mirror.css';
+import './x-custom/CronEditor.css';
+import './x-custom/stepper.css';
 import './x-master.css';
