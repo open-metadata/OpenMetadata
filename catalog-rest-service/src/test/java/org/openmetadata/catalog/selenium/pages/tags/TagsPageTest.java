@@ -134,6 +134,7 @@ public class TagsPageTest {
         Events.click(webDriver, By.xpath("//*[text()[contains(.,'"+ tagCategoryDisplayName +"')]] "));
         // Select the created listed team
         actions.moveToElement(webDriver.findElement(By.cssSelector("[data-testid='editTagDescription']"))).perform();
+        Thread.sleep(2000);
         Events.click(webDriver, By.cssSelector("[data-testid='editTagDescription']"));
         wait.until(ExpectedConditions.elementToBeClickable(By.xpath(enterDescription)));
         Events.sendKeys(webDriver, By.xpath(enterDescription), faker.address().toString());
@@ -147,6 +148,7 @@ public class TagsPageTest {
         Events.click(webDriver, By.xpath("//*[text()[contains(.,'"+ tagCategoryDisplayName +"')]] "));
         // Select the created listed team
         actions.moveToElement(webDriver.findElement(By.cssSelector("[data-testid='tags']"))).perform();
+        Thread.sleep(2000);
         Events.click(webDriver, By.cssSelector("[data-testid='tags']"));
         Events.click(webDriver, By.cssSelector("[data-testid='associatedTagName']"));
         for (int i = 0; i <=1; i++){
@@ -163,6 +165,7 @@ public class TagsPageTest {
         Events.click(webDriver, By.xpath("//*[text()[contains(.,'"+ tagCategoryDisplayName +"')]] "));
         // Select the created listed team
         actions.moveToElement(webDriver.findElement(By.cssSelector("[data-testid='tags']"))).perform();
+        Thread.sleep(2000);
         Events.click(webDriver, By.cssSelector("[data-testid='tags']"));
         Events.click(webDriver, By.cssSelector("[data-testid='remove']"));
         Events.click(webDriver, By.cssSelector("[data-testid='remove']"));
