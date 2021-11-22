@@ -201,3 +201,7 @@ export const getSummary = (changeDescription: ChangeDescription) => {
     </Fragment>
   );
 };
+
+export const isMajorVersion = (v1: string, v2: string) => {
+  return v2.split('.')[0] > v1.split('.')[0];
+};

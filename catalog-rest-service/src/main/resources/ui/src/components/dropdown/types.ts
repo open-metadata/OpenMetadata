@@ -40,6 +40,7 @@ export type DropDownListItem = {
 
 export type GroupType = 'label' | 'tab';
 export type DropDownListProp = {
+  className?: string;
   dropDownList: Array<DropDownListItem>;
   horzPosRight?: boolean;
   listGroups?: Array<string>;
