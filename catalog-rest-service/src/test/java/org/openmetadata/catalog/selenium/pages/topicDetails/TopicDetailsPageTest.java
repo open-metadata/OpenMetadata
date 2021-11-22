@@ -22,6 +22,7 @@ import org.openmetadata.catalog.selenium.properties.Property;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.chrome.ChromeDriver;
+import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.interactions.Actions;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
@@ -48,7 +49,10 @@ public class TopicDetailsPageTest {
   @BeforeEach
   public void openMetadataWindow() {
     System.setProperty("webdriver.chrome.driver", "src/test/resources/drivers/linux/chromedriver");
-    webDriver = new ChromeDriver();
+    ChromeOptions options = new ChromeOptions();
+    options.addArguments("--headless");
+    options.addArguments("--window-size=1280,800");
+    webDriver = new ChromeDriver(options);
     actions = new Actions(webDriver);
     wait = new WebDriverWait(webDriver, Duration.ofSeconds(30));
     webDriver.manage().window().maximize();

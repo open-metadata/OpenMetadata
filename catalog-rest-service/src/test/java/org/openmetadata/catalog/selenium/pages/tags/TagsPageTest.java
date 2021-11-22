@@ -53,9 +53,8 @@ public class TagsPageTest {
   public void openMetadataWindow() {
     System.setProperty("webdriver.chrome.driver", "src/test/resources/drivers/linux/chromedriver");
     ChromeOptions options = new ChromeOptions();
-    options.addArguments("--no-sandbox");
-    options.addArguments("--disable-dev-shm-usage");
     options.addArguments("--headless");
+    options.addArguments("--window-size=1280,800");
     webDriver = new ChromeDriver(options);
     actions = new Actions(webDriver);
     wait = new WebDriverWait(webDriver, Duration.ofSeconds(30));
@@ -133,7 +132,6 @@ public class TagsPageTest {
     Events.click(webDriver, By.xpath("//*[text()[contains(.,'" + tagCategoryDisplayName + "')]] "));
     // Select the created listed team
     actions.moveToElement(webDriver.findElement(By.cssSelector("[data-testid='editTagDescription']"))).perform();
-    Thread.sleep(2000);
     Events.click(webDriver, By.cssSelector("[data-testid='editTagDescription']"));
     wait.until(ExpectedConditions.elementToBeClickable(By.xpath(enterDescription)));
     Events.sendKeys(webDriver, By.xpath(enterDescription), faker.address().toString());
@@ -147,7 +145,6 @@ public class TagsPageTest {
     Events.click(webDriver, By.xpath("//*[text()[contains(.,'" + tagCategoryDisplayName + "')]] "));
     // Select the created listed team
     actions.moveToElement(webDriver.findElement(By.cssSelector("[data-testid='tags']"))).perform();
-    Thread.sleep(2000);
     Events.click(webDriver, By.cssSelector("[data-testid='tags']"));
     Events.click(webDriver, By.cssSelector("[data-testid='associatedTagName']"));
     for (int i = 0; i <= 1; i++) {
@@ -164,7 +161,6 @@ public class TagsPageTest {
     Events.click(webDriver, By.xpath("//*[text()[contains(.,'" + tagCategoryDisplayName + "')]] "));
     // Select the created listed team
     actions.moveToElement(webDriver.findElement(By.cssSelector("[data-testid='tags']"))).perform();
-    Thread.sleep(2000);
     Events.click(webDriver, By.cssSelector("[data-testid='tags']"));
     Events.click(webDriver, By.cssSelector("[data-testid='remove']"));
     Events.click(webDriver, By.cssSelector("[data-testid='remove']"));
