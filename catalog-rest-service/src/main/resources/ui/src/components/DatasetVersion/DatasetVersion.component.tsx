@@ -239,6 +239,7 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
         changeDescription,
         true
       );
+      let newColumns: Array<Column> = [] as Array<Column>;
       if (columnsDiff.added) {
         const newCol: Array<Column> = JSON.parse(
           columnsDiff.added?.newValue ?? '[]'
@@ -271,7 +272,7 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
         const newCol: Array<Column> = JSON.parse(
           columnsDiff.deleted?.oldValue ?? '[]'
         );
-        const newColumns = newCol.map((col) => ({
+        newColumns = newCol.map((col) => ({
           ...col,
           tags: col.tags?.map((tag) => ({ ...tag, removed: true })),
           description: getDescriptionDiff(
@@ -286,11 +287,11 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
           ),
           name: getDescriptionDiff(col.name, undefined, col.name),
         }));
-
-        return [...newColumns, ...colList];
       } else {
         return colList;
       }
+
+      return [...newColumns, ...colList];
     }
   };
 
