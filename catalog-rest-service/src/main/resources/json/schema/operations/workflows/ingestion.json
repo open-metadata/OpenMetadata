@@ -1,5 +1,5 @@
 {
-  "$id": "https://open-metadata.org/operations/workflows/ingestion.json",
+  "$id": "https://open-metadata.org/schema/operations/workflows/ingestion.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Ingestion",
   "description": "Ingestion Config is used to setup a Airflow Ingestion pipeline.",
