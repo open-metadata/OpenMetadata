@@ -141,7 +141,7 @@ const EntityVersionTimeLine: React.FC<Props> = ({
       })
     ) : (
       <p className="tw-text-grey-muted tw-flex tw-justify-center tw-items-center tw-mt-10">
-        {`No ${capitalize(versionType)} versions change available`}
+        {`No ${capitalize(versionType)} versions available`}
       </p>
     );
   };
