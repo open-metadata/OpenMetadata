@@ -58,6 +58,12 @@ export const tiers = [
   { key: 'Tier.Tier5', doc_count: 0 },
 ];
 
+export const versionTypes = [
+  { name: 'All', value: 'all' },
+  { name: 'Major', value: 'major' },
+  { name: 'Minor', value: 'minor' },
+];
+
 export const visibleFilters = ['service', 'tier', 'tags'];
 
 export const tableSortingFields = [

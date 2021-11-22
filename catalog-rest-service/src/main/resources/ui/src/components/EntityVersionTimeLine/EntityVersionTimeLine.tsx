@@ -1,6 +1,7 @@
 import classNames from 'classnames';
 import { capitalize, toString } from 'lodash';
 import React, { Fragment, useState } from 'react';
+import { versionTypes } from '../../constants/constants';
 import { EntityHistory } from '../../generated/type/entityHistory';
 import { getSummary, isMajorVersion } from '../../utils/EntityVersionUtils';
 import { dropdownIcon as DropDownIcon } from '../../utils/svgconstant';
@@ -163,22 +164,18 @@ const EntityVersionTimeLine: React.FC<Props> = ({
           <p className="tw-font-medium tw-mr-2">Versions history</p>
           <Button
             className="tw-underline"
-            data-testid="version-dropdown"
+            data-testid="versiontype-dropdown"
             size="custom"
             theme="primary"
             variant="link"
             onClick={() => setListVisible((visible) => !visible)}>
-            {capitalize(versionType) || 'Select Owner'}
+            {capitalize(versionType)}
             <DropDownIcon style={{ marginTop: '2px' }} />
           </Button>
           {listVisible && (
             <DropDownList
               className="tw-ml-24 tw-top-11"
-              dropDownList={[
-                { name: 'All', value: 'all' },
-                { name: 'Major', value: 'major' },
-                { name: 'Minor', value: 'minor' },
-              ]}
+              dropDownList={versionTypes}
               value={versionType}
               onSelect={handleVersionTypeSelection}
             />
