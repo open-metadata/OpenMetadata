@@ -169,6 +169,8 @@ export const summaryFormatter = (v: FieldChange) => {
     return `columns ${value?.map((val: any) => val?.name).join(', ')}`;
   } else if (v.name === 'tags' || v.name?.endsWith('tags')) {
     return `tags ${value?.map((val: any) => val?.tagFQN)?.join(', ')}`;
+  } else if (v.name === 'owner') {
+    return `${v.name} ${value.name}`;
   } else {
     return v.name;
   }
@@ -183,17 +185,17 @@ export const getSummary = (changeDescription: ChangeDescription) => {
     <Fragment>
       {fieldsAdded?.length > 0 ? (
         <p className="tw-mb-2">
-          {fieldsAdded?.map(summaryFormatter)} has been added
+          {fieldsAdded?.map(summaryFormatter).join(', ')} has been added
         </p>
       ) : null}
       {fieldsUpdated?.length ? (
         <p className="tw-mb-2">
-          {fieldsUpdated?.map(summaryFormatter)} has been updated
+          {fieldsUpdated?.map(summaryFormatter).join(', ')} has been updated
         </p>
       ) : null}
       {fieldsDeleted?.length ? (
         <p className="tw-mb-2">
-          {fieldsDeleted?.map(summaryFormatter)} has been deleted
+          {fieldsDeleted?.map(summaryFormatter).join(', ')} has been deleted
         </p>
       ) : null}
     </Fragment>
