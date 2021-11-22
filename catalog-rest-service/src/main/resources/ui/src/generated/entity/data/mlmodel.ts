@@ -22,7 +22,7 @@
  */
 export interface Mlmodel {
   /**
-   * Algorithm used to train the MLModel.
+   * Algorithm used to train the ML Model.
    */
   algorithm: string;
   /**
@@ -34,19 +34,19 @@ export interface Mlmodel {
    */
   dashboard?: EntityReference;
   /**
-   * Description of the MLModel, what it is, and how to use it.
+   * Description of the ML Model, what it is, and how to use it.
    */
   description?: string;
   /**
-   * Display Name that identifies this MLModel.
+   * Display Name that identifies this ML Model.
    */
   displayName?: string;
   /**
-   * Followers of this MLModel.
+   * Followers of this ML Model.
    */
   followers?: EntityReference[];
   /**
-   * A unique name that identifies a MLModel.
+   * A unique name that identifies an ML Model.
    */
   fullyQualifiedName?: string;
   /**
@@ -54,7 +54,7 @@ export interface Mlmodel {
    */
   href?: string;
   /**
-   * Unique identifier of a MLModel instance.
+   * Unique identifier of an ML Model instance.
    */
   id: string;
   /**
@@ -66,15 +66,15 @@ export interface Mlmodel {
    */
   mlHyperParameters?: MlHyperParameter[];
   /**
-   * Name that identifies this MLModel.
+   * Name that identifies this ML Model.
    */
   name: string;
   /**
-   * Owner of this MLModel.
+   * Owner of this ML Model.
    */
   owner?: EntityReference;
   /**
-   * Tags for this MLModel.
+   * Tags for this ML Model.
    */
   tags?: TagLabel[];
   /**
@@ -86,7 +86,7 @@ export interface Mlmodel {
    */
   updatedBy?: string;
   /**
-   * Latest usage information for this MLModel.
+   * Latest usage information for this ML Model.
    */
   usageSummary?: TypeUsedToReturnUsageDetailsOfAnEntity;
   /**
@@ -144,9 +144,9 @@ export interface FieldChange {
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
  *
- * Followers of this MLModel.
+ * Followers of this ML Model.
  *
- * Owner of this MLModel.
+ * Owner of this ML Model.
  */
 export interface EntityReference {
   /**
@@ -178,7 +178,7 @@ export interface EntityReference {
 }
 
 /**
- * This schema defines the type for a ML Feature used in a MLModel.
+ * This schema defines the type for an ML Feature used in an ML Model.
  */
 export interface MlFeature {
   /**
@@ -303,7 +303,7 @@ export enum State {
 }
 
 /**
- * This schema defines the type for a ML HyperParameter used in a MLModel.
+ * This schema defines the type for an ML HyperParameter used in an ML Model.
  */
 export interface MlHyperParameter {
   /**
@@ -321,7 +321,7 @@ export interface MlHyperParameter {
 }
 
 /**
- * Latest usage information for this MLModel.
+ * Latest usage information for this ML Model.
  *
  * This schema defines the type for usage details. Daily, weekly, and monthly aggregation of
  * usage is computed along with the percentile rank based on the usage for a given day.
