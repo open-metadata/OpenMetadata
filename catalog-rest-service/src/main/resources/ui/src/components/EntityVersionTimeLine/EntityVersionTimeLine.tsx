@@ -3,6 +3,7 @@ import { capitalize, toString } from 'lodash';
 import React, { Fragment, useState } from 'react';
 import { EntityHistory } from '../../generated/type/entityHistory';
 import { getSummary, isMajorVersion } from '../../utils/EntityVersionUtils';
+import { dropdownIcon as DropDownIcon } from '../../utils/svgconstant';
 import { Button } from '../buttons/Button/Button';
 import DropDownList from '../dropdown/DropDownList';
 import './EntityVersionTimeLine.css';
@@ -81,9 +82,21 @@ const EntityVersionTimeLine: React.FC<Props> = ({
               onClick={() => versionHandler(toString(currV?.version))}>
               <div className="timeline-wrapper">
                 <span
-                  className={classNames('timeline-rounder', {
-                    selected: toString(currV?.version) === currentVersion,
-                  })}
+                  className={classNames(
+                    'timeline-rounder',
+                    {
+                      selected: toString(currV?.version) === currentVersion,
+                    },
+                    {
+                      major:
+                        isMajorVersion(
+                          parseFloat(currV?.changeDescription?.previousVersion)
+                            .toFixed(1)
+                            .toString(),
+                          parseFloat(currV?.version).toFixed(1).toString()
+                        ) && versionType === 'all',
+                    }
+                  )}
                   data-testid="select-version"
                 />
                 <span className="timeline-line" />
@@ -97,7 +110,7 @@ const EntityVersionTimeLine: React.FC<Props> = ({
                         toString(currV?.version) === currentVersion,
                     },
                     {
-                      'tw-font-bold':
+                      'tw-font-semibold tw-text-base':
                         isMajorVersion(
                           parseFloat(currV?.changeDescription?.previousVersion)
                             .toFixed(1)
@@ -147,6 +160,7 @@ const EntityVersionTimeLine: React.FC<Props> = ({
     <div className={classNames('timeline-drawer', { open: show })}>
       <header className="tw-flex tw-justify-between">
         <div className="tw-flex">
+          <p className="tw-font-medium tw-mr-2">Versions history</p>
           <Button
             className="tw-underline"
             data-testid="version-dropdown"
@@ -155,10 +169,11 @@ const EntityVersionTimeLine: React.FC<Props> = ({
             variant="link"
             onClick={() => setListVisible((visible) => !visible)}>
             {capitalize(versionType) || 'Select Owner'}
+            <DropDownIcon style={{ marginTop: '2px' }} />
           </Button>
           {listVisible && (
             <DropDownList
-              className="tw-ml-2 tw-top-11"
+              className="tw-ml-24 tw-top-11"
               dropDownList={[
                 { name: 'All', value: 'all' },
                 { name: 'Major', value: 'major' },
@@ -168,7 +183,6 @@ const EntityVersionTimeLine: React.FC<Props> = ({
               onSelect={handleVersionTypeSelection}
             />
           )}
-          <p className="tw-font-medium tw-ml-2">Versions history</p>
         </div>
         <div className="tw-flex" onClick={onBack}>
           <svg
