@@ -4,7 +4,7 @@
 
 [![Build Status](https://github.com/open-metadata/OpenMetadata/actions/workflows/maven-build.yml/badge.svg?event=push)](https://github.com/open-metadata/OpenMetadata/actions/workflows/maven-build.yml)
 [![Release](https://img.shields.io/github/release/open-metadata/OpenMetadata/all.svg)](https://github.com/open-metadata/OpenMetadata/releases)
-[![Commit](https://img.shields.io/github/commit-activity/m/open-metadata/OpenMetadata)](Commit)
+![GitHub commit activity](https://img.shields.io/github/commit-activity/m/open-metadata/OpenMetadata)
 [![Twitter Follow](https://img.shields.io/twitter/follow/open_metadata?style=social)](https://twitter.com/intent/follow?screen_name=open_metadata)
 <a href="https://slack.open-metadata.org/"><img src="https://img.shields.io/badge/slack-join-E01E5A?logo=slack" alt="Join us on Slack" height="22"/></a>
 [![License](https://img.shields.io/github/license/open-metadata/OpenMetadata.svg)](LICENSE)
