@@ -73,3 +73,6 @@ catalog-rest-service/src/main/resources/ui/tsconfig.tsbuildinfo
 
 #vscode
 */.vscode/*
+
+# Python generated sources
+ingestion/src/metadata/generated/**

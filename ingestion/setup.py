@@ -77,6 +77,7 @@ base_plugins = {
     "sql-metadata~=2.0.0",
 }
 plugins: Dict[str, Set[str]] = {
+    "amundsen": {"neo4j~=4.4.0"},
     "athena": {"PyAthena[SQLAlchemy]"},
     "bigquery": {"openmetadata-sqlalchemy-bigquery==0.2.0"},
     "bigquery-usage": {"google-cloud-logging", "cachetools"},
@@ -121,12 +122,14 @@ plugins: Dict[str, Set[str]] = {
     "vertica": {"sqlalchemy-vertica[vertica-python]>=0.0.5"},
     "report-server": report_requirements,
     "airflow": {"apache-airflow >= 1.10.2"},
+    "salesforce": {"simple_salesforce~=1.11.4"},
+    "okta": {"okta~=2.3.0"},
 }
 
 build_options = {"includes": ["_cffi_backend"]}
 setup(
     name="openmetadata-ingestion",
-    version="0.4.1",
+    version="0.4.4",
     url="https://open-metadata.org/",
     author="OpenMetadata Committers",
     license="Apache License 2.0",

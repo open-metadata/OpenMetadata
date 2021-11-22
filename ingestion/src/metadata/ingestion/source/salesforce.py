@@ -29,7 +29,7 @@ from metadata.utils.helpers import get_database_service_or_create
 from ...generated.schema.entity.data.database import Database
 from ...generated.schema.entity.data.table import (
     Column,
-    ColumnConstraint,
+    Constraint,
     Table,
     TableData,
 )
@@ -133,11 +133,11 @@ class SalesforceSource(Source):
             for column in md["fields"]:
                 col_constraint = None
                 if column["nillable"]:
-                    col_constraint = ColumnConstraint.NULL
+                    col_constraint = Constraint.NULL
                 elif not column["nillable"]:
-                    col_constraint = ColumnConstraint.NOT_NULL
+                    col_constraint = Constraint.NOT_NULL
                 if column["unique"]:
-                    col_constraint = ColumnConstraint.UNIQUE
+                    col_constraint = Constraint.UNIQUE
 
                 table_columns.append(
                     Column(

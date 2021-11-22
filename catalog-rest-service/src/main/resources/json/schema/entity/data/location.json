@@ -101,5 +101,6 @@
   "required": [
     "name",
     "service"
-  ]
+  ],
+  "additionalProperties": false
 }

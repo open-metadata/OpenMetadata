@@ -41,5 +41,6 @@
       "$ref": "basic.json#/definitions/dateTime"
     }
   },
-  "required": ["method", "responseCode", "path", "userName", "entityId", "entityType"]
+  "required": ["method", "responseCode", "path", "userName", "entityId", "entityType"],
+  "additionalProperties": false
 }

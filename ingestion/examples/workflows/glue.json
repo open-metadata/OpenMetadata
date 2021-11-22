@@ -4,7 +4,8 @@
       "config": {
         "aws_access_key_id": "aws_access_key_id",
         "aws_secret_access_key": "aws_secret_access_key",
-        "database": "database",
+        "db_service_name": "local_glue_db",
+        "pipeline_service_name": "local_glue_pipeline",
         "region_name": "region_name",
         "endpoint_url": "endpoint_url",
         "service_name": "local_glue"

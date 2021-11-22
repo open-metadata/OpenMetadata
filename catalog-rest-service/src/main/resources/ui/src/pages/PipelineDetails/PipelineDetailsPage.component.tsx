@@ -21,6 +21,7 @@ import {
   getServiceDetailsPath,
 } from '../../constants/constants';
 import { EntityType } from '../../enums/entity.enum';
+import { ServiceCategory } from '../../enums/service.enum';
 import { Pipeline, Task } from '../../generated/entity/data/pipeline';
 import { User } from '../../generated/entity/teams/user';
 import { EntityLineage } from '../../generated/type/entityLineage';
@@ -147,7 +148,8 @@ const PipelineDetailsPage = () => {
                 url: serviceRes.data.name
                   ? getServiceDetailsPath(
                       serviceRes.data.name,
-                      serviceRes.data.serviceType
+                      serviceRes.data.serviceType,
+                      ServiceCategory.PIPELINE_SERVICES
                     )
                   : '',
                 imgSrc: serviceRes.data.serviceType

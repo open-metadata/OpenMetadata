@@ -96,5 +96,6 @@
     "name",
     "serviceType",
     "dashboardUrl"
-  ]
+  ],
+  "additionalProperties": false
 }

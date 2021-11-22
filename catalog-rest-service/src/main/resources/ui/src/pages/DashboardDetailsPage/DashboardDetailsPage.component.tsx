@@ -20,6 +20,7 @@ import {
   getServiceDetailsPath,
 } from '../../constants/constants';
 import { EntityType } from '../../enums/entity.enum';
+import { ServiceCategory } from '../../enums/service.enum';
 import { Chart } from '../../generated/entity/data/chart';
 import { Dashboard } from '../../generated/entity/data/dashboard';
 import { User } from '../../generated/entity/teams/user';
@@ -169,7 +170,8 @@ const DashboardDetailsPage = () => {
               url: serviceRes.data.name
                 ? getServiceDetailsPath(
                     serviceRes.data.name,
-                    serviceRes.data.serviceType
+                    serviceRes.data.serviceType,
+                    ServiceCategory.DASHBOARD_SERVICES
                   )
                 : '',
               imgSrc: serviceRes.data.serviceType

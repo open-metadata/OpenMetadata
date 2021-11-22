@@ -18,7 +18,7 @@
 
 /**
  * This schema defines the Location entity. A Location can contain the data of a table or
- * group other sublocation together
+ * group other sublocation together.
  */
 export interface Location {
   /**
@@ -39,7 +39,7 @@ export interface Location {
    */
   followers?: EntityReference[];
   /**
-   * Fully qualified name of a location in the form `serviceName:/name`.
+   * Fully qualified name of a location in the form `serviceName.locationName`.
    */
   fullyQualifiedName?: string;
   /**
@@ -52,7 +52,7 @@ export interface Location {
   id?: string;
   locationType?: LocationType;
   /**
-   * Name of a location without the service. s3://bucket/path1/path2 -> /bucket/path1/path2
+   * Name of a location without the service. For example s3://bucket/path1/path2.
    */
   name: string;
   /**
@@ -99,12 +99,15 @@ export interface ChangeDescription {
    * Fields modified during the version changes with old and new values.
    */
   fieldsUpdated?: FieldChange[];
+  /**
+   * When a change did not result in change, this could be same as the current version.
+   */
   previousVersion?: number;
 }
 
 export interface FieldChange {
   /**
-   * Name of the entity field that changed
+   * Name of the entity field that changed.
    */
   name?: string;
   /**

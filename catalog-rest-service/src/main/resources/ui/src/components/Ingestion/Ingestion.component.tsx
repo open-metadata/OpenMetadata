@@ -26,6 +26,7 @@ import {
   TITLE_FOR_NON_ADMIN_ACTION,
 } from '../../constants/constants';
 import { NoDataFoundPlaceHolder } from '../../constants/services.const';
+import { ServiceCategory } from '../../enums/service.enum';
 import { useAuth } from '../../hooks/authHooks';
 import { isEven } from '../../utils/CommonUtils';
 import { Button } from '../buttons/Button/Button';
@@ -287,7 +288,9 @@ const Ingestion: React.FC<Props> = ({
                       <Link
                         to={getServiceDetailsPath(
                           ingestion.service.name as string,
-                          getServiceTypeFromName(ingestion.service.name)
+                          getServiceTypeFromName(ingestion.service.name),
+                          // TODO: Add logic below to select service-cat if necessary
+                          ServiceCategory.DATABASE_SERVICES
                         )}>
                         {ingestion.service.name}
                       </Link>

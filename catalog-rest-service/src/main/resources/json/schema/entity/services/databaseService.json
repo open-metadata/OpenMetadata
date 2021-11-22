@@ -128,5 +128,6 @@
     "serviceType",
     "href",
     "jdbc"
-  ]
+  ],
+  "additionalProperties": false
 }

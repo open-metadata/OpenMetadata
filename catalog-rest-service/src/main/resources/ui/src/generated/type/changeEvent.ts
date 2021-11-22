@@ -34,7 +34,7 @@ export interface ChangeEvent {
   /**
    * Current version of the entity after this change. Note that not all changes result in
    * entity version change. When entity version is not changed, `previousVersion` is same as
-   * `currentVersion`
+   * `currentVersion`.
    */
   currentVersion?: number;
   /**
@@ -43,7 +43,7 @@ export interface ChangeEvent {
   dateTime: Date;
   /**
    * For `eventType` `entityCreated`, this field captures JSON coded string of the entity
-   * using the schema corresponding to `entityType`
+   * using the schema corresponding to `entityType`.
    */
   entity?: any;
   /**
@@ -58,7 +58,7 @@ export interface ChangeEvent {
   /**
    * Version of the entity before this change. Note that not all changes result in entity
    * version change. When entity version is not changed, `previousVersion` is same as
-   * `currentVersion`
+   * `currentVersion`.
    */
   previousVersion?: number;
   /**
@@ -87,12 +87,15 @@ export interface ChangeDescription {
    * Fields modified during the version changes with old and new values.
    */
   fieldsUpdated?: FieldChange[];
+  /**
+   * When a change did not result in change, this could be same as the current version.
+   */
   previousVersion?: number;
 }
 
 export interface FieldChange {
   /**
-   * Name of the entity field that changed
+   * Name of the entity field that changed.
    */
   name?: string;
   /**
@@ -108,7 +111,7 @@ export interface FieldChange {
 }
 
 /**
- * Type of event
+ * Type of event.
  */
 export enum EventType {
   EntityCreated = 'entityCreated',

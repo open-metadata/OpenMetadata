@@ -27,7 +27,7 @@ from metadata.generated.schema.api.data.createDashboard import (
 from metadata.generated.schema.api.data.createDatabase import (
     CreateDatabaseEntityRequest,
 )
-from metadata.generated.schema.api.data.createMLModel import CreateMLModelEntityRequest
+from metadata.generated.schema.api.data.createMlModel import CreateMlModelEntityRequest
 from metadata.generated.schema.api.data.createModel import CreateModelEntityRequest
 from metadata.generated.schema.api.data.createPipeline import (
     CreatePipelineEntityRequest,
@@ -38,7 +38,7 @@ from metadata.generated.schema.api.lineage.addLineage import AddLineage
 from metadata.generated.schema.api.teams.createTeam import CreateTeamEntityRequest
 from metadata.generated.schema.api.teams.createUser import CreateUserEntityRequest
 from metadata.generated.schema.entity.data.chart import ChartType
-from metadata.generated.schema.entity.data.mlmodel import MLModel
+from metadata.generated.schema.entity.data.mlmodel import MlModel
 from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.common import Record, WorkflowContext
@@ -118,7 +118,7 @@ class MetadataRestSink(Sink):
             self.write_lineage(record)
         elif isinstance(record, User):
             self.write_users(record)
-        elif isinstance(record, MLModel):
+        elif isinstance(record, MlModel):
             self.write_ml_model(record)
         elif isinstance(record, OMetaDatabaseAndModel):
             self.write_models(record)
@@ -323,10 +323,10 @@ class MetadataRestSink(Sink):
             logger.error(err)
             self.status.failure(f"Lineage: {add_lineage}")
 
-    def write_ml_model(self, model: MLModel):
+    def write_ml_model(self, model: MlModel):
         try:
             logger.info(model)
-            model_request = CreateMLModelEntityRequest(
+            model_request = CreateMlModelEntityRequest(
                 name=model.name,
                 displayName=model.displayName,
                 description=model.description,
@@ -364,15 +364,15 @@ class MetadataRestSink(Sink):
             self._create_team(record)
         teams = [self.team_entities[record.team_name]]
         metadata_user = CreateUserEntityRequest(
-            name=record.github_username,
+            name=record.name,
             displayName=record.name,
             email=record.email,
             teams=teams,
         )
         try:
             self.metadata.create_or_update(metadata_user)
-            self.status.records_written(record.github_username)
-            logger.info("Sink: {}".format(record.github_username))
+            self.status.records_written(record.name)
+            logger.info("Sink: {}".format(record.name))
         except Exception as err:
             logger.error(traceback.format_exc())
             logger.error(traceback.print_exc())

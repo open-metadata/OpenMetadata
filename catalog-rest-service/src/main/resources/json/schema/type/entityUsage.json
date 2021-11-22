@@ -18,5 +18,6 @@
       }
     }
   },
-  "required": ["entity", "usage"]
+  "required": ["entity", "usage"],
+  "additionalProperties": false
 }

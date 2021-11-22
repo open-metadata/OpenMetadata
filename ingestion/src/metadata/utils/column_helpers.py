@@ -34,6 +34,7 @@ _column_type_mapping: Dict[Type[types.TypeEngine], str] = {
     types.JSON: "JSON",
     types.CHAR: "CHAR",
     types.DECIMAL: "DECIMAL",
+    types.Interval: "INTERVAL",
 }
 
 _column_string_mapping = {
@@ -43,6 +44,7 @@ _column_string_mapping = {
     "ENUM": "ENUM",
     "BYTES": "BYTES",
     "ARRAY": "ARRAY",
+    "BPCHAR": "CHAR",
     "VARCHAR": "VARCHAR",
     "STRING": "STRING",
     "DATE": "DATE",
@@ -64,6 +66,13 @@ _column_string_mapping = {
     "TIMESTAMP WITHOUT TIME ZONE": "TIMESTAMP",
     "FLOAT64": "DOUBLE",
     "DECIMAL": "DECIMAL",
+    "DOUBLE": "DOUBLE",
+    "NUMERIC": "NUMBER",
+    "INTERVAL": "INTERVAL",
+    "SET": "SET",
+    "BINARY": "BINARY",
+    "SMALLINT": "SMALLINT",
+    "TINYINT": "TINYINT",
 }
 
 _known_unknown_column_types: Set[Type[types.TypeEngine]] = {
@@ -123,7 +132,7 @@ def get_column_type(status: SourceStatus, dataset_name: str, column_type: Any) -
                 type_class = "NULL"
                 break
         for col_type in _column_string_mapping.keys():
-            if str(column_type).split("(")[0].upper() in col_type:
+            if str(column_type).split("(")[0].split("<")[0].upper() in col_type:
                 type_class = _column_string_mapping.get(col_type)
                 break
             else:
@@ -234,7 +243,7 @@ def _handle_complex_data_types(status, dataset_name, raw_type: str, level=0):
         col["dataType"] = get_column_type(
             status,
             dataset_name,
-            re.match("([\w\s]*)(?:.*)", col_type).groups()[0],
+            re.match(r"([\w\s]*)(?:.*)", col_type).groups()[0],
         )
         col["dataTypeDisplay"] = col_type.rstrip(">")
     return col

@@ -290,7 +290,7 @@ const Appbar: React.FC = (): JSX.Element => {
                   {
                     name: (
                       <span className="tw-text-grey-muted tw-cursor-text tw-text-xs">
-                        {`Version ${version.split('-')[0]}`}
+                        {`Version ${(version ? version : '?').split('-')[0]}`}
                         <hr className="tw--mr-12 tw--ml-2 tw-mt-1.5" />
                       </span>
                     ),

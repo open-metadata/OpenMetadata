@@ -213,15 +213,19 @@ class ElasticsearchSink(Sink):
         if table.followers:
             for follower in table.followers.__root__:
                 table_followers.append(str(follower.id.__root__))
+        table_type = None
+        if hasattr(table.tableType, "name"):
+            table_type = table.tableType.name
         table_doc = TableESDocument(
             table_id=str(table.id.__root__),
             database=str(database_entity.name.__root__),
             service=service_entity.name,
             service_type=service_entity.serviceType.name,
+            service_category="databaseService",
             table_name=table.name.__root__,
             suggest=suggest,
             description=table.description,
-            table_type=table.tableType.name,
+            table_type=table_type,
             last_updated_timestamp=timestamp,
             column_names=column_names,
             column_descriptions=column_descriptions,
@@ -267,6 +271,7 @@ class ElasticsearchSink(Sink):
             topic_id=str(topic.id.__root__),
             service=service_entity.name,
             service_type=service_entity.serviceType.name,
+            service_category="messagingService",
             topic_name=topic.name.__root__,
             suggest=suggest,
             description=topic.description,
@@ -316,6 +321,7 @@ class ElasticsearchSink(Sink):
             dashboard_id=str(dashboard.id.__root__),
             service=service_entity.name,
             service_type=service_entity.serviceType.name,
+            service_category="dashboardService",
             dashboard_name=dashboard.displayName,
             chart_names=chart_names,
             chart_descriptions=chart_descriptions,
@@ -373,6 +379,7 @@ class ElasticsearchSink(Sink):
             pipeline_id=str(pipeline.id.__root__),
             service=service_entity.name,
             service_type=service_entity.serviceType.name,
+            service_category="pipelineService",
             pipeline_name=pipeline.displayName,
             task_names=task_names,
             task_descriptions=task_descriptions,

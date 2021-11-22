@@ -266,6 +266,7 @@ describe('Test MyData page', () => {
         }}
         error=""
         fetchData={fetchData}
+        ingestionCount={0}
         searchResult={mockData as unknown as SearchResponse}
         userDetails={mockUserDetails as unknown as User}
       />,

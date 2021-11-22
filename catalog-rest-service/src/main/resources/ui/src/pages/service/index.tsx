@@ -70,9 +70,12 @@ type ServiceDataObj = { name: string } & Partial<DatabaseService> &
   Partial<PipelineService>;
 
 const ServicePage: FunctionComponent = () => {
-  const { serviceFQN, serviceType } = useParams() as Record<string, string>;
+  const { serviceFQN, serviceType, serviceCategory } = useParams() as Record<
+    string,
+    string
+  >;
   const [serviceName, setServiceName] = useState(
-    getServiceCategoryFromType(serviceType)
+    serviceCategory || getServiceCategoryFromType(serviceType)
   );
   const [slashedTableName, setSlashedTableName] = useState<
     TitleBreadcrumbProps['titleLinks']
@@ -578,8 +581,8 @@ const ServicePage: FunctionComponent = () => {
   };
 
   useEffect(() => {
-    setServiceName(getServiceCategoryFromType(serviceType));
-  }, [serviceType]);
+    setServiceName(serviceCategory || getServiceCategoryFromType(serviceType));
+  }, [serviceCategory, serviceType]);
 
   useEffect(() => {
     getServiceByFQN(serviceName, serviceFQN).then(

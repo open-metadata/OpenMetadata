@@ -468,7 +468,8 @@ const ServicesPage = () => {
                       <Link
                         to={getServiceDetailsPath(
                           service.name,
-                          service.serviceType || ''
+                          service.serviceType || '',
+                          serviceName
                         )}>
                         <button>
                           <h6

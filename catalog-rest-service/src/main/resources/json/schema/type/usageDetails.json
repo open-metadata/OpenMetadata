@@ -50,5 +50,6 @@
   "required": [
     "dailyStats",
     "date"
-  ]
+  ],
+  "additionalProperties": false
 }

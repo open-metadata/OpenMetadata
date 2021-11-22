@@ -25,6 +25,7 @@ import SVGIcons, { Icons } from '../../utils/SvgUtils';
 
 type Props = {
   countServices: number;
+  ingestionCount: number;
   entityCounts: EntityCounts;
 };
 type Summary = {
@@ -37,6 +38,7 @@ type Summary = {
 const MyDataHeader: FunctionComponent<Props> = ({
   countServices,
   entityCounts,
+  ingestionCount,
 }: Props) => {
   const { users, userTeams } = AppState;
   const [dataSummary, setdataSummary] = useState<Record<string, Summary>>({});
@@ -72,6 +74,12 @@ const MyDataHeader: FunctionComponent<Props> = ({
         data: `${countServices} Services`,
         link: `/services`,
         dataTestId: 'service',
+      },
+      ingestion: {
+        icon: Icons.INGESTION,
+        data: `${ingestionCount} Ingestion`,
+        link: `/ingestion`,
+        dataTestId: 'ingestion',
       },
       user: {
         icon: Icons.USERS,
