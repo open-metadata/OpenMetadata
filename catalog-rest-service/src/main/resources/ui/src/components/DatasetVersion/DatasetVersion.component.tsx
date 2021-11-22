@@ -266,9 +266,8 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
           };
           formatColumnData(colList);
         });
-
-        return colList;
-      } else if (columnsDiff.deleted) {
+      }
+      if (columnsDiff.deleted) {
         const newCol: Array<Column> = JSON.parse(
           columnsDiff.deleted?.oldValue ?? '[]'
         );
