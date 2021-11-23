@@ -193,10 +193,10 @@ public class MlModelRepository extends EntityRepository<MlModel> {
     return model == null ? null : EntityUtil.getFollowers(model.getId(), dao.relationshipDAO(), dao.userDAO());
   }
 
-  static class MlModelEntityInterface implements EntityInterface<MlModel> {
+  public static class MlModelEntityInterface implements EntityInterface<MlModel> {
     private final MlModel entity;
 
-    MlModelEntityInterface(MlModel entity) {
+    public MlModelEntityInterface(MlModel entity) {
       this.entity = entity;
     }
 

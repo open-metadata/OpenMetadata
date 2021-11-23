@@ -17,16 +17,23 @@
 package org.openmetadata.catalog.resources.mlmodels;
 
 import org.apache.http.client.HttpResponseException;
+import org.apache.logging.log4j.core.util.JsonUtils;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
-import org.openmetadata.catalog.CatalogApplicationTest;
 import org.openmetadata.catalog.Entity;
+import org.openmetadata.catalog.api.data.CreateDashboard;
 import org.openmetadata.catalog.api.data.CreateMlModel;
+import org.openmetadata.catalog.api.data.CreateTable;
 import org.openmetadata.catalog.api.services.CreateDashboardService;
 import org.openmetadata.catalog.api.services.CreateDashboardService.DashboardServiceType;
 import org.openmetadata.catalog.entity.data.Dashboard;
 import org.openmetadata.catalog.entity.data.MlModel;
+import org.openmetadata.catalog.entity.data.Table;
+import org.openmetadata.catalog.jdbi3.MlModelRepository;
+import org.openmetadata.catalog.resources.EntityResourceTest;
+import org.openmetadata.catalog.type.Column;
+import org.openmetadata.catalog.type.ColumnConstraint;
 import org.openmetadata.catalog.type.FeatureSourceDataType;
 import org.openmetadata.catalog.type.MlFeature;
 import org.openmetadata.catalog.type.MlFeatureDataType;
@@ -44,7 +51,10 @@ import org.openmetadata.catalog.resources.services.DashboardServiceResourceTest;
 import org.openmetadata.catalog.resources.teams.TeamResourceTest;
 import org.openmetadata.catalog.resources.teams.UserResourceTest;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.TableConstraint;
+import org.openmetadata.catalog.type.TableType;
 import org.openmetadata.catalog.type.TagLabel;
+import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.TestUtils;
 import org.openmetadata.catalog.util.TestUtils.UpdateType;
 import org.slf4j.Logger;
@@ -52,11 +62,14 @@ import org.slf4j.LoggerFactory;
 
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response.Status;
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.BiConsumer;
+import java.util.function.Function;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.CONFLICT;
@@ -68,6 +81,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.openmetadata.catalog.exception.CatalogExceptionMessage.ENTITY_ALREADY_EXISTS;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.NO_CHANGE;
@@ -76,7 +90,7 @@ import static org.openmetadata.catalog.util.TestUtils.assertEntityPagination;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 import static org.openmetadata.catalog.util.TestUtils.authHeaders;
 
-public class MlModelResourceTest extends CatalogApplicationTest {
+public class MlModelResourceTest extends EntityResourceTest<MlModel> {
   private static final Logger LOG = LoggerFactory.getLogger(MlModelResourceTest.class);
   public static User USER1;
   public static EntityReference USER_OWNER1;
@@ -120,6 +134,11 @@ public class MlModelResourceTest extends CatalogApplicationTest {
           new MlHyperParameter().withName("random").withValue("hello")
   );
 
+  public MlModelResourceTest() {
+    super(Entity.MLMODEL, MlModel.class, MlModelList.class, "mlmodels", MlModelResource.FIELDS, true,
+            true, true);
+  }
+
 
   @BeforeAll
   public static void setup(TestInfo test) throws HttpResponseException {
@@ -142,34 +161,30 @@ public class MlModelResourceTest extends CatalogApplicationTest {
   }
 
   @Test
-  public void post_modelWithLongName_400_badRequest(TestInfo test) {
+  public void post_MlModelWithLongName_400_badRequest(TestInfo test) {
     // Create model with mandatory name field empty
     CreateMlModel create = create(test).withName(TestUtils.LONG_ENTITY_NAME);
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            createModel(create, adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, "[name size must be between 1 and 64]");
+    assertResponse(() -> createMlModel(create, adminAuthHeaders()), BAD_REQUEST,
+            "[name size must be between 1 and 64]");
   }
 
   @Test
-  public void post_ModelWithoutName_400_badRequest(TestInfo test) {
+  public void post_MlModelWithoutName_400_badRequest(TestInfo test) {
     // Create Model with mandatory name field empty
     CreateMlModel create = create(test).withName("");
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            createModel(create, adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, "[name size must be between 1 and 64]");
+    assertResponse(() -> createMlModel(create, adminAuthHeaders()), BAD_REQUEST,
+            "[name size must be between 1 and 64]");
   }
 
   @Test
-  public void post_ModelAlreadyExists_409_conflict(TestInfo test) throws HttpResponseException {
+  public void post_MlModelAlreadyExists_409_conflict(TestInfo test) throws HttpResponseException {
     CreateMlModel create = create(test);
-    createModel(create, adminAuthHeaders());
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            createModel(create, adminAuthHeaders()));
-    assertResponse(exception, CONFLICT, CatalogExceptionMessage.ENTITY_ALREADY_EXISTS);
+    createMlModel(create, adminAuthHeaders());
+    assertResponse(() -> createMlModel(create, adminAuthHeaders()), CONFLICT, ENTITY_ALREADY_EXISTS);
   }
 
   @Test
-  public void post_validModels_as_admin_200_OK(TestInfo test) throws HttpResponseException {
+  public void post_validMlModels_as_admin_200_OK(TestInfo test) throws HttpResponseException {
     // Create valid model
     CreateMlModel create = create(test);
     createAndCheckModel(create, adminAuthHeaders());
@@ -179,45 +194,42 @@ public class MlModelResourceTest extends CatalogApplicationTest {
   }
 
   @Test
-  public void post_ModelWithUserOwner_200_ok(TestInfo test) throws HttpResponseException {
+  public void post_MlModelWithUserOwner_200_ok(TestInfo test) throws HttpResponseException {
     createAndCheckModel(create(test).withOwner(USER_OWNER1), adminAuthHeaders());
   }
 
   @Test
-  public void post_ModelWithTeamOwner_200_ok(TestInfo test) throws HttpResponseException {
+  public void post_MlModelWithTeamOwner_200_ok(TestInfo test) throws HttpResponseException {
     createAndCheckModel(create(test).withOwner(TEAM_OWNER1).withDisplayName("Model1"), adminAuthHeaders());
   }
 
   @Test
-  public void post_ModelWithDashboard_200_ok(TestInfo test) throws HttpResponseException {
+  public void post_MlModelWithDashboard_200_ok(TestInfo test) throws HttpResponseException {
     createAndCheckModel(create(test), DASHBOARD_REFERENCE, adminAuthHeaders());
   }
 
   @Test
-  public void post_Model_as_non_admin_401(TestInfo test) {
+  public void post_MlModel_as_non_admin_401(TestInfo test) {
     CreateMlModel create = create(test);
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            createModel(create, authHeaders("test@open-metadata.org")));
-    assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
+    assertResponse(() -> createMlModel(create, authHeaders("test@open-metadata.org")), FORBIDDEN,
+            "Principal: CatalogPrincipal{name='test'} is not admin");
   }
 
   @Test
-  public void post_ModelWithInvalidOwnerType_4xx(TestInfo test) {
+  public void post_MlModelWithInvalidOwnerType_4xx(TestInfo test) {
     EntityReference owner = new EntityReference().withId(TEAM1.getId()); /* No owner type is set */
-
     CreateMlModel create = create(test).withOwner(owner);
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            createModel(create, adminAuthHeaders()));
-    TestUtils.assertResponseContains(exception, BAD_REQUEST, "type must not be null");
+
+    assertResponse(() -> createMlModel(create, adminAuthHeaders()), BAD_REQUEST, "type must not be null");
   }
 
   @Test
-  public void post_ModelWithNonExistentOwner_4xx(TestInfo test) {
+  public void post_MlModelWithNonExistentOwner_4xx(TestInfo test) {
     EntityReference owner = new EntityReference().withId(TestUtils.NON_EXISTENT_ENTITY).withType("user");
     CreateMlModel create = create(test).withOwner(owner);
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            createModel(create, adminAuthHeaders()));
-    assertResponse(exception, NOT_FOUND, entityNotFound("User", TestUtils.NON_EXISTENT_ENTITY));
+
+    assertResponse(() -> createMlModel(create, adminAuthHeaders()), NOT_FOUND,
+            entityNotFound("User", TestUtils.NON_EXISTENT_ENTITY));
   }
 
   @Test
@@ -249,7 +261,7 @@ public class MlModelResourceTest extends CatalogApplicationTest {
     // Create a large number of Models
     int maxModels = 40;
     for (int i = 0; i < maxModels; i++) {
-      createModel(create(test, i), adminAuthHeaders());
+      createMlModel(create(test, i), adminAuthHeaders());
     }
 
     // List all Models
@@ -419,7 +431,7 @@ public class MlModelResourceTest extends CatalogApplicationTest {
 
   @Test
   public void delete_emptyModel_200_ok(TestInfo test) throws HttpResponseException {
-    MlModel model = createModel(create(test), adminAuthHeaders());
+    MlModel model = createMlModel(create(test), adminAuthHeaders());
     deleteModel(model.getId(), adminAuthHeaders());
   }
 
@@ -438,7 +450,7 @@ public class MlModelResourceTest extends CatalogApplicationTest {
   public static MlModel createAndCheckModel(CreateMlModel create,
                                           Map<String, String> authHeaders) throws HttpResponseException {
     String updatedBy = TestUtils.getPrincipal(authHeaders);
-    MlModel model = createModel(create, authHeaders);
+    MlModel model = createMlModel(create, authHeaders);
     validateModel(model, create.getDisplayName(), create.getDescription(), create.getOwner(), updatedBy);
     return getAndValidate(model.getId(), create, authHeaders, updatedBy);
   }
@@ -447,7 +459,7 @@ public class MlModelResourceTest extends CatalogApplicationTest {
                                           Map<String, String> authHeaders) throws HttpResponseException {
     String updatedBy = TestUtils.getPrincipal(authHeaders);
     create.withDashboard(dashboard);
-    MlModel model = createModel(create, authHeaders);
+    MlModel model = createMlModel(create, authHeaders);
     assertEquals(0.1, model.getVersion());
     validateModel(model, create.getDescription(), create.getOwner(), create.getTags(), updatedBy);
     return getAndValidate(model.getId(), create, authHeaders, updatedBy);
@@ -490,8 +502,8 @@ public class MlModelResourceTest extends CatalogApplicationTest {
             create, MlModel.class, status, authHeaders);
   }
 
-  public static MlModel createModel(CreateMlModel create,
-                                          Map<String, String> authHeaders) throws HttpResponseException {
+  public static MlModel createMlModel(CreateMlModel create,
+                                      Map<String, String> authHeaders) throws HttpResponseException {
     return TestUtils.post(getResource("mlmodels"), create, MlModel.class, authHeaders);
   }
 
@@ -532,54 +544,6 @@ public class MlModelResourceTest extends CatalogApplicationTest {
     TestUtils.validateEntityReference(model.getDashboard());
   }
 
-  private static MlModel validateModel(MlModel model, String expectedDisplayName,
-                                     String expectedDescription,
-                                     EntityReference expectedOwner,
-                                     String expectedUpdatedBy) {
-    MlModel newModel = validateModel(model, expectedDescription, expectedOwner, expectedUpdatedBy);
-    assertEquals(expectedDisplayName, newModel.getDisplayName());
-    return newModel;
-  }
-  private static MlModel validateModel(MlModel model, String expectedDescription,
-                                     EntityReference expectedOwner, String expectedUpdatedBy) {
-    assertNotNull(model.getId());
-    assertNotNull(model.getHref());
-    assertNotNull(model.getAlgorithm());
-    assertEquals(expectedDescription, model.getDescription());
-    assertEquals(expectedUpdatedBy, model.getUpdatedBy());
-
-    // Validate owner
-    if (expectedOwner != null) {
-      TestUtils.validateEntityReference(model.getOwner());
-      assertEquals(expectedOwner.getId(), model.getOwner().getId());
-      assertEquals(expectedOwner.getType(), model.getOwner().getType());
-      assertNotNull(model.getOwner().getHref());
-    }
-
-    return model;
-  }
-
-  private static MlModel validateModel(MlModel model, String expectedDescription,
-                                     EntityReference expectedOwner,
-                                     List<TagLabel> expectedTags,
-                                     String expectedUpdatedBy) throws HttpResponseException {
-    assertNotNull(model.getId());
-    assertNotNull(model.getHref());
-    assertEquals(expectedDescription, model.getDescription());
-    assertEquals(expectedUpdatedBy, model.getUpdatedBy());
-
-    // Validate owner
-    if (expectedOwner != null) {
-      TestUtils.validateEntityReference(model.getOwner());
-      assertEquals(expectedOwner.getId(), model.getOwner().getId());
-      assertEquals(expectedOwner.getType(), model.getOwner().getType());
-      assertNotNull(model.getOwner().getHref());
-    }
-
-    TestUtils.validateTags(expectedTags, model.getTags());
-    return model;
-  }
-
   public static void getModel(UUID id, Map<String, String> authHeaders) throws HttpResponseException {
     getModel(id, null, authHeaders);
   }
@@ -598,23 +562,10 @@ public class MlModelResourceTest extends CatalogApplicationTest {
     return TestUtils.get(target, MlModel.class, authHeaders);
   }
 
-  public static MlModelList listModels(String fields, Integer limitParam,
-                                         String before, String after, Map<String, String> authHeaders)
-          throws HttpResponseException {
-    WebTarget target = getResource("mlmodels");
-    target = fields != null ? target.queryParam("fields", fields): target;
-    target = limitParam != null ? target.queryParam("limit", limitParam): target;
-    target = before != null ? target.queryParam("before", before) : target;
-    target = after != null ? target.queryParam("after", after) : target;
-    return TestUtils.get(target, MlModelList.class, authHeaders);
-  }
-
   private void deleteModel(UUID id, Map<String, String> authHeaders) throws HttpResponseException {
     TestUtils.delete(getResource("mlmodels/" + id), authHeaders);
 
-    // Ensure deleted Model does not exist
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () -> getModel(id, authHeaders));
-    assertResponse(exception, NOT_FOUND, entityNotFound(Entity.MLMODEL, id));
+    assertResponse(() -> getModel(id, authHeaders), NOT_FOUND, entityNotFound(Entity.MLMODEL, id));
   }
 
   public static String getModelName(TestInfo test) {
@@ -633,6 +584,77 @@ public class MlModelResourceTest extends CatalogApplicationTest {
   public static CreateMlModel create(TestInfo test, int index) {
     return new CreateMlModel().withName(getModelName(test, index)).withAlgorithm(ALGORITHM)
             .withMlFeatures(ML_FEATURES).withMlHyperParameters(ML_HYPERPARAMS);
+  }
+
+  @Override
+  public Object createRequest(TestInfo test, int index, String description, String displayName, EntityReference owner) {
+    return create(test, index).withDescription(description).withDisplayName(displayName).withOwner(owner);
+  }
+
+  @Override
+  public void validateUpdatedEntity(MlModel mlmodel, Object request, Map<String, String> authHeaders) throws HttpResponseException {
+    validateCreatedEntity(mlmodel, request, authHeaders);
+  }
+
+  @Override
+  public void compareEntities(MlModel expected, MlModel updated, Map<String, String> authHeaders) {
+  }
+
+  @Override
+  public EntityInterface<MlModel> getEntityInterface(MlModel entity) {
+    return new MlModelRepository.MlModelEntityInterface(entity);
+  }
+
+  BiConsumer<MlFeature, MlFeature> assertMlFeature = (MlFeature expected, MlFeature actual) -> {
+    assertNotNull(actual.getFullyQualifiedName());
+    assertEquals(actual.getName(), expected.getName());
+    assertEquals(actual.getDescription(), expected.getDescription());
+    assertEquals(actual.getFeatureAlgorithm(), expected.getFeatureAlgorithm());
+    assertEquals(actual.getDataType(), expected.getDataType());
+    assertEquals(actual.getFeatureSources(), expected.getFeatureSources());
+  };
+
+  BiConsumer<MlHyperParameter, MlHyperParameter> assertMlHyerParam = (MlHyperParameter expected, MlHyperParameter actual) -> {
+    assertEquals(actual.getName(), expected.getName());
+    assertEquals(actual.getDescription(), expected.getDescription());
+    assertEquals(actual.getValue(), expected.getValue());
+  };
+
+  @Override
+  public void validateCreatedEntity(MlModel createdEntity, Object request, Map<String, String> authHeaders) throws HttpResponseException {
+    CreateMlModel createRequest = (CreateMlModel) request;
+    validateCommonEntityFields(getEntityInterface(createdEntity), createRequest.getDescription(),
+            TestUtils.getPrincipal(authHeaders), createRequest.getOwner());
+
+    assertEquals(createRequest.getAlgorithm(), createdEntity.getAlgorithm());
+    assertEquals(createRequest.getDashboard(), createdEntity.getDashboard());
+    assertListProperty(createRequest.getMlFeatures(), createdEntity.getMlFeatures(), assertMlFeature);
+    assertListProperty(createRequest.getMlHyperParameters(), createdEntity.getMlHyperParameters(), assertMlHyerParam);
+
+    TestUtils.validateTags(createRequest.getTags(), createdEntity.getTags());
+    TestUtils.validateEntityReference(createdEntity.getFollowers());
+  }
+
+  @Override
+  public void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException {
+    if (expected == actual) {
+      return;
+    }
+    if (fieldName.contains("mlFeatures") && !fieldName.endsWith("tags") && !fieldName.endsWith("description")) {
+      List<MlFeature> expectedFeatures = (List<MlFeature>) expected;
+      List<MlFeature> actualFeatures = JsonUtils.readObjects(actual.toString(), MlFeature.class);
+      assertEquals(expectedFeatures, actualFeatures);
+    } else if (fieldName.contains("mlHyperParameters") && !fieldName.endsWith("tags") && !fieldName.endsWith("description")) {
+      List<MlHyperParameter> expectedConstraints = (List<MlHyperParameter>) expected;
+      List<MlHyperParameter> actualConstraints = JsonUtils.readObjects(actual.toString(), MlHyperParameter.class);
+      assertEquals(expectedConstraints, actualConstraints);
+    } else if (fieldName.endsWith("algorithm")) {
+      String expectedAlgorithm = (String) expected;
+      String actualAlgorithm = actual.toString();
+      assertEquals(expectedAlgorithm, actualAlgorithm);
+    } else {
+      assertCommonFieldChange(fieldName, expected, actual);
+    }
   }
 
 }
