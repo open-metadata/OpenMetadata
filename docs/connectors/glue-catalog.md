@@ -60,7 +60,7 @@ metadata ingest -c ./examples/workflows/glue.json
 
 Below is the configuration to publish Glue data into the OpenMetadata service.
 
-Add `metadata-rest` sink along with `metadata-server` config
+Add optionally `pii` processor and `metadata-rest` sink along with `metadata-server` config
 
 {% code title="glue.json" %}
 ```javascript
