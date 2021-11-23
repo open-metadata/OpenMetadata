@@ -40,7 +40,7 @@ const MyDataHeader: FunctionComponent<Props> = ({
   entityCounts,
   ingestionCount,
 }: Props) => {
-  const { users, userTeams } = AppState;
+  const { users, userTeams, isTourOpen } = AppState;
   const [dataSummary, setdataSummary] = useState<Record<string, Summary>>({});
 
   const getSummarydata = () => {
@@ -124,7 +124,9 @@ const MyDataHeader: FunctionComponent<Props> = ({
                   className="tw-font-medium tw-pl-2"
                   data-testid={data.dataTestId}
                   to={data.link}>
-                  <button className="tw-text-grey-body hover:tw-text-primary-hover hover:tw-underline">
+                  <button
+                    className="tw-text-grey-body hover:tw-text-primary-hover hover:tw-underline"
+                    disabled={isTourOpen}>
                     {data.data}
                   </button>
                 </Link>

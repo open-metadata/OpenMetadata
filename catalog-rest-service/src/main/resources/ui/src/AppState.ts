@@ -37,6 +37,7 @@ class AppState {
   explorePageTab = 'tables';
 
   isTourOpen = false;
+  toggleExplore = false;
 
   constructor() {
     makeAutoObservable(this);

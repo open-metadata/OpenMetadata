@@ -209,6 +209,14 @@ const Appbar: React.FC = (): JSX.Element => {
                     const target = e.target as HTMLInputElement;
                     if (e.key === 'Enter') {
                       setIsOpen(false);
+
+                      // below code is for tour feature
+                      if (appState.isTourOpen) {
+                        appState.toggleExplore = true;
+
+                        return;
+                      }
+
                       history.push(
                         getExplorePathWithSearch(
                           target.value,
