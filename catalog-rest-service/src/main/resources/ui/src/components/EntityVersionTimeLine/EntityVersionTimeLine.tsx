@@ -121,7 +121,12 @@ const EntityVersionTimeLine: React.FC<Props> = ({
                       'tw-font-semibold tw-text-base': majorVersionChecks(),
                     }
                   )}>
-                  v{parseFloat(currV?.version).toFixed(1)}
+                  <span>v{parseFloat(currV?.version).toFixed(1)}</span>
+                  {majorVersionChecks() ? (
+                    <span className="tw-ml-2 tw-text-xs tw-font-normal tw-text-grey-body tw-bg-tag tw-px-2 tw-py-0.5 tw-rounded">
+                      Major
+                    </span>
+                  ) : null}
                 </p>
                 <div className="tw-text-xs tw-font-normal tw-break-all">
                   {getSummary(currV?.changeDescription)}
@@ -168,10 +173,10 @@ const EntityVersionTimeLine: React.FC<Props> = ({
             data-testid="versiontype-dropdown"
             size="custom"
             theme="primary"
-            variant="link"
+            variant="text"
             onClick={() => setListVisible((visible) => !visible)}>
             {capitalize(versionType)}
-            <DropDownIcon style={{ marginTop: '2px' }} />
+            <DropDownIcon style={{ marginTop: '2px', height: '15px' }} />
           </Button>
           {listVisible && (
             <DropDownList
