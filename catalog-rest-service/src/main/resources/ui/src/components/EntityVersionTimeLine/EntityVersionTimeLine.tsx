@@ -162,7 +162,7 @@ const EntityVersionTimeLine: React.FC<Props> = ({
         <div className="tw-flex">
           <p className="tw-font-medium tw-mr-2">Versions History</p>
           <Button
-            className="tw-underline"
+            className="tw-bg-primary-hover-lite tw-px-2 tw-rounded"
             data-testid="versiontype-dropdown"
             size="custom"
             theme="primary"
