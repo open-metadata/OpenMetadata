@@ -189,11 +189,11 @@ public class DbtModelResourceTest extends EntityResourceTest<DbtModel> {
 
     // Optional fields nodeType
     create.withName(getDbtModelName(test, 1)).withDbtNodeType(DbtNodeType.Model);
-    DbtModel DbtModel = createAndCheckEntity(create, adminAuthHeaders());
+    DbtModel dbtModel = createAndCheckEntity(create, adminAuthHeaders());
 
     // check the FQN
-    Database db = DatabaseResourceTest.getDatabase(DbtModel.getDatabase().getId(), null, adminAuthHeaders());
-    String expectedFQN = db.getFullyQualifiedName()+"."+DbtModel.getName();
+    Database db = DatabaseResourceTest.getDatabase(dbtModel.getDatabase().getId(), null, adminAuthHeaders());
+    String expectedFQN = db.getFullyQualifiedName()+"."+dbtModel.getName();
     assertEquals(expectedFQN, expectedFQN);
   }
 
@@ -228,21 +228,21 @@ public class DbtModelResourceTest extends EntityResourceTest<DbtModel> {
     //   c2.c struct<int: d>>
     //     c2.c.d int
     CreateDbtModel create1 = create(test, 1).withColumns(Arrays.asList(c1, c2));
-    DbtModel DbtModel1 = createAndCheckEntity(create1, adminAuthHeaders());
+    DbtModel dbtModel1 = createAndCheckEntity(create1, adminAuthHeaders());
 
     // Test PUT operation - put operation to create
     CreateDbtModel create2 = create(test, 2).withColumns(Arrays.asList(c1, c2)).withName("put_complexColumnType");
-    DbtModel DbtModel2 = updateAndCheckEntity(create2, CREATED, adminAuthHeaders(), UpdateType.CREATED, null);
+    DbtModel dbtModel2 = updateAndCheckEntity(create2, CREATED, adminAuthHeaders(), UpdateType.CREATED, null);
 
     // Test PUT operation again without any change
-    ChangeDescription change = getChangeDescription(DbtModel2.getVersion());
+    ChangeDescription change = getChangeDescription(dbtModel2.getVersion());
     updateAndCheckEntity(create2, Status.OK, adminAuthHeaders(), NO_CHANGE, change);
 
     //
     // Update the complex columns
     //
     // c1 from array<int> to array<char> - Data type change means old c1 deleted, and new c1 added
-    change = getChangeDescription(DbtModel2.getVersion());
+    change = getChangeDescription(dbtModel2.getVersion());
     change.getFieldsDeleted().add(new FieldChange().withName("columns").withOldValue(List.of(c1)));
     Column c1_new = getColumn("c1", ARRAY, "array<int>", USER_ADDRESS_TAG_LABEL)
             .withArrayDataType(CHAR);
@@ -284,11 +284,11 @@ public class DbtModelResourceTest extends EntityResourceTest<DbtModel> {
     // Patch operations on DbtModel1 created by POST operation. Columns can't be added or deleted. Only tags and
     // description can be changed
     //
-    String DbtModelJson = JsonUtils.pojoToJson(DbtModel1);
-    c1 = DbtModel1.getColumns().get(0);
+    String dbtModelJson = JsonUtils.pojoToJson(dbtModel1);
+    c1 = dbtModel1.getColumns().get(0);
     c1.withTags(singletonList(USER_BANK_ACCOUNT_TAG_LABEL)); // c1 tag changed
 
-    c2 = DbtModel1.getColumns().get(1);
+    c2 = dbtModel1.getColumns().get(1);
     c2.withTags(Arrays.asList(USER_ADDRESS_TAG_LABEL, USER_BANK_ACCOUNT_TAG_LABEL)); // c2 new tag added
 
     c2_a = c2.getChildren().get(0);
@@ -302,8 +302,8 @@ public class DbtModelResourceTest extends EntityResourceTest<DbtModel> {
 
     c2_c_d = c2_c.getChildren().get(0);
     c2_c_d.setTags(singletonList(USER_BANK_ACCOUNT_TAG_LABEL)); // c2.c.d new tag added
-    DbtModel1 = patchEntity(DbtModel1.getId(), DbtModelJson, DbtModel1, adminAuthHeaders());
-    assertColumns(Arrays.asList(c1, c2), DbtModel1.getColumns());
+    dbtModel1 = patchEntity(dbtModel1.getId(), dbtModelJson, dbtModel1, adminAuthHeaders());
+    assertColumns(Arrays.asList(c1, c2), dbtModel1.getColumns());
   }
 
   @Test
@@ -356,10 +356,10 @@ public class DbtModelResourceTest extends EntityResourceTest<DbtModel> {
     columns.add(getColumn("c1", INT, null).withConstraint(ColumnConstraint.NULL));
     columns.add(getColumn("c2", INT, null).withConstraint(ColumnConstraint.UNIQUE));
     CreateDbtModel request = create(test).withColumns(columns);
-    DbtModel DbtModel = createAndCheckEntity(request, adminAuthHeaders());
+    DbtModel dbtModel = createAndCheckEntity(request, adminAuthHeaders());
 
     // Change the the column constraints and expect minor version change
-    ChangeDescription change = getChangeDescription(DbtModel.getVersion());
+    ChangeDescription change = getChangeDescription(dbtModel.getVersion());
     request.getColumns().get(0).withConstraint(ColumnConstraint.NOT_NULL);
     change.getFieldsUpdated().add(new FieldChange().withName("columns.c1.constraint")
             .withOldValue(ColumnConstraint.NULL).withNewValue(ColumnConstraint.NOT_NULL));
@@ -397,8 +397,8 @@ public class DbtModelResourceTest extends EntityResourceTest<DbtModel> {
     columns.add(getColumn("c1", BIGINT, null).withTags(tags));
 
     CreateDbtModel request = create(test).withColumns(columns);
-    DbtModel DbtModel = createAndCheckEntity(request, adminAuthHeaders());
-    columns.get(0).setFullyQualifiedName(DbtModel.getFullyQualifiedName() + ".c1");
+    DbtModel dbtModel = createAndCheckEntity(request, adminAuthHeaders());
+    columns.get(0).setFullyQualifiedName(dbtModel.getFullyQualifiedName() + ".c1");
 
     // Ensure tag category and tag usage counts are updated
     assertEquals(tagCategoryUsageCount + 1, getTagCategoryUsageCount("user", userAuthHeaders()));
@@ -413,10 +413,10 @@ public class DbtModelResourceTest extends EntityResourceTest<DbtModel> {
     tags.add(USER_BANK_ACCOUNT_TAG_LABEL);
     List<Column> updatedColumns = new ArrayList<>();
     updatedColumns.add(getColumn("c1", BIGINT, null).withTags(tags));
-    ChangeDescription change = getChangeDescription(DbtModel.getVersion());
+    ChangeDescription change = getChangeDescription(dbtModel.getVersion());
     change.getFieldsAdded().add(new FieldChange().withName("columns.c1.tags")
             .withNewValue(List.of(USER_BANK_ACCOUNT_TAG_LABEL)));
-    DbtModel = updateAndCheckEntity(request.withColumns(updatedColumns), OK, adminAuthHeaders(), MINOR_UPDATE,
+    dbtModel = updateAndCheckEntity(request.withColumns(updatedColumns), OK, adminAuthHeaders(), MINOR_UPDATE,
             change);
 
     // Ensure tag usage counts are updated
@@ -427,11 +427,11 @@ public class DbtModelResourceTest extends EntityResourceTest<DbtModel> {
     //
     // Add a new column using PUT
     //
-    change = getChangeDescription(DbtModel.getVersion());
+    change = getChangeDescription(dbtModel.getVersion());
     Column c2 = getColumn("c2", BINARY, null).withOrdinalPosition(2).withDataLength(10).withTags(tags);
     updatedColumns.add(c2);
     change.getFieldsAdded().add(new FieldChange().withName("columns").withNewValue(List.of(c2)));
-    DbtModel = updateAndCheckEntity(request.withColumns(updatedColumns), OK, adminAuthHeaders(), MINOR_UPDATE,
+    dbtModel = updateAndCheckEntity(request.withColumns(updatedColumns), OK, adminAuthHeaders(), MINOR_UPDATE,
             change);
 
     // Ensure tag usage counts are updated - column c2 added both address and bank tags
@@ -442,12 +442,12 @@ public class DbtModelResourceTest extends EntityResourceTest<DbtModel> {
     //
     // Remove a column c2 and make sure it is deleted by PUT
     //
-    change = getChangeDescription(DbtModel.getVersion());
+    change = getChangeDescription(dbtModel.getVersion());
     updatedColumns.remove(1);
     change.getFieldsDeleted().add(new FieldChange().withName("columns").withOldValue(List.of(c2)));
-    DbtModel = updateAndCheckEntity(request.withColumns(updatedColumns), OK, adminAuthHeaders(), MAJOR_UPDATE,
+    dbtModel = updateAndCheckEntity(request.withColumns(updatedColumns), OK, adminAuthHeaders(), MAJOR_UPDATE,
             change);
-    assertEquals(1, DbtModel.getColumns().size());
+    assertEquals(1, dbtModel.getColumns().size());
 
     // Ensure tag usage counts are updated to reflect removal of column c2
     assertEquals(tagCategoryUsageCount + 2, getTagCategoryUsageCount("user", userAuthHeaders()));
@@ -467,10 +467,10 @@ public class DbtModelResourceTest extends EntityResourceTest<DbtModel> {
             "select * from spectrum.sales\n" +
             "with no schema binding;\n";
     createDbtModel.setViewDefinition(query);
-    DbtModel DbtModel = createAndCheckEntity(createDbtModel, adminAuthHeaders());
-    DbtModel = getDbtModel(DbtModel.getId(), "viewDefinition", adminAuthHeaders());
-    LOG.info("DbtModel view definition {}", DbtModel.getViewDefinition());
-    assertEquals(DbtModel.getViewDefinition(), query);
+    DbtModel dbtModel = createAndCheckEntity(createDbtModel, adminAuthHeaders());
+    dbtModel = getDbtModel(dbtModel.getId(), "viewDefinition", adminAuthHeaders());
+    LOG.info("dbtModel view definition {}", dbtModel.getViewDefinition());
+    assertEquals(dbtModel.getViewDefinition(), query);
   }
 
   @Test
@@ -483,15 +483,15 @@ public class DbtModelResourceTest extends EntityResourceTest<DbtModel> {
   @Test
   public void get_DbtModelWithDifferentFields_200_OK(TestInfo test) throws IOException {
     CreateDbtModel create = create(test).withDescription("description").withOwner(USER_OWNER1);
-    DbtModel DbtModel = createAndCheckEntity(create, adminAuthHeaders());
-    validateGetWithDifferentFields(DbtModel, false);
+    DbtModel dbtModel = createAndCheckEntity(create, adminAuthHeaders());
+    validateGetWithDifferentFields(dbtModel, false);
   }
 
   @Test
   public void get_DbtModelByNameWithDifferentFields_200_OK(TestInfo test) throws IOException {
     CreateDbtModel create = create(test).withDescription("description").withOwner(USER_OWNER1);
-    DbtModel DbtModel = createAndCheckEntity(create, adminAuthHeaders());
-    validateGetWithDifferentFields(DbtModel, true);
+    DbtModel dbtModel = createAndCheckEntity(create, adminAuthHeaders());
+    validateGetWithDifferentFields(dbtModel, true);
   }
 
   @Test
@@ -503,45 +503,45 @@ public class DbtModelResourceTest extends EntityResourceTest<DbtModel> {
     CreateDbtModel create1 = create(test, 2).withDescription("description").withOwner(USER_OWNER1);
     createAndCheckEntity(create1, adminAuthHeaders());
 
-    ResultList<DbtModel> DbtModelList = listEntities(null, adminAuthHeaders()); // List DbtModels
-    assertEquals(2, DbtModelList.getData().size());
-    assertFields(DbtModelList.getData(), null);
+    ResultList<DbtModel> dbtModelList = listEntities(null, adminAuthHeaders()); // List DbtModels
+    assertEquals(2, dbtModelList.getData().size());
+    assertFields(dbtModelList.getData(), null);
 
     // List DbtModels with databaseFQN as filter
     Map<String, String> queryParams = new HashMap<>() {{
       put("database", DATABASE.getFullyQualifiedName());
     }};
-    ResultList<DbtModel> DbtModelList1 = listEntities(queryParams, adminAuthHeaders());
-    assertEquals(DbtModelList.getData().size(), DbtModelList1.getData().size());
-    assertFields(DbtModelList1.getData(), null);
+    ResultList<DbtModel> dbtModelList1 = listEntities(queryParams, adminAuthHeaders());
+    assertEquals(dbtModelList.getData().size(), dbtModelList1.getData().size());
+    assertFields(dbtModelList1.getData(), null);
 
     // GET .../DbtModels?fields=columns
     final String fields = "columns";
     queryParams = new HashMap<>() {{
       put("fields", fields);
     }};
-    DbtModelList = listEntities(queryParams, adminAuthHeaders());
-    assertEquals(2, DbtModelList.getData().size());
-    assertFields(DbtModelList.getData(), fields);
+    dbtModelList = listEntities(queryParams, adminAuthHeaders());
+    assertEquals(2, dbtModelList.getData().size());
+    assertFields(dbtModelList.getData(), fields);
 
     // List DbtModels with databaseFQN as filter
     queryParams = new HashMap<>() {{
       put("fields", fields);
       put("database", DATABASE.getFullyQualifiedName());
     }};
-    DbtModelList1 = listEntities(queryParams, adminAuthHeaders());
-    assertEquals(DbtModelList.getData().size(), DbtModelList1.getData().size());
-    assertFields(DbtModelList1.getData(), fields);
+    dbtModelList1 = listEntities(queryParams, adminAuthHeaders());
+    assertEquals(dbtModelList.getData().size(), dbtModelList1.getData().size());
+    assertFields(dbtModelList1.getData(), fields);
 
     // GET .../DbtModels?fields=owner,service
     final String fields1 = "owner,database";
     queryParams = new HashMap<>() {{
       put("fields", fields1);
     }};
-    DbtModelList = listEntities(queryParams, adminAuthHeaders());
-    assertEquals(2, DbtModelList.getData().size());
-    assertFields(DbtModelList.getData(), fields1);
-    for (DbtModel DbtModel : DbtModelList.getData()) {
+    dbtModelList = listEntities(queryParams, adminAuthHeaders());
+    assertEquals(2, dbtModelList.getData().size());
+    assertFields(dbtModelList.getData(), fields1);
+    for (DbtModel DbtModel : dbtModelList.getData()) {
       assertEquals(DbtModel.getOwner().getId(), USER_OWNER1.getId());
       assertEquals(DbtModel.getOwner().getType(), USER_OWNER1.getType());
       assertEquals(DbtModel.getDatabase().getId(), DATABASE.getId());
@@ -553,9 +553,9 @@ public class DbtModelResourceTest extends EntityResourceTest<DbtModel> {
       put("fields", fields1);
       put("database", DATABASE.getFullyQualifiedName());
     }};
-    DbtModelList1 = listEntities(queryParams, adminAuthHeaders());
-    assertEquals(DbtModelList.getData().size(), DbtModelList1.getData().size());
-    assertFields(DbtModelList1.getData(), fields1);
+    dbtModelList1 = listEntities(queryParams, adminAuthHeaders());
+    assertEquals(dbtModelList.getData().size(), dbtModelList1.getData().size());
+    assertFields(dbtModelList1.getData(), fields1);
   }
 
   @Test
@@ -566,9 +566,9 @@ public class DbtModelResourceTest extends EntityResourceTest<DbtModel> {
 
   @Test
   public void delete_DbtModel_as_non_admin_401(TestInfo test) throws HttpResponseException {
-    DbtModel DbtModel = createEntity(create(test), adminAuthHeaders());
+    DbtModel dbtModel = createEntity(create(test), adminAuthHeaders());
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            deleteDbtModel(DbtModel.getId(), authHeaders("test@open-metadata.org")));
+            deleteDbtModel(dbtModel.getId(), authHeaders("test@open-metadata.org")));
     assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
   }
 
@@ -586,28 +586,28 @@ public class DbtModelResourceTest extends EntityResourceTest<DbtModel> {
   @Test
   public void patch_DbtModelAttributes_200_ok(TestInfo test) throws IOException {
     // Create DbtModel without nodeType
-    DbtModel DbtModel = createEntity(create(test), adminAuthHeaders());
+    DbtModel dbtModel = createEntity(create(test), adminAuthHeaders());
 
 
     // Add description,
     //
-    String originalJson = JsonUtils.pojoToJson(DbtModel);
-    ChangeDescription change = getChangeDescription(DbtModel.getVersion());
+    String originalJson = JsonUtils.pojoToJson(dbtModel);
+    ChangeDescription change = getChangeDescription(dbtModel.getVersion());
 
-    DbtModel.withDbtNodeType(DbtNodeType.Model);
+    dbtModel.withDbtNodeType(DbtNodeType.Model);
 
     change.getFieldsAdded().add(new FieldChange().withName("dbtNodeType").withNewValue(DbtNodeType.Model.value()));
 
-    DbtModel = patchEntityAndCheck(DbtModel, originalJson, adminAuthHeaders(), MINOR_UPDATE, change);
+    dbtModel = patchEntityAndCheck(dbtModel, originalJson, adminAuthHeaders(), MINOR_UPDATE, change);
 
     // Remove nodeType, description
-    originalJson = JsonUtils.pojoToJson(DbtModel);
-    change = getChangeDescription(DbtModel.getVersion());
+    originalJson = JsonUtils.pojoToJson(dbtModel);
+    change = getChangeDescription(dbtModel.getVersion());
 
-    DbtModel.withDbtNodeType(null);
+    dbtModel.withDbtNodeType(null);
 
     change.getFieldsDeleted().add(new FieldChange().withName("dbtNodeType").withOldValue(DbtNodeType.Model.value()));
-    patchEntityAndCheck(DbtModel, originalJson, adminAuthHeaders(), MINOR_UPDATE, change);
+    patchEntityAndCheck(dbtModel, originalJson, adminAuthHeaders(), MINOR_UPDATE, change);
   }
 
   @Test
@@ -618,10 +618,10 @@ public class DbtModelResourceTest extends EntityResourceTest<DbtModel> {
     columns.add(getColumn("c2", BIGINT, USER_ADDRESS_TAG_LABEL));
     columns.add(getColumn("c3", FLOAT, USER_BANK_ACCOUNT_TAG_LABEL));
 
-    DbtModel DbtModel = createEntity(create(test).withColumns(columns), adminAuthHeaders());
+    DbtModel dbtModel = createEntity(create(test).withColumns(columns), adminAuthHeaders());
 
     // Update the column tags and description
-    ChangeDescription change = getChangeDescription(DbtModel.getVersion());
+    ChangeDescription change = getChangeDescription(dbtModel.getVersion());
     columns.get(0).withDescription("new0") // Set new description
             .withTags(List.of(USER_ADDRESS_TAG_LABEL, USER_BANK_ACCOUNT_TAG_LABEL));
     change.getFieldsAdded().add(new FieldChange().withName("columns.c1.description")
@@ -638,10 +638,10 @@ public class DbtModelResourceTest extends EntityResourceTest<DbtModel> {
     change.getFieldsDeleted().add(new FieldChange().withName("columns.c3.tags")
             .withOldValue(List.of(USER_BANK_ACCOUNT_TAG_LABEL))); // Column c3 tags were removed
 
-    String originalJson = JsonUtils.pojoToJson(DbtModel);
-    DbtModel.setColumns(columns);
-    DbtModel = patchEntityAndCheck(DbtModel, originalJson, adminAuthHeaders(), MINOR_UPDATE, change);
-    assertColumns(columns, DbtModel.getColumns());
+    String originalJson = JsonUtils.pojoToJson(dbtModel);
+    dbtModel.setColumns(columns);
+    dbtModel = patchEntityAndCheck(dbtModel, originalJson, adminAuthHeaders(), MINOR_UPDATE, change);
+    assertColumns(columns, dbtModel.getColumns());
   }
 
   void assertFields(List<DbtModel> DbtModelList, String fieldsParam) {
@@ -680,26 +680,26 @@ public class DbtModelResourceTest extends EntityResourceTest<DbtModel> {
   }
 
   /** Validate returned fields GET .../DbtModels/{id}?fields="..." or GET .../DbtModels/name/{fqn}?fields="..." */
-  private void validateGetWithDifferentFields(DbtModel DbtModel, boolean byName) throws HttpResponseException {
+  private void validateGetWithDifferentFields(DbtModel dbtModel, boolean byName) throws HttpResponseException {
     // GET .../DbtModels/{id}
-    DbtModel = byName ? getDbtModelByName(DbtModel.getFullyQualifiedName(), null, adminAuthHeaders()) :
-            getDbtModel(DbtModel.getId(), adminAuthHeaders());
-    assertFields(DbtModel, null);
+    dbtModel = byName ? getDbtModelByName(dbtModel.getFullyQualifiedName(), null, adminAuthHeaders()) :
+            getDbtModel(dbtModel.getId(), adminAuthHeaders());
+    assertFields(dbtModel, null);
 
     // GET .../DbtModels/{id}?fields=columns
     String fields = "columns";
-    DbtModel = byName ? getDbtModelByName(DbtModel.getFullyQualifiedName(), fields, adminAuthHeaders()) :
-            getDbtModel(DbtModel.getId(), fields, adminAuthHeaders());
-    assertFields(DbtModel, fields);
+    dbtModel = byName ? getDbtModelByName(dbtModel.getFullyQualifiedName(), fields, adminAuthHeaders()) :
+            getDbtModel(dbtModel.getId(), fields, adminAuthHeaders());
+    assertFields(dbtModel, fields);
 
     // GET .../DbtModels/{id}?fields=columns,usageSummary,owner,database,tags
     fields = "columns,owner,database,tags";
-    DbtModel = byName ? getDbtModelByName(DbtModel.getFullyQualifiedName(), fields, adminAuthHeaders()) :
-            getDbtModel(DbtModel.getId(), fields, adminAuthHeaders());
-    assertEquals(DbtModel.getOwner().getId(), USER_OWNER1.getId());
-    assertEquals(DbtModel.getOwner().getType(), USER_OWNER1.getType());
-    assertEquals(DbtModel.getDatabase().getId(), DATABASE.getId());
-    assertEquals(DbtModel.getDatabase().getName(), DATABASE.getFullyQualifiedName());
+    dbtModel = byName ? getDbtModelByName(dbtModel.getFullyQualifiedName(), fields, adminAuthHeaders()) :
+            getDbtModel(dbtModel.getId(), fields, adminAuthHeaders());
+    assertEquals(dbtModel.getOwner().getId(), USER_OWNER1.getId());
+    assertEquals(dbtModel.getOwner().getType(), USER_OWNER1.getType());
+    assertEquals(dbtModel.getDatabase().getId(), DATABASE.getId());
+    assertEquals(dbtModel.getDatabase().getName(), DATABASE.getFullyQualifiedName());
   }
 
 
@@ -754,7 +754,8 @@ public class DbtModelResourceTest extends EntityResourceTest<DbtModel> {
   }
 
   public static CreateDbtModel create(TestInfo test, int index) {
-    return new CreateDbtModel().withName(getDbtModelName(test, index)).withDatabase(DATABASE.getId()).withColumns(COLUMNS);
+    return new CreateDbtModel().withName(getDbtModelName(test, index)).
+        withDatabase(DATABASE.getId()).withColumns(COLUMNS);
   }
 
   /**

@@ -108,7 +108,7 @@ public class DbtModelRepository extends EntityRepository<DbtModel> {
       String columnFqn = parentFQN + "." + c.getName();
       c.setFullyQualifiedName(columnFqn);
       if (c.getChildren() != null) {
-          setColumnFQN(columnFqn, c.getChildren());
+        setColumnFQN(columnFqn, c.getChildren());
       }
     });
   }
@@ -191,7 +191,7 @@ public class DbtModelRepository extends EntityRepository<DbtModel> {
 
   List<Column> cloneWithoutTags(List<Column> columns) {
     if (columns == null || columns.isEmpty()) {
-        return columns;
+      return columns;
     }
     List<Column> copy = new ArrayList<>();
     columns.forEach(c -> copy.add(cloneWithoutTags(c)));
