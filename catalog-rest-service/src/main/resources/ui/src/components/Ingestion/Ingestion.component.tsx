@@ -327,6 +327,7 @@ const Ingestion: React.FC<Props> = ({
                         <div className="tw-flex">
                           <div
                             className="link-text tw-mr-2"
+                            data-testid="run"
                             onClick={() =>
                               handleTriggerIngestion(
                                 ingestion.id as string,
@@ -345,6 +346,7 @@ const Ingestion: React.FC<Props> = ({
                           </div>
                           <div
                             className="link-text tw-mr-2"
+                            data-testid="edit"
                             onClick={() => handleUpdate(ingestion)}>
                             {updateSelection.id === ingestion.id ? (
                               updateSelection.state === 'success' ? (
@@ -358,6 +360,7 @@ const Ingestion: React.FC<Props> = ({
                           </div>
                           <div
                             className="link-text tw-mr-2"
+                            data-testid="delete"
                             onClick={() =>
                               ConfirmDelete(
                                 ingestion.id as string,

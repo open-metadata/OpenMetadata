@@ -84,6 +84,8 @@ public class MyDataPageTest {
         webDriver.navigate().back();
         Events.click(webDriver, By.cssSelector("[data-testid='service']")); // Services
         webDriver.navigate().back();
+        Events.click(webDriver, By.cssSelector("[data-testid='ingestion']")); // Services
+        webDriver.navigate().back();
         Events.click(webDriver, By.cssSelector("[data-testid='user']")); // Users
         webDriver.navigate().back();
         Events.click(webDriver, By.cssSelector("[data-testid='terms']"));  // Teams
