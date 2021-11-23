@@ -16,7 +16,7 @@
 from pydantic import BaseModel
 
 from metadata.generated.schema.entity.data.database import Database
-from metadata.generated.schema.entity.data.model import Model
+from metadata.generated.schema.entity.data.dbtmodel import DbtModel
 from metadata.generated.schema.entity.data.table import Table
 
 
@@ -26,5 +26,5 @@ class OMetaDatabaseAndTable(BaseModel):
 
 
 class OMetaDatabaseAndModel(BaseModel):
-    model: Model
+    model: DbtModel
     database: Database

@@ -135,6 +135,8 @@ public class SearchResource {
       searchSourceBuilder = buildDashboardSearchBuilder(query, from, size);
     } else if (index.equals("pipeline_search_index")) {
       searchSourceBuilder = buildPipelineSearchBuilder(query, from, size);
+    } else if (index.equals("dbt_model_search_index")) {
+      searchSourceBuilder = buildDbtModelSearchBuilder(query, from, size);
     } else {
       searchSourceBuilder = buildTableSearchBuilder(query, from, size);
     }
@@ -317,6 +319,44 @@ public class SearchResource {
         .field("task_names")
         .field("task_descriptions")
         .lenient(true))
+        .aggregation(AggregationBuilders.terms("Service").field("service_type"))
+        .aggregation(AggregationBuilders.terms("ServiceCategory").field("service_category"))
+        .aggregation(AggregationBuilders.terms("EntityType").field("entity_type"))
+        .aggregation(AggregationBuilders.terms("Tier").field("tier"))
+        .aggregation(AggregationBuilders.terms("Tags").field("tags"))
+        .highlighter(hb)
+        .from(from).size(size);
+
+    return searchSourceBuilder;
+  }
+
+  private SearchSourceBuilder buildDbtModelSearchBuilder(String query, int from, int size) {
+    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+    HighlightBuilder.Field highlightTableName =
+        new HighlightBuilder.Field("dbt_model_name");
+    highlightTableName.highlighterType("unified");
+    HighlightBuilder.Field highlightDescription =
+        new HighlightBuilder.Field("description");
+    highlightDescription.highlighterType("unified");
+    HighlightBuilder.Field highlightColumns =
+        new HighlightBuilder.Field("column_names");
+    highlightColumns.highlighterType("unified");
+    HighlightBuilder.Field highlightColumnDescriptions =
+        new HighlightBuilder.Field("column_descriptions");
+    highlightColumnDescriptions.highlighterType("unified");
+    HighlightBuilder hb = new HighlightBuilder();
+    hb.field(highlightDescription);
+    hb.field(highlightTableName);
+    hb.field(highlightColumns);
+    hb.field(highlightColumnDescriptions);
+    hb.preTags("<span class=\"text-highlighter\">");
+    hb.postTags("</span>");
+    searchSourceBuilder.query(QueryBuilders.queryStringQuery(query)
+            .field("dbt_model_name", 5.0f)
+            .field("description")
+            .field("column_names")
+            .field("column_descriptions")
+            .lenient(true))
         .aggregation(AggregationBuilders.terms("Service").field("service_type"))
         .aggregation(AggregationBuilders.terms("ServiceCategory").field("service_category"))
         .aggregation(AggregationBuilders.terms("EntityType").field("entity_type"))

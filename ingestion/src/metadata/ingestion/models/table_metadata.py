@@ -125,6 +125,30 @@ class PipelineESDocument(BaseModel):
     followers: List[str]
 
 
+class DbtModelESDocument(BaseModel):
+    """Elastic Search Mapping doc"""
+
+    dbt_model_id: str
+    database: str
+    service: str
+    service_type: str
+    service_category: str
+    entity_type: str = "dbtmodel"
+    dbt_model_name: str
+    suggest: List[dict]
+    description: Optional[str] = None
+    dbt_type: Optional[str] = None
+    last_updated_timestamp: Optional[int]
+    column_names: List[str]
+    column_descriptions: List[str]
+    tags: List[str]
+    fqdn: str
+    tier: Optional[str] = None
+    schema_description: Optional[str] = None
+    owner: str
+    followers: List[str]
+
+
 class DashboardOwner(BaseModel):
     """Dashboard owner"""
 

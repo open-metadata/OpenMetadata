@@ -14,7 +14,7 @@
  *  limitations under the License.
  */
 
-package org.openmetadata.catalog.resources.models;
+package org.openmetadata.catalog.resources.dbtmodels;
 
 import com.google.inject.Inject;
 import io.swagger.annotations.Api;
@@ -27,11 +27,10 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.openmetadata.catalog.Entity;
-import org.openmetadata.catalog.api.data.CreateModel;
-import org.openmetadata.catalog.api.data.CreateTable;
-import org.openmetadata.catalog.entity.data.Model;
+import org.openmetadata.catalog.api.data.CreateDbtModel;
+import org.openmetadata.catalog.entity.data.DbtModel;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
-import org.openmetadata.catalog.jdbi3.ModelRepository;
+import org.openmetadata.catalog.jdbi3.DbtModelRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.resources.databases.DatabaseUtil;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
@@ -73,35 +72,35 @@ import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 
-@Path("/v1/models")
-@Api(value = "Models collection", tags = "Models collection")
+@Path("/v1/dbtmodels")
+@Api(value = "DBT Models collection", tags = "DBT Models collection")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "models")
-public class ModelResource {
-  public static final String COLLECTION_PATH = "v1/models/";
-  private final ModelRepository dao;
+public class DbtModelResource {
+  public static final String COLLECTION_PATH = "v1/dbtmodels/";
+  private final DbtModelRepository dao;
   private final CatalogAuthorizer authorizer;
 
-  public static Model addHref(UriInfo uriInfo, Model model) {
-    Entity.withHref(uriInfo, model.getDatabase());
-    Entity.withHref(uriInfo, model.getOwner());
-    Entity.withHref(uriInfo, model.getFollowers());
-    return model;
+  public static DbtModel addHref(UriInfo uriInfo, DbtModel dbtModel) {
+    Entity.withHref(uriInfo, dbtModel.getDatabase());
+    Entity.withHref(uriInfo, dbtModel.getOwner());
+    Entity.withHref(uriInfo, dbtModel.getFollowers());
+    return dbtModel;
   }
 
   @Inject
-  public ModelResource(CollectionDAO dao, CatalogAuthorizer authorizer) {
+  public DbtModelResource(CollectionDAO dao, CatalogAuthorizer authorizer) {
     Objects.requireNonNull(dao, "CollectionDAO must not be null");
-    this.dao = new ModelRepository(dao);
+    this.dao = new DbtModelRepository(dao);
     this.authorizer = authorizer;
   }
 
-  public static class ModelList extends ResultList<Model> {
+  public static class DbtModelList extends ResultList<DbtModel> {
     @SuppressWarnings("unused") /* Required for tests */
-    public ModelList() {}
+    public DbtModelList() {}
 
-    public ModelList(List<Model> data, String beforeCursor, String afterCursor, int total)
+    public DbtModelList(List<DbtModel> data, String beforeCursor, String afterCursor, int total)
             throws GeneralSecurityException, UnsupportedEncodingException {
       super(data, beforeCursor, afterCursor, total);
     }
@@ -112,15 +111,15 @@ public class ModelResource {
           .split(","));
 
   @GET
-  @Operation(summary = "List Models", tags = "models",
+  @Operation(summary = "List DbtModels", tags = "dbtmodels",
           description = "Get a list of models, optionally filtered by `database` it belongs to. Use `fields` " +
                   "parameter to get only necessary fields. Use cursor-based pagination to limit the number " +
                   "entries in the list using `limit` and `before` or `after` query params.",
           responses = {@ApiResponse(responseCode = "200", description = "List of models",
                   content = @Content(mediaType = "application/json",
-                          schema = @Schema(implementation = ModelList.class)))
+                          schema = @Schema(implementation = DbtModelList.class)))
           })
-  public ResultList<Model> list(@Context UriInfo uriInfo,
+  public ResultList<DbtModel> list(@Context UriInfo uriInfo,
                                 @Context SecurityContext securityContext,
                                 @Parameter(description = "Fields requested in the returned resource",
                                 schema = @Schema(type = "string", example = FIELDS))
@@ -144,21 +143,21 @@ public class ModelResource {
     RestUtil.validateCursors(before, after);
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
 
-    ResultList<Model> models;
+    ResultList<DbtModel> dbtModels;
     if (before != null) { // Reverse paging
-      models = dao.listBefore(uriInfo, fields, databaseParam, limitParam, before);
+      dbtModels = dao.listBefore(uriInfo, fields, databaseParam, limitParam, before);
     } else { // Forward paging or first page
-      models = dao.listAfter(uriInfo, fields, databaseParam, limitParam, after);
+      dbtModels = dao.listAfter(uriInfo, fields, databaseParam, limitParam, after);
     }
-    models.getData().forEach(m -> addHref(uriInfo, m));
-    return models;
+    dbtModels.getData().forEach(m -> addHref(uriInfo, m));
+    return dbtModels;
   }
 
   @GET
   @Path("/{id}/versions")
-  @Operation(summary = "List model versions", tags = "models",
+  @Operation(summary = "List dbtmodel versions", tags = "dbtmodels",
           description = "Get a list of all the versions of a model identified by `id`",
-          responses = {@ApiResponse(responseCode = "200", description = "List of model versions",
+          responses = {@ApiResponse(responseCode = "200", description = "List of dbtmodel versions",
                       content = @Content(mediaType = "application/json",
                       schema = @Schema(implementation = EntityHistory.class)))
           })
@@ -172,14 +171,14 @@ public class ModelResource {
 
   @GET
   @Path("/{id}")
-  @Operation(summary = "Get a model", tags = "models",
-          description = "Get a model by `id`",
-          responses = {@ApiResponse(responseCode = "200", description = "model",
+  @Operation(summary = "Get a dbtmodel", tags = "dbtmodels",
+          description = "Get a dbtmodel by `id`",
+          responses = {@ApiResponse(responseCode = "200", description = "dbtmodel",
                        content = @Content(mediaType = "application/json",
-                       schema = @Schema(implementation = Model.class))),
-                       @ApiResponse(responseCode = "404", description = "Model for instance {id} is not found")
+                       schema = @Schema(implementation = DbtModel.class))),
+                       @ApiResponse(responseCode = "404", description = "DbtModel for instance {id} is not found")
           })
-  public Model get(@Context UriInfo uriInfo,
+  public DbtModel get(@Context UriInfo uriInfo,
                    @Context SecurityContext securityContext,
                    @Parameter(description = "model Id", schema = @Schema(type = "string"))
                    @PathParam("id") String id,
@@ -192,14 +191,14 @@ public class ModelResource {
   
   @GET
   @Path("/name/{fqn}")
-  @Operation(summary = "Get a model by name", tags = "models",
-          description = "Get a model by fully qualified model name.",
+  @Operation(summary = "Get a dbtmodel by name", tags = "dbtmodels",
+          description = "Get a model by fully qualified dbtmodel name.",
           responses = {@ApiResponse(responseCode = "200", description = "model",
                        content = @Content(mediaType = "application/json",
-                       schema = @Schema(implementation = Model.class))),
-                       @ApiResponse(responseCode = "404", description = "Model for instance {id} is not found")
+                       schema = @Schema(implementation = DbtModel.class))),
+                       @ApiResponse(responseCode = "404", description = "DbtModel for instance {id} is not found")
           })
-  public Model getByName(@Context UriInfo uriInfo,
+  public DbtModel getByName(@Context UriInfo uriInfo,
                          @Context SecurityContext securityContext,
                          @Parameter(description = "Fully qualified name of the model",
                                     schema = @Schema(type = "string"))
@@ -213,17 +212,17 @@ public class ModelResource {
 
   @GET
   @Path("/{id}/versions/{version}")
-  @Operation(summary = "Get a version of the model", tags = "models",
-          description = "Get a version of the model by given `id`",
-          responses = {@ApiResponse(responseCode = "200", description = "model",
+  @Operation(summary = "Get a version of the dbtmodel", tags = "dbtmodels",
+          description = "Get a version of the dbtmodel by given `id`",
+          responses = {@ApiResponse(responseCode = "200", description = "dbtmodel",
                        content = @Content(mediaType = "application/json",
-                       schema = @Schema(implementation = Model.class))),
+                       schema = @Schema(implementation = DbtModel.class))),
                        @ApiResponse(responseCode = "404", description = "Table for instance {id} and version {version}"+
                           " is not found")
           })
-  public Model getVersion(@Context UriInfo uriInfo,
+  public DbtModel getVersion(@Context UriInfo uriInfo,
                           @Context SecurityContext securityContext,
-                          @Parameter(description = "model Id", schema = @Schema(type = "string"))
+                          @Parameter(description = "dbtmodel Id", schema = @Schema(type = "string"))
                           @PathParam("id") String id,
                           @Parameter(description = "model version number in the form `major`.`minor`",
                                   schema = @Schema(type = "string", example = "0.1 or 1.1"))
@@ -232,43 +231,43 @@ public class ModelResource {
   }
 
   @POST
-  @Operation(summary = "Create a Model", tags = "models",
+  @Operation(summary = "Create a DbtModel", tags = "dbtmodels",
           description = "Create a new model under an existing `database`.",
           responses = {@ApiResponse(responseCode = "200", description = "model",
                        content = @Content(mediaType = "application/json",
-                       schema = @Schema(implementation = CreateModel.class))),
+                       schema = @Schema(implementation = CreateDbtModel.class))),
                        @ApiResponse(responseCode = "400", description = "Bad request")
           })
   public Response create(@Context UriInfo uriInfo,
                          @Context SecurityContext securityContext,
-                         @Valid CreateModel create) throws IOException, ParseException {
+                         @Valid CreateDbtModel create) throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    Model model = getModel(securityContext, create);
-    model = addHref(uriInfo, dao.create(uriInfo, validateNewModel(model)));
-    return Response.created(model.getHref()).entity(model).build();
+    DbtModel dbtModel = getDbtModel(securityContext, create);
+    dbtModel = addHref(uriInfo, dao.create(uriInfo, validateNewModel(dbtModel)));
+    return Response.created(dbtModel.getHref()).entity(dbtModel).build();
   }
 
   @PUT
-  @Operation(summary = "Create or update a model", tags = "models",
-          description = "Create a model, if it does not exist. If a model already exists, update the model.",
-          responses = {@ApiResponse(responseCode = "200", description = "The model",
+  @Operation(summary = "Create or update a dbtmodel", tags = "dbtmodels",
+          description = "Create a dbtmodel, if it does not exist. If a model already exists, update the dbtmodel.",
+          responses = {@ApiResponse(responseCode = "200", description = "The DbtModel",
                        content = @Content(mediaType = "application/json",
-                       schema = @Schema(implementation = CreateTable.class))),
+                       schema = @Schema(implementation = CreateDbtModel.class))),
                        @ApiResponse(responseCode = "400", description = "Bad request")
           })
   public Response createOrUpdate(@Context UriInfo uriInfo,
                                  @Context SecurityContext securityContext,
-                                 @Valid CreateModel create) throws IOException, ParseException {
-    Model model = getModel(securityContext, create);
-    SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, dao.getOwnerReference(model));
-    PutResponse<Model> response = dao.createOrUpdate(uriInfo, validateNewModel(model));
+                                 @Valid CreateDbtModel create) throws IOException, ParseException {
+    DbtModel dbtModel = getDbtModel(securityContext, create);
+    SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, dao.getOwnerReference(dbtModel));
+    PutResponse<DbtModel> response = dao.createOrUpdate(uriInfo, validateNewModel(dbtModel));
     addHref(uriInfo, response.getEntity());
     return response.toResponse();
   }
 
   @PATCH
   @Path("/{id}")
-  @Operation(summary = "Update a model", tags = "models",
+  @Operation(summary = "Update a dbtmodel", tags = "dbtmodels",
           description = "Update an existing model using JsonPatch.",
           externalDocs = @ExternalDocumentation(description = "JsonPatch RFC",
                   url = "https://tools.ietf.org/html/rfc6902"))
@@ -285,9 +284,9 @@ public class ModelResource {
                                              "]")}))
                              JsonPatch patch) throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, FIELDS);
-    Model model = dao.get(uriInfo, id, fields);
-    SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, dao.getOwnerReference(model));
-    RestUtil.PatchResponse<Model> response =
+    DbtModel dbtModel = dao.get(uriInfo, id, fields);
+    SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, dao.getOwnerReference(dbtModel));
+    RestUtil.PatchResponse<DbtModel> response =
             dao.patch(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
     addHref(uriInfo, response.getEntity());
     return response.toResponse();
@@ -295,15 +294,15 @@ public class ModelResource {
 
   @DELETE
   @Path("/{id}")
-  @Operation(summary = "Delete a model", tags = "models",
-          description = "Delete a model by `id`. Model is not immediately deleted and is only marked as deleted.",
+  @Operation(summary = "Delete a dbtmodel", tags = "DbtModels",
+          description = "Delete a dbtmodel by `id`. Model is not immediately deleted and is only marked as deleted.",
           responses = {
-                  @ApiResponse(responseCode = "200", description = "OK"),
-                  @ApiResponse(responseCode = "404", description = "Model for instance {id} is not found")
+              @ApiResponse(responseCode = "200", description = "OK"),
+              @ApiResponse(responseCode = "404", description = "DbtModel for instance {id} is not found")
           })
   public Response delete(@Context UriInfo uriInfo,
                          @Context SecurityContext securityContext,
-                         @Parameter(description = "Id of the Model", schema = @Schema(type = "string"))
+                         @Parameter(description = "Id of the DBT Model", schema = @Schema(type = "string"))
                          @PathParam("id") String id) {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     dao.delete(UUID.fromString(id));
@@ -312,15 +311,15 @@ public class ModelResource {
 
   @PUT
   @Path("/{id}/followers")
-  @Operation(summary = "Add a follower", tags = "models",
-          description = "Add a user identified by `userId` as followed of this model",
+  @Operation(summary = "Add a follower", tags = "dbtmodels",
+          description = "Add a user identified by `userId` as followed of this DbtModel",
           responses = {
-                  @ApiResponse(responseCode = "200", description = "OK"),
-                  @ApiResponse(responseCode = "404", description = "Model for instance {id} is not found")
+              @ApiResponse(responseCode = "200", description = "OK"),
+              @ApiResponse(responseCode = "404", description = "DbtModel for instance {id} is not found")
           })
   public Response addFollower(@Context UriInfo uriInfo,
                               @Context SecurityContext securityContext,
-                              @Parameter(description = "Id of the model", schema = @Schema(type = "string"))
+                              @Parameter(description = "Id of the DbtModel", schema = @Schema(type = "string"))
                               @PathParam("id") String id,
                               @Parameter(description = "Id of the user to be added as follower",
                                       schema = @Schema(type = "string"))
@@ -331,11 +330,11 @@ public class ModelResource {
 
   @DELETE
   @Path("/{id}/followers/{userId}")
-  @Operation(summary = "Remove a follower", tags = "models",
-          description = "Remove the user identified `userId` as a follower of the model.")
+  @Operation(summary = "Remove a follower", tags = "dbtmodels",
+          description = "Remove the user identified `userId` as a follower of the dbtmodel.")
   public Response deleteFollower(@Context UriInfo uriInfo,
                                  @Context SecurityContext securityContext,
-                                 @Parameter(description = "Id of the model",
+                                 @Parameter(description = "Id of the DbtModel",
                                          schema = @Schema(type = "string"))
                                  @PathParam("id") String id,
                                  @Parameter(description = "Id of the user being removed as follower",
@@ -345,20 +344,20 @@ public class ModelResource {
             UUID.fromString(userId)).toResponse();
   }
 
-  public static Model validateNewModel(Model model) {
-    model.setId(UUID.randomUUID());
-    DatabaseUtil.validateColumns(model);
-    return model;
+  public static DbtModel validateNewModel(DbtModel dbtModel) {
+    dbtModel.setId(UUID.randomUUID());
+    DatabaseUtil.validateColumns(dbtModel);
+    return dbtModel;
   }
 
-  private Model getModel(SecurityContext securityContext, CreateModel create) {
-    return new Model().withId(UUID.randomUUID()).withName(create.getName())
-            .withColumns(create.getColumns()).withDescription(create.getDescription())
-            .withNodeType(create.getNodeType())
-            .withTags(create.getTags()).withViewDefinition(create.getViewDefinition())
-            .withUpdatedBy(securityContext.getUserPrincipal().getName())
-            .withOwner(create.getOwner())
-            .withUpdatedAt(new Date())
-            .withDatabase(new EntityReference().withId(create.getDatabase()));
+  private DbtModel getDbtModel(SecurityContext securityContext, CreateDbtModel create) {
+    return new DbtModel().withId(UUID.randomUUID()).withName(create.getName())
+        .withColumns(create.getColumns()).withDescription(create.getDescription())
+        .withDbtNodeType(create.getDbtNodeType())
+        .withTags(create.getTags()).withViewDefinition(create.getViewDefinition())
+        .withUpdatedBy(securityContext.getUserPrincipal().getName())
+        .withOwner(create.getOwner())
+        .withUpdatedAt(new Date())
+        .withDatabase(new EntityReference().withId(create.getDatabase()));
   }
 }
