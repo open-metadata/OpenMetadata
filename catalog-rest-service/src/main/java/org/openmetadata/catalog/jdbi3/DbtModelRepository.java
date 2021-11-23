@@ -79,17 +79,17 @@ public class DbtModelRepository extends EntityRepository<DbtModel> {
   @Override
   public void restorePatchAttributes(DbtModel original, DbtModel updated) throws IOException, ParseException {
       // Patch can't make changes to following fields. Ignore the changes
-      updated.withFullyQualifiedName(original.getFullyQualifiedName()).withName(original.getName())
-              .withDatabase(original.getDatabase()).withId(original.getId());
+    updated.withFullyQualifiedName(original.getFullyQualifiedName()).withName(original.getName())
+        .withDatabase(original.getDatabase()).withId(original.getId());
   }
 
   @Override
   public EntityInterface<DbtModel> getEntityInterface(DbtModel entity) {
-        return new DbtModelEntityInterface(entity);
-    }
+    return new DbtModelEntityInterface(entity);
+  }
 
   public static String getFQN(DbtModel dbtModel) {
-      return (dbtModel.getDatabase().getName() + "." + dbtModel.getName());
+    return (dbtModel.getDatabase().getName() + "." + dbtModel.getName());
   }
 
   @Transaction
@@ -115,14 +115,14 @@ public class DbtModelRepository extends EntityRepository<DbtModel> {
 
   private void addDerivedTags(List<Column> columns) throws IOException {
     if (columns == null || columns.isEmpty()) {
-        return;
+      return;
     }
 
     for (Column column : columns) {
-        column.setTags(EntityUtil.addDerivedTags(dao.tagDAO(), column.getTags()));
-        if (column.getChildren() != null) {
-            addDerivedTags(column.getChildren());
-        }
+      column.setTags(EntityUtil.addDerivedTags(dao.tagDAO(), column.getTags()));
+      if (column.getChildren() != null) {
+          addDerivedTags(column.getChildren());
+      }
     }
   }
 
@@ -201,14 +201,14 @@ public class DbtModelRepository extends EntityRepository<DbtModel> {
   private Column cloneWithoutTags(Column column) {
     List<Column> children = cloneWithoutTags(column.getChildren());
     return new Column().withDescription(column.getDescription()).withName(column.getName())
-            .withFullyQualifiedName(column.getFullyQualifiedName())
-            .withArrayDataType(column.getArrayDataType())
-            .withConstraint(column.getConstraint())
-            .withDataTypeDisplay(column.getDataTypeDisplay())
-            .withDataType(column.getDataType())
-            .withDataLength(column.getDataLength())
-            .withOrdinalPosition(column.getOrdinalPosition())
-            .withChildren(children);
+      .withFullyQualifiedName(column.getFullyQualifiedName())
+      .withArrayDataType(column.getArrayDataType())
+      .withConstraint(column.getConstraint())
+      .withDataTypeDisplay(column.getDataTypeDisplay())
+      .withDataType(column.getDataType())
+      .withDataLength(column.getDataLength())
+      .withOrdinalPosition(column.getOrdinalPosition())
+      .withChildren(children);
   }
 
   private void applyTags(List<Column> columns) throws IOException {
@@ -249,13 +249,13 @@ public class DbtModelRepository extends EntityRepository<DbtModel> {
   }
 
   private List<TagLabel> getTags(String fqn) {
-      return dao.tagDAO().getTags(fqn);
+    return dao.tagDAO().getTags(fqn);
   }
 
   private void getColumnTags(boolean setTags, List<Column> columns) {
     for (Column c : Optional.ofNullable(columns).orElse(Collections.emptyList())) {
-        c.setTags(setTags ? getTags(c.getFullyQualifiedName()) : null);
-        getColumnTags(setTags, c.getChildren());
+      c.setTags(setTags ? getTags(c.getFullyQualifiedName()) : null);
+      getColumnTags(setTags, c.getChildren());
     }
   }
 
@@ -263,13 +263,13 @@ public class DbtModelRepository extends EntityRepository<DbtModel> {
   private void validateColumn(DbtModel DbtModel, String columnName) {
     boolean validColumn = false;
     for (Column column : DbtModel.getColumns()) {
-        if (column.getName().equals(columnName)) {
-            validColumn = true;
-            break;
-        }
+      if (column.getName().equals(columnName)) {
+        validColumn = true;
+        break;
+      }
     }
     if (!validColumn) {
-        throw new IllegalArgumentException("Invalid column name " + columnName);
+      throw new IllegalArgumentException("Invalid column name " + columnName);
     }
   }
 
@@ -277,24 +277,24 @@ public class DbtModelRepository extends EntityRepository<DbtModel> {
   private void validateColumnFQN(DbtModel DbtModel, String columnFQN) {
     boolean validColumn = false;
     for (Column column : DbtModel.getColumns()) {
-        if (column.getFullyQualifiedName().equals(columnFQN)) {
-            validColumn = true;
-            break;
-        }
+      if (column.getFullyQualifiedName().equals(columnFQN)) {
+        validColumn = true;
+        break;
+      }
     }
     if (!validColumn) {
-        throw new IllegalArgumentException(CatalogExceptionMessage.invalidColumnFQN(columnFQN));
+      throw new IllegalArgumentException(CatalogExceptionMessage.invalidColumnFQN(columnFQN));
     }
   }
 
   private void validateColumnFQNs(List<JoinedWith> joinedWithList) throws IOException {
     for (JoinedWith joinedWith : joinedWithList) {
         // Validate model
-        String modelFQN = getDbtModelFQN(joinedWith.getFullyQualifiedName());
-        DbtModel joinedWithModel = dao.dbtModelDAO().findEntityByName(modelFQN);
+      String modelFQN = getDbtModelFQN(joinedWith.getFullyQualifiedName());
+      DbtModel joinedWithModel = dao.dbtModelDAO().findEntityByName(modelFQN);
 
       // Validate column
-        validateColumnFQN(joinedWithModel, joinedWith.getFullyQualifiedName());
+      validateColumnFQN(joinedWithModel, joinedWith.getFullyQualifiedName());
     }
   }
 
@@ -302,7 +302,7 @@ public class DbtModelRepository extends EntityRepository<DbtModel> {
     // Split columnFQN of format databaseServiceName.databaseName.model.columnName
     String[] split = columnFQN.split("\\.");
     if (split.length != 4) {
-        throw new IllegalArgumentException("Invalid fully qualified column name " + columnFQN);
+      throw new IllegalArgumentException("Invalid fully qualified column name " + columnFQN);
     }
     // Return model FQN of format databaseService.modelName
     return split[0] + "." + split[1] + "." + split[2];
@@ -313,9 +313,8 @@ public class DbtModelRepository extends EntityRepository<DbtModel> {
     private final DbtModel entity;
 
     public DbtModelEntityInterface(DbtModel entity) {
-          this.entity = entity;
+      this.entity = entity;
     }
-
 
     @Override
     public UUID getId() { return entity.getId(); }
@@ -409,7 +408,7 @@ public class DbtModelRepository extends EntityRepository<DbtModel> {
 
     @Override
     public void setTags(List<TagLabel> tags) {
-        entity.setTags(tags);
+      entity.setTags(tags);
     }
   }
 

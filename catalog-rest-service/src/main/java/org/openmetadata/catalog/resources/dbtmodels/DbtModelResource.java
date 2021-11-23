@@ -143,14 +143,14 @@ public class DbtModelResource {
     RestUtil.validateCursors(before, after);
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
 
-    ResultList<DbtModel> DbtModels;
+    ResultList<DbtModel> dbtModels;
     if (before != null) { // Reverse paging
-      DbtModels = dao.listBefore(uriInfo, fields, databaseParam, limitParam, before);
+      dbtModels = dao.listBefore(uriInfo, fields, databaseParam, limitParam, before);
     } else { // Forward paging or first page
-      DbtModels = dao.listAfter(uriInfo, fields, databaseParam, limitParam, after);
+      dbtModels = dao.listAfter(uriInfo, fields, databaseParam, limitParam, after);
     }
-    DbtModels.getData().forEach(m -> addHref(uriInfo, m));
-    return DbtModels;
+    dbtModels.getData().forEach(m -> addHref(uriInfo, m));
+    return dbtModels;
   }
 
   @GET
@@ -297,8 +297,8 @@ public class DbtModelResource {
   @Operation(summary = "Delete a dbtmodel", tags = "DbtModels",
           description = "Delete a dbtmodel by `id`. Model is not immediately deleted and is only marked as deleted.",
           responses = {
-                @ApiResponse(responseCode = "200", description = "OK"),
-                @ApiResponse(responseCode = "404", description = "DbtModel for instance {id} is not found")
+              @ApiResponse(responseCode = "200", description = "OK"),
+              @ApiResponse(responseCode = "404", description = "DbtModel for instance {id} is not found")
           })
   public Response delete(@Context UriInfo uriInfo,
                          @Context SecurityContext securityContext,
@@ -314,8 +314,8 @@ public class DbtModelResource {
   @Operation(summary = "Add a follower", tags = "dbtmodels",
           description = "Add a user identified by `userId` as followed of this DbtModel",
           responses = {
-                @ApiResponse(responseCode = "200", description = "OK"),
-                @ApiResponse(responseCode = "404", description = "DbtModel for instance {id} is not found")
+              @ApiResponse(responseCode = "200", description = "OK"),
+              @ApiResponse(responseCode = "404", description = "DbtModel for instance {id} is not found")
           })
   public Response addFollower(@Context UriInfo uriInfo,
                               @Context SecurityContext securityContext,
