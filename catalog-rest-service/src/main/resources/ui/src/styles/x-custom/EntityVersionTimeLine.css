@@ -31,6 +31,10 @@
   border-radius: 50%;
   margin-top: 0.15rem;
 }
+.timeline-rounder.major {
+  width: 20px;
+  height: 20px;
+}
 .timeline-rounder.selected {
   border: 3px solid #7147e8;
 }
@@ -44,12 +48,20 @@
   border: 2px solid #7147e8;
   background-color: #7147e8;
 }
+.timeline-rounder.major.selected::after {
+  width: 10px;
+  height: 10px;
+}
+
 .timeline-line {
   display: block;
   width: 2px;
   height: 100%;
   background-color: #d9ceee;
   transform: translate(8px, 0);
+}
+.timeline-line.major {
+  height: 98%;
 }
 .timeline-line-se {
   display: block;

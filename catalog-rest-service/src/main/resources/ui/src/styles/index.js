@@ -24,5 +24,6 @@ import './tailwind.css';
 import './temp.css';
 import './x-custom/code-mirror.css';
 import './x-custom/CronEditor.css';
+import './x-custom/EntityVersionTimeLine.css';
 import './x-custom/stepper.css';
 import './x-master.css';
