@@ -60,6 +60,9 @@
   background-color: #d9ceee;
   transform: translate(8px, 0);
 }
+.timeline-line.major {
+  height: 98%;
+}
 .timeline-line-se {
   display: block;
   width: 2px;

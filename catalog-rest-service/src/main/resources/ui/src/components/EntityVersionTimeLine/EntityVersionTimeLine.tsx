@@ -99,7 +99,17 @@ const EntityVersionTimeLine: React.FC<Props> = ({
                   )}
                   data-testid="select-version"
                 />
-                <span className="timeline-line" />
+                <span
+                  className={classNames('timeline-line', {
+                    major:
+                      isMajorVersion(
+                        parseFloat(currV?.changeDescription?.previousVersion)
+                          .toFixed(1)
+                          .toString(),
+                        parseFloat(currV?.version).toFixed(1).toString()
+                      ) && versionType === 'all',
+                  })}
+                />
               </div>
               <div className="tw-grid tw-gap-0.5">
                 <p
