@@ -67,6 +67,16 @@ const EntityVersionTimeLine: React.FC<Props> = ({
     return versionTypeList.length ? (
       versionTypeList.map((v, i) => {
         const currV = JSON.parse(v);
+        const majorVersionChecks = () => {
+          return (
+            isMajorVersion(
+              parseFloat(currV?.changeDescription?.previousVersion)
+                .toFixed(1)
+                .toString(),
+              parseFloat(currV?.version).toFixed(1).toString()
+            ) && versionType === 'all'
+          );
+        };
 
         return (
           <Fragment key={i}>
@@ -88,26 +98,14 @@ const EntityVersionTimeLine: React.FC<Props> = ({
                       selected: toString(currV?.version) === currentVersion,
                     },
                     {
-                      major:
-                        isMajorVersion(
-                          parseFloat(currV?.changeDescription?.previousVersion)
-                            .toFixed(1)
-                            .toString(),
-                          parseFloat(currV?.version).toFixed(1).toString()
-                        ) && versionType === 'all',
+                      major: majorVersionChecks(),
                     }
                   )}
                   data-testid="select-version"
                 />
                 <span
                   className={classNames('timeline-line', {
-                    major:
-                      isMajorVersion(
-                        parseFloat(currV?.changeDescription?.previousVersion)
-                          .toFixed(1)
-                          .toString(),
-                        parseFloat(currV?.version).toFixed(1).toString()
-                      ) && versionType === 'all',
+                    major: majorVersionChecks(),
                   })}
                 />
               </div>
@@ -120,13 +118,7 @@ const EntityVersionTimeLine: React.FC<Props> = ({
                         toString(currV?.version) === currentVersion,
                     },
                     {
-                      'tw-font-semibold tw-text-base':
-                        isMajorVersion(
-                          parseFloat(currV?.changeDescription?.previousVersion)
-                            .toFixed(1)
-                            .toString(),
-                          parseFloat(currV?.version).toFixed(1).toString()
-                        ) && versionType === 'all',
+                      'tw-font-semibold tw-text-base': majorVersionChecks(),
                     }
                   )}>
                   v{parseFloat(currV?.version).toFixed(1)}
