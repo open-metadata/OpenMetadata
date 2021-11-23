@@ -18,7 +18,13 @@
 import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
 import { isNil, isNull, lowerCase } from 'lodash';
-import { Paging, ServiceCollection, ServiceData, ServiceTypes } from 'Models';
+import {
+  LoadingState,
+  Paging,
+  ServiceCollection,
+  ServiceData,
+  ServiceTypes,
+} from 'Models';
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
@@ -128,9 +134,7 @@ const ServicesPage = () => {
   });
 
   const [isLoadingMore, setIsLoadingMore] = useState<boolean>(false);
-  const [status, setStatus] = useState<'initial' | 'waiting' | 'success'>(
-    'initial'
-  );
+  const [status, setStatus] = useState<LoadingState>('initial');
 
   const updateServiceList = (
     allServiceCollectionArr: Array<ServiceCollection>
@@ -656,12 +660,15 @@ const ServicesPage = () => {
             )}
 
             {Boolean(!isNil(paging[serviceName].after)) && (
-              <LoadMorePagination
-                buttonText="Load more"
-                handleClick={() => pagingHandler(CursorType.AFTER)}
-                isLoading={isLoadingMore}
-                status={status}
-              />
+              <div className="tw-my-4 tw-flex tw-justify-center tw-items-center">
+                <LoadMorePagination
+                  showLoadingText
+                  buttonText="Load more"
+                  handleClick={() => pagingHandler(CursorType.AFTER)}
+                  isLoading={isLoadingMore}
+                  status={status}
+                />
+              </div>
             )}
 
             {isModalOpen && (

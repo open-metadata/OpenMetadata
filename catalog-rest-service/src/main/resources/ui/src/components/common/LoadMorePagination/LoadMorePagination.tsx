@@ -1,10 +1,12 @@
+import { LoadingState } from 'Models';
 import React from 'react';
 import { Button } from '../../buttons/Button/Button';
 import Loader from '../../Loader/Loader';
 
 type LoadMorePaginationProps = {
   isLoading: boolean;
-  status: 'initial' | 'waiting' | 'success';
+  showLoadingText?: boolean;
+  status: LoadingState;
   buttonText: string;
   handleClick: () => void;
 };
@@ -13,10 +15,11 @@ const LoadMorePagination = ({
   isLoading,
   status,
   buttonText,
+  showLoadingText,
   handleClick,
 }: LoadMorePaginationProps) => {
   return (
-    <div className="tw-my-4 tw-flex tw-justify-center tw-items-center">
+    <>
       {isLoading ? (
         <Button
           disabled
@@ -25,7 +28,7 @@ const LoadMorePagination = ({
           theme="primary"
           variant="contained">
           <Loader size="small" type="white" />
-          <span className="tw-pl-1.5">Loading</span>{' '}
+          {showLoadingText && <span className="tw-pl-1.5">Loading</span>}
         </Button>
       ) : status === 'success' ? (
         <Button
@@ -47,7 +50,7 @@ const LoadMorePagination = ({
           <span>{buttonText}</span>
         </Button>
       )}
-    </div>
+    </>
   );
 };
 
