@@ -6,7 +6,7 @@ from typing import Dict, Iterable, Optional
 
 from metadata.config.common import ConfigModel
 from metadata.generated.schema.entity.data.database import Database
-from metadata.generated.schema.entity.data.DbtModel import DBTModel
+from metadata.generated.schema.entity.data.dbtmodel import DbtModel
 from metadata.generated.schema.entity.data.table import Column
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
@@ -135,11 +135,11 @@ class DbtSource(Source):
                 columns = []
             if mnode["resource_type"] == "test":
                 continue
-            model = DBTModel(
+            model = DbtModel(
                 id=uuid.uuid4(),
                 name=name,
                 description=description,
-                nodeType=mnode["resource_type"].capitalize(),
+                dbtNodeType=mnode["resource_type"].capitalize(),
                 viewDefinition=mnode["raw_sql"],
                 columns=columns,
             )

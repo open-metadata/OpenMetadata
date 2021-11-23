@@ -27,8 +27,10 @@ from metadata.generated.schema.api.data.createDashboard import (
 from metadata.generated.schema.api.data.createDatabase import (
     CreateDatabaseEntityRequest,
 )
+from metadata.generated.schema.api.data.createDbtModel import (
+    CreateDbtModelEntityRequest,
+)
 from metadata.generated.schema.api.data.createMlModel import CreateMlModelEntityRequest
-from metadata.generated.schema.api.data.createModel import CreateModelEntityRequest
 from metadata.generated.schema.api.data.createPipeline import (
     CreatePipelineEntityRequest,
 )
@@ -121,7 +123,7 @@ class MetadataRestSink(Sink):
         elif isinstance(record, MlModel):
             self.write_ml_model(record)
         elif isinstance(record, OMetaDatabaseAndModel):
-            self.write_models(record)
+            self.write_dbt_models(record)
         else:
             logging.info(
                 f"Ignoring the record due to unknown Record type {type(record)}"
@@ -187,7 +189,7 @@ class MetadataRestSink(Sink):
             logger.error(err)
             self.status.failure(f"Table: {table_and_db.table.name.__root__}")
 
-    def write_models(self, model_and_db: OMetaDatabaseAndModel):
+    def write_dbt_models(self, model_and_db: OMetaDatabaseAndModel):
         try:
             db_request = CreateDatabaseEntityRequest(
                 name=model_and_db.database.name,
@@ -198,12 +200,12 @@ class MetadataRestSink(Sink):
             )
             db = self.metadata.create_or_update(db_request)
             model = model_and_db.model
-            model_request = CreateModelEntityRequest(
+            model_request = CreateDbtModelEntityRequest(
                 name=model.name,
                 description=model.description,
                 viewDefinition=model.viewDefinition,
                 database=db.id,
-                nodeType=model.nodeType,
+                dbtNodeType=model.dbtNodeType,
                 columns=model.columns,
             )
             created_model = self.metadata.create_or_update(model_request)

@@ -1,20 +1,20 @@
 {
   "$id": "https://open-metadata.org/schema/api/data/createDbtModel.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Create DBTModel entity request",
+  "title": "Create Dbt Model entity request",
   "description": "Schema corresponding to a model that belongs to a database",
   "type": "object",
   "properties": {
     "name": {
       "description": "Name that identifies the this entity instance uniquely. Same as id if when name is not unique",
-      "$ref": "../../entity/data/DbtModel.json#/definitions/dbtModelName"
+      "$ref": "../../entity/data/dbtmodel.json#/definitions/dbtModelName"
     },
     "description": {
       "description": "Description of DBTModel instance.",
       "type": "string"
     },
     "dbtNodeType": {
-      "$ref": "../../entity/data/DbtModel.json#/definitions/dbtNodeType"
+      "$ref": "../../entity/data/dbtmodel.json#/definitions/dbtNodeType"
     },
     "columns": {
       "description": "Schema of the Model",
