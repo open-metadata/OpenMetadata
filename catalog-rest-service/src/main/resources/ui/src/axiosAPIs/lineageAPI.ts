@@ -21,8 +21,8 @@ import APIClient from './index';
 export const getLineageByFQN: Function = (
   fqn: string,
   type: string,
-  upstreamDepth = 3,
-  downstreamDepth = 3
+  upstreamDepth = 2,
+  downstreamDepth = 2
 ): Promise<AxiosResponse> => {
   return APIClient.get(
     `/lineage/${type}/name/${fqn}?upstreamDepth=${upstreamDepth}&downstreamDepth=${downstreamDepth}`

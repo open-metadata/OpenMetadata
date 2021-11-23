@@ -1,3 +1,4 @@
+// import { AxiosResponse } from 'axios';
 import React, {
   FunctionComponent,
   MouseEvent as ReactMouseEvent,
@@ -19,6 +20,7 @@ import ReactFlow, {
   removeElements,
 } from 'react-flow-renderer';
 import { Link } from 'react-router-dom';
+// import { getLineageByFQN } from '../../axiosAPIs/lineageAPI';
 import {
   Edge as LineageEdge,
   EntityLineage,
@@ -296,7 +298,33 @@ const getLineageData = (
         (ed as Edge).source.includes(down.id)
       )
         ? down
-        : { ...down, type: 'output' };
+        : {
+            ...down,
+            type: 'output',
+            data: {
+              label: (
+                <div className="tw-flex tw-justify-between">
+                  <p>{down?.data?.label}</p>
+                  <p
+                    className="tw-ml-2 tw-self-center fas fa-chevron-right tw-cursor-pointer tw-text-grey-muted"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const node = entityLineage?.nodes?.find((d) =>
+                        down.id.includes(d.id)
+                      );
+                      if (node) {
+                        // getLineageByFQN(node.name, node.type).then(
+                        //   (res: AxiosResponse) => {
+                        //     console.log(res.data);
+                        //   }
+                        // );
+                      }
+                    }}
+                  />
+                </div>
+              ),
+            },
+          };
     }),
     ...lineageEdges,
   ];
@@ -309,6 +337,7 @@ const Entitylineage: FunctionComponent<{ entityLineage: EntityLineage }> = ({
 }: {
   entityLineage: EntityLineage;
 }) => {
+  // const [lineageData, setLineageData] = useState<EntityLineage>(entityLineage);
   const [isDrawerOpen, setIsDrawerOpen] = useState<boolean>(false);
   const [selectedNode, setSelectedNode] = useState<SelectedNode>(
     {} as SelectedNode
@@ -355,6 +384,7 @@ const Entitylineage: FunctionComponent<{ entityLineage: EntityLineage }> = ({
 
   useEffect(() => {
     setElements(getLineageData(entityLineage, selectNodeHandler) as Elements);
+    // setLineageData(entityLineage);
   }, [entityLineage]);
 
   return (
