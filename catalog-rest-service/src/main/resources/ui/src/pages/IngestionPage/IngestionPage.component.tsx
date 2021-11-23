@@ -16,15 +16,14 @@
 */
 
 import { AxiosError, AxiosResponse } from 'axios';
-import { Operation } from 'fast-json-patch';
 import { Paging } from 'Models';
 import React, { useEffect, useState } from 'react';
 import {
   addIngestionWorkflow,
   deleteIngestionWorkflowsById,
   getIngestionWorkflows,
-  patchIngestionWorkflowBtId,
   triggerIngestionWorkflowsById,
+  updateIngestionWorkflow,
 } from '../../axiosAPIs/ingestionWorkflowAPI';
 import { getServices } from '../../axiosAPIs/serviceAPI';
 import Ingestion from '../../components/Ingestion/Ingestion.component';
@@ -121,14 +120,14 @@ const IngestionPage = () => {
     });
   };
 
-  const updateIngestionById = (
+  const updateIngestion = (
+    data: IngestionData,
     id: string,
     displayName: string,
-    patch: Array<Operation>,
     triggerIngestion?: boolean
   ): Promise<void> => {
     return new Promise<void>((resolve, reject) => {
-      patchIngestionWorkflowBtId(id, patch)
+      updateIngestionWorkflow(data)
         .then(() => {
           resolve();
           getAllIngestionWorkflows();
@@ -213,7 +212,7 @@ const IngestionPage = () => {
           pagingHandler={pagingHandler}
           serviceList={serviceList}
           triggerIngestion={triggerIngestionById}
-          updateIngestion={updateIngestionById}
+          updateIngestion={updateIngestion}
         />
       )}
     </>
