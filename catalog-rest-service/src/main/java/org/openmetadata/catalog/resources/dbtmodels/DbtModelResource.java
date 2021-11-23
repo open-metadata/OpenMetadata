@@ -28,7 +28,6 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.data.CreateDbtModel;
-import org.openmetadata.catalog.api.data.CreateTable;
 import org.openmetadata.catalog.entity.data.DbtModel;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.DbtModelRepository;
@@ -83,11 +82,11 @@ public class DbtModelResource {
   private final DbtModelRepository dao;
   private final CatalogAuthorizer authorizer;
 
-  public static DbtModel addHref(UriInfo uriInfo, DbtModel DbtModel) {
-    Entity.withHref(uriInfo, DbtModel.getDatabase());
-    Entity.withHref(uriInfo, DbtModel.getOwner());
-    Entity.withHref(uriInfo, DbtModel.getFollowers());
-    return DbtModel;
+  public static DbtModel addHref(UriInfo uriInfo, DbtModel dbtModel) {
+    Entity.withHref(uriInfo, dbtModel.getDatabase());
+    Entity.withHref(uriInfo, dbtModel.getOwner());
+    Entity.withHref(uriInfo, dbtModel.getFollowers());
+    return dbtModel;
   }
 
   @Inject
@@ -298,8 +297,8 @@ public class DbtModelResource {
   @Operation(summary = "Delete a dbtmodel", tags = "DbtModels",
           description = "Delete a dbtmodel by `id`. Model is not immediately deleted and is only marked as deleted.",
           responses = {
-                  @ApiResponse(responseCode = "200", description = "OK"),
-                  @ApiResponse(responseCode = "404", description = "DbtModel for instance {id} is not found")
+                @ApiResponse(responseCode = "200", description = "OK"),
+                @ApiResponse(responseCode = "404", description = "DbtModel for instance {id} is not found")
           })
   public Response delete(@Context UriInfo uriInfo,
                          @Context SecurityContext securityContext,
@@ -315,8 +314,8 @@ public class DbtModelResource {
   @Operation(summary = "Add a follower", tags = "dbtmodels",
           description = "Add a user identified by `userId` as followed of this DbtModel",
           responses = {
-                  @ApiResponse(responseCode = "200", description = "OK"),
-                  @ApiResponse(responseCode = "404", description = "DbtModel for instance {id} is not found")
+                @ApiResponse(responseCode = "200", description = "OK"),
+                @ApiResponse(responseCode = "404", description = "DbtModel for instance {id} is not found")
           })
   public Response addFollower(@Context UriInfo uriInfo,
                               @Context SecurityContext securityContext,
