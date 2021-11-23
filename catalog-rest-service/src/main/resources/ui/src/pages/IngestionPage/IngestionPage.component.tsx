@@ -16,14 +16,12 @@
 */
 
 import { AxiosError, AxiosResponse } from 'axios';
-// import { Operation } from 'fast-json-patch';
 import { Paging } from 'Models';
 import React, { useEffect, useState } from 'react';
 import {
   addIngestionWorkflow,
   deleteIngestionWorkflowsById,
   getIngestionWorkflows,
-  // patchIngestionWorkflowBtId,
   triggerIngestionWorkflowsById,
   updateIngestionWorkflow,
 } from '../../axiosAPIs/ingestionWorkflowAPI';
@@ -121,34 +119,6 @@ const IngestionPage = () => {
         });
     });
   };
-
-  // code for updating ingestion with patch api
-  // const updateIngestionById = (
-  //   id: string,
-  //   displayName: string,
-  //   patch: Array<Operation>,
-  //   triggerIngestion?: boolean
-  // ): Promise<void> => {
-  //   return new Promise<void>((resolve, reject) => {
-  //     patchIngestionWorkflowBtId(id, patch)
-  //       .then(() => {
-  //         resolve();
-  //         getAllIngestionWorkflows();
-  //         if (triggerIngestion) {
-  //           triggerIngestionById(id, displayName).then();
-  //         }
-  //       })
-  //       .catch((err: AxiosError) => {
-  //         const msg = err.message;
-  //         showToast({
-  //           variant: 'error',
-  //           body:
-  //             msg ?? `Error while updating ingestion workflow ${displayName}`,
-  //         });
-  //         reject();
-  //       });
-  //   });
-  // };
 
   const updateIngestion = (
     data: IngestionData,
