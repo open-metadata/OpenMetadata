@@ -92,35 +92,19 @@ const EntityVersionTimeLine: React.FC<Props> = ({
               onClick={() => versionHandler(toString(currV?.version))}>
               <div className="timeline-wrapper">
                 <span
-                  className={classNames(
-                    'timeline-rounder',
-                    {
-                      selected: toString(currV?.version) === currentVersion,
-                    },
-                    {
-                      major: majorVersionChecks(),
-                    }
-                  )}
+                  className={classNames('timeline-rounder', {
+                    selected: toString(currV?.version) === currentVersion,
+                  })}
                   data-testid="select-version"
                 />
-                <span
-                  className={classNames('timeline-line', {
-                    major: majorVersionChecks(),
-                  })}
-                />
+                <span className={classNames('timeline-line')} />
               </div>
               <div className="tw-grid tw-gap-0.5">
                 <p
-                  className={classNames(
-                    'tw-text-grey-body tw-font-normal',
-                    {
-                      'tw-text-primary-active':
-                        toString(currV?.version) === currentVersion,
-                    },
-                    {
-                      'tw-font-semibold tw-text-base': majorVersionChecks(),
-                    }
-                  )}>
+                  className={classNames('tw-text-grey-body tw-font-normal', {
+                    'tw-text-primary-active':
+                      toString(currV?.version) === currentVersion,
+                  })}>
                   <span>v{parseFloat(currV?.version).toFixed(1)}</span>
                   {majorVersionChecks() ? (
                     <span className="tw-ml-2 tw-text-xs tw-font-normal tw-text-grey-body tw-bg-tag tw-px-2 tw-py-0.5 tw-rounded">
