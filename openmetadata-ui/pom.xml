@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <parent>
+    <artifactId>catalog</artifactId>
+    <groupId>org.openmetadata</groupId>
+    <version>0.7.0-SNAPSHOT</version>
+  </parent>
+  <modelVersion>4.0.0</modelVersion>
+
+  <artifactId>openmetadata-ui</artifactId>
+
+  <properties>
+    <dropwizard.swagger.version>2.0.12-1</dropwizard.swagger.version>
+    <testng.version>7.4.0</testng.version>
+    <selenium.version>4.0.0</selenium.version>
+  </properties>
+
+  <dependencies>
+    <dependency>
+      <groupId>org.openmetadata</groupId>
+      <artifactId>common</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.openmetadata</groupId>
+      <artifactId>catalog-rest-service</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.seleniumhq.selenium</groupId>
+      <artifactId>selenium-java</artifactId>
+      <version>${selenium.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>io.github.artsok</groupId>
+      <artifactId>rerunner-jupiter</artifactId>
+      <version>2.1.6</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.testng</groupId>
+      <artifactId>testng</artifactId>
+      <version>${testng.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.github.javafaker</groupId>
+      <artifactId>javafaker</artifactId>
+      <version>1.0.2</version>
+    </dependency>
+
+  </dependencies>
+
+  <build>
+    <resources>
+      <resource>
+        <directory>src/main/resources/ui/dist</directory>
+      </resource>
+      <resource>
+        <directory>src/main/resources/json/data</directory>
+      </resource>
+    </resources>
+
+    <plugins>
+      <!-- Handle Compiling Frontend -->
+      <plugin>
+        <groupId>com.github.eirslett</groupId>
+        <artifactId>frontend-maven-plugin</artifactId>
+        <version>1.11.0</version>
+
+        <!-- optional -->
+        <configuration>
+          <workingDirectory>src/main/resources/ui/</workingDirectory>
+          <installDirectory>target</installDirectory>
+        </configuration>
+
+        <executions>
+          <execution>
+            <id>install node and npm</id>
+            <goals>
+              <goal>install-node-and-npm</goal>
+            </goals>
+            <configuration>
+              <nodeVersion>v12.16.1</nodeVersion>
+              <npmVersion>6.13.4</npmVersion>
+            </configuration>
+          </execution>
+          <execution>
+            <id>npm install</id>
+            <goals>
+              <goal>npm</goal>
+            </goals>
+            <phase>prepare-package</phase>
+            <configuration>
+              <arguments>install</arguments>
+            </configuration>
+          </execution>
+          <execution>
+            <id>npm run-script build-check</id>
+            <goals>
+              <goal>npm</goal>
+            </goals>
+            <!-- optional: the default phase is "generate-resources" -->
+            <phase>prepare-package</phase>
+            <configuration>
+              <!-- optional: if not specified, it will run gulp's default task
+                  (and you can remove this whole <configuration> section.) -->
+              <arguments>run-script build-check</arguments>
+              <!--arguments>build</arguments-->
+            </configuration>
+          </execution>
+          <execution>
+            <id>npm run-script build</id>
+            <goals>
+              <goal>npm</goal>
+            </goals>
+            <!-- optional: the default phase is "generate-resources" -->
+            <phase>prepare-package</phase>
+            <configuration>
+              <!-- optional: if not specified, it will run gulp's default task
+                  (and you can remove this whole <configuration> section.) -->
+              <arguments>run-script build</arguments>
+              <!--arguments>build</arguments-->
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
+</project>
