@@ -117,6 +117,8 @@ const ServicesPage = () => {
   const [editData, setEditData] = useState<ServiceDataObj>();
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [searchText, setSearchText] = useState('');
+  const [currentTabTotalCount, setCurrentTabTotalCount] = useState(0);
+
   const [servicesCount, setServicesCount] = useState({
     databaseServices: 0,
     messagingServices: 0,
@@ -164,6 +166,7 @@ const ServicesPage = () => {
             setServiceList(
               serviceRecord[serviceName] as unknown as Array<ServiceDataObj>
             );
+            setCurrentTabTotalCount(servicePaging[serviceName].total || 0);
           }
           setIsLoading(false);
         }
@@ -332,7 +335,7 @@ const ServicesPage = () => {
     setSearchText('');
     setServicesCount({
       ...servicesCount,
-      [serviceName]: services[serviceName].length,
+      [serviceName]: currentTabTotalCount,
     });
     setServiceName(tabName);
     setServiceList(services[tabName] as unknown as Array<ServiceDataObj>);
@@ -414,22 +417,18 @@ const ServicesPage = () => {
     }`;
     getServices(pagingString)
       .then((result: AxiosResponse) => {
-        const totalServices = [...services[serviceName], ...result.data.data];
-        setServiceList(totalServices);
+        const currentServices = result.data.data;
+        setServiceList(currentServices);
 
         setServices({
           ...services,
-          [serviceName]: totalServices,
+          [serviceName]: currentServices,
         });
 
         setPaging({
           ...paging,
           [serviceName]: result.data.paging,
         });
-        // setServicesCount({
-        //   ...servicesCount,
-        //   [serviceName]: result.data.data.length,
-        // });
       })
       .finally(() => setIsLoading(false));
   };
@@ -457,6 +456,10 @@ const ServicesPage = () => {
       updateServiceList(allServiceCollectionArr);
     });
   }, []);
+
+  useEffect(() => {
+    setCurrentTabTotalCount(servicesCount[serviceName]);
+  }, [serviceName]);
 
   return (
     <>
