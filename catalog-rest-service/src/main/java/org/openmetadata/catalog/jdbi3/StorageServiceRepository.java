@@ -85,9 +85,12 @@ public class StorageServiceRepository extends EntityRepository<StorageService> {
 
 
   @Override
-  public void store(StorageService entity, boolean update) throws IOException {
-    dao.storageServiceDAO().insert(entity);
-    // TODO other cleanup
+  public void store(StorageService service, boolean update) throws IOException {
+    if (update) {
+      dao.storageServiceDAO().update(service.getId(), JsonUtils.pojoToJson(service));
+    } else {
+      dao.storageServiceDAO().insert(service);
+    }
   }
 
   @Override

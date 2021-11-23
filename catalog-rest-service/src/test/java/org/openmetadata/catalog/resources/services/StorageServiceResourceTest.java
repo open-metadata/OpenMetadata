@@ -6,7 +6,6 @@ import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.catalog.CatalogApplicationTest;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.services.CreateStorageService;
-import org.openmetadata.catalog.api.services.UpdateStorageService;
 import org.openmetadata.catalog.entity.services.StorageService;
 import org.openmetadata.catalog.type.StorageServiceType;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
@@ -78,41 +77,27 @@ public class StorageServiceResourceTest extends CatalogApplicationTest {
     }
 
     @Test
-    public void put_updateNonExistentService_404() {
-        // Update storage description and ingestion service that are null
-        UpdateStorageService update = new UpdateStorageService().withDescription("description1");
-        HttpResponseException exception = assertThrows(HttpResponseException.class, ()
-                -> updateStorageService(TestUtils.NON_EXISTENT_ENTITY.toString(), update, OK, adminAuthHeaders()));
-        TestUtils.assertResponse(exception, NOT_FOUND, CatalogExceptionMessage.entityNotFound("StorageService",
-                TestUtils.NON_EXISTENT_ENTITY));
-    }
-
-    @Test
     public void put_updateStorageService_as_admin_2xx(TestInfo test) throws HttpResponseException {
         StorageService dbService = createAndCheckService(create(test).withDescription(null), adminAuthHeaders());
         String id = dbService.getId().toString();
 
         // Update storage description and ingestion service that are null
-        UpdateStorageService update = new UpdateStorageService().withDescription("description1");
-        updateAndCheckService(id, update, OK, adminAuthHeaders());
+        CreateStorageService update = create(test).withDescription("description1");
+        updateAndCheckService(update, OK, adminAuthHeaders());
 
         // Update description and ingestion schedule again
         update.withDescription("description1");
-        updateAndCheckService(id, update, OK, adminAuthHeaders());
+        updateAndCheckService(update, OK, adminAuthHeaders());
     }
 
     @Test
     public void put_update_as_non_admin_401(TestInfo test) throws HttpResponseException {
         Map<String, String> authHeaders = adminAuthHeaders();
         StorageService dbService = createAndCheckService(create(test).withDescription(null), authHeaders);
-        String id = dbService.getId().toString();
-        RestUtil.DATE_TIME_FORMAT.format(new Date());
 
         // Update storage description and ingestion service that are null
-        UpdateStorageService update = new UpdateStorageService().withDescription("description1");
-
         HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-                updateAndCheckService(id, update, OK, authHeaders("test@open-metadata.org")));
+                updateAndCheckService(create(test), OK, authHeaders("test@open-metadata.org")));
         TestUtils.assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} " +
                 "is not admin");
     }
@@ -223,16 +208,16 @@ public class StorageServiceResourceTest extends CatalogApplicationTest {
         return TestUtils.get(target, StorageService.class, authHeaders);
     }
 
-    public static StorageService updateStorageService(String id, UpdateStorageService updated,
+    public static StorageService updateStorageService(CreateStorageService updated,
                                                         Response.Status status, Map<String, String> authHeaders)
             throws HttpResponseException {
-        return TestUtils.put(CatalogApplicationTest.getResource("services/storageServices/" + id), updated,
+        return TestUtils.put(CatalogApplicationTest.getResource("services/storageServices"), updated,
                 StorageService.class, status, authHeaders);
     }
 
-    public static void updateAndCheckService(String id, UpdateStorageService update, Response.Status status,
+    public static void updateAndCheckService(CreateStorageService update, Response.Status status,
                                              Map<String, String> authHeaders) throws HttpResponseException {
-        StorageService service = updateStorageService(id, update, status, authHeaders);
+        StorageService service = updateStorageService(update, status, authHeaders);
         validateService(service, service.getName(), update.getDescription());
 
         // GET the newly updated storage and validate

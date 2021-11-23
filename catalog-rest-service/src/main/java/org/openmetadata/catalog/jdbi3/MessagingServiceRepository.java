@@ -16,6 +16,7 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.services.MessagingService;
@@ -30,7 +31,6 @@ import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
 
-import javax.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.net.URI;
 import java.text.ParseException;
@@ -50,19 +50,6 @@ public class MessagingServiceRepository extends EntityRepository<MessagingServic
   }
 
   @Transaction
-  public MessagingService update(UriInfo uriInfo, UUID id, String description, List<String> brokers, URI schemaRegistry,
-                                 Schedule ingestionSchedule)
-          throws IOException {
-    EntityUtil.validateIngestionSchedule(ingestionSchedule);
-    MessagingService dbService = dao.messagingServiceDAO().findEntityById(id);
-    // Update fields
-    dbService.withDescription(description).withIngestionSchedule(ingestionSchedule)
-            .withSchemaRegistry(schemaRegistry).withBrokers(brokers);
-    dao.messagingServiceDAO().update(id, JsonUtils.pojoToJson(dbService));
-    return withHref(uriInfo, dbService);
-  }
-
-  @Transaction
   public void delete(UUID id) {
     if (dao.messagingServiceDAO().delete(id) <= 0) {
       throw EntityNotFoundException.byMessage(entityNotFound(Entity.MESSAGING_SERVICE, id));
@@ -78,7 +65,7 @@ public class MessagingServiceRepository extends EntityRepository<MessagingServic
   @Override
   public void restorePatchAttributes(MessagingService original, MessagingService updated) throws IOException,
           ParseException {
-
+    // Not implemented
   }
 
   @Override
@@ -92,13 +79,21 @@ public class MessagingServiceRepository extends EntityRepository<MessagingServic
   }
 
   @Override
-  public void store(MessagingService entity, boolean update) throws IOException {
-    dao.messagingServiceDAO().insert(entity);
-    // TODO Other cleanup
+  public void store(MessagingService service, boolean update) throws IOException {
+    if (update) {
+      dao.messagingServiceDAO().update(service.getId(), JsonUtils.pojoToJson(service));
+    } else {
+      dao.messagingServiceDAO().insert(service);
+    }
   }
 
   @Override
   public void storeRelationships(MessagingService entity) throws IOException { }
+
+  @Override
+  public EntityUpdater getUpdater(MessagingService original, MessagingService updated, boolean patchOperation) throws IOException {
+    return new MessagingServiceUpdater(original, updated, patchOperation);
+  }
 
   public static class MessagingServiceEntityInterface implements EntityInterface<MessagingService> {
     private final MessagingService entity;
@@ -193,5 +188,27 @@ public class MessagingServiceRepository extends EntityRepository<MessagingServic
 
     @Override
     public void setTags(List<TagLabel> tags) { }
+  }
+
+  public class MessagingServiceUpdater extends EntityUpdater {
+    public MessagingServiceUpdater(MessagingService original, MessagingService updated, boolean patchOperation) {
+      super(original, updated, patchOperation);
+    }
+
+    @Override
+    public void entitySpecificUpdate() throws IOException {
+      updateSchemaRegistry();
+      updateIngestionSchedule();
+    }
+
+    private void updateSchemaRegistry() throws JsonProcessingException {
+      recordChange("schemaRegistry", original.getEntity().getSchemaRegistry(), updated.getEntity().getSchemaRegistry());
+    }
+
+    private void updateIngestionSchedule() throws JsonProcessingException {
+      Schedule origSchedule = original.getEntity().getIngestionSchedule();
+      Schedule updatedSchedule = updated.getEntity().getIngestionSchedule();
+      recordChange("ingestionSchedule", origSchedule, updatedSchedule);
+    }
   }
 }

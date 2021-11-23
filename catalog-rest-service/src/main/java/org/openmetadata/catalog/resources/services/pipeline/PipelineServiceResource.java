@@ -24,7 +24,6 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.openmetadata.catalog.api.services.CreatePipelineService;
-import org.openmetadata.catalog.api.services.UpdatePipelineService;
 import org.openmetadata.catalog.entity.services.PipelineService;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.PipelineServiceRepository;
@@ -33,6 +32,7 @@ import org.openmetadata.catalog.security.CatalogAuthorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.util.RestUtil;
+import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
 
 import javax.validation.Valid;
@@ -143,21 +143,14 @@ public class PipelineServiceResource {
                          @Context SecurityContext securityContext,
                          @Valid CreatePipelineService create) throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    PipelineService service = new PipelineService().withId(UUID.randomUUID())
-            .withName(create.getName()).withDescription(create.getDescription())
-            .withServiceType(create.getServiceType())
-            .withPipelineUrl(create.getPipelineUrl())
-            .withIngestionSchedule(create.getIngestionSchedule())
-            .withUpdatedBy(securityContext.getUserPrincipal().getName())
-            .withUpdatedAt(new Date());
+    PipelineService service = getService(create, securityContext);
     dao.create(uriInfo, service);
     return Response.created(service.getHref()).entity(service).build();
   }
 
   @PUT
-  @Path("/{id}")
   @Operation(summary = "Update a pipeline service", tags = "services",
-          description = "Update an existing pipeline service identified by `id`.",
+          description = "Create a new pipeline service or update an existing pipeline service identified by `id`.",
           responses = {
                   @ApiResponse(responseCode = "200", description = "Pipeline service instance",
                           content = @Content(mediaType = "application/json",
@@ -166,13 +159,11 @@ public class PipelineServiceResource {
           })
   public Response update(@Context UriInfo uriInfo,
                          @Context SecurityContext securityContext,
-                         @Parameter(description = "Id of the pipeline service", schema = @Schema(type = "string"))
-                         @PathParam("id") String id,
-                         @Valid UpdatePipelineService update) throws IOException {
+                         @Valid CreatePipelineService update) throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    PipelineService service = dao.update(uriInfo, UUID.fromString(id), update.getDescription(), update.getPipelineUrl(),
-                    update.getIngestionSchedule());
-    return Response.ok(service).build();
+    PipelineService service = getService(update, securityContext);
+    PutResponse<PipelineService> response = dao.createOrUpdate(uriInfo, service);
+    return response.toResponse();
   }
 
   @DELETE
@@ -192,5 +183,14 @@ public class PipelineServiceResource {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     dao.delete(UUID.fromString(id));
     return Response.ok().build();
+  }
+  private PipelineService getService(CreatePipelineService create, SecurityContext securityContext) {
+    return new PipelineService().withId(UUID.randomUUID())
+            .withName(create.getName()).withDescription(create.getDescription())
+            .withServiceType(create.getServiceType())
+            .withPipelineUrl(create.getPipelineUrl())
+            .withIngestionSchedule(create.getIngestionSchedule())
+            .withUpdatedBy(securityContext.getUserPrincipal().getName())
+            .withUpdatedAt(new Date());
   }
 }

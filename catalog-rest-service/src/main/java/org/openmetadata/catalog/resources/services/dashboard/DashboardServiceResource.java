@@ -24,7 +24,6 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.openmetadata.catalog.api.services.CreateDashboardService;
-import org.openmetadata.catalog.api.services.UpdateDashboardService;
 import org.openmetadata.catalog.entity.services.DashboardService;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.DashboardServiceRepository;
@@ -32,6 +31,7 @@ import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.util.RestUtil;
+import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
 
 import javax.validation.Valid;
@@ -160,22 +160,12 @@ public class DashboardServiceResource {
                          @Context SecurityContext securityContext,
                          @Valid CreateDashboardService create) throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    DashboardService service = new DashboardService().withId(UUID.randomUUID())
-            .withName(create.getName()).withDescription(create.getDescription())
-            .withServiceType(create.getServiceType())
-            .withDashboardUrl(create.getDashboardUrl())
-            .withUsername(create.getUsername())
-            .withPassword(create.getPassword())
-            .withIngestionSchedule(create.getIngestionSchedule())
-            .withUpdatedBy(securityContext.getUserPrincipal().getName())
-            .withUpdatedAt(new Date());
-
+    DashboardService service = getService(create, securityContext);
     dao.create(uriInfo, service);
     return Response.created(service.getHref()).entity(service).build();
   }
 
   @PUT
-  @Path("/{id}")
   @Operation(summary = "Update a Dashboard service", tags = "services",
           description = "Update an existing dashboard service identified by `id`.",
           responses = {
@@ -186,13 +176,11 @@ public class DashboardServiceResource {
           })
   public Response update(@Context UriInfo uriInfo,
                          @Context SecurityContext securityContext,
-                         @Parameter(description = "Id of the dashboard service", schema = @Schema(type = "string"))
-                         @PathParam("id") String id,
-                         @Valid UpdateDashboardService update) throws IOException {
+                         @Valid CreateDashboardService update) throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    DashboardService service = dao.update(uriInfo, UUID.fromString(id), update.getDescription(),
-            update.getDashboardUrl(), update.getUsername(), update.getPassword(), update.getIngestionSchedule());
-    return Response.ok(service).build();
+    DashboardService service = getService(update, securityContext);
+    PutResponse<DashboardService> response = dao.createOrUpdate(uriInfo, service);
+    return response.toResponse();
   }
 
   @DELETE
@@ -212,5 +200,16 @@ public class DashboardServiceResource {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     dao.delete(UUID.fromString(id));
     return Response.ok().build();
+  }
+  private DashboardService getService(CreateDashboardService create, SecurityContext securityContext) {
+    return new DashboardService().withId(UUID.randomUUID())
+            .withName(create.getName()).withDescription(create.getDescription())
+            .withServiceType(create.getServiceType())
+            .withDashboardUrl(create.getDashboardUrl())
+            .withUsername(create.getUsername())
+            .withPassword(create.getPassword())
+            .withIngestionSchedule(create.getIngestionSchedule())
+            .withUpdatedBy(securityContext.getUserPrincipal().getName())
+            .withUpdatedAt(new Date());
   }
 }

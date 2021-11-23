@@ -24,13 +24,13 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.openmetadata.catalog.api.services.CreateMessagingService;
-import org.openmetadata.catalog.api.services.UpdateMessagingService;
 import org.openmetadata.catalog.entity.services.MessagingService;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.MessagingServiceRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
+import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
 
 import javax.validation.Valid;
@@ -106,7 +106,9 @@ public class MessagingServiceResource {
   public MessagingService get(@Context UriInfo uriInfo,
                              @Context SecurityContext securityContext,
                              @PathParam("id") String id) throws IOException, ParseException {
-    return dao.get(uriInfo, id, null);
+    MessagingService service = dao.get(uriInfo, id, null);
+    System.out.println("Ingestion schedule in request " + service.getIngestionSchedule());
+    return service;
   }
 
   @GET
@@ -138,23 +140,14 @@ public class MessagingServiceResource {
                          @Context SecurityContext securityContext,
                          @Valid CreateMessagingService create) throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    MessagingService service = new MessagingService().withId(UUID.randomUUID())
-            .withName(create.getName()).withDescription(create.getDescription())
-            .withServiceType(create.getServiceType())
-            .withBrokers(create.getBrokers())
-            .withSchemaRegistry(create.getSchemaRegistry())
-            .withIngestionSchedule(create.getIngestionSchedule())
-            .withUpdatedBy(securityContext.getUserPrincipal().getName())
-            .withUpdatedAt(new Date());
-
+    MessagingService service = getService(create, securityContext);
     dao.create(uriInfo, service);
     return Response.created(service.getHref()).entity(service).build();
   }
 
   @PUT
-  @Path("/{id}")
   @Operation(summary = "Update a messaging service", tags = "services",
-          description = "Update an existing messaging service identified by `id`.",
+          description = "Create a new messaging service or Update an existing messaging service identified by `id`.",
           responses = {
                   @ApiResponse(responseCode = "200", description = "Messaging service instance",
                           content = @Content(mediaType = "application/json",
@@ -165,11 +158,11 @@ public class MessagingServiceResource {
                          @Context SecurityContext securityContext,
                          @Parameter(description = "Id of the messaging service", schema = @Schema(type = "string"))
                          @PathParam("id") String id,
-                         @Valid UpdateMessagingService update) throws IOException {
+                         @Valid CreateMessagingService update) throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    MessagingService service = dao.update(uriInfo, UUID.fromString(id), update.getDescription(),
-            update.getBrokers(), update.getSchemaRegistry(), update.getIngestionSchedule());
-    return Response.ok(service).build();
+    MessagingService service = getService(update, securityContext);
+    PutResponse<MessagingService> response = dao.createOrUpdate(uriInfo, service);
+    return response.toResponse();
   }
 
   @DELETE
@@ -189,5 +182,17 @@ public class MessagingServiceResource {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     dao.delete(UUID.fromString(id));
     return Response.ok().build();
+  }
+
+  private MessagingService getService(CreateMessagingService create, SecurityContext securityContext) {
+    System.out.println("Ingestion schedule in request " + create.getIngestionSchedule());
+    return new MessagingService().withId(UUID.randomUUID())
+            .withName(create.getName()).withDescription(create.getDescription())
+            .withServiceType(create.getServiceType())
+            .withBrokers(create.getBrokers())
+            .withSchemaRegistry(create.getSchemaRegistry())
+            .withIngestionSchedule(create.getIngestionSchedule())
+            .withUpdatedBy(securityContext.getUserPrincipal().getName())
+            .withUpdatedAt(new Date());
   }
 }
