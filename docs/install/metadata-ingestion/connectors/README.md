@@ -11,7 +11,7 @@ OpenMetadata supports connectors to some popular services. We will continue as a
   * [DBT](../../../connectors/data-model/dbt.md)
   * [MariaDB](../../../connectors/data-model/mariadb.md)
 * [ElasticSearch](../../../openmetadata/connectors/elastic-search.md)
-* Glue Catalog
+* [Glue Catalog](../../../connectors/glue-catalog.md)
 * [MSSQL](../../../openmetadata/connectors/mssql.md)
 * [MySQL](../../../openmetadata/connectors/mysql.md)
 * [Hive](../../../openmetadata/connectors/hive.md)

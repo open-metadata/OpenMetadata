@@ -51,8 +51,7 @@ Preferences -> Resources -> Advanced
 Create a new directory for OpenMetadata and navigate into that directory.
 
 ```
-mkdir openmetadata-docker
-cd openmetadata-docker
+mkdir openmetadata-docker; cd openmetadata-docker
 ```
 
 ### 2. Create a Python virtual environment
