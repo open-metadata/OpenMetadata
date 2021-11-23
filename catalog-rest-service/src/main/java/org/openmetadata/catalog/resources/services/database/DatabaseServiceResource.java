@@ -107,12 +107,9 @@ public class DatabaseServiceResource {
 
     ResultList<DatabaseService> list;
     if(before != null) {
-      list = dao.listBefore(uriInfo, null, null, limitParam, before);
+      return dao.listBefore(uriInfo, null, null, limitParam, before);
     }
-    else {
-      list = dao.listAfter(uriInfo, null, null, limitParam, after);
-    }
-    return list;
+    return dao.listAfter(uriInfo, null, null, limitParam, after);
   }
 
   @GET

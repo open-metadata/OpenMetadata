@@ -28,14 +28,18 @@ import org.openmetadata.catalog.entity.services.MessagingService;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.MessagingServiceRepository;
 import org.openmetadata.catalog.resources.Collection;
+import org.openmetadata.catalog.resources.databases.TableResource.TableList;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
 
 import javax.validation.Valid;
+import javax.validation.constraints.Max;
+import javax.validation.constraints.Min;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
+import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
 import javax.ws.rs.PUT;
@@ -79,18 +83,33 @@ public class MessagingServiceResource {
     }
   }
 
-  @GET
   @Operation(summary = "List messaging services", tags = "services",
-          description = "Get a list of messaging services.",
-          responses = {
-                  @ApiResponse(responseCode = "200", description = "List of messaging service instances",
-                          content = @Content(mediaType = "application/json",
-                          schema = @Schema(implementation = MessagingServiceList.class)))
+          description = "Get a list of messaging services. Use cursor-based pagination to limit the number " +
+                  "entries in the list using `limit` and `before` or `after` query params.",
+          responses = {@ApiResponse(responseCode = "200", description = "List of messaging services",
+                  content = @Content(mediaType = "application/json",
+                          schema = @Schema(implementation = TableList.class)))
           })
   public ResultList<MessagingService> list(@Context UriInfo uriInfo,
-                                           @QueryParam("name") String name) throws IOException,
-          GeneralSecurityException, ParseException {
-    return dao.listAfter(uriInfo, null, null, 10000, null);
+                                           @Context SecurityContext securityContext,
+                                           @Parameter(description = "Limit number services returned. (1 to 1000000, " +
+                                                   "default 10)")
+                                           @DefaultValue("10")
+                                           @Min(1)
+                                           @Max(1000000)
+                                           @QueryParam("limit") int limitParam,
+                                           @Parameter(description = "Returns list of services before this cursor",
+                                                   schema = @Schema(type = "string"))
+                                           @QueryParam("before") String before,
+                                           @Parameter(description = "Returns list of services after this cursor",
+                                                   schema = @Schema(type = "string"))
+                                           @QueryParam("after") String after)
+          throws IOException, ParseException, GeneralSecurityException {
+    if (before != null) { // Reverse paging
+      return dao.listBefore(uriInfo, null, null, limitParam, before);
+    }
+    // Forward paging or first page
+    return dao.listAfter(uriInfo, null, null, limitParam, after);
   }
 
   @GET

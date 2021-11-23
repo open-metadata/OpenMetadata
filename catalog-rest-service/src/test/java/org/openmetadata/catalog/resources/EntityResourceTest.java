@@ -318,8 +318,8 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
 
   @Test
   public void put_entityCreate_as_owner_200(TestInfo test) throws IOException, URISyntaxException {
-    if (entityClass == User.class || entityClass == Team.class) {
-      return; // User and team entity POST and PUSH are admin only operations
+    if (!supportsOwner) {
+      return; // Entity doesn't support ownership
     }
     // Create a new entity with PUT as admin user
     Object request = createRequest(test, null, null, USER_OWNER1);
@@ -336,9 +336,8 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
 
   @Test
   public void put_entityUpdateOwner_200(TestInfo test) throws IOException, URISyntaxException {
-    if (entityClass == User.class || entityClass == Team.class) {
-      // Ignore the test - User and team entities can't be owned like other data assets
-      return;
+    if (!supportsOwner) {
+      return; // Entity doesn't support ownership
     }
     // Create an entity without owner
     Object request = createRequest(test, "description", "displayName", null);

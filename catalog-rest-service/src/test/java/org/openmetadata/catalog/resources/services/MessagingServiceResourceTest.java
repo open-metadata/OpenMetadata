@@ -26,12 +26,18 @@ import org.openmetadata.catalog.api.services.CreateMessagingService;
 import org.openmetadata.catalog.api.services.CreateMessagingService.MessagingServiceType;
 import org.openmetadata.catalog.entity.services.MessagingService;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
+import org.openmetadata.catalog.jdbi3.MessagingServiceRepository.MessagingServiceEntityInterface;
+import org.openmetadata.catalog.resources.EntityResourceTest;
+import org.openmetadata.catalog.resources.services.messaging.MessagingServiceResource.MessagingServiceList;
+import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Schedule;
+import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.TestUtils;
 
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response.Status;
+import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Date;
@@ -51,10 +57,15 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
 import static org.openmetadata.catalog.util.TestUtils.authHeaders;
 
-public class MessagingServiceResourceTest extends CatalogApplicationTest {
+public class MessagingServiceResourceTest extends EntityResourceTest<MessagingService> {
 
   public static List<String> KAFKA_BROKERS;
   public static URI SCHEMA_REGISTRY_URL;
+
+  public MessagingServiceResourceTest() {
+    super(Entity.MESSAGING_SERVICE, MessagingService.class, MessagingServiceList.class,
+            "services/messagingServices", "", false, false, false);
+  }
 
   @BeforeAll
   public static void setup() throws URISyntaxException {
@@ -104,12 +115,12 @@ public class MessagingServiceResourceTest extends CatalogApplicationTest {
   }
 
   @Test
-  public void post_validService_as_admin_200_ok(TestInfo test) throws HttpResponseException {
+  public void post_validService_as_admin_200_ok(TestInfo test) throws IOException {
     // Create messaging service with different optional fields
     Map<String, String> authHeaders = adminAuthHeaders();
-    createAndCheckService(create(test, 1).withDescription(null), authHeaders);
-    createAndCheckService(create(test, 2).withDescription("description"), authHeaders);
-    createAndCheckService(create(test, 3).withIngestionSchedule(null), authHeaders);
+    createAndCheckEntity(create(test, 1).withDescription(null), authHeaders);
+    createAndCheckEntity(create(test, 2).withDescription("description"), authHeaders);
+    createAndCheckEntity(create(test, 3).withIngestionSchedule(null), authHeaders);
   }
 
   @Test
@@ -118,7 +129,7 @@ public class MessagingServiceResourceTest extends CatalogApplicationTest {
     Map<String, String> authHeaders = authHeaders("test@open-metadata.org");
 
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            createAndCheckService(create(test, 1).withDescription(null), authHeaders));
+            createAndCheckEntity(create(test, 1).withDescription(null), authHeaders));
     TestUtils.assertResponse(exception, FORBIDDEN,
             "Principal: CatalogPrincipal{name='test'} is not admin");
   }
@@ -156,16 +167,16 @@ public class MessagingServiceResourceTest extends CatalogApplicationTest {
   }
 
   @Test
-  public void post_validIngestionSchedules_as_admin_200(TestInfo test) throws HttpResponseException {
+  public void post_validIngestionSchedules_as_admin_200(TestInfo test) throws IOException {
     Schedule schedule = new Schedule().withStartDate(new Date());
     schedule.withRepeatFrequency("PT60M");  // Repeat every 60M should be valid
-    createAndCheckService(create(test, 1).withIngestionSchedule(schedule), adminAuthHeaders());
+    createAndCheckEntity(create(test, 1).withIngestionSchedule(schedule), adminAuthHeaders());
 
     schedule.withRepeatFrequency("PT1H49M");
-    createAndCheckService(create(test, 2).withIngestionSchedule(schedule), adminAuthHeaders());
+    createAndCheckEntity(create(test, 2).withIngestionSchedule(schedule), adminAuthHeaders());
 
     schedule.withRepeatFrequency("P1DT1H49M");
-    createAndCheckService(create(test, 3).withIngestionSchedule(schedule), adminAuthHeaders());
+    createAndCheckEntity(create(test, 3).withIngestionSchedule(schedule), adminAuthHeaders());
   }
 
   @Test
@@ -211,9 +222,9 @@ public class MessagingServiceResourceTest extends CatalogApplicationTest {
   }
 
   @Test
-  public void put_update_as_non_admin_401(TestInfo test) throws HttpResponseException {
+  public void put_update_as_non_admin_401(TestInfo test) throws IOException {
     Map<String, String> authHeaders = adminAuthHeaders();
-    MessagingService dbService = createAndCheckService(create(test).withDescription(null).withIngestionSchedule(null),
+    MessagingService dbService = createAndCheckEntity(create(test).withDescription(null).withIngestionSchedule(null),
             authHeaders);
     String id = dbService.getId().toString();
     RestUtil.DATE_TIME_FORMAT.format(new Date());
@@ -239,23 +250,6 @@ public class MessagingServiceResourceTest extends CatalogApplicationTest {
             -> getServiceByName("invalidName", null, adminAuthHeaders()));
     TestUtils.assertResponse(exception, NOT_FOUND, CatalogExceptionMessage.entityNotFound(Entity.MESSAGING_SERVICE,
             "invalidName"));
-  }
-
-  public static MessagingService createAndCheckService(CreateMessagingService create,
-                                                      Map<String, String> authHeaders) throws HttpResponseException {
-    String updatedBy = TestUtils.getPrincipal(authHeaders);
-    MessagingService service = createService(create, authHeaders);
-    assertEquals(0.1, service.getVersion());
-    validateService(service, create.getName(), create.getDescription(), create.getIngestionSchedule(), updatedBy);
-
-    // GET the newly created service and validate
-    MessagingService getService = getService(service.getId(), authHeaders);
-    validateService(getService, create.getName(), create.getDescription(), create.getIngestionSchedule(), updatedBy);
-
-    // GET the newly created service by name and validate
-    getService = getServiceByName(service.getName(), null, authHeaders);
-    validateService(getService, create.getName(), create.getDescription(), create.getIngestionSchedule(), updatedBy);
-    return service;
   }
 
   public static MessagingService createService(CreateMessagingService create,
@@ -383,5 +377,53 @@ public class MessagingServiceResourceTest extends CatalogApplicationTest {
                                                      URI expectedSchemaRegistry) {
     assertTrue(actualService.getBrokers().containsAll(expectedBrokers));
     assertEquals(actualService.getSchemaRegistry(), expectedSchemaRegistry);
+  }
+
+  @Override
+  public Object createRequest(TestInfo test, int index, String description, String displayName, EntityReference owner)
+          throws URISyntaxException {
+    return create(test).withName(getName(test, index)).withDescription(description);
+  }
+
+  @Override
+  public void validateCreatedEntity(MessagingService service, Object request, Map<String, String> authHeaders)
+          throws HttpResponseException {
+    CreateMessagingService createRequest = (CreateMessagingService) request;
+    validateCommonEntityFields(getEntityInterface(service), createRequest.getDescription(),
+            TestUtils.getPrincipal(authHeaders), null);
+    Schedule expectedIngestion = createRequest.getIngestionSchedule();
+    if (expectedIngestion != null) {
+      assertEquals(expectedIngestion.getStartDate(), service.getIngestionSchedule().getStartDate());
+      assertEquals(expectedIngestion.getRepeatFrequency(), service.getIngestionSchedule().getRepeatFrequency());
+    }
+  }
+
+  @Override
+  public void validateUpdatedEntity(MessagingService service, Object request, Map<String, String> authHeaders)
+          throws HttpResponseException {
+    UpdateMessagingService createRequest = (UpdateMessagingService) request;
+    validateCommonEntityFields(getEntityInterface(service), createRequest.getDescription(),
+            TestUtils.getPrincipal(authHeaders), null);
+    Schedule expectedIngestion = createRequest.getIngestionSchedule();
+    if (expectedIngestion != null) {
+      assertEquals(expectedIngestion.getStartDate(), service.getIngestionSchedule().getStartDate());
+      assertEquals(expectedIngestion.getRepeatFrequency(), service.getIngestionSchedule().getRepeatFrequency());
+    }
+  }
+
+  @Override
+  public void compareEntities(MessagingService expected, MessagingService updated, Map<String, String> authHeaders)
+          throws HttpResponseException {
+
+  }
+
+  @Override
+  public EntityInterface<MessagingService> getEntityInterface(MessagingService entity) {
+    return new MessagingServiceEntityInterface(entity);
+  }
+
+  @Override
+  public void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException {
+    return; // TODO
   }
 }

@@ -28,20 +28,25 @@ import org.openmetadata.catalog.entity.services.StorageService;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.StorageServiceRepository;
 import org.openmetadata.catalog.resources.Collection;
+import org.openmetadata.catalog.resources.databases.TableResource.TableList;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
 
 import javax.validation.Valid;
+import javax.validation.constraints.Max;
+import javax.validation.constraints.Min;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
+import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
 import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
+import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
@@ -81,15 +86,32 @@ public class StorageServiceResource {
 
   @GET
   @Operation(summary = "List storage services", tags = "services",
-          description = "Get a list of storage services.",
-          responses = {
-                  @ApiResponse(responseCode = "200", description = "List of storage service instances",
-                          content = @Content(mediaType = "application/json",
-                                  schema = @Schema(implementation = StorageServiceList.class)))
+          description = "Get a list of storage services. Use cursor-based pagination to limit the number " +
+                  "entries in the list using `limit` and `before` or `after` query params.",
+          responses = {@ApiResponse(responseCode = "200", description = "List of storage services",
+                  content = @Content(mediaType = "application/json",
+                          schema = @Schema(implementation = TableList.class)))
           })
-  public ResultList<StorageService> list(@Context UriInfo uriInfo) throws IOException, GeneralSecurityException,
-          ParseException {
-    return dao.listAfter(uriInfo, null, null, 10000, null);
+  public ResultList<StorageService> list(@Context UriInfo uriInfo,
+                                         @Context SecurityContext securityContext,
+                                         @Parameter(description = "Limit number services returned. (1 to 1000000, " +
+                                                 "default 10)")
+                                         @DefaultValue("10")
+                                         @Min(1)
+                                         @Max(1000000)
+                                         @QueryParam("limit") int limitParam,
+                                         @Parameter(description = "Returns list of services before this cursor",
+                                                 schema = @Schema(type = "string"))
+                                         @QueryParam("before") String before,
+                                         @Parameter(description = "Returns list of services after this cursor",
+                                                 schema = @Schema(type = "string"))
+                                         @QueryParam("after") String after) throws IOException,
+          GeneralSecurityException, ParseException {
+    if (before != null) { // Reverse paging
+      return dao.listBefore(uriInfo, null, null, limitParam, before);
+    }
+    // Forward paging or first page
+    return dao.listAfter(uriInfo, null, null, limitParam, after);
   }
 
   @GET
