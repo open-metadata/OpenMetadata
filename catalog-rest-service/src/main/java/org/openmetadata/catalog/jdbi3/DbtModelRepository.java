@@ -451,7 +451,7 @@ public class DbtModelRepository extends EntityRepository<DbtModel> {
       for (Column updated : updatedColumns) {
         // Find stored column matching name, data type and ordinal position
         Column stored = origColumns.stream().filter(c ->
-        EntityUtil.columnMatch.test(c, updated)).findAny().orElse(null);
+          EntityUtil.columnMatch.test(c, updated)).findAny().orElse(null);
         if (stored == null) { // New column added
           continue;
         }

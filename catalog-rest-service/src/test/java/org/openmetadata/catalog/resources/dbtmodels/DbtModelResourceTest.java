@@ -541,11 +541,11 @@ public class DbtModelResourceTest extends EntityResourceTest<DbtModel> {
     dbtModelList = listEntities(queryParams, adminAuthHeaders());
     assertEquals(2, dbtModelList.getData().size());
     assertFields(dbtModelList.getData(), fields1);
-    for (DbtModel DbtModel : dbtModelList.getData()) {
-      assertEquals(DbtModel.getOwner().getId(), USER_OWNER1.getId());
-      assertEquals(DbtModel.getOwner().getType(), USER_OWNER1.getType());
-      assertEquals(DbtModel.getDatabase().getId(), DATABASE.getId());
-      assertEquals(DbtModel.getDatabase().getName(), DATABASE.getFullyQualifiedName());
+    for (DbtModel dbtModel : dbtModelList.getData()) {
+      assertEquals(dbtModel.getOwner().getId(), USER_OWNER1.getId());
+      assertEquals(dbtModel.getOwner().getType(), USER_OWNER1.getType());
+      assertEquals(dbtModel.getDatabase().getId(), DATABASE.getId());
+      assertEquals(dbtModel.getDatabase().getName(), DATABASE.getFullyQualifiedName());
     }
 
     // List DbtModels with databaseFQN as filter
@@ -644,38 +644,38 @@ public class DbtModelResourceTest extends EntityResourceTest<DbtModel> {
     assertColumns(columns, dbtModel.getColumns());
   }
 
-  void assertFields(List<DbtModel> DbtModelList, String fieldsParam) {
-    DbtModelList.forEach(t -> assertFields(t, fieldsParam));
+  void assertFields(List<DbtModel> dbtModelList, String fieldsParam) {
+    dbtModelList.forEach(t -> assertFields(t, fieldsParam));
   }
 
-  void assertFields(DbtModel DbtModel, String fieldsParam) {
+  void assertFields(DbtModel dbtModel, String fieldsParam) {
     Fields fields = new Fields(DbtModelResource.FIELD_LIST, fieldsParam);
 
     if (fields.contains("owner")) {
-      assertNotNull(DbtModel.getOwner());
+      assertNotNull(dbtModel.getOwner());
     } else {
-      assertNull(DbtModel.getOwner());
+      assertNull(dbtModel.getOwner());
     }
     if (fields.contains("columns")) {
-      assertNotNull(DbtModel.getColumns());
+      assertNotNull(dbtModel.getColumns());
       if (fields.contains("tags")) {
-        DbtModel.getColumns().forEach(column -> assertNotNull(column.getTags()));
+        dbtModel.getColumns().forEach(column -> assertNotNull(column.getTags()));
       } else {
-        DbtModel.getColumns().forEach(column -> assertNull(column.getTags()));
+        dbtModel.getColumns().forEach(column -> assertNull(column.getTags()));
       }
     } else {
-      assertNotNull(DbtModel.getColumns());
+      assertNotNull(dbtModel.getColumns());
     }
 
     if (fields.contains("database")) {
-      assertNotNull(DbtModel.getDatabase());
+      assertNotNull(dbtModel.getDatabase());
     } else {
-      assertNull(DbtModel.getDatabase());
+      assertNull(dbtModel.getDatabase());
     }
     if (fields.contains("tags")) {
-      assertNotNull(DbtModel.getTags());
+      assertNotNull(dbtModel.getTags());
     } else {
-      assertNull(DbtModel.getTags());
+      assertNull(dbtModel.getTags());
     }
   }
 
@@ -736,7 +736,8 @@ public class DbtModelResourceTest extends EntityResourceTest<DbtModel> {
     return getDbtModel(id, null, authHeaders);
   }
 
-  public static DbtModel getDbtModel(UUID id, String fields, Map<String, String> authHeaders) throws HttpResponseException {
+  public static DbtModel getDbtModel(UUID id, String fields, Map<String, String> authHeaders)
+      throws HttpResponseException {
     WebTarget target = CatalogApplicationTest.getResource("dbtmodels/" + id);
     target = fields != null ? target.queryParam("fields", fields) : target;
     return TestUtils.get(target, DbtModel.class, authHeaders);
