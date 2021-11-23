@@ -118,7 +118,10 @@ declare module 'Models' {
   export type Paging = {
     after: string;
     before: string;
+    total?: number;
   };
+
+  export type LoadingState = 'initial' | 'waiting' | 'success';
 
   export type TableDetail = {
     description: string;
