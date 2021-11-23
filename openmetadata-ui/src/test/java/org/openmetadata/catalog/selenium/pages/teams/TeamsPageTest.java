@@ -39,51 +39,51 @@ import java.util.ArrayList;
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class TeamsPageTest {
 
-    static WebDriver webDriver;
-    static String URL = Property.getInstance().getURL();
-    Integer waitTime = Property.getInstance().getSleepTime();
-    static Faker faker = new Faker();
-    static String enterDescription = "//div[@data-testid='enterDescription']/div/div[2]/div/div/div/div/div/div";
-    static String teamDisplayName = faker.name().lastName();
-    static Actions actions;
-    static WebDriverWait wait;
+  static WebDriver webDriver;
+  static String URL = Property.getInstance().getURL();
+  Integer waitTime = Property.getInstance().getSleepTime();
+  static Faker faker = new Faker();
+  static String enterDescription = "//div[@data-testid='enterDescription']/div/div[2]/div/div/div/div/div/div";
+  static String teamDisplayName = faker.name().lastName();
+  static Actions actions;
+  static WebDriverWait wait;
 
-    @BeforeEach
-    public void openMetadataWindow() {
-        System.setProperty("webdriver.chrome.driver", "src/test/resources/drivers/linux/chromedriver");
-        ChromeOptions options = new ChromeOptions();
-        options.addArguments("--no-sandbox");
-        options.addArguments("--disable-dev-shm-usage");
-        options.addArguments("--headless");
-        webDriver = new ChromeDriver(options);
-        actions = new Actions(webDriver);
-        wait = new WebDriverWait(webDriver, Duration.ofSeconds(30));
-        webDriver.manage().window().maximize();
-        webDriver.get(URL);
-    }
+  @BeforeEach
+  public void openMetadataWindow() {
+    System.setProperty("webdriver.chrome.driver", "src/test/resources/drivers/linux/chromedriver");
+    ChromeOptions options = new ChromeOptions();
+    options.addArguments("--no-sandbox");
+    options.addArguments("--disable-dev-shm-usage");
+    options.addArguments("--headless");
+    webDriver = new ChromeDriver(options);
+    actions = new Actions(webDriver);
+    wait = new WebDriverWait(webDriver, Duration.ofSeconds(30));
+    webDriver.manage().window().maximize();
+    webDriver.get(URL);
+  }
 
-    @Test
-    @Order(1)
-    public void openTeamsPage() throws InterruptedException {
-        Events.click(webDriver, By.cssSelector("[data-testid='closeWhatsNew']")); // Close What's new
-        Events.click(webDriver, By.cssSelector("[data-testid='menu-button'][id='menu-button-Settings']")); // Setting
-        Events.click(webDriver, By.cssSelector("[data-testid='menu-item-Teams']")); // Setting/Teams
-        Thread.sleep(waitTime);
-    }
+  @Test
+  @Order(1)
+  public void openTeamsPage() throws InterruptedException {
+    Events.click(webDriver, By.cssSelector("[data-testid='closeWhatsNew']")); // Close What's new
+    Events.click(webDriver, By.cssSelector("[data-testid='menu-button'][id='menu-button-Settings']")); // Setting
+    Events.click(webDriver, By.cssSelector("[data-testid='menu-item-Teams']")); // Setting/Teams
+    Thread.sleep(waitTime);
+  }
 
-    @Test
-    @Order(2)
-    public void createTeam() throws InterruptedException {
-        openTeamsPage();
-        Events.click(webDriver, By.cssSelector("[data-testid='add-teams']")); // add team
-        Events.sendKeys(webDriver, By.name("name"), faker.name().firstName()); // name
-        Events.sendKeys(webDriver, By.name("displayName"), teamDisplayName); // displayname
-        Events.sendKeys(webDriver, By.xpath(enterDescription), faker.address().toString());
-        Events.click(webDriver, By.cssSelector("[data-testid='boldButton']"));
-        Events.click(webDriver, By.cssSelector("[data-testid='italicButton']"));
-        Events.click(webDriver, By.cssSelector("[data-testid='linkButton']"));
-        Events.click(webDriver, By.cssSelector("[data-testid='saveButton']"));
-    }
+  @Test
+  @Order(2)
+  public void createTeam() throws InterruptedException {
+    openTeamsPage();
+    Events.click(webDriver, By.cssSelector("[data-testid='add-teams']")); // add team
+    Events.sendKeys(webDriver, By.name("name"), faker.name().firstName()); // name
+    Events.sendKeys(webDriver, By.name("displayName"), teamDisplayName); // displayname
+    Events.sendKeys(webDriver, By.xpath(enterDescription), faker.address().toString());
+    Events.click(webDriver, By.cssSelector("[data-testid='boldButton']"));
+    Events.click(webDriver, By.cssSelector("[data-testid='italicButton']"));
+    Events.click(webDriver, By.cssSelector("[data-testid='linkButton']"));
+    Events.click(webDriver, By.cssSelector("[data-testid='saveButton']"));
+  }
 
   @Test
   @Order(3)
@@ -99,54 +99,54 @@ public class TeamsPageTest {
     }
   }
 
-    @Test
-    @Order(4)
-    public void editDescription() throws InterruptedException {
-        openTeamsPage();
-        Events.click(webDriver, By.xpath("//*[text()[contains(.,'"+ teamDisplayName +"')]] "));
-        // Select the created listed team
-        Events.click(webDriver, By.cssSelector("[data-testid='add-description']"));
-        wait.until(ExpectedConditions.elementToBeClickable(
-                By.xpath(enterDescription)));
-        Events.sendKeys(webDriver, By.xpath(enterDescription), faker.address().toString());
-        Events.click(webDriver, By.cssSelector("[data-testid='save']"));
-    }
+  @Test
+  @Order(4)
+  public void editDescription() throws InterruptedException {
+    openTeamsPage();
+    Events.click(webDriver, By.xpath("//*[text()[contains(.,'" + teamDisplayName + "')]] "));
+    // Select the created listed team
+    Events.click(webDriver, By.cssSelector("[data-testid='add-description']"));
+    wait.until(ExpectedConditions.elementToBeClickable(
+        By.xpath(enterDescription)));
+    Events.sendKeys(webDriver, By.xpath(enterDescription), faker.address().toString());
+    Events.click(webDriver, By.cssSelector("[data-testid='save']"));
+  }
 
-    @Test
-    @Order(5)
-    public void addAsset() throws InterruptedException {
-        openTeamsPage();
-        Events.click(webDriver, By.xpath("//*[text()[contains(.,'"+ teamDisplayName +"')]] "));
-        // Select the created listed team
-        Events.click(webDriver, By.cssSelector("[data-testid='assets']")); // Assets
-        Events.click(webDriver, By.cssSelector("[data-testid='appbar-item'][id='explore']")); // Explore
-        Events.click(webDriver, By.cssSelector("[data-testid='sortBy']")); // Sort By
-        Events.click(webDriver, By.cssSelector("[data-testid='list-item']")); // Last Updated // Last Updated
-        Events.click(webDriver, By.xpath("//div[@data-testid='search-container']//div//div[10]//div//div//h6"));
-        Events.click(webDriver, By.xpath("(//button[@data-testid='tab'])[4]")); // Manage
-        Events.click(webDriver, By.cssSelector("[data-testid='owner-dropdown']")); // Owner
-        Events.sendKeys(webDriver, By.cssSelector("[data-testid='searchInputText']"), teamDisplayName);
-        Events.click(webDriver, By.cssSelector("[data-testid='list-item']")); // Select User/Team
-        Events.click(webDriver, By.cssSelector("[data-testid='saveManageTab']")); // Save
-        Events.click(webDriver, By.cssSelector("[data-testid='menu-button'][id='menu-button-Settings']")); // Setting
-        Events.click(webDriver, By.cssSelector("[data-testid='menu-item-Teams']")); // Setting/Teams
-        Events.click(webDriver, By.xpath("//*[text()[contains(.,'"+ teamDisplayName +"')]] "));
-        // Select the created listed team
-        Thread.sleep(waitTime);
-        Events.click(webDriver, By.cssSelector("[data-testid='assets']"));
-        Events.click(webDriver, By.cssSelector("[data-testid='user-card-container']"));
-    }
+  @Test
+  @Order(5)
+  public void addAsset() throws InterruptedException {
+    openTeamsPage();
+    Events.click(webDriver, By.xpath("//*[text()[contains(.,'" + teamDisplayName + "')]] "));
+    // Select the created listed team
+    Events.click(webDriver, By.cssSelector("[data-testid='assets']")); // Assets
+    Events.click(webDriver, By.cssSelector("[data-testid='appbar-item'][id='explore']")); // Explore
+    Events.click(webDriver, By.cssSelector("[data-testid='sortBy']")); // Sort By
+    Events.click(webDriver, By.cssSelector("[data-testid='list-item']")); // Last Updated // Last Updated
+    Events.click(webDriver, By.xpath("//div[@data-testid='search-container']//div//div[10]//div//div//h6"));
+    Events.click(webDriver, By.xpath("(//button[@data-testid='tab'])[4]")); // Manage
+    Events.click(webDriver, By.cssSelector("[data-testid='owner-dropdown']")); // Owner
+    Events.sendKeys(webDriver, By.cssSelector("[data-testid='searchInputText']"), teamDisplayName);
+    Events.click(webDriver, By.cssSelector("[data-testid='list-item']")); // Select User/Team
+    Events.click(webDriver, By.cssSelector("[data-testid='saveManageTab']")); // Save
+    Events.click(webDriver, By.cssSelector("[data-testid='menu-button'][id='menu-button-Settings']")); // Setting
+    Events.click(webDriver, By.cssSelector("[data-testid='menu-item-Teams']")); // Setting/Teams
+    Events.click(webDriver, By.xpath("//*[text()[contains(.,'" + teamDisplayName + "')]] "));
+    // Select the created listed team
+    Thread.sleep(waitTime);
+    Events.click(webDriver, By.cssSelector("[data-testid='assets']"));
+    Events.click(webDriver, By.cssSelector("[data-testid='user-card-container']"));
+  }
 
-    @AfterEach
-    public void closeTabs() {
-        ArrayList<String> tabs = new ArrayList<>(webDriver.getWindowHandles());
-        String originalHandle = webDriver.getWindowHandle();
-        for (String handle : webDriver.getWindowHandles()) {
-            if (!handle.equals(originalHandle)) {
-                webDriver.switchTo().window(handle);
-                webDriver.close();
-            }
-        }
-        webDriver.switchTo().window(tabs.get(0)).close();
+  @AfterEach
+  public void closeTabs() {
+    ArrayList<String> tabs = new ArrayList<>(webDriver.getWindowHandles());
+    String originalHandle = webDriver.getWindowHandle();
+    for (String handle : webDriver.getWindowHandles()) {
+      if (!handle.equals(originalHandle)) {
+        webDriver.switchTo().window(handle);
+        webDriver.close();
+      }
     }
+    webDriver.switchTo().window(tabs.get(0)).close();
+  }
 }

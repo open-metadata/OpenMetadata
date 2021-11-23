@@ -24,22 +24,22 @@ import org.openqa.selenium.support.ui.WebDriverWait;
 
 public final class Events {
 
-    @SuppressWarnings("unused")
-    private Events() {
-    }
+  @SuppressWarnings("unused")
+  private Events() {
+  }
 
-    public static void click(WebDriver driver, By by) {
-        (new WebDriverWait(driver, 30)).until(ExpectedConditions.elementToBeClickable(by));
-        driver.findElement(by).click();
-    }
+  public static void click(WebDriver driver, By by) {
+    (new WebDriverWait(driver, 30)).until(ExpectedConditions.elementToBeClickable(by));
+    driver.findElement(by).click();
+  }
 
-    public static void sendKeys(WebDriver driver, By by, String sendKeys) {
-        (new WebDriverWait(driver, 30)).until(ExpectedConditions.elementToBeClickable(by));
-        driver.findElement(by).sendKeys(sendKeys);
-    }
+  public static void sendKeys(WebDriver driver, By by, String sendKeys) {
+    (new WebDriverWait(driver, 30)).until(ExpectedConditions.elementToBeClickable(by));
+    driver.findElement(by).sendKeys(sendKeys);
+  }
 
-    public static void sendEnter(WebDriver driver, By by) {
-        (new WebDriverWait(driver, 30)).until(ExpectedConditions.elementToBeClickable(by));
-        driver.findElement(by).sendKeys(Keys.ENTER);
-    }
+  public static void sendEnter(WebDriver driver, By by) {
+    (new WebDriverWait(driver, 30)).until(ExpectedConditions.elementToBeClickable(by));
+    driver.findElement(by).sendKeys(Keys.ENTER);
+  }
 }

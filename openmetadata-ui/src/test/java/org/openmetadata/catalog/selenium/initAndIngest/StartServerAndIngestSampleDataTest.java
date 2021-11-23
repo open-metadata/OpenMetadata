@@ -24,18 +24,18 @@ import java.util.logging.Logger;
 
 public class StartServerAndIngestSampleDataTest {
 
-    private static final Logger LOG = Logger.getLogger(StartServerAndIngestSampleDataTest.class.getName());
+  private static final Logger LOG = Logger.getLogger(StartServerAndIngestSampleDataTest.class.getName());
 
-    // RUN THIS TEST FIRST
+  // RUN THIS TEST FIRST
 
-    @Test
-    public void initAndIngestTest() throws IOException, InterruptedException {
-        File scriptDir = new File("../bin/initAndIngest.sh");
-        String absolutePath = scriptDir.getAbsolutePath();
-        String[] runScript = {"sh", absolutePath};
-        Process processRunScript = Runtime.getRuntime().exec(runScript);
-        processRunScript.waitFor();
-        LOG.info("Server started and Ingested the data");
-    }
+  @Test
+  public void initAndIngestTest() throws IOException, InterruptedException {
+    File scriptDir = new File("../bin/initAndIngest.sh");
+    String absolutePath = scriptDir.getAbsolutePath();
+    String[] runScript = {"sh", absolutePath};
+    Process processRunScript = Runtime.getRuntime().exec(runScript);
+    processRunScript.waitFor();
+    LOG.info("Server started and Ingested the data");
+  }
 }
 
