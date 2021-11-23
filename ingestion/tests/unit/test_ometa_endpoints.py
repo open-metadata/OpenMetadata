@@ -13,11 +13,11 @@ from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.metrics import Metrics
+from metadata.generated.schema.entity.data.mlmodel import MlModel
 from metadata.generated.schema.entity.data.model import Model
 from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.data.report import Report
 from metadata.generated.schema.entity.data.table import Table
-from metadata.generated.schema.entity.data.task import Task
 from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
@@ -42,8 +42,11 @@ class OMetaEndpointTest(TestCase):
         Pass Entities and test their suffix generation
         """
 
-        # ML
+        # DBT Model
         self.assertEqual(self.metadata.get_suffix(Model), "/models")
+
+        # ML
+        self.assertEqual(self.metadata.get_suffix(MlModel), "/mlmodels")
 
         # Db
         self.assertEqual(self.metadata.get_suffix(Database), "/databases")

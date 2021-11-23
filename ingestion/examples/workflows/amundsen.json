@@ -1,0 +1,23 @@
+{
+  "source": {
+    "type": "amundsen",
+    "config": {
+      "neo4j_url": "bolt://192.168.1.8:7687",
+      "neo4j_username": "neo4j",
+      "neo4j_password": "test"
+    }
+  },
+  "sink": {
+    "type": "metadata-rest",
+    "config": {
+      "api_endpoint": "http://localhost:8585/api"
+    }
+  },
+  "metadata_server": {
+    "type": "metadata-server",
+    "config": {
+      "api_endpoint": "http://localhost:8585/api",
+      "auth_provider_type": "no-auth"
+    }
+  }
+}

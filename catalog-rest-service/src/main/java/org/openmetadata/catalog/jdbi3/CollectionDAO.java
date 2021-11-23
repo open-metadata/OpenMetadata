@@ -30,7 +30,7 @@ import org.openmetadata.catalog.entity.data.Chart;
 import org.openmetadata.catalog.entity.data.Dashboard;
 import org.openmetadata.catalog.entity.data.Database;
 import org.openmetadata.catalog.entity.data.Location;
-import org.openmetadata.catalog.entity.data.MLModel;
+import org.openmetadata.catalog.entity.data.MlModel;
 import org.openmetadata.catalog.entity.data.Metrics;
 import org.openmetadata.catalog.entity.data.Model;
 import org.openmetadata.catalog.entity.data.Pipeline;
@@ -56,7 +56,7 @@ import org.openmetadata.catalog.jdbi3.DatabaseServiceRepository.DatabaseServiceE
 import org.openmetadata.catalog.jdbi3.LocationRepository.LocationEntityInterface;
 import org.openmetadata.catalog.jdbi3.MessagingServiceRepository.MessagingServiceEntityInterface;
 import org.openmetadata.catalog.jdbi3.MetricsRepository.MetricsEntityInterface;
-import org.openmetadata.catalog.jdbi3.MLModelRepository.MLModelEntityInterface;
+import org.openmetadata.catalog.jdbi3.MlModelRepository.MlModelEntityInterface;
 import org.openmetadata.catalog.jdbi3.ModelRepository.ModelEntityInterface;
 import org.openmetadata.catalog.jdbi3.PipelineRepository.PipelineEntityInterface;
 import org.openmetadata.catalog.jdbi3.PipelineServiceRepository.PipelineServiceEntityInterface;
@@ -129,7 +129,7 @@ public interface CollectionDAO {
   ModelDAO modelDAO();
 
   @CreateSqlObject
-  MLModelDAO mlModelDAO();
+  MlModelDAO mlModelDAO();
 
   @CreateSqlObject
   BotsDAO botsDAO();
@@ -496,19 +496,19 @@ public interface CollectionDAO {
     }
   }
 
-  interface MLModelDAO extends EntityDAO<MLModel>{
+  interface MlModelDAO extends EntityDAO<MlModel>{
     @Override
     default String getTableName() { return "ml_model_entity"; }
 
     @Override
-    default Class<MLModel> getEntityClass() { return MLModel.class; }
+    default Class<MlModel> getEntityClass() { return MlModel.class; }
 
     @Override
     default String getNameColumn() { return "fullyQualifiedName"; }
 
     @Override
-    default EntityReference getEntityReference(MLModel entity) {
-      return new MLModelEntityInterface(entity).getEntityReference();
+    default EntityReference getEntityReference(MlModel entity) {
+      return new MlModelEntityInterface(entity).getEntityReference();
     }
   }
 

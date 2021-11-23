@@ -41,6 +41,7 @@ import {
   getServiceDetailsPath,
 } from '../../constants/constants';
 import { EntityType } from '../../enums/entity.enum';
+import { ServiceCategory } from '../../enums/service.enum';
 import {
   Table,
   TableData,
@@ -231,7 +232,8 @@ const DatasetDetailsPage: FunctionComponent = () => {
                   url: resService.data.name
                     ? getServiceDetailsPath(
                         resService.data.name,
-                        resService.data.serviceType
+                        resService.data.serviceType,
+                        ServiceCategory.DATABASE_SERVICES
                       )
                     : '',
                   imgSrc: resService.data.serviceType

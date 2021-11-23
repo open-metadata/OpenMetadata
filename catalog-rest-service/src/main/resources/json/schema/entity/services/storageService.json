@@ -54,5 +54,6 @@
     "name",
     "serviceType",
     "href"
-  ]
+  ],
+  "additionalProperties": false
 }

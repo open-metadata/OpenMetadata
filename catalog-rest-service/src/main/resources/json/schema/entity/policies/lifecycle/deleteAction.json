@@ -28,5 +28,6 @@
         "daysAfterModification"
       ]
     }
-  ]
+  ],
+  "additionalProperties": false
 }

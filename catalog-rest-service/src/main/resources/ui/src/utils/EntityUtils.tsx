@@ -1,4 +1,5 @@
 import { isNil } from 'lodash';
+import { Bucket } from 'Models';
 import React from 'react';
 import TableProfilerGraph from '../components/TableProfiler/TableProfilerGraph.component';
 import {
@@ -7,6 +8,7 @@ import {
   getTeamDetailsPath,
 } from '../constants/constants';
 import { EntityType } from '../enums/entity.enum';
+import { ServiceCategory } from '../enums/service.enum';
 import { Dashboard } from '../generated/entity/data/dashboard';
 import { Pipeline } from '../generated/entity/data/pipeline';
 import { Table } from '../generated/entity/data/table';
@@ -79,7 +81,11 @@ export const getEntityOverview = (
         {
           name: 'Service',
           value: service,
-          url: getServiceDetailsPath(service, serviceType),
+          url: getServiceDetailsPath(
+            service,
+            serviceType,
+            ServiceCategory.DATABASE_SERVICES
+          ),
           isLink: true,
         },
         {
@@ -166,7 +172,11 @@ export const getEntityOverview = (
         {
           name: 'Service',
           value: service?.name as string,
-          url: getServiceDetailsPath(service?.name as string, serviceType),
+          url: getServiceDetailsPath(
+            service?.name as string,
+            serviceType,
+            ServiceCategory.PIPELINE_SERVICES
+          ),
           isLink: true,
         },
         {
@@ -199,4 +209,38 @@ export const getEntityOverview = (
     default:
       return [];
   }
+};
+
+// Note: This method is enhanced from "getEntityCountByService" of ServiceUtils.ts
+export const getEntityCountByType = (buckets: Array<Bucket>) => {
+  const entityCounts = {
+    tableCount: 0,
+    topicCount: 0,
+    dashboardCount: 0,
+    pipelineCount: 0,
+  };
+  buckets?.forEach((bucket) => {
+    switch (bucket.key) {
+      case EntityType.TABLE:
+        entityCounts.tableCount += bucket.doc_count;
+
+        break;
+      case EntityType.TOPIC:
+        entityCounts.topicCount += bucket.doc_count;
+
+        break;
+      case EntityType.DASHBOARD:
+        entityCounts.dashboardCount += bucket.doc_count;
+
+        break;
+      case EntityType.PIPELINE:
+        entityCounts.pipelineCount += bucket.doc_count;
+
+        break;
+      default:
+        break;
+    }
+  });
+
+  return entityCounts;
 };

@@ -6,9 +6,11 @@ import {
   AIRFLOW,
   ATHENA,
   BIGQUERY,
+  GLUE,
   HIVE,
   KAFKA,
   LOOKER,
+  MARIADB,
   MSSQL,
   MYSQL,
   ORACLE,
@@ -24,6 +26,7 @@ import {
   SUPERSET,
   TABLEAU,
   TRINO,
+  VERTICA,
 } from '../constants/services.const';
 import {
   DashboardServiceType,
@@ -68,6 +71,15 @@ export const serviceTypeLogo = (type: string) => {
 
     case DatabaseServiceType.TRINO:
       return TRINO;
+
+    case DatabaseServiceType.GLUE:
+      return GLUE;
+
+    case DatabaseServiceType.MARIADB:
+      return MARIADB;
+
+    case DatabaseServiceType.VERTICA:
+      return VERTICA;
 
     case MessagingServiceType.KAFKA:
       return KAFKA;
@@ -194,6 +206,7 @@ export const getServiceCategoryFromType = (
   return serviceCategory;
 };
 
+// Note: This method is deprecated by "getEntityCountByType" of EntityUtils.ts
 export const getEntityCountByService = (buckets: Array<Bucket>) => {
   const entityCounts = {
     tableCount: 0,
@@ -212,6 +225,9 @@ export const getEntityCountByService = (buckets: Array<Bucket>) => {
       case DatabaseServiceType.POSTGRES:
       case DatabaseServiceType.PRESTO:
       case DatabaseServiceType.TRINO:
+      case DatabaseServiceType.GLUE:
+      case DatabaseServiceType.MARIADB:
+      case DatabaseServiceType.VERTICA:
       case DatabaseServiceType.REDSHIFT:
       case DatabaseServiceType.SNOWFLAKE:
         entityCounts.tableCount += bucket.doc_count;
@@ -292,6 +308,11 @@ export const getIngestionTypeList = (
 
     case DatabaseServiceType.SNOWFLAKE:
       ingestionType = [IngestionType.SNOWFLAKE, IngestionType.SNOWFLAKE_USAGE];
+
+      break;
+
+    case DatabaseServiceType.VERTICA:
+      ingestionType = [IngestionType.VERTICA];
 
       break;
 

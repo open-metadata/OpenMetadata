@@ -21,9 +21,11 @@ import noService from '../assets/img/no-service.png';
 import airflow from '../assets/img/service-icon-airflow.png';
 import athena from '../assets/img/service-icon-athena.png';
 import serviceDefault from '../assets/img/service-icon-generic.png';
+import glue from '../assets/img/service-icon-glue.png';
 import hive from '../assets/img/service-icon-hive.png';
 import kafka from '../assets/img/service-icon-kafka.png';
 import looker from '../assets/img/service-icon-looker.png';
+import mariadb from '../assets/img/service-icon-mariadb.png';
 import mssql from '../assets/img/service-icon-mssql.png';
 import oracle from '../assets/img/service-icon-oracle.png';
 import postgres from '../assets/img/service-icon-post.png';
@@ -38,6 +40,7 @@ import mysql from '../assets/img/service-icon-sql.png';
 import superset from '../assets/img/service-icon-superset.png';
 import tableau from '../assets/img/service-icon-tableau.png';
 import trino from '../assets/img/service-icon-trino.png';
+import vertica from '../assets/img/service-icon-vertica.png';
 import plus from '../assets/svg/plus.svg';
 
 export const NoDataFoundPlaceHolder = noDataFound;
@@ -52,6 +55,9 @@ export const SNOWFLAKE = snowflakes;
 export const ATHENA = athena;
 export const PRESTO = presto;
 export const TRINO = trino;
+export const GLUE = glue;
+export const MARIADB = mariadb;
+export const VERTICA = vertica;
 export const KAFKA = kafka;
 export const PULSAR = pulsar;
 export const SUPERSET = superset;
@@ -79,10 +85,13 @@ export const serviceTypes: Record<ServiceTypes, Array<string>> = {
     'Athena',
     'Presto',
     'Trino',
+    'Glue',
+    'MariaDB',
+    'Vertica',
   ],
   messagingServices: ['Kafka'],
   dashboardServices: ['Superset', 'Looker', 'Tableau', 'Redash'],
-  pipelineServices: ['Airflow', 'Prefect'],
+  pipelineServices: ['Airflow', 'Prefect', 'Glue'],
 };
 
 export const arrServiceTypes: Array<ServiceTypes> = [

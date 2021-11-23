@@ -48,5 +48,6 @@
         "destination"
       ]
     }
-  ]
+  ],
+  "additionalProperties": false
 }

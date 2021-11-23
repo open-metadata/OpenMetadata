@@ -35,6 +35,7 @@ export interface CreateStorageService {
  * Type of storage service such as S3, GCS, HDFS...
  */
 export enum StorageServiceType {
+  Abfs = 'ABFS',
   Gcs = 'GCS',
   Hdfs = 'HDFS',
   S3 = 'S3',

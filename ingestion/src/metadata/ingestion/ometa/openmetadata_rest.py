@@ -122,6 +122,8 @@ class OktaAuthenticationProvider(AuthenticationProvider):
         return cls(config)
 
     def auth_token(self) -> str:
+        from okta.jwt import JWT
+
         my_pem, my_jwk = JWT.get_PEM_JWK(self.config.private_key)
         claims = {
             "sub": self.config.client_id,

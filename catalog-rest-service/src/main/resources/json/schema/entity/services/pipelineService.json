@@ -83,5 +83,6 @@
     "id",
     "name",
     "pipelineUrl"
-  ]
+  ],
+  "additionalProperties": false
 }

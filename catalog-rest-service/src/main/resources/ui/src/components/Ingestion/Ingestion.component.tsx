@@ -26,6 +26,7 @@ import {
   TITLE_FOR_NON_ADMIN_ACTION,
 } from '../../constants/constants';
 import { NoDataFoundPlaceHolder } from '../../constants/services.const';
+import { ServiceCategory } from '../../enums/service.enum';
 import { useAuth } from '../../hooks/authHooks';
 import { isEven } from '../../utils/CommonUtils';
 import { Button } from '../buttons/Button/Button';
@@ -287,7 +288,9 @@ const Ingestion: React.FC<Props> = ({
                       <Link
                         to={getServiceDetailsPath(
                           ingestion.service.name as string,
-                          getServiceTypeFromName(ingestion.service.name)
+                          getServiceTypeFromName(ingestion.service.name),
+                          // TODO: Add logic below to select service-cat if necessary
+                          ServiceCategory.DATABASE_SERVICES
                         )}>
                         {ingestion.service.name}
                       </Link>
@@ -324,6 +327,7 @@ const Ingestion: React.FC<Props> = ({
                         <div className="tw-flex">
                           <div
                             className="link-text tw-mr-2"
+                            data-testid="run"
                             onClick={() =>
                               handleTriggerIngestion(
                                 ingestion.id as string,
@@ -340,8 +344,9 @@ const Ingestion: React.FC<Props> = ({
                               'Run'
                             )}
                           </div>
-                          <p
+                          <div
                             className="link-text tw-mr-2"
+                            data-testid="edit"
                             onClick={() => handleUpdate(ingestion)}>
                             {updateSelection.id === ingestion.id ? (
                               updateSelection.state === 'success' ? (
@@ -352,9 +357,10 @@ const Ingestion: React.FC<Props> = ({
                             ) : (
                               'Edit'
                             )}
-                          </p>
+                          </div>
                           <div
                             className="link-text tw-mr-2"
+                            data-testid="delete"
                             onClick={() =>
                               ConfirmDelete(
                                 ingestion.id as string,
@@ -418,7 +424,7 @@ const Ingestion: React.FC<Props> = ({
       {isUpdating ? (
         <IngestionModal
           isUpdating
-          header={<p>{`Edit ${updateSelection.name}`}</p>}
+          header={<span>{`Edit ${updateSelection.name}`}</span>}
           ingestionList={ingestionList}
           selectedIngestion={updateSelection.ingestion}
           serviceList={serviceList.map((s) => ({
