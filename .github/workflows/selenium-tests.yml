@@ -9,13 +9,11 @@ on:
     paths:
       - 'catalog-rest-service/src/main/resource/ui/**'
       - 'catalog-rest-service/src/test/java/org/openmetadata/catalog/selenium/pages/**'
-      - 'docker/**'
   pull_request:
     branches: [main]
     paths:
       - 'catalog-rest-service/src/main/resource/ui/**'
       - 'catalog-rest-service/src/test/java/org/openmetadata/catalog/selenium/pages/**'
-      - 'docker/**'
 
 jobs:
   build:
