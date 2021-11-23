@@ -64,6 +64,18 @@ export const deleteIngestionWorkflowsById = (
 
   return APIClient({ method: 'delete', url, baseURL: operationsBaseUrl });
 };
+export const updateIngestionWorkflow = (
+  data: IngestionData
+): Promise<AxiosResponse> => {
+  const url = `/ingestion/`;
+
+  return APIClient({
+    method: 'put',
+    url,
+    baseURL: operationsBaseUrl,
+    data: data,
+  });
+};
 
 export const patchIngestionWorkflowBtId = (
   id: string,

@@ -16,15 +16,16 @@
 */
 
 import { AxiosError, AxiosResponse } from 'axios';
-import { Operation } from 'fast-json-patch';
+// import { Operation } from 'fast-json-patch';
 import { Paging } from 'Models';
 import React, { useEffect, useState } from 'react';
 import {
   addIngestionWorkflow,
   deleteIngestionWorkflowsById,
   getIngestionWorkflows,
-  patchIngestionWorkflowBtId,
+  // patchIngestionWorkflowBtId,
   triggerIngestionWorkflowsById,
+  updateIngestionWorkflow,
 } from '../../axiosAPIs/ingestionWorkflowAPI';
 import { getServices } from '../../axiosAPIs/serviceAPI';
 import Ingestion from '../../components/Ingestion/Ingestion.component';
@@ -121,14 +122,42 @@ const IngestionPage = () => {
     });
   };
 
-  const updateIngestionById = (
+  // code for updating ingestion with patch api
+  // const updateIngestionById = (
+  //   id: string,
+  //   displayName: string,
+  //   patch: Array<Operation>,
+  //   triggerIngestion?: boolean
+  // ): Promise<void> => {
+  //   return new Promise<void>((resolve, reject) => {
+  //     patchIngestionWorkflowBtId(id, patch)
+  //       .then(() => {
+  //         resolve();
+  //         getAllIngestionWorkflows();
+  //         if (triggerIngestion) {
+  //           triggerIngestionById(id, displayName).then();
+  //         }
+  //       })
+  //       .catch((err: AxiosError) => {
+  //         const msg = err.message;
+  //         showToast({
+  //           variant: 'error',
+  //           body:
+  //             msg ?? `Error while updating ingestion workflow ${displayName}`,
+  //         });
+  //         reject();
+  //       });
+  //   });
+  // };
+
+  const updateIngestion = (
+    data: IngestionData,
     id: string,
     displayName: string,
-    patch: Array<Operation>,
     triggerIngestion?: boolean
   ): Promise<void> => {
     return new Promise<void>((resolve, reject) => {
-      patchIngestionWorkflowBtId(id, patch)
+      updateIngestionWorkflow(data)
         .then(() => {
           resolve();
           getAllIngestionWorkflows();
@@ -213,7 +242,7 @@ const IngestionPage = () => {
           pagingHandler={pagingHandler}
           serviceList={serviceList}
           triggerIngestion={triggerIngestionById}
-          updateIngestion={updateIngestionById}
+          updateIngestion={updateIngestion}
         />
       )}
     </>

@@ -17,7 +17,6 @@
 
 import classNames from 'classnames';
 import cronstrue from 'cronstrue';
-import { compare } from 'fast-json-patch';
 import { capitalize, isNil, lowerCase } from 'lodash';
 import React, { useCallback, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -121,12 +120,11 @@ const Ingestion: React.FC<Props> = ({
       service,
       owner,
     };
-    const patch = compare(updateSelection.ingestion, updatedData);
     setUpdateSelection((prev) => ({ ...prev, state: 'waiting' }));
     updateIngestion(
+      updatedData,
       updateSelection.id,
       updateSelection.name,
-      patch,
       triggerIngestion
     )
       .then(() => {
