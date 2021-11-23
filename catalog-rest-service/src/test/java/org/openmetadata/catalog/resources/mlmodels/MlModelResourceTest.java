@@ -17,7 +17,6 @@
 package org.openmetadata.catalog.resources.mlmodels;
 
 import org.apache.http.client.HttpResponseException;
-import org.apache.logging.log4j.core.util.JsonUtils;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
@@ -32,9 +31,11 @@ import org.openmetadata.catalog.entity.data.MlModel;
 import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.jdbi3.MlModelRepository;
 import org.openmetadata.catalog.resources.EntityResourceTest;
+import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.Column;
 import org.openmetadata.catalog.type.ColumnConstraint;
 import org.openmetadata.catalog.type.FeatureSourceDataType;
+import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.type.MlFeature;
 import org.openmetadata.catalog.type.MlFeatureDataType;
 import org.openmetadata.catalog.type.MlFeatureSource;
@@ -57,6 +58,7 @@ import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.TestUtils;
 import org.openmetadata.catalog.util.TestUtils.UpdateType;
+import org.openmetadata.catalog.util.JsonUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -184,28 +186,28 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
   }
 
   @Test
-  public void post_validMlModels_as_admin_200_OK(TestInfo test) throws HttpResponseException {
+  public void post_validMlModels_as_admin_200_OK(TestInfo test) throws IOException {
     // Create valid model
     CreateMlModel create = create(test);
-    createAndCheckModel(create, adminAuthHeaders());
+    createAndCheckEntity(create, adminAuthHeaders());
 
     create.withName(getModelName(test, 1)).withDescription("description");
-    createAndCheckModel(create, adminAuthHeaders());
+    createAndCheckEntity(create, adminAuthHeaders());
   }
 
   @Test
-  public void post_MlModelWithUserOwner_200_ok(TestInfo test) throws HttpResponseException {
-    createAndCheckModel(create(test).withOwner(USER_OWNER1), adminAuthHeaders());
+  public void post_MlModelWithUserOwner_200_ok(TestInfo test) throws IOException {
+    createAndCheckEntity(create(test).withOwner(USER_OWNER1), adminAuthHeaders());
   }
 
   @Test
-  public void post_MlModelWithTeamOwner_200_ok(TestInfo test) throws HttpResponseException {
-    createAndCheckModel(create(test).withOwner(TEAM_OWNER1).withDisplayName("Model1"), adminAuthHeaders());
+  public void post_MlModelWithTeamOwner_200_ok(TestInfo test) throws IOException {
+    createAndCheckEntity(create(test).withOwner(TEAM_OWNER1).withDisplayName("Model1"), adminAuthHeaders());
   }
 
   @Test
-  public void post_MlModelWithDashboard_200_ok(TestInfo test) throws HttpResponseException {
-    createAndCheckModel(create(test), DASHBOARD_REFERENCE, adminAuthHeaders());
+  public void post_MlModelWithDashboard_200_ok(TestInfo test) throws IOException {
+    createAndCheckEntity(create(test).withDashboard(DASHBOARD_REFERENCE), adminAuthHeaders());
   }
 
   @Test
@@ -233,176 +235,34 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
   }
 
   @Test
-  public void get_ModelListWithInvalidLimitOffset_4xx() {
-    // Limit must be >= 1 and <= 1000,000
-    HttpResponseException exception = assertThrows(HttpResponseException.class, ()
-            -> listModels(null, -1, null, null, adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, "[query param limit must be greater than or equal to 1]");
-
-    exception = assertThrows(HttpResponseException.class, ()
-            -> listModels(null, 0, null, null, adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, "[query param limit must be greater than or equal to 1]");
-
-    exception = assertThrows(HttpResponseException.class, ()
-            -> listModels(null, 1000001, null, null, adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, "[query param limit must be less than or equal to 1000000]");
-  }
-
-  @Test
-  public void get_ModelListWithInvalidPaginationCursors_4xx() {
-    // Passing both before and after cursors is invalid
-    HttpResponseException exception = assertThrows(HttpResponseException.class, ()
-            -> listModels(null, 1, "", "", adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, "Only one of before or after query parameter allowed");
-  }
-
-  @Test
-  public void get_ModelListWithValidLimitOffset_4xx(TestInfo test) throws HttpResponseException {
-    // Create a large number of Models
-    int maxModels = 40;
-    for (int i = 0; i < maxModels; i++) {
-      createMlModel(create(test, i), adminAuthHeaders());
-    }
-
-    // List all Models
-    MlModelList allModels = listModels(null, 1000000, null,
-            null, adminAuthHeaders());
-    int totalRecords = allModels.getData().size();
-    printModels(allModels);
-
-    // List limit number Models at a time at various offsets and ensure right results are returned
-    for (int limit = 1; limit < maxModels; limit++) {
-      String after = null;
-      String before;
-      int pageCount = 0;
-      int indexInAllModels = 0;
-      MlModelList forwardPage;
-      MlModelList backwardPage;
-      do { // For each limit (or page size) - forward scroll till the end
-        LOG.info("Limit {} forward scrollCount {} afterCursor {}", limit, pageCount, after);
-        forwardPage = listModels(null, limit, null, after, adminAuthHeaders());
-        printModels(forwardPage);
-        after = forwardPage.getPaging().getAfter();
-        before = forwardPage.getPaging().getBefore();
-        assertEntityPagination(allModels.getData(), forwardPage, limit, indexInAllModels);
-
-        if (pageCount == 0) {  // CASE 0 - First page is being returned. There is no before cursor
-          assertNull(before);
-        } else {
-          // Make sure scrolling back based on before cursor returns the correct result
-          backwardPage = listModels(null, limit, before, null, adminAuthHeaders());
-          assertEntityPagination(allModels.getData(), backwardPage, limit, (indexInAllModels - limit));
-        }
-
-        indexInAllModels += forwardPage.getData().size();
-        pageCount++;
-      } while (after != null);
-
-      // We have now reached the last page - test backward scroll till the beginning
-      pageCount = 0;
-      indexInAllModels = totalRecords - limit - forwardPage.getData().size();
-      do {
-        LOG.info("Limit {} backward scrollCount {} beforeCursor {}", limit, pageCount, before);
-        forwardPage = listModels(null, limit, before, null, adminAuthHeaders());
-        printModels(forwardPage);
-        before = forwardPage.getPaging().getBefore();
-        assertEntityPagination(allModels.getData(), forwardPage, limit, indexInAllModels);
-        pageCount++;
-        indexInAllModels -= forwardPage.getData().size();
-      } while (before != null);
-    }
-  }
-
-  private void printModels(MlModelList list) {
-    list.getData().forEach(Model -> LOG.info("DB {}", Model.getFullyQualifiedName()));
-    LOG.info("before {} after {} ", list.getPaging().getBefore(), list.getPaging().getAfter());
-  }
-
-  @Test
-  public void put_ModelUpdateWithNoChange_200(TestInfo test) throws HttpResponseException {
+  public void put_ModelUpdateWithNoChange_200(TestInfo test) throws IOException {
     // Create a Model with POST
     CreateMlModel request = create(test).withOwner(USER_OWNER1);
-    MlModel model = createAndCheckModel(request, adminAuthHeaders());
+    MlModel model = createAndCheckEntity(request, adminAuthHeaders());
+    ChangeDescription change = getChangeDescription(model.getVersion());
 
     // Update Model two times successfully with PUT requests
-    model = updateAndCheckModel(model, request, OK, adminAuthHeaders(), NO_CHANGE);
-    updateAndCheckModel(model, request, OK, adminAuthHeaders(), NO_CHANGE);
+    updateAndCheckEntity(request, Status.OK, adminAuthHeaders(), NO_CHANGE, change);
   }
 
   @Test
-  public void put_ModelCreate_200(TestInfo test) throws HttpResponseException {
-    // Create a new Model with PUT
-    CreateMlModel request = create(test).withOwner(USER_OWNER1);
-    updateAndCheckModel(null, request.withName(test.getDisplayName()).withDescription(null), CREATED,
-            adminAuthHeaders(), NO_CHANGE);
-  }
-
-  @Test
-  public void put_ModelCreate_as_owner_200(TestInfo test) throws HttpResponseException {
-    // Create a new Model with put
-    CreateMlModel request = create(test).withOwner(USER_OWNER1);
-    // Add model as admin
-    MlModel model = createAndCheckModel(request, adminAuthHeaders());
-    // Update the table as Owner
-    updateAndCheckModel(model, request.withDescription("new"), OK, authHeaders(USER1.getEmail()), MINOR_UPDATE);
-  }
-
-  @Test
-  public void put_ModelNullDescriptionUpdate_200(TestInfo test) throws HttpResponseException {
-    CreateMlModel request = create(test).withDescription(null);
-    MlModel model = createAndCheckModel(request, adminAuthHeaders());
-
-    // Update null description with a new description
-    MlModel db = updateAndCheckModel(model, request.withDisplayName("model1").
-            withDescription("newDescription"), OK, adminAuthHeaders(), MINOR_UPDATE);
-    assertEquals("model1", db.getDisplayName()); // Move this check to validate method
-  }
-
-  @Test
-  public void put_ModelEmptyDescriptionUpdate_200(TestInfo test) throws HttpResponseException {
-    // Create table with empty description
+  public void put_ModelUpdateAlgorithm_200(TestInfo test) throws IOException {
     CreateMlModel request = create(test).withDescription("");
-    MlModel model = createAndCheckModel(request, adminAuthHeaders());
+    MlModel model = createAndCheckEntity(request, adminAuthHeaders());
+    ChangeDescription change = getChangeDescription(model.getVersion());
+    change.getFieldsUpdated().add(new FieldChange().withName("algorithm").withNewValue("SVM"));
 
-    // Update empty description with a new description
-    updateAndCheckModel(model, request.withDescription("newDescription"), OK, adminAuthHeaders(), MINOR_UPDATE);
+    updateAndCheckEntity(request.withAlgorithm("SVM"), Status.OK, adminAuthHeaders(), MINOR_UPDATE, change);
   }
 
   @Test
-  public void put_ModelNonEmptyDescriptionUpdate_200(TestInfo test) throws HttpResponseException {
-    CreateMlModel request = create(test).withDescription("description");
-    createAndCheckModel(request, adminAuthHeaders());
-
-    // Updating description is ignored when backend already has description
-    MlModel db = updateModel(request.withDescription("newDescription"), OK, adminAuthHeaders());
-    assertEquals("description", db.getDescription());
-  }
-
-  @Test
-  public void put_ModelUpdateOwner_200(TestInfo test) throws HttpResponseException {
+  public void put_ModelUpdateDashboard_200(TestInfo test) throws IOException {
     CreateMlModel request = create(test).withDescription("");
-    MlModel model = createAndCheckModel(request, adminAuthHeaders());
+    MlModel model = createAndCheckEntity(request, adminAuthHeaders());
+    ChangeDescription change = getChangeDescription(model.getVersion());
+    change.getFieldsUpdated().add(new FieldChange().withName("dashboard").withNewValue(DASHBOARD_REFERENCE));
 
-    // Change ownership from USER_OWNER1 to TEAM_OWNER1
-    model = updateAndCheckModel(model, request.withOwner(TEAM_OWNER1), OK, adminAuthHeaders(), MINOR_UPDATE);
-
-    // Remove ownership
-    model = updateAndCheckModel(model, request.withOwner(null), OK, adminAuthHeaders(), MINOR_UPDATE);
-    assertNull(model.getOwner());
-  }
-
-  @Test
-  public void put_ModelUpdateAlgorithm_200(TestInfo test) throws HttpResponseException {
-    CreateMlModel request = create(test).withDescription("");
-    MlModel model = createAndCheckModel(request, adminAuthHeaders());
-    updateAndCheckModel(model, request.withAlgorithm("SVM"), OK, adminAuthHeaders(), MINOR_UPDATE);
-  }
-
-  @Test
-  public void put_ModelUpdateDashboard_200(TestInfo test) throws HttpResponseException {
-    CreateMlModel request = create(test).withDescription("");
-    MlModel model = createAndCheckModel(request, adminAuthHeaders());
-    updateAndCheckModel(model, request.withDashboard(DASHBOARD_REFERENCE), OK, adminAuthHeaders(), MINOR_UPDATE);
+    updateAndCheckEntity(request.withDashboard(DASHBOARD_REFERENCE), Status.OK, adminAuthHeaders(), MINOR_UPDATE, change);
   }
 
   @Test
@@ -414,18 +274,18 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
   }
 
   @Test
-  public void get_ModelWithDifferentFields_200_OK(TestInfo test) throws HttpResponseException {
+  public void get_ModelWithDifferentFields_200_OK(TestInfo test) throws IOException {
     CreateMlModel create = create(test).withDescription("description")
             .withOwner(USER_OWNER1).withDashboard(DASHBOARD_REFERENCE);
-    MlModel model = createAndCheckModel(create, adminAuthHeaders());
+    MlModel model = createAndCheckEntity(create, adminAuthHeaders());
     validateGetWithDifferentFields(model, false);
   }
 
   @Test
-  public void get_ModelByNameWithDifferentFields_200_OK(TestInfo test) throws HttpResponseException {
+  public void get_ModelByNameWithDifferentFields_200_OK(TestInfo test) throws IOException {
     CreateMlModel create = create(test).withDescription("description")
             .withOwner(USER_OWNER1).withDashboard(DASHBOARD_REFERENCE);
-    MlModel model = createAndCheckModel(create, adminAuthHeaders());
+    MlModel model = createAndCheckEntity(create, adminAuthHeaders());
     validateGetWithDifferentFields(model, true);
   }
 
@@ -436,63 +296,10 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
   }
 
   @Test
-  public void delete_nonEmptyModel_4xx() {
-    // TODO
-  }
-
-  @Test
   public void delete_nonExistentModel_404() {
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
             deleteModel(TestUtils.NON_EXISTENT_ENTITY, adminAuthHeaders()));
     assertResponse(exception, NOT_FOUND, entityNotFound(Entity.MLMODEL, TestUtils.NON_EXISTENT_ENTITY));
-  }
-
-  public static MlModel createAndCheckModel(CreateMlModel create,
-                                          Map<String, String> authHeaders) throws HttpResponseException {
-    String updatedBy = TestUtils.getPrincipal(authHeaders);
-    MlModel model = createMlModel(create, authHeaders);
-    validateModel(model, create.getDisplayName(), create.getDescription(), create.getOwner(), updatedBy);
-    return getAndValidate(model.getId(), create, authHeaders, updatedBy);
-  }
-
-  public static MlModel createAndCheckModel(CreateMlModel create, EntityReference dashboard,
-                                          Map<String, String> authHeaders) throws HttpResponseException {
-    String updatedBy = TestUtils.getPrincipal(authHeaders);
-    create.withDashboard(dashboard);
-    MlModel model = createMlModel(create, authHeaders);
-    assertEquals(0.1, model.getVersion());
-    validateModel(model, create.getDescription(), create.getOwner(), create.getTags(), updatedBy);
-    return getAndValidate(model.getId(), create, authHeaders, updatedBy);
-  }
-
-  public static MlModel updateAndCheckModel(MlModel before, CreateMlModel create, Status status,
-                                          Map<String, String> authHeaders, UpdateType updateType)
-          throws HttpResponseException {
-    String updatedBy = TestUtils.getPrincipal(authHeaders);
-    MlModel updatedModel = updateModel(create, status, authHeaders);
-    validateModel(updatedModel, create.getDescription(), create.getOwner(), updatedBy);
-    if (before == null) {
-      assertEquals(0.1, updatedModel.getVersion()); // First version created
-    } else {
-      TestUtils.validateUpdate(before.getVersion(), updatedModel.getVersion(), updateType);
-    }
-
-    return getAndValidate(updatedModel.getId(), create, authHeaders, updatedBy);
-  }
-
-  // Make sure in GET operations the returned Model has all the required information passed during creation
-  public static MlModel getAndValidate(UUID modelId,
-                                     CreateMlModel create,
-                                     Map<String, String> authHeaders,
-                                     String expectedUpdatedBy) throws HttpResponseException {
-    // GET the newly created Model by ID and validate
-    MlModel model = getModel(modelId, "owner", authHeaders);
-    validateModel(model, create.getDescription(), create.getOwner(), expectedUpdatedBy);
-
-    // GET the newly created Model by name and validate
-    String fqn = model.getFullyQualifiedName();
-    model = getModelByName(fqn, "owner", authHeaders);
-    return validateModel(model, create.getDescription(), create.getOwner(), expectedUpdatedBy);
   }
 
   public static MlModel updateModel(CreateMlModel create,
