@@ -29,7 +29,6 @@ import {
   updateService,
 } from '../../axiosAPIs/serviceAPI';
 import { Button } from '../../components/buttons/Button/Button';
-import NextPrevious from '../../components/common/next-previous/NextPrevious';
 import NonAdminAction from '../../components/common/non-admin-action/NonAdminAction';
 import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
 import Searchbar from '../../components/common/searchbar/Searchbar';
@@ -52,6 +51,7 @@ import {
   NoDataFoundPlaceHolder,
   servicesDisplayName,
 } from '../../constants/services.const';
+import { CursorType } from '../../enums/pagination.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import {
   DashboardService,
@@ -125,6 +125,11 @@ const ServicesPage = () => {
     dashboardServices: 0,
     pipelineServices: 0,
   });
+
+  const [isLoadingMore, setIsLoadingMore] = useState<boolean>(false);
+  const [status, setStatus] = useState<'initial' | 'waiting' | 'success'>(
+    'initial'
+  );
 
   const updateServiceList = (
     allServiceCollectionArr: Array<ServiceCollection>
@@ -410,14 +415,15 @@ const ServicesPage = () => {
   };
 
   const pagingHandler = (cursorType: string) => {
-    setIsLoading(true);
+    setIsLoadingMore(true);
+    setStatus('waiting');
     const currentServicePaging = paging[serviceName];
     const pagingString = `${serviceName}?${cursorType}=${
       currentServicePaging[cursorType as keyof Paging]
     }`;
     getServices(pagingString)
       .then((result: AxiosResponse) => {
-        const currentServices = result.data.data;
+        const currentServices = [...services[serviceName], ...result.data.data];
         setServiceList(currentServices);
 
         setServices({
@@ -429,8 +435,12 @@ const ServicesPage = () => {
           ...paging,
           [serviceName]: result.data.paging,
         });
+        setStatus('success');
       })
-      .finally(() => setIsLoading(false));
+      .finally(() => {
+        setIsLoadingMore(false);
+        setStatus('initial');
+      });
   };
 
   useEffect(() => {
@@ -644,14 +654,39 @@ const ServicesPage = () => {
               </div>
             )}
 
-            {Boolean(
-              !isNil(paging[serviceName].after) ||
-                !isNil(paging[serviceName].before)
-            ) && (
-              <NextPrevious
-                paging={paging[serviceName]}
-                pagingHandler={pagingHandler}
-              />
+            {Boolean(!isNil(paging[serviceName].after)) && (
+              <div className="tw-my-4 tw-flex tw-justify-center tw-items-center">
+                {isLoadingMore ? (
+                  <Button
+                    disabled
+                    className="tw-h-10"
+                    size="regular"
+                    theme="primary"
+                    variant="contained">
+                    <Loader size="small" type="white" />
+                    <span className="tw-pl-1.5">Loading</span>{' '}
+                  </Button>
+                ) : status === 'success' ? (
+                  <Button
+                    disabled
+                    className="tw-h-10 disabled:tw-opacity-100"
+                    size="regular"
+                    theme="primary"
+                    variant="contained">
+                    <i aria-hidden="true" className="fa fa-check" />
+                  </Button>
+                ) : (
+                  <Button
+                    className="tw-h-10"
+                    data-testid="saveManageTab"
+                    size="regular"
+                    theme="primary"
+                    variant="contained"
+                    onClick={() => pagingHandler(CursorType.AFTER)}>
+                    <span>Load more</span>
+                  </Button>
+                )}
+              </div>
             )}
 
             {isModalOpen && (
