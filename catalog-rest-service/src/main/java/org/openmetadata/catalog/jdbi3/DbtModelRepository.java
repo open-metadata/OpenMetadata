@@ -105,11 +105,11 @@ public class DbtModelRepository extends EntityRepository<DbtModel> {
 
   private void setColumnFQN(String parentFQN, List<Column> columns) {
     columns.forEach(c -> {
-        String columnFqn = parentFQN + "." + c.getName();
-        c.setFullyQualifiedName(columnFqn);
-        if (c.getChildren() != null) {
-            setColumnFQN(columnFqn, c.getChildren());
-        }
+      String columnFqn = parentFQN + "." + c.getName();
+      c.setFullyQualifiedName(columnFqn);
+      if (c.getChildren() != null) {
+          setColumnFQN(columnFqn, c.getChildren());
+      }
     });
   }
 
@@ -121,7 +121,7 @@ public class DbtModelRepository extends EntityRepository<DbtModel> {
     for (Column column : columns) {
       column.setTags(EntityUtil.addDerivedTags(dao.tagDAO(), column.getTags()));
       if (column.getChildren() != null) {
-          addDerivedTags(column.getChildren());
+        addDerivedTags(column.getChildren());
       }
     }
   }
@@ -160,9 +160,9 @@ public class DbtModelRepository extends EntityRepository<DbtModel> {
     dbtModel.getColumns().forEach(column -> column.setTags(null));
 
     if (update) {
-        dao.dbtModelDAO().update(dbtModel.getId(), JsonUtils.pojoToJson(dbtModel));
+      dao.dbtModelDAO().update(dbtModel.getId(), JsonUtils.pojoToJson(dbtModel));
     } else {
-        dao.dbtModelDAO().insert(dbtModel);
+      dao.dbtModelDAO().insert(dbtModel);
     }
 
     // Restore the relationships
@@ -234,7 +234,7 @@ public class DbtModelRepository extends EntityRepository<DbtModel> {
     List<String> result = dao.relationshipDAO().findFrom(tableId.toString(),
             Relationship.CONTAINS.ordinal(), Entity.DATABASE);
     if (result.size() != 1) {
-        throw EntityNotFoundException.byMessage(String.format("Database for table %s Not found", tableId));
+      throw EntityNotFoundException.byMessage(String.format("Database for table %s Not found", tableId));
     }
     return dao.databaseDAO().findEntityReferenceById(UUID.fromString(result.get(0)));
   }
@@ -260,9 +260,9 @@ public class DbtModelRepository extends EntityRepository<DbtModel> {
   }
 
   // Validate if a given column exists in the model
-  private void validateColumn(DbtModel DbtModel, String columnName) {
+  private void validateColumn(DbtModel dbtModel, String columnName) {
     boolean validColumn = false;
-    for (Column column : DbtModel.getColumns()) {
+    for (Column column : dbtModel.getColumns()) {
       if (column.getName().equals(columnName)) {
         validColumn = true;
         break;
@@ -274,9 +274,9 @@ public class DbtModelRepository extends EntityRepository<DbtModel> {
   }
 
   // Validate if a given column exists in the model
-  private void validateColumnFQN(DbtModel DbtModel, String columnFQN) {
+  private void validateColumnFQN(DbtModel dbtModel, String columnFQN) {
     boolean validColumn = false;
-    for (Column column : DbtModel.getColumns()) {
+    for (Column column : dbtModel.getColumns()) {
       if (column.getFullyQualifiedName().equals(columnFQN)) {
         validColumn = true;
         break;
@@ -426,7 +426,7 @@ public class DbtModelRepository extends EntityRepository<DbtModel> {
       DbtModel updatedDbtModel = updated.getEntity();
       updateDBTNodeType(origDbtModel, updatedDbtModel);
       updateColumns("columns", origDbtModel.getColumns(),
-        updated.getEntity().getColumns(), EntityUtil.columnMatch);
+            updated.getEntity().getColumns(), EntityUtil.columnMatch);
     }
 
     private void updateDBTNodeType(DbtModel origModel, DbtModel updatedModel) throws JsonProcessingException {
@@ -468,7 +468,7 @@ public class DbtModelRepository extends EntityRepository<DbtModel> {
       }
 
       if (!deletedColumns.isEmpty()) {
-          majorVersionChange = true;
+        majorVersionChange = true;
       }
     }
 
