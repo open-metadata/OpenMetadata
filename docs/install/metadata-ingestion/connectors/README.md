@@ -7,7 +7,11 @@ OpenMetadata supports connectors to some popular services. We will continue as a
 * [Athena](../../../openmetadata/connectors/athena.md)
 * [BigQuery](../../../openmetadata/connectors/bigquery.md)
 * [BigQuery Usage](../../../openmetadata/connectors/bigquery-usage.md)
+* [Data Model](../../../connectors/data-model/)
+  * [DBT](../../../connectors/data-model/dbt.md)
+  * [MariaDB](../../../connectors/data-model/mariadb.md)
 * [ElasticSearch](../../../openmetadata/connectors/elastic-search.md)
+* Glue Catalog
 * [MSSQL](../../../openmetadata/connectors/mssql.md)
 * [MySQL](../../../openmetadata/connectors/mysql.md)
 * [Hive](../../../openmetadata/connectors/hive.md)
@@ -38,3 +42,4 @@ OpenMetadata supports connectors to some popular services. We will continue as a
 
 * Airflow
 * Prefect
+* Glue
