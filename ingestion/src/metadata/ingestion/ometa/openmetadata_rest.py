@@ -24,7 +24,6 @@ import google.auth
 import google.auth.transport.requests
 from google.oauth2 import service_account
 from jose import jwt
-from okta.jwt import JWT
 from pydantic import BaseModel
 
 from metadata.config.common import ConfigModel
@@ -123,6 +122,8 @@ class OktaAuthenticationProvider(AuthenticationProvider):
         return cls(config)
 
     def auth_token(self) -> str:
+        from okta.jwt import JWT
+
         my_pem, my_jwk = JWT.get_PEM_JWK(self.config.private_key)
         claims = {
             "sub": self.config.client_id,
