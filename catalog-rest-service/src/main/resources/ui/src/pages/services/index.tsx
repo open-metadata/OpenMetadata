@@ -528,7 +528,7 @@ const ServicesPage = () => {
             </div>
             {serviceList.length ? (
               <div
-                className="tw-grid tw-grid-cols-4 tw-gap-4"
+                className="tw-grid tw-grid-cols-4 tw-gap-4 tw-mb-4"
                 data-testid="data-container">
                 {serviceList.map((service, index) => (
                   <div
@@ -659,7 +659,7 @@ const ServicesPage = () => {
               </div>
             )}
 
-            {Boolean(!isNil(paging[serviceName].after)) && (
+            {!isNil(paging[serviceName].after) && (
               <div className="tw-my-4 tw-flex tw-justify-center tw-items-center">
                 <LoadMorePagination
                   showLoadingText
