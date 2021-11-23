@@ -446,6 +446,7 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
               </label>
               <input
                 className="tw-form-inputs tw-px-3 tw-py-1"
+                data-testid="includeFilterPattern"
                 id="includeFilterPattern"
                 name="includeFilterPattern"
                 placeholder="Include filter patterns comma seperated"
@@ -460,6 +461,7 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
               </label>
               <input
                 className="tw-form-inputs tw-px-3 tw-py-1"
+                data-testid="excludeFilterPattern"
                 id="excludeFilterPattern"
                 name="excludeFilterPattern"
                 placeholder="Exclude filter patterns comma seperated"
@@ -526,6 +528,7 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
                 <label htmlFor="endDate">End date (UTC):</label>
                 <input
                   className="tw-form-inputs tw-px-3 tw-py-1"
+                  data-testid="endDate"
                   min={startDate}
                   type="date"
                   value={endDate}

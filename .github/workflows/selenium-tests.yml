@@ -22,6 +22,9 @@ jobs:
         java-version: '11'
         distribution: 'adopt'
 
+    - name: Generating Data Models
+      run: make install_dev generate
+
     - name: Start Server and Ingest Sample Data
       run: ./docker/run_local_docker.sh
 
