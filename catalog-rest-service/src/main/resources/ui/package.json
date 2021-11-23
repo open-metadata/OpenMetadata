@@ -88,7 +88,8 @@
   },
   "scripts": {
     "start": "NODE_ENV=development BABEL_ENV=development webpack serve --config ./webpack.config.dev.js --env development",
-    "build": "NODE_ENV=production BABEL_ENV=production webpack --config ./webpack.config.prod.js --env production",
+    "prodbuild": "NODE_ENV=production BABEL_ENV=production webpack --config ./webpack.config.prod.js --env production",
+    "build": "npm run json2ts && npm run prodbuild",
     "postbuild": "rm -rf ./dist/ && mkdir -p ./dist/assets && mv build/* ./dist/assets/",
     "test": "jest --passWithNoTests --watch",
     "test:nowatch": "jest --passWithNoTests",
