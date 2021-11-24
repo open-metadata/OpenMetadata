@@ -26,6 +26,7 @@ import org.openmetadata.catalog.resources.events.EventResource.ChangeEventList;
 import org.openmetadata.catalog.resources.services.DatabaseServiceResourceTest;
 import org.openmetadata.catalog.resources.services.MessagingServiceResourceTest;
 import org.openmetadata.catalog.resources.tags.TagResourceTest;
+import org.openmetadata.catalog.resources.services.PipelineServiceResourceTest;
 import org.openmetadata.catalog.resources.teams.TeamResourceTest;
 import org.openmetadata.catalog.resources.teams.UserResourceTest;
 import org.openmetadata.catalog.type.ChangeDescription;
@@ -70,7 +71,6 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.openmetadata.catalog.resources.services.PipelineServiceResourceTest.createService;
 import static org.openmetadata.catalog.util.TestUtils.NON_EXISTENT_ENTITY;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
@@ -138,45 +138,48 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     CreateDatabaseService createDatabaseService = new CreateDatabaseService()
             .withName(DatabaseServiceResourceTest.getName(test, 1))
             .withServiceType(DatabaseServiceType.Snowflake).withJdbc(TestUtils.JDBC_INFO);
-    DatabaseService databaseService = DatabaseServiceResourceTest.createService(createDatabaseService,
+    DatabaseService databaseService = new DatabaseServiceResourceTest().createEntity(createDatabaseService,
             adminAuthHeaders());
     SNOWFLAKE_REFERENCE = new EntityReference().withName(databaseService.getName()).withId(databaseService.getId())
             .withType(Entity.DATABASE_SERVICE);
 
+    DatabaseServiceResourceTest databaseServieResourceTest = new DatabaseServiceResourceTest();
     createDatabaseService.withName("redshiftDB").withServiceType(DatabaseServiceType.Redshift);
-    databaseService = DatabaseServiceResourceTest.createService(createDatabaseService, adminAuthHeaders());
+    databaseService = databaseServieResourceTest.createEntity(createDatabaseService, adminAuthHeaders());
     REDSHIFT_REFERENCE = new DatabaseServiceEntityInterface(databaseService).getEntityReference();
 
     createDatabaseService.withName("bigQueryDB").withServiceType(DatabaseServiceType.BigQuery);
-    databaseService = DatabaseServiceResourceTest.createService(createDatabaseService, adminAuthHeaders());
+    databaseService = databaseServieResourceTest.createEntity(createDatabaseService, adminAuthHeaders());
     BIGQUERY_REFERENCE = new DatabaseServiceEntityInterface(databaseService).getEntityReference();
 
     createDatabaseService.withName("mysqlDB").withServiceType(DatabaseServiceType.MySQL);
-    databaseService = DatabaseServiceResourceTest.createService(createDatabaseService, adminAuthHeaders());
+    databaseService = databaseServieResourceTest.createEntity(createDatabaseService, adminAuthHeaders());
     MYSQL_REFERENCE = new DatabaseServiceEntityInterface(databaseService).getEntityReference();
 
     // Create Kafka messaging service
+    MessagingServiceResourceTest messagingServiceResourceTest = new MessagingServiceResourceTest();
     CreateMessagingService createMessaging = new CreateMessagingService().withName("kafka")
             .withServiceType(MessagingServiceType.Kafka).withBrokers(List.of("192.168.1.1:0"));
-    MessagingService messagingService = MessagingServiceResourceTest.createService(createMessaging, adminAuthHeaders());
+    MessagingService messagingService = messagingServiceResourceTest.createEntity(createMessaging, adminAuthHeaders());
     KAFKA_REFERENCE = new MessagingServiceEntityInterface(messagingService).getEntityReference();
 
     // Create Pulsar messaging service
     createMessaging.withName("pulsar").withServiceType(MessagingServiceType.Pulsar)
             .withBrokers(List.of("192.168.1.1:0"));
-    messagingService = MessagingServiceResourceTest.createService(createMessaging, adminAuthHeaders());
+    messagingService = messagingServiceResourceTest.createEntity(createMessaging, adminAuthHeaders());
     PULSAR_REFERENCE = new MessagingServiceEntityInterface(messagingService).getEntityReference();
 
     // Create Airflow pipeline service
+    PipelineServiceResourceTest pipelineServiceResourceTest = new PipelineServiceResourceTest();
     CreatePipelineService createPipeline = new CreatePipelineService().withName("airflow")
             .withServiceType(PipelineServiceType.Airflow).withPipelineUrl(new URI("http://localhost:0"));
-    PipelineService pipelineService = createService(createPipeline, adminAuthHeaders());
+    PipelineService pipelineService = pipelineServiceResourceTest.createEntity(createPipeline, adminAuthHeaders());
     AIRFLOW_REFERENCE = new PipelineServiceEntityInterface(pipelineService).getEntityReference();
 
     // Create Prefect pipeline service
     createPipeline.withName("prefect").withServiceType(PipelineServiceType.Prefect)
             .withPipelineUrl(new URI("http://localhost:0"));
-    pipelineService = createService(createPipeline, adminAuthHeaders());
+    pipelineService = pipelineServiceResourceTest.createEntity(createPipeline, adminAuthHeaders());
     PREFECT_REFERENCE = new PipelineServiceEntityInterface(pipelineService).getEntityReference();
 
     Tag tag = TagResourceTest.getTag("User.Address", adminAuthHeaders());
@@ -601,7 +604,7 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     return TestUtils.get(target, entityClass, authHeaders);
   }
 
-  protected final T createEntity(Object createRequest, Map<String, String> authHeaders)
+  public final T createEntity(Object createRequest, Map<String, String> authHeaders)
           throws HttpResponseException {
     return TestUtils.post(getCollection(), createRequest, entityClass, authHeaders);
   }

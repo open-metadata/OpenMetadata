@@ -208,7 +208,7 @@ public class PipelineServiceRepository extends EntityRepository<PipelineService>
     private void updateIngestionSchedule() throws JsonProcessingException {
       Schedule origSchedule = original.getEntity().getIngestionSchedule();
       Schedule updatedSchedule = updated.getEntity().getIngestionSchedule();
-      recordChange("ingestionSchedule", origSchedule, updatedSchedule);
+      recordChange("ingestionSchedule", origSchedule, updatedSchedule, true);
     }
   }
 }

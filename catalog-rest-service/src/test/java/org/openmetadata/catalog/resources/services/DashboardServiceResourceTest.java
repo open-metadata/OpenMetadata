@@ -33,6 +33,7 @@ import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.type.Schedule;
 import org.openmetadata.catalog.util.EntityInterface;
+import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
 import org.openmetadata.catalog.util.TestUtils.UpdateType;
 
@@ -49,9 +50,11 @@ import static javax.ws.rs.core.Response.Status.CONFLICT;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.OK;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
 import static org.openmetadata.catalog.util.TestUtils.authHeaders;
+import static org.openmetadata.catalog.util.TestUtils.getPrincipal;
 
 public class DashboardServiceResourceTest extends EntityResourceTest<DashboardService> {
   public DashboardServiceResourceTest() {
@@ -65,7 +68,7 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
     // Create dashboard with mandatory name field empty
     CreateDashboardService create = create(test).withName(TestUtils.LONG_ENTITY_NAME);
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            createService(create, adminAuthHeaders()));
+            createEntity(create, adminAuthHeaders()));
     TestUtils.assertResponse(exception, BAD_REQUEST, "[name size must be between 1 and 64]");
   }
 
@@ -73,31 +76,31 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
   public void post_withoutRequiredFields_400_badRequest(TestInfo test) {
     // Create dashboard with mandatory name field null
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            createService(create(test).withName(null), adminAuthHeaders()));
+            createEntity(create(test).withName(null), adminAuthHeaders()));
     TestUtils.assertResponse(exception, BAD_REQUEST, "[name must not be null]");
 
     // Create dashboard with mandatory name field empty
     exception = assertThrows(HttpResponseException.class, () ->
-            createService(create(test).withName(""), adminAuthHeaders()));
+            createEntity(create(test).withName(""), adminAuthHeaders()));
     TestUtils.assertResponse(exception, BAD_REQUEST, "[name size must be between 1 and 64]");
 
     // Create dashboard with mandatory serviceType field empty
     exception = assertThrows(HttpResponseException.class, () ->
-            createService(create(test).withServiceType(null), adminAuthHeaders()));
+            createEntity(create(test).withServiceType(null), adminAuthHeaders()));
     TestUtils.assertResponse(exception, BAD_REQUEST, "[serviceType must not be null]");
 
     // Create dashboard with mandatory brokers field empty
     exception = assertThrows(HttpResponseException.class, () ->
-            createService(create(test).withDashboardUrl(null), adminAuthHeaders()));
+            createEntity(create(test).withDashboardUrl(null), adminAuthHeaders()));
     TestUtils.assertResponse(exception, BAD_REQUEST, "[dashboardUrl must not be null]");
   }
 
   @Test
   public void post_serviceAlreadyExists_409(TestInfo test) throws HttpResponseException, URISyntaxException {
     CreateDashboardService create = create(test);
-    createService(create, adminAuthHeaders());
+    createEntity(create, adminAuthHeaders());
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            createService(create, adminAuthHeaders()));
+            createEntity(create, adminAuthHeaders()));
     TestUtils.assertResponse(exception, CONFLICT, CatalogExceptionMessage.ENTITY_ALREADY_EXISTS);
   }
 
@@ -130,24 +133,24 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
     // Invalid format
     create.withIngestionSchedule(schedule.withRepeatFrequency("INVALID"));
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            createService(create, adminAuthHeaders()));
+            createEntity(create, adminAuthHeaders()));
     TestUtils.assertResponse(exception, BAD_REQUEST, "Invalid ingestion repeatFrequency INVALID");
 
     // Duration that contains years, months and seconds are not allowed
     create.withIngestionSchedule(schedule.withRepeatFrequency("P1Y"));
-    exception = assertThrows(HttpResponseException.class, () -> createService(create, adminAuthHeaders()));
+    exception = assertThrows(HttpResponseException.class, () -> createEntity(create, adminAuthHeaders()));
     TestUtils.assertResponse(exception, BAD_REQUEST,
             "Ingestion repeatFrequency can only contain Days, Hours, " +
                     "and Minutes - example P{d}DT{h}H{m}M");
 
     create.withIngestionSchedule(schedule.withRepeatFrequency("P1M"));
-    exception = assertThrows(HttpResponseException.class, () -> createService(create, adminAuthHeaders()));
+    exception = assertThrows(HttpResponseException.class, () -> createEntity(create, adminAuthHeaders()));
     TestUtils.assertResponse(exception, BAD_REQUEST,
             "Ingestion repeatFrequency can only contain Days, Hours, " +
                     "and Minutes - example P{d}DT{h}H{m}M");
 
     create.withIngestionSchedule(schedule.withRepeatFrequency("PT1S"));
-    exception = assertThrows(HttpResponseException.class, () -> createService(create, adminAuthHeaders()));
+    exception = assertThrows(HttpResponseException.class, () -> createEntity(create, adminAuthHeaders()));
     TestUtils.assertResponse(exception, BAD_REQUEST,
             "Ingestion repeatFrequency can only contain Days, Hours, " +
                     "and Minutes - example P{d}DT{h}H{m}M");
@@ -174,12 +177,12 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
     Schedule schedule = create.getIngestionSchedule();
     create.withIngestionSchedule(schedule.withRepeatFrequency("PT1M"));  // Repeat every 0 seconds
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            createService(create, adminAuthHeaders()));
+            createEntity(create, adminAuthHeaders()));
     TestUtils.assertResponseContains(exception, BAD_REQUEST,
             "Ingestion repeatFrequency is too short and must be more than 60 minutes");
 
     create.withIngestionSchedule(schedule.withRepeatFrequency("PT59M"));  // Repeat every 50 minutes 59 seconds
-    exception = assertThrows(HttpResponseException.class, () -> createService(create, adminAuthHeaders()));
+    exception = assertThrows(HttpResponseException.class, () -> createEntity(create, adminAuthHeaders()));
     TestUtils.assertResponse(exception, BAD_REQUEST, "Ingestion repeatFrequency is too short and must " +
             "be more than 60 minutes");
   }
@@ -198,7 +201,7 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
     ChangeDescription change = getChangeDescription(service.getVersion());
     change.getFieldsAdded().add(new FieldChange().withName("description").withNewValue("description1"));
     change.getFieldsAdded().add(new FieldChange().withName("userName").withNewValue("user"));
-    change.getFieldsAdded().add(new FieldChange().withName("ingestionSchedule").withNewValue("password"));
+    change.getFieldsAdded().add(new FieldChange().withName("ingestionSchedule").withNewValue(schedule));
     change.getFieldsUpdated().add(new FieldChange().withName("dashboardUrl").withOldValue("http://192.1.1.1:0")
             .withNewValue("http://localhost:8080"));
     service = updateAndCheckEntity(update, OK, adminAuthHeaders(), UpdateType.MINOR_UPDATE, change);
@@ -228,7 +231,7 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
   @Test
   public void get_nonExistentService_404_notFound() {
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            getService(TestUtils.NON_EXISTENT_ENTITY, adminAuthHeaders()));
+            getEntity(TestUtils.NON_EXISTENT_ENTITY, adminAuthHeaders()));
     TestUtils.assertResponse(exception, NOT_FOUND, CatalogExceptionMessage.entityNotFound(Entity.DASHBOARD_SERVICE,
             TestUtils.NON_EXISTENT_ENTITY));
   }
@@ -239,23 +242,6 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
             -> getServiceByName("invalidName", null, adminAuthHeaders()));
     TestUtils.assertResponse(exception, NOT_FOUND, CatalogExceptionMessage.entityNotFound(Entity.DASHBOARD_SERVICE,
             "invalidName"));
-  }
-
-  public static DashboardService createService(CreateDashboardService create,
-                                              Map<String, String> authHeaders) throws HttpResponseException {
-    return TestUtils.post(CatalogApplicationTest.getResource("services/dashboardServices"),
-                          create, DashboardService.class, authHeaders);
-  }
-
-  public static DashboardService getService(UUID id, Map<String, String> authHeaders) throws HttpResponseException {
-    return getService(id, null, authHeaders);
-  }
-
-  public static DashboardService getService(UUID id, String fields, Map<String, String> authHeaders)
-          throws HttpResponseException {
-    WebTarget target = CatalogApplicationTest.getResource("services/dashboardServices/" + id);
-    target = fields != null ? target.queryParam("fields", fields) : target;
-    return TestUtils.get(target, DashboardService.class, authHeaders);
   }
 
   public static DashboardService getServiceByName(String name, String fields, Map<String, String> authHeaders)
@@ -277,14 +263,14 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
   public void delete_ExistentDashboardService_as_admin_200(TestInfo test)
           throws HttpResponseException, URISyntaxException {
     Map<String, String> authHeaders = adminAuthHeaders();
-    DashboardService dashboardService = createService(create(test), authHeaders);
+    DashboardService dashboardService = createEntity(create(test), authHeaders);
     deleteService(dashboardService.getId(), dashboardService.getName(), authHeaders);
   }
 
   @Test
   public void delete_as_user_401(TestInfo test) throws HttpResponseException, URISyntaxException {
     Map<String, String> authHeaders = adminAuthHeaders();
-    DashboardService dashboardService = createService(create(test), authHeaders);
+    DashboardService dashboardService = createEntity(create(test), authHeaders);
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
             deleteService(dashboardService.getId(), dashboardService.getName(),
                     authHeaders("test@open-metadata.org")));
@@ -295,7 +281,7 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
   @Test
   public void delete_notExistentDashboardService() {
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            getService(TestUtils.NON_EXISTENT_ENTITY, adminAuthHeaders()));
+            getEntity(TestUtils.NON_EXISTENT_ENTITY, adminAuthHeaders()));
     TestUtils.assertResponse(exception, NOT_FOUND,
             CatalogExceptionMessage.entityNotFound(Entity.DASHBOARD_SERVICE, TestUtils.NON_EXISTENT_ENTITY));
   }
@@ -304,7 +290,7 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
     TestUtils.delete(CatalogApplicationTest.getResource("services/dashboardServices/" + id), authHeaders);
 
     // Ensure deleted service does not exist
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () -> getService(id, authHeaders));
+    HttpResponseException exception = assertThrows(HttpResponseException.class, () -> getEntity(id, authHeaders));
     TestUtils.assertResponse(exception, NOT_FOUND,
             CatalogExceptionMessage.entityNotFound(Entity.DASHBOARD_SERVICE, id));
 
@@ -334,21 +320,30 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
   }
 
   @Override
-  public void validateCreatedEntity(DashboardService createdEntity, Object request, Map<String, String> authHeaders)
+  public void validateCreatedEntity(DashboardService service, Object request, Map<String, String> authHeaders)
           throws HttpResponseException {
+    CreateDashboardService createRequest = (CreateDashboardService) request;
+    validateCommonEntityFields(getEntityInterface(service), createRequest.getDescription(),
+            getPrincipal(authHeaders), null);
+    assertEquals(createRequest.getName(), service.getName());
 
+    Schedule expectedIngestion = createRequest.getIngestionSchedule();
+    if (expectedIngestion != null) {
+      assertEquals(expectedIngestion.getStartDate(), service.getIngestionSchedule().getStartDate());
+      assertEquals(expectedIngestion.getRepeatFrequency(), service.getIngestionSchedule().getRepeatFrequency());
+    }
   }
 
   @Override
-  public void validateUpdatedEntity(DashboardService updatedEntity, Object request, Map<String, String> authHeaders)
+  public void validateUpdatedEntity(DashboardService service, Object request, Map<String, String> authHeaders)
           throws HttpResponseException {
-
+    validateCreatedEntity(service, request, authHeaders);
   }
 
   @Override
   public void compareEntities(DashboardService expected, DashboardService updated, Map<String, String> authHeaders)
           throws HttpResponseException {
-
+    // PATCH operation is not supported by this entity
   }
 
   @Override
@@ -358,6 +353,12 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
 
   @Override
   public void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException {
-
+    if (fieldName.equals("ingestionSchedule")) {
+      Schedule expectedSchedule = (Schedule) expected;
+      Schedule actualSchedule = JsonUtils.readValue((String) actual, Schedule.class);
+      assertEquals(expectedSchedule, actualSchedule);
+    } else {
+      super.assertCommonFieldChange(fieldName, expected, actual);
+    }
   }
 }

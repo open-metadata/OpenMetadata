@@ -132,7 +132,7 @@ public class MlModelResourceTest extends CatalogApplicationTest {
     CreateDashboardService createService = new CreateDashboardService().withName("superset")
             .withServiceType(DashboardServiceType.Superset).withDashboardUrl(TestUtils.DASHBOARD_URL);
 
-    DashboardService service = DashboardServiceResourceTest.createService(createService, adminAuthHeaders());
+    DashboardService service = new DashboardServiceResourceTest().createEntity(createService, adminAuthHeaders());
     SUPERSET_REFERENCE = new DashboardServiceEntityInterface(service).getEntityReference();
 
     DASHBOARD = DashboardResourceTest.createDashboard(

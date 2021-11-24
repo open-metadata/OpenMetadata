@@ -46,7 +46,7 @@ public class StorageServiceResourceTest extends EntityResourceTest<StorageServic
     // Create storage with mandatory name field empty
     CreateStorageService create = create(test).withName(TestUtils.LONG_ENTITY_NAME);
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            createService(create, adminAuthHeaders()));
+            createEntity(create, adminAuthHeaders()));
     TestUtils.assertResponse(exception, BAD_REQUEST, "[name size must be between 1 and 64]");
   }
 
@@ -55,16 +55,16 @@ public class StorageServiceResourceTest extends EntityResourceTest<StorageServic
     // Create storage with mandatory name field empty
     CreateStorageService create = create(test).withName("");
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            createService(create, adminAuthHeaders()));
+            createEntity(create, adminAuthHeaders()));
     TestUtils.assertResponse(exception, BAD_REQUEST, "[name size must be between 1 and 64]");
   }
 
   @Test
   public void post_ServiceAlreadyExists_409(TestInfo test) throws HttpResponseException {
     CreateStorageService create = create(test);
-    createService(create, adminAuthHeaders());
+    createEntity(create, adminAuthHeaders());
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            createService(create, adminAuthHeaders()));
+            createEntity(create, adminAuthHeaders()));
     TestUtils.assertResponse(exception, CONFLICT, CatalogExceptionMessage.ENTITY_ALREADY_EXISTS);
   }
 
@@ -110,7 +110,7 @@ public class StorageServiceResourceTest extends EntityResourceTest<StorageServic
   @Test
   public void get_nonExistentStorageService_404_notFound() {
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            getService(TestUtils.NON_EXISTENT_ENTITY, adminAuthHeaders()));
+            getEntity(TestUtils.NON_EXISTENT_ENTITY, adminAuthHeaders()));
     TestUtils.assertResponse(exception, NOT_FOUND, CatalogExceptionMessage.entityNotFound(Entity.STORAGE_SERVICE,
             TestUtils.NON_EXISTENT_ENTITY));
   }
@@ -126,14 +126,14 @@ public class StorageServiceResourceTest extends EntityResourceTest<StorageServic
   @Test
   public void delete_ExistentService_as_admin_200(TestInfo test) throws HttpResponseException {
     Map<String, String> authHeaders = adminAuthHeaders();
-    StorageService storageService = createService(create(test), authHeaders);
+    StorageService storageService = createEntity(create(test), authHeaders);
     deleteService(storageService.getId(), storageService.getName(), authHeaders);
   }
 
   @Test
   public void delete_as_user_401(TestInfo test) throws HttpResponseException {
     Map<String, String> authHeaders = adminAuthHeaders();
-    StorageService storageService = createService(create(test), authHeaders);
+    StorageService storageService = createEntity(create(test), authHeaders);
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
             deleteService(storageService.getId(), storageService.getName(),
                     authHeaders("test@open-metadata.org")));
@@ -144,7 +144,7 @@ public class StorageServiceResourceTest extends EntityResourceTest<StorageServic
   @Test
   public void delete_notExistentStorageService() {
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            getService(TestUtils.NON_EXISTENT_ENTITY, adminAuthHeaders()));
+            getEntity(TestUtils.NON_EXISTENT_ENTITY, adminAuthHeaders()));
     TestUtils.assertResponse(exception, NOT_FOUND,
             CatalogExceptionMessage.entityNotFound(Entity.STORAGE_SERVICE, TestUtils.NON_EXISTENT_ENTITY));
   }
@@ -166,23 +166,6 @@ public class StorageServiceResourceTest extends EntityResourceTest<StorageServic
     return String.format("storageSvc_%d_%s", index, test.getDisplayName());
   }
 
-  public static StorageService createService(CreateStorageService create,
-                                             Map<String, String> authHeaders) throws HttpResponseException {
-    return TestUtils.post(CatalogApplicationTest.getResource("services/storageServices"),
-            create, StorageService.class, authHeaders);
-  }
-
-  public static StorageService getService(UUID id, Map<String, String> authHeaders) throws HttpResponseException {
-    return getService(id, null, authHeaders);
-  }
-
-  public static StorageService getService(UUID id, String fields, Map<String, String> authHeaders)
-          throws HttpResponseException {
-    WebTarget target = CatalogApplicationTest.getResource("services/storageServices/" + id);
-    target = fields != null ? target.queryParam("fields", fields) : target;
-    return TestUtils.get(target, StorageService.class, authHeaders);
-  }
-
   public static StorageService getServiceByName(String name, String fields, Map<String, String> authHeaders)
           throws HttpResponseException {
     WebTarget target = CatalogApplicationTest.getResource("services/storageServices/name/" + name);
@@ -194,7 +177,7 @@ public class StorageServiceResourceTest extends EntityResourceTest<StorageServic
     TestUtils.delete(CatalogApplicationTest.getResource("services/storageServices/" + id), authHeaders);
 
     // Ensure deleted service does not exist
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () -> getService(id, authHeaders));
+    HttpResponseException exception = assertThrows(HttpResponseException.class, () -> getEntity(id, authHeaders));
     TestUtils.assertResponse(exception, NOT_FOUND,
             CatalogExceptionMessage.entityNotFound(Entity.STORAGE_SERVICE, id));
 
@@ -225,7 +208,7 @@ public class StorageServiceResourceTest extends EntityResourceTest<StorageServic
 
   @Override
   public void compareEntities(StorageService expected, StorageService updated, Map<String, String> authHeaders) throws HttpResponseException {
-
+    // PATCH operation is not supported by this entity
   }
 
   @Override

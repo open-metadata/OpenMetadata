@@ -29,7 +29,6 @@ import org.openmetadata.catalog.jdbi3.DatabaseServiceRepository.DatabaseServiceE
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.services.database.DatabaseServiceResource.DatabaseServiceList;
 import org.openmetadata.catalog.type.ChangeDescription;
-import org.openmetadata.catalog.type.ColumnConstraint;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.type.Schedule;
@@ -68,7 +67,7 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
     // Create database with mandatory name field empty
     CreateDatabaseService create = create(test).withName(TestUtils.LONG_ENTITY_NAME);
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            createService(create, adminAuthHeaders()));
+            createEntity(create, adminAuthHeaders()));
     TestUtils.assertResponse(exception, BAD_REQUEST, "[name size must be between 1 and 64]");
   }
 
@@ -77,16 +76,16 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
     // Create database with mandatory name field empty
     CreateDatabaseService create = create(test).withName("");
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            createService(create, adminAuthHeaders()));
+            createEntity(create, adminAuthHeaders()));
     TestUtils.assertResponse(exception, BAD_REQUEST, "[name size must be between 1 and 64]");
   }
 
   @Test
   public void post_databaseServiceAlreadyExists_409(TestInfo test) throws HttpResponseException {
     CreateDatabaseService create = create(test);
-    createService(create, adminAuthHeaders());
+    createEntity(create, adminAuthHeaders());
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            createService(create, adminAuthHeaders()));
+            createEntity(create, adminAuthHeaders()));
     TestUtils.assertResponse(exception, CONFLICT, CatalogExceptionMessage.ENTITY_ALREADY_EXISTS);
   }
 
@@ -115,7 +114,7 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
     // No jdbc connection set
     CreateDatabaseService create = create(test).withJdbc(null);
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            createService(create, adminAuthHeaders()));
+            createEntity(create, adminAuthHeaders()));
     TestUtils.assertResponseContains(exception, BAD_REQUEST, "jdbc must not be null");
   }
 
@@ -128,24 +127,24 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
     // Invalid format
     create.withIngestionSchedule(schedule.withRepeatFrequency("INVALID"));
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            createService(create, adminAuthHeaders()));
+            createEntity(create, adminAuthHeaders()));
     TestUtils.assertResponse(exception, BAD_REQUEST, "Invalid ingestion repeatFrequency INVALID");
 
     // Duration that contains years, months and seconds are not allowed
     create.withIngestionSchedule(schedule.withRepeatFrequency("P1Y"));
-    exception = assertThrows(HttpResponseException.class, () -> createService(create, adminAuthHeaders()));
+    exception = assertThrows(HttpResponseException.class, () -> createEntity(create, adminAuthHeaders()));
     TestUtils.assertResponse(exception, BAD_REQUEST,
             "Ingestion repeatFrequency can only contain Days, Hours, " +
                     "and Minutes - example P{d}DT{h}H{m}M");
 
     create.withIngestionSchedule(schedule.withRepeatFrequency("P1M"));
-    exception = assertThrows(HttpResponseException.class, () -> createService(create, adminAuthHeaders()));
+    exception = assertThrows(HttpResponseException.class, () -> createEntity(create, adminAuthHeaders()));
     TestUtils.assertResponse(exception, BAD_REQUEST,
             "Ingestion repeatFrequency can only contain Days, Hours, " +
                     "and Minutes - example P{d}DT{h}H{m}M");
 
     create.withIngestionSchedule(schedule.withRepeatFrequency("PT1S"));
-    exception = assertThrows(HttpResponseException.class, () -> createService(create, adminAuthHeaders()));
+    exception = assertThrows(HttpResponseException.class, () -> createEntity(create, adminAuthHeaders()));
     TestUtils.assertResponse(exception, BAD_REQUEST,
             "Ingestion repeatFrequency can only contain Days, Hours, " +
                     "and Minutes - example P{d}DT{h}H{m}M");
@@ -171,12 +170,12 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
     Schedule schedule = create.getIngestionSchedule();
     create.withIngestionSchedule(schedule.withRepeatFrequency("PT1M"));  // Repeat every 0 seconds
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            createService(create, adminAuthHeaders()));
+            createEntity(create, adminAuthHeaders()));
     TestUtils.assertResponseContains(exception, BAD_REQUEST,
             "Ingestion repeatFrequency is too short and must be more than 60 minutes");
 
     create.withIngestionSchedule(schedule.withRepeatFrequency("PT59M"));  // Repeat every 50 minutes 59 seconds
-    exception = assertThrows(HttpResponseException.class, () -> createService(create, adminAuthHeaders()));
+    exception = assertThrows(HttpResponseException.class, () -> createEntity(create, adminAuthHeaders()));
     TestUtils.assertResponse(exception, BAD_REQUEST, "Ingestion repeatFrequency is too short and must " +
             "be more than 60 minutes");
   }
@@ -219,7 +218,7 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
   @Test
   public void get_nonExistentDatabaseService_404_notFound() {
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            getService(TestUtils.NON_EXISTENT_ENTITY, adminAuthHeaders()));
+            getEntity(TestUtils.NON_EXISTENT_ENTITY, adminAuthHeaders()));
     TestUtils.assertResponse(exception, NOT_FOUND, CatalogExceptionMessage.entityNotFound(Entity.DATABASE_SERVICE,
             TestUtils.NON_EXISTENT_ENTITY));
   }
@@ -230,23 +229,6 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
             -> getServiceByName("invalidName", null, adminAuthHeaders()));
     TestUtils.assertResponse(exception, NOT_FOUND, CatalogExceptionMessage.entityNotFound(Entity.DATABASE_SERVICE,
             "invalidName"));
-  }
-
-  public static DatabaseService createService(CreateDatabaseService create,
-                                              Map<String, String> authHeaders) throws HttpResponseException {
-    return TestUtils.post(CatalogApplicationTest.getResource("services/databaseServices"),
-                          create, DatabaseService.class, authHeaders);
-  }
-
-  public static DatabaseService getService(UUID id, Map<String, String> authHeaders) throws HttpResponseException {
-    return getService(id, null, authHeaders);
-  }
-
-  public static DatabaseService getService(UUID id, String fields, Map<String, String> authHeaders)
-          throws HttpResponseException {
-    WebTarget target = CatalogApplicationTest.getResource("services/databaseServices/" + id);
-    target = fields != null ? target.queryParam("fields", fields) : target;
-    return TestUtils.get(target, DatabaseService.class, authHeaders);
   }
 
   public static DatabaseService getServiceByName(String name, String fields, Map<String, String> authHeaders)
@@ -267,14 +249,14 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
   @Test
   public void delete_ExistentDatabaseService_as_admin_200(TestInfo test) throws HttpResponseException {
     Map<String, String> authHeaders = adminAuthHeaders();
-    DatabaseService databaseService = createService(create(test), authHeaders);
+    DatabaseService databaseService = createEntity(create(test), authHeaders);
     deleteService(databaseService.getId(), databaseService.getName(), authHeaders);
   }
 
   @Test
   public void delete_as_user_401(TestInfo test) throws HttpResponseException {
     Map<String, String> authHeaders = adminAuthHeaders();
-    DatabaseService databaseService = createService(create(test), authHeaders);
+    DatabaseService databaseService = createEntity(create(test), authHeaders);
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
             deleteService(databaseService.getId(), databaseService.getName(),
                     authHeaders("test@open-metadata.org")));
@@ -285,7 +267,7 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
   @Test
   public void delete_notExistentDatabaseService() {
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            getService(TestUtils.NON_EXISTENT_ENTITY, adminAuthHeaders()));
+            getEntity(TestUtils.NON_EXISTENT_ENTITY, adminAuthHeaders()));
     TestUtils.assertResponse(exception, NOT_FOUND,
             CatalogExceptionMessage.entityNotFound(Entity.DATABASE_SERVICE, TestUtils.NON_EXISTENT_ENTITY));
   }
@@ -294,7 +276,7 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
     TestUtils.delete(CatalogApplicationTest.getResource("services/databaseServices/" + id), authHeaders);
 
     // Ensure deleted service does not exist
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () -> getService(id, authHeaders));
+    HttpResponseException exception = assertThrows(HttpResponseException.class, () -> getEntity(id, authHeaders));
     TestUtils.assertResponse(exception, NOT_FOUND, CatalogExceptionMessage.entityNotFound(Entity.DATABASE_SERVICE, id));
 
     // Ensure deleted service does not exist when getting by name
@@ -347,6 +329,7 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
   @Override
   public void compareEntities(DatabaseService expected, DatabaseService updated, Map<String, String> authHeaders)
           throws HttpResponseException {
+    // PATCH operation is not supported by this entity
   }
 
   @Override
@@ -358,7 +341,6 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
   public void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException {
     if (fieldName.equals("ingestionSchedule")) {
       Schedule expectedSchedule = (Schedule) expected;
-      System.out.println(actual);
       Schedule actualSchedule = JsonUtils.readValue((String) actual, Schedule.class);
       assertEquals(expectedSchedule, actualSchedule);
     } else {

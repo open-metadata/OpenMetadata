@@ -75,12 +75,12 @@ public class ChartResourceTest extends EntityResourceTest<Chart> {
 
     CreateDashboardService createService = new CreateDashboardService().withName("superset")
             .withServiceType(DashboardServiceType.Superset).withDashboardUrl(new URI("http://localhost:0"));
-    DashboardService service = DashboardServiceResourceTest.createService(createService, adminAuthHeaders());
+    DashboardService service = new DashboardServiceResourceTest().createEntity(createService, adminAuthHeaders());
     SUPERSET_REFERENCE = new DashboardServiceEntityInterface(service).getEntityReference();
 
     createService.withName("looker").withServiceType(DashboardServiceType.Looker)
             .withDashboardUrl(new URI("http://localhost:0"));
-    service = DashboardServiceResourceTest.createService(createService, adminAuthHeaders());
+    service = new DashboardServiceResourceTest().createEntity(createService, adminAuthHeaders());
     LOOKER_REFERENCE = new DashboardServiceEntityInterface(service).getEntityReference();
   }
 
