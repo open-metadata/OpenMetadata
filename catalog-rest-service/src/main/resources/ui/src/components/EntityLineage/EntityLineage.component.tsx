@@ -291,7 +291,29 @@ const getLineageData = (
         (ed: FlowElement) => (ed as Edge).target === up.id
       )
         ? up
-        : { ...up, type: 'input' };
+        : {
+            ...up,
+            type: 'input',
+            data: {
+              label: (
+                <div className="tw-flex">
+                  <p
+                    className="tw-mr-2 tw-self-center fas fa-chevron-left tw-cursor-pointer tw-text-primary"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const node = entityLineage?.nodes?.find((d) =>
+                        up.id.includes(d.id)
+                      );
+                      if (node) {
+                        loadNodeHandler(node, 'from');
+                      }
+                    }}
+                  />
+                  <div>{up?.data?.label}</div>
+                </div>
+              ),
+            },
+          };
     }),
     ...DOWNStreamNodes.map((down) => {
       return lineageEdges.find((ed: FlowElement) =>
@@ -304,9 +326,9 @@ const getLineageData = (
             data: {
               label: (
                 <div className="tw-flex tw-justify-between">
-                  <p>{down?.data?.label}</p>
+                  <div>{down?.data?.label}</div>
                   <p
-                    className="tw-ml-2 tw-self-center fas fa-chevron-right tw-cursor-pointer tw-text-grey-muted"
+                    className="tw-ml-2 tw-self-center fas fa-chevron-right tw-cursor-pointer tw-text-primary"
                     onClick={(e) => {
                       e.stopPropagation();
                       const node = entityLineage?.nodes?.find((d) =>
@@ -406,6 +428,9 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
               onElementsRemove={onElementsRemove}
               onLoad={onLoad}
               onNodeContextMenu={onNodeContextMenu}
+              onNodeDrag={(e) => e.stopPropagation()}
+              onNodeDragStart={(e) => e.stopPropagation()}
+              onNodeDragStop={(e) => e.stopPropagation()}
               onNodeMouseEnter={onNodeMouseEnter}
               onNodeMouseLeave={onNodeMouseLeave}
               onNodeMouseMove={onNodeMouseMove}>

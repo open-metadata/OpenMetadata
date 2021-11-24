@@ -196,7 +196,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
 
   const loadNodeHandler = (node: EntityReference, pos: LineagePos) => {
     getLineageByFQN(node.name, node.type).then((res: AxiosResponse) => {
-      getEntityLineage(entityLineage, res.data, pos);
+      setEntityLineage(getEntityLineage(entityLineage, res.data, pos));
     });
   };
 

@@ -13,7 +13,8 @@ import { Dashboard } from '../generated/entity/data/dashboard';
 import { Pipeline } from '../generated/entity/data/pipeline';
 import { Table } from '../generated/entity/data/table';
 import { Topic } from '../generated/entity/data/topic';
-import { EntityLineage } from '../generated/type/entityLineage';
+import { Edge, EntityLineage } from '../generated/type/entityLineage';
+import { EntityReference } from '../generated/type/entityUsage';
 import { TagLabel } from '../generated/type/tagLabel';
 import { getPartialNameFromFQN } from './CommonUtils';
 import {
@@ -251,6 +252,39 @@ export const getEntityLineage = (
   newVal: EntityLineage,
   pos: LineagePos
 ) => {
-  // console.log({ oldVal, newVal, pos });
-  return { oldVal, newVal, pos };
+  if (pos === 'to') {
+    const downEdges = newVal.downstreamEdges;
+    const newNodes = newVal.nodes?.filter((n) =>
+      downEdges?.find((e) => e.toEntity === n.id)
+    );
+
+    return {
+      ...oldVal,
+      downstreamEdges: [
+        ...(oldVal.downstreamEdges as Edge[]),
+        ...(downEdges as Edge[]),
+      ],
+      nodes: [
+        ...(oldVal.nodes as EntityReference[]),
+        ...(newNodes as EntityReference[]),
+      ],
+    };
+  } else {
+    const upEdges = newVal.upstreamEdges;
+    const newNodes = newVal.nodes?.filter((n) =>
+      upEdges?.find((e) => e.fromEntity === n.id)
+    );
+
+    return {
+      ...oldVal,
+      upstreamEdges: [
+        ...(oldVal.upstreamEdges as Edge[]),
+        ...(upEdges as Edge[]),
+      ],
+      nodes: [
+        ...(oldVal.nodes as EntityReference[]),
+        ...(newNodes as EntityReference[]),
+      ],
+    };
+  }
 };
