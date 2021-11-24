@@ -22,39 +22,39 @@ import java.util.Properties;
 
 public class Property {
 
-    private static Integer waitTime;
-    private static String URL;
-    private static final Object LOCK = new Object();
-    private static Property instance;
-    String openMetadataUrl = "openMetadataUrl";
-    String openMetadataWaitTime = "waitTime";
+  private static Integer waitTime;
+  private static String URL;
+  private static final Object LOCK = new Object();
+  private static Property instance;
+  String openMetadataUrl = "openMetadataUrl";
+  String openMetadataWaitTime = "waitTime";
 
-    public static Property getInstance() {
-        if (instance == null) {
-            synchronized (LOCK) {
-                instance = new Property();
-                instance.loadData();
-            }
-        }
-        return instance;
+  public static Property getInstance() {
+    if (instance == null) {
+      synchronized (LOCK) {
+        instance = new Property();
+        instance.loadData();
+      }
     }
+    return instance;
+  }
 
-    private void loadData() {
-        Properties properties = new Properties();
-        try {
-            properties.load(new FileInputStream("selenium.properties"));
-        } catch (IOException e) {
-            return;
-        }
-        URL = properties.getProperty(openMetadataUrl);
-        waitTime = Integer.parseInt(properties.getProperty(openMetadataWaitTime));
+  private void loadData() {
+    Properties properties = new Properties();
+    try {
+      properties.load(new FileInputStream("selenium.properties"));
+    } catch (IOException e) {
+      return;
     }
+    URL = properties.getProperty(openMetadataUrl);
+    waitTime = Integer.parseInt(properties.getProperty(openMetadataWaitTime));
+  }
 
-    public static String getURL() {
-        return URL;
-    }
+  public static String getURL() {
+    return URL;
+  }
 
-    public static Integer getSleepTime() {
-        return waitTime;
-    }
+  public static Integer getSleepTime() {
+    return waitTime;
+  }
 }
