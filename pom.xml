@@ -27,7 +27,8 @@
   <modules>
     <module>common</module>
     <module>catalog-rest-service</module>
-    <module>dist</module>
+    <module>openmetadata-ui</module>
+    <module>openmetadata-dist</module>
   </modules>
   <packaging>pom</packaging>
   <scm>
