@@ -43,6 +43,7 @@ import {
 import { EntityType } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import {
+  EntityReference,
   Table,
   TableData,
   TableJoins,
@@ -59,6 +60,7 @@ import {
   datasetTableTabs,
   getCurrentDatasetTab,
 } from '../../utils/DatasetDetailsUtils';
+import { getEntityLineage } from '../../utils/EntityUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { getOwnerFromId, getTierFromTableTags } from '../../utils/TableUtils';
 import { getTableTags } from '../../utils/TagsUtils';
@@ -192,6 +194,12 @@ const DatasetDetailsPage: FunctionComponent = () => {
     history.push(getDatasetVersionPath(tableFQN, currentVersion as string));
   };
 
+  const loadNodeHandler = (node: EntityReference) => {
+    getLineageByFQN(node.name, node.type).then((res: AxiosResponse) => {
+      getEntityLineage(entityLineage, res.data);
+    });
+  };
+
   useEffect(() => {
     setIsLoading(true);
     getTableDetailsByFQN(
@@ -301,6 +309,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
           followers={followers}
           followTableHandler={followTable}
           joins={joins}
+          loadNodeHandler={loadNodeHandler}
           owner={owner as Table['owner'] & { displayName: string }}
           sampleData={sampleData}
           setActiveTabHandler={activeTabHandler}

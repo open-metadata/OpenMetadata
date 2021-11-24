@@ -2,7 +2,10 @@ import { Operation } from 'fast-json-patch';
 import { EntityTags, TableDetail } from 'Models';
 import { Pipeline, Task } from '../../generated/entity/data/pipeline';
 import { User } from '../../generated/entity/teams/user';
-import { EntityLineage } from '../../generated/type/entityLineage';
+import {
+  EntityLineage,
+  EntityReference,
+} from '../../generated/type/entityLineage';
 import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
 
 export interface PipeLineDetailsProp {
@@ -28,4 +31,5 @@ export interface PipeLineDetailsProp {
   descriptionUpdateHandler: (updatedPipeline: Pipeline) => void;
   tagUpdateHandler: (updatedPipeline: Pipeline) => void;
   taskUpdateHandler: (patch: Array<Operation>) => void;
+  loadNodeHandler: (node: EntityReference) => void;
 }

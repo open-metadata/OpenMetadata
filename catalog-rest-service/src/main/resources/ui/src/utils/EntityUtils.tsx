@@ -13,6 +13,7 @@ import { Dashboard } from '../generated/entity/data/dashboard';
 import { Pipeline } from '../generated/entity/data/pipeline';
 import { Table } from '../generated/entity/data/table';
 import { Topic } from '../generated/entity/data/topic';
+import { EntityLineage } from '../generated/type/entityLineage';
 import { TagLabel } from '../generated/type/tagLabel';
 import { getPartialNameFromFQN } from './CommonUtils';
 import {
@@ -243,4 +244,11 @@ export const getEntityCountByType = (buckets: Array<Bucket>) => {
   });
 
   return entityCounts;
+};
+
+export const getEntityLineage = (
+  oldVal: EntityLineage,
+  newVal: EntityLineage
+) => {
+  return { oldVal, newVal };
 };

@@ -40,4 +40,5 @@ export interface DatasetDetailsProps {
   columnsUpdateHandler: (updatedTable: Table) => void;
   descriptionUpdateHandler: (updatedTable: Table) => void;
   versionHandler: () => void;
+  loadNodeHandler: (node: EntityReference) => void;
 }

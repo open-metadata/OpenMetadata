@@ -1,4 +1,3 @@
-// import { AxiosResponse } from 'axios';
 import React, {
   FunctionComponent,
   MouseEvent as ReactMouseEvent,
@@ -20,7 +19,6 @@ import ReactFlow, {
   removeElements,
 } from 'react-flow-renderer';
 import { Link } from 'react-router-dom';
-// import { getLineageByFQN } from '../../axiosAPIs/lineageAPI';
 import {
   Edge as LineageEdge,
   EntityLineage,
@@ -28,7 +26,7 @@ import {
 import { EntityReference } from '../../generated/type/entityReference';
 import { getEntityIcon } from '../../utils/TableUtils';
 import EntityInfoDrawer from '../EntityInfoDrawer/EntityInfoDrawer.component';
-import { SelectedNode } from './EntityLineage.interface';
+import { EntityLineageProp, SelectedNode } from './EntityLineage.interface';
 const onLoad = (reactFlowInstance: OnLoadParams) => {
   reactFlowInstance.fitView();
   reactFlowInstance.zoomTo(1);
@@ -332,12 +330,9 @@ const getLineageData = (
   return lineageData;
 };
 
-const Entitylineage: FunctionComponent<{ entityLineage: EntityLineage }> = ({
+const Entitylineage: FunctionComponent<EntityLineageProp> = ({
   entityLineage,
-}: {
-  entityLineage: EntityLineage;
-}) => {
-  // const [lineageData, setLineageData] = useState<EntityLineage>(entityLineage);
+}: EntityLineageProp) => {
   const [isDrawerOpen, setIsDrawerOpen] = useState<boolean>(false);
   const [selectedNode, setSelectedNode] = useState<SelectedNode>(
     {} as SelectedNode

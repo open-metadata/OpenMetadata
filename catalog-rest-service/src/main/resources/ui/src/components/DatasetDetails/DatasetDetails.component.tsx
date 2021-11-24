@@ -56,6 +56,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   joins,
   version,
   versionHandler,
+  loadNodeHandler,
 }: DatasetDetailsProps) => {
   const { isAuthDisabled } = useAuth();
   const [isEdit, setIsEdit] = useState(false);
@@ -384,7 +385,10 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
             )}
             {activeTab === 3 && (
               <div className="tw-h-full">
-                <Entitylineage entityLineage={entityLineage} />
+                <Entitylineage
+                  entityLineage={entityLineage}
+                  loadNodeHandler={loadNodeHandler}
+                />
               </div>
             )}
             {activeTab === 4 && (

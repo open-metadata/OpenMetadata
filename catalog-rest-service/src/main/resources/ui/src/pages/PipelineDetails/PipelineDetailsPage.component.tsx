@@ -22,10 +22,15 @@ import {
 } from '../../constants/constants';
 import { EntityType } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
-import { Pipeline, Task } from '../../generated/entity/data/pipeline';
+import {
+  EntityReference,
+  Pipeline,
+  Task,
+} from '../../generated/entity/data/pipeline';
 import { User } from '../../generated/entity/teams/user';
 import { EntityLineage } from '../../generated/type/entityLineage';
 import { addToRecentViewed, getCurrentUserId } from '../../utils/CommonUtils';
+import { getEntityLineage } from '../../utils/EntityUtils';
 import {
   getCurrentPipelineTab,
   pipelineDetailsTabs,
@@ -228,6 +233,12 @@ const PipelineDetailsPage = () => {
     });
   };
 
+  const loadNodeHandler = (node: EntityReference) => {
+    getLineageByFQN(node.name, node.type).then((res: AxiosResponse) => {
+      getEntityLineage(entityLineage, res.data);
+    });
+  };
+
   useEffect(() => {
     fetchPipelineDetail(pipelineFQN);
     setActiveTab(getCurrentPipelineTab(tab));
@@ -257,6 +268,7 @@ const PipelineDetailsPage = () => {
           entityName={displayName}
           followers={followers}
           followPipelineHandler={followPipeline}
+          loadNodeHandler={loadNodeHandler}
           owner={owner}
           pipelineDetails={pipelineDetails}
           pipelineTags={tags}
