@@ -646,10 +646,8 @@ const ServicesPage = () => {
               </div>
             )}
 
-            {Boolean(
-              !isNil(paging[serviceName].after) ||
-                !isNil(paging[serviceName].before)
-            ) && (
+            {(!isNil(paging[serviceName].after) ||
+              !isNil(paging[serviceName].before)) && (
               <NextPrevious
                 paging={paging[serviceName]}
                 pagingHandler={pagingHandler}
