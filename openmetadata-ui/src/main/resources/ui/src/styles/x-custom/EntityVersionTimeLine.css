@@ -31,13 +31,14 @@
   border-radius: 50%;
   margin-top: 0.15rem;
 }
-.timeline-rounder.major {
-  width: 20px;
-  height: 20px;
+.timeline-rounder.major,
+.timeline-rounder.major.selected {
+  border-color: #f9816c;
 }
 .timeline-rounder.selected {
   border: 3px solid #7147e8;
 }
+
 .timeline-rounder.selected::after {
   content: '';
   display: block;
@@ -49,8 +50,8 @@
   background-color: #7147e8;
 }
 .timeline-rounder.major.selected::after {
-  width: 10px;
-  height: 10px;
+  border-color: #f9816c;
+  background-color: #f9816c;
 }
 
 .timeline-line {
