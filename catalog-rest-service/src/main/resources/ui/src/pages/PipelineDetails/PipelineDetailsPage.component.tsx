@@ -1,7 +1,7 @@
 import { AxiosResponse } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
 import { observer } from 'mobx-react';
-import { EntityTags, TableDetail } from 'Models';
+import { EntityTags, LineagePos, TableDetail } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import AppState from '../../AppState';
@@ -233,9 +233,9 @@ const PipelineDetailsPage = () => {
     });
   };
 
-  const loadNodeHandler = (node: EntityReference) => {
+  const loadNodeHandler = (node: EntityReference, pos: LineagePos) => {
     getLineageByFQN(node.name, node.type).then((res: AxiosResponse) => {
-      getEntityLineage(entityLineage, res.data);
+      getEntityLineage(entityLineage, res.data, pos);
     });
   };
 

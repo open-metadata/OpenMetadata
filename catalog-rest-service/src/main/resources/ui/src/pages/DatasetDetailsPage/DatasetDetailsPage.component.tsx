@@ -18,7 +18,7 @@
 import { AxiosResponse } from 'axios';
 import { compare } from 'fast-json-patch';
 import { observer } from 'mobx-react';
-import { EntityTags } from 'Models';
+import { EntityTags, LineagePos } from 'Models';
 import React, { FunctionComponent, useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import AppState from '../../AppState';
@@ -194,9 +194,9 @@ const DatasetDetailsPage: FunctionComponent = () => {
     history.push(getDatasetVersionPath(tableFQN, currentVersion as string));
   };
 
-  const loadNodeHandler = (node: EntityReference) => {
+  const loadNodeHandler = (node: EntityReference, pos: LineagePos) => {
     getLineageByFQN(node.name, node.type).then((res: AxiosResponse) => {
-      getEntityLineage(entityLineage, res.data);
+      getEntityLineage(entityLineage, res.data, pos);
     });
   };
 

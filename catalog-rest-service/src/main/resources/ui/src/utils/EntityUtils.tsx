@@ -1,5 +1,5 @@
 import { isNil } from 'lodash';
-import { Bucket } from 'Models';
+import { Bucket, LineagePos } from 'Models';
 import React from 'react';
 import TableProfilerGraph from '../components/TableProfiler/TableProfilerGraph.component';
 import {
@@ -248,7 +248,9 @@ export const getEntityCountByType = (buckets: Array<Bucket>) => {
 
 export const getEntityLineage = (
   oldVal: EntityLineage,
-  newVal: EntityLineage
+  newVal: EntityLineage,
+  pos: LineagePos
 ) => {
-  return { oldVal, newVal };
+  // console.log({ oldVal, newVal, pos });
+  return { oldVal, newVal, pos };
 };

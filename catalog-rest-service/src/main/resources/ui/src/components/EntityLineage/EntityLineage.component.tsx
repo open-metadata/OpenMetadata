@@ -1,3 +1,4 @@
+import { LineagePos } from 'Models';
 import React, {
   FunctionComponent,
   MouseEvent as ReactMouseEvent,
@@ -65,7 +66,8 @@ const positionY = 60;
 
 const getLineageData = (
   entityLineage: EntityLineage,
-  onSelect: (state: boolean, value: SelectedNode) => void
+  onSelect: (state: boolean, value: SelectedNode) => void,
+  loadNodeHandler: (node: EntityReference, pos: LineagePos) => void
 ) => {
   const [x, y] = [0, 0];
   const nodes = entityLineage['nodes'];
@@ -311,11 +313,7 @@ const getLineageData = (
                         down.id.includes(d.id)
                       );
                       if (node) {
-                        // getLineageByFQN(node.name, node.type).then(
-                        //   (res: AxiosResponse) => {
-                        //     console.log(res.data);
-                        //   }
-                        // );
+                        loadNodeHandler(node, 'to');
                       }
                     }}
                   />
@@ -332,6 +330,7 @@ const getLineageData = (
 
 const Entitylineage: FunctionComponent<EntityLineageProp> = ({
   entityLineage,
+  loadNodeHandler,
 }: EntityLineageProp) => {
   const [isDrawerOpen, setIsDrawerOpen] = useState<boolean>(false);
   const [selectedNode, setSelectedNode] = useState<SelectedNode>(
@@ -343,7 +342,11 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
     setSelectedNode(value);
   };
   const [elements, setElements] = useState<Elements>(
-    getLineageData(entityLineage, selectNodeHandler) as Elements
+    getLineageData(
+      entityLineage,
+      selectNodeHandler,
+      loadNodeHandler
+    ) as Elements
   );
 
   const closeDrawer = (value: boolean) => {
@@ -378,7 +381,13 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
   };
 
   useEffect(() => {
-    setElements(getLineageData(entityLineage, selectNodeHandler) as Elements);
+    setElements(
+      getLineageData(
+        entityLineage,
+        selectNodeHandler,
+        loadNodeHandler
+      ) as Elements
+    );
     // setLineageData(entityLineage);
   }, [entityLineage]);
 

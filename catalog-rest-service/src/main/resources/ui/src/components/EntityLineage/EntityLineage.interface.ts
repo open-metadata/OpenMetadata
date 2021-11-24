@@ -1,3 +1,4 @@
+import { LineagePos } from 'Models';
 import {
   EntityLineage,
   EntityReference,
@@ -11,5 +12,5 @@ export interface SelectedNode {
 
 export interface EntityLineageProp {
   entityLineage: EntityLineage;
-  loadNodeHandler: (node: EntityReference) => void;
+  loadNodeHandler: (node: EntityReference, pos: LineagePos) => void;
 }

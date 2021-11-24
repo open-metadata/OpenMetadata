@@ -1,4 +1,4 @@
-import { EntityTags } from 'Models';
+import { EntityTags, LineagePos } from 'Models';
 import {
   EntityReference,
   Table,
@@ -40,5 +40,5 @@ export interface DatasetDetailsProps {
   columnsUpdateHandler: (updatedTable: Table) => void;
   descriptionUpdateHandler: (updatedTable: Table) => void;
   versionHandler: () => void;
-  loadNodeHandler: (node: EntityReference) => void;
+  loadNodeHandler: (node: EntityReference, pos: LineagePos) => void;
 }
