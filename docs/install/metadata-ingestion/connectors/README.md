@@ -7,14 +7,12 @@ OpenMetadata supports connectors to some popular services. We will continue as a
 * [Athena](../../../openmetadata/connectors/athena.md)
 * [BigQuery](../../../openmetadata/connectors/bigquery.md)
 * [BigQuery Usage](../../../openmetadata/connectors/bigquery-usage.md)
-* [Data Model](../../../connectors/data-model/)
-  * [DBT](../../../connectors/data-model/dbt.md)
 * [ElasticSearch](../../../openmetadata/connectors/elastic-search.md)
 * [Glue Catalog](../../../connectors/glue-catalog.md)
+* [Hive](../../../openmetadata/connectors/hive.md)
 * [MariaDB](../../../connectors/mariadb.md)
 * [MSSQL](../../../openmetadata/connectors/mssql.md)
 * [MySQL](../../../openmetadata/connectors/mysql.md)
-* [Hive](../../../openmetadata/connectors/hive.md)
 * [Oracle](../../../openmetadata/connectors/oracle.md)
 * [Postgres](../../../openmetadata/connectors/postgres.md)
 * [Presto](../../../openmetadata/connectors/presto.md)
@@ -25,6 +23,10 @@ OpenMetadata supports connectors to some popular services. We will continue as a
 * [Snowflake Usage](../../../openmetadata/connectors/snowflake-usage.md)
 * [Trino](../../../openmetadata/connectors/trino.md)
 * [Vertica](../../../openmetadata/connectors/vertica.md)
+
+**Data Model**
+
+* [DBT](../../../connectors/dbt.md)
 
 #### Dashboard Services
 
