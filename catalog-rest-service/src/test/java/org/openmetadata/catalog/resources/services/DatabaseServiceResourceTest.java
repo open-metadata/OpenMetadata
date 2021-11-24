@@ -28,14 +28,17 @@ import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.jdbi3.DatabaseServiceRepository.DatabaseServiceEntityInterface;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.services.database.DatabaseServiceResource.DatabaseServiceList;
+import org.openmetadata.catalog.type.ChangeDescription;
+import org.openmetadata.catalog.type.ColumnConstraint;
 import org.openmetadata.catalog.type.EntityReference;
-import org.openmetadata.catalog.type.JdbcInfo;
+import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.type.Schedule;
 import org.openmetadata.catalog.util.EntityInterface;
+import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
+import org.openmetadata.catalog.util.TestUtils.UpdateType;
 
 import javax.ws.rs.client.WebTarget;
-import javax.ws.rs.core.Response.Status;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.Date;
@@ -48,10 +51,10 @@ import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
 import static org.openmetadata.catalog.util.TestUtils.authHeaders;
+import static org.openmetadata.catalog.util.TestUtils.getPrincipal;
 
 public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseService> {
   public DatabaseServiceResourceTest() {
@@ -180,18 +183,24 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
 
   @Test
   public void put_updateDatabaseService_as_admin_2xx(TestInfo test) throws IOException {
-    createAndCheckEntity(create(test).withDescription(null).withIngestionSchedule(null), adminAuthHeaders());
+    DatabaseService service = createAndCheckEntity(create(test).withDescription(null).withIngestionSchedule(null),
+            adminAuthHeaders());
+
     // Update database description and ingestion service that are null
     CreateDatabaseService update = create(test).withDescription("description1");
-    updateAndCheckService(update, OK, adminAuthHeaders());
-    // Update ingestion schedule
-    Schedule schedule = new Schedule().withStartDate(new Date()).withRepeatFrequency("P1D");
-    update.withIngestionSchedule(schedule);
-    updateAndCheckService(update, OK, adminAuthHeaders());
+    Schedule schedule = update.getIngestionSchedule();
+    ChangeDescription change = getChangeDescription(service.getVersion());
+    change.getFieldsAdded().add(new FieldChange().withName("description").withNewValue("description1"));
+    change.getFieldsAdded().add(new FieldChange().withName("ingestionSchedule").withNewValue(schedule));
+    service = updateAndCheckEntity(update, OK, adminAuthHeaders(), UpdateType.MINOR_UPDATE, change);
 
-    // Update description and ingestion schedule again
-    update.withDescription("description1").withIngestionSchedule(schedule.withRepeatFrequency("PT1H"));
-    updateAndCheckService(update, OK, adminAuthHeaders());
+    // Update ingestion schedule
+    Schedule schedule1 = new Schedule().withStartDate(new Date()).withRepeatFrequency("PT1H");
+    update.withIngestionSchedule(schedule1);
+    change = getChangeDescription(service.getVersion());
+    change.getFieldsUpdated().add(new FieldChange().withName("ingestionSchedule")
+            .withOldValue(schedule).withNewValue(schedule1));
+    updateAndCheckEntity(update, OK, adminAuthHeaders(), UpdateType.MINOR_UPDATE, change);
   }
 
   @Test
@@ -201,7 +210,8 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
 
     // Update as non admin should be forbidden
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            updateAndCheckService(create(test), OK, authHeaders("test@open-metadata.org")));
+            updateAndCheckEntity(create(test), OK, authHeaders("test@open-metadata.org"),
+                    UpdateType.MINOR_UPDATE, null));
     TestUtils.assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} " +
             "is not admin");
   }
@@ -226,23 +236,6 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
                                               Map<String, String> authHeaders) throws HttpResponseException {
     return TestUtils.post(CatalogApplicationTest.getResource("services/databaseServices"),
                           create, DatabaseService.class, authHeaders);
-  }
-
-  private static void validateService(DatabaseService service, String expectedName, String expectedDescription,
-                                      JdbcInfo expectedJdbc, Schedule expectedIngestion, String expectedUpdatedBy) {
-    assertNotNull(service.getId());
-    assertNotNull(service.getHref());
-    assertEquals(expectedName, service.getName());
-    assertEquals(expectedDescription, service.getDescription());
-    assertEquals(expectedUpdatedBy, service.getUpdatedBy());
-
-    // Validate jdbc
-    assertEquals(expectedJdbc, service.getJdbc());
-
-    if (expectedIngestion != null) {
-      assertEquals(expectedIngestion.getStartDate(), service.getIngestionSchedule().getStartDate());
-      assertEquals(expectedIngestion.getRepeatFrequency(), service.getIngestionSchedule().getRepeatFrequency());
-    }
   }
 
   public static DatabaseService getService(UUID id, Map<String, String> authHeaders) throws HttpResponseException {
@@ -321,31 +314,6 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
             .withJdbc(TestUtils.JDBC_INFO);
   }
 
-  public static void updateAndCheckService(CreateDatabaseService update, Status status,
-                                           Map<String, String> authHeaders) throws HttpResponseException {
-    String updatedBy = TestUtils.getPrincipal(authHeaders);
-    DatabaseService service = updateDatabaseService(update, status, authHeaders);
-    validateService(service, service.getName(), update.getDescription(), service.getJdbc(),
-            update.getIngestionSchedule(), updatedBy);
-
-    // GET the newly updated database and validate
-    DatabaseService getService = getService(service.getId(), authHeaders);
-    validateService(getService, service.getName(), update.getDescription(), service.getJdbc(),
-            update.getIngestionSchedule(), updatedBy);
-
-    // GET the newly updated database by name and validate
-    getService = getServiceByName(service.getName(), null, authHeaders);
-    validateService(getService, service.getName(), update.getDescription(), service.getJdbc(),
-            update.getIngestionSchedule(), updatedBy);
-  }
-
-  public static DatabaseService updateDatabaseService(CreateDatabaseService updated,
-                                                      Status status, Map<String, String> authHeaders)
-          throws HttpResponseException {
-    return TestUtils.put(CatalogApplicationTest.getResource("services/databaseServices"), updated,
-            DatabaseService.class, status, authHeaders);
-  }
-
   @Override
   public Object createRequest(TestInfo test, int index, String description, String displayName, EntityReference owner)
           throws URISyntaxException {
@@ -353,21 +321,32 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
   }
 
   @Override
-  public void validateCreatedEntity(DatabaseService createdEntity, Object request, Map<String, String> authHeaders)
+  public void validateCreatedEntity(DatabaseService service, Object request, Map<String, String> authHeaders)
           throws HttpResponseException {
+    CreateDatabaseService createRequest = (CreateDatabaseService) request;
+    validateCommonEntityFields(getEntityInterface(service), createRequest.getDescription(), getPrincipal(authHeaders),
+            null);
+    assertEquals(createRequest.getName(), service.getName());
 
+    // Validate jdbc
+    assertEquals(createRequest.getJdbc(), service.getJdbc());
+
+    Schedule expectedIngestion = createRequest.getIngestionSchedule();
+    if (expectedIngestion != null) {
+      assertEquals(expectedIngestion.getStartDate(), service.getIngestionSchedule().getStartDate());
+      assertEquals(expectedIngestion.getRepeatFrequency(), service.getIngestionSchedule().getRepeatFrequency());
+    }
   }
 
   @Override
-  public void validateUpdatedEntity(DatabaseService updatedEntity, Object request, Map<String, String> authHeaders)
+  public void validateUpdatedEntity(DatabaseService service, Object request, Map<String, String> authHeaders)
           throws HttpResponseException {
-
+    validateCreatedEntity(service, request, authHeaders);
   }
 
   @Override
   public void compareEntities(DatabaseService expected, DatabaseService updated, Map<String, String> authHeaders)
           throws HttpResponseException {
-
   }
 
   @Override
@@ -377,6 +356,13 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
 
   @Override
   public void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException {
-
+    if (fieldName.equals("ingestionSchedule")) {
+      Schedule expectedSchedule = (Schedule) expected;
+      System.out.println(actual);
+      Schedule actualSchedule = JsonUtils.readValue((String) actual, Schedule.class);
+      assertEquals(expectedSchedule, actualSchedule);
+    } else {
+      super.assertCommonFieldChange(fieldName, expected, actual);
+    }
   }
 }
