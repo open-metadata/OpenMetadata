@@ -56,7 +56,7 @@ metadata ingest -c ./examples/workflows/superset.json
 
 Below is the configuration to publish Superset data into the OpenMetadata service.
 
-Add optionally `pii` processor and `metadata-rest` sink along with `metadata-server` config
+Add `metadata-rest` sink along with `metadata-server` config
 
 {% code title="superset.json" %}
 ```javascript
