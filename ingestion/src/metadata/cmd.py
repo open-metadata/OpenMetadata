@@ -174,6 +174,9 @@ def docker(start, stop, clean, type, path) -> None:
     try:
         import docker as sys_docker
 
+        from metadata.ingestion.ometa.ometa_api import OpenMetadata
+        from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
+
         client = sys_docker.from_env()
         docker_info = client.info()
         if docker_info["MemTotal"] < min_memory_limit:
@@ -187,7 +190,7 @@ def docker(start, stop, clean, type, path) -> None:
                     )
                 start_time = time.time()
                 subprocess.run(
-                    f"docker compose -f {path} up --build -d",
+                    f"docker-compose -f {path} up --build -d",
                     shell=True,
                 )
                 elapsed = time.time() - start_time
@@ -202,24 +205,34 @@ def docker(start, stop, clean, type, path) -> None:
                 open("/tmp/docker-compose.yml", "wb").write(r.content)
                 start_time = time.time()
                 subprocess.run(
-                    f"docker compose -f /tmp/docker-compose.yml up -d", shell=True
+                    f"docker-compose -f /tmp/docker-compose.yml up -d", shell=True
                 )
                 elapsed = time.time() - start_time
                 logger.info(
                     f"Time took to get containers running: {str(timedelta(seconds=elapsed))}"
                 )
-            subprocess.run(
-                """
-                    while ! wget -O /dev/null -o /dev/null 
-                    \ http://localhost:8585/api/v1/tables/name/bigquery.shopify.dim_address; do 
-                        printf '.'
-                        sleep 2
-                    done
-                """,
-                shell=True,
+            metadata_config = MetadataServerConfig.parse_obj(
+                {
+                    "api_endpoint": "http://localhost:8585/api",
+                    "auth_provider_type": "no-auth",
+                }
+            )
+
+            ometa_client = OpenMetadata(metadata_config).client
+            while True:
+                try:
+                    ometa_client.get(f"/tables/name/bigquery.shopify.dim_customer")
+                    break
+                except Exception as err:
+                    sys.stdout.write(".")
+                    sys.stdout.flush()
+                    time.sleep(5)
+            elapsed = time.time() - start_time
+            logger.info(
+                f"Time took to get OpenMetadata running: {str(timedelta(seconds=elapsed))}"
             )
             click.secho(
-                "✔ OpenMetadata is up and running",
+                "\n✔ OpenMetadata is up and running",
                 fg="bright_green",
             )
             click.secho(
@@ -257,7 +270,6 @@ def docker(start, stop, clean, type, path) -> None:
             f"{round(float(docker_info['MemTotal']) / calc_gb, 2)}",
             fg="red",
         )
-
     except sys_docker.errors.DockerException as err:
         click.secho(f"Error: Docker service is not up and running. {err}", fg="red")
     except Exception as err:
