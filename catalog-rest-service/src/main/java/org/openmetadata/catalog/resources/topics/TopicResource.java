@@ -131,21 +131,22 @@ public class TopicResource {
   public ResultList<Topic> list(@Context UriInfo uriInfo,
                                 @Context SecurityContext securityContext,
                                 @Parameter(description = "Fields requested in the returned resource",
-                                schema = @Schema(type = "string", example = FIELDS))
-                        @QueryParam("fields") String fieldsParam,
+                                        schema = @Schema(type = "string", example = FIELDS))
+                                @QueryParam("fields") String fieldsParam,
                                 @Parameter(description = "Filter topics by service name",
-                                schema = @Schema(type = "string", example = "kafkaWestCoast"))
-                        @QueryParam("service") String serviceParam,
-                                @Parameter(description = "Limit the number topics returned. (1 to 1000000, default = 10)")
-                        @DefaultValue("10")
+                                        schema = @Schema(type = "string", example = "kafkaWestCoast"))
+                                @QueryParam("service") String serviceParam,
+                                @Parameter(description = "Limit the number topics returned. (1 to 1000000, default = " +
+                                        "10)")
+                                @DefaultValue("10")
                                 @QueryParam("limit") @Min(1) @Max(1000000) int limitParam,
                                 @Parameter(description = "Returns list of topics before this cursor",
-                                schema = @Schema(type = "string"))
-                        @QueryParam("before") String before,
+                                        schema = @Schema(type = "string"))
+                                @QueryParam("before") String before,
                                 @Parameter(description = "Returns list of topics after this cursor",
-                                schema = @Schema(type = "string"))
-                        @QueryParam("after") String after
-  ) throws IOException, GeneralSecurityException, ParseException {
+                                        schema = @Schema(type = "string"))
+                                @QueryParam("after") String after) throws IOException, GeneralSecurityException,
+          ParseException {
     RestUtil.validateCursors(before, after);
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
 

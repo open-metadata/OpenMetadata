@@ -53,16 +53,6 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
     this.dao = dao;
   }
 
-  public DatabaseService update(UriInfo uriInfo, UUID id, String description, JdbcInfo jdbc, Schedule ingestionSchedule)
-          throws IOException {
-    EntityUtil.validateIngestionSchedule(ingestionSchedule);
-    DatabaseService dbService = dao.dbServiceDAO().findEntityById(id);
-    // Update fields
-    dbService.withDescription(description).withJdbc((jdbc)).withIngestionSchedule(ingestionSchedule);
-    dao.dbServiceDAO().update(id, JsonUtils.pojoToJson(dbService));
-    return withHref(uriInfo, dbService);
-  }
-
   @Transaction
   public void delete(UUID id) {
     if (dao.dbServiceDAO().delete(id) <= 0) {

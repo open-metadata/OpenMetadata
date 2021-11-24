@@ -30,24 +30,31 @@ import org.openmetadata.catalog.jdbi3.StorageServiceRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
+import org.openmetadata.catalog.type.EntityHistory;
+import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
 
 import javax.validation.Valid;
+import javax.validation.constraints.Max;
+import javax.validation.constraints.Min;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
+import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
 import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
+import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
 import java.util.Date;
@@ -73,23 +80,45 @@ public class StorageServiceResource {
     this.authorizer = authorizer;
   }
 
-  static class StorageServiceList extends ResultList<StorageService> {
-    StorageServiceList(List<StorageService> data) {
-      super(data);
+  public static class StorageServiceList extends ResultList<StorageService> {
+    @SuppressWarnings("unused") /* Required for tests */
+    public StorageServiceList() {}
+
+    public StorageServiceList(List<StorageService> data, String beforeCursor, String afterCursor, int total)
+            throws GeneralSecurityException, UnsupportedEncodingException {
+      super(data, beforeCursor, afterCursor, total);
     }
   }
 
   @GET
   @Operation(summary = "List storage services", tags = "services",
-          description = "Get a list of storage services.",
-          responses = {
-                  @ApiResponse(responseCode = "200", description = "List of storage service instances",
-                          content = @Content(mediaType = "application/json",
-                                  schema = @Schema(implementation = StorageServiceList.class)))
+          description = "Get a list of storage services. Use cursor-based pagination to limit the number " +
+                  "entries in the list using `limit` and `before` or `after` query params.",
+          responses = {@ApiResponse(responseCode = "200", description = "List of storage services",
+                  content = @Content(mediaType = "application/json",
+                          schema = @Schema(implementation = StorageServiceList.class)))
           })
-  public ResultList<StorageService> list(@Context UriInfo uriInfo) throws IOException, GeneralSecurityException,
-          ParseException {
-    return dao.listAfter(uriInfo, null, null, 10000, null);
+  public ResultList<StorageService> list(@Context UriInfo uriInfo,
+                                         @Context SecurityContext securityContext,
+                                         @Parameter(description = "Limit number services returned. (1 to 1000000, " +
+                                                 "default 10)")
+                                         @DefaultValue("10")
+                                         @Min(1)
+                                         @Max(1000000)
+                                         @QueryParam("limit") int limitParam,
+                                         @Parameter(description = "Returns list of services before this cursor",
+                                                 schema = @Schema(type = "string"))
+                                         @QueryParam("before") String before,
+                                         @Parameter(description = "Returns list of services after this cursor",
+                                                 schema = @Schema(type = "string"))
+                                         @QueryParam("after") String after) throws IOException,
+          GeneralSecurityException, ParseException {
+    RestUtil.validateCursors(before, after);
+    if (before != null) { // Reverse paging
+      return dao.listBefore(uriInfo, null, null, limitParam, before);
+    }
+    // Forward paging or first page
+    return dao.listAfter(uriInfo, null, null, limitParam, after);
   }
 
   @GET
@@ -122,6 +151,44 @@ public class StorageServiceResource {
                                   @Context SecurityContext securityContext,
                                   @PathParam("name") String name) throws IOException, ParseException {
     return dao.getByName(uriInfo, name, null);
+  }
+
+  @GET
+  @Path("/{id}/versions")
+  @Operation(summary = "List storage service versions", tags = "services",
+          description = "Get a list of all the versions of a storage service identified by `id`",
+          responses = {@ApiResponse(responseCode = "200", description = "List of storage service versions",
+                  content = @Content(mediaType = "application/json",
+                          schema = @Schema(implementation = EntityHistory.class)))
+          })
+  public EntityHistory listVersions(@Context UriInfo uriInfo,
+                                    @Context SecurityContext securityContext,
+                                    @Parameter(description = "storage service Id", schema = @Schema(type = "string"))
+                                    @PathParam("id") String id)
+          throws IOException, ParseException, GeneralSecurityException {
+    return dao.listVersions(id);
+  }
+
+  @GET
+  @Path("/{id}/versions/{version}")
+  @Operation(summary = "Get a version of the storage service", tags = "services",
+          description = "Get a version of the storage service by given `id`",
+          responses = {
+                  @ApiResponse(responseCode = "200", description = "storage service",
+                          content = @Content(mediaType = "application/json",
+                                  schema = @Schema(implementation = StorageService.class))),
+                  @ApiResponse(responseCode = "404", description = "Storage service for instance {id} and version " +
+                          "{version} is not found")
+          })
+  public StorageService getVersion(@Context UriInfo uriInfo,
+                                   @Context SecurityContext securityContext,
+                                   @Parameter(description = "storage service Id", schema = @Schema(type = "string"))
+                                   @PathParam("id") String id,
+                                   @Parameter(description = "storage service version number in the form `major`" +
+                                           ".`minor`",
+                                           schema = @Schema(type = "string", example = "0.1 or 1.1"))
+                                   @PathParam("version") String version) throws IOException, ParseException {
+    return dao.getVersion(id, version);
   }
 
   @POST
