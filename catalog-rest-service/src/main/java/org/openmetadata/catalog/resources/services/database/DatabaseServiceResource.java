@@ -24,7 +24,6 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.openmetadata.catalog.api.services.CreateDatabaseService;
-import org.openmetadata.catalog.api.services.UpdateDatabaseService;
 import org.openmetadata.catalog.entity.services.DatabaseService;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.DatabaseServiceRepository;
@@ -32,6 +31,7 @@ import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.util.RestUtil;
+import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
 
 import javax.validation.Valid;
@@ -160,19 +160,12 @@ public class DatabaseServiceResource {
                          @Context SecurityContext securityContext,
                          @Valid CreateDatabaseService create) throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    DatabaseService databaseService = new DatabaseService().withId(UUID.randomUUID())
-            .withName(create.getName()).withDescription(create.getDescription())
-            .withServiceType(create.getServiceType()).withJdbc(create.getJdbc())
-            .withIngestionSchedule(create.getIngestionSchedule())
-            .withUpdatedBy(securityContext.getUserPrincipal().getName())
-            .withUpdatedAt(new Date());
-
-    dao.create(uriInfo, databaseService);
-    return Response.created(databaseService.getHref()).entity(databaseService).build();
+    DatabaseService service = getService(create, securityContext);
+    dao.create(uriInfo, service);
+    return Response.created(service.getHref()).entity(service).build();
   }
 
   @PUT
-  @Path("/{id}")
   @Operation(summary = "Update a database service", tags = "services",
           description = "Update an existing database service identified by `id`.",
           responses = {
@@ -183,14 +176,11 @@ public class DatabaseServiceResource {
           })
   public Response update(@Context UriInfo uriInfo,
                          @Context SecurityContext securityContext,
-                         @Parameter(description = "Id of the database service", schema = @Schema(type = "string"))
-                         @PathParam("id") String id,
-                         @Valid UpdateDatabaseService update) throws IOException {
+                         @Valid CreateDatabaseService update) throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    DatabaseService databaseService =
-            dao.update(uriInfo, UUID.fromString(id), update.getDescription(), update.getJdbc(),
-                    update.getIngestionSchedule());
-    return Response.ok(databaseService).build();
+    DatabaseService service = getService(update, securityContext);
+    PutResponse<DatabaseService> response = dao.createOrUpdate(uriInfo, service);
+    return response.toResponse();
   }
 
   @DELETE
@@ -210,5 +200,14 @@ public class DatabaseServiceResource {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     dao.delete(UUID.fromString(id));
     return Response.ok().build();
+  }
+
+  private DatabaseService getService(CreateDatabaseService create, SecurityContext securityContext) {
+    return new DatabaseService().withId(UUID.randomUUID())
+            .withName(create.getName()).withDescription(create.getDescription())
+            .withServiceType(create.getServiceType()).withJdbc(create.getJdbc())
+            .withIngestionSchedule(create.getIngestionSchedule())
+            .withUpdatedBy(securityContext.getUserPrincipal().getName())
+            .withUpdatedAt(new Date());
   }
 }

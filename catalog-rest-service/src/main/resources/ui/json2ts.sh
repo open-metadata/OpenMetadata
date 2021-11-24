@@ -34,7 +34,12 @@ getTypes(){
         fileTS=${f//.json/.ts}
         fileTS=${fileTS//$2/$3}
         mkdir -p "$(dirname "$fileTS")" && quicktype -s schema "$f" -o "$fileTS" --just-types
-        addLicensing "$fileTS"
+        if [[ -s $fileTS ]]
+        then
+            addLicensing "$fileTS"
+        else
+            rm -f $fileTS
+        fi
     fi
     done
 }

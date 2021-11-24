@@ -17,8 +17,14 @@
 
 import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
-import { isNull, lowerCase } from 'lodash';
-import { ServiceCollection, ServiceData, ServiceTypes } from 'Models';
+import { isNil, isNull, lowerCase } from 'lodash';
+import {
+  LoadingState,
+  Paging,
+  ServiceCollection,
+  ServiceData,
+  ServiceTypes,
+} from 'Models';
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
@@ -29,6 +35,7 @@ import {
   updateService,
 } from '../../axiosAPIs/serviceAPI';
 import { Button } from '../../components/buttons/Button/Button';
+import LoadMorePagination from '../../components/common/LoadMorePagination/LoadMorePagination';
 import NonAdminAction from '../../components/common/non-admin-action/NonAdminAction';
 import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
 import Searchbar from '../../components/common/searchbar/Searchbar';
@@ -43,6 +50,7 @@ import {
 import ConfirmationModal from '../../components/Modals/ConfirmationModal/ConfirmationModal';
 import {
   getServiceDetailsPath,
+  pagingObject,
   TITLE_FOR_NON_ADMIN_ACTION,
 } from '../../constants/constants';
 import {
@@ -50,6 +58,7 @@ import {
   NoDataFoundPlaceHolder,
   servicesDisplayName,
 } from '../../constants/services.const';
+import { CursorType } from '../../enums/pagination.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import {
   DashboardService,
@@ -69,6 +78,13 @@ type ServiceRecord = {
   messagingServices: Array<MessagingService>;
   dashboardServices: Array<DashboardService>;
   pipelineServices: Array<PipelineService>;
+};
+
+type ServicePagingRecord = {
+  databaseServices: Paging;
+  messagingServices: Paging;
+  dashboardServices: Paging;
+  pipelineServices: Paging;
 };
 
 export type ApiData = {
@@ -92,6 +108,12 @@ const ServicesPage = () => {
   });
   const [serviceName, setServiceName] =
     useState<ServiceTypes>('databaseServices');
+  const [paging, setPaging] = useState<ServicePagingRecord>({
+    databaseServices: pagingObject,
+    messagingServices: pagingObject,
+    dashboardServices: pagingObject,
+    pipelineServices: pagingObject,
+  });
   const [services, setServices] = useState<ServiceRecord>({
     databaseServices: [],
     messagingServices: [],
@@ -102,12 +124,17 @@ const ServicesPage = () => {
   const [editData, setEditData] = useState<ServiceDataObj>();
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [searchText, setSearchText] = useState('');
+  const [currentTabTotalCount, setCurrentTabTotalCount] = useState(0);
+
   const [servicesCount, setServicesCount] = useState({
     databaseServices: 0,
     messagingServices: 0,
     dashboardServices: 0,
     pipelineServices: 0,
   });
+
+  const [isLoadingMore, setIsLoadingMore] = useState<boolean>(false);
+  const [status, setStatus] = useState<LoadingState>('initial');
 
   const updateServiceList = (
     allServiceCollectionArr: Array<ServiceCollection>
@@ -122,24 +149,34 @@ const ServicesPage = () => {
         (result: PromiseSettledResult<AxiosResponse>[]) => {
           if (result.length) {
             let serviceArr = [];
+            let servicePagingArr = [];
             const serviceRecord = {} as ServiceRecord;
+            const servicePaging = {} as ServicePagingRecord;
             serviceArr = result.map((service) =>
               service.status === 'fulfilled' ? service.value?.data?.data : []
+            );
+            servicePagingArr = result.map((service) =>
+              service.status === 'fulfilled' ? service.value?.data?.paging : {}
             );
             for (let i = 0; i < serviceArr.length; i++) {
               serviceRecord[allServiceCollectionArr[i].value as ServiceTypes] =
                 serviceArr[i];
+              servicePaging[allServiceCollectionArr[i].value as ServiceTypes] =
+                servicePagingArr[i];
             }
             setServices(serviceRecord);
+
+            setPaging(servicePaging);
             setServicesCount({
-              databaseServices: serviceRecord.databaseServices.length,
-              messagingServices: serviceRecord.messagingServices.length,
-              dashboardServices: serviceRecord.dashboardServices.length,
-              pipelineServices: serviceRecord.pipelineServices.length,
+              databaseServices: servicePaging.databaseServices.total || 0,
+              messagingServices: servicePaging.messagingServices.total || 0,
+              dashboardServices: servicePaging.dashboardServices.total || 0,
+              pipelineServices: servicePaging.pipelineServices.total || 0,
             });
             setServiceList(
               serviceRecord[serviceName] as unknown as Array<ServiceDataObj>
             );
+            setCurrentTabTotalCount(servicePaging[serviceName].total || 0);
           }
           setIsLoading(false);
         }
@@ -308,7 +345,7 @@ const ServicesPage = () => {
     setSearchText('');
     setServicesCount({
       ...servicesCount,
-      [serviceName]: services[serviceName].length,
+      [serviceName]: currentTabTotalCount,
     });
     setServiceName(tabName);
     setServiceList(services[tabName] as unknown as Array<ServiceDataObj>);
@@ -382,6 +419,35 @@ const ServicesPage = () => {
     }
   };
 
+  const pagingHandler = (cursorType: string) => {
+    setIsLoadingMore(true);
+    setStatus('waiting');
+    const currentServicePaging = paging[serviceName];
+    const pagingString = `${serviceName}?${cursorType}=${
+      currentServicePaging[cursorType as keyof Paging]
+    }`;
+    getServices(pagingString)
+      .then((result: AxiosResponse) => {
+        const currentServices = [...services[serviceName], ...result.data.data];
+        setServiceList(currentServices);
+
+        setServices({
+          ...services,
+          [serviceName]: currentServices,
+        });
+
+        setPaging({
+          ...paging,
+          [serviceName]: result.data.paging,
+        });
+        setStatus('success');
+      })
+      .finally(() => {
+        setIsLoadingMore(false);
+        setStatus('initial');
+      });
+  };
+
   useEffect(() => {
     //   fetch all service collection
     setIsLoading(true);
@@ -405,6 +471,10 @@ const ServicesPage = () => {
       updateServiceList(allServiceCollectionArr);
     });
   }, []);
+
+  useEffect(() => {
+    setCurrentTabTotalCount(servicesCount[serviceName]);
+  }, [serviceName]);
 
   return (
     <>
@@ -458,7 +528,7 @@ const ServicesPage = () => {
             </div>
             {serviceList.length ? (
               <div
-                className="tw-grid tw-grid-cols-4 tw-gap-4"
+                className="tw-grid tw-grid-cols-4 tw-gap-4 tw-mb-4"
                 data-testid="data-container">
                 {serviceList.map((service, index) => (
                   <div
@@ -586,6 +656,18 @@ const ServicesPage = () => {
                     to add new {servicesDisplayName[serviceName]}
                   </p>
                 </div>
+              </div>
+            )}
+
+            {!isNil(paging[serviceName].after) && (
+              <div className="tw-my-4 tw-flex tw-justify-center tw-items-center">
+                <LoadMorePagination
+                  showLoadingText
+                  buttonText="Load more"
+                  handleClick={() => pagingHandler(CursorType.AFTER)}
+                  isLoading={isLoadingMore}
+                  status={status}
+                />
               </div>
             )}
 

@@ -33,6 +33,7 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
   onSelect,
   groupType = 'label',
   domPosition,
+  className = '',
 }: DropDownListProp) => {
   const { height: windowHeight } = useWindowDimensions();
   const isMounted = useRef<boolean>(false);
@@ -146,7 +147,8 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
             aria-orientation="vertical"
             className={classNames(
               'dropdown-list tw-mt-0.5',
-              horzPosRight ? 'dd-horz-right' : 'dd-horz-left'
+              horzPosRight ? 'dd-horz-right' : 'dd-horz-left',
+              className
             )}
             data-testid="dropdown-list"
             role="menu"

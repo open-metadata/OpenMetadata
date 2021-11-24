@@ -23,12 +23,10 @@ import org.openmetadata.catalog.CatalogApplicationTest;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.services.CreateDatabaseService;
 import org.openmetadata.catalog.api.services.CreateDatabaseService.DatabaseServiceType;
-import org.openmetadata.catalog.type.Schedule;
-import org.openmetadata.catalog.api.services.UpdateDatabaseService;
 import org.openmetadata.catalog.entity.services.DatabaseService;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.type.JdbcInfo;
-import org.openmetadata.catalog.util.RestUtil;
+import org.openmetadata.catalog.type.Schedule;
 import org.openmetadata.catalog.util.TestUtils;
 
 import javax.ws.rs.client.WebTarget;
@@ -168,47 +166,29 @@ public class DatabaseServiceResourceTest extends CatalogApplicationTest {
   }
 
   @Test
-  public void put_updateNonExistentService_404() {
-    // Update database description and ingestion service that are null
-    UpdateDatabaseService update = new UpdateDatabaseService().withDescription("description1");
-    HttpResponseException exception = assertThrows(HttpResponseException.class, ()
-            -> updateDatabaseService(TestUtils.NON_EXISTENT_ENTITY.toString(), update, OK, adminAuthHeaders()));
-    TestUtils.assertResponse(exception, NOT_FOUND, CatalogExceptionMessage.entityNotFound("DatabaseService",
-            TestUtils.NON_EXISTENT_ENTITY));
-  }
-
-  @Test
   public void put_updateDatabaseService_as_admin_2xx(TestInfo test) throws HttpResponseException {
-    DatabaseService dbService = createAndCheckService(create(test).withDescription(null).withIngestionSchedule(null),
-            adminAuthHeaders());
-    String id = dbService.getId().toString();
-
+    createAndCheckService(create(test).withDescription(null).withIngestionSchedule(null), adminAuthHeaders());
     // Update database description and ingestion service that are null
-    UpdateDatabaseService update = new UpdateDatabaseService().withDescription("description1");
-    updateAndCheckService(id, update, OK, adminAuthHeaders());
+    CreateDatabaseService update = create(test).withDescription("description1");
+    updateAndCheckService(update, OK, adminAuthHeaders());
     // Update ingestion schedule
     Schedule schedule = new Schedule().withStartDate(new Date()).withRepeatFrequency("P1D");
     update.withIngestionSchedule(schedule);
-    updateAndCheckService(id, update, OK, adminAuthHeaders());
+    updateAndCheckService(update, OK, adminAuthHeaders());
 
     // Update description and ingestion schedule again
     update.withDescription("description1").withIngestionSchedule(schedule.withRepeatFrequency("PT1H"));
-    updateAndCheckService(id, update, OK, adminAuthHeaders());
+    updateAndCheckService(update, OK, adminAuthHeaders());
   }
 
   @Test
   public void put_update_as_non_admin_401(TestInfo test) throws HttpResponseException {
     Map<String, String> authHeaders = adminAuthHeaders();
-    DatabaseService dbService = createAndCheckService(create(test).withDescription(null).withIngestionSchedule(null),
-            authHeaders);
-    String id = dbService.getId().toString();
-    RestUtil.DATE_TIME_FORMAT.format(new Date());
+    createAndCheckService(create(test).withDescription(null).withIngestionSchedule(null), authHeaders);
 
-    // Update database description and ingestion service that are null
-    UpdateDatabaseService update = new UpdateDatabaseService().withDescription("description1");
-
+    // Update as non admin should be forbidden
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            updateAndCheckService(id, update, OK, authHeaders("test@open-metadata.org")));
+            updateAndCheckService(create(test), OK, authHeaders("test@open-metadata.org")));
     TestUtils.assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} " +
             "is not admin");
   }
@@ -348,10 +328,10 @@ public class DatabaseServiceResourceTest extends CatalogApplicationTest {
             .withJdbc(TestUtils.JDBC_INFO);
   }
 
-  public static void updateAndCheckService(String id, UpdateDatabaseService update, Status status,
+  public static void updateAndCheckService(CreateDatabaseService update, Status status,
                                            Map<String, String> authHeaders) throws HttpResponseException {
     String updatedBy = TestUtils.getPrincipal(authHeaders);
-    DatabaseService service = updateDatabaseService(id, update, status, authHeaders);
+    DatabaseService service = updateDatabaseService(update, status, authHeaders);
     validateService(service, service.getName(), update.getDescription(), service.getJdbc(),
             update.getIngestionSchedule(), updatedBy);
 
@@ -366,10 +346,10 @@ public class DatabaseServiceResourceTest extends CatalogApplicationTest {
             update.getIngestionSchedule(), updatedBy);
   }
 
-  public static DatabaseService updateDatabaseService(String id, UpdateDatabaseService updated,
+  public static DatabaseService updateDatabaseService(CreateDatabaseService updated,
                                                       Status status, Map<String, String> authHeaders)
           throws HttpResponseException {
-    return TestUtils.put(CatalogApplicationTest.getResource("services/databaseServices/" + id), updated,
+    return TestUtils.put(CatalogApplicationTest.getResource("services/databaseServices"), updated,
             DatabaseService.class, status, authHeaders);
   }
 }

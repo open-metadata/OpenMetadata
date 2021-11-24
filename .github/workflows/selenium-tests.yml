@@ -6,8 +6,14 @@ name: Selenium Java CI
 on:
   push:
     branches: [main]
+    paths:
+      - 'catalog-rest-service/src/main/resource/ui/**'
+      - 'catalog-rest-service/src/test/java/org/openmetadata/catalog/selenium/pages/**'
   pull_request:
     branches: [main]
+    paths:
+      - 'catalog-rest-service/src/main/resource/ui/**'
+      - 'catalog-rest-service/src/test/java/org/openmetadata/catalog/selenium/pages/**'
 
 jobs:
   build:
