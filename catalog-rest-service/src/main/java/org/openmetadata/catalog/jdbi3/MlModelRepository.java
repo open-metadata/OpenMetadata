@@ -65,12 +65,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
 
   @Transaction
   public void delete(UUID id) {
-    if (dao.relationshipDAO().findToCount(id.toString(), Relationship.CONTAINS.ordinal(), Entity.MLMODEL) > 0) {
-      throw new IllegalArgumentException("Model is not empty");
-    }
-    if (dao.mlModelDAO().delete(id) <= 0) {
-      throw EntityNotFoundException.byMessage(entityNotFound(Entity.MLMODEL, id));
-    }
+    dao.mlModelDAO().delete(id);
     dao.relationshipDAO().deleteAll(id.toString());
   }
 
@@ -338,10 +333,12 @@ public class MlModelRepository extends EntityRepository<MlModel> {
 
     @Override
     public void entitySpecificUpdate() throws IOException {
-      updateAlgorithm(original.getEntity(), updated.getEntity());
-      updateDashboard(original.getEntity(), updated.getEntity());
-      updateMlFeatures(original.getEntity(), updated.getEntity());
-      updateMlHyperParameters(original.getEntity(), updated.getEntity());
+      MlModel origMlModel = original.getEntity();
+      MlModel updatedMlModel = updated.getEntity();
+      updateAlgorithm(origMlModel, updatedMlModel);
+      updateDashboard(origMlModel, updatedMlModel);
+      updateMlFeatures(origMlModel, updatedMlModel);
+      updateMlHyperParameters(origMlModel, updatedMlModel);
     }
 
     private void updateAlgorithm(MlModel origModel, MlModel updatedModel) throws JsonProcessingException {
