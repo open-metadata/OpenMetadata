@@ -30,6 +30,7 @@
     source venv/bin/activate
     pip install -r ingestion/requirements.txt
     make install_dev generate
+    pip install -e ingestion
     cd ingestion
     pip install -e '.[sample-data, elasticsearch]'
     metadata ingest -c ./pipelines/sample_data.json

@@ -12,7 +12,6 @@
   * [BigQuery Usage](openmetadata/connectors/bigquery-usage.md)
   * [Data Model](connectors/data-model/README.md)
     * [DBT](connectors/data-model/dbt.md)
-    * [MariaDB](connectors/data-model/mariadb.md)
   * [ElasticSearch](openmetadata/connectors/elastic-search.md)
   * [Glue Catalog](connectors/glue-catalog.md)
   * [Hive](openmetadata/connectors/hive.md)
