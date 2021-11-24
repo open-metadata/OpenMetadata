@@ -17,8 +17,12 @@ name: py-integration-tests
 on:
   push:
     branches: [main]
+    paths:
+      - ingestion/**
   pull_request:
     branches: [main]
+    paths:
+      - ingestion/**
 jobs:
   run_integration_tests:
     runs-on: ubuntu-latest
