@@ -110,15 +110,7 @@ const getLineageData = (
               className: 'leaf-node',
               data: {
                 label: (
-                  <p
-                    className="tw-flex"
-                    onClick={() =>
-                      onSelect(true, {
-                        name: node.name as string,
-                        type: node.type,
-                        id: `node-${node.id}-${depth}`,
-                      })
-                    }>
+                  <p className="tw-flex">
                     <span className="tw-mr-2">{getEntityIcon(node.type)}</span>
                     {getDataLabel(node.name as string)}
                   </p>
@@ -170,18 +162,10 @@ const getLineageData = (
               className: 'leaf-node',
               data: {
                 label: (
-                  <span
-                    className="tw-flex"
-                    onClick={() =>
-                      onSelect(true, {
-                        name: node.name as string,
-                        type: node.type,
-                        id: `node-${node.id}-${depth}`,
-                      })
-                    }>
+                  <p className="tw-flex">
                     <span className="tw-mr-2">{getEntityIcon(node.type)}</span>
                     {getDataLabel(node.name as string)}
-                  </span>
+                  </p>
                 ),
               },
               position: {
@@ -398,6 +382,12 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
     setElements((els) => addEdge(params, els));
 
   const onElementClick = (el: FlowElement) => {
+    const node = entityLineage.nodes?.find((n) => el.id.includes(n.id));
+    selectNodeHandler(true, {
+      name: node?.name as string,
+      id: el.id,
+      type: node?.type as string,
+    });
     setElements((prevElements) => {
       return prevElements.map((preEl) => {
         if (preEl.id === el.id) {
@@ -438,15 +428,12 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
               onNodeContextMenu={onNodeContextMenu}
               onNodeDrag={(e) => {
                 e.stopPropagation();
-                // e.preventDefault();
               }}
               onNodeDragStart={(e) => {
                 e.stopPropagation();
-                // e.preventDefault();
               }}
               onNodeDragStop={(e) => {
                 e.stopPropagation();
-                // e.preventDefault();
               }}
               onNodeMouseEnter={onNodeMouseEnter}
               onNodeMouseLeave={onNodeMouseLeave}
