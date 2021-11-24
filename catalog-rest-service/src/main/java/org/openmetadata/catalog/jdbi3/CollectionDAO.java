@@ -722,7 +722,8 @@ public interface CollectionDAO {
     void applyTag(@Bind("tagFQN") String tagFQN, @Bind("targetFQN") String targetFQN,
                   @Bind("labelType") int labelType, @Bind("state") int state);
 
-    @SqlQuery("SELECT tagFQN, labelType, state FROM tag_usage WHERE targetFQN = :targetFQN ORDER BY tagFQN")
+    @SqlQuery("SELECT tu.tagFQN, tu.labelType, tu.state, t.json ->> '$.description' AS description FROM tag_usage tu " +
+            "JOIN tag t ON tu.tagFQN = t.fullyQualifiedName WHERE tu.targetFQN = :targetFQN ORDER BY tu.tagFQN")
     List<TagLabel> getTags(@Bind("targetFQN") String targetFQN);
 
     @SqlQuery("SELECT COUNT(*) FROM tag_usage WHERE tagFQN LIKE CONCAT(:fqnPrefix, '%')")
@@ -739,7 +740,8 @@ public interface CollectionDAO {
       public TagLabel map(ResultSet r, StatementContext ctx) throws SQLException {
         return new TagLabel().withLabelType(TagLabel.LabelType.values()[r.getInt("labelType")])
                 .withState(TagLabel.State.values()[r.getInt("state")])
-                .withTagFQN(r.getString("tagFQN"));
+                .withTagFQN(r.getString("tagFQN"))
+                .withDescription(r.getString("description"));
       }
     }
   }
