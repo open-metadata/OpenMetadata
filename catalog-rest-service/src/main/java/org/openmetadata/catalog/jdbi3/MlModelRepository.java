@@ -20,10 +20,13 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.MlModel;
+import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.resources.mlmodels.MlModelResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.MlFeature;
+import org.openmetadata.catalog.type.MlFeatureSource;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
@@ -44,9 +47,9 @@ import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityN
 public class MlModelRepository extends EntityRepository<MlModel> {
   private static final Logger LOG = LoggerFactory.getLogger(MlModelRepository.class);
   private static final Fields MODEL_UPDATE_FIELDS = new Fields(MlModelResource.FIELD_LIST,
-          "owner,dashboard,mlHyperParameters,mlFeatures,tags");
+          "owner,algorithm,dashboard,mlHyperParameters,mlFeatures,tags");
   private static final Fields MODEL_PATCH_FIELDS = new Fields(MlModelResource.FIELD_LIST,
-          "owner,dashboard,mlHyperParameters,mlFeatures,tags");
+          "owner,algorithm,dashboard,mlHyperParameters,mlFeatures,tags");
   private final CollectionDAO dao;
 
   public MlModelRepository(CollectionDAO dao) {
@@ -92,7 +95,9 @@ public class MlModelRepository extends EntityRepository<MlModel> {
 
   @Override
   public void restorePatchAttributes(MlModel original, MlModel updated) throws IOException, ParseException {
-
+    // Patch can't make changes to following fields. Ignore the changes
+    updated.withFullyQualifiedName(original.getFullyQualifiedName())
+            .withName(original.getName()).withId(original.getId());
   }
 
   @Override
@@ -104,11 +109,32 @@ public class MlModelRepository extends EntityRepository<MlModel> {
     return dao.tagDAO().getTags(fqn);
   }
 
+  private void setMlFeatureSourcesFQN(String parentFQN, List<MlFeatureSource> mlSources) {
+    mlSources.forEach(s -> {
+      String sourceFqn = parentFQN + "." + s.getName();
+      s.setFullyQualifiedName(sourceFqn);
+    });
+  }
+
+  private void setMlFeatureFQN(String parentFQN, List<MlFeature> mlFeatures) {
+    mlFeatures.forEach(f -> {
+      String featureFqn = parentFQN + "." + f.getName();
+      f.setFullyQualifiedName(featureFqn);
+      if (f.getFeatureSources() != null) {
+        setMlFeatureSourcesFQN(featureFqn, f.getFeatureSources());
+      }
+    });
+  }
+
 
   @Override
   public void validate(MlModel model) throws IOException {
     model.setFullyQualifiedName(getFQN(model));
-    EntityUtil.populateOwner(dao.userDAO(), dao.teamDAO(), model.getOwner()); // Validate owner
+    setMlFeatureFQN(model.getFullyQualifiedName(), model.getMlFeatures());
+
+    // Check if owner is valid and set the relationship
+    model.setOwner(EntityUtil.populateOwner(dao.userDAO(), dao.teamDAO(), model.getOwner()));
+
     if (model.getDashboard() != null) {
       UUID dashboardId = model.getDashboard().getId();
       model.setDashboard(dao.dashboardDAO().findEntityReferenceById(dashboardId));
@@ -140,6 +166,14 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   public void storeRelationships(MlModel mlModel) throws IOException {
     setOwner(mlModel, mlModel.getOwner());
     setDashboard(mlModel, mlModel.getDashboard());
+
+    if (mlModel.getDashboard() != null) {
+      // Add relationship from MlModel to Dashboard
+      String dashboardId = mlModel.getDashboard().getId().toString();
+      dao.relationshipDAO().insert(dashboardId, mlModel.getId().toString(), Entity.MLMODEL, Entity.DASHBOARD,
+              Relationship.USES.ordinal());
+    }
+
     applyTags(mlModel);
   }
 
