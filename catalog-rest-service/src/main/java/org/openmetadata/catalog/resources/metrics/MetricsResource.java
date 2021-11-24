@@ -113,13 +113,11 @@ public class MetricsResource {
     RestUtil.validateCursors(before, after);
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
 
-    ResultList<Metrics> metricsList;
     if (before != null) { // Reverse paging
-      metricsList = dao.listBefore(uriInfo, fields, null, limitParam, before);
-    } else { // Forward paging or first page
-      metricsList = dao.listAfter(uriInfo, fields, null, limitParam, after);
+      return dao.listBefore(uriInfo, fields, null, limitParam, before);
     }
-    return metricsList;
+    // Forward paging or first page
+    return dao.listAfter(uriInfo, fields, null, limitParam, after);
   }
 
   @GET

@@ -122,8 +122,7 @@ public class TeamResource {
                        @Parameter(description = "Fields requested in the returned resource",
                                schema = @Schema(type = "string", example = FIELDS))
                        @QueryParam("fields") String fieldsParam,
-                       @Parameter(description = "Limit the number tables returned. (1 to 1000000, default = 10) ",
-                               schema = @Schema(type = "string", example = "snowflakeWestCoast.financeDB"))
+                       @Parameter(description = "Limit the number tables returned. (1 to 1000000, default = 10)")
                        @DefaultValue("10")
                        @Min(1)
                        @Max(1000000)

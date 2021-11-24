@@ -52,19 +52,6 @@ public class PipelineServiceRepository extends EntityRepository<PipelineService>
   }
 
   @Transaction
-  public PipelineService update(UriInfo uriInfo, UUID id, String description, URI url,
-                                 Schedule ingestionSchedule)
-          throws IOException {
-    EntityUtil.validateIngestionSchedule(ingestionSchedule);
-    PipelineService pipelineService = dao.pipelineServiceDAO().findEntityById(id);
-    // Update fields
-    pipelineService.withDescription(description).withIngestionSchedule(ingestionSchedule)
-            .withPipelineUrl(url);
-    dao.pipelineServiceDAO().update(id, JsonUtils.pojoToJson(pipelineService));
-    return withHref(uriInfo, pipelineService);
-  }
-
-  @Transaction
   public void delete(UUID id) {
     if (dao.pipelineServiceDAO().delete(id) <= 0) {
       throw EntityNotFoundException.byMessage(entityNotFound(Entity.PIPELINE_SERVICE, id));

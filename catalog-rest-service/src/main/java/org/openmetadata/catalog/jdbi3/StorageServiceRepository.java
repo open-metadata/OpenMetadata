@@ -47,15 +47,6 @@ public class StorageServiceRepository extends EntityRepository<StorageService> {
     this.dao = dao;
   }
 
-  public StorageService update(UriInfo uriInfo, UUID id, String description)
-          throws IOException {
-    StorageService storageService = dao.storageServiceDAO().findEntityById(id);
-    // Update fields
-    storageService.withDescription(description);
-    dao.storageServiceDAO().update(id, JsonUtils.pojoToJson(storageService));
-    return withHref(uriInfo, storageService);
-  }
-
   @Transaction
   public void delete(UUID id) {
     if (dao.storageServiceDAO().delete(id) <= 0) {

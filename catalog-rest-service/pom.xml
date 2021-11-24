@@ -319,14 +319,6 @@
   </dependencies>
 
   <build>
-    <resources>
-      <resource>
-        <directory>src/main/resources/ui/dist</directory>
-      </resource>
-      <resource>
-        <directory>src/main/resources/json/data</directory>
-      </resource>
-    </resources>
 
     <plugins>
       <plugin>
@@ -415,69 +407,6 @@
             <goals>
               <goal>generate</goal>
             </goals>
-          </execution>
-        </executions>
-      </plugin>
-      <!-- Handle Compiling Frontend -->
-      <plugin>
-        <groupId>com.github.eirslett</groupId>
-        <artifactId>frontend-maven-plugin</artifactId>
-        <version>1.11.0</version>
-
-        <!-- optional -->
-        <configuration>
-          <workingDirectory>src/main/resources/ui/</workingDirectory>
-          <installDirectory>target</installDirectory>
-        </configuration>
-
-        <executions>
-          <execution>
-            <id>install node and npm</id>
-            <goals>
-              <goal>install-node-and-npm</goal>
-            </goals>
-            <configuration>
-              <nodeVersion>v12.16.1</nodeVersion>
-              <npmVersion>6.13.4</npmVersion>
-            </configuration>
-          </execution>
-          <execution>
-            <id>npm install</id>
-            <goals>
-              <goal>npm</goal>
-            </goals>
-            <phase>prepare-package</phase>
-            <configuration>
-              <arguments>install</arguments>
-            </configuration>
-          </execution>
-          <execution>
-            <id>npm run-script build-check</id>
-            <goals>
-              <goal>npm</goal>
-            </goals>
-            <!-- optional: the default phase is "generate-resources" -->
-            <phase>prepare-package</phase>
-            <configuration>
-              <!-- optional: if not specified, it will run gulp's default task
-                  (and you can remove this whole <configuration> section.) -->
-              <arguments>run-script build-check</arguments>
-              <!--arguments>build</arguments-->
-            </configuration>
-          </execution>
-          <execution>
-            <id>npm run-script build</id>
-            <goals>
-              <goal>npm</goal>
-            </goals>
-            <!-- optional: the default phase is "generate-resources" -->
-            <phase>prepare-package</phase>
-            <configuration>
-              <!-- optional: if not specified, it will run gulp's default task
-                  (and you can remove this whole <configuration> section.) -->
-              <arguments>run-script build</arguments>
-              <!--arguments>build</arguments-->
-            </configuration>
           </execution>
         </executions>
       </plugin>

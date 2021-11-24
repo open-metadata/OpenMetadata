@@ -27,7 +27,7 @@
     <version>0.7.0-SNAPSHOT</version>
   </parent>
 
-  <artifactId>catalog-bin</artifactId>
+  <artifactId>openmetadata-dist</artifactId>
   <packaging>pom</packaging>
   <name>Catalog Distribution</name>
   <description>Catalog binary distribution</description>
@@ -41,6 +41,11 @@
     <dependency>
       <groupId>org.openmetadata</groupId>
       <artifactId>common</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.openmetadata</groupId>
+      <artifactId>openmetadata-ui</artifactId>
       <version>${project.version}</version>
     </dependency>
   </dependencies>

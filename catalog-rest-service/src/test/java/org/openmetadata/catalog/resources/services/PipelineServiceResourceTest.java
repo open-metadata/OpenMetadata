@@ -25,12 +25,17 @@ import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.services.CreatePipelineService;
 import org.openmetadata.catalog.entity.services.PipelineService;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
+import org.openmetadata.catalog.jdbi3.PipelineServiceRepository.PipelineServiceEntityInterface;
+import org.openmetadata.catalog.resources.EntityResourceTest;
+import org.openmetadata.catalog.resources.services.pipeline.PipelineServiceResource.PipelineServiceList;
+import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Schedule;
-import org.openmetadata.catalog.util.RestUtil;
+import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.TestUtils;
 
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response.Status;
+import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Date;
@@ -49,13 +54,53 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
 import static org.openmetadata.catalog.util.TestUtils.authHeaders;
 
-public class PipelineServiceResourceTest extends CatalogApplicationTest {
+public class PipelineServiceResourceTest extends EntityResourceTest<PipelineService> {
 
   public static URI PIPELINE_SERVICE_URL;
 
+  public PipelineServiceResourceTest() {
+    super(Entity.PIPELINE_SERVICE, PipelineService.class, PipelineServiceList.class,
+            "services/pipelineServices", "", false, false, false);
+    this.supportsPatch = false;
+  }
+
   @BeforeAll
-  public static void setup(TestInfo test) throws URISyntaxException {
+  public static void setup() throws URISyntaxException {
     PIPELINE_SERVICE_URL = new URI("http://localhost:8080");
+  }
+
+  @Override
+  public Object createRequest(TestInfo test, int index, String description, String displayName, EntityReference owner)
+          throws URISyntaxException {
+    return create(test, index).withDescription(description).withIngestionSchedule(null);
+  }
+
+  @Override
+  public void validateCreatedEntity(PipelineService createdEntity, Object request, Map<String, String> authHeaders)
+          throws HttpResponseException {
+
+  }
+
+  @Override
+  public void validateUpdatedEntity(PipelineService updatedEntity, Object request, Map<String, String> authHeaders)
+          throws HttpResponseException {
+
+  }
+
+  @Override
+  public void compareEntities(PipelineService expected, PipelineService updated, Map<String, String> authHeaders)
+          throws HttpResponseException {
+
+  }
+
+  @Override
+  public EntityInterface<PipelineService> getEntityInterface(PipelineService entity) {
+    return new PipelineServiceEntityInterface(entity);
+  }
+
+  @Override
+  public void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException {
+
   }
 
   @Test

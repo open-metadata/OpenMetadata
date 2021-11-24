@@ -129,23 +129,23 @@ public class TableResource {
   public ResultList<Table> list(@Context UriInfo uriInfo,
                                 @Context SecurityContext securityContext,
                                 @Parameter(description = "Fields requested in the returned resource",
-                                schema = @Schema(type = "string", example = FIELDS))
-                        @QueryParam("fields") String fieldsParam,
+                                        schema = @Schema(type = "string", example = FIELDS))
+                                @QueryParam("fields") String fieldsParam,
                                 @Parameter(description = "Filter tables by database fully qualified name",
-                                schema = @Schema(type = "string", example = "snowflakeWestCoast.financeDB"))
-                        @QueryParam("database") String databaseParam,
-                                @Parameter(description = "Limit the number tables returned. (1 to 1000000, default = 10) ",
-                                schema = @Schema(type = "string", example = "snowflakeWestCoast.financeDB"))
-                        @DefaultValue("10")
-                        @Min(1)
-                        @Max(1000000)
-                        @QueryParam("limit") int limitParam,
+                                        schema = @Schema(type = "string", example = "snowflakeWestCoast.financeDB"))
+                                @QueryParam("database") String databaseParam,
+                                @Parameter(description = "Limit the number tables returned. (1 to 1000000, default = " +
+                                        "10) ")
+                                @DefaultValue("10")
+                                @Min(1)
+                                @Max(1000000)
+                                @QueryParam("limit") int limitParam,
                                 @Parameter(description = "Returns list of tables before this cursor",
-                                schema = @Schema(type = "string"))
-                        @QueryParam("before") String before,
+                                        schema = @Schema(type = "string"))
+                                @QueryParam("before") String before,
                                 @Parameter(description = "Returns list of tables after this cursor",
-                                schema = @Schema(type = "string"))
-                        @QueryParam("after") String after)
+                                        schema = @Schema(type = "string"))
+                                @QueryParam("after") String after)
           throws IOException, ParseException, GeneralSecurityException {
     RestUtil.validateCursors(before, after);
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
@@ -158,22 +158,6 @@ public class TableResource {
     }
     tables.getData().forEach(t -> addHref(uriInfo, t));
     return tables;
-  }
-
-  @GET
-  @Path("/{id}/versions")
-  @Operation(summary = "List table versions", tags = "tables",
-          description = "Get a list of all the versions of a table identified by `id`",
-          responses = {@ApiResponse(responseCode = "200", description = "List of table versions",
-                  content = @Content(mediaType = "application/json",
-                          schema = @Schema(implementation = EntityHistory.class)))
-          })
-  public EntityHistory listVersions(@Context UriInfo uriInfo,
-                                    @Context SecurityContext securityContext,
-                                    @Parameter(description = "table Id", schema = @Schema(type = "string"))
-                                    @PathParam("id") String id)
-          throws IOException, ParseException, GeneralSecurityException {
-    return dao.listVersions(id);
   }
 
   @GET
@@ -217,6 +201,22 @@ public class TableResource {
                          @QueryParam("fields") String fieldsParam) throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
     return addHref(uriInfo, dao.getByName(uriInfo, fqn, fields));
+  }
+
+  @GET
+  @Path("/{id}/versions")
+  @Operation(summary = "List table versions", tags = "tables",
+          description = "Get a list of all the versions of a table identified by `id`",
+          responses = {@ApiResponse(responseCode = "200", description = "List of table versions",
+                  content = @Content(mediaType = "application/json",
+                          schema = @Schema(implementation = EntityHistory.class)))
+          })
+  public EntityHistory listVersions(@Context UriInfo uriInfo,
+                                    @Context SecurityContext securityContext,
+                                    @Parameter(description = "table Id", schema = @Schema(type = "string"))
+                                    @PathParam("id") String id)
+          throws IOException, ParseException, GeneralSecurityException {
+    return dao.listVersions(id);
   }
 
   @GET

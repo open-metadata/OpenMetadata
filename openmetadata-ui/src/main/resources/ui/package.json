@@ -97,7 +97,7 @@
     "pretty": "prettier . --config './.prettierrc' --write",
     "build-check": "npm run lint",
     "commit-check": "npm run pretty && npm run build-check && npm run build",
-    "json2ts": "./json2ts.sh ../json/schema ./src/generated && npm run lint:fix"
+    "json2ts": "./json2ts.sh ../../../../../catalog-rest-service/src/main/resources/json/schema ./src/generated && npm run lint:fix"
   },
   "browserslist": {
     "production": [
