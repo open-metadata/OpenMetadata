@@ -49,6 +49,7 @@ const PipelineDetails = ({
   tasks,
   taskUpdateHandler,
   loadNodeHandler,
+  lineageLeafNodes,
 }: PipeLineDetailsProp) => {
   const { isAuthDisabled } = useAuth();
   const [isEdit, setIsEdit] = useState(false);
@@ -362,6 +363,7 @@ const PipelineDetails = ({
                 <div className="tw-h-full">
                   <Entitylineage
                     entityLineage={entityLineage}
+                    lineageLeafNodes={lineageLeafNodes}
                     loadNodeHandler={loadNodeHandler}
                   />
                 </div>

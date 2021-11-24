@@ -16,6 +16,7 @@
 */
 
 import { getAllByTestId, getByTestId, render } from '@testing-library/react';
+import { LeafNodes } from 'Models';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import {
@@ -74,6 +75,7 @@ const DatasetDetailsProps = {
   users: [],
   versionHandler: jest.fn(),
   loadNodeHandler: jest.fn(),
+  lineageLeafNodes: {} as LeafNodes,
 };
 jest.mock('../ManageTab/ManageTab.component', () => {
   return jest.fn().mockReturnValue(<p>ManageTab</p>);

@@ -99,7 +99,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
   const [entityLineage, setEntityLineage] = useState<EntityLineage>(
     {} as EntityLineage
   );
-  const [, setLeafNodes] = useState<LeafNodes>({} as LeafNodes);
+  const [leafNodes, setLeafNodes] = useState<LeafNodes>({} as LeafNodes);
   const [usageSummary, setUsageSummary] =
     useState<TypeUsedToReturnUsageDetailsOfAnEntity>(
       {} as TypeUsedToReturnUsageDetailsOfAnEntity
@@ -199,13 +199,13 @@ const DatasetDetailsPage: FunctionComponent = () => {
     if (pos === 'to' && val.downstreamEdges?.length === 0) {
       setLeafNodes((prev) => ({
         ...prev,
-        downStreamNode: [...prev.downStreamNode, val.entity.id],
+        downStreamNode: [...(prev.downStreamNode ?? []), val.entity.id],
       }));
     }
     if (pos === 'from' && val.upstreamEdges?.length === 0) {
       setLeafNodes((prev) => ({
         ...prev,
-        upStreamNode: [...prev.upStreamNode, val.entity.id],
+        upStreamNode: [...(prev.upStreamNode ?? []), val.entity.id],
       }));
     }
   };
@@ -326,6 +326,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
           followers={followers}
           followTableHandler={followTable}
           joins={joins}
+          lineageLeafNodes={leafNodes}
           loadNodeHandler={loadNodeHandler}
           owner={owner as Table['owner'] & { displayName: string }}
           sampleData={sampleData}

@@ -1,7 +1,7 @@
 import { AxiosResponse } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
 import { observer } from 'mobx-react';
-import { EntityTags, LineagePos, TableDetail } from 'Models';
+import { EntityTags, LeafNodes, LineagePos, TableDetail } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import AppState from '../../AppState';
@@ -74,6 +74,7 @@ const PipelineDetailsPage = () => {
   const [entityLineage, setEntityLineage] = useState<EntityLineage>(
     {} as EntityLineage
   );
+  const [leafNodes, setLeafNodes] = useState<LeafNodes>({} as LeafNodes);
   const activeTabHandler = (tabValue: number) => {
     const currentTabIndex = tabValue - 1;
     if (pipelineDetailsTabs[currentTabIndex].path !== tab) {
@@ -233,9 +234,25 @@ const PipelineDetailsPage = () => {
     });
   };
 
+  const setLeafNode = (val: EntityLineage, pos: LineagePos) => {
+    if (pos === 'to' && val.downstreamEdges?.length === 0) {
+      setLeafNodes((prev) => ({
+        ...prev,
+        downStreamNode: [...(prev.downStreamNode ?? []), val.entity.id],
+      }));
+    }
+    if (pos === 'from' && val.upstreamEdges?.length === 0) {
+      setLeafNodes((prev) => ({
+        ...prev,
+        upStreamNode: [...(prev.upStreamNode ?? []), val.entity.id],
+      }));
+    }
+  };
+
   const loadNodeHandler = (node: EntityReference, pos: LineagePos) => {
     getLineageByFQN(node.name, node.type).then((res: AxiosResponse) => {
-      getEntityLineage(entityLineage, res.data, pos);
+      setLeafNode(res.data, pos);
+      setEntityLineage(getEntityLineage(entityLineage, res.data, pos));
     });
   };
 
@@ -268,6 +285,7 @@ const PipelineDetailsPage = () => {
           entityName={displayName}
           followers={followers}
           followPipelineHandler={followPipeline}
+          lineageLeafNodes={leafNodes}
           loadNodeHandler={loadNodeHandler}
           owner={owner}
           pipelineDetails={pipelineDetails}

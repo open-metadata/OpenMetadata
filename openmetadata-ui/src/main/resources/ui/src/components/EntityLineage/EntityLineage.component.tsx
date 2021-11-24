@@ -1,4 +1,4 @@
-import { LineagePos } from 'Models';
+import { LeafNodes, LineagePos } from 'Models';
 import React, {
   FunctionComponent,
   MouseEvent as ReactMouseEvent,
@@ -25,6 +25,7 @@ import {
   EntityLineage,
 } from '../../generated/type/entityLineage';
 import { EntityReference } from '../../generated/type/entityReference';
+import { isLeafNode } from '../../utils/EntityUtils';
 import { getEntityIcon } from '../../utils/TableUtils';
 import EntityInfoDrawer from '../EntityInfoDrawer/EntityInfoDrawer.component';
 import { EntityLineageProp, SelectedNode } from './EntityLineage.interface';
@@ -67,7 +68,8 @@ const positionY = 60;
 const getLineageData = (
   entityLineage: EntityLineage,
   onSelect: (state: boolean, value: SelectedNode) => void,
-  loadNodeHandler: (node: EntityReference, pos: LineagePos) => void
+  loadNodeHandler: (node: EntityReference, pos: LineagePos) => void,
+  lineageLeafNodes: LeafNodes
 ) => {
   const [x, y] = [0, 0];
   const nodes = entityLineage['nodes'];
@@ -287,6 +289,8 @@ const getLineageData = (
       position: { x: x, y: y },
     },
     ...UPStreamNodes.map((up) => {
+      const node = entityLineage?.nodes?.find((d) => up.id.includes(d.id));
+
       return lineageEdges.find(
         (ed: FlowElement) => (ed as Edge).target === up.id
       )
@@ -297,18 +301,18 @@ const getLineageData = (
             data: {
               label: (
                 <div className="tw-flex">
-                  <p
-                    className="tw-mr-2 tw-self-center fas fa-chevron-left tw-cursor-pointer tw-text-primary"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      const node = entityLineage?.nodes?.find((d) =>
-                        up.id.includes(d.id)
-                      );
-                      if (node) {
-                        loadNodeHandler(node, 'from');
-                      }
-                    }}
-                  />
+                  {!isLeafNode(lineageLeafNodes, node?.id as string, 'from') ? (
+                    <p
+                      className="tw-mr-2 tw-self-center fas fa-chevron-left tw-cursor-pointer tw-text-primary"
+                      onClick={(e) => {
+                        e.stopPropagation();
+
+                        if (node) {
+                          loadNodeHandler(node, 'from');
+                        }
+                      }}
+                    />
+                  ) : null}
                   <div>{up?.data?.label}</div>
                 </div>
               ),
@@ -316,6 +320,8 @@ const getLineageData = (
           };
     }),
     ...DOWNStreamNodes.map((down) => {
+      const node = entityLineage?.nodes?.find((d) => down.id.includes(d.id));
+
       return lineageEdges.find((ed: FlowElement) =>
         (ed as Edge).source.includes(down.id)
       )
@@ -327,18 +333,17 @@ const getLineageData = (
               label: (
                 <div className="tw-flex tw-justify-between">
                   <div>{down?.data?.label}</div>
-                  <p
-                    className="tw-ml-2 tw-self-center fas fa-chevron-right tw-cursor-pointer tw-text-primary"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      const node = entityLineage?.nodes?.find((d) =>
-                        down.id.includes(d.id)
-                      );
-                      if (node) {
-                        loadNodeHandler(node, 'to');
-                      }
-                    }}
-                  />
+                  {!isLeafNode(lineageLeafNodes, node?.id as string, 'to') ? (
+                    <p
+                      className="tw-ml-2 tw-self-center fas fa-chevron-right tw-cursor-pointer tw-text-primary"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (node) {
+                          loadNodeHandler(node, 'to');
+                        }
+                      }}
+                    />
+                  ) : null}
                 </div>
               ),
             },
@@ -353,6 +358,7 @@ const getLineageData = (
 const Entitylineage: FunctionComponent<EntityLineageProp> = ({
   entityLineage,
   loadNodeHandler,
+  lineageLeafNodes,
 }: EntityLineageProp) => {
   const [isDrawerOpen, setIsDrawerOpen] = useState<boolean>(false);
   const [selectedNode, setSelectedNode] = useState<SelectedNode>(
@@ -367,7 +373,8 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
     getLineageData(
       entityLineage,
       selectNodeHandler,
-      loadNodeHandler
+      loadNodeHandler,
+      lineageLeafNodes
     ) as Elements
   );
 
@@ -407,7 +414,8 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
       getLineageData(
         entityLineage,
         selectNodeHandler,
-        loadNodeHandler
+        loadNodeHandler,
+        lineageLeafNodes
       ) as Elements
     );
     // setLineageData(entityLineage);
@@ -428,9 +436,18 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
               onElementsRemove={onElementsRemove}
               onLoad={onLoad}
               onNodeContextMenu={onNodeContextMenu}
-              onNodeDrag={(e) => e.stopPropagation()}
-              onNodeDragStart={(e) => e.stopPropagation()}
-              onNodeDragStop={(e) => e.stopPropagation()}
+              onNodeDrag={(e) => {
+                e.stopPropagation();
+                // e.preventDefault();
+              }}
+              onNodeDragStart={(e) => {
+                e.stopPropagation();
+                // e.preventDefault();
+              }}
+              onNodeDragStop={(e) => {
+                e.stopPropagation();
+                // e.preventDefault();
+              }}
               onNodeMouseEnter={onNodeMouseEnter}
               onNodeMouseLeave={onNodeMouseLeave}
               onNodeMouseMove={onNodeMouseMove}>

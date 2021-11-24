@@ -1,4 +1,4 @@
-import { EntityTags, LineagePos } from 'Models';
+import { EntityTags, LeafNodes, LineagePos } from 'Models';
 import {
   EntityReference,
   Table,
@@ -15,6 +15,7 @@ export interface DatasetOwner extends EntityReference {
 }
 
 export interface DatasetDetailsProps {
+  lineageLeafNodes: LeafNodes;
   version?: string;
   joins: TableJoins;
   usageSummary: TypeUsedToReturnUsageDetailsOfAnEntity;

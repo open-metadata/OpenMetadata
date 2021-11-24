@@ -1,5 +1,5 @@
 import { Operation } from 'fast-json-patch';
-import { EntityTags, LineagePos, TableDetail } from 'Models';
+import { EntityTags, LeafNodes, LineagePos, TableDetail } from 'Models';
 import { Pipeline, Task } from '../../generated/entity/data/pipeline';
 import { User } from '../../generated/entity/teams/user';
 import {
@@ -9,6 +9,7 @@ import {
 import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
 
 export interface PipeLineDetailsProp {
+  lineageLeafNodes: LeafNodes;
   serviceType: string;
   pipelineUrl: string;
   entityName: string;

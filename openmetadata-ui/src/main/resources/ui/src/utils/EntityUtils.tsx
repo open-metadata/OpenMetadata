@@ -1,5 +1,5 @@
-import { isNil } from 'lodash';
-import { Bucket, LineagePos } from 'Models';
+import { isEmpty, isNil } from 'lodash';
+import { Bucket, LeafNodes, LineagePos } from 'Models';
 import React from 'react';
 import TableProfilerGraph from '../components/TableProfiler/TableProfilerGraph.component';
 import {
@@ -286,5 +286,19 @@ export const getEntityLineage = (
         ...(newNodes as EntityReference[]),
       ],
     };
+  }
+};
+
+export const isLeafNode = (
+  leafNodes: LeafNodes,
+  id: string,
+  pos: LineagePos
+) => {
+  if (!isEmpty(leafNodes)) {
+    return pos === 'from'
+      ? leafNodes.upStreamNode?.includes(id)
+      : leafNodes.downStreamNode?.includes(id);
+  } else {
+    return false;
   }
 };
