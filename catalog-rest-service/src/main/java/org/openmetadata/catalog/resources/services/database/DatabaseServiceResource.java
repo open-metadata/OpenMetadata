@@ -30,6 +30,7 @@ import org.openmetadata.catalog.jdbi3.DatabaseServiceRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
+import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
@@ -53,6 +54,7 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
 import java.util.Date;
@@ -78,8 +80,12 @@ public class DatabaseServiceResource {
   }
 
   public static class DatabaseServiceList extends ResultList<DatabaseService> {
-    public DatabaseServiceList(List<DatabaseService> data) {
-      super(data);
+    @SuppressWarnings("unused") /* Required for tests */
+    public DatabaseServiceList() {}
+
+    public DatabaseServiceList(List<DatabaseService> data, String beforeCursor, String afterCursor, int total)
+            throws GeneralSecurityException, UnsupportedEncodingException {
+      super(data, beforeCursor, afterCursor, total);
     }
   }
 
@@ -105,7 +111,6 @@ public class DatabaseServiceResource {
           throws IOException, GeneralSecurityException, ParseException {
     RestUtil.validateCursors(before, after);
 
-    ResultList<DatabaseService> list;
     if(before != null) {
       return dao.listBefore(uriInfo, null, null, limitParam, before);
     }
@@ -142,6 +147,44 @@ public class DatabaseServiceResource {
                              @Context SecurityContext securityContext,
                              @PathParam("name") String name) throws IOException, ParseException {
     return dao.getByName(uriInfo, name, null);
+  }
+
+  @GET
+  @Path("/{id}/versions")
+  @Operation(summary = "List database service versions", tags = "services",
+          description = "Get a list of all the versions of a database service identified by `id`",
+          responses = {@ApiResponse(responseCode = "200", description = "List of database service versions",
+                  content = @Content(mediaType = "application/json",
+                          schema = @Schema(implementation = EntityHistory.class)))
+          })
+  public EntityHistory listVersions(@Context UriInfo uriInfo,
+                                    @Context SecurityContext securityContext,
+                                    @Parameter(description = "database service Id", schema = @Schema(type = "string"))
+                                    @PathParam("id") String id)
+          throws IOException, ParseException, GeneralSecurityException {
+    return dao.listVersions(id);
+  }
+
+  @GET
+  @Path("/{id}/versions/{version}")
+  @Operation(summary = "Get a version of the database service", tags = "services",
+          description = "Get a version of the database service by given `id`",
+          responses = {
+                  @ApiResponse(responseCode = "200", description = "database service",
+                          content = @Content(mediaType = "application/json",
+                                  schema = @Schema(implementation = DatabaseService.class))),
+                  @ApiResponse(responseCode = "404", description = "Database service for instance {id} and version " +
+                          "{version} is not found")
+          })
+  public DatabaseService getVersion(@Context UriInfo uriInfo,
+                                    @Context SecurityContext securityContext,
+                                    @Parameter(description = "database service Id", schema = @Schema(type = "string"))
+                                    @PathParam("id") String id,
+                                    @Parameter(description = "database service version number in the form `major`" +
+                                            ".`minor`",
+                                            schema = @Schema(type = "string", example = "0.1 or 1.1"))
+                                    @PathParam("version") String version) throws IOException, ParseException {
+    return dao.getVersion(id, version);
   }
 
   @POST

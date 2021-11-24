@@ -178,16 +178,17 @@ public class MessagingServiceResource {
                   @ApiResponse(responseCode = "200", description = "messaging service",
                           content = @Content(mediaType = "application/json",
                                   schema = @Schema(implementation = MessagingService.class))),
-                  @ApiResponse(responseCode = "404", description = "Messaging s3rvice for instance {id} and version " +
+                  @ApiResponse(responseCode = "404", description = "Messaging service for instance {id} and version " +
                           "{version} is not found")
           })
   public MessagingService getVersion(@Context UriInfo uriInfo,
-                          @Context SecurityContext securityContext,
-                          @Parameter(description = "messaging service Id", schema = @Schema(type = "string"))
-                          @PathParam("id") String id,
-                          @Parameter(description = "messaging service version number in the form `major`.`minor`",
-                                  schema = @Schema(type = "string", example = "0.1 or 1.1"))
-                          @PathParam("version") String version) throws IOException, ParseException {
+                                     @Context SecurityContext securityContext,
+                                     @Parameter(description = "messaging service Id", schema = @Schema(type = "string"))
+                                     @PathParam("id") String id,
+                                     @Parameter(description = "messaging service version number in the form `major`" +
+                                             ".`minor`",
+                                             schema = @Schema(type = "string", example = "0.1 or 1.1"))
+                                     @PathParam("version") String version) throws IOException, ParseException {
     return dao.getVersion(id, version);
   }
 

@@ -622,6 +622,8 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     assertEquals(0.1, entityInterface.getVersion()); // First version of the entity
     validateCreatedEntity(getEntity, create, authHeaders);
 
+    // TODO GET the entity by name
+
     // Validate that change event was created
     validateChangeEvents(entityInterface, entityInterface.getUpdatedAt(), EventType.ENTITY_CREATED,
             null, authHeaders);
