@@ -1,12 +1,8 @@
 import classNames from 'classnames';
 import { capitalize, toString } from 'lodash';
 import React, { Fragment, useState } from 'react';
-import { versionTypes } from '../../constants/constants';
 import { EntityHistory } from '../../generated/type/entityHistory';
 import { getSummary, isMajorVersion } from '../../utils/EntityVersionUtils';
-import { dropdownIcon as DropDownIcon } from '../../utils/svgconstant';
-import { Button } from '../buttons/Button/Button';
-import DropDownList from '../dropdown/DropDownList';
 
 type Props = {
   versionList: EntityHistory;
@@ -24,8 +20,7 @@ const EntityVersionTimeLine: React.FC<Props> = ({
   versionHandler,
   onBack,
 }: Props) => {
-  const [listVisible, setListVisible] = useState(false);
-  const [versionType, setVersionType] = useState<VersionType>('all');
+  const [versionType] = useState<VersionType>('all');
   const getVersionList = () => {
     let versionTypeList = [];
     const list = versionList.versions ?? [];
@@ -92,9 +87,15 @@ const EntityVersionTimeLine: React.FC<Props> = ({
               onClick={() => versionHandler(toString(currV?.version))}>
               <div className="timeline-wrapper">
                 <span
-                  className={classNames('timeline-rounder', {
-                    selected: toString(currV?.version) === currentVersion,
-                  })}
+                  className={classNames(
+                    'timeline-rounder',
+                    {
+                      selected: toString(currV?.version) === currentVersion,
+                    },
+                    {
+                      major: majorVersionChecks(),
+                    }
+                  )}
                   data-testid="select-version"
                 />
                 <span className={classNames('timeline-line')} />
@@ -137,40 +138,10 @@ const EntityVersionTimeLine: React.FC<Props> = ({
     );
   };
 
-  const handleVersionTypeSelection = (
-    _e: React.MouseEvent<HTMLElement, MouseEvent>,
-    value?: string
-  ) => {
-    if (value) {
-      setVersionType(value as VersionType);
-    }
-    setListVisible(false);
-  };
-
   return (
     <div className={classNames('timeline-drawer', { open: show })}>
       <header className="tw-flex tw-justify-between">
-        <div className="tw-flex">
-          <p className="tw-font-medium tw-mr-2">Versions History</p>
-          <Button
-            className="tw-bg-primary-hover-lite tw-px-2 tw-rounded"
-            data-testid="versiontype-dropdown"
-            size="custom"
-            theme="primary"
-            variant="text"
-            onClick={() => setListVisible((visible) => !visible)}>
-            {capitalize(versionType)}
-            <DropDownIcon style={{ marginTop: '2px', height: '15px' }} />
-          </Button>
-          {listVisible && (
-            <DropDownList
-              className="tw-ml-24 tw-top-11"
-              dropDownList={versionTypes}
-              value={versionType}
-              onSelect={handleVersionTypeSelection}
-            />
-          )}
-        </div>
+        <p className="tw-font-medium tw-mr-2">Versions History</p>
         <div className="tw-flex" onClick={onBack}>
           <svg
             className="tw-w-5 tw-h-5 tw-ml-1 tw-cursor-pointer"
