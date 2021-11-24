@@ -234,9 +234,7 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
     change.getFieldsUpdated().add(new FieldChange().withName("schemaRegistry")
             .withOldValue(SCHEMA_REGISTRY_URL).withNewValue(updatedSchemaRegistry));
 
-    service = updateAndCheckEntity(update, OK, adminAuthHeaders(), UpdateType.MINOR_UPDATE, change);
-//    MessagingService updatedService = getService(service.getId(), adminAuthHeaders());
-//    validateMessagingServiceConfig(updatedService, List.of("localhost:0"), new URI("http://localhost:9000"));
+    updateAndCheckEntity(update, OK, adminAuthHeaders(), UpdateType.MINOR_UPDATE, change);
   }
 
   @Test
@@ -353,12 +351,6 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
             .withIngestionSchedule(new Schedule().withStartDate(new Date()).withRepeatFrequency("P1D"));
   }
 
-  private static void validateMessagingServiceConfig(MessagingService actualService, List<String> expectedBrokers,
-                                                     URI expectedSchemaRegistry) {
-    assertTrue(actualService.getBrokers().containsAll(expectedBrokers));
-    assertEquals(actualService.getSchemaRegistry(), expectedSchemaRegistry);
-  }
-
   @Override
   public Object createRequest(TestInfo test, int index, String description, String displayName, EntityReference owner)
           throws URISyntaxException {
@@ -376,6 +368,8 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
       assertEquals(expectedIngestion.getStartDate(), service.getIngestionSchedule().getStartDate());
       assertEquals(expectedIngestion.getRepeatFrequency(), service.getIngestionSchedule().getRepeatFrequency());
     }
+    assertTrue(createRequest.getBrokers().containsAll(service.getBrokers()));
+    assertEquals(createRequest.getSchemaRegistry(), service.getSchemaRegistry());
   }
 
   @Override
