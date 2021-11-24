@@ -59,7 +59,7 @@ metadata ingest -c ./examples/workflows/salesforce.json
 
 Below is the configuration to publish Salesforce data into the OpenMetadata service.
 
-Add optionally `pii` processor and `metadata-rest` sink along with `metadata-server` config
+Add `metadata-rest` sink along with `metadata-server` config
 
 {% code title="salesforce.json" %}
 ```javascript

@@ -58,10 +58,6 @@ base_requirements = {
     "requests~=2.26",
     "PyYAML",
 }
-pii_requirements = {
-    "en_core_web_sm@https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.0.0/en_core_web_sm-3.0.0.tar.gz#egg=en_core_web",
-    "spacy==3.0.5",
-}
 
 report_requirements = {
     "asgiref==3.4.1",
@@ -98,7 +94,6 @@ plugins: Dict[str, Set[str]] = {
     "mssql-odbc": {"pyodbc"},
     "mysql": {"pymysql>=1.0.2"},
     "oracle": {"cx_Oracle"},
-    "pii-processor": pii_requirements,
     "presto": {"pyhive~=0.6.3"},
     "trino": {"sqlalchemy-trino"},
     "postgres": {"pymysql>=1.0.2", "psycopg2-binary", "GeoAlchemy2"},
