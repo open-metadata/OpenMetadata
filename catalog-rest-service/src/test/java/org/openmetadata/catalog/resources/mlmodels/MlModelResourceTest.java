@@ -111,7 +111,6 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
                                   new MlFeatureSource()
                                           .withName("age")
                                           .withDataType(FeatureSourceDataType.INTEGER)
-                                          .withFullyQualifiedName("my_service.my_db.my_table.age")
                           )
                   ),
           new MlFeature()
@@ -121,12 +120,10 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
                           Arrays.asList(
                                   new MlFeatureSource()
                                           .withName("age")
-                                          .withDataType(FeatureSourceDataType.INTEGER)
-                                          .withFullyQualifiedName("my_service.my_db.my_table.age"),
+                                          .withDataType(FeatureSourceDataType.INTEGER),
                                   new MlFeatureSource()
                                           .withName("education")
                                           .withDataType(FeatureSourceDataType.STRING)
-                                          .withFullyQualifiedName("my_api.education")
                           )
                   )
           .withFeatureAlgorithm("PCA")
@@ -418,7 +415,6 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
     assertEquals(actual.getDescription(), expected.getDescription());
     assertEquals(actual.getFeatureAlgorithm(), expected.getFeatureAlgorithm());
     assertEquals(actual.getDataType(), expected.getDataType());
-    assertEquals(actual.getFeatureSources(), expected.getFeatureSources());
   };
 
   BiConsumer<MlHyperParameter, MlHyperParameter> assertMlHyerParam = (MlHyperParameter expected, MlHyperParameter actual) -> {
@@ -426,6 +422,24 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
     assertEquals(actual.getDescription(), expected.getDescription());
     assertEquals(actual.getValue(), expected.getValue());
   };
+
+  BiConsumer<MlFeatureSource, MlFeatureSource> assertMlFeatureSource = (MlFeatureSource expected, MlFeatureSource actual) -> {
+    assertNotNull(actual.getFullyQualifiedName());
+    assertEquals(actual.getName(), expected.getName());
+    assertEquals(actual.getDescription(), expected.getDescription());
+    assertEquals(actual.getDataType(), expected.getDataType());
+  };
+
+  private void validateMlFeatureSources(List<MlFeature> expected, List<MlFeature> actual) throws HttpResponseException {
+    if (expected == null && actual == null) {
+      return;
+    }
+
+    for (int i = 0; i < expected.size(); i++) {
+      assertListProperty(expected.get(i).getFeatureSources(), actual.get(i).getFeatureSources(), assertMlFeatureSource);
+    }
+
+  }
 
   @Override
   public void validateCreatedEntity(MlModel createdEntity, Object request, Map<String, String> authHeaders) throws HttpResponseException {
@@ -437,6 +451,9 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
     assertEquals(createRequest.getDashboard(), createdEntity.getDashboard());
     assertListProperty(createRequest.getMlFeatures(), createdEntity.getMlFeatures(), assertMlFeature);
     assertListProperty(createRequest.getMlHyperParameters(), createdEntity.getMlHyperParameters(), assertMlHyerParam);
+
+    // assertListProperty on MlFeatures already validates size, so we can directly iterate on sources
+    validateMlFeatureSources(createRequest.getMlFeatures(), createdEntity.getMlFeatures());
 
     TestUtils.validateTags(createRequest.getTags(), createdEntity.getTags());
     TestUtils.validateEntityReference(createdEntity.getFollowers());
