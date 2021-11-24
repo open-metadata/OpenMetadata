@@ -29,13 +29,15 @@ import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.jdbi3.MessagingServiceRepository.MessagingServiceEntityInterface;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.services.messaging.MessagingServiceResource.MessagingServiceList;
+import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.type.Schedule;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.TestUtils;
+import org.openmetadata.catalog.util.TestUtils.UpdateType;
 
 import javax.ws.rs.client.WebTarget;
-import javax.ws.rs.core.Response.Status;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -50,7 +52,6 @@ import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
@@ -198,38 +199,55 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
 
   @Test
   public void put_updateService_as_admin_2xx(TestInfo test) throws IOException, URISyntaxException {
-    MessagingService dbService = createAndCheckEntity(create(test).withDescription(null).withIngestionSchedule(null)
+    MessagingService service = createAndCheckEntity(create(test).withDescription(null).withIngestionSchedule(null)
             .withBrokers(KAFKA_BROKERS).withSchemaRegistry(SCHEMA_REGISTRY_URL), adminAuthHeaders());
 
     // Update messaging description and ingestion service that are null
     CreateMessagingService update = create(test).withDescription("description1").withIngestionSchedule(null);
-    updateAndCheckService(update, OK, adminAuthHeaders());
+    ChangeDescription change = getChangeDescription(service.getVersion());
+    change.getFieldsAdded().add(new FieldChange().withName("description").withNewValue("description1"));
+    service = updateAndCheckEntity(update, OK, adminAuthHeaders(), UpdateType.MINOR_UPDATE, change);
 
     // Update ingestion schedule
     Schedule schedule = new Schedule().withStartDate(new Date()).withRepeatFrequency("P1D");
+    change = getChangeDescription(service.getVersion());
+    change.getFieldsAdded().add(new FieldChange().withName("ingestionSchedule").withNewValue(schedule));
     update.withIngestionSchedule(schedule);
-    updateAndCheckService(update, OK, adminAuthHeaders());
+    service = updateAndCheckEntity(update, OK, adminAuthHeaders(), UpdateType.MINOR_UPDATE, change);
 
     // Update description and ingestion schedule again
-    update.withDescription("description1").withIngestionSchedule(schedule.withRepeatFrequency("PT1H"));
-    updateAndCheckService(update, OK, adminAuthHeaders());
+    Schedule schedule1 = new Schedule().withStartDate(new Date()).withRepeatFrequency("PT1H");
+    update.withIngestionSchedule(schedule1);
+    change = getChangeDescription(service.getVersion());
+    change.getFieldsUpdated().add(new FieldChange().withName("ingestionSchedule")
+            .withOldValue(schedule).withNewValue(schedule1));
+    service = updateAndCheckEntity(update, OK, adminAuthHeaders(), UpdateType.MINOR_UPDATE, change);
 
     // update broker list and schema registry
-    update.withBrokers(List.of("localhost:0")).withSchemaRegistry(new URI("http://localhost:9000"));
-    updateAndCheckService(update, OK, adminAuthHeaders());
-    MessagingService updatedService = getService(dbService.getId(), adminAuthHeaders());
-    validateMessagingServiceConfig(updatedService, List.of("localhost:0"), new URI("http://localhost:9000"));
+    List<String> updatedBrokers = List.of("localhost:0");
+    URI updatedSchemaRegistry = new URI("http://localhost:9000");
+    update.withBrokers(updatedBrokers).withSchemaRegistry(updatedSchemaRegistry);
+
+    change = getChangeDescription(service.getVersion());
+    change.getFieldsDeleted().add(new FieldChange().withName("brokers").withOldValue(KAFKA_BROKERS));
+    change.getFieldsAdded().add(new FieldChange().withName("brokers").withNewValue(updatedBrokers));
+    change.getFieldsUpdated().add(new FieldChange().withName("schemaRegistry")
+            .withOldValue(SCHEMA_REGISTRY_URL).withNewValue(updatedSchemaRegistry));
+
+    service = updateAndCheckEntity(update, OK, adminAuthHeaders(), UpdateType.MINOR_UPDATE, change);
+//    MessagingService updatedService = getService(service.getId(), adminAuthHeaders());
+//    validateMessagingServiceConfig(updatedService, List.of("localhost:0"), new URI("http://localhost:9000"));
   }
 
   @Test
   public void put_update_as_non_admin_401(TestInfo test) throws IOException {
     Map<String, String> authHeaders = adminAuthHeaders();
-    MessagingService dbService = createAndCheckEntity(create(test).withDescription(null).withIngestionSchedule(null),
-            authHeaders);
+    createAndCheckEntity(create(test).withDescription(null).withIngestionSchedule(null), authHeaders);
 
     // Update messaging description as non admin and expect exception
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            updateAndCheckService(create(test), OK, authHeaders("test@open-metadata.org")));
+            updateAndCheckEntity(create(test), OK, authHeaders("test@open-metadata.org"),
+                    UpdateType.NO_CHANGE, null));
     TestUtils.assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} " +
             "is not admin");
   }
@@ -254,20 +272,6 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
                                               Map<String, String> authHeaders) throws HttpResponseException {
     return TestUtils.post(CatalogApplicationTest.getResource("services/messagingServices"),
                           create, MessagingService.class, authHeaders);
-  }
-
-  private static void validateService(MessagingService service, String expectedName, String expectedDescription,
-                                      Schedule expectedIngestion, String expectedUpdatedBy) {
-    assertNotNull(service.getId());
-    assertNotNull(service.getHref());
-    assertEquals(expectedName, service.getName());
-    assertEquals(expectedDescription, service.getDescription());
-    assertEquals(expectedUpdatedBy, service.getUpdatedBy());
-
-    if (expectedIngestion != null) {
-      assertEquals(expectedIngestion.getStartDate(), service.getIngestionSchedule().getStartDate());
-      assertEquals(expectedIngestion.getRepeatFrequency(), service.getIngestionSchedule().getRepeatFrequency());
-    }
   }
 
   public static MessagingService getService(UUID id, Map<String, String> authHeaders) throws HttpResponseException {
@@ -347,28 +351,6 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
     return new CreateMessagingService().withName(getName(test, index)).withServiceType(MessagingServiceType.Pulsar)
             .withBrokers(List.of("192.1.1.1:0"))
             .withIngestionSchedule(new Schedule().withStartDate(new Date()).withRepeatFrequency("P1D"));
-  }
-
-  public static void updateAndCheckService(CreateMessagingService update, Status status,
-                                           Map<String, String> authHeaders) throws HttpResponseException {
-    String updatedBy = TestUtils.getPrincipal(authHeaders);
-    MessagingService service = updateMessagingService(update, status, authHeaders);
-    validateService(service, update.getName(), update.getDescription(), update.getIngestionSchedule(), updatedBy);
-
-    // GET the newly updated messaging and validate
-    MessagingService getService = getService(service.getId(), authHeaders);
-    validateService(getService, update.getName(), update.getDescription(), update.getIngestionSchedule(), updatedBy);
-
-    // GET the newly updated messaging by name and validate
-    getService = getServiceByName(service.getName(), null, authHeaders);
-    validateService(getService, update.getName(), update.getDescription(), update.getIngestionSchedule(), updatedBy);
-  }
-
-  public static MessagingService updateMessagingService(CreateMessagingService updated,
-                                                      Status status, Map<String, String> authHeaders)
-          throws HttpResponseException {
-    return TestUtils.put(CatalogApplicationTest.getResource("services/messagingServices"), updated,
-            MessagingService.class, status, authHeaders);
   }
 
   private static void validateMessagingServiceConfig(MessagingService actualService, List<String> expectedBrokers,

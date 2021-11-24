@@ -34,6 +34,8 @@ import org.openmetadata.catalog.util.JsonUtils;
 import java.io.IOException;
 import java.net.URI;
 import java.text.ParseException;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
@@ -199,6 +201,7 @@ public class MessagingServiceRepository extends EntityRepository<MessagingServic
     public void entitySpecificUpdate() throws IOException {
       updateSchemaRegistry();
       updateIngestionSchedule();
+      updateBrokers();
     }
 
     private void updateSchemaRegistry() throws JsonProcessingException {
@@ -209,6 +212,15 @@ public class MessagingServiceRepository extends EntityRepository<MessagingServic
       Schedule origSchedule = original.getEntity().getIngestionSchedule();
       Schedule updatedSchedule = updated.getEntity().getIngestionSchedule();
       recordChange("ingestionSchedule", origSchedule, updatedSchedule);
+    }
+
+    private void updateBrokers() throws JsonProcessingException {
+      List<String> origBrokers = original.getEntity().getBrokers();
+      List<String> updatedBrokers = updated.getEntity().getBrokers();
+
+      List<String> addedBrokers = new ArrayList<>();
+      List<String> deletedBrokers = new ArrayList<>();
+      recordListChange("brokers", origBrokers, updatedBrokers, addedBrokers, deletedBrokers, EntityUtil.stringMatch);
     }
   }
 }
