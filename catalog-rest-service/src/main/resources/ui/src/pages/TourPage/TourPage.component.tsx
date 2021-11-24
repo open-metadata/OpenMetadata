@@ -1,3 +1,4 @@
+import { observer } from 'mobx-react';
 import { SearchResponse } from 'Models';
 import React, { useEffect, useState } from 'react';
 import AppState from '../../AppState';
@@ -49,4 +50,4 @@ const TourPage = () => {
   );
 };
 
-export default TourPage;
+export default observer(TourPage);
