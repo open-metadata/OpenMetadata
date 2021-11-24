@@ -38,6 +38,10 @@ generate:
 	@echo "Make sure to first run `make install_dev`"
 	datamodel-codegen  --input catalog-rest-service/src/main/resources/json  --input-file-type jsonschema --output ingestion/src/metadata/generated
 
+run_ometa_integration_tests:
+	cd ingestion; \
+	pytest -c setup.cfg --override-ini=testpaths=tests/integration/ometa
+
 publish:
 	make install_dev generate
 	cd ingestion; \
