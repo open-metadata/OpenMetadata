@@ -21,7 +21,7 @@ Please refer to the previous section [Run Openmetadata](run-openmetadata.md) for
 OpenMetadata release ships with `./bin/openmetadata` init.d style script.
 
 ```
-cd openmetdata-0.5.0
+cd openmetdata-0.6.0
 ./bin/openmetdata start
 ```
 
