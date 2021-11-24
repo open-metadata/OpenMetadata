@@ -387,12 +387,27 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
   }
 
   @Override
-  public void validateUpdatedEntity(MlModel mlmodel, Object request, Map<String, String> authHeaders) throws HttpResponseException {
-    validateCreatedEntity(mlmodel, request, authHeaders);
+  public void validateUpdatedEntity(MlModel mlModel, Object request, Map<String, String> authHeaders) throws HttpResponseException {
+    validateCreatedEntity(mlModel, request, authHeaders);
   }
 
   @Override
-  public void compareEntities(MlModel expected, MlModel updated, Map<String, String> authHeaders) {
+  public void compareEntities(MlModel expected, MlModel updated, Map<String, String> authHeaders)
+          throws HttpResponseException {
+    validateCommonEntityFields(getEntityInterface(updated), expected.getDescription(),
+            TestUtils.getPrincipal(authHeaders), expected.getOwner());
+
+    // Entity specific validations
+    assertEquals(expected.getAlgorithm(), updated.getAlgorithm());
+    assertEquals(expected.getDashboard(), updated.getDashboard());
+    assertListProperty(expected.getMlFeatures(), updated.getMlFeatures(), assertMlFeature);
+    assertListProperty(expected.getMlHyperParameters(), updated.getMlHyperParameters(), assertMlHyerParam);
+
+    // assertListProperty on MlFeatures already validates size, so we can directly iterate on sources
+    validateMlFeatureSources(expected.getMlFeatures(), updated.getMlFeatures());
+
+    TestUtils.validateTags(expected.getTags(), updated.getTags());
+    TestUtils.validateEntityReference(updated.getFollowers());
   }
 
   @Override
@@ -433,11 +448,13 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
   }
 
   @Override
-  public void validateCreatedEntity(MlModel createdEntity, Object request, Map<String, String> authHeaders) throws HttpResponseException {
+  public void validateCreatedEntity(MlModel createdEntity, Object request, Map<String, String> authHeaders)
+          throws HttpResponseException {
     CreateMlModel createRequest = (CreateMlModel) request;
     validateCommonEntityFields(getEntityInterface(createdEntity), createRequest.getDescription(),
             TestUtils.getPrincipal(authHeaders), createRequest.getOwner());
 
+    // Entity specific validations
     assertEquals(createRequest.getAlgorithm(), createdEntity.getAlgorithm());
     assertEquals(createRequest.getDashboard(), createdEntity.getDashboard());
     assertListProperty(createRequest.getMlFeatures(), createdEntity.getMlFeatures(), assertMlFeature);
