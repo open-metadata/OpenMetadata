@@ -28,9 +28,10 @@ import org.openmetadata.catalog.entity.services.MessagingService;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.MessagingServiceRepository;
 import org.openmetadata.catalog.resources.Collection;
-import org.openmetadata.catalog.resources.databases.TableResource.TableList;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
+import org.openmetadata.catalog.type.EntityHistory;
+import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
 
@@ -53,6 +54,7 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
 import java.util.Date;
@@ -78,17 +80,22 @@ public class MessagingServiceResource {
   }
 
   public static class MessagingServiceList extends ResultList<MessagingService> {
-    public MessagingServiceList(List<MessagingService> data) {
-      super(data);
+    @SuppressWarnings("unused") /* Required for tests */
+    public MessagingServiceList() {}
+
+    public MessagingServiceList(List<MessagingService> data, String beforeCursor, String afterCursor, int total)
+            throws GeneralSecurityException, UnsupportedEncodingException {
+      super(data, beforeCursor, afterCursor, total);
     }
   }
 
+  @GET
   @Operation(summary = "List messaging services", tags = "services",
           description = "Get a list of messaging services. Use cursor-based pagination to limit the number " +
                   "entries in the list using `limit` and `before` or `after` query params.",
           responses = {@ApiResponse(responseCode = "200", description = "List of messaging services",
                   content = @Content(mediaType = "application/json",
-                          schema = @Schema(implementation = TableList.class)))
+                          schema = @Schema(implementation = MessagingServiceList.class)))
           })
   public ResultList<MessagingService> list(@Context UriInfo uriInfo,
                                            @Context SecurityContext securityContext,
@@ -105,6 +112,7 @@ public class MessagingServiceResource {
                                                    schema = @Schema(type = "string"))
                                            @QueryParam("after") String after)
           throws IOException, ParseException, GeneralSecurityException {
+    RestUtil.validateCursors(before, after);
     if (before != null) { // Reverse paging
       return dao.listBefore(uriInfo, null, null, limitParam, before);
     }
@@ -144,6 +152,43 @@ public class MessagingServiceResource {
                              @Context SecurityContext securityContext,
                              @PathParam("name") String name) throws IOException, ParseException {
     return dao.getByName(uriInfo, name, null);
+  }
+
+  @GET
+  @Path("/{id}/versions")
+  @Operation(summary = "List messaging service versions", tags = "services",
+          description = "Get a list of all the versions of a messaging service identified by `id`",
+          responses = {@ApiResponse(responseCode = "200", description = "List of messaging service versions",
+                  content = @Content(mediaType = "application/json",
+                          schema = @Schema(implementation = EntityHistory.class)))
+          })
+  public EntityHistory listVersions(@Context UriInfo uriInfo,
+                                    @Context SecurityContext securityContext,
+                                    @Parameter(description = "messaging service Id", schema = @Schema(type = "string"))
+                                    @PathParam("id") String id)
+          throws IOException, ParseException, GeneralSecurityException {
+    return dao.listVersions(id);
+  }
+
+  @GET
+  @Path("/{id}/versions/{version}")
+  @Operation(summary = "Get a version of the messaging service", tags = "services",
+          description = "Get a version of the messaging service by given `id`",
+          responses = {
+                  @ApiResponse(responseCode = "200", description = "messaging service",
+                          content = @Content(mediaType = "application/json",
+                                  schema = @Schema(implementation = MessagingService.class))),
+                  @ApiResponse(responseCode = "404", description = "Messaging s3rvice for instance {id} and version " +
+                          "{version} is not found")
+          })
+  public MessagingService getVersion(@Context UriInfo uriInfo,
+                          @Context SecurityContext securityContext,
+                          @Parameter(description = "messaging service Id", schema = @Schema(type = "string"))
+                          @PathParam("id") String id,
+                          @Parameter(description = "messaging service version number in the form `major`.`minor`",
+                                  schema = @Schema(type = "string", example = "0.1 or 1.1"))
+                          @PathParam("version") String version) throws IOException, ParseException {
+    return dao.getVersion(id, version);
   }
 
   @POST

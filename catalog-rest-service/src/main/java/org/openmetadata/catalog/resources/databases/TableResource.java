@@ -161,22 +161,6 @@ public class TableResource {
   }
 
   @GET
-  @Path("/{id}/versions")
-  @Operation(summary = "List table versions", tags = "tables",
-          description = "Get a list of all the versions of a table identified by `id`",
-          responses = {@ApiResponse(responseCode = "200", description = "List of table versions",
-                  content = @Content(mediaType = "application/json",
-                          schema = @Schema(implementation = EntityHistory.class)))
-          })
-  public EntityHistory listVersions(@Context UriInfo uriInfo,
-                                    @Context SecurityContext securityContext,
-                                    @Parameter(description = "table Id", schema = @Schema(type = "string"))
-                                    @PathParam("id") String id)
-          throws IOException, ParseException, GeneralSecurityException {
-    return dao.listVersions(id);
-  }
-
-  @GET
   @Path("/{id}")
   @Operation(summary = "Get a table", tags = "tables",
           description = "Get a table by `id`",
@@ -217,6 +201,22 @@ public class TableResource {
                          @QueryParam("fields") String fieldsParam) throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
     return addHref(uriInfo, dao.getByName(uriInfo, fqn, fields));
+  }
+
+  @GET
+  @Path("/{id}/versions")
+  @Operation(summary = "List table versions", tags = "tables",
+          description = "Get a list of all the versions of a table identified by `id`",
+          responses = {@ApiResponse(responseCode = "200", description = "List of table versions",
+                  content = @Content(mediaType = "application/json",
+                          schema = @Schema(implementation = EntityHistory.class)))
+          })
+  public EntityHistory listVersions(@Context UriInfo uriInfo,
+                                    @Context SecurityContext securityContext,
+                                    @Parameter(description = "table Id", schema = @Schema(type = "string"))
+                                    @PathParam("id") String id)
+          throws IOException, ParseException, GeneralSecurityException {
+    return dao.listVersions(id);
   }
 
   @GET

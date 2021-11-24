@@ -32,7 +32,6 @@ import org.openmetadata.catalog.resources.services.messaging.MessagingServiceRes
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Schedule;
 import org.openmetadata.catalog.util.EntityInterface;
-import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.TestUtils;
 
 import javax.ws.rs.client.WebTarget;
@@ -65,6 +64,7 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
   public MessagingServiceResourceTest() {
     super(Entity.MESSAGING_SERVICE, MessagingService.class, MessagingServiceList.class,
             "services/messagingServices", "", false, false, false);
+    supportsPatch = false;
   }
 
   @BeforeAll
@@ -197,8 +197,8 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
   }
 
   @Test
-  public void put_updateService_as_admin_2xx(TestInfo test) throws HttpResponseException, URISyntaxException {
-    MessagingService dbService = createAndCheckService(create(test).withDescription(null).withIngestionSchedule(null)
+  public void put_updateService_as_admin_2xx(TestInfo test) throws IOException, URISyntaxException {
+    MessagingService dbService = createAndCheckEntity(create(test).withDescription(null).withIngestionSchedule(null)
             .withBrokers(KAFKA_BROKERS).withSchemaRegistry(SCHEMA_REGISTRY_URL), adminAuthHeaders());
 
     // Update messaging description and ingestion service that are null
@@ -226,8 +226,6 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
     Map<String, String> authHeaders = adminAuthHeaders();
     MessagingService dbService = createAndCheckEntity(create(test).withDescription(null).withIngestionSchedule(null),
             authHeaders);
-    String id = dbService.getId().toString();
-    RestUtil.DATE_TIME_FORMAT.format(new Date());
 
     // Update messaging description as non admin and expect exception
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
@@ -382,7 +380,7 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
   @Override
   public Object createRequest(TestInfo test, int index, String description, String displayName, EntityReference owner)
           throws URISyntaxException {
-    return create(test).withName(getName(test, index)).withDescription(description);
+    return create(test).withName(getName(test, index)).withDescription(description).withIngestionSchedule(null);
   }
 
   @Override
@@ -401,20 +399,12 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
   @Override
   public void validateUpdatedEntity(MessagingService service, Object request, Map<String, String> authHeaders)
           throws HttpResponseException {
-    UpdateMessagingService createRequest = (UpdateMessagingService) request;
-    validateCommonEntityFields(getEntityInterface(service), createRequest.getDescription(),
-            TestUtils.getPrincipal(authHeaders), null);
-    Schedule expectedIngestion = createRequest.getIngestionSchedule();
-    if (expectedIngestion != null) {
-      assertEquals(expectedIngestion.getStartDate(), service.getIngestionSchedule().getStartDate());
-      assertEquals(expectedIngestion.getRepeatFrequency(), service.getIngestionSchedule().getRepeatFrequency());
-    }
+    validateCreatedEntity(service, request, authHeaders);
   }
 
   @Override
   public void compareEntities(MessagingService expected, MessagingService updated, Map<String, String> authHeaders)
           throws HttpResponseException {
-
   }
 
   @Override

@@ -90,6 +90,7 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
   private final boolean supportsFollowers;
   private final boolean supportsOwner;
   private final boolean supportsTags;
+  protected boolean supportsPatch = true;
 
   public static User USER1;
   public static EntityReference USER_OWNER1;
@@ -463,11 +464,15 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
             deleteAndCheckFollower(entityId, NON_EXISTENT_ENTITY, 1, adminAuthHeaders()));
     assertResponse(exception, NOT_FOUND, CatalogExceptionMessage.entityNotFound("User", NON_EXISTENT_ENTITY));
   }
+
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // Common entity tests for PATCH operations
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   @Test
   public void patch_entityAttributes_200_ok(TestInfo test) throws IOException, URISyntaxException {
+    if (!supportsPatch) {
+      return;
+    }
     // Create chart without description, owner
     T entity = createEntity(createRequest(test, null, null, null), adminAuthHeaders());
     EntityInterface<T> entityInterface = getEntityInterface(entity);
