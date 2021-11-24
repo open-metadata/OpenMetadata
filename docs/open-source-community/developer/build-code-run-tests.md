@@ -22,7 +22,7 @@
     ```
 *   Bootstrap ES with indexes and load sample data into MySQL
 
-    1. Run OpenMetadata service instances through IntelliJ IDEA following the intstructions [here](build-code-run-tests.md#run-instance-through-intellij-idea)
+    1. Run OpenMetadata service instances through IntelliJ IDEA following the instructions [here](build-code-run-tests.md#run-instance-through-intellij-idea)
     2. Once the logs indicate that the instance is up, run the following commands from the top-level directory
 
     ```
@@ -30,8 +30,8 @@
     source /tmp/venv/bin/activate
     pip install -r ingestion/requirements.txt
     make install_dev generate
-    pip install -e ingestion
     cd ingestion
+    pip install -e '.[sample-data, elasticsearch]'
     metadata ingest -c ./pipelines/sample_data.json
     metadata ingest -c ./pipelines/sample_usage.json
     metadata ingest -c ./pipelines/metadata_to_es.json
@@ -44,7 +44,7 @@ The following commands must be run from the top-level directory.
 
 `mvn clean install`
 
-If you wish to skip the unit tests you can do this by adding`-DskipTests`to the command line.
+If you wish to skip the unit tests you can do this by adding `-DskipTests `to the command line.
 
 ## Create a distribution (packaging)
 
