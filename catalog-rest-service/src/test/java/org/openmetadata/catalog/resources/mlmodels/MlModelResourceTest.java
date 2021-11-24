@@ -18,8 +18,10 @@ package org.openmetadata.catalog.resources.mlmodels;
 
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
+import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.data.CreateDashboard;
 import org.openmetadata.catalog.api.data.CreateMlModel;
@@ -92,6 +94,7 @@ import static org.openmetadata.catalog.util.TestUtils.assertEntityPagination;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 import static org.openmetadata.catalog.util.TestUtils.authHeaders;
 
+@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class MlModelResourceTest extends EntityResourceTest<MlModel> {
   private static final Logger LOG = LoggerFactory.getLogger(MlModelResourceTest.class);
   public static String ALGORITHM = "regression";
@@ -401,7 +404,7 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
     assertEquals(expected.getAlgorithm(), updated.getAlgorithm());
     assertEquals(expected.getDashboard(), updated.getDashboard());
     assertListProperty(expected.getMlFeatures(), updated.getMlFeatures(), assertMlFeature);
-    assertListProperty(expected.getMlHyperParameters(), updated.getMlHyperParameters(), assertMlHyerParam);
+    assertListProperty(expected.getMlHyperParameters(), updated.getMlHyperParameters(), assertMlHyperParam);
 
     // assertListProperty on MlFeatures already validates size, so we can directly iterate on sources
     validateMlFeatureSources(expected.getMlFeatures(), updated.getMlFeatures());
@@ -423,7 +426,7 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
     assertEquals(actual.getDataType(), expected.getDataType());
   };
 
-  BiConsumer<MlHyperParameter, MlHyperParameter> assertMlHyerParam = (MlHyperParameter expected, MlHyperParameter actual) -> {
+  BiConsumer<MlHyperParameter, MlHyperParameter> assertMlHyperParam = (MlHyperParameter expected, MlHyperParameter actual) -> {
     assertEquals(actual.getName(), expected.getName());
     assertEquals(actual.getDescription(), expected.getDescription());
     assertEquals(actual.getValue(), expected.getValue());
@@ -458,7 +461,7 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
     assertEquals(createRequest.getAlgorithm(), createdEntity.getAlgorithm());
     assertEquals(createRequest.getDashboard(), createdEntity.getDashboard());
     assertListProperty(createRequest.getMlFeatures(), createdEntity.getMlFeatures(), assertMlFeature);
-    assertListProperty(createRequest.getMlHyperParameters(), createdEntity.getMlHyperParameters(), assertMlHyerParam);
+    assertListProperty(createRequest.getMlHyperParameters(), createdEntity.getMlHyperParameters(), assertMlHyperParam);
 
     // assertListProperty on MlFeatures already validates size, so we can directly iterate on sources
     validateMlFeatureSources(createRequest.getMlFeatures(), createdEntity.getMlFeatures());
