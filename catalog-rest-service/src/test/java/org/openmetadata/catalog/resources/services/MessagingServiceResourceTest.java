@@ -24,7 +24,6 @@ import org.openmetadata.catalog.CatalogApplicationTest;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.services.CreateMessagingService;
 import org.openmetadata.catalog.api.services.CreateMessagingService.MessagingServiceType;
-import org.openmetadata.catalog.api.services.UpdateMessagingService;
 import org.openmetadata.catalog.entity.services.MessagingService;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.type.Schedule;
@@ -187,36 +186,26 @@ public class MessagingServiceResourceTest extends CatalogApplicationTest {
   }
 
   @Test
-  public void put_updateNonExistentService_404() {
-    // Update messaging description and ingestion service that are null
-    UpdateMessagingService update = new UpdateMessagingService().withDescription("description1");
-    HttpResponseException exception = assertThrows(HttpResponseException.class, ()
-            -> updateMessagingService(TestUtils.NON_EXISTENT_ENTITY.toString(), update, OK, adminAuthHeaders()));
-    TestUtils.assertResponse(exception, NOT_FOUND, CatalogExceptionMessage.entityNotFound("MessagingService",
-            TestUtils.NON_EXISTENT_ENTITY));
-  }
-
-  @Test
   public void put_updateService_as_admin_2xx(TestInfo test) throws HttpResponseException, URISyntaxException {
     MessagingService dbService = createAndCheckService(create(test).withDescription(null).withIngestionSchedule(null)
             .withBrokers(KAFKA_BROKERS).withSchemaRegistry(SCHEMA_REGISTRY_URL), adminAuthHeaders());
-    String id = dbService.getId().toString();
 
     // Update messaging description and ingestion service that are null
-    UpdateMessagingService update = new UpdateMessagingService().withDescription("description1");
-    updateAndCheckService(id, update, OK, adminAuthHeaders());
+    CreateMessagingService update = create(test).withDescription("description1").withIngestionSchedule(null);
+    updateAndCheckService(update, OK, adminAuthHeaders());
+
     // Update ingestion schedule
     Schedule schedule = new Schedule().withStartDate(new Date()).withRepeatFrequency("P1D");
     update.withIngestionSchedule(schedule);
-    updateAndCheckService(id, update, OK, adminAuthHeaders());
+    updateAndCheckService(update, OK, adminAuthHeaders());
 
     // Update description and ingestion schedule again
     update.withDescription("description1").withIngestionSchedule(schedule.withRepeatFrequency("PT1H"));
-    updateAndCheckService(id, update, OK, adminAuthHeaders());
+    updateAndCheckService(update, OK, adminAuthHeaders());
 
     // update broker list and schema registry
     update.withBrokers(List.of("localhost:0")).withSchemaRegistry(new URI("http://localhost:9000"));
-    updateAndCheckService(id, update, OK, adminAuthHeaders());
+    updateAndCheckService(update, OK, adminAuthHeaders());
     MessagingService updatedService = getService(dbService.getId(), adminAuthHeaders());
     validateMessagingServiceConfig(updatedService, List.of("localhost:0"), new URI("http://localhost:9000"));
   }
@@ -229,11 +218,9 @@ public class MessagingServiceResourceTest extends CatalogApplicationTest {
     String id = dbService.getId().toString();
     RestUtil.DATE_TIME_FORMAT.format(new Date());
 
-    // Update messaging description and ingestion service that are null
-    UpdateMessagingService update = new UpdateMessagingService().withDescription("description1");
-
+    // Update messaging description as non admin and expect exception
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            updateAndCheckService(id, update, OK, authHeaders("test@open-metadata.org")));
+            updateAndCheckService(create(test), OK, authHeaders("test@open-metadata.org")));
     TestUtils.assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} " +
             "is not admin");
   }
@@ -370,25 +357,25 @@ public class MessagingServiceResourceTest extends CatalogApplicationTest {
             .withIngestionSchedule(new Schedule().withStartDate(new Date()).withRepeatFrequency("P1D"));
   }
 
-  public static void updateAndCheckService(String id, UpdateMessagingService update, Status status,
+  public static void updateAndCheckService(CreateMessagingService update, Status status,
                                            Map<String, String> authHeaders) throws HttpResponseException {
     String updatedBy = TestUtils.getPrincipal(authHeaders);
-    MessagingService service = updateMessagingService(id, update, status, authHeaders);
-    validateService(service, service.getName(), update.getDescription(), update.getIngestionSchedule(), updatedBy);
+    MessagingService service = updateMessagingService(update, status, authHeaders);
+    validateService(service, update.getName(), update.getDescription(), update.getIngestionSchedule(), updatedBy);
 
     // GET the newly updated messaging and validate
     MessagingService getService = getService(service.getId(), authHeaders);
-    validateService(getService, service.getName(), update.getDescription(), update.getIngestionSchedule(), updatedBy);
+    validateService(getService, update.getName(), update.getDescription(), update.getIngestionSchedule(), updatedBy);
 
     // GET the newly updated messaging by name and validate
     getService = getServiceByName(service.getName(), null, authHeaders);
-    validateService(getService, service.getName(), update.getDescription(), update.getIngestionSchedule(), updatedBy);
+    validateService(getService, update.getName(), update.getDescription(), update.getIngestionSchedule(), updatedBy);
   }
 
-  public static MessagingService updateMessagingService(String id, UpdateMessagingService updated,
+  public static MessagingService updateMessagingService(CreateMessagingService updated,
                                                       Status status, Map<String, String> authHeaders)
           throws HttpResponseException {
-    return TestUtils.put(CatalogApplicationTest.getResource("services/messagingServices/" + id), updated,
+    return TestUtils.put(CatalogApplicationTest.getResource("services/messagingServices"), updated,
             MessagingService.class, status, authHeaders);
   }
 

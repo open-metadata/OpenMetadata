@@ -24,13 +24,13 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.openmetadata.catalog.api.services.CreateStorageService;
-import org.openmetadata.catalog.api.services.UpdateStorageService;
 import org.openmetadata.catalog.entity.services.StorageService;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.StorageServiceRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
+import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
 
 import javax.validation.Valid;
@@ -137,17 +137,12 @@ public class StorageServiceResource {
                          @Context SecurityContext securityContext,
                          @Valid CreateStorageService create) throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    StorageService databaseService = new StorageService().withId(UUID.randomUUID())
-            .withName(create.getName()).withDescription(create.getDescription())
-            .withServiceType(create.getServiceType()).withUpdatedBy(securityContext.getUserPrincipal().getName())
-            .withUpdatedAt(new Date());
-
+    StorageService databaseService = getService(create, securityContext);
     dao.create(uriInfo, databaseService);
     return Response.created(databaseService.getHref()).entity(databaseService).build();
   }
 
   @PUT
-  @Path("/{id}")
   @Operation(summary = "Update a storage service", tags = "services",
           description = "Update an existing storage service identified by `id`.",
           responses = {
@@ -158,12 +153,11 @@ public class StorageServiceResource {
           })
   public Response update(@Context UriInfo uriInfo,
                          @Context SecurityContext securityContext,
-                         @Parameter(description = "Id of the storage service", schema = @Schema(type = "string"))
-                         @PathParam("id") String id,
-                         @Valid UpdateStorageService update) throws IOException {
+                         @Valid CreateStorageService update) throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    StorageService databaseService = dao.update(uriInfo, UUID.fromString(id), update.getDescription());
-    return Response.ok(databaseService).build();
+    StorageService databaseService = getService(update, securityContext);
+    PutResponse<StorageService> response = dao.createOrUpdate(uriInfo, databaseService);
+    return response.toResponse();
   }
 
   @DELETE
@@ -183,5 +177,12 @@ public class StorageServiceResource {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     dao.delete(UUID.fromString(id));
     return Response.ok().build();
+  }
+
+  private StorageService getService(CreateStorageService create, SecurityContext securityContext) {
+    return new StorageService().withId(UUID.randomUUID())
+            .withName(create.getName()).withDescription(create.getDescription())
+            .withServiceType(create.getServiceType()).withUpdatedBy(securityContext.getUserPrincipal().getName())
+            .withUpdatedAt(new Date());
   }
 }

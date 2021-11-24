@@ -329,5 +329,4 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
       recordListChange("tasks", origTasks, updatedTasks, added, deleted, EntityUtil.taskMatch);
     }
   }
-
 }

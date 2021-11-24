@@ -16,6 +16,7 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.services.PipelineService;
@@ -93,13 +94,22 @@ public class PipelineServiceRepository extends EntityRepository<PipelineService>
   }
 
   @Override
-  public void store(PipelineService entity, boolean update) throws IOException {
-    dao.pipelineServiceDAO().insert(entity);
+  public void store(PipelineService service, boolean update) throws IOException {
+    if (update) {
+      dao.pipelineServiceDAO().update(service.getId(), JsonUtils.pojoToJson(service));
+    } else {
+      dao.pipelineServiceDAO().insert(service);
+    }
   }
 
   @Override
   public void storeRelationships(PipelineService entity) throws IOException {
 
+  }
+
+  @Override
+  public EntityUpdater getUpdater(PipelineService original, PipelineService updated, boolean patchOperation) throws IOException {
+    return new PipelineServiceUpdater(original, updated, patchOperation);
   }
 
   public static class PipelineServiceEntityInterface implements EntityInterface<PipelineService> {
@@ -195,5 +205,27 @@ public class PipelineServiceRepository extends EntityRepository<PipelineService>
 
     @Override
     public void setTags(List<TagLabel> tags) { }
+  }
+
+  public class PipelineServiceUpdater extends EntityUpdater {
+    public PipelineServiceUpdater(PipelineService original, PipelineService updated, boolean patchOperation) {
+      super(original, updated, patchOperation);
+    }
+
+    @Override
+    public void entitySpecificUpdate() throws IOException {
+      updatePipelineUrl();
+      updateIngestionSchedule();
+    }
+
+    private void updatePipelineUrl() throws JsonProcessingException {
+      recordChange("pipelineUrl", original.getEntity().getPipelineUrl(), updated.getEntity().getPipelineUrl());
+    }
+
+    private void updateIngestionSchedule() throws JsonProcessingException {
+      Schedule origSchedule = original.getEntity().getIngestionSchedule();
+      Schedule updatedSchedule = updated.getEntity().getIngestionSchedule();
+      recordChange("ingestionSchedule", origSchedule, updatedSchedule);
+    }
   }
 }

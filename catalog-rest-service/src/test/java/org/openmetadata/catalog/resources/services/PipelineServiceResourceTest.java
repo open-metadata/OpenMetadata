@@ -23,7 +23,6 @@ import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.catalog.CatalogApplicationTest;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.services.CreatePipelineService;
-import org.openmetadata.catalog.api.services.UpdatePipelineService;
 import org.openmetadata.catalog.entity.services.PipelineService;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.type.Schedule;
@@ -183,36 +182,26 @@ public class PipelineServiceResourceTest extends CatalogApplicationTest {
   }
 
   @Test
-  public void put_updateNonExistentService_404() {
-    // Update pipeline description and ingestion service that are null
-    UpdatePipelineService update = new UpdatePipelineService().withDescription("description1");
-    HttpResponseException exception = assertThrows(HttpResponseException.class, ()
-            -> updatePipelineService(TestUtils.NON_EXISTENT_ENTITY.toString(), update, OK, adminAuthHeaders()));
-    TestUtils.assertResponse(exception, NOT_FOUND, CatalogExceptionMessage.entityNotFound("PipelineService",
-            TestUtils.NON_EXISTENT_ENTITY));
-  }
-
-  @Test
   public void put_updateService_as_admin_2xx(TestInfo test) throws HttpResponseException, URISyntaxException {
     PipelineService dbService = createAndCheckService(create(test).withDescription(null).withIngestionSchedule(null)
             .withPipelineUrl(PIPELINE_SERVICE_URL), adminAuthHeaders());
-    String id = dbService.getId().toString();
 
     // Update pipeline description and ingestion service that are null
-    UpdatePipelineService update = new UpdatePipelineService().withDescription("description1");
-    updateAndCheckService(id, update, OK, adminAuthHeaders());
+    CreatePipelineService update = create(test).withDescription("description1");
+    updateAndCheckService(update, OK, adminAuthHeaders());
+
     // Update ingestion schedule
     Schedule schedule = new Schedule().withStartDate(new Date()).withRepeatFrequency("P1D");
     update.withIngestionSchedule(schedule);
-    updateAndCheckService(id, update, OK, adminAuthHeaders());
+    updateAndCheckService(update, OK, adminAuthHeaders());
 
-    // Update description and ingestion schedule again
-    update.withDescription("description1").withIngestionSchedule(schedule.withRepeatFrequency("PT1H"));
-    updateAndCheckService(id, update, OK, adminAuthHeaders());
+    // Update  ingestion schedule again
+    update.withIngestionSchedule(schedule.withRepeatFrequency("PT1H"));
+    updateAndCheckService(update, OK, adminAuthHeaders());
 
     // update broker list and schema registry
     update.withPipelineUrl(new URI("http://localhost:9000"));
-    updateAndCheckService(id, update, OK, adminAuthHeaders());
+    updateAndCheckService(update, OK, adminAuthHeaders());
     PipelineService updatedService = getService(dbService.getId(), adminAuthHeaders());
     validatePipelineServiceConfig(updatedService, List.of("localhost:0"), new URI("http://localhost:9000"));
   }
@@ -223,14 +212,10 @@ public class PipelineServiceResourceTest extends CatalogApplicationTest {
     PipelineService pipelineService = createAndCheckService(create(test).withDescription(null)
                     .withIngestionSchedule(null),
             authHeaders);
-    String id = pipelineService.getId().toString();
-    RestUtil.DATE_TIME_FORMAT.format(new Date());
 
     // Update pipeline description and ingestion service that are null
-    UpdatePipelineService update = new UpdatePipelineService().withDescription("description1");
-
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            updateAndCheckService(id, update, OK, authHeaders("test@open-metadata.org")));
+            updateAndCheckService(create(test), OK, authHeaders("test@open-metadata.org")));
     TestUtils.assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} " +
             "is not admin");
   }
@@ -368,10 +353,10 @@ public class PipelineServiceResourceTest extends CatalogApplicationTest {
             .withIngestionSchedule(new Schedule().withStartDate(new Date()).withRepeatFrequency("P1D"));
   }
 
-  public static void updateAndCheckService(String id, UpdatePipelineService update, Status status,
+  public static void updateAndCheckService(CreatePipelineService update, Status status,
                                            Map<String, String> authHeaders) throws HttpResponseException {
     String updatedBy = TestUtils.getPrincipal(authHeaders);
-    PipelineService service = updatePipelineService(id, update, status, authHeaders);
+    PipelineService service = updatePipelineService(update, status, authHeaders);
     validateService(service, service.getName(), update.getDescription(), update.getIngestionSchedule(), updatedBy);
 
     // GET the newly updated pipeline and validate
@@ -383,10 +368,10 @@ public class PipelineServiceResourceTest extends CatalogApplicationTest {
     validateService(getService, service.getName(), update.getDescription(), update.getIngestionSchedule(), updatedBy);
   }
 
-  public static PipelineService updatePipelineService(String id, UpdatePipelineService updated,
+  public static PipelineService updatePipelineService(CreatePipelineService updated,
                                                       Status status, Map<String, String> authHeaders)
           throws HttpResponseException {
-    return TestUtils.put(CatalogApplicationTest.getResource("services/pipelineServices/" + id), updated,
+    return TestUtils.put(CatalogApplicationTest.getResource("services/pipelineServices"), updated,
             PipelineService.class, status, authHeaders);
   }
 
