@@ -94,10 +94,6 @@ import static org.openmetadata.catalog.util.TestUtils.authHeaders;
 
 public class MlModelResourceTest extends EntityResourceTest<MlModel> {
   private static final Logger LOG = LoggerFactory.getLogger(MlModelResourceTest.class);
-  public static User USER1;
-  public static EntityReference USER_OWNER1;
-  public static Team TEAM1;
-  public static EntityReference TEAM_OWNER1;
   public static String ALGORITHM = "regression";
   public static EntityReference SUPERSET_REFERENCE;
   public static Dashboard DASHBOARD;
@@ -141,11 +137,6 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
 
   @BeforeAll
   public static void setup(TestInfo test) throws HttpResponseException {
-    USER1 = UserResourceTest.createUser(UserResourceTest.create(test), authHeaders("test@open-metadata.org"));
-    USER_OWNER1 = new EntityReference().withId(USER1.getId()).withType("user");
-
-    TEAM1 = TeamResourceTest.createTeam(TeamResourceTest.create(test), adminAuthHeaders());
-    TEAM_OWNER1 = new EntityReference().withId(TEAM1.getId()).withType("team");
 
     CreateDashboardService createService = new CreateDashboardService().withName("superset")
             .withServiceType(DashboardServiceType.Superset).withDashboardUrl(TestUtils.DASHBOARD_URL);
