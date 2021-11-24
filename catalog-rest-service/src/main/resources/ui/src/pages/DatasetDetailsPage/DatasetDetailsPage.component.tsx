@@ -18,7 +18,7 @@
 import { AxiosResponse } from 'axios';
 import { compare } from 'fast-json-patch';
 import { observer } from 'mobx-react';
-import { EntityTags, LineagePos } from 'Models';
+import { EntityTags, LeafNodes, LineagePos } from 'Models';
 import React, { FunctionComponent, useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import AppState from '../../AppState';
@@ -99,6 +99,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
   const [entityLineage, setEntityLineage] = useState<EntityLineage>(
     {} as EntityLineage
   );
+  const [, setLeafNodes] = useState<LeafNodes>({} as LeafNodes);
   const [usageSummary, setUsageSummary] =
     useState<TypeUsedToReturnUsageDetailsOfAnEntity>(
       {} as TypeUsedToReturnUsageDetailsOfAnEntity
@@ -194,8 +195,24 @@ const DatasetDetailsPage: FunctionComponent = () => {
     history.push(getDatasetVersionPath(tableFQN, currentVersion as string));
   };
 
+  const setLeafNode = (val: EntityLineage, pos: LineagePos) => {
+    if (pos === 'to' && val.downstreamEdges?.length === 0) {
+      setLeafNodes((prev) => ({
+        ...prev,
+        downStreamNode: [...prev.downStreamNode, val.entity.id],
+      }));
+    }
+    if (pos === 'from' && val.upstreamEdges?.length === 0) {
+      setLeafNodes((prev) => ({
+        ...prev,
+        upStreamNode: [...prev.upStreamNode, val.entity.id],
+      }));
+    }
+  };
+
   const loadNodeHandler = (node: EntityReference, pos: LineagePos) => {
     getLineageByFQN(node.name, node.type).then((res: AxiosResponse) => {
+      setLeafNode(res.data, pos);
       setEntityLineage(getEntityLineage(entityLineage, res.data, pos));
     });
   };

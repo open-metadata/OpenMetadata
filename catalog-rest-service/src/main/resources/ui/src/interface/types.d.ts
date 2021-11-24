@@ -399,4 +399,8 @@ declare module 'Models' {
 
   export type DatasetSchemaTableTab = 'schema' | 'sample_data';
   export type LineagePos = 'from' | 'to';
+  export interface LeafNodes {
+    upStreamNode: Array<string>;
+    downStreamNode: Array<string>;
+  }
 }
