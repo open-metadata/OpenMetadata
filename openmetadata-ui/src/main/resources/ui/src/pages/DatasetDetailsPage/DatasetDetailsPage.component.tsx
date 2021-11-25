@@ -18,7 +18,7 @@
 import { AxiosResponse } from 'axios';
 import { compare } from 'fast-json-patch';
 import { observer } from 'mobx-react';
-import { EntityTags } from 'Models';
+import { EntityTags, LeafNodes, LineagePos, LoadingNodeState } from 'Models';
 import React, { FunctionComponent, useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import AppState from '../../AppState';
@@ -43,6 +43,7 @@ import {
 import { EntityType } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import {
+  EntityReference,
   Table,
   TableData,
   TableJoins,
@@ -59,6 +60,7 @@ import {
   datasetTableTabs,
   getCurrentDatasetTab,
 } from '../../utils/DatasetDetailsUtils';
+import { getEntityLineage } from '../../utils/EntityUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { getOwnerFromId, getTierFromTableTags } from '../../utils/TableUtils';
 import { getTableTags } from '../../utils/TagsUtils';
@@ -97,12 +99,17 @@ const DatasetDetailsPage: FunctionComponent = () => {
   const [entityLineage, setEntityLineage] = useState<EntityLineage>(
     {} as EntityLineage
   );
+  const [leafNodes, setLeafNodes] = useState<LeafNodes>({} as LeafNodes);
   const [usageSummary, setUsageSummary] =
     useState<TypeUsedToReturnUsageDetailsOfAnEntity>(
       {} as TypeUsedToReturnUsageDetailsOfAnEntity
     );
   const [currentVersion, setCurrentVersion] = useState<string>();
   const [, setPreviousVersion] = useState<string>();
+  const [isNodeLoading, setNodeLoading] = useState<LoadingNodeState>({
+    id: undefined,
+    state: false,
+  });
 
   const activeTabHandler = (tabValue: number) => {
     const currentTabIndex = tabValue - 1;
@@ -190,6 +197,32 @@ const DatasetDetailsPage: FunctionComponent = () => {
 
   const versionHandler = () => {
     history.push(getDatasetVersionPath(tableFQN, currentVersion as string));
+  };
+
+  const setLeafNode = (val: EntityLineage, pos: LineagePos) => {
+    if (pos === 'to' && val.downstreamEdges?.length === 0) {
+      setLeafNodes((prev) => ({
+        ...prev,
+        downStreamNode: [...(prev.downStreamNode ?? []), val.entity.id],
+      }));
+    }
+    if (pos === 'from' && val.upstreamEdges?.length === 0) {
+      setLeafNodes((prev) => ({
+        ...prev,
+        upStreamNode: [...(prev.upStreamNode ?? []), val.entity.id],
+      }));
+    }
+  };
+
+  const loadNodeHandler = (node: EntityReference, pos: LineagePos) => {
+    setNodeLoading({ id: node.id, state: true });
+    getLineageByFQN(node.name, node.type).then((res: AxiosResponse) => {
+      setLeafNode(res.data, pos);
+      setEntityLineage(getEntityLineage(entityLineage, res.data, pos));
+      setTimeout(() => {
+        setNodeLoading((prev) => ({ ...prev, state: false }));
+      }, 500);
+    });
   };
 
   useEffect(() => {
@@ -300,7 +333,10 @@ const DatasetDetailsPage: FunctionComponent = () => {
           entityName={name}
           followers={followers}
           followTableHandler={followTable}
+          isNodeLoading={isNodeLoading}
           joins={joins}
+          lineageLeafNodes={leafNodes}
+          loadNodeHandler={loadNodeHandler}
           owner={owner as Table['owner'] & { displayName: string }}
           sampleData={sampleData}
           setActiveTabHandler={activeTabHandler}

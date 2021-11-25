@@ -48,6 +48,9 @@ const PipelineDetails = ({
   settingsUpdateHandler,
   tasks,
   taskUpdateHandler,
+  loadNodeHandler,
+  lineageLeafNodes,
+  isNodeLoading,
 }: PipeLineDetailsProp) => {
   const { isAuthDisabled } = useAuth();
   const [isEdit, setIsEdit] = useState(false);
@@ -359,7 +362,12 @@ const PipelineDetails = ({
               )}
               {activeTab === 2 && (
                 <div className="tw-h-full">
-                  <Entitylineage entityLineage={entityLineage} />
+                  <Entitylineage
+                    entityLineage={entityLineage}
+                    isNodeLoading={isNodeLoading}
+                    lineageLeafNodes={lineageLeafNodes}
+                    loadNodeHandler={loadNodeHandler}
+                  />
                 </div>
               )}
               {activeTab === 3 && (

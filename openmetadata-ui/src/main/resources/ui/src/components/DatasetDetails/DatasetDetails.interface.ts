@@ -1,4 +1,4 @@
-import { EntityTags } from 'Models';
+import { EntityTags, LeafNodes, LineagePos, LoadingNodeState } from 'Models';
 import {
   EntityReference,
   Table,
@@ -15,6 +15,8 @@ export interface DatasetOwner extends EntityReference {
 }
 
 export interface DatasetDetailsProps {
+  isNodeLoading: LoadingNodeState;
+  lineageLeafNodes: LeafNodes;
   version?: string;
   joins: TableJoins;
   usageSummary: TypeUsedToReturnUsageDetailsOfAnEntity;
@@ -40,4 +42,5 @@ export interface DatasetDetailsProps {
   columnsUpdateHandler: (updatedTable: Table) => void;
   descriptionUpdateHandler: (updatedTable: Table) => void;
   versionHandler: () => void;
+  loadNodeHandler: (node: EntityReference, pos: LineagePos) => void;
 }

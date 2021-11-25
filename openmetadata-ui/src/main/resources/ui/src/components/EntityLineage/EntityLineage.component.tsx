@@ -1,3 +1,4 @@
+import { LeafNodes, LineagePos, LoadingNodeState } from 'Models';
 import React, {
   FunctionComponent,
   MouseEvent as ReactMouseEvent,
@@ -24,9 +25,11 @@ import {
   EntityLineage,
 } from '../../generated/type/entityLineage';
 import { EntityReference } from '../../generated/type/entityReference';
+import { isLeafNode } from '../../utils/EntityUtils';
 import { getEntityIcon } from '../../utils/TableUtils';
 import EntityInfoDrawer from '../EntityInfoDrawer/EntityInfoDrawer.component';
-import { SelectedNode } from './EntityLineage.interface';
+import Loader from '../Loader/Loader';
+import { EntityLineageProp, SelectedNode } from './EntityLineage.interface';
 const onLoad = (reactFlowInstance: OnLoadParams) => {
   reactFlowInstance.fitView();
   reactFlowInstance.zoomTo(1);
@@ -65,7 +68,10 @@ const positionY = 60;
 
 const getLineageData = (
   entityLineage: EntityLineage,
-  onSelect: (state: boolean, value: SelectedNode) => void
+  onSelect: (state: boolean, value: SelectedNode) => void,
+  loadNodeHandler: (node: EntityReference, pos: LineagePos) => void,
+  lineageLeafNodes: LeafNodes,
+  isNodeLoading: LoadingNodeState
 ) => {
   const [x, y] = [0, 0];
   const nodes = entityLineage['nodes'];
@@ -106,15 +112,7 @@ const getLineageData = (
               className: 'leaf-node',
               data: {
                 label: (
-                  <p
-                    className="tw-flex"
-                    onClick={() =>
-                      onSelect(true, {
-                        name: node.name as string,
-                        type: node.type,
-                        id: `node-${node.id}-${depth}`,
-                      })
-                    }>
+                  <p className="tw-flex">
                     <span className="tw-mr-2">{getEntityIcon(node.type)}</span>
                     {getDataLabel(node.name as string)}
                   </p>
@@ -166,18 +164,10 @@ const getLineageData = (
               className: 'leaf-node',
               data: {
                 label: (
-                  <span
-                    className="tw-flex"
-                    onClick={() =>
-                      onSelect(true, {
-                        name: node.name as string,
-                        type: node.type,
-                        id: `node-${node.id}-${depth}`,
-                      })
-                    }>
+                  <p className="tw-flex">
                     <span className="tw-mr-2">{getEntityIcon(node.type)}</span>
                     {getDataLabel(node.name as string)}
-                  </span>
+                  </p>
                 ),
               },
               position: {
@@ -285,18 +275,81 @@ const getLineageData = (
       position: { x: x, y: y },
     },
     ...UPStreamNodes.map((up) => {
+      const node = entityLineage?.nodes?.find((d) => up.id.includes(d.id));
+
       return lineageEdges.find(
         (ed: FlowElement) => (ed as Edge).target === up.id
       )
         ? up
-        : { ...up, type: 'input' };
+        : {
+            ...up,
+            type: 'input',
+            data: {
+              label: (
+                <div className="tw-flex">
+                  {!isLeafNode(lineageLeafNodes, node?.id as string, 'from') &&
+                  !up.id.includes(isNodeLoading.id as string) ? (
+                    <p
+                      className="tw-mr-2 tw-self-center fas fa-chevron-left tw-cursor-pointer tw-text-primary"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onSelect(false, {} as SelectedNode);
+                        if (node) {
+                          loadNodeHandler(node, 'from');
+                        }
+                      }}
+                    />
+                  ) : null}
+                  {isNodeLoading.state &&
+                  up.id.includes(isNodeLoading.id as string) ? (
+                    <div className="tw-mr-2 tw-self-center">
+                      <Loader size="small" type="default" />
+                    </div>
+                  ) : null}
+                  <div>{up?.data?.label}</div>
+                </div>
+              ),
+            },
+          };
     }),
     ...DOWNStreamNodes.map((down) => {
+      const node = entityLineage?.nodes?.find((d) => down.id.includes(d.id));
+
       return lineageEdges.find((ed: FlowElement) =>
         (ed as Edge).source.includes(down.id)
       )
         ? down
-        : { ...down, type: 'output' };
+        : {
+            ...down,
+            type: 'output',
+            data: {
+              label: (
+                <div className="tw-flex tw-justify-between">
+                  <div>{down?.data?.label}</div>
+
+                  {!isLeafNode(lineageLeafNodes, node?.id as string, 'to') &&
+                  !down.id.includes(isNodeLoading.id as string) ? (
+                    <p
+                      className="tw-ml-2 tw-self-center fas fa-chevron-right tw-cursor-pointer tw-text-primary"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onSelect(false, {} as SelectedNode);
+                        if (node) {
+                          loadNodeHandler(node, 'to');
+                        }
+                      }}
+                    />
+                  ) : null}
+                  {isNodeLoading.state &&
+                  down.id.includes(isNodeLoading.id as string) ? (
+                    <div className="tw-ml-2 tw-self-center">
+                      <Loader size="small" type="default" />
+                    </div>
+                  ) : null}
+                </div>
+              ),
+            },
+          };
     }),
     ...lineageEdges,
   ];
@@ -304,11 +357,12 @@ const getLineageData = (
   return lineageData;
 };
 
-const Entitylineage: FunctionComponent<{ entityLineage: EntityLineage }> = ({
+const Entitylineage: FunctionComponent<EntityLineageProp> = ({
   entityLineage,
-}: {
-  entityLineage: EntityLineage;
-}) => {
+  loadNodeHandler,
+  lineageLeafNodes,
+  isNodeLoading,
+}: EntityLineageProp) => {
   const [isDrawerOpen, setIsDrawerOpen] = useState<boolean>(false);
   const [selectedNode, setSelectedNode] = useState<SelectedNode>(
     {} as SelectedNode
@@ -319,7 +373,13 @@ const Entitylineage: FunctionComponent<{ entityLineage: EntityLineage }> = ({
     setSelectedNode(value);
   };
   const [elements, setElements] = useState<Elements>(
-    getLineageData(entityLineage, selectNodeHandler) as Elements
+    getLineageData(
+      entityLineage,
+      selectNodeHandler,
+      loadNodeHandler,
+      lineageLeafNodes,
+      isNodeLoading
+    ) as Elements
   );
 
   const closeDrawer = (value: boolean) => {
@@ -342,6 +402,12 @@ const Entitylineage: FunctionComponent<{ entityLineage: EntityLineage }> = ({
     setElements((els) => addEdge(params, els));
 
   const onElementClick = (el: FlowElement) => {
+    const node = entityLineage.nodes?.find((n) => el.id.includes(n.id));
+    selectNodeHandler(true, {
+      name: node?.name as string,
+      id: el.id,
+      type: node?.type as string,
+    });
     setElements((prevElements) => {
       return prevElements.map((preEl) => {
         if (preEl.id === el.id) {
@@ -354,8 +420,16 @@ const Entitylineage: FunctionComponent<{ entityLineage: EntityLineage }> = ({
   };
 
   useEffect(() => {
-    setElements(getLineageData(entityLineage, selectNodeHandler) as Elements);
-  }, [entityLineage]);
+    setElements(
+      getLineageData(
+        entityLineage,
+        selectNodeHandler,
+        loadNodeHandler,
+        lineageLeafNodes,
+        isNodeLoading
+      ) as Elements
+    );
+  }, [entityLineage, isNodeLoading]);
 
   return (
     <div className="tw-relative tw-h-full tw--ml-4">
@@ -372,6 +446,15 @@ const Entitylineage: FunctionComponent<{ entityLineage: EntityLineage }> = ({
               onElementsRemove={onElementsRemove}
               onLoad={onLoad}
               onNodeContextMenu={onNodeContextMenu}
+              onNodeDrag={(e) => {
+                e.stopPropagation();
+              }}
+              onNodeDragStart={(e) => {
+                e.stopPropagation();
+              }}
+              onNodeDragStop={(e) => {
+                e.stopPropagation();
+              }}
               onNodeMouseEnter={onNodeMouseEnter}
               onNodeMouseLeave={onNodeMouseLeave}
               onNodeMouseMove={onNodeMouseMove}>

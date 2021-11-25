@@ -1,5 +1,5 @@
-import { isNil } from 'lodash';
-import { Bucket } from 'Models';
+import { isEmpty, isNil } from 'lodash';
+import { Bucket, LeafNodes, LineagePos } from 'Models';
 import React from 'react';
 import TableProfilerGraph from '../components/TableProfiler/TableProfilerGraph.component';
 import {
@@ -13,6 +13,8 @@ import { Dashboard } from '../generated/entity/data/dashboard';
 import { Pipeline } from '../generated/entity/data/pipeline';
 import { Table } from '../generated/entity/data/table';
 import { Topic } from '../generated/entity/data/topic';
+import { Edge, EntityLineage } from '../generated/type/entityLineage';
+import { EntityReference } from '../generated/type/entityUsage';
 import { TagLabel } from '../generated/type/tagLabel';
 import { getPartialNameFromFQN } from './CommonUtils';
 import {
@@ -243,4 +245,60 @@ export const getEntityCountByType = (buckets: Array<Bucket>) => {
   });
 
   return entityCounts;
+};
+
+export const getEntityLineage = (
+  oldVal: EntityLineage,
+  newVal: EntityLineage,
+  pos: LineagePos
+) => {
+  if (pos === 'to') {
+    const downEdges = newVal.downstreamEdges;
+    const newNodes = newVal.nodes?.filter((n) =>
+      downEdges?.find((e) => e.toEntity === n.id)
+    );
+
+    return {
+      ...oldVal,
+      downstreamEdges: [
+        ...(oldVal.downstreamEdges as Edge[]),
+        ...(downEdges as Edge[]),
+      ],
+      nodes: [
+        ...(oldVal.nodes as EntityReference[]),
+        ...(newNodes as EntityReference[]),
+      ],
+    };
+  } else {
+    const upEdges = newVal.upstreamEdges;
+    const newNodes = newVal.nodes?.filter((n) =>
+      upEdges?.find((e) => e.fromEntity === n.id)
+    );
+
+    return {
+      ...oldVal,
+      upstreamEdges: [
+        ...(oldVal.upstreamEdges as Edge[]),
+        ...(upEdges as Edge[]),
+      ],
+      nodes: [
+        ...(oldVal.nodes as EntityReference[]),
+        ...(newNodes as EntityReference[]),
+      ],
+    };
+  }
+};
+
+export const isLeafNode = (
+  leafNodes: LeafNodes,
+  id: string,
+  pos: LineagePos
+) => {
+  if (!isEmpty(leafNodes)) {
+    return pos === 'from'
+      ? leafNodes.upStreamNode?.includes(id)
+      : leafNodes.downStreamNode?.includes(id);
+  } else {
+    return false;
+  }
 };
