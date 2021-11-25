@@ -246,7 +246,7 @@ const Ingestion: React.FC<Props> = ({
                 className={classNames('tw-h-8 tw-rounded tw-mb-2', {
                   'tw-opacity-40': !isAdminUser && !isAuthDisabled,
                 })}
-                data-testid="add-new-user-button"
+                data-testid="add-new-ingestion-button"
                 size="small"
                 theme="primary"
                 variant="contained"

@@ -80,7 +80,7 @@ describe('Test Ingestion page', () => {
     const searchBox = await findByText(container, /Searchbar/i);
     const addIngestionButton = await findByTestId(
       container,
-      'add-new-user-button'
+      'add-new-ingestion-button'
     );
     const ingestionTable = await findByTestId(container, 'ingestion-table');
 
@@ -185,7 +185,7 @@ describe('Test Ingestion page', () => {
     // on click of add ingestion
     const addIngestionButton = await findByTestId(
       container,
-      'add-new-user-button'
+      'add-new-ingestion-button'
     );
     fireEvent.click(addIngestionButton);
 
