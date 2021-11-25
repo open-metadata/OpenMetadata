@@ -41,17 +41,13 @@ const MyDataPage = () => {
   const [searchResult, setSearchResult] = useState<SearchResponse>();
   const [entityCounts, setEntityCounts] = useState<EntityCounts>();
 
-  const fetchData = (
-    value: SearchDataFunctionType,
-    pageSize = PAGE_SIZE,
-    fetchService = false
-  ) => {
+  const fetchData = (value: SearchDataFunctionType, fetchService = false) => {
     setError('');
 
     searchData(
       value.queryString,
       value.from,
-      pageSize,
+      value.size ?? PAGE_SIZE,
       value.filters,
       value.sortField,
       value.sortOrder,
@@ -89,10 +85,10 @@ const MyDataPage = () => {
         queryString: '',
         from: 1,
         filters: '',
+        size: 0,
         sortField: '',
         sortOrder: '',
       },
-      0,
       isUndefined(countServices)
     );
   }, []);
