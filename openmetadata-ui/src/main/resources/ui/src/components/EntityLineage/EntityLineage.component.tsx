@@ -290,7 +290,7 @@ const getLineageData = (
                       className="tw-mr-2 tw-self-center fas fa-chevron-left tw-cursor-pointer tw-text-primary"
                       onClick={(e) => {
                         e.stopPropagation();
-
+                        onSelect(false, {} as SelectedNode);
                         if (node) {
                           loadNodeHandler(node, 'from');
                         }
@@ -322,6 +322,7 @@ const getLineageData = (
                       className="tw-ml-2 tw-self-center fas fa-chevron-right tw-cursor-pointer tw-text-primary"
                       onClick={(e) => {
                         e.stopPropagation();
+                        onSelect(false, {} as SelectedNode);
                         if (node) {
                           loadNodeHandler(node, 'to');
                         }
