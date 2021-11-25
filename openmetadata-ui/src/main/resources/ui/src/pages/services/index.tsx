@@ -18,13 +18,7 @@
 import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
 import { isNil, isNull, lowerCase } from 'lodash';
-import {
-  LoadingState,
-  Paging,
-  ServiceCollection,
-  ServiceData,
-  ServiceTypes,
-} from 'Models';
+import { Paging, ServiceCollection, ServiceData, ServiceTypes } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
@@ -35,7 +29,7 @@ import {
   updateService,
 } from '../../axiosAPIs/serviceAPI';
 import { Button } from '../../components/buttons/Button/Button';
-import LoadMorePagination from '../../components/common/LoadMorePagination/LoadMorePagination';
+import NextPrevious from '../../components/common/next-previous/NextPrevious';
 import NonAdminAction from '../../components/common/non-admin-action/NonAdminAction';
 import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
 import Searchbar from '../../components/common/searchbar/Searchbar';
@@ -58,7 +52,6 @@ import {
   NoDataFoundPlaceHolder,
   servicesDisplayName,
 } from '../../constants/services.const';
-import { CursorType } from '../../enums/pagination.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import {
   DashboardService,
@@ -132,9 +125,6 @@ const ServicesPage = () => {
     dashboardServices: 0,
     pipelineServices: 0,
   });
-
-  const [isLoadingMore, setIsLoadingMore] = useState<boolean>(false);
-  const [status, setStatus] = useState<LoadingState>('initial');
 
   const updateServiceList = (
     allServiceCollectionArr: Array<ServiceCollection>
@@ -420,15 +410,14 @@ const ServicesPage = () => {
   };
 
   const pagingHandler = (cursorType: string) => {
-    setIsLoadingMore(true);
-    setStatus('waiting');
+    setIsLoading(true);
     const currentServicePaging = paging[serviceName];
     const pagingString = `${serviceName}?${cursorType}=${
       currentServicePaging[cursorType as keyof Paging]
     }`;
     getServices(pagingString)
       .then((result: AxiosResponse) => {
-        const currentServices = [...services[serviceName], ...result.data.data];
+        const currentServices = result.data.data;
         setServiceList(currentServices);
 
         setServices({
@@ -440,11 +429,9 @@ const ServicesPage = () => {
           ...paging,
           [serviceName]: result.data.paging,
         });
-        setStatus('success');
       })
       .finally(() => {
-        setIsLoadingMore(false);
-        setStatus('initial');
+        setIsLoading(false);
       });
   };
 
@@ -659,16 +646,12 @@ const ServicesPage = () => {
               </div>
             )}
 
-            {!isNil(paging[serviceName].after) && (
-              <div className="tw-my-4 tw-flex tw-justify-center tw-items-center">
-                <LoadMorePagination
-                  showLoadingText
-                  buttonText="Load more"
-                  handleClick={() => pagingHandler(CursorType.AFTER)}
-                  isLoading={isLoadingMore}
-                  status={status}
-                />
-              </div>
+            {(!isNil(paging[serviceName].after) ||
+              !isNil(paging[serviceName].before)) && (
+              <NextPrevious
+                paging={paging[serviceName]}
+                pagingHandler={pagingHandler}
+              />
             )}
 
             {isModalOpen && (

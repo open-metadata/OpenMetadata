@@ -61,7 +61,7 @@ metadata ingest -c ./examples/workflows/mariadb.json
 
 Below is the configuration to publish MariaDB data into the OpenMetadata service.
 
-Add optionally `pii` processor and `metadata-rest` sink along with `metadata-server` config
+Add `metadata-rest` sink along with `metadata-server` config
 
 {% code title="mariadb.json" %}
 ```javascript

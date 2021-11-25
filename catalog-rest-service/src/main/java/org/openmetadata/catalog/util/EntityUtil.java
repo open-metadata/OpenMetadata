@@ -284,15 +284,22 @@ public final class EntityUtil {
               tagLabel.getState().ordinal());
 
       // Apply derived tags
-      List<TagLabel> derivedTags = getDerivedTags(tagLabel, tag);
+      List<TagLabel> derivedTags = getDerivedTags(tagDAO, tagLabel, tag);
       applyTags(tagDAO, derivedTags, targetFQN);
     }
   }
 
-  public static List<TagLabel> getDerivedTags(TagLabel tagLabel, Tag tag) {
+  public static List<TagLabel> getDerivedTags(TagDAO tagDAO, TagLabel tagLabel, Tag tag) throws IOException {
     List<TagLabel> derivedTags = new ArrayList<>();
     for (String fqn : Optional.ofNullable(tag.getAssociatedTags()).orElse(Collections.emptyList())) {
-      derivedTags.add(new TagLabel().withTagFQN(fqn).withState(tagLabel.getState()).withLabelType(LabelType.DERIVED));
+      String json = tagDAO.findTag(fqn);
+      if (json == null) {
+        // Invalid TagLabel
+        throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(Tag.class.getSimpleName(), fqn));
+      }
+      Tag tempTag = JsonUtils.readValue(json, Tag.class);
+      derivedTags.add(new TagLabel().withTagFQN(fqn).withState(tagLabel.getState())
+              .withDescription(tempTag.getDescription()).withLabelType(LabelType.DERIVED));
     }
     return derivedTags;
   }
@@ -313,7 +320,7 @@ public final class EntityUtil {
       updatedTagLabels.add(tagLabel);
 
       // Apply derived tags
-      List<TagLabel> derivedTags = getDerivedTags(tagLabel, tag);
+      List<TagLabel> derivedTags = getDerivedTags(tagDAO, tagLabel, tag);
       updatedTagLabels = mergeTags(updatedTagLabels, derivedTags);
     }
     updatedTagLabels.sort(compareTagLabel);
@@ -413,7 +420,7 @@ public final class EntityUtil {
     // Return for fqn=service.database.table.c1.c2 -> c1.c2 (note different from just the local name of the column c2)
     StringBuilder localColumnName = new StringBuilder();
     String[] s = fqn.split("\\.");
-    for (int i = 3; i < s.length -1 ; i++) {
+    for (int i = 3; i < s.length -1; i++) {
       localColumnName.append(s[i]).append(".");
     }
     localColumnName.append(s[s.length - 1]);

@@ -25,6 +25,7 @@ import org.openmetadata.catalog.jdbi3.PipelineServiceRepository.PipelineServiceE
 import org.openmetadata.catalog.resources.events.EventResource.ChangeEventList;
 import org.openmetadata.catalog.resources.services.DatabaseServiceResourceTest;
 import org.openmetadata.catalog.resources.services.MessagingServiceResourceTest;
+import org.openmetadata.catalog.resources.tags.TagResourceTest;
 import org.openmetadata.catalog.resources.teams.TeamResourceTest;
 import org.openmetadata.catalog.resources.teams.UserResourceTest;
 import org.openmetadata.catalog.type.ChangeDescription;
@@ -33,6 +34,7 @@ import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.EventType;
 import org.openmetadata.catalog.type.FieldChange;
+import org.openmetadata.catalog.type.Tag;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
@@ -107,9 +109,9 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
   public static EntityReference AIRFLOW_REFERENCE;
   public static EntityReference PREFECT_REFERENCE;
 
-  public static final TagLabel USER_ADDRESS_TAG_LABEL = new TagLabel().withTagFQN("User.Address");
-  public static final TagLabel USER_BANK_ACCOUNT_TAG_LABEL = new TagLabel().withTagFQN("User.BankAccount");
-  public static final TagLabel TIER1_TAG_LABEL = new TagLabel().withTagFQN("Tier.Tier1");
+  public static TagLabel USER_ADDRESS_TAG_LABEL;
+  public static TagLabel USER_BANK_ACCOUNT_TAG_LABEL;
+  public static TagLabel TIER1_TAG_LABEL;
 
   public EntityResourceTest(String entityName, Class<T> entityClass, Class<? extends ResultList<T>> entityListClass,
                             String collectionName,
@@ -176,6 +178,15 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
             .withPipelineUrl(new URI("http://localhost:0"));
     pipelineService = createService(createPipeline, adminAuthHeaders());
     PREFECT_REFERENCE = new PipelineServiceEntityInterface(pipelineService).getEntityReference();
+
+    Tag tag = TagResourceTest.getTag("User.Address", adminAuthHeaders());
+    USER_ADDRESS_TAG_LABEL = new TagLabel().withTagFQN(tag.getFullyQualifiedName())
+            .withDescription(tag.getDescription());
+    tag = TagResourceTest.getTag("User.BankAccount", adminAuthHeaders());
+    USER_BANK_ACCOUNT_TAG_LABEL = new TagLabel().withTagFQN(tag.getFullyQualifiedName())
+            .withDescription(tag.getDescription());
+    tag = TagResourceTest.getTag("Tier.Tier1", adminAuthHeaders());
+    TIER1_TAG_LABEL = new TagLabel().withTagFQN(tag.getFullyQualifiedName()).withDescription(tag.getDescription());
   }
 
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////

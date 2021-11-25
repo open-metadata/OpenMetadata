@@ -25,6 +25,7 @@ import org.openmetadata.catalog.resources.teams.UserResourceTest;
 import org.openmetadata.catalog.security.CatalogOpenIdAuthorizationRequestFilter;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.JdbcInfo;
+import org.openmetadata.catalog.type.Tag;
 import org.openmetadata.catalog.type.TagLabel;
 
 import javax.json.JsonObject;
@@ -251,8 +252,13 @@ public final class TestUtils {
     // So add to the expectedList, the derived tags before validating the tags
     List<TagLabel> updatedExpectedList = new ArrayList<>(expectedList);
     for (TagLabel expected : expectedList) {
-      List<TagLabel> derived = EntityUtil.getDerivedTags(expected, TagResourceTest.getTag(expected.getTagFQN(),
-              adminAuthHeaders()));
+      Tag tag = TagResourceTest.getTag(expected.getTagFQN(), adminAuthHeaders());
+      List<TagLabel> derived = new ArrayList<>();
+      for (String fqn : Optional.ofNullable(tag.getAssociatedTags()).orElse(Collections.emptyList())) {
+        Tag associatedTag = TagResourceTest.getTag(fqn, adminAuthHeaders());
+        derived.add(new TagLabel().withTagFQN(fqn).withState(expected.getState())
+                .withDescription(associatedTag.getDescription()).withLabelType(TagLabel.LabelType.DERIVED));
+      }
       updatedExpectedList.addAll(derived);
     }
     updatedExpectedList = updatedExpectedList.stream().distinct().collect(Collectors.toList());
