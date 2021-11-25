@@ -83,15 +83,10 @@ public class MlModelResource {
   private final MlModelRepository dao;
   private final CatalogAuthorizer authorizer;
 
-  public static List<MlModel> addHref(UriInfo uriInfo, List<MlModel> models) {
-    Optional.ofNullable(models).orElse(Collections.emptyList()).forEach(i -> addHref(uriInfo, i));
-    return models;
-  }
-
   public static MlModel addHref(UriInfo uriInfo, MlModel mlmodel) {
     mlmodel.setHref(RestUtil.getHref(uriInfo, COLLECTION_PATH, mlmodel.getId()));
     Entity.withHref(uriInfo, mlmodel.getOwner());
-    Entity.withHref(uriInfo, mlmodel.getDashboard()); // Dashboard HREF
+    Entity.withHref(uriInfo, mlmodel.getDashboard());
     Entity.withHref(uriInfo, mlmodel.getFollowers());
     return mlmodel;
   }
@@ -153,11 +148,11 @@ public class MlModelResource {
 
     ResultList<MlModel> mlmodels;
     if (before != null) { // Reverse paging
-      mlmodels = dao.listBefore(uriInfo, fields, null, limitParam, before); // Ask for one extra entry
+      mlmodels = dao.listBefore(uriInfo, fields, null, limitParam, before);
     } else { // Forward paging or first page
       mlmodels = dao.listAfter(uriInfo, fields, null, limitParam, after);
     }
-    addHref(uriInfo, mlmodels.getData());
+    mlmodels.getData().forEach(m -> addHref(uriInfo, m));
     return mlmodels;
   }
 
@@ -197,8 +192,7 @@ public class MlModelResource {
                                     schema = @Schema(type = "string", example = FIELDS))
                             @QueryParam("fields") String fieldsParam) throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
-    MlModel mlmodel = dao.getByName(uriInfo, fqn, fields);
-    return addHref(uriInfo, mlmodel);
+    return addHref(uriInfo, dao.getByName(uriInfo, fqn, fields));
   }
 
 

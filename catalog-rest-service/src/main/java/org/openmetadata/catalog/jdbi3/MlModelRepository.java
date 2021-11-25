@@ -123,18 +123,18 @@ public class MlModelRepository extends EntityRepository<MlModel> {
 
 
   @Override
-  public void validate(MlModel model) throws IOException {
-    model.setFullyQualifiedName(getFQN(model));
-    setMlFeatureFQN(model.getFullyQualifiedName(), model.getMlFeatures());
+  public void validate(MlModel mlModel) throws IOException {
+    mlModel.setFullyQualifiedName(getFQN(mlModel));
+    setMlFeatureFQN(mlModel.getFullyQualifiedName(), mlModel.getMlFeatures());
 
     // Check if owner is valid and set the relationship
-    model.setOwner(EntityUtil.populateOwner(dao.userDAO(), dao.teamDAO(), model.getOwner()));
+    mlModel.setOwner(EntityUtil.populateOwner(dao.userDAO(), dao.teamDAO(), mlModel.getOwner()));
 
-    if (model.getDashboard() != null) {
-      UUID dashboardId = model.getDashboard().getId();
-      model.setDashboard(dao.dashboardDAO().findEntityReferenceById(dashboardId));
+    if (mlModel.getDashboard() != null) {
+      UUID dashboardId = mlModel.getDashboard().getId();
+      mlModel.setDashboard(dao.dashboardDAO().findEntityReferenceById(dashboardId));
     }
-    model.setTags(EntityUtil.addDerivedTags(dao.tagDAO(), model.getTags()));
+    mlModel.setTags(EntityUtil.addDerivedTags(dao.tagDAO(), mlModel.getTags()));
   }
 
   @Override
@@ -159,7 +159,9 @@ public class MlModelRepository extends EntityRepository<MlModel> {
 
   @Override
   public void storeRelationships(MlModel mlModel) throws IOException {
-    setOwner(mlModel, mlModel.getOwner());
+
+    EntityUtil.setOwner(dao.relationshipDAO(), mlModel.getId(), Entity.MLMODEL, mlModel.getOwner());
+
     setDashboard(mlModel, mlModel.getDashboard());
 
     if (mlModel.getDashboard() != null) {
@@ -180,11 +182,6 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   private EntityReference getOwner(MlModel mlModel) throws IOException {
     return mlModel == null ? null : EntityUtil.populateOwner(mlModel.getId(), dao.relationshipDAO(),
             dao.userDAO(), dao.teamDAO());
-  }
-
-  public void setOwner(MlModel mlModel, EntityReference owner) {
-    EntityUtil.setOwner(dao.relationshipDAO(), mlModel.getId(), Entity.MLMODEL, owner);
-    mlModel.setOwner(owner);
   }
 
   private EntityReference getDashboard(MlModel mlModel) throws IOException {
