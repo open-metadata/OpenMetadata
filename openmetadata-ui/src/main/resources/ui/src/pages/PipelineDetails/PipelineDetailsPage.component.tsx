@@ -1,7 +1,13 @@
 import { AxiosResponse } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
 import { observer } from 'mobx-react';
-import { EntityTags, LeafNodes, LineagePos, TableDetail } from 'Models';
+import {
+  EntityTags,
+  LeafNodes,
+  LineagePos,
+  LoadingNodeState,
+  TableDetail,
+} from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import AppState from '../../AppState';
@@ -70,6 +76,10 @@ const PipelineDetailsPage = () => {
   const [slashedPipelineName, setSlashedPipelineName] = useState<
     TitleBreadcrumbProps['titleLinks']
   >([]);
+  const [isNodeLoading, setNodeLoading] = useState<LoadingNodeState>({
+    id: undefined,
+    state: false,
+  });
 
   const [entityLineage, setEntityLineage] = useState<EntityLineage>(
     {} as EntityLineage
@@ -250,9 +260,13 @@ const PipelineDetailsPage = () => {
   };
 
   const loadNodeHandler = (node: EntityReference, pos: LineagePos) => {
+    setNodeLoading({ id: node.id, state: true });
     getLineageByFQN(node.name, node.type).then((res: AxiosResponse) => {
       setLeafNode(res.data, pos);
       setEntityLineage(getEntityLineage(entityLineage, res.data, pos));
+      setTimeout(() => {
+        setNodeLoading((prev) => ({ ...prev, state: false }));
+      }, 500);
     });
   };
 
@@ -285,6 +299,7 @@ const PipelineDetailsPage = () => {
           entityName={displayName}
           followers={followers}
           followPipelineHandler={followPipeline}
+          isNodeLoading={isNodeLoading}
           lineageLeafNodes={leafNodes}
           loadNodeHandler={loadNodeHandler}
           owner={owner}

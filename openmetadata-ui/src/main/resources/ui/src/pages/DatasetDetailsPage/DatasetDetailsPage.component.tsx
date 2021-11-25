@@ -18,7 +18,7 @@
 import { AxiosResponse } from 'axios';
 import { compare } from 'fast-json-patch';
 import { observer } from 'mobx-react';
-import { EntityTags, LeafNodes, LineagePos } from 'Models';
+import { EntityTags, LeafNodes, LineagePos, LoadingNodeState } from 'Models';
 import React, { FunctionComponent, useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import AppState from '../../AppState';
@@ -106,6 +106,10 @@ const DatasetDetailsPage: FunctionComponent = () => {
     );
   const [currentVersion, setCurrentVersion] = useState<string>();
   const [, setPreviousVersion] = useState<string>();
+  const [isNodeLoading, setNodeLoading] = useState<LoadingNodeState>({
+    id: undefined,
+    state: false,
+  });
 
   const activeTabHandler = (tabValue: number) => {
     const currentTabIndex = tabValue - 1;
@@ -211,9 +215,13 @@ const DatasetDetailsPage: FunctionComponent = () => {
   };
 
   const loadNodeHandler = (node: EntityReference, pos: LineagePos) => {
+    setNodeLoading({ id: node.id, state: true });
     getLineageByFQN(node.name, node.type).then((res: AxiosResponse) => {
       setLeafNode(res.data, pos);
       setEntityLineage(getEntityLineage(entityLineage, res.data, pos));
+      setTimeout(() => {
+        setNodeLoading((prev) => ({ ...prev, state: false }));
+      }, 500);
     });
   };
 
@@ -325,6 +333,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
           entityName={name}
           followers={followers}
           followTableHandler={followTable}
+          isNodeLoading={isNodeLoading}
           joins={joins}
           lineageLeafNodes={leafNodes}
           loadNodeHandler={loadNodeHandler}

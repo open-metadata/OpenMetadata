@@ -1,4 +1,4 @@
-import { LeafNodes, LineagePos } from 'Models';
+import { LeafNodes, LineagePos, LoadingNodeState } from 'Models';
 import {
   EntityLineage,
   EntityReference,
@@ -11,6 +11,7 @@ export interface SelectedNode {
 }
 
 export interface EntityLineageProp {
+  isNodeLoading: LoadingNodeState;
   lineageLeafNodes: LeafNodes;
   entityLineage: EntityLineage;
   loadNodeHandler: (node: EntityReference, pos: LineagePos) => void;

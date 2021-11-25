@@ -403,4 +403,8 @@ declare module 'Models' {
     upStreamNode: Array<string>;
     downStreamNode: Array<string>;
   }
+  export interface LoadingNodeState {
+    id: string | undefined;
+    state: boolean;
+  }
 }

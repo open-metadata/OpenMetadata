@@ -1,4 +1,4 @@
-import { LeafNodes, LineagePos } from 'Models';
+import { LeafNodes, LineagePos, LoadingNodeState } from 'Models';
 import React, {
   FunctionComponent,
   MouseEvent as ReactMouseEvent,
@@ -28,6 +28,7 @@ import { EntityReference } from '../../generated/type/entityReference';
 import { isLeafNode } from '../../utils/EntityUtils';
 import { getEntityIcon } from '../../utils/TableUtils';
 import EntityInfoDrawer from '../EntityInfoDrawer/EntityInfoDrawer.component';
+import Loader from '../Loader/Loader';
 import { EntityLineageProp, SelectedNode } from './EntityLineage.interface';
 const onLoad = (reactFlowInstance: OnLoadParams) => {
   reactFlowInstance.fitView();
@@ -69,7 +70,8 @@ const getLineageData = (
   entityLineage: EntityLineage,
   onSelect: (state: boolean, value: SelectedNode) => void,
   loadNodeHandler: (node: EntityReference, pos: LineagePos) => void,
-  lineageLeafNodes: LeafNodes
+  lineageLeafNodes: LeafNodes,
+  isNodeLoading: LoadingNodeState
 ) => {
   const [x, y] = [0, 0];
   const nodes = entityLineage['nodes'];
@@ -285,7 +287,8 @@ const getLineageData = (
             data: {
               label: (
                 <div className="tw-flex">
-                  {!isLeafNode(lineageLeafNodes, node?.id as string, 'from') ? (
+                  {!isLeafNode(lineageLeafNodes, node?.id as string, 'from') &&
+                  !up.id.includes(isNodeLoading.id as string) ? (
                     <p
                       className="tw-mr-2 tw-self-center fas fa-chevron-left tw-cursor-pointer tw-text-primary"
                       onClick={(e) => {
@@ -296,6 +299,12 @@ const getLineageData = (
                         }
                       }}
                     />
+                  ) : null}
+                  {isNodeLoading.state &&
+                  up.id.includes(isNodeLoading.id as string) ? (
+                    <div className="tw-mr-2 tw-self-center">
+                      <Loader size="small" type="default" />
+                    </div>
                   ) : null}
                   <div>{up?.data?.label}</div>
                 </div>
@@ -317,7 +326,9 @@ const getLineageData = (
               label: (
                 <div className="tw-flex tw-justify-between">
                   <div>{down?.data?.label}</div>
-                  {!isLeafNode(lineageLeafNodes, node?.id as string, 'to') ? (
+
+                  {!isLeafNode(lineageLeafNodes, node?.id as string, 'to') &&
+                  !down.id.includes(isNodeLoading.id as string) ? (
                     <p
                       className="tw-ml-2 tw-self-center fas fa-chevron-right tw-cursor-pointer tw-text-primary"
                       onClick={(e) => {
@@ -328,6 +339,12 @@ const getLineageData = (
                         }
                       }}
                     />
+                  ) : null}
+                  {isNodeLoading.state &&
+                  down.id.includes(isNodeLoading.id as string) ? (
+                    <div className="tw-ml-2 tw-self-center">
+                      <Loader size="small" type="default" />
+                    </div>
                   ) : null}
                 </div>
               ),
@@ -344,6 +361,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
   entityLineage,
   loadNodeHandler,
   lineageLeafNodes,
+  isNodeLoading,
 }: EntityLineageProp) => {
   const [isDrawerOpen, setIsDrawerOpen] = useState<boolean>(false);
   const [selectedNode, setSelectedNode] = useState<SelectedNode>(
@@ -359,7 +377,8 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
       entityLineage,
       selectNodeHandler,
       loadNodeHandler,
-      lineageLeafNodes
+      lineageLeafNodes,
+      isNodeLoading
     ) as Elements
   );
 
@@ -406,11 +425,11 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
         entityLineage,
         selectNodeHandler,
         loadNodeHandler,
-        lineageLeafNodes
+        lineageLeafNodes,
+        isNodeLoading
       ) as Elements
     );
-    // setLineageData(entityLineage);
-  }, [entityLineage]);
+  }, [entityLineage, isNodeLoading]);
 
   return (
     <div className="tw-relative tw-h-full tw--ml-4">
