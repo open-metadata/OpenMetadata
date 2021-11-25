@@ -105,6 +105,16 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         component={PipelineDetailsPage}
         path={ROUTES.PIPELINE_DETAILS_WITH_TAB}
       />
+      <Route
+        exact
+        component={DatasetDetailsPage}
+        path={ROUTES.DBT_MODEL_DETAILS}
+      />
+      <Route
+        exact
+        component={DatasetDetailsPage}
+        path={ROUTES.DBT_MODEL_DETAILS_WITH_TAB}
+      />
       <Route component={Onboarding} path={ROUTES.ONBOARDING} />
       <Route
         exact

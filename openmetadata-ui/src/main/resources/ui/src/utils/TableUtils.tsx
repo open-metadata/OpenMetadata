@@ -5,6 +5,7 @@ import PopOver from '../components/common/popover/PopOver';
 import {
   getDashboardDetailsPath,
   getDatasetDetailsPath,
+  getDBTModelDetailsPath,
   getPipelineDetailsPath,
   getTopicDetailsPath,
 } from '../constants/constants';
@@ -175,6 +176,10 @@ export const getEntityLink = (
     case SearchIndex.PIPELINE:
     case EntityType.PIPELINE:
       return getPipelineDetailsPath(fullyQualifiedName);
+
+    case SearchIndex.DBT_MODEL:
+    case EntityType.DBT_MODEL:
+      return getDBTModelDetailsPath(fullyQualifiedName);
 
     case SearchIndex.TABLE:
     case EntityType.TABLE:

@@ -26,4 +26,5 @@ export enum SearchIndex {
   TOPIC = 'topic_search_index',
   DASHBOARD = 'dashboard_search_index',
   PIPELINE = 'pipeline_search_index',
+  DBT_MODEL = 'dbt_model_search_index',
 }
