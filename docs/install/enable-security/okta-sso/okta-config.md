@@ -6,9 +6,9 @@
 
 ```
 authenticationConfiguration:
-  provider: "google"
-  publicKey: "https://www.googleapis.com/oauth2/v3/certs"
-  authority: "https://accounts.google.com"
+  provider: "okta"
+  publicKey: "https://{okta_domain}/oauth2/default/v1/keys"
+  authority: "{okta_domain}"
   clientId: "{Client Secret}"
   callbackUrl: "http://localhost:8585/callback"
 ```
