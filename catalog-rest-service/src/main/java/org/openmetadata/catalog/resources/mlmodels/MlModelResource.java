@@ -29,11 +29,13 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.openmetadata.catalog.api.data.CreateMlModel;
 import org.openmetadata.catalog.entity.data.MlModel;
 import org.openmetadata.catalog.Entity;
+import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.MlModelRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
+import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.RestUtil.PatchResponse;
@@ -296,6 +298,43 @@ public class MlModelResource {
                               @PathParam("userId") String userId) throws IOException, ParseException {
     return dao.deleteFollower(securityContext.getUserPrincipal().getName(), UUID.fromString(id),
             UUID.fromString(userId)).toResponse();
+  }
+
+  @GET
+  @Path("/{id}/versions")
+  @Operation(summary = "List Ml Model versions", tags = "mlModels",
+          description = "Get a list of all the versions of an Ml Model identified by `id`",
+          responses = {@ApiResponse(responseCode = "200", description = "List of Ml Model versions",
+                  content = @Content(mediaType = "application/json",
+                          schema = @Schema(implementation = EntityHistory.class)))
+          })
+  public EntityHistory listVersions(@Context UriInfo uriInfo,
+                                    @Context SecurityContext securityContext,
+                                    @Parameter(description = "table Id", schema = @Schema(type = "string"))
+                                    @PathParam("id") String id)
+          throws IOException, ParseException, GeneralSecurityException {
+    return dao.listVersions(id);
+  }
+
+  @GET
+  @Path("/{id}/versions/{version}")
+  @Operation(summary = "Get a version of the ML Model", tags = "mlModels",
+          description = "Get a version of the ML Model by given `id`",
+          responses = {
+                  @ApiResponse(responseCode = "200", description = "MlModel",
+                          content = @Content(mediaType = "application/json",
+                                  schema = @Schema(implementation = MlModel.class))),
+                  @ApiResponse(responseCode = "404", description = "ML Model for instance {id} and version {version} is " +
+                          "not found")
+          })
+  public MlModel getVersion(@Context UriInfo uriInfo,
+                          @Context SecurityContext securityContext,
+                          @Parameter(description = "table Id", schema = @Schema(type = "string"))
+                          @PathParam("id") String id,
+                          @Parameter(description = "table version number in the form `major`.`minor`",
+                                  schema = @Schema(type = "string", example = "0.1 or 1.1"))
+                          @PathParam("version") String version) throws IOException, ParseException {
+    return dao.getVersion(id, version);
   }
 
   @DELETE
