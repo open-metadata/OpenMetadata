@@ -226,7 +226,7 @@ const Ingestion: React.FC<Props> = ({
 
   return (
     <PageContainer className="tw-bg-white">
-      <div className="tw-px-4">
+      <div className="tw-px-4" data-testid="ingestion-container">
         <div className="tw-flex">
           <div className="tw-w-4/12">
             {searchText || getSearchedIngestions().length > 0 ? (
@@ -246,7 +246,7 @@ const Ingestion: React.FC<Props> = ({
                 className={classNames('tw-h-8 tw-rounded tw-mb-2', {
                   'tw-opacity-40': !isAdminUser && !isAuthDisabled,
                 })}
-                data-testid="add-new-user-button"
+                data-testid="add-new-ingestion-button"
                 size="small"
                 theme="primary"
                 variant="contained"
@@ -260,7 +260,7 @@ const Ingestion: React.FC<Props> = ({
           <div className="tw-table-responsive tw-my-6">
             <table className="tw-w-full" data-testid="ingestion-table">
               <thead>
-                <tr className="tableHead-row">
+                <tr className="tableHead-row" data-testid="table-header">
                   <th className="tableHead-cell">Name</th>
                   <th className="tableHead-cell">Type</th>
                   <th className="tableHead-cell">Service</th>
