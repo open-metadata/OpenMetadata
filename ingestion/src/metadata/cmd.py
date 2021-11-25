@@ -25,8 +25,14 @@ import click
 import requests as requests
 from pydantic import ValidationError
 
+from metadata.__version__ import OPENMETADATA_VERSION
 from metadata.config.common import load_config_file
 from metadata.ingestion.api.workflow import Workflow
+from metadata.telemetry.openmetadata_telemetry import openmetadata_telemetry
+from metadata.telemetry.openmetadata_tracer import (
+    openmetadata_trace,
+    span_setup_function_args,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -49,6 +55,7 @@ def check() -> None:
 
 @click.group()
 @click.option("--debug/--no-debug", default=False)
+@openmetadata_trace
 def metadata(debug: bool) -> None:
     if os.getenv("METADATA_DEBUG", False):
         logging.getLogger().setLevel(logging.INFO)
@@ -66,6 +73,7 @@ def metadata(debug: bool) -> None:
     help="Workflow config",
     required=True,
 )
+@openmetadata_trace
 def ingest(config: str) -> None:
     """Main command for ingesting metadata into Metadata"""
     config_file = pathlib.Path(config)
@@ -146,6 +154,7 @@ def get_list(docker_type, all_check: bool = None):
 @metadata.command()
 @click.option("--start", help="Start release Docker containers", is_flag=True)
 @click.option("--stop", help="Stop Docker containers (local and release)", is_flag=True)
+@click.option("--version", help="Metadata command version", is_flag=True)
 @click.option(
     "--clean",
     help="Prune unused containers, images, volumes and networks",
@@ -165,20 +174,26 @@ def get_list(docker_type, all_check: bool = None):
     type=click.Path(exists=True, dir_okay=False),
     required=False,
 )
-def docker(start, stop, clean, type, path) -> None:
+@openmetadata_trace
+def docker(start, stop, version, clean, type, path) -> None:
     """
     Checks Docker Memory Allocation
     Run Latest Release Docker - metadata docker --run
     Run Local Docker - metadata docker --run -t local -p path/to/docker-compose.yml
     """
     try:
+        openmetadata_telemetry.set_attribute("cli_command_name", "docker")
         import docker as sys_docker
 
         client = sys_docker.from_env()
         docker_info = client.info()
         if docker_info["MemTotal"] < min_memory_limit:
+            openmetadata_telemetry.set_attribute(
+                "mem_total_error", docker_info["MemTotal"]
+            )
             raise MemoryError
         if start:
+            openmetadata_telemetry.set_attribute("cli_command_option", f"start {type}")
             if type == "local":
                 logger.info("Running Local Docker")
                 if path == "":
@@ -232,11 +247,14 @@ def docker(start, stop, clean, type, path) -> None:
                 "Need support? Get in touch on Slack: https://slack.open-metadata.org/",
                 fg="bright_magenta",
             )
+            openmetadata_telemetry.set_attribute("docker_start", "success")
         elif stop:
+            openmetadata_telemetry.set_attribute("cli_command_option", "stop")
             for container in get_list(client.containers):
                 logger.info(f"Stopping {container.name}")
                 container.stop()
         elif clean:
+            openmetadata_telemetry.set_attribute("cli_command_option", "clean")
             logger.info("Removing Containers")
             for container in get_list(client.containers, True):
                 container.remove(v=True, force=True)
@@ -246,23 +264,36 @@ def docker(start, stop, clean, type, path) -> None:
             logger.info("Removing Networks")
             for network in get_list(client.networks):
                 network.remove()
+        elif version:
+            click.secho(f"Version {OPENMETADATA_VERSION}", fg="bright_magenta")
+
     except (ImportError, ModuleNotFoundError):
         click.secho(
             "Docker package not found, can you try `pip install 'openmetadata-ingestion[docker]'`",
             fg="yellow",
         )
+        openmetadata_telemetry.set_attribute("docker_error", "docker package not found")
     except MemoryError:
         click.secho(
             f"Please Allocate More memory to Docker.\nRecommended: 4GB\nCurrent: "
             f"{round(float(docker_info['MemTotal']) / calc_gb, 2)}",
             fg="red",
         )
-
+        openmetadata_telemetry.set_attribute("docker_error", "memory allocation")
     except sys_docker.errors.DockerException as err:
         click.secho(f"Error: Docker service is not up and running. {err}", fg="red")
+        openmetadata_telemetry.set_attribute(
+            "docker_error", "docker service is not running"
+        )
     except Exception as err:
         logger.error(traceback.format_exc())
         logger.error(traceback.print_exc())
+        openmetadata_telemetry.set_attribute(
+            "docker_exception_trace", traceback.format_exc()
+        )
+        openmetadata_telemetry.set_attribute(
+            "docker_exception_print_trace", traceback.print_exc()
+        )
         click.secho(str(err), fg="red")
 
 

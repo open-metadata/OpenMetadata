@@ -29,8 +29,8 @@
 
   <artifactId>openmetadata-dist</artifactId>
   <packaging>pom</packaging>
-  <name>Catalog Distribution</name>
-  <description>Catalog binary distribution</description>
+  <name>OpenMetadata Distribution</name>
+  <description>OpenMetadata binary distribution</description>
 
   <dependencies>
     <dependency>

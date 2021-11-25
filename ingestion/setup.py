@@ -57,6 +57,8 @@ base_requirements = {
     "sql-metadata~=2.0.0",
     "requests~=2.26",
     "PyYAML",
+    "opentelemetry-exporter-otlp-proto-http>=1.6.2,<1.7",
+    "opentelemetry-exporter-jaeger",
 }
 pii_requirements = {
     "en_core_web_sm@https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.0.0/en_core_web_sm-3.0.0.tar.gz#egg=en_core_web",
