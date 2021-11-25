@@ -33,7 +33,7 @@ getTypes(){
     else
         fileTS=${f//.json/.ts}
         fileTS=${fileTS//$2/$3}
-        mkdir -p "$(dirname "$fileTS")" && quicktype -s schema "$f" -o "$fileTS" --just-types
+        mkdir -p "$(dirname "$fileTS")" && ../../../../../node_modules/.bin/quicktype -s schema "$f" -o "$fileTS" --just-types
         if [[ -s $fileTS ]]
         then
             addLicensing "$fileTS"
