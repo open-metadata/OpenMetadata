@@ -27,7 +27,7 @@ Connect to MySQL following steps mentioned [here](#steps-to-connect-mysql).
 
 ```shells
 mvn -DskipTests clean package
-cd dist/target
+cd openmetadata-dist/target
 unzip openmetadata-1.0.0-SNAPSHOT.zip
 cd openmetadata-1.0.0-SNAPSHOT/bootstrap
 ./bootstrap_storage.sh migrate
