@@ -304,6 +304,7 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
                 className={classNames('tw-form-inputs tw-px-3 tw-py-1', {
                   'tw-cursor-not-allowed': isUpdating,
                 })}
+                data-testid="name"
                 id="name"
                 name="name"
                 placeholder="Ingestion name"
@@ -325,7 +326,7 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
                 className={classNames('tw-form-inputs tw-px-3 tw-py-1', {
                   'tw-cursor-not-allowed': isUpdating,
                 })}
-                data-testid="selectService"
+                data-testid="select-service"
                 disabled={isUpdating}
                 id="selectService"
                 name="selectService"
@@ -350,7 +351,7 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
                 className={classNames('tw-form-inputs tw-px-3 tw-py-1', {
                   'tw-cursor-not-allowed': !ingestionService,
                 })}
-                data-testid="selectService"
+                data-testid="ingestion-type"
                 disabled={!ingestionService || isUpdating}
                 id="ingestionType"
                 name="ingestionType"
@@ -386,6 +387,7 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
               </label>
               <input
                 className="tw-form-inputs tw-px-3 tw-py-1"
+                data-testid="user-name"
                 id="username"
                 name="username"
                 placeholder="User name"
@@ -401,6 +403,7 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
               </label>
               <input
                 className="tw-form-inputs tw-px-3 tw-py-1"
+                data-testid="password"
                 id="password"
                 name="password"
                 placeholder="Password"
@@ -416,6 +419,7 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
               </label>
               <input
                 className="tw-form-inputs tw-px-3 tw-py-1"
+                data-testid="host"
                 id="host"
                 name="host"
                 placeholder="Host"
@@ -431,6 +435,7 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
               </label>
               <input
                 className="tw-form-inputs tw-px-3 tw-py-1"
+                data-testid="database"
                 id="database"
                 name="database"
                 placeholder="Database"
@@ -446,7 +451,7 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
               </label>
               <input
                 className="tw-form-inputs tw-px-3 tw-py-1"
-                data-testid="includeFilterPattern"
+                data-testid="include-filter-pattern"
                 id="includeFilterPattern"
                 name="includeFilterPattern"
                 placeholder="Include filter patterns comma seperated"
@@ -461,7 +466,7 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
               </label>
               <input
                 className="tw-form-inputs tw-px-3 tw-py-1"
-                data-testid="excludeFilterPattern"
+                data-testid="exclude-filter-pattern"
                 id="excludeFilterPattern"
                 name="excludeFilterPattern"
                 placeholder="Exclude filter patterns comma seperated"
@@ -479,6 +484,7 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
                       'toggle-switch',
                       includeViews ? 'open' : null
                     )}
+                    data-testid="include-views"
                     onClick={() => setIncludeViews(!includeViews)}>
                     <div className="switch" />
                   </div>
@@ -490,6 +496,7 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
                       'toggle-switch',
                       excludeDataProfiler ? 'open' : null
                     )}
+                    data-testid="data-profiler"
                     onClick={() =>
                       setExcludeDataProfiler(!excludeDataProfiler)
                     }>
@@ -503,7 +510,7 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
       case 3:
         return (
           <Fragment>
-            <div className="tw-mt-4">
+            <div className="tw-mt-4" data-testid="schedule-interval">
               <label htmlFor="">{requiredField('Schedule interval:')}</label>
               <div className="tw-flex tw-mt-2 tw-ml-3">
                 <CronEditor
@@ -519,6 +526,7 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
                 <label htmlFor="startDate">Start date (UTC):</label>
                 <input
                   className="tw-form-inputs tw-px-3 tw-py-1"
+                  data-testid="start-date"
                   type="date"
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
@@ -528,7 +536,7 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
                 <label htmlFor="endDate">End date (UTC):</label>
                 <input
                   className="tw-form-inputs tw-px-3 tw-py-1"
-                  data-testid="endDate"
+                  data-testid="end-date"
                   min={startDate}
                   type="date"
                   value={endDate}
@@ -541,7 +549,9 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
       case 4:
         return (
           <Fragment>
-            <div className="tw-flex tw-flex-col tw-mt-6">
+            <div
+              className="tw-flex tw-flex-col tw-mt-6"
+              data-testid="preview-section">
               <PreviewSection
                 className="tw-mb-4 tw-mt-4"
                 data={[
@@ -658,15 +668,17 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
   }, [startDate]);
 
   return (
-    <dialog className="tw-modal" data-testid="service-modal">
+    <dialog className="tw-modal" data-testid="ingestion-modal-container">
       <div className="tw-modal-backdrop" />
       <div className="tw-modal-container tw-max-w-2xl">
         <div className="tw-modal-header">
-          <p className="tw-modal-title">{header}</p>
+          <p className="tw-modal-title" data-testid="modal-title">
+            {header}
+          </p>
           <div className="tw-flex">
             <svg
               className="tw-w-6 tw-h-6 tw-ml-1 tw-cursor-pointer"
-              data-testid="closeWhatsNew"
+              data-testid="close-modal"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -681,19 +693,21 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
             </svg>
           </div>
         </div>
-        <div className="tw-modal-body">
+        <div className="tw-modal-body" data-testid="modal-body">
           <IngestionStepper activeStep={activeStep} steps={STEPS} />
 
           <form className="tw-min-w-full" data-testid="form">
             <div className="tw-px-4">{getActiveStepFields(activeStep)}</div>
           </form>
         </div>
-        <div className="tw-modal-footer tw-justify-between">
+        <div
+          className="tw-modal-footer tw-justify-between"
+          data-testid="modal-footer">
           <Button
             className={classNames('tw-mr-2', {
               'tw-invisible': activeStep === 1,
             })}
-            data-testid="cancel"
+            data-testid="previous-button"
             size="regular"
             theme="primary"
             variant="text"
@@ -705,7 +719,7 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
           {activeStep === 4 ? (
             <div className="tw-flex">
               <Button
-                data-testid="save-button"
+                data-testid="deploy-button"
                 size="regular"
                 theme="primary"
                 type="submit"

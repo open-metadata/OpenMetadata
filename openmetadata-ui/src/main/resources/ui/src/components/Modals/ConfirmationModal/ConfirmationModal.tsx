@@ -29,13 +29,17 @@ const ConfirmationModal = ({
   bodyText,
 }: Props) => {
   return (
-    <dialog className="tw-modal">
+    <dialog className="tw-modal" data-testid="confirmation-modal">
       <div className="tw-modal-backdrop" />
       <div className="tw-modal-container tw-w-120">
         <div className={classNames('tw-modal-header', headerClassName)}>
-          <p className="tw-modal-title">{header}</p>
+          <p className="tw-modal-title" data-testid="modal-header">
+            {header}
+          </p>
         </div>
-        <div className={classNames('tw-modal-body tw-h-28', bodyClassName)}>
+        <div
+          className={classNames('tw-modal-body tw-h-28', bodyClassName)}
+          data-testid="body-text">
           <p>{bodyText}</p>
         </div>
         <div
