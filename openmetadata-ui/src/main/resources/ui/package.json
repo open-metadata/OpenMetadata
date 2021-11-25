@@ -6,6 +6,11 @@
     "node": ">=10.0.0",
     "npm": "^6.0.0"
   },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/open-metadata/OpenMetadata.git",
+    "directory": "openmetadata-ui/src/main/resources/ui"
+  },
   "dependencies": {
     "@craco/craco": "^5.8.0",
     "@deuex-solutions/redoc": "2.0.0-rc.27",
@@ -90,6 +95,7 @@
     "start": "NODE_ENV=development BABEL_ENV=development webpack serve --config ./webpack.config.dev.js --env development",
     "build": "NODE_ENV=production BABEL_ENV=production webpack --config ./webpack.config.prod.js --env production",
     "postbuild": "rm -rf ./dist/ && mkdir -p ./dist/assets && mv build/* ./dist/assets/",
+    "preinstall": "cd ../../../../.. && npm install",
     "test": "jest --passWithNoTests --watch",
     "test:nowatch": "jest --passWithNoTests",
     "lint": "eslint \"./src/**/*.{js,jsx,ts,tsx}\"",

@@ -17,134 +17,39 @@
  */
 
 /**
- * This schema defines the Model entity. A Model organizes data modeling details , sql and
- * columns
+ * Schema corresponding to a model that belongs to a database
  */
-export interface Model {
-  catalogType?: CatalogType;
+export interface CreateDbtModel {
   /**
-   * Change that lead to this version of the entity.
-   */
-  changeDescription?: ChangeDescription;
-  /**
-   * Columns in this table.
+   * Schema of the Model
    */
   columns: Column[];
   /**
-   * Reference to Database that contains this table.
+   * Database corresponding to this table
    */
-  database?: EntityReference;
+  database?: string;
+  dbtNodeType?: DbtNodeType;
   /**
-   * Description of a model.
+   * Description of DBTModel instance.
    */
   description?: string;
   /**
-   * Display Name that identifies this model. It could be title or label from the source
-   * services.
-   */
-  displayName?: string;
-  /**
-   * Followers of this table.
-   */
-  followers?: EntityReference[];
-  /**
-   * Fully qualified name of a model in the form `serviceName.databaseName.modelName`.
-   */
-  fullyQualifiedName?: string;
-  /**
-   * Link to this table resource.
-   */
-  href?: string;
-  /**
-   * Unique identifier of this model instance.
-   */
-  id: string;
-  /**
-   * Reference to the Location that contains this table.
-   */
-  location?: EntityReference;
-  materializationType?: MaterializationType;
-  /**
-   * Name of a model. Expected to be unique within a database.
+   * Name that identifies the this entity instance uniquely. Same as id if when name is not
+   * unique
    */
   name: string;
-  nodeType?: NodeType;
   /**
-   * Owner of this table.
+   * Owner of this entity
    */
   owner?: EntityReference;
   /**
-   * Tags for this table.
+   * Tags for this model
    */
   tags?: TagLabel[];
   /**
-   * Last update time corresponding to the new version of the entity.
-   */
-  updatedAt?: Date;
-  /**
-   * User who made the update.
-   */
-  updatedBy?: string;
-  /**
-   * Latest usage information for this table.
-   */
-  usageSummary?: TypeUsedToReturnUsageDetailsOfAnEntity;
-  /**
-   * Metadata version of the entity.
-   */
-  version?: number;
-  /**
-   * View Definition in SQL. Applies to TableType.View only.
+   * View Definition in SQL.
    */
   viewDefinition?: string;
-}
-
-/**
- * This schema defines the type used for describing different catalog type.
- */
-export enum CatalogType {
-  BaseTable = 'BaseTable',
-}
-
-/**
- * Change that lead to this version of the entity.
- *
- * Description of the change.
- */
-export interface ChangeDescription {
-  /**
-   * Names of fields added during the version changes.
-   */
-  fieldsAdded?: FieldChange[];
-  /**
-   * Fields deleted during the version changes with old value before deleted.
-   */
-  fieldsDeleted?: FieldChange[];
-  /**
-   * Fields modified during the version changes with old and new values.
-   */
-  fieldsUpdated?: FieldChange[];
-  /**
-   * When a change did not result in change, this could be same as the current version.
-   */
-  previousVersion?: number;
-}
-
-export interface FieldChange {
-  /**
-   * Name of the entity field that changed.
-   */
-  name?: string;
-  /**
-   * New value of the field. Note that this is a JSON string and use the corresponding field
-   * type to deserialize it.
-   */
-  newValue?: any;
-  /**
-   * Previous value of the field. Note that this is a JSON string and use the corresponding
-   * field type to deserialize it.
-   */
-  oldValue?: any;
 }
 
 /**
@@ -307,18 +212,20 @@ export enum State {
 }
 
 /**
- * Reference to Database that contains this table.
+ * This schema defines the type used for describing different types of Nodes in DBT.
+ */
+export enum DbtNodeType {
+  Model = 'Model',
+  Seed = 'Seed',
+}
+
+/**
+ * Owner of this entity
  *
  * This schema defines the EntityReference type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
- *
- * Followers of this table.
- *
- * Reference to the Location that contains this table.
- *
- * Owner of this table.
  */
 export interface EntityReference {
   /**
@@ -347,65 +254,4 @@ export interface EntityReference {
    * `bigquery`, `snowflake`...
    */
   type: string;
-}
-
-/**
- * This schema defines the type used for describing different materialization type.
- */
-export enum MaterializationType {
-  Seed = 'Seed',
-  Table = 'Table',
-}
-
-/**
- * This schema defines the type used for describing different types of Nodes.
- */
-export enum NodeType {
-  Model = 'Model',
-  Seed = 'Seed',
-}
-
-/**
- * Latest usage information for this table.
- *
- * This schema defines the type for usage details. Daily, weekly, and monthly aggregation of
- * usage is computed along with the percentile rank based on the usage for a given day.
- */
-export interface TypeUsedToReturnUsageDetailsOfAnEntity {
-  /**
-   * Daily usage stats of a data asset on the start date.
-   */
-  dailyStats: UsageStats;
-  /**
-   * Date in UTC.
-   */
-  date: Date;
-  /**
-   * Monthly (last 30 days) rolling usage stats of a data asset on the start date.
-   */
-  monthlyStats?: UsageStats;
-  /**
-   * Weekly (last 7 days) rolling usage stats of a data asset on the start date.
-   */
-  weeklyStats?: UsageStats;
-}
-
-/**
- * Daily usage stats of a data asset on the start date.
- *
- * Type used to return usage statistics.
- *
- * Monthly (last 30 days) rolling usage stats of a data asset on the start date.
- *
- * Weekly (last 7 days) rolling usage stats of a data asset on the start date.
- */
-export interface UsageStats {
-  /**
-   * Usage count of a data asset on the start date.
-   */
-  count: number;
-  /**
-   * Optional daily percentile rank data asset use when relevant.
-   */
-  percentileRank?: number;
 }
