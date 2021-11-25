@@ -25,6 +25,7 @@ import { getIngestionWorkflows } from '../../axiosAPIs/ingestionWorkflowAPI';
 import { searchData } from '../../axiosAPIs/miscAPI';
 import Loader from '../../components/Loader/Loader';
 import MyData from '../../components/MyData/MyData.component';
+import { PAGE_SIZE } from '../../constants/constants';
 import {
   myDataEntityCounts,
   myDataSearchIndex,
@@ -40,13 +41,17 @@ const MyDataPage = () => {
   const [searchResult, setSearchResult] = useState<SearchResponse>();
   const [entityCounts, setEntityCounts] = useState<EntityCounts>();
 
-  const fetchData = (value: SearchDataFunctionType, fetchService = false) => {
+  const fetchData = (
+    value: SearchDataFunctionType,
+    pageSize = PAGE_SIZE,
+    fetchService = false
+  ) => {
     setError('');
 
     searchData(
       value.queryString,
       value.from,
-      0,
+      pageSize,
       value.filters,
       value.sortField,
       value.sortOrder,
@@ -87,6 +92,7 @@ const MyDataPage = () => {
         sortField: '',
         sortOrder: '',
       },
+      0,
       isUndefined(countServices)
     );
   }, []);
