@@ -12,7 +12,7 @@ Please look at our framework [APIs](https://github.com/open-metadata/OpenMetadat
 
 [workflow](https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/src/metadata/ingestion/api/workflow.py) is a simple orchestration job that runs the components in an Order.
 
-A workflow consists of [Source](source.md), [Processor](processor.md) and [Sink](sink.md). It also provides support for [Stage](stage.md) and [BulkSink](bulksink.md).
+A workflow consists of [Source](source.md) and [Sink](sink.md). It also provides support for [Stage](stage.md) and [BulkSink](bulksink.md).
 
 Workflow execution happens in a serial fashion.
 
@@ -30,10 +30,6 @@ In the cases where we need aggregation over the records, we can use the **stage*
 
 {% content-ref url="source.md" %}
 [source.md](source.md)
-{% endcontent-ref %}
-
-{% content-ref url="processor.md" %}
-[processor.md](processor.md)
 {% endcontent-ref %}
 
 {% content-ref url="sink.md" %}

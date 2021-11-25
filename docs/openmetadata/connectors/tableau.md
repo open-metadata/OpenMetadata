@@ -63,7 +63,7 @@ metadata ingest -c ./examples/workflows/tableau.json
 
 Below is the configuration to publish Tableau data into the OpenMetadata service.
 
-Add optionally `pii` processor and `metadata-rest` sink along with `metadata-server` config
+Add `metadata-rest` sink along with `metadata-server` config
 
 {% code title="tableau.json" %}
 ```javascript
