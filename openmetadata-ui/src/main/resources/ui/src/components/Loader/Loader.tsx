@@ -15,17 +15,20 @@
   * limitations under the License.
 */
 
+import classNames from 'classnames';
 import React, { FunctionComponent } from 'react';
 import './Loader.css';
 
 type Props = {
   size?: 'default' | 'small';
   type?: 'default' | 'success' | 'error' | 'white';
+  className?: string;
 };
 
 const Loader: FunctionComponent<Props> = ({
   size = 'default',
   type = 'default',
+  className = '',
 }: Props): JSX.Element => {
   let classes = 'loader';
   switch (size) {
@@ -54,7 +57,9 @@ const Loader: FunctionComponent<Props> = ({
       break;
   }
 
-  return <div className={classes} data-testid="loader" />;
+  return (
+    <div className={classNames(classes, className)} data-testid="loader" />
+  );
 };
 
 export default Loader;

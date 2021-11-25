@@ -26,9 +26,11 @@ import {
 } from '../../generated/type/entityLineage';
 import { EntityReference } from '../../generated/type/entityReference';
 import { isLeafNode } from '../../utils/EntityUtils';
+import SVGIcons from '../../utils/SvgUtils';
 import { getEntityIcon } from '../../utils/TableUtils';
 import EntityInfoDrawer from '../EntityInfoDrawer/EntityInfoDrawer.component';
 import Loader from '../Loader/Loader';
+import CustomNode from './CustomNode.component';
 import { EntityLineageProp, SelectedNode } from './EntityLineage.interface';
 const onLoad = (reactFlowInstance: OnLoadParams) => {
   reactFlowInstance.fitView();
@@ -49,6 +51,10 @@ const onNodeMouseLeave = (_event: ReactMouseEvent, _node: Node | Edge) => {
 /* eslint-disable-next-line */
 const onNodeContextMenu = (_event: ReactMouseEvent, _node: Node | Edge) => {
   _event.preventDefault();
+};
+
+const dragHandle = (event: ReactMouseEvent) => {
+  event.stopPropagation();
 };
 
 const getDataLabel = (v = '', separator = '.') => {
@@ -112,10 +118,24 @@ const getLineageData = (
               className: 'leaf-node',
               data: {
                 label: (
-                  <p className="tw-flex">
-                    <span className="tw-mr-2">{getEntityIcon(node.type)}</span>
-                    {getDataLabel(node.name as string)}
-                  </p>
+                  <>
+                    {node.type === 'table' ? (
+                      <button
+                        className="tw-absolute tw--top-4 tw--left-5 tw-cursor-pointer tw-z-9999"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          e.preventDefault();
+                        }}>
+                        <SVGIcons alt="plus" icon="icon-plus" width="16px" />
+                      </button>
+                    ) : null}
+                    <p className="tw-flex">
+                      <span className="tw-mr-2">
+                        {getEntityIcon(node.type)}
+                      </span>
+                      {getDataLabel(node.name as string)}
+                    </p>
+                  </>
                 ),
               },
               position: {
@@ -164,10 +184,24 @@ const getLineageData = (
               className: 'leaf-node',
               data: {
                 label: (
-                  <p className="tw-flex">
-                    <span className="tw-mr-2">{getEntityIcon(node.type)}</span>
-                    {getDataLabel(node.name as string)}
-                  </p>
+                  <>
+                    {node.type === 'table' ? (
+                      <button
+                        className="tw-absolute tw--top-4 tw--left-5 tw-cursor-pointer tw-z-9999"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          e.preventDefault();
+                        }}>
+                        <SVGIcons alt="plus" icon="icon-plus" width="16px" />
+                      </button>
+                    ) : null}
+                    <p className="tw-flex">
+                      <span className="tw-mr-2">
+                        {getEntityIcon(node.type)}
+                      </span>
+                      {getDataLabel(node.name as string)}
+                    </p>
+                  </>
                 ),
               },
               position: {
@@ -259,17 +293,22 @@ const getLineageData = (
       className: 'leaf-node core',
       data: {
         label: (
-          <p
-            className="tw-flex"
-            onClick={() =>
-              onSelect(true, {
-                name: mainNode.name as string,
-                type: mainNode.type,
-              })
-            }>
-            <span className="tw-mr-2">{getEntityIcon(mainNode.type)}</span>
-            {getDataLabel(mainNode.name as string)}
-          </p>
+          <>
+            {mainNode.type === 'table' ? (
+              <button
+                className="tw-absolute tw--top-4 tw--left-5 tw-cursor-pointer tw-z-9999"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                }}>
+                <SVGIcons alt="plus" icon="icon-plus" width="16px" />
+              </button>
+            ) : null}
+            <p className="tw-flex">
+              <span className="tw-mr-2">{getEntityIcon(mainNode.type)}</span>
+              {getDataLabel(mainNode.name as string)}
+            </p>
+          </>
         ),
       },
       position: { x: x, y: y },
@@ -287,25 +326,28 @@ const getLineageData = (
             data: {
               label: (
                 <div className="tw-flex">
-                  {!isLeafNode(lineageLeafNodes, node?.id as string, 'from') &&
-                  !up.id.includes(isNodeLoading.id as string) ? (
-                    <p
-                      className="tw-mr-2 tw-self-center fas fa-chevron-left tw-cursor-pointer tw-text-primary"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onSelect(false, {} as SelectedNode);
-                        if (node) {
-                          loadNodeHandler(node, 'from');
-                        }
-                      }}
-                    />
-                  ) : null}
-                  {isNodeLoading.state &&
-                  up.id.includes(isNodeLoading.id as string) ? (
-                    <div className="tw-mr-2 tw-self-center">
+                  <p
+                    className="tw-pr-2 tw-self-center tw-cursor-pointer "
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onSelect(false, {} as SelectedNode);
+                      if (node) {
+                        loadNodeHandler(node, 'from');
+                      }
+                    }}>
+                    {!isLeafNode(
+                      lineageLeafNodes,
+                      node?.id as string,
+                      'from'
+                    ) && !up.id.includes(isNodeLoading.id as string) ? (
+                      <i className="fas fa-chevron-left tw-text-primary tw-mr-2" />
+                    ) : null}
+                    {isNodeLoading.state &&
+                    up.id.includes(isNodeLoading.id as string) ? (
                       <Loader size="small" type="default" />
-                    </div>
-                  ) : null}
+                    ) : null}
+                  </p>
+
                   <div>{up?.data?.label}</div>
                 </div>
               ),
@@ -327,25 +369,24 @@ const getLineageData = (
                 <div className="tw-flex tw-justify-between">
                   <div>{down?.data?.label}</div>
 
-                  {!isLeafNode(lineageLeafNodes, node?.id as string, 'to') &&
-                  !down.id.includes(isNodeLoading.id as string) ? (
-                    <p
-                      className="tw-ml-2 tw-self-center fas fa-chevron-right tw-cursor-pointer tw-text-primary"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onSelect(false, {} as SelectedNode);
-                        if (node) {
-                          loadNodeHandler(node, 'to');
-                        }
-                      }}
-                    />
-                  ) : null}
-                  {isNodeLoading.state &&
-                  down.id.includes(isNodeLoading.id as string) ? (
-                    <div className="tw-ml-2 tw-self-center">
+                  <p
+                    className="tw-pl-2 tw-self-center tw-cursor-pointer "
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onSelect(false, {} as SelectedNode);
+                      if (node) {
+                        loadNodeHandler(node, 'to');
+                      }
+                    }}>
+                    {!isLeafNode(lineageLeafNodes, node?.id as string, 'to') &&
+                    !down.id.includes(isNodeLoading.id as string) ? (
+                      <i className="fas fa-chevron-right tw-text-primary tw-ml-2" />
+                    ) : null}
+                    {isNodeLoading.state &&
+                    down.id.includes(isNodeLoading.id as string) ? (
                       <Loader size="small" type="default" />
-                    </div>
-                  ) : null}
+                    ) : null}
+                  </p>
                 </div>
               ),
             },
@@ -402,7 +443,10 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
     setElements((els) => addEdge(params, els));
 
   const onElementClick = (el: FlowElement) => {
-    const node = entityLineage.nodes?.find((n) => el.id.includes(n.id));
+    const node = [
+      ...(entityLineage.nodes as Array<EntityReference>),
+      entityLineage.entity,
+    ].find((n) => el.id.includes(n.id));
     selectNodeHandler(true, {
       name: node?.name as string,
       id: el.id,
@@ -435,26 +479,25 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
     <div className="tw-relative tw-h-full tw--ml-4">
       <div className="tw-w-full tw-h-full">
         {(entityLineage?.downstreamEdges ?? []).length > 0 ||
-        (entityLineage.upstreamEdges ?? []).length ? (
+        (entityLineage?.upstreamEdges ?? []).length > 0 ? (
           <ReactFlowProvider>
             <ReactFlow
               panOnScroll
               elements={elements as Elements}
               nodesConnectable={false}
+              nodeTypes={{
+                output: CustomNode,
+                input: CustomNode,
+                default: CustomNode,
+              }}
               onConnect={onConnect}
               onElementClick={(_e, el) => onElementClick(el)}
               onElementsRemove={onElementsRemove}
               onLoad={onLoad}
               onNodeContextMenu={onNodeContextMenu}
-              onNodeDrag={(e) => {
-                e.stopPropagation();
-              }}
-              onNodeDragStart={(e) => {
-                e.stopPropagation();
-              }}
-              onNodeDragStop={(e) => {
-                e.stopPropagation();
-              }}
+              onNodeDrag={dragHandle}
+              onNodeDragStart={dragHandle}
+              onNodeDragStop={dragHandle}
               onNodeMouseEnter={onNodeMouseEnter}
               onNodeMouseLeave={onNodeMouseLeave}
               onNodeMouseMove={onNodeMouseMove}>
