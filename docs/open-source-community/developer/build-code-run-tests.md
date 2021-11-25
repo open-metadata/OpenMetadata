@@ -60,8 +60,8 @@ $ cd dist && mvn package
 The binaries will be created at:
 
 ```
-dist/target/open-metadata-<version>.pom
-dist/target/open-metadata-<version>.tar.gz
+openmetadata-dist/target/open-metadata-<version>.pom
+openmetadata-dist/target/open-metadata-<version>.tar.gz
 ```
 
 ## Run instance through IntelliJ IDEA
