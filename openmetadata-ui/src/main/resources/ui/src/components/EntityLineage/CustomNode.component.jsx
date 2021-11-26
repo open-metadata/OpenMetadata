@@ -1,4 +1,5 @@
-import React from 'react';
+import classNames from 'classnames';
+import React, { Fragment } from 'react';
 import { Handle } from 'react-flow-renderer';
 
 /* eslint-disable */
@@ -24,7 +25,7 @@ const getHandle = (nodeType, isConnectable) => {
     );
   } else {
     return (
-      <>
+      <Fragment>
         <Handle
           isConnectable={isConnectable}
           type="target"
@@ -37,25 +38,37 @@ const getHandle = (nodeType, isConnectable) => {
           position="right"
           style={{ ...handleStyles, right: '-14px' }}
         />
-      </>
+      </Fragment>
     );
   }
 };
 
 const CustomNode = (props) => {
+  const { data } = props;
   return (
-    <div className="tw-relative">
+    <div className="tw-relative nowheel">
       {getHandle(props.type, props.isConnectable)}
+      {/* Node label could be simple text or reactNode */}
       <div
-      // className="tw-mb-3 tw-px-2"
-      >
-        {props.data.label}
+        className={classNames('tw-px-2', {
+          'tw-mb-3': data.columns?.length,
+        })}>
+        {data.label}
       </div>
-      {/* <div className="tw-flex tw-flex-col tw-gap-y-1">
-        {['column1', 'column1', 'column1', 'column1'].map((c) => (
-          <p className="tw-p-2 tw-rounded tw-bg-tag">{c}</p>
-        ))}
-      </div> */}
+
+      <section
+        className={classNames({
+          'tw-h-36 tw-overflow-y-auto': data.columns?.length,
+        })}
+        id="table-columns">
+        <div className="tw-flex tw-flex-col tw-gap-y-1">
+          {data.columns?.map((c) => (
+            <p className="tw-p-2 tw-rounded tw-bg-tag" key={c.name}>
+              {c.name}
+            </p>
+          ))}
+        </div>
+      </section>
     </div>
   );
 };

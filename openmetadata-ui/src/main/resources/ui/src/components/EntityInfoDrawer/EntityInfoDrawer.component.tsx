@@ -187,7 +187,7 @@ const EntityInfoDrawer = ({
                 serviceType
               ).map((d) => {
                 return (
-                  <p className="tw-py-1.5 tw-flex" key={d.name}>
+                  <div className="tw-py-1.5 tw-flex" key={d.name}>
                     {d.name && <span>{d.name}:</span>}
                     <span
                       className={classNames(
@@ -206,7 +206,7 @@ const EntityInfoDrawer = ({
                         d.value
                       )}
                     </span>
-                  </p>
+                  </div>
                 );
               })}
             </div>
