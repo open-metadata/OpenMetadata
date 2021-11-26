@@ -151,7 +151,7 @@ const getLineageData = (
 
   const getNodes = (
     id: string,
-    pos: 'from' | 'to',
+    pos: LineagePos,
     depth: number,
     NodesArr: Array<EntityReference & { lDepth: number }> = []
   ): Array<EntityReference & { lDepth: number }> => {
