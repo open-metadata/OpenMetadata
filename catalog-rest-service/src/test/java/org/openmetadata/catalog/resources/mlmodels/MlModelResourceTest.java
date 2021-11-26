@@ -343,7 +343,7 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
   }
 
   public static String getModelName(TestInfo test, int index) {
-    return String.format("mlmodel%d_%s", index, test.getDisplayName());
+    return String.format("mlModel%d_%s", index, test.getDisplayName());
   }
 
   public static CreateMlModel create(TestInfo test) {
