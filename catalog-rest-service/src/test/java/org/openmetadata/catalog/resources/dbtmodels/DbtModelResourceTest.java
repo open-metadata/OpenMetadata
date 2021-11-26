@@ -75,7 +75,6 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.openmetadata.catalog.resources.databases.DatabaseResourceTest.createAndCheckDatabase;
-import static org.openmetadata.catalog.resources.services.DatabaseServiceResourceTest.createService;
 import static org.openmetadata.catalog.type.ColumnDataType.ARRAY;
 import static org.openmetadata.catalog.type.ColumnDataType.BIGINT;
 import static org.openmetadata.catalog.type.ColumnDataType.BINARY;
@@ -116,21 +115,6 @@ public class DbtModelResourceTest extends EntityResourceTest<DbtModel> {
     CreateDatabase create = DatabaseResourceTest.create(test).withService(SNOWFLAKE_REFERENCE);
     DATABASE = createAndCheckDatabase(create, adminAuthHeaders());
   }
-
-  public static DbtModel createDbtModel(TestInfo test, int i) throws IOException {
-    return new DbtModelResourceTest().createEntity(test, i);
-  }
-
-  public static DbtModel createDbtModel(CreateDbtModel createDbtModel, Map<String, String> adminAuthHeaders)
-          throws HttpResponseException {
-    return new DbtModelResourceTest().createEntity(createDbtModel, adminAuthHeaders);
-  }
-
-  public static DbtModel createAndCheckDbtModel(CreateDbtModel createDbtModel, Map<String, String> adminAuthHeaders)
-          throws IOException {
-    return new DbtModelResourceTest().createAndCheckEntity(createDbtModel, adminAuthHeaders);
-  }
-
 
   @Test
   public void post_DbtModelWithoutName_400_badRequest(TestInfo test) {
@@ -764,7 +748,8 @@ public class DbtModelResourceTest extends EntityResourceTest<DbtModel> {
    * set up in the {@code setup()} method
    */
   public DbtModel createEntity(TestInfo test, int index) throws IOException {
-    DatabaseService service = createService(DatabaseServiceResourceTest.create(test), adminAuthHeaders());
+    DatabaseService service = new DatabaseServiceResourceTest().createEntity(DatabaseServiceResourceTest.create(test),
+            adminAuthHeaders());
     EntityReference serviceRef =
             new EntityReference().withName(service.getName()).withId(service.getId()).withType(Entity.DATABASE_SERVICE);
     Database database = createAndCheckDatabase(DatabaseResourceTest.create(test).withService(serviceRef),

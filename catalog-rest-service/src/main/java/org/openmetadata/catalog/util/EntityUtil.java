@@ -91,6 +91,9 @@ public final class EntityUtil {
   public static BiPredicate<Task, Task> taskMatch = (task1, task2) ->
           task1.getName().equals(task2.getName());
 
+  public static BiPredicate<String, String> stringMatch = (string1, string2) ->
+          string1.equals(string2);
+
   public static BiPredicate<Column, Column> columnMatch = (column1, column2) ->
           column1.getName().equals(column2.getName()) &&
           column1.getDataType() == column2.getDataType() &&
