@@ -29,6 +29,7 @@ import org.openmetadata.catalog.api.services.CreateDashboardService.DashboardSer
 import org.openmetadata.catalog.entity.data.Dashboard;
 import org.openmetadata.catalog.entity.data.MlModel;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
+import org.openmetadata.catalog.jdbi3.DashboardServiceRepository;
 import org.openmetadata.catalog.jdbi3.MlModelRepository;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.type.ChangeDescription;
@@ -84,6 +85,7 @@ import static org.openmetadata.catalog.util.TestUtils.authHeaders;
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class MlModelResourceTest extends EntityResourceTest<MlModel> {
 
+  public static EntityReference SUPERSET_REFERENCE;
   public static String ALGORITHM = "regression";
   public static Dashboard DASHBOARD;
   public static EntityReference DASHBOARD_REFERENCE;
@@ -128,6 +130,12 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
   public static void setup(TestInfo test) throws IOException, URISyntaxException {
 
     EntityResourceTest.setup(test);
+
+    // Create Dashboard service for superset
+    CreateDashboardService createService = new CreateDashboardService().withName("superset")
+            .withServiceType(CreateDashboardService.DashboardServiceType.Superset).withDashboardUrl(TestUtils.DASHBOARD_URL);
+    DashboardService service = DashboardServiceResourceTest.createService(createService, adminAuthHeaders());
+    SUPERSET_REFERENCE = new DashboardServiceRepository.DashboardServiceEntityInterface(service).getEntityReference();
 
     DASHBOARD = DashboardResourceTest.createDashboard(
             DashboardResourceTest.create(test).withService(SUPERSET_REFERENCE), adminAuthHeaders()
@@ -185,7 +193,8 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
 
   @Test
   public void post_MlModelWithDashboard_200_ok(TestInfo test) throws IOException {
-    createAndCheckEntity(create(test).withDashboard(DASHBOARD_REFERENCE), adminAuthHeaders());
+    CreateMlModel create = create(test).withDashboard(DASHBOARD_REFERENCE);
+    createAndCheckEntity(create, adminAuthHeaders());
   }
 
   @Test
@@ -256,6 +265,7 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
 
   @Test
   public void get_MlModelWithDifferentFields_200_OK(TestInfo test) throws IOException {
+    // aqui no tenim HREF al dashboard
     CreateMlModel create = create(test).withDescription("description")
             .withOwner(USER_OWNER1).withDashboard(DASHBOARD_REFERENCE);
     MlModel model = createAndCheckEntity(create, adminAuthHeaders());
