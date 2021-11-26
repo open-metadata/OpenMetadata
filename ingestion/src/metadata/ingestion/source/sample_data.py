@@ -58,7 +58,12 @@ from metadata.ingestion.models.table_metadata import Chart, Dashboard
 from metadata.ingestion.models.user import User
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
-from metadata.utils.helpers import get_database_service_or_create
+from metadata.utils.helpers import (
+    get_database_service_or_create,
+    get_messaging_service_or_create,
+    get_dashboard_service_or_create,
+    get_pipeline_service_or_create,
+)
 
 logger: logging.Logger = logging.getLogger(__name__)
 
@@ -73,54 +78,6 @@ class InvalidSampleDataException(Exception):
     """
     Sample data is not valid to be ingested
     """
-
-
-def get_database_service_or_create(service_json, metadata_config) -> DatabaseService:
-    metadata = OpenMetadata(metadata_config)
-    service = metadata.get_by_name(entity=DatabaseService, fqdn=service_json["name"])
-    if service is not None:
-        return service
-    else:
-        created_service = metadata.create_or_update(
-            CreateDatabaseServiceEntityRequest(**service_json)
-        )
-        return created_service
-
-
-def get_messaging_service_or_create(service_json, metadata_config) -> MessagingService:
-    metadata = OpenMetadata(metadata_config)
-    service = metadata.get_by_name(entity=MessagingService, fqdn=service_json["name"])
-    if service is not None:
-        return service
-    else:
-        created_service = metadata.create_or_update(
-            CreateMessagingServiceEntityRequest(**service_json)
-        )
-        return created_service
-
-
-def get_dashboard_service_or_create(service_json, metadata_config) -> DashboardService:
-    metadata = OpenMetadata(metadata_config)
-    service = metadata.get_by_name(entity=DashboardService, fqdn=service_json["name"])
-    if service is not None:
-        return service
-    else:
-        created_service = metadata.create_or_update(
-            CreateDashboardServiceEntityRequest(**service_json)
-        )
-        return created_service
-
-
-def get_pipeline_service_or_create(service_json, metadata_config) -> PipelineService:
-    metadata = OpenMetadata(metadata_config)
-    service = metadata.get_by_name(entity=PipelineService, fqdn=service_json["name"])
-    if service is not None:
-        return service
-    else:
-        created_service = metadata.create_or_update(
-            CreatePipelineServiceEntityRequest(**service_json)
-        )
-        return created_service
 
 
 def get_lineage_entity_ref(edge, metadata_config) -> EntityReference:
@@ -152,9 +109,13 @@ class SampleDataSourceConfig(ConfigModel):
     database: str = "warehouse"
     service_type: str = "BigQuery"
     scheme = "bigquery+pymysql"
+    host_port = "9999"
 
     def get_sample_data_folder(self):
         return self.sample_data_folder
+
+    def get_service_type(self):
+        return self.service_type
 
 
 @dataclass
@@ -288,7 +249,7 @@ class SampleDataSource(Source):
             open(self.config.sample_data_folder + "/datasets/tables.json", "r")
         )
         self.database_service = get_database_service_or_create(
-            self.database_service_json, self.metadata_config
+            config, self.metadata_config
         )
         self.kafka_service_json = json.load(
             open(self.config.sample_data_folder + "/topics/service.json", "r")
@@ -297,7 +258,11 @@ class SampleDataSource(Source):
             open(self.config.sample_data_folder + "/topics/topics.json", "r")
         )
         self.kafka_service = get_messaging_service_or_create(
-            self.kafka_service_json, self.metadata_config
+            self.kafka_service_json.get("name"),
+            self.kafka_service_json.get("serviceType"),
+            self.kafka_service_json.get("schemaRegistry"),
+            self.kafka_service_json.get("brokers"),
+            self.metadata_config,
         )
         self.dashboard_service_json = json.load(
             open(self.config.sample_data_folder + "/dashboards/service.json", "r")
@@ -309,7 +274,12 @@ class SampleDataSource(Source):
             open(self.config.sample_data_folder + "/dashboards/dashboards.json", "r")
         )
         self.dashboard_service = get_dashboard_service_or_create(
-            self.dashboard_service_json, metadata_config
+            self.dashboard_service_json.get("name"),
+            self.dashboard_service_json.get("serviceType"),
+            self.dashboard_service_json.get("username"),
+            self.dashboard_service_json.get("password"),
+            self.dashboard_service_json.get("dashboardUrl"),
+            metadata_config,
         )
         self.pipeline_service_json = json.load(
             open(self.config.sample_data_folder + "/pipelines/service.json", "r")
@@ -318,7 +288,8 @@ class SampleDataSource(Source):
             open(self.config.sample_data_folder + "/pipelines/pipelines.json", "r")
         )
         self.pipeline_service = get_pipeline_service_or_create(
-            self.pipeline_service_json, metadata_config
+            SampleDataSourceConfig.parse_obj(self.pipeline_service_json),
+            metadata_config,
         )
         self.lineage = json.load(
             open(self.config.sample_data_folder + "/lineage/lineage.json", "r")
