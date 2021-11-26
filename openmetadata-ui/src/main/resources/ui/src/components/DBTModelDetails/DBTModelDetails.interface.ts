@@ -22,6 +22,7 @@ export interface DBTModelDetailsProps {
   followers: Array<User>;
   dbtModelTags: Array<EntityTags>;
   slashedDBTModelName: TitleBreadcrumbProps['titleLinks'];
+  viewDefinition: Dbtmodel['viewDefinition'];
   setActiveTabHandler: (value: number) => void;
   followDBTModelHandler: () => void;
   unfollowDBTModelHandler: () => void;

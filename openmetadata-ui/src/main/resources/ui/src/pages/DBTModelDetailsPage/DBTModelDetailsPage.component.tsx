@@ -61,6 +61,8 @@ const DBTModelDetailsPage: FunctionComponent = () => {
   const [description, setDescription] = useState('');
   const [columns, setColumns] = useState<Dbtmodel['columns']>([]);
   const [dbtModelTags, setDBTModelTags] = useState<Array<EntityTags>>([]);
+  const [dbtViewDefinition, setDbtViewDefinition] =
+    useState<Dbtmodel['viewDefinition']>('');
   const [owner, setOwner] = useState<
     Dbtmodel['owner'] & { displayName?: string }
   >();
@@ -163,6 +165,7 @@ const DBTModelDetailsPage: FunctionComponent = () => {
           followers,
           fullyQualifiedName,
           version,
+          viewDefinition,
           tags,
         } = res.data;
         setDbtModelDetails(res.data);
@@ -213,6 +216,7 @@ const DBTModelDetailsPage: FunctionComponent = () => {
         setDescription(description);
         setColumns(columns || []);
         setDBTModelTags(getTableTags(columns || []));
+        setDbtViewDefinition(viewDefinition);
       })
       .finally(() => {
         setIsLoading(false);
@@ -245,6 +249,7 @@ const DBTModelDetailsPage: FunctionComponent = () => {
           tier={tier as string}
           unfollowDBTModelHandler={unfollowDBTModel}
           users={AppState.users}
+          viewDefinition={dbtViewDefinition}
         />
       )}
     </>

@@ -2,6 +2,7 @@ import { isEqual } from 'lodash';
 import { EntityTags } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { getTeamDetailsPath } from '../../constants/constants';
+import { CSMode } from '../../enums/codemirror.enum';
 import { Dbtmodel } from '../../generated/entity/data/dbtmodel';
 import { User } from '../../generated/entity/teams/user';
 import { LabelType, State } from '../../generated/type/tagLabel';
@@ -17,6 +18,7 @@ import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
 import TabsPane from '../common/TabsPane/TabsPane';
 import PageContainer from '../containers/PageContainer';
 import ManageTab from '../ManageTab/ManageTab.component';
+import SchemaEditor from '../schema-editor/SchemaEditor';
 import SchemaTab from '../SchemaTab/SchemaTab.component';
 import { DBTModelDetailsProps } from './DBTModelDetails.interface';
 
@@ -39,6 +41,7 @@ const DBTModelDetails: React.FC<DBTModelDetailsProps> = ({
   settingsUpdateHandler,
   users,
   version,
+  viewDefinition = '',
   tier,
 }: DBTModelDetailsProps) => {
   const { isAuthDisabled } = useAuth();
@@ -253,12 +256,11 @@ const DBTModelDetails: React.FC<DBTModelDetailsProps> = ({
               </div>
             )}
             {activeTab === 2 && (
-              <div className="tw-mt-4">
-                <ManageTab
-                  currentTier={tier}
-                  currentUser={owner?.id}
-                  hasEditAccess={hasEditAccess()}
-                  onSave={onSettingsUpdate}
+              <div className="tw-my-4 tw-border tw-border-main tw-rounded-md tw-py-4 tw-h-full cm-h-full">
+                <SchemaEditor
+                  className="tw-h-full"
+                  mode={{ name: CSMode.SQL }}
+                  value={viewDefinition}
                 />
               </div>
             )}
