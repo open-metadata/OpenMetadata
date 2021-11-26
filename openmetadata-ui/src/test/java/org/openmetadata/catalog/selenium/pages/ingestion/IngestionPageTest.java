@@ -73,7 +73,7 @@ public class IngestionPageTest {
   @Order(2)
   public void addIngestionService() throws InterruptedException {
     openIngestionPage();
-    Events.click(webDriver, By.cssSelector("[data-testid='add-new-user-button']"));
+    Events.click(webDriver, By.cssSelector("[data-testid='add-new-ingestion-button']"));
     Events.sendKeys(webDriver, By.cssSelector("[id='name'][name='name']"), faker.name().firstName());
     Events.click(webDriver, By.cssSelector("[value='BigQuery$$bigquery']"));
     Events.click(webDriver, By.cssSelector("[value='bigquery']"));
@@ -86,9 +86,9 @@ public class IngestionPageTest {
     Events.click(webDriver, By.cssSelector("[value='week']"));
     Events.click(webDriver, By.cssSelector("[value='4']"));
     Events.click(webDriver, By.cssSelector("[value='21']"));
-    Events.sendKeys(webDriver, By.cssSelector("[data-testid='endDate']"), "21072022");
+    Events.sendKeys(webDriver, By.cssSelector("[data-testid='end-date']"), "21072022");
     Events.click(webDriver, By.cssSelector("[data-testid='next-button']"));
-    Events.click(webDriver, By.cssSelector("[data-testid='save-button']"));
+    Events.click(webDriver, By.cssSelector("[data-testid='deploy-button']"));
   }
 
   @Test
@@ -104,12 +104,12 @@ public class IngestionPageTest {
   public void editIngestionService() throws InterruptedException{
     openIngestionPage();
     Events.click(webDriver, By.cssSelector("[data-testid='edit']"));
-    Events.sendKeys(webDriver, By.cssSelector("[data-testid='includeFilterPattern']"), ",");
+    Events.sendKeys(webDriver, By.cssSelector("[data-testid='include-filter-pattern']"), ",");
     Events.click(webDriver, By.cssSelector("[data-testid='next-button']"));
     Events.click(webDriver, By.cssSelector("[value='hour']"));
     Events.click(webDriver, By.cssSelector("[value='20']"));
     Events.click(webDriver, By.cssSelector("[data-testid='next-button']"));
-    Events.click(webDriver, By.cssSelector("[data-testid='save-button']"));
+    Events.click(webDriver, By.cssSelector("[data-testid='deploy-button']"));
   }
 
   @Test
