@@ -53,6 +53,7 @@ import org.slf4j.LoggerFactory;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response.Status;
 import java.io.IOException;
+import java.net.URISyntaxException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -81,9 +82,8 @@ import static org.openmetadata.catalog.util.TestUtils.authHeaders;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class MlModelResourceTest extends EntityResourceTest<MlModel> {
-  private static final Logger LOG = LoggerFactory.getLogger(MlModelResourceTest.class);
+
   public static String ALGORITHM = "regression";
-  public static EntityReference SUPERSET_REFERENCE;
   public static Dashboard DASHBOARD;
   public static EntityReference DASHBOARD_REFERENCE;
   public static List<MlFeature> ML_FEATURES = Arrays.asList(
@@ -124,13 +124,9 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
 
 
   @BeforeAll
-  public static void setup(TestInfo test) throws HttpResponseException {
+  public static void setup(TestInfo test) throws IOException, URISyntaxException {
 
-    CreateDashboardService createService = new CreateDashboardService().withName("superset")
-            .withServiceType(DashboardServiceType.Superset).withDashboardUrl(TestUtils.DASHBOARD_URL);
-
-    DashboardService service = DashboardServiceResourceTest.createService(createService, adminAuthHeaders());
-    SUPERSET_REFERENCE = new DashboardServiceEntityInterface(service).getEntityReference();
+    EntityResourceTest.setup(test);
 
     DASHBOARD = DashboardResourceTest.createDashboard(
             DashboardResourceTest.create(test).withService(SUPERSET_REFERENCE), adminAuthHeaders()
