@@ -7,22 +7,26 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.catalog.CatalogApplicationTest;
 import org.openmetadata.catalog.Entity;
+import org.openmetadata.catalog.api.services.CreateDashboardService;
 import org.openmetadata.catalog.api.services.CreateDatabaseService;
 import org.openmetadata.catalog.api.services.CreateDatabaseService.DatabaseServiceType;
 import org.openmetadata.catalog.api.services.CreateMessagingService;
 import org.openmetadata.catalog.api.services.CreateMessagingService.MessagingServiceType;
 import org.openmetadata.catalog.api.services.CreatePipelineService;
 import org.openmetadata.catalog.api.services.CreatePipelineService.PipelineServiceType;
+import org.openmetadata.catalog.entity.services.DashboardService;
 import org.openmetadata.catalog.entity.services.DatabaseService;
 import org.openmetadata.catalog.entity.services.MessagingService;
 import org.openmetadata.catalog.entity.services.PipelineService;
 import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
+import org.openmetadata.catalog.jdbi3.DashboardServiceRepository;
 import org.openmetadata.catalog.jdbi3.DatabaseServiceRepository.DatabaseServiceEntityInterface;
 import org.openmetadata.catalog.jdbi3.MessagingServiceRepository.MessagingServiceEntityInterface;
 import org.openmetadata.catalog.jdbi3.PipelineServiceRepository.PipelineServiceEntityInterface;
 import org.openmetadata.catalog.resources.events.EventResource.ChangeEventList;
+import org.openmetadata.catalog.resources.services.DashboardServiceResourceTest;
 import org.openmetadata.catalog.resources.services.DatabaseServiceResourceTest;
 import org.openmetadata.catalog.resources.services.MessagingServiceResourceTest;
 import org.openmetadata.catalog.resources.teams.TeamResourceTest;
@@ -107,6 +111,8 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
   public static EntityReference AIRFLOW_REFERENCE;
   public static EntityReference PREFECT_REFERENCE;
 
+  public static EntityReference SUPERSET_REFERENCE;
+
   public static final TagLabel USER_ADDRESS_TAG_LABEL = new TagLabel().withTagFQN("User.Address");
   public static final TagLabel USER_BANK_ACCOUNT_TAG_LABEL = new TagLabel().withTagFQN("User.BankAccount");
   public static final TagLabel TIER1_TAG_LABEL = new TagLabel().withTagFQN("Tier.Tier1");
@@ -176,6 +182,12 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
             .withPipelineUrl(new URI("http://localhost:0"));
     pipelineService = createService(createPipeline, adminAuthHeaders());
     PREFECT_REFERENCE = new PipelineServiceEntityInterface(pipelineService).getEntityReference();
+
+    // Create Dashboard service for superset
+    CreateDashboardService createService = new CreateDashboardService().withName("superset")
+            .withServiceType(CreateDashboardService.DashboardServiceType.Superset).withDashboardUrl(TestUtils.DASHBOARD_URL);
+    DashboardService service = DashboardServiceResourceTest.createService(createService, adminAuthHeaders());
+    SUPERSET_REFERENCE = new DashboardServiceRepository.DashboardServiceEntityInterface(service).getEntityReference();
   }
 
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
