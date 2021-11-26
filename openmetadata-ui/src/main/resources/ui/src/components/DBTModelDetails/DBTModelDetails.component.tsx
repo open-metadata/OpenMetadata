@@ -15,9 +15,9 @@ import TabsPane from '../common/TabsPane/TabsPane';
 import PageContainer from '../containers/PageContainer';
 import ManageTab from '../ManageTab/ManageTab.component';
 import SchemaTab from '../SchemaTab/SchemaTab.component';
-import { DatasetDetailsProps } from './DBTModelDetails.interface';
+import { DBTModelDetailsProps } from './DBTModelDetails.interface';
 
-const DBTModelDetails: React.FC<DatasetDetailsProps> = ({
+const DBTModelDetails: React.FC<DBTModelDetailsProps> = ({
   dbtModelDetails,
   entityName,
   dbtModelFQN,
@@ -26,18 +26,17 @@ const DBTModelDetails: React.FC<DatasetDetailsProps> = ({
   owner,
   description,
   columns,
-  followTableHandler,
-  unfollowTableHandler,
+  followDBTModelHandler,
+  unfollowDBTModelHandler,
   followers,
-
-  tableTags,
-  slashedTableName,
+  dbtModelTags,
+  slashedDBTModelName,
   descriptionUpdateHandler,
   columnsUpdateHandler,
   settingsUpdateHandler,
   users,
   version,
-}: DatasetDetailsProps) => {
+}: DBTModelDetailsProps) => {
   const { isAuthDisabled } = useAuth();
   const [isEdit, setIsEdit] = useState(false);
   const [followersCount, setFollowersCount] = useState(0);
@@ -118,11 +117,11 @@ const DBTModelDetails: React.FC<DatasetDetailsProps> = ({
 
   const onDescriptionUpdate = (updatedHTML: string) => {
     if (description !== updatedHTML) {
-      const updatedTableDetails = {
+      const updatedDBTModelDetails = {
         ...dbtModelDetails,
         description: updatedHTML,
       };
-      descriptionUpdateHandler(updatedTableDetails);
+      descriptionUpdateHandler(updatedDBTModelDetails);
       setIsEdit(false);
     } else {
       setIsEdit(false);
@@ -131,17 +130,17 @@ const DBTModelDetails: React.FC<DatasetDetailsProps> = ({
 
   const onColumnsUpdate = (updateColumns: Dbtmodel['columns']) => {
     if (!isEqual(columns, updateColumns)) {
-      const updatedTableDetails = {
+      const updatedDBTModelDetails = {
         ...dbtModelDetails,
         columns: updateColumns,
       };
-      columnsUpdateHandler(updatedTableDetails);
+      columnsUpdateHandler(updatedDBTModelDetails);
     }
   };
 
   const onSettingsUpdate = (newOwner?: Dbtmodel['owner']) => {
     if (newOwner) {
-      const updatedTableDetails = {
+      const updatedDBTModelDetails = {
         ...dbtModelDetails,
         owner: newOwner
           ? {
@@ -151,7 +150,7 @@ const DBTModelDetails: React.FC<DatasetDetailsProps> = ({
           : dbtModelDetails.owner,
       };
 
-      return settingsUpdateHandler(updatedTableDetails);
+      return settingsUpdateHandler(updatedDBTModelDetails);
     } else {
       return Promise.reject();
     }
@@ -161,11 +160,11 @@ const DBTModelDetails: React.FC<DatasetDetailsProps> = ({
     if (isFollowing) {
       setFollowersCount((preValu) => preValu - 1);
       setIsFollowing(false);
-      unfollowTableHandler();
+      unfollowDBTModelHandler();
     } else {
       setFollowersCount((preValu) => preValu + 1);
       setIsFollowing(true);
-      followTableHandler();
+      followDBTModelHandler();
     }
   };
 
@@ -189,9 +188,9 @@ const DBTModelDetails: React.FC<DatasetDetailsProps> = ({
           followersList={followers}
           followHandler={followDBTModel}
           isFollowing={isFollowing}
-          tags={tableTags}
+          tags={dbtModelTags}
           tier=""
-          titleLinks={slashedTableName}
+          titleLinks={slashedDBTModelName}
           version={version}
           versionHandler={() => {
             return;

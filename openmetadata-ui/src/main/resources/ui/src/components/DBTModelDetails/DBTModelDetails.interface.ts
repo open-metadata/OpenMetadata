@@ -8,7 +8,7 @@ export interface DatasetOwner extends EntityReference {
   displayName?: string;
 }
 
-export interface DatasetDetailsProps {
+export interface DBTModelDetailsProps {
   version?: string;
   users: Array<User>;
   dbtModelDetails: Dbtmodel;
@@ -19,12 +19,12 @@ export interface DatasetDetailsProps {
   description: string;
   columns: Dbtmodel['columns'];
   followers: Array<User>;
-  tableTags: Array<EntityTags>;
-  slashedTableName: TitleBreadcrumbProps['titleLinks'];
+  dbtModelTags: Array<EntityTags>;
+  slashedDBTModelName: TitleBreadcrumbProps['titleLinks'];
   setActiveTabHandler: (value: number) => void;
-  followTableHandler: () => void;
-  unfollowTableHandler: () => void;
-  settingsUpdateHandler: (updatedTable: Dbtmodel) => Promise<void>;
-  columnsUpdateHandler: (updatedTable: Dbtmodel) => void;
-  descriptionUpdateHandler: (updatedTable: Dbtmodel) => void;
+  followDBTModelHandler: () => void;
+  unfollowDBTModelHandler: () => void;
+  settingsUpdateHandler: (updatedDBTModel: Dbtmodel) => Promise<void>;
+  columnsUpdateHandler: (updatedDBTModel: Dbtmodel) => void;
+  descriptionUpdateHandler: (updatedDBTModel: Dbtmodel) => void;
 }

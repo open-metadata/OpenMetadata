@@ -55,12 +55,12 @@ const DBTModelDetailsPage: FunctionComponent = () => {
   //   const [tier, setTier] = useState<string>();
   const [name, setName] = useState('');
   const [followers, setFollowers] = useState<Array<User>>([]);
-  const [slashedTableName, setSlashedTableName] = useState<
+  const [slashedDBTModelName, setSlashedDBTModelName] = useState<
     TitleBreadcrumbProps['titleLinks']
   >([]);
   const [description, setDescription] = useState('');
   const [columns, setColumns] = useState<Dbtmodel['columns']>([]);
-  const [tableTags, setTableTags] = useState<Array<EntityTags>>([]);
+  const [dbtModelTags, setDBTModelTags] = useState<Array<EntityTags>>([]);
   const [owner, setOwner] = useState<
     Dbtmodel['owner'] & { displayName?: string }
   >();
@@ -78,7 +78,7 @@ const DBTModelDetailsPage: FunctionComponent = () => {
     }
   };
 
-  const saveUpdatedTableData = (
+  const saveUpdatedDBTModelData = (
     updatedData: Dbtmodel
   ): Promise<AxiosResponse> => {
     const jsonPatch = compare(dbtModelDetails, updatedData);
@@ -89,8 +89,8 @@ const DBTModelDetailsPage: FunctionComponent = () => {
     ) as unknown as Promise<AxiosResponse>;
   };
 
-  const descriptionUpdateHandler = (updatedTable: Dbtmodel) => {
-    saveUpdatedTableData(updatedTable).then((res: AxiosResponse) => {
+  const descriptionUpdateHandler = (updatedDBTModel: Dbtmodel) => {
+    saveUpdatedDBTModelData(updatedDBTModel).then((res: AxiosResponse) => {
       const { description, version } = res.data;
       setCurrentVersion(version);
       setDbtModelDetails(res.data);
@@ -98,19 +98,19 @@ const DBTModelDetailsPage: FunctionComponent = () => {
     });
   };
 
-  const columnsUpdateHandler = (updatedTable: Dbtmodel) => {
-    saveUpdatedTableData(updatedTable).then((res: AxiosResponse) => {
+  const columnsUpdateHandler = (updatedDBTModel: Dbtmodel) => {
+    saveUpdatedDBTModelData(updatedDBTModel).then((res: AxiosResponse) => {
       const { columns, version } = res.data;
       setCurrentVersion(version);
       setDbtModelDetails(res.data);
       setColumns(columns);
-      setTableTags(getTableTags(columns || []));
+      setDBTModelTags(getTableTags(columns || []));
     });
   };
 
-  const settingsUpdateHandler = (updatedTable: Dbtmodel): Promise<void> => {
+  const settingsUpdateHandler = (updatedDBTModel: Dbtmodel): Promise<void> => {
     return new Promise<void>((resolve, reject) => {
-      saveUpdatedTableData(updatedTable)
+      saveUpdatedDBTModelData(updatedDBTModel)
         .then((res) => {
           const { version, owner } = res.data;
           setCurrentVersion(version);
@@ -171,7 +171,7 @@ const DBTModelDetailsPage: FunctionComponent = () => {
         getDatabase(database.id, 'service').then((resDB: AxiosResponse) => {
           getServiceById('databaseServices', resDB.data.service?.id).then(
             (resService: AxiosResponse) => {
-              setSlashedTableName([
+              setSlashedDBTModelName([
                 {
                   name: resService.data.name,
                   url: resService.data.name
@@ -209,7 +209,7 @@ const DBTModelDetailsPage: FunctionComponent = () => {
 
         setDescription(description);
         setColumns(columns || []);
-        setTableTags(getTableTags(columns || []));
+        setDBTModelTags(getTableTags(columns || []));
       })
       .finally(() => {
         setIsLoading(false);
@@ -229,17 +229,17 @@ const DBTModelDetailsPage: FunctionComponent = () => {
           columnsUpdateHandler={columnsUpdateHandler}
           dbtModelDetails={dbtModelDetails}
           dbtModelFQN={dbtModelFQN}
+          dbtModelTags={dbtModelTags}
           description={description}
           descriptionUpdateHandler={descriptionUpdateHandler}
           entityName={name}
+          followDBTModelHandler={followDBTModel}
           followers={followers}
-          followTableHandler={followDBTModel}
           owner={owner as Dbtmodel['owner'] & { displayName: string }}
           setActiveTabHandler={activeTabHandler}
           settingsUpdateHandler={settingsUpdateHandler}
-          slashedTableName={slashedTableName}
-          tableTags={tableTags}
-          unfollowTableHandler={unfollowDBTModel}
+          slashedDBTModelName={slashedDBTModelName}
+          unfollowDBTModelHandler={unfollowDBTModel}
           users={AppState.users}
         />
       )}
