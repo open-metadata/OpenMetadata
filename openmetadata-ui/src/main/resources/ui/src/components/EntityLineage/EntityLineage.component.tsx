@@ -131,6 +131,8 @@ const getLineageData = (
     depth: number,
     posDepth: number
   ) => {
+    const [xVal, yVal] = [positionX * 2 * depth, y + positionY * posDepth];
+
     return {
       id: `node-${node.id}-${depth}`,
       sourcePosition: Position.Right,
@@ -141,8 +143,8 @@ const getLineageData = (
         label: getNodeLable(node),
       },
       position: {
-        x: pos === 'from' ? -positionX * 2 * depth : positionX * 2 * depth,
-        y: y + positionY * posDepth,
+        x: pos === 'from' ? -xVal : xVal,
+        y: yVal,
       },
     };
   };
