@@ -243,7 +243,7 @@ export const getPipelineDetailsPath = (pipelineFQN: string, tab?: string) => {
 
 export const getDBTModelDetailsPath = (dbtModelFQN: string, tab?: string) => {
   let path = tab ? ROUTES.DBT_MODEL_DETAILS_WITH_TAB : ROUTES.DBT_MODEL_DETAILS;
-  path = path.replace(PLACEHOLDER_ROUTE_PIPELINE_FQN, dbtModelFQN);
+  path = path.replace(PLACEHOLDER_ROUTE_DBT_MODEL_FQN, dbtModelFQN);
 
   if (tab) {
     path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);

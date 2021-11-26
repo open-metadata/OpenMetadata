@@ -24,6 +24,7 @@ import { ROUTES } from '../constants/constants';
 import DashboardDetailsPage from '../pages/DashboardDetailsPage/DashboardDetailsPage.component';
 import DatabaseDetails from '../pages/database-details/index';
 import DatasetDetailsPage from '../pages/DatasetDetailsPage/DatasetDetailsPage.component';
+import DBTModelDetailsPage from '../pages/DBTModelDetailsPage/DBTModelDetailsPage.component';
 import EntityVersionPage from '../pages/EntityVersionPage/EntityVersionPage.component';
 import ExplorePage from '../pages/explore/ExplorePage.component';
 import IngestionPage from '../pages/IngestionPage/IngestionPage.component';
@@ -107,12 +108,12 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       />
       <Route
         exact
-        component={DatasetDetailsPage}
+        component={DBTModelDetailsPage}
         path={ROUTES.DBT_MODEL_DETAILS}
       />
       <Route
         exact
-        component={DatasetDetailsPage}
+        component={DBTModelDetailsPage}
         path={ROUTES.DBT_MODEL_DETAILS_WITH_TAB}
       />
       <Route component={Onboarding} path={ROUTES.ONBOARDING} />
