@@ -55,9 +55,18 @@ type PipelineSource = {
   pipeline_name: string;
 } & CommonSource;
 
+type DBTModelSource = {
+  dbt_model_id: string;
+  dbt_model_name: string;
+} & CommonSource;
+
 type Option = {
   _index: string;
-  _source: TableSource & DashboardSource & TopicSource & PipelineSource;
+  _source: TableSource &
+    DashboardSource &
+    TopicSource &
+    PipelineSource &
+    DBTModelSource;
 };
 
 const Suggestions = ({ searchText, isOpen, setIsOpen }: SuggestionProp) => {
@@ -67,10 +76,13 @@ const Suggestions = ({ searchText, isOpen, setIsOpen }: SuggestionProp) => {
   const [dashboardSuggestions, setDashboardSuggestions] = useState<
     DashboardSource[]
   >([]);
+
   const [pipelineSuggestions, setPipelineSuggestions] = useState<
     PipelineSource[]
   >([]);
-
+  const [DBTModelSuggestions, setDBTModelSuggestions] = useState<
+    DBTModelSource[]
+  >([]);
   const isMounting = useRef(true);
 
   const setSuggestions = (options: Array<Option>) => {
@@ -94,6 +106,11 @@ const Suggestions = ({ searchText, isOpen, setIsOpen }: SuggestionProp) => {
         .filter((option) => option._index === SearchIndex.PIPELINE)
         .map((option) => option._source)
     );
+    setDBTModelSuggestions(
+      options
+        .filter((option) => option._index === SearchIndex.DBT_MODEL)
+        .map((option) => option._source)
+    );
   };
 
   const getGroupLabel = (index: string) => {
@@ -113,6 +130,11 @@ const Suggestions = ({ searchText, isOpen, setIsOpen }: SuggestionProp) => {
       case SearchIndex.PIPELINE:
         label = 'Pipelines';
         icon = Icons.PIPELINE_GREY;
+
+        break;
+      case SearchIndex.DBT_MODEL:
+        label = 'DBT Models';
+        icon = Icons.TABLE_GREY;
 
         break;
       case SearchIndex.TABLE:
@@ -229,6 +251,24 @@ const Suggestions = ({ searchText, isOpen, setIsOpen }: SuggestionProp) => {
                 serviceType,
                 name,
                 SearchIndex.PIPELINE
+              );
+            })}
+          </>
+        )}
+        {DBTModelSuggestions.length > 0 && (
+          <>
+            {getGroupLabel(SearchIndex.DBT_MODEL)}
+
+            {DBTModelSuggestions.map((suggestion: DBTModelSource) => {
+              const fqdn = suggestion.fqdn;
+              const name = suggestion.dbt_model_name;
+              const serviceType = suggestion.service_type;
+
+              return getSuggestionElement(
+                fqdn,
+                serviceType,
+                name,
+                SearchIndex.DBT_MODEL
               );
             })}
           </>

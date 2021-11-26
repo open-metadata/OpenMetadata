@@ -4,3 +4,8 @@
 .cm-string.cm-property {
   color: #450de2 !important;
 }
+
+.cm-h-full .react-codemirror2,
+.cm-h-full .react-codemirror2 > .CodeMirror {
+  height: 100%;
+}

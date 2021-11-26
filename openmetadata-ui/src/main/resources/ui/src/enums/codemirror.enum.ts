@@ -15,16 +15,7 @@
   * limitations under the License.
 */
 
-export enum FilterType {
-  TAGS = 'tags',
-  PLATFORM = 'platform',
-  CLUSTER = 'cluster',
-}
-
-export enum SearchIndex {
-  TABLE = 'table_search_index',
-  TOPIC = 'topic_search_index',
-  DASHBOARD = 'dashboard_search_index',
-  PIPELINE = 'pipeline_search_index',
-  DBT_MODEL = 'dbt_model_search_index',
+export enum CSMode {
+  JAVASCRIPT = 'javascript',
+  SQL = 'sql',
 }

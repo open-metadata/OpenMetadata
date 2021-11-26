@@ -37,6 +37,7 @@ export const ERROR500 = 'Something went wrong';
 const PLACEHOLDER_ROUTE_DATASET_FQN = ':datasetFQN';
 const PLACEHOLDER_ROUTE_TOPIC_FQN = ':topicFQN';
 const PLACEHOLDER_ROUTE_PIPELINE_FQN = ':pipelineFQN';
+const PLACEHOLDER_ROUTE_DBT_MODEL_FQN = ':dbtModelFQN';
 const PLACEHOLDER_ROUTE_DASHBOARD_FQN = ':dashboardFQN';
 const PLACEHOLDER_ROUTE_DATABASE_FQN = ':databaseFQN';
 const PLACEHOLDER_ROUTE_SERVICE_FQN = ':serviceFQN';
@@ -139,6 +140,8 @@ export const ROUTES = {
   DATABASE_DETAILS: `/database/${PLACEHOLDER_ROUTE_DATABASE_FQN}`,
   PIPELINE_DETAILS: `/pipeline/${PLACEHOLDER_ROUTE_PIPELINE_FQN}`,
   PIPELINE_DETAILS_WITH_TAB: `/pipeline/${PLACEHOLDER_ROUTE_PIPELINE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
+  DBT_MODEL_DETAILS: `/dbtmodel/${PLACEHOLDER_ROUTE_DBT_MODEL_FQN}`,
+  DBT_MODEL_DETAILS_WITH_TAB: `/dbtmodel/${PLACEHOLDER_ROUTE_DBT_MODEL_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
   ONBOARDING: '/onboarding',
   INGESTION: '/ingestion',
 };
@@ -230,6 +233,17 @@ export const getDashboardDetailsPath = (dashboardFQN: string, tab?: string) => {
 export const getPipelineDetailsPath = (pipelineFQN: string, tab?: string) => {
   let path = tab ? ROUTES.PIPELINE_DETAILS_WITH_TAB : ROUTES.PIPELINE_DETAILS;
   path = path.replace(PLACEHOLDER_ROUTE_PIPELINE_FQN, pipelineFQN);
+
+  if (tab) {
+    path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
+  }
+
+  return path;
+};
+
+export const getDBTModelDetailsPath = (dbtModelFQN: string, tab?: string) => {
+  let path = tab ? ROUTES.DBT_MODEL_DETAILS_WITH_TAB : ROUTES.DBT_MODEL_DETAILS;
+  path = path.replace(PLACEHOLDER_ROUTE_DBT_MODEL_FQN, dbtModelFQN);
 
   if (tab) {
     path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);

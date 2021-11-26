@@ -247,6 +247,15 @@ export const getEntityCountByType = (buckets: Array<Bucket>) => {
   return entityCounts;
 };
 
+export const getTotalEntityCountByType = (buckets: Array<Bucket> = []) => {
+  let entityCounts = 0;
+  buckets.forEach((bucket) => {
+    entityCounts += bucket.doc_count;
+  });
+
+  return entityCounts;
+};
+
 export const getEntityLineage = (
   oldVal: EntityLineage,
   newVal: EntityLineage,

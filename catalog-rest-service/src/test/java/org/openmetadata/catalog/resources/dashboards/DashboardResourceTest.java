@@ -90,14 +90,14 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard> {
     CreateDashboardService createService = new CreateDashboardService().withName("superset")
             .withServiceType(DashboardServiceType.Superset).withDashboardUrl(TestUtils.DASHBOARD_URL);
 
-    DashboardService service = DashboardServiceResourceTest.createService(createService, adminAuthHeaders());
+    DashboardService service = new DashboardServiceResourceTest().createEntity(createService, adminAuthHeaders());
     SUPERSET_REFERENCE = new DashboardServiceEntityInterface(service).getEntityReference();
     SUPERSET_INVALID_SERVICE_REFERENCE = new EntityReference().withName("invalid_superset_service")
             .withId(SUPERSET_REFERENCE.getId())
             .withType("DashboardService1");
 
     createService.withName("looker").withServiceType(DashboardServiceType.Looker);
-    service = DashboardServiceResourceTest.createService(createService, adminAuthHeaders());
+    service = new DashboardServiceResourceTest().createEntity(createService, adminAuthHeaders());
     LOOKER_REFERENCE = new DashboardServiceEntityInterface(service).getEntityReference();
     CHART_REFERENCES = new ArrayList<>();
     for (int i=0; i < 3; i++) {

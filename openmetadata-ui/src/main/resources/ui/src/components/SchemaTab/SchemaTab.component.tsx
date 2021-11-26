@@ -15,7 +15,7 @@
   * limitations under the License.
 */
 
-import { isUndefined, lowerCase } from 'lodash';
+import { isNil, isUndefined, lowerCase } from 'lodash';
 import { DatasetSchemaTableTab } from 'Models';
 import React, { FunctionComponent, useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router';
@@ -121,7 +121,7 @@ const SchemaTab: FunctionComponent<Props> = ({
             />
           )}
         </div>
-        {!isReadOnly ? (
+        {!isReadOnly && !isNil(sampleData) ? (
           <div className="tw-col-span-2 tw-text-right tw-mb-4">
             <div
               className="tw-w-60 tw-inline-flex tw-border tw-border-main

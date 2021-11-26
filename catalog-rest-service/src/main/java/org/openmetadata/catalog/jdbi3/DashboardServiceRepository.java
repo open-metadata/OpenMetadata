@@ -214,6 +214,9 @@ public class DashboardServiceRepository extends EntityRepository<DashboardServic
     public void entitySpecificUpdate() throws IOException {
       updateDashboardUrl();
       updateIngestionSchedule();
+      recordChange("userName", original.getEntity().getUsername(), updated.getEntity().getUsername());
+      // TODO change recorded for password
+//      recordChange("password", original.getEntity().getPassword(), updated.getEntity().getPassword());
     }
 
     private void updateDashboardUrl() throws JsonProcessingException {
@@ -223,7 +226,7 @@ public class DashboardServiceRepository extends EntityRepository<DashboardServic
     private void updateIngestionSchedule() throws JsonProcessingException {
       Schedule origSchedule = original.getEntity().getIngestionSchedule();
       Schedule updatedSchedule = updated.getEntity().getIngestionSchedule();
-      recordChange("ingestionSchedule", origSchedule, updatedSchedule);
+      recordChange("ingestionSchedule", origSchedule, updatedSchedule, true);
     }
   }
 }

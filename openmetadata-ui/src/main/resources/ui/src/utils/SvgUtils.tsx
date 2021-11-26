@@ -54,8 +54,10 @@ import IconInfo from '../assets/svg/info.svg';
 import IconIngestion from '../assets/svg/ingestion.svg';
 import LogoMonogram from '../assets/svg/logo-monogram.svg';
 import Logo from '../assets/svg/logo.svg';
+import IconMinus from '../assets/svg/minus.svg';
 import IconPipelineGrey from '../assets/svg/pipeline-grey.svg';
 import IconPipeline from '../assets/svg/pipeline.svg';
+import IconPlus from '../assets/svg/plus.svg';
 import IconProfiler from '../assets/svg/profiler.svg';
 import IconHelpCircle from '../assets/svg/question-circle.svg';
 import IconSetting from '../assets/svg/service.svg';
@@ -150,6 +152,8 @@ export const Icons = {
   VERSION: 'icon-version',
   VERSION_WHITE: 'icon-version-white',
   ICON_DEPLOY: 'icon-deploy',
+  ICON_PLUS: 'icon-plus',
+  ICON_MINUS: 'icon-minus',
 };
 
 const SVGIcons: FunctionComponent<Props> = ({
@@ -446,6 +450,14 @@ const SVGIcons: FunctionComponent<Props> = ({
       break;
     case Icons.ICON_DEPLOY:
       IconComponent = IconDeploy;
+
+      break;
+    case Icons.ICON_PLUS:
+      IconComponent = IconPlus;
+
+      break;
+    case Icons.ICON_MINUS:
+      IconComponent = IconMinus;
 
       break;
 

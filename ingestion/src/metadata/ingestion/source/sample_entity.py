@@ -30,7 +30,6 @@ from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.processor.pii import ColumnNameScanner
-from metadata.ingestion.source.sample_data import get_database_service_or_create
 from metadata.ingestion.source.sql_source import SQLConnectionConfig
 from metadata.utils.helpers import snake_to_camel
 
