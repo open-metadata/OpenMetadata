@@ -20,8 +20,6 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.MlModel;
-import org.openmetadata.catalog.entity.data.Table;
-import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.resources.mlmodels.MlModelResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
@@ -41,8 +39,6 @@ import java.text.ParseException;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
-
-import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 
 public class MlModelRepository extends EntityRepository<MlModel> {
   private static final Logger LOG = LoggerFactory.getLogger(MlModelRepository.class);
@@ -351,15 +347,21 @@ public class MlModelRepository extends EntityRepository<MlModel> {
     }
 
     private void updateDashboard(MlModel origModel, MlModel updatedModel) throws JsonProcessingException {
-      // Remove existing dashboards
-      removeDashboard(origModel);
+      String modelId = updatedModel.getId().toString();
 
-      EntityReference origOwner = origModel.getDashboard();
-      EntityReference updatedOwner = updatedModel.getDashboard();
-      if (recordChange("owner", origOwner == null ? null : origOwner.getId(),
-              updatedOwner == null ? null : updatedOwner.getId())) {
-        setDashboard(updatedModel, updatedModel.getDashboard());
+      // Remove the dashboard associated with the model, if any
+      if (origModel.getDashboard() != null) {
+        dao.relationshipDAO().deleteFrom(modelId, Relationship.USES.ordinal(), "dashboard");
       }
+
+      // Add relationship from model to dashboard
+      EntityReference updatedDashboard = updatedModel.getDashboard();
+      if (updatedDashboard != null) {
+        dao.relationshipDAO().insert(modelId, updatedDashboard.getId().toString(),
+                Entity.MLMODEL, Entity.DASHBOARD, Relationship.USES.ordinal());
+      }
+      recordChange("dashboard", origModel.getDashboard(), updatedDashboard, true);
+
     }
   }
 }
