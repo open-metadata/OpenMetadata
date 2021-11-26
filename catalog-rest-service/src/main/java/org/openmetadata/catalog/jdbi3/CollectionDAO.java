@@ -27,12 +27,12 @@ import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
 import org.openmetadata.catalog.entity.Bots;
 import org.openmetadata.catalog.entity.data.Chart;
-import org.openmetadata.catalog.entity.data.DbtModel;
 import org.openmetadata.catalog.entity.data.Dashboard;
 import org.openmetadata.catalog.entity.data.Database;
+import org.openmetadata.catalog.entity.data.DbtModel;
 import org.openmetadata.catalog.entity.data.Location;
-import org.openmetadata.catalog.entity.data.MlModel;
 import org.openmetadata.catalog.entity.data.Metrics;
+import org.openmetadata.catalog.entity.data.MlModel;
 import org.openmetadata.catalog.entity.data.Pipeline;
 import org.openmetadata.catalog.entity.data.Report;
 import org.openmetadata.catalog.entity.data.Table;
@@ -53,11 +53,11 @@ import org.openmetadata.catalog.jdbi3.DashboardRepository.DashboardEntityInterfa
 import org.openmetadata.catalog.jdbi3.DashboardServiceRepository.DashboardServiceEntityInterface;
 import org.openmetadata.catalog.jdbi3.DatabaseRepository.DatabaseEntityInterface;
 import org.openmetadata.catalog.jdbi3.DatabaseServiceRepository.DatabaseServiceEntityInterface;
+import org.openmetadata.catalog.jdbi3.DbtModelRepository.DbtModelEntityInterface;
 import org.openmetadata.catalog.jdbi3.LocationRepository.LocationEntityInterface;
 import org.openmetadata.catalog.jdbi3.MessagingServiceRepository.MessagingServiceEntityInterface;
 import org.openmetadata.catalog.jdbi3.MetricsRepository.MetricsEntityInterface;
 import org.openmetadata.catalog.jdbi3.MlModelRepository.MlModelEntityInterface;
-import org.openmetadata.catalog.jdbi3.DbtModelRepository.DbtModelEntityInterface;
 import org.openmetadata.catalog.jdbi3.PipelineRepository.PipelineEntityInterface;
 import org.openmetadata.catalog.jdbi3.PipelineServiceRepository.PipelineServiceEntityInterface;
 import org.openmetadata.catalog.jdbi3.PolicyRepository.PolicyEntityInterface;
@@ -872,13 +872,27 @@ public interface CollectionDAO {
     @SqlUpdate("INSERT INTO change_event (json) VALUES (:json)")
     void insert(@Bind("json") String json);
 
+    default List<String> list(String eventType, List<String> entityTypes, long dateTime) {
+      if (entityTypes == null || entityTypes.isEmpty()) {
+        return listWithoutEntityFilter(eventType, dateTime);
+      }
+      return listWithEntityFilter(eventType, entityTypes, dateTime);
+    }
+
     @SqlQuery("SELECT json FROM change_event WHERE " +
             "eventType = :eventType AND " +
-            "(entityType IN (<entityTypes>) OR entityType IS NULL) AND " +
+            "(entityType IN (<entityTypes>)) AND " +
             "dateTime >= :dateTime " +
             "ORDER BY dateTime DESC")
-    List<String> list(@Bind("eventType") String eventType,
+    List<String> listWithEntityFilter(@Bind("eventType") String eventType,
                       @BindList("entityTypes") List<String> entityTypes,
                       @Bind("dateTime") long dateTime);
+
+    @SqlQuery("SELECT json FROM change_event WHERE " +
+            "eventType = :eventType AND " +
+            "dateTime >= :dateTime " +
+            "ORDER BY dateTime DESC")
+    List<String> listWithoutEntityFilter(@Bind("eventType") String eventType,
+                                @Bind("dateTime") long dateTime);
   }
 }

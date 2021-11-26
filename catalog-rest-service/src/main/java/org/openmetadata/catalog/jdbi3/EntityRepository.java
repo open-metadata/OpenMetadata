@@ -54,7 +54,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
-import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
@@ -89,7 +88,8 @@ public abstract class EntityRepository<T> {
     return new EntityUpdater(original, updated, patchOperation);
   }
 
-  EntityRepository(String collectionPath, Class<T> entityClass, EntityDAO<T> entityDAO, CollectionDAO collectionDAO,
+  EntityRepository(String collectionPath, String entityName, Class<T> entityClass, EntityDAO<T> entityDAO,
+                   CollectionDAO collectionDAO,
                    Fields patchFields, Fields putFields) {
     this.collectionPath = collectionPath;
     this.entityClass = entityClass;
@@ -97,7 +97,7 @@ public abstract class EntityRepository<T> {
     this.daoCollection = collectionDAO;
     this.patchFields = patchFields;
     this.putFields = putFields;
-    this.entityName = entityClass.getSimpleName().toLowerCase(Locale.ROOT);
+    this.entityName = entityName;
     Entity.registerEntity(entityName, dao, this);
   }
 
@@ -230,7 +230,7 @@ public abstract class EntityRepository<T> {
     entityUpdater.update();
     entityUpdater.store();
     String change = entityUpdater.fieldsChanged() ? RestUtil.ENTITY_UPDATED : RestUtil.ENTITY_NO_CHANGE;
-    return new PatchResponse<T>(Status.OK, withHref(uriInfo, updated), change);
+    return new PatchResponse<>(Status.OK, withHref(uriInfo, updated), change);
   }
 
   @Transaction

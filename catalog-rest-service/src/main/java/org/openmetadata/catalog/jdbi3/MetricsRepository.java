@@ -40,7 +40,7 @@ public class MetricsRepository extends EntityRepository<Metrics> {
   private final CollectionDAO dao;
 
   public MetricsRepository(CollectionDAO dao) {
-    super(MetricsResource.COLLECTION_PATH, Metrics.class, dao.metricsDAO(), dao, Fields.EMPTY_FIELDS,
+    super(MetricsResource.COLLECTION_PATH, Entity.METRICS, Metrics.class, dao.metricsDAO(), dao, Fields.EMPTY_FIELDS,
             METRICS_UPDATE_FIELDS);
     this.dao = dao;
   }

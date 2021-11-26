@@ -37,7 +37,8 @@ public class BotsRepository extends EntityRepository<Bots>{
   private final CollectionDAO dao;
 
   public BotsRepository(CollectionDAO dao) {
-    super(BotsResource.COLLECTION_PATH, Bots.class, dao.botsDAO(), dao, Fields.EMPTY_FIELDS, Fields.EMPTY_FIELDS);
+    super(BotsResource.COLLECTION_PATH, Entity.BOTS, Bots.class, dao.botsDAO(), dao, Fields.EMPTY_FIELDS,
+            Fields.EMPTY_FIELDS);
     this.dao = dao; }
 
   public Bots insert(Bots bots) throws JsonProcessingException {
