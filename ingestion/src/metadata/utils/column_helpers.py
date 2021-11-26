@@ -43,6 +43,9 @@ _column_type_mapping: Dict[Type[types.TypeEngine], str] = {
 
 _column_string_mapping = {
     "INT": "INT",
+    "INT2": "SMALLINT",
+    "INT4": "INT",
+    "INT8": "BIGINT",
     "BOOLEAN": "BOOLEAN",
     "BOOL": "BOOLEAN",
     "ENUM": "ENUM",
@@ -76,6 +79,22 @@ _column_string_mapping = {
     "BINARY": "BINARY",
     "SMALLINT": "SMALLINT",
     "TINYINT": "TINYINT",
+    "TEXT": "TEXT",
+    "NUMBER": "NUMBER",
+    "BYTEINT": "BYTEINT",
+    "MEDIUMTEXT": "MEDIUMTEXT",
+    "VARBINARY": "VARBINARY",
+    "BLOB": "BLOB",
+    "LONGBLOB": "LONGBLOB",
+    "MEDIUMBLOB": "MEDIUMBLOB",
+    "STRUCT": "STRUCT",
+    "GEOGRAPHY": "GEOGRAPHY",
+    "REAL": "FLOAT",
+    "FLOAT4": "FLOAT",
+    "FLOAT8": "DOUBLE",
+    "DOUBLE PRECISION": "DOUBLE",
+    "NCHAR": "CHAR",
+    "NVARCHAR": "VARCHAR",
 }
 
 _known_unknown_column_types: Set[Type[types.TypeEngine]] = {
