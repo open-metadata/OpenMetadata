@@ -28,6 +28,7 @@ import org.openmetadata.catalog.api.services.CreateDashboardService;
 import org.openmetadata.catalog.api.services.CreateDashboardService.DashboardServiceType;
 import org.openmetadata.catalog.entity.data.Dashboard;
 import org.openmetadata.catalog.entity.data.MlModel;
+import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.jdbi3.MlModelRepository;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.type.ChangeDescription;
@@ -278,7 +279,8 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
   public void delete_nonExistentModel_404() {
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
             deleteModel(TestUtils.NON_EXISTENT_ENTITY, adminAuthHeaders()));
-    assertResponse(exception, NOT_FOUND, entityNotFound(Entity.MLMODEL, TestUtils.NON_EXISTENT_ENTITY));
+    // TODO: issue-1415
+    assertResponse(exception, NOT_FOUND, entityNotFound("mlModel", TestUtils.NON_EXISTENT_ENTITY));
   }
 
   /** Validate returned fields GET .../models/{id}?fields="..." or GET .../models/name/{fqn}?fields="..." */
@@ -339,11 +341,14 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
   private void deleteModel(UUID id, Map<String, String> authHeaders) throws HttpResponseException {
     TestUtils.delete(getResource("mlmodels/" + id), authHeaders);
 
-    assertResponse(() -> getModel(id, authHeaders), NOT_FOUND, entityNotFound(Entity.MLMODEL, id));
+    // Check to make sure database does not exist
+    HttpResponseException exception = assertThrows(HttpResponseException.class, () -> getModel(id, authHeaders));
+    // TODO: issue-1415 instead of mlModel, use Entity.MLMODEL
+    assertResponse(exception, NOT_FOUND, CatalogExceptionMessage.entityNotFound("mlModel", id));
   }
 
   public static String getModelName(TestInfo test, int index) {
-    return String.format("mlModel%d_%s", index, test.getDisplayName());
+    return String.format("mlmodel%d_%s", index, test.getDisplayName());
   }
 
   public static CreateMlModel create(TestInfo test) {
