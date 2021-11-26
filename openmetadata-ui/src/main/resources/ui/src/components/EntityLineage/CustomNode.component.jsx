@@ -49,25 +49,21 @@ const CustomNode = (props) => {
   const { label, columns } = data;
 
   return (
-    <div className="tw-relative nowheel">
+    <div className="tw-relative nowheel ">
       {getHandle(type, isConnectable)}
       {/* Node label could be simple text or reactNode */}
-      <div
-        className={classNames('tw-px-2', {
-          'tw-mb-3': columns?.length,
-        })}>
-        {label}
-      </div>
+      <div className={classNames('tw-px-2')}>{label}</div>
 
+      {columns?.length ? <hr className="tw-my-2 tw--mx-3" /> : null}
       <section
-        className={classNames({
+        className={classNames('tw--mx-3 tw-px-3', {
           'tw-h-36 tw-overflow-y-auto': columns?.length,
         })}
         id="table-columns">
         <div className="tw-flex tw-flex-col tw-gap-y-1">
           {columns?.map((c) => (
             <p
-              className="tw-p-2 tw-rounded tw-border tw-text-primary"
+              className="tw-p-1 tw-rounded tw-border tw-text-primary"
               key={c.name}>
               {c.name}
             </p>
