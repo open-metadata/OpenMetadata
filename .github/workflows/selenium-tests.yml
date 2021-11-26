@@ -12,8 +12,8 @@ on:
   pull_request:
     branches: [main]
     paths:
-      - 'catalog-rest-service/src/main/resource/ui/**'
-      - 'catalog-rest-service/src/test/java/org/openmetadata/catalog/selenium/pages/**'
+      - 'openmetadata-ui/src/main/resource/ui/**'
+      - 'openmetadata-ui/src/test/java/org/openmetadata/catalog/selenium/pages/**'
 
 jobs:
   build:
