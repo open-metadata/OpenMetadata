@@ -1,14 +1,17 @@
 import { isEqual } from 'lodash';
+import { EntityTags } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { getTeamDetailsPath } from '../../constants/constants';
 import { Dbtmodel } from '../../generated/entity/data/dbtmodel';
 import { User } from '../../generated/entity/teams/user';
+import { LabelType, State } from '../../generated/type/tagLabel';
 import { useAuth } from '../../hooks/authHooks';
 import {
   getCurrentUserId,
   getPartialNameFromFQN,
   getUserTeams,
 } from '../../utils/CommonUtils';
+import { getTagsWithoutTier } from '../../utils/TableUtils';
 import Description from '../common/description/Description';
 import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
 import TabsPane from '../common/TabsPane/TabsPane';
@@ -36,6 +39,7 @@ const DBTModelDetails: React.FC<DBTModelDetailsProps> = ({
   settingsUpdateHandler,
   users,
   version,
+  tier,
 }: DBTModelDetailsProps) => {
   const { isAuthDisabled } = useAuth();
   const [isEdit, setIsEdit] = useState(false);
@@ -106,6 +110,7 @@ const DBTModelDetails: React.FC<DBTModelDetailsProps> = ({
       isLink: owner?.type === 'team',
       openInNewTab: false,
     },
+    { key: 'Tier', value: tier ? tier.split('.')[1] : '' },
   ];
 
   const onDescriptionEdit = (): void => {
@@ -138,8 +143,18 @@ const DBTModelDetails: React.FC<DBTModelDetailsProps> = ({
     }
   };
 
-  const onSettingsUpdate = (newOwner?: Dbtmodel['owner']) => {
-    if (newOwner) {
+  const onSettingsUpdate = (newOwner?: Dbtmodel['owner'], newTier?: string) => {
+    if (newOwner || newTier) {
+      const tierTag: Dbtmodel['tags'] = newTier
+        ? [
+            ...getTagsWithoutTier(dbtModelDetails.tags as Array<EntityTags>),
+            {
+              tagFQN: newTier,
+              labelType: LabelType.Manual,
+              state: State.Confirmed,
+            },
+          ]
+        : dbtModelDetails.tags;
       const updatedDBTModelDetails = {
         ...dbtModelDetails,
         owner: newOwner
@@ -148,6 +163,7 @@ const DBTModelDetails: React.FC<DBTModelDetailsProps> = ({
               ...newOwner,
             }
           : dbtModelDetails.owner,
+        tags: tierTag,
       };
 
       return settingsUpdateHandler(updatedDBTModelDetails);
@@ -189,7 +205,7 @@ const DBTModelDetails: React.FC<DBTModelDetailsProps> = ({
           followHandler={followDBTModel}
           isFollowing={isFollowing}
           tags={dbtModelTags}
-          tier=""
+          tier={tier}
           titleLinks={slashedDBTModelName}
           version={version}
           versionHandler={() => {
@@ -239,7 +255,7 @@ const DBTModelDetails: React.FC<DBTModelDetailsProps> = ({
             {activeTab === 2 && (
               <div className="tw-mt-4">
                 <ManageTab
-                  currentTier=""
+                  currentTier={tier}
                   currentUser={owner?.id}
                   hasEditAccess={hasEditAccess()}
                   onSave={onSettingsUpdate}
@@ -249,7 +265,7 @@ const DBTModelDetails: React.FC<DBTModelDetailsProps> = ({
             {activeTab === 3 && (
               <div className="tw-mt-4">
                 <ManageTab
-                  currentTier=""
+                  currentTier={tier}
                   currentUser={owner?.id}
                   hasEditAccess={hasEditAccess()}
                   onSave={onSettingsUpdate}

@@ -17,6 +17,7 @@ export interface DBTModelDetailsProps {
   activeTab: number;
   owner: DatasetOwner;
   description: string;
+  tier: string;
   columns: Dbtmodel['columns'];
   followers: Array<User>;
   dbtModelTags: Array<EntityTags>;

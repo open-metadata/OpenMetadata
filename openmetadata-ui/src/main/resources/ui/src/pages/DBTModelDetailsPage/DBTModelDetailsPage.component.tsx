@@ -31,7 +31,7 @@ import {
   getCurrentDBTModelTab,
 } from '../../utils/DBTModelDetailsUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
-import { getOwnerFromId } from '../../utils/TableUtils';
+import { getOwnerFromId, getTierFromTableTags } from '../../utils/TableUtils';
 import { getTableTags } from '../../utils/TagsUtils';
 
 const DBTModelDetailsPage: FunctionComponent = () => {
@@ -52,7 +52,7 @@ const DBTModelDetailsPage: FunctionComponent = () => {
   const [, setCurrentVersion] = useState<string>();
 
   const [dbtModelId, setDbtModelId] = useState('');
-  //   const [tier, setTier] = useState<string>();
+  const [tier, setTier] = useState<string>();
   const [name, setName] = useState('');
   const [followers, setFollowers] = useState<Array<User>>([]);
   const [slashedDBTModelName, setSlashedDBTModelName] = useState<
@@ -112,10 +112,11 @@ const DBTModelDetailsPage: FunctionComponent = () => {
     return new Promise<void>((resolve, reject) => {
       saveUpdatedDBTModelData(updatedDBTModel)
         .then((res) => {
-          const { version, owner } = res.data;
+          const { version, owner, tags } = res.data;
           setCurrentVersion(version);
           setDbtModelDetails(res.data);
           setOwner(getOwnerFromId(owner?.id));
+          setTier(getTierFromTableTags(tags));
           resolve();
         })
         .catch(() => reject());
@@ -162,11 +163,13 @@ const DBTModelDetailsPage: FunctionComponent = () => {
           followers,
           fullyQualifiedName,
           version,
+          tags,
         } = res.data;
         setDbtModelDetails(res.data);
         setDbtModelId(id);
         setCurrentVersion(version);
         setOwner(getOwnerFromId(owner?.id));
+        setTier(getTierFromTableTags(tags));
         setFollowers(followers);
         getDatabase(database.id, 'service').then((resDB: AxiosResponse) => {
           getServiceById('databaseServices', resDB.data.service?.id).then(
@@ -239,6 +242,7 @@ const DBTModelDetailsPage: FunctionComponent = () => {
           setActiveTabHandler={activeTabHandler}
           settingsUpdateHandler={settingsUpdateHandler}
           slashedDBTModelName={slashedDBTModelName}
+          tier={tier as string}
           unfollowDBTModelHandler={unfollowDBTModel}
           users={AppState.users}
         />
