@@ -127,19 +127,18 @@ public class UserResource {
   public ResultList<User> list(@Context UriInfo uriInfo,
                                @Context SecurityContext securityContext,
                                @Parameter(description = "Fields requested in the returned resource",
-                                          schema = @Schema(type = "string", example = FIELDS))
+                                       schema = @Schema(type = "string", example = FIELDS))
                                @QueryParam("fields") String fieldsParam,
-                               @Parameter(description = "Limit the number users returned. (1 to 1000000, default = 10) ",
-                                          schema = @Schema(type = "string", example = "snowflakeWestCoast.financeDB"))
+                               @Parameter(description = "Limit the number users returned. (1 to 1000000, default = 10)")
                                @DefaultValue("10")
                                @Min(1)
                                @Max(1000000)
                                @QueryParam("limit") int limitParam,
                                @Parameter(description = "Returns list of users before this cursor",
-                                          schema = @Schema(type = "string"))
+                                       schema = @Schema(type = "string"))
                                @QueryParam("before") String before,
                                @Parameter(description = "Returns list of users after this cursor",
-                                          schema = @Schema(type = "string"))
+                                       schema = @Schema(type = "string"))
                                @QueryParam("after") String after)
           throws IOException, GeneralSecurityException, ParseException {
     RestUtil.validateCursors(before, after);

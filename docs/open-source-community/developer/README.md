@@ -25,3 +25,7 @@ This document summarizes information relevant to OpenMetadata committers and con
 {% content-ref url="ux-style-guide.md" %}
 [ux-style-guide.md](ux-style-guide.md)
 {% endcontent-ref %}
+
+{% content-ref url="generate-typescript-types-from-json-schema.md" %}
+[generate-typescript-types-from-json-schema.md](generate-typescript-types-from-json-schema.md)
+{% endcontent-ref %}

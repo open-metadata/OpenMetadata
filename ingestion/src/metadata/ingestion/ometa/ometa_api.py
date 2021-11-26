@@ -7,9 +7,9 @@ from metadata.generated.schema.api.lineage.addLineage import AddLineage
 from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.database import Database
+from metadata.generated.schema.entity.data.dbtmodel import DbtModel
 from metadata.generated.schema.entity.data.metrics import Metrics
 from metadata.generated.schema.entity.data.mlmodel import MlModel
-from metadata.generated.schema.entity.data.model import Model
 from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.data.report import Report
 from metadata.generated.schema.entity.data.table import Table
@@ -152,9 +152,9 @@ class OpenMetadata(OMetaLineageMixin, OMetaTableMixin, Generic[T, C]):
             return "/topics"
 
         if issubclass(
-            entity, get_args(Union[Model, self.get_create_entity_type(Model)])
+            entity, get_args(Union[DbtModel, self.get_create_entity_type(DbtModel)])
         ):
-            return "/models"
+            return "/dbtmodels"
 
         if issubclass(entity, Metrics):
             return "/metrics"
@@ -251,7 +251,6 @@ class OpenMetadata(OMetaLineageMixin, OMetaTableMixin, Generic[T, C]):
         )
 
         class_name = f"Create{entity.__name__}EntityRequest"
-
         create_class = getattr(
             __import__(class_path, globals(), locals(), [class_name]), class_name
         )

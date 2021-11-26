@@ -29,6 +29,7 @@ import org.openmetadata.catalog.resources.events.EventResource.ChangeEventList;
 import org.openmetadata.catalog.resources.services.DashboardServiceResourceTest;
 import org.openmetadata.catalog.resources.services.DatabaseServiceResourceTest;
 import org.openmetadata.catalog.resources.services.MessagingServiceResourceTest;
+import org.openmetadata.catalog.resources.tags.TagResourceTest;
 import org.openmetadata.catalog.resources.teams.TeamResourceTest;
 import org.openmetadata.catalog.resources.teams.UserResourceTest;
 import org.openmetadata.catalog.type.ChangeDescription;
@@ -37,6 +38,7 @@ import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.EventType;
 import org.openmetadata.catalog.type.FieldChange;
+import org.openmetadata.catalog.type.Tag;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
@@ -95,6 +97,7 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
   private final boolean supportsFollowers;
   private final boolean supportsOwner;
   private final boolean supportsTags;
+  protected boolean supportsPatch = true;
 
   public static User USER1;
   public static EntityReference USER_OWNER1;
@@ -113,9 +116,9 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
 
   public static EntityReference SUPERSET_REFERENCE;
 
-  public static final TagLabel USER_ADDRESS_TAG_LABEL = new TagLabel().withTagFQN("User.Address");
-  public static final TagLabel USER_BANK_ACCOUNT_TAG_LABEL = new TagLabel().withTagFQN("User.BankAccount");
-  public static final TagLabel TIER1_TAG_LABEL = new TagLabel().withTagFQN("Tier.Tier1");
+  public static TagLabel USER_ADDRESS_TAG_LABEL;
+  public static TagLabel USER_BANK_ACCOUNT_TAG_LABEL;
+  public static TagLabel TIER1_TAG_LABEL;
 
   public EntityResourceTest(String entityName, Class<T> entityClass, Class<? extends ResultList<T>> entityListClass,
                             String collectionName,
@@ -188,6 +191,15 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
             .withServiceType(CreateDashboardService.DashboardServiceType.Superset).withDashboardUrl(TestUtils.DASHBOARD_URL);
     DashboardService service = DashboardServiceResourceTest.createService(createService, adminAuthHeaders());
     SUPERSET_REFERENCE = new DashboardServiceRepository.DashboardServiceEntityInterface(service).getEntityReference();
+
+    Tag tag = TagResourceTest.getTag("User.Address", adminAuthHeaders());
+    USER_ADDRESS_TAG_LABEL = new TagLabel().withTagFQN(tag.getFullyQualifiedName())
+            .withDescription(tag.getDescription());
+    tag = TagResourceTest.getTag("User.BankAccount", adminAuthHeaders());
+    USER_BANK_ACCOUNT_TAG_LABEL = new TagLabel().withTagFQN(tag.getFullyQualifiedName())
+            .withDescription(tag.getDescription());
+    tag = TagResourceTest.getTag("Tier.Tier1", adminAuthHeaders());
+    TIER1_TAG_LABEL = new TagLabel().withTagFQN(tag.getFullyQualifiedName()).withDescription(tag.getDescription());
   }
 
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -331,8 +343,8 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
 
   @Test
   public void put_entityCreate_as_owner_200(TestInfo test) throws IOException, URISyntaxException {
-    if (entityClass == User.class || entityClass == Team.class) {
-      return; // User and team entity POST and PUSH are admin only operations
+    if (!supportsOwner) {
+      return; // Entity doesn't support ownership
     }
     // Create a new entity with PUT as admin user
     Object request = createRequest(test, null, null, USER_OWNER1);
@@ -349,9 +361,8 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
 
   @Test
   public void put_entityUpdateOwner_200(TestInfo test) throws IOException, URISyntaxException {
-    if (entityClass == User.class || entityClass == Team.class) {
-      // Ignore the test - User and team entities can't be owned like other data assets
-      return;
+    if (!supportsOwner) {
+      return; // Entity doesn't support ownership
     }
     // Create an entity without owner
     Object request = createRequest(test, "description", "displayName", null);
@@ -477,11 +488,15 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
             deleteAndCheckFollower(entityId, NON_EXISTENT_ENTITY, 1, adminAuthHeaders()));
     assertResponse(exception, NOT_FOUND, CatalogExceptionMessage.entityNotFound("User", NON_EXISTENT_ENTITY));
   }
+
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // Common entity tests for PATCH operations
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   @Test
   public void patch_entityAttributes_200_ok(TestInfo test) throws IOException, URISyntaxException {
+    if (!supportsPatch) {
+      return;
+    }
     // Create chart without description, owner
     T entity = createEntity(createRequest(test, null, null, null), adminAuthHeaders());
     EntityInterface<T> entityInterface = getEntityInterface(entity);
@@ -630,6 +645,8 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     T getEntity = getEntity(entityInterface.getId(), authHeaders);
     assertEquals(0.1, entityInterface.getVersion()); // First version of the entity
     validateCreatedEntity(getEntity, create, authHeaders);
+
+    // TODO GET the entity by name
 
     // Validate that change event was created
     validateChangeEvents(entityInterface, entityInterface.getUpdatedAt(), EventType.ENTITY_CREATED,

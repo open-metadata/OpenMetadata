@@ -296,3 +296,73 @@ PIPELINE_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
     }
     """
 )
+
+
+DBT_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
+    """
+    {
+    "mappings":{
+          "properties": {
+            "dbt_model_name": {
+              "type":"text"
+            },
+            "schema": {
+              "type":"text",
+              "analyzer": "simple",
+              "fields": {
+                "raw": {
+                  "type": "keyword"
+                }
+              }
+            },
+            "display_name": {
+              "type": "text"
+            },
+            "owner": {
+              "type": "text"
+            },
+            "followers": {
+              "type": "keyword"
+            },
+            "last_updated_timestamp": {
+              "type": "date",
+              "format": "epoch_second"
+            },
+            "description": {
+              "type": "text"
+            },
+            "tier": {
+              "type": "keyword"
+            },
+            "column_names": {
+              "type":"text"
+            },
+            "column_descriptions": {
+              "type": "text"
+            },
+            "tags": {
+              "type": "keyword"
+            },
+            "service": {
+              "type": "keyword"
+            },
+            "service_type": {
+              "type": "keyword"
+            },
+            "service_category": {
+              "type": "keyword"
+            },
+            "entity_type": {
+              "type": "keyword"
+            },
+            "database": {
+              "type": "text"
+            },
+            "suggest": {
+              "type": "completion"
+            }
+          }
+        }
+    }
+    """
+)

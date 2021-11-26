@@ -23,11 +23,9 @@ import org.openmetadata.catalog.CatalogApplicationTest;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.services.CreateDashboardService;
 import org.openmetadata.catalog.api.services.CreateDashboardService.DashboardServiceType;
-import org.openmetadata.catalog.api.services.UpdateDashboardService;
 import org.openmetadata.catalog.entity.services.DashboardService;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.type.Schedule;
-import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.TestUtils;
 
 import javax.ws.rs.client.WebTarget;
@@ -175,33 +173,23 @@ public class DashboardServiceResourceTest extends CatalogApplicationTest {
   }
 
   @Test
-  public void put_updateNonExistentService_404() {
-    // Update dashboard description and ingestion service that are null
-    UpdateDashboardService update = new UpdateDashboardService().withDescription("description1");
-    HttpResponseException exception = assertThrows(HttpResponseException.class, ()
-            -> updateDashboardService(TestUtils.NON_EXISTENT_ENTITY.toString(), update, OK, adminAuthHeaders()));
-    TestUtils.assertResponse(exception, NOT_FOUND, CatalogExceptionMessage.entityNotFound("DashboardService",
-            TestUtils.NON_EXISTENT_ENTITY));
-  }
-
-  @Test
   public void put_updateService_as_admin_2xx(TestInfo test) throws HttpResponseException, URISyntaxException {
     DashboardService dbService = createAndCheckService(create(test).withDescription(null).withIngestionSchedule(null),
             adminAuthHeaders());
-    String id = dbService.getId().toString();
 
     // Update dashboard description and ingestion service that are null
-    UpdateDashboardService update = new UpdateDashboardService().withDescription("description1")
+    CreateDashboardService update = create(test).withDescription("description1")
             .withDashboardUrl(new URI("http://localhost:8080")).withUsername("user").withPassword("password");
-    updateAndCheckService(id, update, OK, adminAuthHeaders());
+    updateAndCheckService(update, OK, adminAuthHeaders());
+
     // Update ingestion schedule
     Schedule schedule = new Schedule().withStartDate(new Date()).withRepeatFrequency("P1D");
     update.withIngestionSchedule(schedule);
-    updateAndCheckService(id, update, OK, adminAuthHeaders());
+    updateAndCheckService(update, OK, adminAuthHeaders());
 
     // Update description and ingestion schedule again
     update.withDescription("description1").withIngestionSchedule(schedule.withRepeatFrequency("PT1H"));
-    updateAndCheckService(id, update, OK, adminAuthHeaders());
+    updateAndCheckService(update, OK, adminAuthHeaders());
   }
 
   @Test
@@ -209,14 +197,10 @@ public class DashboardServiceResourceTest extends CatalogApplicationTest {
     Map<String, String> authHeaders = adminAuthHeaders();
     DashboardService dbService = createAndCheckService(create(test).withDescription(null).withIngestionSchedule(null),
             authHeaders);
-    String id = dbService.getId().toString();
-    RestUtil.DATE_TIME_FORMAT.format(new Date());
 
     // Update dashboard description and ingestion service that are null
-    UpdateDashboardService update = new UpdateDashboardService().withDescription("description1");
-
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            updateAndCheckService(id, update, OK, authHeaders("test@open-metadata.org")));
+            updateAndCheckService(create(test), OK, authHeaders("test@open-metadata.org")));
     TestUtils.assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} " +
             "is not admin");
   }
@@ -354,10 +338,10 @@ public class DashboardServiceResourceTest extends CatalogApplicationTest {
             .withIngestionSchedule(new Schedule().withStartDate(new Date()).withRepeatFrequency("P1D"));
   }
 
-  public static void updateAndCheckService(String id, UpdateDashboardService update, Status status,
+  public static void updateAndCheckService(CreateDashboardService update, Status status,
                                            Map<String, String> authHeaders) throws HttpResponseException {
     String updatedBy = TestUtils.getPrincipal(authHeaders);
-    DashboardService service = updateDashboardService(id, update, status, authHeaders);
+    DashboardService service = updateDashboardService(update, status, authHeaders);
     validateService(service, service.getName(), update.getDescription(), update.getIngestionSchedule(), updatedBy);
 
     // GET the newly updated dashboard and validate
@@ -369,10 +353,10 @@ public class DashboardServiceResourceTest extends CatalogApplicationTest {
     validateService(getService, service.getName(), update.getDescription(), update.getIngestionSchedule(), updatedBy);
   }
 
-  public static DashboardService updateDashboardService(String id, UpdateDashboardService updated,
+  public static DashboardService updateDashboardService(CreateDashboardService updated,
                                                       Status status, Map<String, String> authHeaders)
           throws HttpResponseException {
-    return TestUtils.put(CatalogApplicationTest.getResource("services/dashboardServices/" + id), updated,
+    return TestUtils.put(CatalogApplicationTest.getResource("services/dashboardServices"), updated,
             DashboardService.class, status, authHeaders);
   }
 }

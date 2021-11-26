@@ -1,0 +1,19 @@
+{
+  "name": "open-metadata",
+  "version": "0.1.0",
+  "private": true,
+  "engines": {
+    "node": ">=10.0.0",
+    "npm": "^6.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/open-metadata/OpenMetadata.git"
+  },
+  "devDependencies": {
+    "quicktype": "^15.0.260"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  }
+}

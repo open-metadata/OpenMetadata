@@ -47,15 +47,6 @@ public class StorageServiceRepository extends EntityRepository<StorageService> {
     this.dao = dao;
   }
 
-  public StorageService update(UriInfo uriInfo, UUID id, String description)
-          throws IOException {
-    StorageService storageService = dao.storageServiceDAO().findEntityById(id);
-    // Update fields
-    storageService.withDescription(description);
-    dao.storageServiceDAO().update(id, JsonUtils.pojoToJson(storageService));
-    return withHref(uriInfo, storageService);
-  }
-
   @Transaction
   public void delete(UUID id) {
     if (dao.storageServiceDAO().delete(id) <= 0) {
@@ -85,9 +76,12 @@ public class StorageServiceRepository extends EntityRepository<StorageService> {
 
 
   @Override
-  public void store(StorageService entity, boolean update) throws IOException {
-    dao.storageServiceDAO().insert(entity);
-    // TODO other cleanup
+  public void store(StorageService service, boolean update) throws IOException {
+    if (update) {
+      dao.storageServiceDAO().update(service.getId(), JsonUtils.pojoToJson(service));
+    } else {
+      dao.storageServiceDAO().insert(service);
+    }
   }
 
   @Override

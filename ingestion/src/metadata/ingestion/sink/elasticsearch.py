@@ -23,6 +23,7 @@ from metadata.config.common import ConfigModel
 from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.database import Database
+from metadata.generated.schema.entity.data.dbtmodel import DbtModel
 from metadata.generated.schema.entity.data.pipeline import Pipeline, Task
 from metadata.generated.schema.entity.data.table import Column, Table
 from metadata.generated.schema.entity.data.topic import Topic
@@ -35,6 +36,7 @@ from metadata.ingestion.api.common import Record, WorkflowContext
 from metadata.ingestion.api.sink import Sink, SinkStatus
 from metadata.ingestion.models.table_metadata import (
     DashboardESDocument,
+    DbtModelESDocument,
     PipelineESDocument,
     TableESDocument,
     TopicESDocument,
@@ -43,6 +45,7 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.sink.elasticsearch_constants import (
     DASHBOARD_ELASTICSEARCH_INDEX_MAPPING,
+    DBT_ELASTICSEARCH_INDEX_MAPPING,
     PIPELINE_ELASTICSEARCH_INDEX_MAPPING,
     TABLE_ELASTICSEARCH_INDEX_MAPPING,
     TOPIC_ELASTICSEARCH_INDEX_MAPPING,
@@ -60,10 +63,12 @@ class ElasticSearchConfig(ConfigModel):
     index_topics: Optional[bool] = True
     index_dashboards: Optional[bool] = True
     index_pipelines: Optional[bool] = True
+    index_dbt_models: Optional[bool] = True
     table_index_name: str = "table_search_index"
     topic_index_name: str = "topic_search_index"
     dashboard_index_name: str = "dashboard_search_index"
     pipeline_index_name: str = "pipeline_search_index"
+    dbt_index_name: str = "dbt_model_search_index"
 
 
 class ElasticsearchSink(Sink):
@@ -116,6 +121,10 @@ class ElasticsearchSink(Sink):
         if self.config.index_pipelines:
             self._check_or_create_index(
                 self.config.pipeline_index_name, PIPELINE_ELASTICSEARCH_INDEX_MAPPING
+            )
+        if self.config.index_dbt_models:
+            self._check_or_create_index(
+                self.config.dbt_index_name, DBT_ELASTICSEARCH_INDEX_MAPPING
             )
 
     def _check_or_create_index(self, index_name: str, es_mapping: str):
@@ -172,6 +181,13 @@ class ElasticsearchSink(Sink):
                 index=self.config.pipeline_index_name,
                 id=str(pipeline_doc.pipeline_id),
                 body=pipeline_doc.json(),
+            )
+        if isinstance(record, DbtModel):
+            dbt_model_doc = self._create_dbt_model_es_doc(record)
+            self.elasticsearch_client.index(
+                index=self.config.dbt_index_name,
+                id=str(dbt_model_doc.dbt_model_id),
+                body=dbt_model_doc.json(),
             )
 
         if hasattr(record.name, "__root__"):
@@ -394,6 +410,67 @@ class ElasticsearchSink(Sink):
         )
 
         return pipeline_doc
+
+    def _create_dbt_model_es_doc(self, dbt_model: DbtModel):
+        fqdn = dbt_model.fullyQualifiedName
+        database = dbt_model.database.name
+        dbt_model_name = dbt_model.name
+        suggest = [
+            {"input": [fqdn], "weight": 5},
+            {"input": [dbt_model_name], "weight": 10},
+        ]
+        column_names = []
+        column_descriptions = []
+        tags = set()
+
+        timestamp = time.time()
+        tier = None
+        for dbt_model_tag in dbt_model.tags:
+            if "Tier" in dbt_model_tag.tagFQN:
+                tier = dbt_model_tag.tagFQN
+            else:
+                tags.add(dbt_model_tag.tagFQN)
+        self._parse_columns(
+            dbt_model.columns, None, column_names, column_descriptions, tags
+        )
+
+        database_entity = self.metadata.get_by_id(
+            entity=Database, entity_id=str(dbt_model.database.id.__root__)
+        )
+        service_entity = self.metadata.get_by_id(
+            entity=DatabaseService, entity_id=str(database_entity.service.id.__root__)
+        )
+        dbt_model_owner = (
+            str(dbt_model.owner.id.__root__) if dbt_model.owner is not None else ""
+        )
+        dbt_model_followers = []
+        if dbt_model.followers:
+            for follower in dbt_model.followers.__root__:
+                dbt_model_followers.append(str(follower.id.__root__))
+        dbt_node_type = None
+        if hasattr(dbt_model.dbtNodeType, "name"):
+            dbt_node_type = dbt_model.dbtNodeType.name
+        dbt_model_doc = DbtModelESDocument(
+            dbt_model_id=str(dbt_model.id.__root__),
+            database=str(database_entity.name.__root__),
+            service=service_entity.name,
+            service_type=service_entity.serviceType.name,
+            service_category="databaseService",
+            dbt_model_name=dbt_model.name.__root__,
+            suggest=suggest,
+            description=dbt_model.description,
+            dbt_model_type=dbt_node_type,
+            last_updated_timestamp=timestamp,
+            column_names=column_names,
+            column_descriptions=column_descriptions,
+            tier=tier,
+            tags=list(tags),
+            fqdn=fqdn,
+            schema_description=None,
+            owner=dbt_model_owner,
+            followers=dbt_model_followers,
+        )
+        return dbt_model_doc
 
     def _get_charts(self, chart_refs: Optional[List[entityReference.EntityReference]]):
         charts = []

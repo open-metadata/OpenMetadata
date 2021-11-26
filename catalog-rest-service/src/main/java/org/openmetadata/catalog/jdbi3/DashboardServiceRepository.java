@@ -16,6 +16,7 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.services.DashboardService;
@@ -91,12 +92,22 @@ public class DashboardServiceRepository extends EntityRepository<DashboardServic
   }
 
   @Override
-  public void store(DashboardService entity, boolean update) throws IOException {
-    dao.dashboardServiceDAO().insert(entity);
+  public void store(DashboardService service, boolean update) throws IOException {
+    if (update) {
+      dao.dashboardServiceDAO().update(service.getId(), JsonUtils.pojoToJson(service));
+    } else {
+      dao.dashboardServiceDAO().insert(service);
+    }
   }
 
   @Override
   public void storeRelationships(DashboardService entity) throws IOException {
+  }
+
+  @Override
+  public EntityUpdater getUpdater(DashboardService original, DashboardService updated, boolean patchOperation)
+          throws IOException {
+    return new DashboardServiceUpdater(original, updated, patchOperation);
   }
 
   public static class DashboardServiceEntityInterface implements EntityInterface<DashboardService> {
@@ -192,5 +203,27 @@ public class DashboardServiceRepository extends EntityRepository<DashboardServic
 
     @Override
     public void setTags(List<TagLabel> tags) { }
+  }
+
+  public class DashboardServiceUpdater extends EntityUpdater {
+    public DashboardServiceUpdater(DashboardService original, DashboardService updated, boolean patchOperation) {
+      super(original, updated, patchOperation);
+    }
+
+    @Override
+    public void entitySpecificUpdate() throws IOException {
+      updateDashboardUrl();
+      updateIngestionSchedule();
+    }
+
+    private void updateDashboardUrl() throws JsonProcessingException {
+      recordChange("dashboardUrl", original.getEntity().getDashboardUrl(), updated.getEntity().getDashboardUrl());
+    }
+
+    private void updateIngestionSchedule() throws JsonProcessingException {
+      Schedule origSchedule = original.getEntity().getIngestionSchedule();
+      Schedule updatedSchedule = updated.getEntity().getIngestionSchedule();
+      recordChange("ingestionSchedule", origSchedule, updatedSchedule);
+    }
   }
 }

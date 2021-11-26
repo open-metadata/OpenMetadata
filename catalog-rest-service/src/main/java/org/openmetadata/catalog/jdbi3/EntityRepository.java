@@ -381,7 +381,7 @@ public abstract class EntityRepository<T> {
       }
     }
 
-    protected void updateTags(String fqn, String fieldName, List<TagLabel> origTags, List<TagLabel> updatedTags)
+    protected final void updateTags(String fqn, String fieldName, List<TagLabel> origTags, List<TagLabel> updatedTags)
             throws IOException {
       // Remove current entity tags in the database. It will be added back later from the merged tag list.
       origTags = Optional.ofNullable(origTags).orElse(Collections.emptyList());
