@@ -496,14 +496,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
     );
   };
 
-  useEffect(() => {
-    setElements(setElementsHandle());
-    setExpandNode(undefined);
-    setTableColumns([]);
-  }, [entityLineage, isNodeLoading]);
-
-  useEffect(() => {
-    onNodeExpand();
+  const getTableColumns = (expandNode?: EntityReference) => {
     if (expandNode) {
       getTableDetails(expandNode.id, ['columns'])
         .then((res: AxiosResponse) => {
@@ -521,6 +514,17 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
           });
         });
     }
+  };
+
+  useEffect(() => {
+    setElements(setElementsHandle());
+    setExpandNode(undefined);
+    setTableColumns([]);
+  }, [entityLineage, isNodeLoading]);
+
+  useEffect(() => {
+    onNodeExpand();
+    getTableColumns(expandNode);
   }, [expandNode]);
 
   useEffect(() => {

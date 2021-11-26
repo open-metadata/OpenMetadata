@@ -2,25 +2,24 @@ import classNames from 'classnames';
 import React, { Fragment } from 'react';
 import { Handle } from 'react-flow-renderer';
 
-/* eslint-disable */
 const handleStyles = { borderRadius: '50%', position: 'absolute', top: 10 };
 const getHandle = (nodeType, isConnectable) => {
   if (nodeType === 'output') {
     return (
       <Handle
         isConnectable={isConnectable}
-        type="target"
         position="left"
         style={{ ...handleStyles, left: '-14px' }}
+        type="target"
       />
     );
   } else if (nodeType === 'input') {
     return (
       <Handle
         isConnectable={isConnectable}
-        type="source"
         position="right"
         style={{ ...handleStyles, right: '-14px' }}
+        type="source"
       />
     );
   } else {
@@ -28,15 +27,15 @@ const getHandle = (nodeType, isConnectable) => {
       <Fragment>
         <Handle
           isConnectable={isConnectable}
-          type="target"
           position="left"
           style={{ ...handleStyles, left: '-14px' }}
+          type="target"
         />
         <Handle
           isConnectable={isConnectable}
-          type="source"
           position="right"
           style={{ ...handleStyles, right: '-14px' }}
+          type="source"
         />
       </Fragment>
     );
@@ -44,25 +43,29 @@ const getHandle = (nodeType, isConnectable) => {
 };
 
 const CustomNode = (props) => {
-  const { data } = props;
+  /* eslint-disable-next-line */
+  const { data, type, isConnectable } = props;
+  /* eslint-disable-next-line */
+  const { label, columns } = data;
+
   return (
     <div className="tw-relative nowheel">
-      {getHandle(props.type, props.isConnectable)}
+      {getHandle(type, isConnectable)}
       {/* Node label could be simple text or reactNode */}
       <div
         className={classNames('tw-px-2', {
-          'tw-mb-3': data.columns?.length,
+          'tw-mb-3': columns?.length,
         })}>
-        {data.label}
+        {label}
       </div>
 
       <section
         className={classNames({
-          'tw-h-36 tw-overflow-y-auto': data.columns?.length,
+          'tw-h-36 tw-overflow-y-auto': columns?.length,
         })}
         id="table-columns">
         <div className="tw-flex tw-flex-col tw-gap-y-1">
-          {data.columns?.map((c) => (
+          {columns?.map((c) => (
             <p className="tw-p-2 tw-rounded tw-bg-tag" key={c.name}>
               {c.name}
             </p>
