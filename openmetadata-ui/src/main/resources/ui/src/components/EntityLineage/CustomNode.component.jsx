@@ -66,7 +66,7 @@ const CustomNode = (props) => {
         id="table-columns">
         <div className="tw-flex tw-flex-col tw-gap-y-1">
           {columns?.map((c) => (
-            <p className="tw-p-2 tw-rounded tw-bg-tag" key={c.name}>
+            <p className="tw-p-2 tw-rounded tw-border" key={c.name}>
               {c.name}
             </p>
           ))}

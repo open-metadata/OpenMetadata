@@ -125,6 +125,28 @@ const getLineageData = (
   const DOWNStreamNodes: Elements = [];
   const lineageEdges: Elements = [];
 
+  const makeNode = (
+    node: EntityReference,
+    pos: LineagePos,
+    depth: number,
+    posDepth: number
+  ) => {
+    return {
+      id: `node-${node.id}-${depth}`,
+      sourcePosition: Position.Right,
+      targetPosition: Position.Left,
+      type: 'default',
+      className: 'leaf-node',
+      data: {
+        label: getNodeLable(node),
+      },
+      position: {
+        x: pos === 'from' ? -positionX * 2 * depth : positionX * 2 * depth,
+        y: y + positionY * posDepth,
+      },
+    };
+  };
+
   const getNodes = (
     id: string,
     pos: 'from' | 'to',
@@ -140,20 +162,7 @@ const getLineageData = (
           const node = nodes?.find((nd) => nd.id === up.fromEntity);
           if (node) {
             UPNodes.push(node);
-            UPStreamNodes.push({
-              id: `node-${node.id}-${depth}`,
-              sourcePosition: Position.Right,
-              targetPosition: Position.Left,
-              type: 'default',
-              className: 'leaf-node',
-              data: {
-                label: getNodeLable(node),
-              },
-              position: {
-                x: -positionX * 2 * depth,
-                y: y + positionY * upDepth,
-              },
-            });
+            UPStreamNodes.push(makeNode(node, 'from', depth, upDepth));
             lineageEdges.push({
               id: `edge-${up.fromEntity}-${id}-${depth}`,
               source: `node-${node.id}-${depth}`,
@@ -187,20 +196,7 @@ const getLineageData = (
           const node = nodes?.find((nd) => nd.id === down.toEntity);
           if (node) {
             DOWNNodes.push(node);
-            DOWNStreamNodes.push({
-              id: `node-${node.id}-${depth}`,
-              sourcePosition: Position.Right,
-              targetPosition: Position.Left,
-              type: 'default',
-              className: 'leaf-node',
-              data: {
-                label: getNodeLable(node),
-              },
-              position: {
-                x: positionX * 2 * depth,
-                y: y + positionY * downDepth,
-              },
-            });
+            DOWNStreamNodes.push(makeNode(node, 'to', depth, downDepth));
             lineageEdges.push({
               id: `edge-${id}-${down.toEntity}`,
               source: edg ? edg.id : `node-${id}-${depth}`,
