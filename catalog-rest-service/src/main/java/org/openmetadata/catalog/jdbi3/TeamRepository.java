@@ -48,7 +48,8 @@ public class TeamRepository extends EntityRepository<Team> {
   private final CollectionDAO dao;
 
   public TeamRepository(CollectionDAO dao) {
-    super(TeamResource.COLLECTION_PATH, Team.class, dao.teamDAO(), dao, TEAM_PATCH_FIELDS, Fields.EMPTY_FIELDS);
+    super(TeamResource.COLLECTION_PATH, Entity.TEAM, Team.class, dao.teamDAO(), dao, TEAM_PATCH_FIELDS,
+            Fields.EMPTY_FIELDS);
     this.dao = dao;
   }
 

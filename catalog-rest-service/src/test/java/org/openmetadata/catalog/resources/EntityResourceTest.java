@@ -25,8 +25,8 @@ import org.openmetadata.catalog.jdbi3.PipelineServiceRepository.PipelineServiceE
 import org.openmetadata.catalog.resources.events.EventResource.ChangeEventList;
 import org.openmetadata.catalog.resources.services.DatabaseServiceResourceTest;
 import org.openmetadata.catalog.resources.services.MessagingServiceResourceTest;
-import org.openmetadata.catalog.resources.tags.TagResourceTest;
 import org.openmetadata.catalog.resources.services.PipelineServiceResourceTest;
+import org.openmetadata.catalog.resources.tags.TagResourceTest;
 import org.openmetadata.catalog.resources.teams.TeamResourceTest;
 import org.openmetadata.catalog.resources.teams.UserResourceTest;
 import org.openmetadata.catalog.type.ChangeDescription;
@@ -578,6 +578,27 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     patchEntityAndCheck(entity, origJson, adminAuthHeaders(), MINOR_UPDATE, change);
   }
 
+  ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  // Other tests
+  ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  @Test
+  public void testInvalidEntityList() {
+    // Invalid entityCreated list
+    HttpResponseException exception = assertThrows(HttpResponseException.class, ()
+            -> getChangeEvents("invalidEntity", entityName, null, new Date(), adminAuthHeaders()));
+    assertResponse(exception, BAD_REQUEST, "Invalid entity invalidEntity in query param entityCreated");
+
+    // Invalid entityUpdated list
+    exception = assertThrows(HttpResponseException.class, ()
+            -> getChangeEvents(null, "invalidEntity", entityName, new Date(), adminAuthHeaders()));
+    assertResponse(exception, BAD_REQUEST, "Invalid entity invalidEntity in query param entityUpdated");
+
+    // Invalid entityDeleted list
+    exception = assertThrows(HttpResponseException.class, ()
+            -> getChangeEvents(entityName, null, "invalidEntity", new Date(), adminAuthHeaders()));
+    assertResponse(exception, BAD_REQUEST, "Invalid entity invalidEntity in query param entityDeleted");
+  }
+
 
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // Common entity functionality for tests
@@ -770,6 +791,15 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
                                             Date updateTime, EventType expectedEventType,
                                             ChangeDescription expectedChangeDescription,
                                             Map<String, String> authHeaders) throws IOException {
+    validateChangeEvents(entityInterface, updateTime, expectedEventType, expectedChangeDescription, authHeaders, true);
+    validateChangeEvents(entityInterface, updateTime, expectedEventType, expectedChangeDescription, authHeaders, false);
+  }
+
+  private void validateChangeEvents(EntityInterface<T> entityInterface,
+                                          Date updateTime, EventType expectedEventType,
+                                          ChangeDescription expectedChangeDescription,
+                                          Map<String, String> authHeaders,
+                                          boolean withEventFilter) throws IOException {
     String updatedBy = TestUtils.getPrincipal(authHeaders);
     ResultList<ChangeEvent> changeEvents;
     ChangeEvent changeEvent = null;
@@ -778,7 +808,11 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     while (iteration < 10) {
       // Some times change event is not returned on quickly querying with a millisecond
       // Try multiple times before giving up
-      changeEvents = getChangeEvents(entityName, entityName, null, updateTime, authHeaders);
+      if (withEventFilter) {
+        changeEvents = getChangeEvents(entityName, entityName, null, updateTime, authHeaders);
+      } else {
+        changeEvents = getChangeEvents(null, null, null, updateTime, authHeaders);
+      }
 
       assertTrue(changeEvents.getData().size() > 0);
       for (ChangeEvent event : changeEvents.getData()) {
@@ -818,7 +852,7 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
       assertEquals(changeEvent.getPreviousVersion(), 0.1);
       assertNull(changeEvent.getChangeDescription());
       compareEntities(entityInterface.getEntity(),
-              JsonUtils.readValue((String)changeEvent.getEntity(), entityClass), authHeaders);
+              JsonUtils.readValue((String) changeEvent.getEntity(), entityClass), authHeaders);
     } else if (expectedEventType == EventType.ENTITY_UPDATED) {
       assertNull(changeEvent.getEntity());
       assertChangeDescription(expectedChangeDescription, changeEvent.getChangeDescription());

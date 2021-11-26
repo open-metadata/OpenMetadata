@@ -27,7 +27,6 @@ import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.JsonUtils;
 
-import javax.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.net.URI;
 import java.text.ParseException;
@@ -42,8 +41,8 @@ public class StorageServiceRepository extends EntityRepository<StorageService> {
   private final CollectionDAO dao;
 
   public StorageServiceRepository(CollectionDAO dao) {
-    super(StorageServiceResource.COLLECTION_PATH, StorageService.class, dao.storageServiceDAO(), dao,
-            Fields.EMPTY_FIELDS, Fields.EMPTY_FIELDS);
+    super(StorageServiceResource.COLLECTION_PATH, Entity.STORAGE_SERVICE, StorageService.class,
+            dao.storageServiceDAO(), dao, Fields.EMPTY_FIELDS, Fields.EMPTY_FIELDS);
     this.dao = dao;
   }
 

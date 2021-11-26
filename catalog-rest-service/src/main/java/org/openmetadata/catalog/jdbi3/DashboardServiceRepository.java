@@ -46,8 +46,8 @@ public class DashboardServiceRepository extends EntityRepository<DashboardServic
   private final CollectionDAO dao;
 
   public DashboardServiceRepository(CollectionDAO dao) {
-    super(DashboardServiceResource.COLLECTION_PATH, DashboardService.class, dao.dashboardServiceDAO(), dao,
-            Fields.EMPTY_FIELDS, Fields.EMPTY_FIELDS);
+    super(DashboardServiceResource.COLLECTION_PATH, Entity.DASHBOARD_SERVICE, DashboardService.class,
+            dao.dashboardServiceDAO(), dao, Fields.EMPTY_FIELDS, Fields.EMPTY_FIELDS);
     this.dao = dao;
   }
 

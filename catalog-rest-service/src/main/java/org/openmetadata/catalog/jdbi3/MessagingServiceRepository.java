@@ -45,8 +45,8 @@ public class MessagingServiceRepository extends EntityRepository<MessagingServic
   private final CollectionDAO dao;
 
   public MessagingServiceRepository(CollectionDAO dao) {
-    super(MessagingServiceResource.COLLECTION_PATH, MessagingService.class, dao.messagingServiceDAO(), dao,
-            Fields.EMPTY_FIELDS, Fields.EMPTY_FIELDS);
+    super(MessagingServiceResource.COLLECTION_PATH, Entity.MESSAGING_SERVICE, MessagingService.class,
+            dao.messagingServiceDAO(), dao, Fields.EMPTY_FIELDS, Fields.EMPTY_FIELDS);
     this.dao = dao;
   }
 
