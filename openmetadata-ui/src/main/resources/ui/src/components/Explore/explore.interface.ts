@@ -35,6 +35,7 @@ export interface ExploreProps {
     topic: number;
     dashboard: number;
     pipeline: number;
+    dbtModel: number;
   };
   searchText: string;
   sortValue: string;
@@ -48,6 +49,7 @@ export interface ExploreProps {
   updateTopicCount: (count: number) => void;
   updateDashboardCount: (count: number) => void;
   updatePipelineCount: (count: number) => void;
+  updateDbtModelCount: (count: number) => void;
   fetchData: (value: SearchDataFunctionType[]) => void;
   searchResult: ExploreSearchData | undefined;
 }

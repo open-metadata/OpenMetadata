@@ -388,7 +388,7 @@ declare module 'Models' {
   // topic interface end
 
   interface RecentlyViewedData {
-    entityType: 'dataset' | 'topic' | 'dashboard' | 'pipeline';
+    entityType: 'dataset' | 'topic' | 'dashboard' | 'pipeline' | 'dbt_model';
     fqn: string;
     serviceType?: string;
     timestamp: number;
