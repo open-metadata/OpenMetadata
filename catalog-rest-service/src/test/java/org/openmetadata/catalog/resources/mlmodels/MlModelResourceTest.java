@@ -249,8 +249,9 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
   public void get_nonExistentMlModel_404_notFound() {
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
             getModel(TestUtils.NON_EXISTENT_ENTITY, adminAuthHeaders()));
+    // TODO: issue-1415
     assertResponse(exception, NOT_FOUND,
-            entityNotFound(Entity.MLMODEL, TestUtils.NON_EXISTENT_ENTITY));
+            entityNotFound("mlModel", TestUtils.NON_EXISTENT_ENTITY));
   }
 
   @Test
