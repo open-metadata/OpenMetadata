@@ -1,5 +1,6 @@
 import { Table } from '../../generated/entity/data/table';
 import { EntityHistory } from '../../generated/type/entityHistory';
+import { TagLabel } from '../../generated/type/tagLabel';
 import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
 
 export interface DatasetVersionProp {
@@ -7,7 +8,7 @@ export interface DatasetVersionProp {
   currentVersionData: Table;
   isVersionLoading: boolean;
   owner: Table['owner'];
-  tier: string;
+  tier: TagLabel;
   slashedTableName: TitleBreadcrumbProps['titleLinks'];
   datasetFQN: string;
   versionList: EntityHistory;

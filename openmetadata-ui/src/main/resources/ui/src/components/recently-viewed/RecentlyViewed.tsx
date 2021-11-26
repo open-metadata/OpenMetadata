@@ -15,7 +15,7 @@
   * limitations under the License.
 */
 
-import { EntityTags, FormatedTableData } from 'Models';
+import { FormatedTableData } from 'Models';
 import React, { FunctionComponent, useEffect, useState } from 'react';
 import { getDashboardByFqn } from '../../axiosAPIs/dashboardAPI';
 import { getPipelineByFqn } from '../../axiosAPIs/pipelineAPI';
@@ -73,10 +73,7 @@ const RecentlyViewed: FunctionComponent = () => {
               name,
               owner: getOwnerFromId(owner?.id)?.name || '--',
               serviceType: oData.serviceType,
-              tags: [
-                getTierFromTableTags(tags),
-                ...tableTags.map((tag) => tag.tagFQN),
-              ].filter((tag) => tag),
+              tags: [...tableTags].filter((tag) => tag),
               tier: getTierFromTableTags(tags),
               weeklyPercentileRank:
                 usageSummary?.weeklyStats.percentileRank || 0,
@@ -97,8 +94,8 @@ const RecentlyViewed: FunctionComponent = () => {
               name,
               owner: getOwnerFromId(owner?.id)?.name || '--',
               serviceType: oData.serviceType,
-              tags: (tags as Array<EntityTags>).map((tag) => tag.tagFQN),
-              tier: getTierFromTableTags(tags as Array<EntityTags>),
+              tags: tags,
+              tier: getTierFromTableTags(tags),
             });
 
             break;
@@ -125,8 +122,8 @@ const RecentlyViewed: FunctionComponent = () => {
               name: displayName,
               owner: getOwnerFromId(owner?.id)?.name || '--',
               serviceType: oData.serviceType,
-              tags: (tags as Array<EntityTags>).map((tag) => tag.tagFQN),
-              tier: getTierFromTableTags(tags as Array<EntityTags>),
+              tags: tags,
+              tier: getTierFromTableTags(tags),
             });
 
             break;
@@ -154,8 +151,8 @@ const RecentlyViewed: FunctionComponent = () => {
               name: displayName,
               owner: getOwnerFromId(owner?.id)?.name || '--',
               serviceType: oData.serviceType,
-              tags: (tags as Array<EntityTags>).map((tag) => tag.tagFQN),
-              tier: getTierFromTableTags(tags as Array<EntityTags>),
+              tags: tags,
+              tier: getTierFromTableTags(tags),
             });
 
             break;

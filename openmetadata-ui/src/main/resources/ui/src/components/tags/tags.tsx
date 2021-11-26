@@ -16,7 +16,9 @@
 */
 
 import classNames from 'classnames';
+import { isString } from 'lodash';
 import React, { FunctionComponent } from 'react';
+import PopOver from '../common/popover/PopOver';
 import { TagProps } from './tags.interface';
 import { tagStyles } from './tags.styles';
 
@@ -24,6 +26,7 @@ const Tags: FunctionComponent<TagProps> = ({
   className,
   editable,
   tag,
+  startWith,
   type = 'contained',
   removeTag,
   isRemovable = true,
@@ -35,24 +38,60 @@ const Tags: FunctionComponent<TagProps> = ({
     ? tagStyles.text.editable
     : tagStyles.text.default;
 
-  return (
-    <span
-      className={classNames(baseStyle, layoutStyles, className)}
-      data-testid="tags">
-      <span className={classNames(textBaseStyle, textLayoutStyles)}>{tag}</span>
-      {editable && isRemovable && (
-        <span
-          className="tw-py-1 tw-px-2 tw-rounded tw-cursor-pointer"
-          data-testid="remove"
-          onClick={(e: React.MouseEvent<HTMLElement, MouseEvent>) => {
-            e.preventDefault();
-            e.stopPropagation();
-            removeTag && removeTag(e, tag.startsWith('#') ? tag.slice(1) : tag);
-          }}>
-          <i aria-hidden="true" className="fa fa-times tw-text-grey-300" />
+  const getTagString = (tag: string) => {
+    return tag.startsWith('#') ? tag.slice(1) : tag;
+  };
+
+  const getTag = (tag: string, startWith = '') => {
+    return (
+      <span
+        className={classNames(baseStyle, layoutStyles, className)}
+        data-testid="tags">
+        <span className={classNames(textBaseStyle, textLayoutStyles)}>
+          {`${startWith}${tag}`}
         </span>
+        {editable && isRemovable && (
+          <span
+            className="tw-py-1 tw-px-2 tw-rounded tw-cursor-pointer"
+            data-testid="remove"
+            onClick={(e: React.MouseEvent<HTMLElement, MouseEvent>) => {
+              e.preventDefault();
+              e.stopPropagation();
+              removeTag && removeTag(e, getTagString(tag));
+            }}>
+            <i aria-hidden="true" className="fa fa-times tw-text-grey-300" />
+          </span>
+        )}
+      </span>
+    );
+  };
+
+  return (
+    <>
+      {isString(tag) ? (
+        getTag(tag, startWith)
+      ) : (
+        <>
+          {tag.description || tag.labelType ? (
+            <PopOver
+              html={
+                <div className="tw-text-left">
+                  <p>{tag.description}</p>
+                  <p>Type: {tag.labelType}</p>
+                </div>
+              }
+              position="top"
+              size="small"
+              title=""
+              trigger="mouseenter">
+              {getTag(tag.tagFQN, startWith)}
+            </PopOver>
+          ) : (
+            getTag(tag.tagFQN, startWith)
+          )}
+        </>
       )}
-    </span>
+    </>
   );
 };
 

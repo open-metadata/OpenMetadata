@@ -124,7 +124,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       isLink: owner?.type === 'team',
       openInNewTab: false,
     },
-    { key: 'Tier', value: tier ? tier.split('.')[1] : '' },
+    { key: 'Tier', value: tier?.tagFQN ? tier.tagFQN.split('.')[1] : '' },
     ...getConfigDetails(),
   ];
 
@@ -297,7 +297,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
             {activeTab === 3 && (
               <div className="tw-mt-4">
                 <ManageTabComponent
-                  currentTier={tier}
+                  currentTier={tier?.tagFQN}
                   currentUser={owner?.id}
                   hasEditAccess={hasEditAccess()}
                   onSave={onSettingsUpdate}

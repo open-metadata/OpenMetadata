@@ -535,7 +535,8 @@ const EntityTable = ({
                                       { 'diff-removed': tag?.removed }
                                     )}
                                     key={i}
-                                    tag={`#${tag.tagFQN}`}
+                                    startWith="#"
+                                    tag={tag}
                                   />
                                 )
                               )}
@@ -573,7 +574,11 @@ const EntityTable = ({
                                     </button>
                                   ) : (
                                     <span className="tw-opacity-60 group-hover:tw-opacity-100 tw-text-grey-muted group-hover:tw-text-primary">
-                                      <Tags tag="+ Add tag" type="outlined" />
+                                      <Tags
+                                        startWith="+ "
+                                        tag="Add tag"
+                                        type="outlined"
+                                      />
                                     </span>
                                   )}
                                 </TagsContainer>

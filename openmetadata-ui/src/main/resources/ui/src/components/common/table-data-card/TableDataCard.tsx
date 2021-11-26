@@ -15,10 +15,11 @@
   * limitations under the License.
 */
 
-import { startCase, uniqueId } from 'lodash';
+import { isString, isUndefined, startCase, uniqueId } from 'lodash';
 import React, { FunctionComponent } from 'react';
 import { Link } from 'react-router-dom';
 import { SearchIndex } from '../../../enums/search.enum';
+import { TagLabel } from '../../../generated/type/tagLabel';
 import { stringToHTML } from '../../../utils/StringsUtils';
 import {
   getEntityIcon,
@@ -32,11 +33,11 @@ type Props = {
   owner?: string;
   description?: string;
   tableType?: string;
-  tier?: string;
+  tier?: string | TagLabel;
   usage?: number;
   serviceType?: string;
   fullyQualifiedName: string;
-  tags?: string[];
+  tags?: string[] | TagLabel[];
   indexType: string;
   matches?: {
     key: string;
@@ -56,6 +57,14 @@ const TableDataCard: FunctionComponent<Props> = ({
   indexType,
   matches,
 }: Props) => {
+  const getTier = () => {
+    if (tier) {
+      return isString(tier) ? tier : tier.tagFQN;
+    }
+
+    return 'No Tier';
+  };
+
   const OtherDetails = [
     { key: 'Owner', value: owner },
     { key: 'Service', value: serviceType },
@@ -66,16 +75,33 @@ const TableDataCard: FunctionComponent<Props> = ({
           ? getUsagePercentile(usage)
           : undefined,
     },
-    { key: 'Tier', value: tier ? tier : 'No Tier' },
+    { key: 'Tier', value: getTier() },
   ];
 
   const getAssetTags = () => {
-    const assetTags = [...(tags as Array<string>)];
-    if (tier) {
-      assetTags.filter((tag) => !tag.includes(tier)).unshift(tier);
+    if (!isUndefined(tags)) {
+      if (isString(tags[0])) {
+        const assetTags = [...(tags as Array<string>)];
+        if (tier && isString(tier)) {
+          assetTags
+            .filter((tag) => !(tag as string).includes(tier))
+            .unshift(tier);
+        }
+
+        return [...new Set(assetTags)];
+      } else {
+        const assetTags = [...(tags as Array<TagLabel>)];
+        if (tier) {
+          assetTags
+            .filter((tag) => !tag.tagFQN.includes((tier as TagLabel).tagFQN))
+            .unshift(tier as TagLabel);
+        }
+
+        return [...new Set(assetTags)];
+      }
     }
 
-    return [...new Set(assetTags)];
+    return tags;
   };
 
   return (

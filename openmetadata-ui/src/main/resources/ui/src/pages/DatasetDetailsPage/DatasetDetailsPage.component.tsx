@@ -51,6 +51,7 @@ import {
 } from '../../generated/entity/data/table';
 import { User } from '../../generated/entity/teams/user';
 import { EntityLineage } from '../../generated/type/entityLineage';
+import { TagLabel } from '../../generated/type/tagLabel';
 import {
   addToRecentViewed,
   getCurrentUserId,
@@ -62,7 +63,7 @@ import {
 } from '../../utils/DatasetDetailsUtils';
 import { getEntityLineage } from '../../utils/EntityUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
-import { getOwnerFromId, getTierFromTableTags } from '../../utils/TableUtils';
+import { getOwnerFromId, getTierTags } from '../../utils/TableUtils';
 import { getTableTags } from '../../utils/TagsUtils';
 
 const DatasetDetailsPage: FunctionComponent = () => {
@@ -71,7 +72,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
   const [isLineageLoading, setIsLineageLoading] = useState<boolean>(true);
   const USERId = getCurrentUserId();
   const [tableId, setTableId] = useState('');
-  const [tier, setTier] = useState<string>();
+  const [tier, setTier] = useState<TagLabel>();
   const [name, setName] = useState('');
   const [followers, setFollowers] = useState<Array<User>>([]);
   const [slashedTableName, setSlashedTableName] = useState<
@@ -171,7 +172,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
           setPreviousVersion(changeDescription.previousVersion);
           setTableDetails(res.data);
           setOwner(getOwnerFromId(owner?.id));
-          setTier(getTierFromTableTags(tags));
+          setTier(getTierTags(tags));
           resolve();
         })
         .catch(() => reject());
@@ -253,7 +254,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
         setTableId(id);
         setCurrentVersion(version);
         setPreviousVersion(changeDescription?.previousVersion);
-        setTier(getTierFromTableTags(tags));
+        setTier(getTierTags(tags));
         setOwner(getOwnerFromId(owner?.id));
         setFollowers(followers);
         getDatabase(database.id, 'service').then((resDB: AxiosResponse) => {
@@ -345,7 +346,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
           tableDetails={tableDetails}
           tableProfile={tableProfile}
           tableTags={tableTags}
-          tier={tier as string}
+          tier={tier as TagLabel}
           unfollowTableHandler={unfollowTable}
           usageSummary={usageSummary}
           users={AppState.users}

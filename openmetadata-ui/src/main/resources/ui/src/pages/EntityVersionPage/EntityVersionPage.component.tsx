@@ -20,14 +20,15 @@ import {
 import { ServiceCategory } from '../../enums/service.enum';
 import { Table } from '../../generated/entity/data/table';
 import { EntityHistory } from '../../generated/type/entityHistory';
+import { TagLabel } from '../../generated/type/tagLabel';
 import useToastContext from '../../hooks/useToastContext';
 import { getPartialNameFromFQN } from '../../utils/CommonUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
-import { getOwnerFromId, getTierFromTableTags } from '../../utils/TableUtils';
+import { getOwnerFromId, getTierTags } from '../../utils/TableUtils';
 const EntityVersionPage: FunctionComponent = () => {
   const history = useHistory();
   const showToast = useToastContext();
-  const [tier, setTier] = useState<string>();
+  const [tier, setTier] = useState<TagLabel>();
   const [owner, setOwner] = useState<
     Table['owner'] & { displayName?: string }
   >();
@@ -61,7 +62,7 @@ const EntityVersionPage: FunctionComponent = () => {
     )
       .then((res: AxiosResponse) => {
         const { id, owner, tags, name, database } = res.data;
-        setTier(getTierFromTableTags(tags));
+        setTier(getTierTags(tags));
         setOwner(getOwnerFromId(owner?.id));
         setCurrentVersionData(res.data);
         getDatabase(database.id, 'service').then((resDB: AxiosResponse) => {
@@ -158,7 +159,7 @@ const EntityVersionPage: FunctionComponent = () => {
         getTableVersion(id, version)
           .then((vRes: AxiosResponse) => {
             const { owner, tags } = vRes.data;
-            setTier(getTierFromTableTags(tags));
+            setTier(getTierTags(tags));
             setOwner(getOwnerFromId(owner?.id));
             setCurrentVersionData(vRes.data);
             setIsVersionLoading(false);
@@ -201,7 +202,7 @@ const EntityVersionPage: FunctionComponent = () => {
           isVersionLoading={isVersionLoading}
           owner={owner}
           slashedTableName={slashedTableName}
-          tier={tier as string}
+          tier={tier as TagLabel}
           version={version}
           versionHandler={versionHandler}
           versionList={versionList}
