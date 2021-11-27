@@ -55,7 +55,8 @@ public class UserRepository extends EntityRepository<User> {
 
 
   public UserRepository(CollectionDAO dao) {
-    super(UserResource.COLLECTION_PATH, User.class, dao.userDAO(), dao, USER_PATCH_FIELDS, USER_UPDATE_FIELDS);
+    super(UserResource.COLLECTION_PATH, Entity.USER, User.class, dao.userDAO(), dao, USER_PATCH_FIELDS,
+            USER_UPDATE_FIELDS);
     this.dao = dao;
   }
 

@@ -47,8 +47,8 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
   private final CollectionDAO dao;
 
   public DatabaseServiceRepository(CollectionDAO dao) {
-    super(DatabaseServiceResource.COLLECTION_PATH, DatabaseService.class, dao.dbServiceDAO(), dao, Fields.EMPTY_FIELDS,
-            Fields.EMPTY_FIELDS);
+    super(DatabaseServiceResource.COLLECTION_PATH, Entity.DATABASE_SERVICE, DatabaseService.class,
+            dao.dbServiceDAO(), dao, Fields.EMPTY_FIELDS, Fields.EMPTY_FIELDS);
     this.dao = dao;
   }
 

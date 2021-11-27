@@ -59,7 +59,7 @@ public class DbtModelRepository extends EntityRepository<DbtModel> {
   private final CollectionDAO dao;
 
   public DbtModelRepository(CollectionDAO dao) {
-    super(DbtModelResource.COLLECTION_PATH, DbtModel.class, dao.dbtModelDAO(), dao,
+    super(DbtModelResource.COLLECTION_PATH, Entity.DBTMODEL, DbtModel.class, dao.dbtModelDAO(), dao,
         DBT_MODEL_PATCH_FIELDS, DBT_MODEL_UPDATE_FIELDS);
     this.dao = dao;
   }

@@ -17,7 +17,6 @@
 package org.openmetadata.catalog.jdbi3;
 
 import org.jdbi.v3.sqlobject.transaction.Transaction;
-import org.openmetadata.catalog.Entity.EntityList;
 import org.openmetadata.catalog.resources.events.EventResource.ChangeEventList;
 import org.openmetadata.catalog.type.ChangeEvent;
 import org.openmetadata.catalog.util.JsonUtils;
@@ -43,13 +42,13 @@ public class ChangeEventRepository {
   public ChangeEventRepository(CollectionDAO dao) { this.dao = dao; }
 
   @Transaction
-  public ResultList<ChangeEvent> list(Date date, EntityList entityCreatedList,
-                                      EntityList entityUpdatedList, EntityList entityDeletedList) throws IOException,
+  public ResultList<ChangeEvent> list(Date date, List<String> entityCreatedList,
+                                      List<String> entityUpdatedList, List<String> entityDeletedList) throws IOException,
           GeneralSecurityException {
     List<String> jsons = new ArrayList<>();
-    jsons.addAll(dao.changeEventDAO().list(ENTITY_CREATED.value(), entityCreatedList.getList(), date.getTime()));
-    jsons.addAll(dao.changeEventDAO().list(ENTITY_UPDATED.value(), entityUpdatedList.getList(), date.getTime()));
-    jsons.addAll(dao.changeEventDAO().list(ENTITY_DELETED.value(), entityDeletedList.getList(), date.getTime()));
+    jsons.addAll(dao.changeEventDAO().list(ENTITY_CREATED.value(), entityCreatedList, date.getTime()));
+    jsons.addAll(dao.changeEventDAO().list(ENTITY_UPDATED.value(), entityUpdatedList, date.getTime()));
+    jsons.addAll(dao.changeEventDAO().list(ENTITY_DELETED.value(), entityDeletedList, date.getTime()));
     List<ChangeEvent> changeEvents = new ArrayList<>();
     for (String json : jsons) {
       changeEvents.add(JsonUtils.readValue(json, ChangeEvent.class));

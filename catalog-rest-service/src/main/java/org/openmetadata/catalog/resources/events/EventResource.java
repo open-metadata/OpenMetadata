@@ -82,13 +82,19 @@ public class EventResource {
                           schema = @Schema(implementation = ChangeEvent.class))),
                   @ApiResponse(responseCode = "404", description = "Entity for instance {id} is not found")})
   public ResultList<ChangeEvent> get(@Context UriInfo uriInfo,
-                                     @Parameter(description = "Entities requested for `entityCreated` event",
+                                     @Parameter(description = "List of comma separated entities requested for " +
+                                             "`entityCreated` event. When null or not set, all entities will be " +
+                                             "returned",
                                              schema = @Schema(type = "string", example = "table,dashboard,..."))
                                      @QueryParam("entityCreated") String entityCreated,
-                                     @Parameter(description = "Entities requested for `entityUpdated` event",
+                                     @Parameter(description = "List of comma separated entities requested for " +
+                                             "`entityUpdated` event. When null or not set, all entities will be " +
+                                             "returned",
                                              schema = @Schema(type = "string", example = "table,dashboard,..."))
                                      @QueryParam("entityUpdated") String entityUpdated,
-                                     @Parameter(description = "Entities requested for `entityDeleted` event",
+                                     @Parameter(description = "List of comma separated entities requested for " +
+                                             "`entityDeleted` event. When null or not set, all entities will be " +
+                                             "returned",
                                              schema = @Schema(type = "string", example = "table,dashboard,..."))
                                      @QueryParam("entityDeleted") String entityDeleted,
                                      @Parameter(description = "Events starting from this date time in ISO8601 format",
@@ -97,9 +103,9 @@ public class EventResource {
                                      @QueryParam("date") String date)
           throws IOException, GeneralSecurityException, ParseException {
     Date parsedDate = RestUtil.DATE_TIME_FORMAT.parse(date);
-    EntityList entityCreatedList = new EntityList(entityCreated);
-    EntityList entityUpdatedList = new EntityList(entityCreated);
-    EntityList entityDeletedList = new EntityList(entityCreated);
+    List<String> entityCreatedList = EntityList.getEntityList("entityCreated", entityCreated);
+    List<String> entityUpdatedList = EntityList.getEntityList("entityUpdated", entityUpdated);
+    List<String> entityDeletedList = EntityList.getEntityList("entityDeleted", entityDeleted);
     return dao.list(parsedDate, entityCreatedList, entityUpdatedList, entityDeletedList);
   }
 }

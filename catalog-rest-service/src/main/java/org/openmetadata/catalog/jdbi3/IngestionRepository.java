@@ -47,7 +47,8 @@ public class IngestionRepository extends EntityRepository<Ingestion> {
   private final CollectionDAO dao;
 
   public IngestionRepository(CollectionDAO dao) {
-    super(Entity.INGESTION, Ingestion.class, dao.ingestionDAO(), dao, INGESTION_PATCH_FIELDS, INGESTION_UPDATE_FIELDS);
+    super(IngestionResource.COLLECTION_PATH, Entity.INGESTION, Ingestion.class, dao.ingestionDAO(), dao,
+            INGESTION_PATCH_FIELDS, INGESTION_UPDATE_FIELDS);
     this.dao = dao;
   }
 

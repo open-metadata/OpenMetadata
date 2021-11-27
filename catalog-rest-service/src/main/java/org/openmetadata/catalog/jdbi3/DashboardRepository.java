@@ -51,8 +51,8 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
   private final CollectionDAO dao;
 
   public DashboardRepository(CollectionDAO dao) {
-    super(DashboardResource.COLLECTION_PATH, Dashboard.class, dao.dashboardDAO(), dao, DASHBOARD_PATCH_FIELDS,
-            DASHBOARD_UPDATE_FIELDS);
+    super(DashboardResource.COLLECTION_PATH, Entity.DASHBOARD, Dashboard.class, dao.dashboardDAO(), dao,
+            DASHBOARD_PATCH_FIELDS, DASHBOARD_UPDATE_FIELDS);
     this.dao = dao;
   }
 
