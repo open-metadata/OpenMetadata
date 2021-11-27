@@ -405,11 +405,11 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
   }
 
   BiConsumer<MlFeature, MlFeature> assertMlFeature = (MlFeature expected, MlFeature actual) -> {
-        assertNotNull(actual.getFullyQualifiedName());
-        assertEquals(actual.getName(), expected.getName());
-        assertEquals(actual.getDescription(), expected.getDescription());
-        assertEquals(actual.getFeatureAlgorithm(), expected.getFeatureAlgorithm());
-        assertEquals(actual.getDataType(), expected.getDataType());
+    assertNotNull(actual.getFullyQualifiedName());
+    assertEquals(actual.getName(), expected.getName());
+    assertEquals(actual.getDescription(), expected.getDescription());
+    assertEquals(actual.getFeatureAlgorithm(), expected.getFeatureAlgorithm());
+    assertEquals(actual.getDataType(), expected.getDataType());
   };
 
   BiConsumer<MlHyperParameter, MlHyperParameter> assertMlHyperParam =
@@ -417,7 +417,7 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
         assertEquals(actual.getName(), expected.getName());
         assertEquals(actual.getDescription(), expected.getDescription());
         assertEquals(actual.getValue(), expected.getValue());
-  };
+      };
 
   BiConsumer<MlFeatureSource, MlFeatureSource> assertMlFeatureSource =
           (MlFeatureSource expected, MlFeatureSource actual) -> {
@@ -425,7 +425,7 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
         assertEquals(actual.getName(), expected.getName());
         assertEquals(actual.getDescription(), expected.getDescription());
         assertEquals(actual.getDataType(), expected.getDataType());
-  };
+      };
 
   private void validateMlFeatureSources(List<MlFeature> expected, List<MlFeature> actual)
           throws HttpResponseException {
