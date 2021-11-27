@@ -204,7 +204,7 @@ public class MlModelResource {
                       content = @Content(mediaType = "application/json",
                               schema = @Schema(implementation = CreateMlModel.class))),
               @ApiResponse(responseCode = "400", description = "Bad request")
-        })
+          })
   public Response create(@Context UriInfo uriInfo,
                          @Context SecurityContext securityContext,
                          @Valid CreateMlModel create) throws IOException, ParseException {
