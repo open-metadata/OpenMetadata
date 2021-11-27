@@ -51,10 +51,10 @@ public class DbtModelRepository extends EntityRepository<DbtModel> {
   static final Logger LOG = LoggerFactory.getLogger(DbtModelRepository.class);
   // Model fields that can be patched in a PATCH request
   static final Fields DBT_MODEL_PATCH_FIELDS = new Fields(DbtModelResource.FIELD_LIST,
-           "owner,columns,database,tags");
+           "owner,columns,database,tags,viewDefinition");
     // Model fields that can be updated in a PUT request
   static final Fields DBT_MODEL_UPDATE_FIELDS = new Fields(DbtModelResource.FIELD_LIST,
-           "owner,columns,database,tags");
+           "owner,columns,database,tags,viewDefinition");
 
   private final CollectionDAO dao;
 
