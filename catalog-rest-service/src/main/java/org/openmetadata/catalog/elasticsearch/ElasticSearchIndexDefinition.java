@@ -26,7 +26,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.file.Files;
@@ -132,6 +131,7 @@ public class ElasticSearchIndexDefinition {
 @SuperBuilder
 @Data
 class ElasticSearchIndex {
+  String name;
   @JsonProperty("display_name")
   String displayName;
   String fqdn;
@@ -419,6 +419,8 @@ class DashboardESIndex extends ElasticSearchIndex {
         .service(dashboard.getService().getName())
         .serviceType(dashboard.getService().getType())
         .serviceCategory("dashboardService")
+        .followers(dashboard.getFollowers().stream().map(item -> item.getId().toString()).collect(Collectors.toList()))
+        .owner(dashboard.getOwner().getId().toString())
         .tags(tags);
 
     if (dashboard.getUsageSummary() != null) {
@@ -437,6 +439,7 @@ class DashboardESIndex extends ElasticSearchIndex {
     if (dashboard.getOwner() != null) {
       dashboardESIndexBuilder.owner(dashboard.getOwner().getId().toString());
     }
+
     return dashboardESIndexBuilder;
   }
 }
@@ -494,6 +497,7 @@ class PipelineESIndex extends ElasticSearchIndex {
     if (pipeline.getOwner() != null) {
       pipelineESIndexBuilder.owner(pipeline.getOwner().getId().toString());
     }
+
     return pipelineESIndexBuilder;
   }
 }

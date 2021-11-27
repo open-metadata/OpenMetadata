@@ -1,17 +1,7 @@
 {
-  "mappings":{
     "properties": {
-      "topic_name": {
+      "name": {
         "type":"text"
-      },
-      "schema": {
-        "type":"text",
-        "analyzer": "simple",
-        "fields": {
-          "raw": {
-            "type": "keyword"
-          }
-        }
       },
       "display_name": {
         "type": "text"
@@ -81,5 +71,4 @@
         "type": "long"
       }
     }
-  }
 }
