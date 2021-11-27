@@ -20,10 +20,11 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.MlModel;
-import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.resources.mlmodels.MlModelResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.MlFeature;
+import org.openmetadata.catalog.type.MlFeatureSource;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
@@ -39,14 +40,12 @@ import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 
-import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
-
 public class MlModelRepository extends EntityRepository<MlModel> {
   private static final Logger LOG = LoggerFactory.getLogger(MlModelRepository.class);
   private static final Fields MODEL_UPDATE_FIELDS = new Fields(MlModelResource.FIELD_LIST,
-          "owner,dashboard,mlHyperParameters,mlFeatures,tags");
+          "owner,algorithm,dashboard,mlHyperParameters,mlFeatures,tags");
   private static final Fields MODEL_PATCH_FIELDS = new Fields(MlModelResource.FIELD_LIST,
-          "owner,dashboard,mlHyperParameters,mlFeatures,tags");
+          "owner,algorithm,dashboard,mlHyperParameters,mlFeatures,tags");
   private final CollectionDAO dao;
 
   public MlModelRepository(CollectionDAO dao) {
@@ -62,12 +61,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
 
   @Transaction
   public void delete(UUID id) {
-    if (dao.relationshipDAO().findToCount(id.toString(), Relationship.CONTAINS.ordinal(), Entity.MLMODEL) > 0) {
-      throw new IllegalArgumentException("Model is not empty");
-    }
-    if (dao.mlModelDAO().delete(id) <= 0) {
-      throw EntityNotFoundException.byMessage(entityNotFound(Entity.MLMODEL, id));
-    }
+    dao.mlModelDAO().delete(id);
     dao.relationshipDAO().deleteAll(id.toString());
   }
 
@@ -92,7 +86,9 @@ public class MlModelRepository extends EntityRepository<MlModel> {
 
   @Override
   public void restorePatchAttributes(MlModel original, MlModel updated) throws IOException, ParseException {
-
+    // Patch can't make changes to following fields. Ignore the changes
+    updated.withFullyQualifiedName(original.getFullyQualifiedName())
+            .withName(original.getName()).withId(original.getId());
   }
 
   @Override
@@ -104,16 +100,40 @@ public class MlModelRepository extends EntityRepository<MlModel> {
     return dao.tagDAO().getTags(fqn);
   }
 
+  private void setMlFeatureSourcesFQN(String parentFQN, List<MlFeatureSource> mlSources) {
+    mlSources.forEach(s -> {
+      String sourceFqn = parentFQN + "." + s.getName();
+      s.setFullyQualifiedName(sourceFqn);
+    });
+  }
+
+  private void setMlFeatureFQN(String parentFQN, List<MlFeature> mlFeatures) {
+    mlFeatures.forEach(f -> {
+      String featureFqn = parentFQN + "." + f.getName();
+      f.setFullyQualifiedName(featureFqn);
+      if (f.getFeatureSources() != null) {
+        setMlFeatureSourcesFQN(featureFqn, f.getFeatureSources());
+      }
+    });
+  }
+
 
   @Override
-  public void validate(MlModel model) throws IOException {
-    model.setFullyQualifiedName(getFQN(model));
-    EntityUtil.populateOwner(dao.userDAO(), dao.teamDAO(), model.getOwner()); // Validate owner
-    if (model.getDashboard() != null) {
-      UUID dashboardId = model.getDashboard().getId();
-      model.setDashboard(dao.dashboardDAO().findEntityReferenceById(dashboardId));
+  public void validate(MlModel mlModel) throws IOException {
+    mlModel.setFullyQualifiedName(getFQN(mlModel));
+    setMlFeatureFQN(mlModel.getFullyQualifiedName(), mlModel.getMlFeatures());
+
+    // Check if owner is valid and set the relationship
+    mlModel.setOwner(EntityUtil.populateOwner(dao.userDAO(), dao.teamDAO(), mlModel.getOwner()));
+
+    setDashboard(mlModel, mlModel.getDashboard());
+    if (mlModel.getDashboard() != null) {
+      // Add relationship from MlModel to Dashboard
+      String dashboardId = mlModel.getDashboard().getId().toString();
+      dao.relationshipDAO().insert(dashboardId, mlModel.getId().toString(), Entity.MLMODEL, Entity.DASHBOARD,
+              Relationship.USES.ordinal());
     }
-    model.setTags(EntityUtil.addDerivedTags(dao.tagDAO(), model.getTags()));
+    mlModel.setTags(EntityUtil.addDerivedTags(dao.tagDAO(), mlModel.getTags()));
   }
 
   @Override
@@ -138,8 +158,18 @@ public class MlModelRepository extends EntityRepository<MlModel> {
 
   @Override
   public void storeRelationships(MlModel mlModel) throws IOException {
-    setOwner(mlModel, mlModel.getOwner());
+
+    EntityUtil.setOwner(dao.relationshipDAO(), mlModel.getId(), Entity.MLMODEL, mlModel.getOwner());
+
     setDashboard(mlModel, mlModel.getDashboard());
+
+    if (mlModel.getDashboard() != null) {
+      // Add relationship from MlModel to Dashboard
+      String dashboardId = mlModel.getDashboard().getId().toString();
+      dao.relationshipDAO().insert(dashboardId, mlModel.getId().toString(), Entity.MLMODEL, Entity.DASHBOARD,
+              Relationship.USES.ordinal());
+    }
+
     applyTags(mlModel);
   }
 
@@ -151,11 +181,6 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   private EntityReference getOwner(MlModel mlModel) throws IOException {
     return mlModel == null ? null : EntityUtil.populateOwner(mlModel.getId(), dao.relationshipDAO(),
             dao.userDAO(), dao.teamDAO());
-  }
-
-  public void setOwner(MlModel mlModel, EntityReference owner) {
-    EntityUtil.setOwner(dao.relationshipDAO(), mlModel.getId(), Entity.MLMODEL, owner);
-    mlModel.setOwner(owner);
   }
 
   private EntityReference getDashboard(MlModel mlModel) throws IOException {
@@ -193,10 +218,10 @@ public class MlModelRepository extends EntityRepository<MlModel> {
     return model == null ? null : EntityUtil.getFollowers(model.getId(), dao.relationshipDAO(), dao.userDAO());
   }
 
-  static class MlModelEntityInterface implements EntityInterface<MlModel> {
+  public static class MlModelEntityInterface implements EntityInterface<MlModel> {
     private final MlModel entity;
 
-    MlModelEntityInterface(MlModel entity) {
+    public MlModelEntityInterface(MlModel entity) {
       this.entity = entity;
     }
 
@@ -304,10 +329,12 @@ public class MlModelRepository extends EntityRepository<MlModel> {
 
     @Override
     public void entitySpecificUpdate() throws IOException {
-      updateAlgorithm(original.getEntity(), updated.getEntity());
-      updateDashboard(original.getEntity(), updated.getEntity());
-      updateMlFeatures(original.getEntity(), updated.getEntity());
-      updateMlHyperParameters(original.getEntity(), updated.getEntity());
+      MlModel origMlModel = original.getEntity();
+      MlModel updatedMlModel = updated.getEntity();
+      updateAlgorithm(origMlModel, updatedMlModel);
+      updateDashboard(origMlModel, updatedMlModel);
+      updateMlFeatures(origMlModel, updatedMlModel);
+      updateMlHyperParameters(origMlModel, updatedMlModel);
     }
 
     private void updateAlgorithm(MlModel origModel, MlModel updatedModel) throws JsonProcessingException {
@@ -323,15 +350,21 @@ public class MlModelRepository extends EntityRepository<MlModel> {
     }
 
     private void updateDashboard(MlModel origModel, MlModel updatedModel) throws JsonProcessingException {
-      // Remove existing dashboards
-      removeDashboard(origModel);
+      String modelId = updatedModel.getId().toString();
 
-      EntityReference origOwner = origModel.getDashboard();
-      EntityReference updatedOwner = updatedModel.getDashboard();
-      if (recordChange("owner", origOwner == null ? null : origOwner.getId(),
-              updatedOwner == null ? null : updatedOwner.getId())) {
-        setDashboard(updatedModel, updatedModel.getDashboard());
+      // Remove the dashboard associated with the model, if any
+      if (origModel.getDashboard() != null) {
+        dao.relationshipDAO().deleteFrom(modelId, Relationship.USES.ordinal(), "dashboard");
       }
+
+      // Add relationship from model to dashboard
+      EntityReference updatedDashboard = updatedModel.getDashboard();
+      if (updatedDashboard != null) {
+        dao.relationshipDAO().insert(modelId, updatedDashboard.getId().toString(),
+                Entity.MLMODEL, Entity.DASHBOARD, Relationship.USES.ordinal());
+      }
+      recordChange("dashboard", origModel.getDashboard(), updatedDashboard, true);
+
     }
   }
 }

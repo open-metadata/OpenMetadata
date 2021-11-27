@@ -61,6 +61,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.BiConsumer;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.CREATED;
@@ -645,6 +646,7 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
   protected final T createAndCheckEntity(Object create, Map<String, String> authHeaders) throws IOException {
     // Validate an entity that is created has all the information set in create request
     String updatedBy = TestUtils.getPrincipal(authHeaders);
+    // aqui si que tenim HREF
     T entity = createEntity(create, authHeaders);
     EntityInterface<T> entityInterface = getEntityInterface(entity);
 
@@ -1028,5 +1030,22 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
   private void printEntities(ResultList<T> list) {
     list.getData().forEach(e -> LOG.info("{} {}", entityClass, getEntityInterface(e).getFullyQualifiedName()));
     LOG.info("before {} after {} ", list.getPaging().getBefore(), list.getPaging().getAfter());
+  }
+
+  /**
+   * Given a list of properties of an Entity (e.g., List<Column> or List<MlFeature> and
+   * a function that validate the elements of T, validate lists
+   */
+  public <P> void assertListProperty(List<P> expected, List<P> actual, BiConsumer<P, P> validate)
+          throws HttpResponseException {
+    if (expected == null && actual == null) {
+      return;
+    }
+
+    assertNotNull(expected);
+    assertEquals(expected.size(), actual.size());
+    for (int i = 0; i < expected.size(); i++) {
+      validate.accept(expected.get(i), actual.get(i));
+    }
   }
 }

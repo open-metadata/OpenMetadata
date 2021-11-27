@@ -287,7 +287,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     @Override
     public EntityReference getEntityReference() {
       return new EntityReference().withId(getId()).withName(getFullyQualifiedName()).withDescription(getDescription())
-              .withDisplayName(getDisplayName()).withType(Entity.DASHBOARD);
+              .withDisplayName(getDisplayName()).withType(Entity.DASHBOARD).withHref(getHref());
     }
 
     @Override

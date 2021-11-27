@@ -34,6 +34,7 @@ import org.openmetadata.catalog.jdbi3.MlModelRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
+import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.RestUtil.PatchResponse;
@@ -82,15 +83,10 @@ public class MlModelResource {
   private final MlModelRepository dao;
   private final CatalogAuthorizer authorizer;
 
-  public static List<MlModel> addHref(UriInfo uriInfo, List<MlModel> models) {
-    Optional.ofNullable(models).orElse(Collections.emptyList()).forEach(i -> addHref(uriInfo, i));
-    return models;
-  }
-
   public static MlModel addHref(UriInfo uriInfo, MlModel mlmodel) {
     mlmodel.setHref(RestUtil.getHref(uriInfo, COLLECTION_PATH, mlmodel.getId()));
     Entity.withHref(uriInfo, mlmodel.getOwner());
-    Entity.withHref(uriInfo, mlmodel.getDashboard()); // Dashboard HREF
+    Entity.withHref(uriInfo, mlmodel.getDashboard());
     Entity.withHref(uriInfo, mlmodel.getFollowers());
     return mlmodel;
   }
@@ -152,11 +148,11 @@ public class MlModelResource {
 
     ResultList<MlModel> mlmodels;
     if (before != null) { // Reverse paging
-      mlmodels = dao.listBefore(uriInfo, fields, null, limitParam, before); // Ask for one extra entry
+      mlmodels = dao.listBefore(uriInfo, fields, null, limitParam, before);
     } else { // Forward paging or first page
       mlmodels = dao.listAfter(uriInfo, fields, null, limitParam, after);
     }
-    addHref(uriInfo, mlmodels.getData());
+    mlmodels.getData().forEach(m -> addHref(uriInfo, m));
     return mlmodels;
   }
 
@@ -196,8 +192,7 @@ public class MlModelResource {
                                     schema = @Schema(type = "string", example = FIELDS))
                             @QueryParam("fields") String fieldsParam) throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
-    MlModel mlmodel = dao.getByName(uriInfo, fqn, fields);
-    return addHref(uriInfo, mlmodel);
+    return addHref(uriInfo, dao.getByName(uriInfo, fqn, fields));
   }
 
 
@@ -205,12 +200,13 @@ public class MlModelResource {
   @Operation(summary = "Create an ML Model", tags = "mlModels",
           description = "Create a new ML Model.",
           responses = {
-                  @ApiResponse(responseCode = "200", description = "The model",
-                          content = @Content(mediaType = "application/json",
-                          schema = @Schema(implementation = CreateMlModel.class))),
-                  @ApiResponse(responseCode = "400", description = "Bad request")
+              @ApiResponse(responseCode = "200", description = "ML Model",
+                      content = @Content(mediaType = "application/json",
+                              schema = @Schema(implementation = CreateMlModel.class))),
+              @ApiResponse(responseCode = "400", description = "Bad request")
           })
-  public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext,
+  public Response create(@Context UriInfo uriInfo,
+                         @Context SecurityContext securityContext,
                          @Valid CreateMlModel create) throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     MlModel mlModel = getMlModel(securityContext, create);
@@ -225,22 +221,22 @@ public class MlModelResource {
           externalDocs = @ExternalDocumentation(description = "JsonPatch RFC",
                   url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
-  public Response updateDescription(@Context UriInfo uriInfo,
-                                    @Context SecurityContext securityContext,
-                                    @PathParam("id") String id,
-                                    @RequestBody(description = "JsonPatch with array of operations",
-                                         content = @Content(mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
-                                                 examples = {@ExampleObject("[" +
-                                                         "{op:remove, path:/a}," +
-                                                         "{op:add, path: /b, value: val}" +
-                                                         "]")}))
-                                         JsonPatch patch) throws IOException, ParseException {
+  public Response patch(@Context UriInfo uriInfo,
+                        @Context SecurityContext securityContext,
+                        @Parameter(description = "Id of the ML Model", schema = @Schema(type = "string"))
+                        @PathParam("id") String id,
+                        @RequestBody(description = "JsonPatch with array of operations",
+                                content = @Content(mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
+                                        examples = {@ExampleObject("[" +
+                                                "{op:remove, path:/a}," +
+                                                "{op:add, path: /b, value: val}" +
+                                                "]")}))
+                                JsonPatch patch) throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, FIELDS);
     MlModel mlModel = dao.get(uriInfo, id, fields);
-    SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext,
-            dao.getOwnerReference(mlModel));
-    PatchResponse<MlModel> response =
-            dao.patch(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
+    SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, dao.getOwnerReference(mlModel));
+    PatchResponse<MlModel> response = dao.patch(uriInfo, UUID.fromString(id),
+            securityContext.getUserPrincipal().getName(), patch);
     addHref(uriInfo, response.getEntity());
     return response.toResponse();
   }
@@ -258,6 +254,7 @@ public class MlModelResource {
                                  @Context SecurityContext securityContext,
                                  @Valid CreateMlModel create) throws IOException, ParseException {
     MlModel mlModel = getMlModel(securityContext, create);
+    SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, dao.getOwnerReference(mlModel));
     PutResponse<MlModel> response = dao.createOrUpdate(uriInfo, mlModel);
     addHref(uriInfo, response.getEntity());
     return response.toResponse();
@@ -298,6 +295,43 @@ public class MlModelResource {
             UUID.fromString(userId)).toResponse();
   }
 
+  @GET
+  @Path("/{id}/versions")
+  @Operation(summary = "List Ml Model versions", tags = "mlModels",
+          description = "Get a list of all the versions of an Ml Model identified by `id`",
+          responses = {@ApiResponse(responseCode = "200", description = "List of Ml Model versions",
+                  content = @Content(mediaType = "application/json",
+                          schema = @Schema(implementation = EntityHistory.class)))
+          })
+  public EntityHistory listVersions(@Context UriInfo uriInfo,
+                                    @Context SecurityContext securityContext,
+                                    @Parameter(description = "ML Model Id", schema = @Schema(type = "string"))
+                                    @PathParam("id") String id)
+          throws IOException, ParseException, GeneralSecurityException {
+    return dao.listVersions(id);
+  }
+
+  @GET
+  @Path("/{id}/versions/{version}")
+  @Operation(summary = "Get a version of the ML Model", tags = "mlModels",
+          description = "Get a version of the ML Model by given `id`",
+          responses = {
+              @ApiResponse(responseCode = "200", description = "MlModel",
+                      content = @Content(mediaType = "application/json",
+                              schema = @Schema(implementation = MlModel.class))),
+              @ApiResponse(responseCode = "404", description = "ML Model for instance {id} and version {version} is " +
+                      "not found")
+          })
+  public MlModel getVersion(@Context UriInfo uriInfo,
+                        @Context SecurityContext securityContext,
+                        @Parameter(description = "ML Model Id", schema = @Schema(type = "string"))
+                        @PathParam("id") String id,
+                        @Parameter(description = "ML Model version number in the form `major`.`minor`",
+                                schema = @Schema(type = "string", example = "0.1 or 1.1"))
+                        @PathParam("version") String version) throws IOException, ParseException {
+    return dao.getVersion(id, version);
+  }
+
   @DELETE
   @Path("/{id}")
   @Operation(summary = "Delete an ML Model", tags = "mlModels",
@@ -306,7 +340,11 @@ public class MlModelResource {
                   @ApiResponse(responseCode = "200", description = "OK"),
                   @ApiResponse(responseCode = "404", description = "model for instance {id} is not found")
           })
-  public Response delete(@Context UriInfo uriInfo, @PathParam("id") String id) {
+  public Response delete(@Context UriInfo uriInfo,
+                         @Context SecurityContext securityContext,
+                         @Parameter(description = "Id of the ML Model", schema = @Schema(type = "string"))
+                         @PathParam("id") String id) {
+    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     dao.delete(UUID.fromString(id));
     return Response.ok().build();
   }
