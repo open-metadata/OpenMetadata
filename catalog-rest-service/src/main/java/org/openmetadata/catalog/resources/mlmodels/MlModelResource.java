@@ -200,11 +200,11 @@ public class MlModelResource {
   @Operation(summary = "Create an ML Model", tags = "mlModels",
           description = "Create a new ML Model.",
           responses = {
-                @ApiResponse(responseCode = "200", description = "ML Model",
-                        content = @Content(mediaType = "application/json",
-                                schema = @Schema(implementation = CreateMlModel.class))),
-                @ApiResponse(responseCode = "400", description = "Bad request")
-          })
+              @ApiResponse(responseCode = "200", description = "ML Model",
+                      content = @Content(mediaType = "application/json",
+                              schema = @Schema(implementation = CreateMlModel.class))),
+              @ApiResponse(responseCode = "400", description = "Bad request")
+        })
   public Response create(@Context UriInfo uriInfo,
                          @Context SecurityContext securityContext,
                          @Valid CreateMlModel create) throws IOException, ParseException {
@@ -316,11 +316,11 @@ public class MlModelResource {
   @Operation(summary = "Get a version of the ML Model", tags = "mlModels",
           description = "Get a version of the ML Model by given `id`",
           responses = {
-                @ApiResponse(responseCode = "200", description = "MlModel",
-                        content = @Content(mediaType = "application/json",
-                                schema = @Schema(implementation = MlModel.class))),
-                @ApiResponse(responseCode = "404", description = "ML Model for instance {id} and version {version} is " +
-                        "not found")
+              @ApiResponse(responseCode = "200", description = "MlModel",
+                      content = @Content(mediaType = "application/json",
+                              schema = @Schema(implementation = MlModel.class))),
+              @ApiResponse(responseCode = "404", description = "ML Model for instance {id} and version {version} is " +
+                      "not found")
           })
   public MlModel getVersion(@Context UriInfo uriInfo,
                         @Context SecurityContext securityContext,

@@ -247,7 +247,9 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
     ChangeDescription change = getChangeDescription(model.getVersion());
     change.getFieldsAdded().add(new FieldChange().withName("dashboard").withNewValue(DASHBOARD_REFERENCE));
 
-    updateAndCheckEntity(request.withDashboard(DASHBOARD_REFERENCE), Status.OK, adminAuthHeaders(), MINOR_UPDATE, change);
+    updateAndCheckEntity(
+            request.withDashboard(DASHBOARD_REFERENCE), Status.OK, adminAuthHeaders(), MINOR_UPDATE, change
+    );
   }
 
   @Test
@@ -373,7 +375,8 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
   }
 
   @Override
-  public void validateUpdatedEntity(MlModel mlModel, Object request, Map<String, String> authHeaders) throws HttpResponseException {
+  public void validateUpdatedEntity(MlModel mlModel, Object request, Map<String, String> authHeaders)
+          throws HttpResponseException {
     validateCreatedEntity(mlModel, request, authHeaders);
   }
 
@@ -409,20 +412,23 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
     assertEquals(actual.getDataType(), expected.getDataType());
   };
 
-  BiConsumer<MlHyperParameter, MlHyperParameter> assertMlHyperParam = (MlHyperParameter expected, MlHyperParameter actual) -> {
+  BiConsumer<MlHyperParameter, MlHyperParameter> assertMlHyperParam =
+          (MlHyperParameter expected, MlHyperParameter actual) -> {
     assertEquals(actual.getName(), expected.getName());
     assertEquals(actual.getDescription(), expected.getDescription());
     assertEquals(actual.getValue(), expected.getValue());
   };
 
-  BiConsumer<MlFeatureSource, MlFeatureSource> assertMlFeatureSource = (MlFeatureSource expected, MlFeatureSource actual) -> {
+  BiConsumer<MlFeatureSource, MlFeatureSource> assertMlFeatureSource =
+          (MlFeatureSource expected, MlFeatureSource actual) -> {
     assertNotNull(actual.getFullyQualifiedName());
     assertEquals(actual.getName(), expected.getName());
     assertEquals(actual.getDescription(), expected.getDescription());
     assertEquals(actual.getDataType(), expected.getDataType());
   };
 
-  private void validateMlFeatureSources(List<MlFeature> expected, List<MlFeature> actual) throws HttpResponseException {
+  private void validateMlFeatureSources(List<MlFeature> expected, List<MlFeature> actual)
+          throws HttpResponseException {
     if (expected == null && actual == null) {
       return;
     }
