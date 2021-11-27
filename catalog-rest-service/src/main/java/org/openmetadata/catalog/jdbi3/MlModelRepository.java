@@ -126,9 +126,12 @@ public class MlModelRepository extends EntityRepository<MlModel> {
     // Check if owner is valid and set the relationship
     mlModel.setOwner(EntityUtil.populateOwner(dao.userDAO(), dao.teamDAO(), mlModel.getOwner()));
 
+    setDashboard(mlModel, mlModel.getDashboard());
     if (mlModel.getDashboard() != null) {
-      UUID dashboardId = mlModel.getDashboard().getId();
-      mlModel.setDashboard(dao.dashboardDAO().findEntityReferenceById(dashboardId));
+      // Add relationship from MlModel to Dashboard
+      String dashboardId = mlModel.getDashboard().getId().toString();
+      dao.relationshipDAO().insert(dashboardId, mlModel.getId().toString(), Entity.MLMODEL, Entity.DASHBOARD,
+              Relationship.USES.ordinal());
     }
     mlModel.setTags(EntityUtil.addDerivedTags(dao.tagDAO(), mlModel.getTags()));
   }
