@@ -25,6 +25,7 @@ import click
 import requests as requests
 from pydantic import ValidationError
 
+from metadata.__version__ import get_metadata_version
 from metadata.config.common import load_config_file
 from metadata.ingestion.api.workflow import Workflow
 
@@ -48,6 +49,7 @@ def check() -> None:
 
 
 @click.group()
+@click.version_option(get_metadata_version())
 @click.option("--debug/--no-debug", default=False)
 def metadata(debug: bool) -> None:
     if os.getenv("METADATA_DEBUG", False):
