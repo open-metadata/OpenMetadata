@@ -29,7 +29,6 @@ import org.openmetadata.catalog.api.services.CreateDashboardService.DashboardSer
 import org.openmetadata.catalog.entity.data.Dashboard;
 import org.openmetadata.catalog.entity.data.MlModel;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
-import org.openmetadata.catalog.jdbi3.DashboardServiceRepository;
 import org.openmetadata.catalog.jdbi3.MlModelRepository;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.type.ChangeDescription;
@@ -40,22 +39,15 @@ import org.openmetadata.catalog.type.MlFeatureDataType;
 import org.openmetadata.catalog.type.MlFeatureSource;
 import org.openmetadata.catalog.type.MlHyperParameter;
 import org.openmetadata.catalog.entity.services.DashboardService;
-import org.openmetadata.catalog.entity.teams.Team;
-import org.openmetadata.catalog.entity.teams.User;
-import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.jdbi3.DashboardRepository.DashboardEntityInterface;
 import org.openmetadata.catalog.jdbi3.DashboardServiceRepository.DashboardServiceEntityInterface;
 import org.openmetadata.catalog.resources.dashboards.DashboardResourceTest;
 import org.openmetadata.catalog.resources.mlmodels.MlModelResource.MlModelList;
 import org.openmetadata.catalog.resources.services.DashboardServiceResourceTest;
-import org.openmetadata.catalog.resources.teams.TeamResourceTest;
-import org.openmetadata.catalog.resources.teams.UserResourceTest;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.TestUtils;
 import org.openmetadata.catalog.util.JsonUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response.Status;
@@ -70,19 +62,17 @@ import java.util.function.BiConsumer;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.CONFLICT;
-import static javax.ws.rs.core.Response.Status.CREATED;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
-import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.openmetadata.catalog.exception.CatalogExceptionMessage.ENTITY_ALREADY_EXISTS;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.NO_CHANGE;
 import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
-import static org.openmetadata.catalog.util.TestUtils.assertEntityPagination;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 import static org.openmetadata.catalog.util.TestUtils.authHeaders;
 
@@ -91,7 +81,6 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
 
   public static EntityReference SUPERSET_REFERENCE;
   public static String ALGORITHM = "regression";
-  public static EntityReference SUPERSET_REFERENCE;
   public static Dashboard DASHBOARD;
   public static EntityReference DASHBOARD_REFERENCE;
   public static List<MlFeature> ML_FEATURES = Arrays.asList(
@@ -241,20 +230,22 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
 
   @Test
   public void put_MlModelUpdateAlgorithm_200(TestInfo test) throws IOException {
-    CreateMlModel request = create(test).withDescription("");
+    CreateMlModel request = create(test);
     MlModel model = createAndCheckEntity(request, adminAuthHeaders());
     ChangeDescription change = getChangeDescription(model.getVersion());
-    change.getFieldsUpdated().add(new FieldChange().withName("algorithm").withNewValue("SVM"));
+    change.getFieldsUpdated().add(
+            new FieldChange().withName("algorithm").withNewValue("SVM").withOldValue("regression")
+    );
 
     updateAndCheckEntity(request.withAlgorithm("SVM"), Status.OK, adminAuthHeaders(), MINOR_UPDATE, change);
   }
 
   @Test
-  public void put_MlModelUpdateDashboard_200(TestInfo test) throws IOException {
-    CreateMlModel request = create(test).withDescription("");
+  public void put_MlModelAddDashboard_200(TestInfo test) throws IOException {
+    CreateMlModel request = create(test);
     MlModel model = createAndCheckEntity(request, adminAuthHeaders());
     ChangeDescription change = getChangeDescription(model.getVersion());
-    change.getFieldsUpdated().add(new FieldChange().withName("dashboard").withNewValue(DASHBOARD_REFERENCE));
+    change.getFieldsAdded().add(new FieldChange().withName("dashboard").withNewValue(DASHBOARD_REFERENCE));
 
     updateAndCheckEntity(request.withDashboard(DASHBOARD_REFERENCE), Status.OK, adminAuthHeaders(), MINOR_UPDATE, change);
   }
@@ -479,6 +470,10 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
       String expectedAlgorithm = (String) expected;
       String actualAlgorithm = actual.toString();
       assertEquals(expectedAlgorithm, actualAlgorithm);
+    } else if (fieldName.endsWith("dashboard")) {
+      EntityReference expectedDashboard = (EntityReference) expected;
+      EntityReference actualDashboard = JsonUtils.readValue(actual.toString(), EntityReference.class);
+      assertEquals(expectedDashboard, actualDashboard);
     } else {
       assertCommonFieldChange(fieldName, expected, actual);
     }
