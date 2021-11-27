@@ -468,7 +468,8 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
       List<MlFeature> expectedFeatures = (List<MlFeature>) expected;
       List<MlFeature> actualFeatures = JsonUtils.readObjects(actual.toString(), MlFeature.class);
       assertEquals(expectedFeatures, actualFeatures);
-    } else if (fieldName.contains("mlHyperParameters") && !fieldName.endsWith("tags") && !fieldName.endsWith("description")) {
+    } else if (fieldName.contains("mlHyperParameters") && !fieldName.endsWith("tags")
+            && !fieldName.endsWith("description")) {
       List<MlHyperParameter> expectedConstraints = (List<MlHyperParameter>) expected;
       List<MlHyperParameter> actualConstraints = JsonUtils.readObjects(actual.toString(), MlHyperParameter.class);
       assertEquals(expectedConstraints, actualConstraints);
