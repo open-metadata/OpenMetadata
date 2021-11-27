@@ -75,12 +75,12 @@ public class PipelineServiceRepository extends EntityRepository<PipelineService>
   }
 
   @Override
-  public void validate(PipelineService entity) throws IOException {
+  public void prepare(PipelineService entity) throws IOException {
     EntityUtil.validateIngestionSchedule(entity.getIngestionSchedule());
   }
 
   @Override
-  public void store(PipelineService service, boolean update) throws IOException {
+  public void storeEntity(PipelineService service, boolean update) throws IOException {
     if (update) {
       dao.pipelineServiceDAO().update(service.getId(), JsonUtils.pojoToJson(service));
     } else {
@@ -89,7 +89,7 @@ public class PipelineServiceRepository extends EntityRepository<PipelineService>
   }
 
   @Override
-  public void storeRelationships(PipelineService entity) throws IOException {
+  public void addRelationships(PipelineService entity) throws IOException {
 
   }
 

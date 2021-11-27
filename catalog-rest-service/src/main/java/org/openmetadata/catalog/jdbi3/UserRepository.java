@@ -67,12 +67,12 @@ public class UserRepository extends EntityRepository<User> {
 
 
   @Override
-  public void validate(User entity) throws IOException {
+  public void prepare(User entity) throws IOException {
 
   }
 
   @Override
-  public void store(User user, boolean update) throws IOException {
+  public void storeEntity(User user, boolean update) throws IOException {
     // Relationships and fields such as href are derived and not stored as part of json
     List<EntityReference> teams = user.getTeams();
 
@@ -90,7 +90,7 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   @Override
-  public void storeRelationships(User user) throws IOException {
+  public void addRelationships(User user) throws IOException {
     assignTeams(user, user.getTeams());
   }
 

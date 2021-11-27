@@ -108,7 +108,7 @@ public class TableRepository extends EntityRepository<Table> {
 
   @Override
   public void restorePatchAttributes(Table original, Table updated) throws IOException, ParseException {
-    // Patch can't make changes to following fields. Ignore the changes
+    // Patch can't make changes to following fields. Ignore the changes.
     updated.withFullyQualifiedName(original.getFullyQualifiedName()).withName(original.getName())
             .withDatabase(original.getDatabase()).withId(original.getId());
   }
@@ -260,7 +260,7 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   @Override
-  public void validate(Table table) throws IOException {
+  public void prepare(Table table) throws IOException {
     table.setDatabase(dao.databaseDAO().findEntityReferenceById(table.getDatabase().getId()));
 
     // Set data in table entity based on database relationship
@@ -278,7 +278,7 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   @Override
-  public void store(Table table, boolean update) throws IOException {
+  public void storeEntity(Table table, boolean update) throws IOException {
     // Relationships and fields such as href are derived and not stored as part of json
     EntityReference owner = table.getOwner();
     EntityReference database = table.getDatabase();
@@ -304,7 +304,7 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   @Override
-  public void storeRelationships(Table table) throws IOException {
+  public void addRelationships(Table table) throws IOException {
     // Add relationship from database to table
     String databaseId = table.getDatabase().getId().toString();
     dao.relationshipDAO().insert(databaseId, table.getId().toString(), Entity.DATABASE, Entity.TABLE,

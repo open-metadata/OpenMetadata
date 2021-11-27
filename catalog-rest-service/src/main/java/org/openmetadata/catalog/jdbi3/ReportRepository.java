@@ -63,20 +63,20 @@ public class ReportRepository extends EntityRepository<Report> {
   }
 
   @Override
-  public void validate(Report report) throws IOException {
+  public void prepare(Report report) throws IOException {
     setService(report, report.getService());
     setOwner(report, report.getOwner());
     EntityUtil.populateOwner(dao.userDAO(), dao.teamDAO(), report.getOwner()); // Validate owner
   }
 
   @Override
-  public void store(Report report, boolean update) throws IOException {
+  public void storeEntity(Report report, boolean update) throws IOException {
     // TODO add right checks
     dao.reportDAO().insert(report);
   }
 
   @Override
-  public void storeRelationships(Report entity) throws IOException {
+  public void addRelationships(Report entity) throws IOException {
     // TODO
   }
 

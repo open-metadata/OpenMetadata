@@ -72,7 +72,7 @@ public class TopicRepository extends EntityRepository<Topic> {
   }
 
   @Override
-  public void validate(Topic topic) throws IOException {
+  public void prepare(Topic topic) throws IOException {
     EntityReference messagingService = getService(topic.getService());
     topic.setService(messagingService);
     topic.setFullyQualifiedName(getFQN(topic));
@@ -81,7 +81,7 @@ public class TopicRepository extends EntityRepository<Topic> {
   }
 
   @Override
-  public void store(Topic topic, boolean update) throws IOException {
+  public void storeEntity(Topic topic, boolean update) throws IOException {
     // Relationships and fields such as href are derived and not stored as part of json
     EntityReference owner = topic.getOwner();
     List<TagLabel> tags = topic.getTags();
@@ -101,7 +101,7 @@ public class TopicRepository extends EntityRepository<Topic> {
   }
 
   @Override
-  public void storeRelationships(Topic topic) throws IOException {
+  public void addRelationships(Topic topic) throws IOException {
     setService(topic, topic.getService());
     setOwner(topic, topic.getOwner());
     applyTags(topic);

@@ -129,7 +129,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
   }
 
   @Override
-  public void validate(Dashboard dashboard) throws IOException {
+  public void prepare(Dashboard dashboard) throws IOException {
     dashboard.setService(getService(dashboard.getService()));
     dashboard.setFullyQualifiedName(getFQN(dashboard));
     EntityUtil.populateOwner(dao.userDAO(), dao.teamDAO(), dashboard.getOwner()); // Validate owner
@@ -137,7 +137,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
   }
 
   @Override
-  public void store(Dashboard dashboard, boolean update) throws JsonProcessingException {
+  public void storeEntity(Dashboard dashboard, boolean update) throws JsonProcessingException {
     // Relationships and fields such as href are derived and not stored as part of json
     EntityReference owner = dashboard.getOwner();
     List<TagLabel> tags = dashboard.getTags();
@@ -156,7 +156,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
   }
 
   @Override
-  public void storeRelationships(Dashboard dashboard) throws IOException {
+  public void addRelationships(Dashboard dashboard) throws IOException {
     setService(dashboard, dashboard.getService());
 
     // Add relationship from dashboard to chart

@@ -145,7 +145,7 @@ public class LocationRepository extends EntityRepository<Location> {
   }
 
   @Override
-  public void validate(Location location) throws IOException {
+  public void prepare(Location location) throws IOException {
     // Set data in location entity based on storage relationship
     location.setFullyQualifiedName(getFQN(location));
 
@@ -157,7 +157,7 @@ public class LocationRepository extends EntityRepository<Location> {
   }
 
   @Override
-  public void store(Location location, boolean update) throws IOException {
+  public void storeEntity(Location location, boolean update) throws IOException {
     // Relationships and fields such as href are derived and not stored as part of json
     EntityReference owner = location.getOwner();
     EntityReference service = location.getService();
@@ -177,7 +177,7 @@ public class LocationRepository extends EntityRepository<Location> {
   }
 
   @Override
-  public void storeRelationships(Location location) throws IOException {
+  public void addRelationships(Location location) throws IOException {
     // Add location owner relationship
     EntityUtil.setOwner(dao.relationshipDAO(), location.getId(), Entity.LOCATION, location.getOwner());
     dao.relationshipDAO().insert(location.getService().getId().toString(), location.getId().toString(),

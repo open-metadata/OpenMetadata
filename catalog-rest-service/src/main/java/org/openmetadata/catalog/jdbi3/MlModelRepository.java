@@ -119,7 +119,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
 
 
   @Override
-  public void validate(MlModel mlModel) throws IOException {
+  public void prepare(MlModel mlModel) throws IOException {
     mlModel.setFullyQualifiedName(getFQN(mlModel));
 
     if (mlModel.getMlFeatures() != null && !mlModel.getMlFeatures().isEmpty()) {
@@ -140,7 +140,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   }
 
   @Override
-  public void store(MlModel mlModel, boolean update) throws IOException {
+  public void storeEntity(MlModel mlModel, boolean update) throws IOException {
     // Relationships and fields such as href are derived and not stored as part of json
     EntityReference owner = mlModel.getOwner();
     List<TagLabel> tags = mlModel.getTags();
@@ -160,7 +160,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   }
 
   @Override
-  public void storeRelationships(MlModel mlModel) throws IOException {
+  public void addRelationships(MlModel mlModel) throws IOException {
 
     EntityUtil.setOwner(dao.relationshipDAO(), mlModel.getId(), Entity.MLMODEL, mlModel.getOwner());
 

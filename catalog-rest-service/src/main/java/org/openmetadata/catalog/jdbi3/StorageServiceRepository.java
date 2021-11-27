@@ -70,12 +70,12 @@ public class StorageServiceRepository extends EntityRepository<StorageService> {
   }
 
   @Override
-  public void validate(StorageService entity) throws IOException {
+  public void prepare(StorageService entity) throws IOException {
   }
 
 
   @Override
-  public void store(StorageService service, boolean update) throws IOException {
+  public void storeEntity(StorageService service, boolean update) throws IOException {
     if (update) {
       dao.storageServiceDAO().update(service.getId(), JsonUtils.pojoToJson(service));
     } else {
@@ -84,7 +84,7 @@ public class StorageServiceRepository extends EntityRepository<StorageService> {
   }
 
   @Override
-  public void storeRelationships(StorageService entity) throws IOException {
+  public void addRelationships(StorageService entity) throws IOException {
   }
 
   public static class StorageServiceEntityInterface implements EntityInterface<StorageService> {

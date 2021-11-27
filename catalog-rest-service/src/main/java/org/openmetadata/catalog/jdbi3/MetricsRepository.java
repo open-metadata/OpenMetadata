@@ -68,7 +68,7 @@ public class MetricsRepository extends EntityRepository<Metrics> {
   }
 
   @Override
-  public void validate(Metrics metrics) throws IOException {
+  public void prepare(Metrics metrics) throws IOException {
     metrics.setFullyQualifiedName(getFQN(metrics));
     EntityUtil.populateOwner(dao.userDAO(), dao.teamDAO(), metrics.getOwner()); // Validate owner
     metrics.setService(getService(metrics.getService()));
@@ -76,7 +76,7 @@ public class MetricsRepository extends EntityRepository<Metrics> {
   }
 
   @Override
-  public void store(Metrics metrics, boolean update) throws IOException {
+  public void storeEntity(Metrics metrics, boolean update) throws IOException {
     // Relationships and fields such as href are derived and not stored as part of json
     EntityReference owner = metrics.getOwner();
     List<TagLabel> tags = metrics.getTags();
@@ -96,7 +96,7 @@ public class MetricsRepository extends EntityRepository<Metrics> {
   }
 
   @Override
-  public void storeRelationships(Metrics metrics) throws IOException {
+  public void addRelationships(Metrics metrics) throws IOException {
     dao.relationshipDAO().insert(metrics.getService().getId().toString(), metrics.getId().toString(),
             metrics.getService().getType(), Entity.METRICS, Relationship.CONTAINS.ordinal());
     setOwner(metrics, metrics.getOwner());

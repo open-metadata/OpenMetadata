@@ -75,14 +75,14 @@ public class DatabaseRepository extends EntityRepository<Database> {
   }
 
   @Override
-  public void validate(Database database) throws IOException {
+  public void prepare(Database database) throws IOException {
     database.setService(getService(database.getService()));
     database.setFullyQualifiedName(getFQN(database));
     database.setOwner(EntityUtil.populateOwner(dao.userDAO(), dao.teamDAO(), database.getOwner())); // Validate owner
   }
 
   @Override
-  public void store(Database database, boolean update) throws IOException {
+  public void storeEntity(Database database, boolean update) throws IOException {
     // Relationships and fields such as href are derived and not stored as part of json
     EntityReference owner = database.getOwner();
     EntityReference service = database.getService();
@@ -101,7 +101,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
   }
 
   @Override
-  public void storeRelationships(Database database) throws IOException {
+  public void addRelationships(Database database) throws IOException {
     dao.relationshipDAO().insert(database.getService().getId().toString(), database.getId().toString(),
             database.getService().getType(), Entity.DATABASE, Relationship.CONTAINS.ordinal());
     EntityUtil.setOwner(dao.relationshipDAO(), database.getId(), Entity.DATABASE, database.getOwner());

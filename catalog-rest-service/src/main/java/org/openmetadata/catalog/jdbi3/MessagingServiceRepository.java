@@ -75,12 +75,12 @@ public class MessagingServiceRepository extends EntityRepository<MessagingServic
   }
 
   @Override
-  public void validate(MessagingService entity) throws IOException {
+  public void prepare(MessagingService entity) throws IOException {
     EntityUtil.validateIngestionSchedule(entity.getIngestionSchedule());
   }
 
   @Override
-  public void store(MessagingService service, boolean update) throws IOException {
+  public void storeEntity(MessagingService service, boolean update) throws IOException {
     if (update) {
       dao.messagingServiceDAO().update(service.getId(), JsonUtils.pojoToJson(service));
     } else {
@@ -89,7 +89,7 @@ public class MessagingServiceRepository extends EntityRepository<MessagingServic
   }
 
   @Override
-  public void storeRelationships(MessagingService entity) throws IOException { }
+  public void addRelationships(MessagingService entity) throws IOException { }
 
   @Override
   public EntityUpdater getUpdater(MessagingService original, MessagingService updated, boolean patchOperation) throws IOException {

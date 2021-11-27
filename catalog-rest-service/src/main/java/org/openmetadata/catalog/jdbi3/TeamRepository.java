@@ -107,12 +107,12 @@ public class TeamRepository extends EntityRepository<Team> {
   }
 
   @Override
-  public void validate(Team team) throws IOException {
+  public void prepare(Team team) throws IOException {
     validateUsers(team.getUsers());
   }
 
   @Override
-  public void store(Team team, boolean update) throws IOException {
+  public void storeEntity(Team team, boolean update) throws IOException {
     // Relationships and fields such as href are derived and not stored as part of json
     List<EntityReference> users = team.getUsers();
 
@@ -130,7 +130,7 @@ public class TeamRepository extends EntityRepository<Team> {
   }
 
   @Override
-  public void storeRelationships(Team team) throws IOException {
+  public void addRelationships(Team team) throws IOException {
     for (EntityReference user : Optional.ofNullable(team.getUsers()).orElse(Collections.emptyList())) {
       dao.relationshipDAO().insert(team.getId().toString(), user.getId().toString(), "team", "user",
               Relationship.CONTAINS.ordinal());

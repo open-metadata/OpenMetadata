@@ -61,15 +61,15 @@ public class BotsRepository extends EntityRepository<Bots>{
   }
 
   @Override
-  public void validate(Bots entity) throws IOException { }
+  public void prepare(Bots entity) throws IOException { }
 
   @Override
-  public void store(Bots entity, boolean update) throws IOException {
+  public void storeEntity(Bots entity, boolean update) throws IOException {
     dao.botsDAO().insert(entity);
   }
 
   @Override
-  public void storeRelationships(Bots entity) throws IOException { }
+  public void addRelationships(Bots entity) throws IOException { }
 
   public static class BotsEntityInterface implements EntityInterface<Bots> {
     private final Bots entity;

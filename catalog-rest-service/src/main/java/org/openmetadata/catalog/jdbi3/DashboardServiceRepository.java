@@ -87,12 +87,12 @@ public class DashboardServiceRepository extends EntityRepository<DashboardServic
   }
 
   @Override
-  public void validate(DashboardService entity) throws IOException {
+  public void prepare(DashboardService entity) throws IOException {
     EntityUtil.validateIngestionSchedule(entity.getIngestionSchedule());
   }
 
   @Override
-  public void store(DashboardService service, boolean update) throws IOException {
+  public void storeEntity(DashboardService service, boolean update) throws IOException {
     if (update) {
       dao.dashboardServiceDAO().update(service.getId(), JsonUtils.pojoToJson(service));
     } else {
@@ -101,7 +101,7 @@ public class DashboardServiceRepository extends EntityRepository<DashboardServic
   }
 
   @Override
-  public void storeRelationships(DashboardService entity) throws IOException {
+  public void addRelationships(DashboardService entity) throws IOException {
   }
 
   @Override

@@ -100,7 +100,7 @@ public class IngestionRepository extends EntityRepository<Ingestion> {
 
 
   @Override
-  public void validate(Ingestion ingestion) throws IOException {
+  public void prepare(Ingestion ingestion) throws IOException {
     ingestion.setService(getService(ingestion.getService()));
     ingestion.setFullyQualifiedName(getFQN(ingestion));
     EntityUtil.populateOwner(dao.userDAO(), dao.teamDAO(), ingestion.getOwner()); // Validate owner
@@ -109,7 +109,7 @@ public class IngestionRepository extends EntityRepository<Ingestion> {
   }
 
   @Override
-  public void store(Ingestion ingestion, boolean update) throws IOException {
+  public void storeEntity(Ingestion ingestion, boolean update) throws IOException {
     // Relationships and fields such as href are derived and not stored as part of json
     EntityReference owner = ingestion.getOwner();
     List<TagLabel> tags = ingestion.getTags();
@@ -129,7 +129,7 @@ public class IngestionRepository extends EntityRepository<Ingestion> {
   }
 
   @Override
-  public void storeRelationships(Ingestion ingestion) throws IOException {
+  public void addRelationships(Ingestion ingestion) throws IOException {
     EntityReference service = ingestion.getService();
     dao.relationshipDAO().insert(service.getId().toString(), ingestion.getId().toString(), service.getType(),
             Entity.INGESTION, Relationship.CONTAINS.ordinal());
