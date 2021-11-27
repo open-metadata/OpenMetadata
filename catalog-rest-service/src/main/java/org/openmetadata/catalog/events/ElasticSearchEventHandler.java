@@ -28,12 +28,17 @@ import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.client.RestClient;
 import org.elasticsearch.client.RestClientBuilder;
 import org.elasticsearch.client.RestHighLevelClient;
+import org.elasticsearch.client.indices.CreateIndexRequest;
+import org.elasticsearch.client.indices.CreateIndexResponse;
+import org.elasticsearch.common.xcontent.XContentType;
 import org.elasticsearch.script.Script;
 import org.elasticsearch.script.ScriptType;
 import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.ElasticSearchConfiguration;
 import org.openmetadata.catalog.Entity;
+import org.openmetadata.catalog.elasticsearch.ElasticSearchIndexDefinition;
+import org.openmetadata.catalog.elasticsearch.ElasticSearchIndexDefinition.ElasticSearchIndexType;
 import org.openmetadata.catalog.entity.data.Dashboard;
 import org.openmetadata.catalog.entity.data.Pipeline;
 import org.openmetadata.catalog.entity.data.Table;
@@ -64,6 +69,8 @@ import java.util.stream.Collectors;
 public class ElasticSearchEventHandler implements EventHandler {
   private static final Logger LOG = LoggerFactory.getLogger(AuditEventHandler.class);
   private RestHighLevelClient client;
+  private boolean indexesCrated;
+
   private final ActionListener<UpdateResponse> listener = new ActionListener<>() {
     @Override
     public void onResponse(UpdateResponse updateResponse) {
@@ -88,12 +95,32 @@ public class ElasticSearchEventHandler implements EventHandler {
       });
     }
     this.client = new RestHighLevelClient(restClientBuilder);
+    createIndexes();
+  }
+
+  private void createIndexes() {
+    try {
+      for (ElasticSearchIndexType elasticSearchIndexType : ElasticSearchIndexType.values()) {
+        String elasticSearchIndexMapping = ElasticSearchIndexDefinition.getIndexMapping(elasticSearchIndexType);
+        CreateIndexRequest request = new CreateIndexRequest(elasticSearchIndexType.indexName);
+        request.mapping(elasticSearchIndexMapping, XContentType.JSON);
+        CreateIndexResponse createIndexResponse = client.indices().create(request, RequestOptions.DEFAULT);
+        LOG.info(elasticSearchIndexType.indexName + " Created " + createIndexResponse.isAcknowledged());
+      }
+      this.indexesCrated = true;
+    } catch(Exception e) {
+      LOG.error("Failed to created Elastic Search indexes due to", e);
+      this.indexesCrated = false;
+    }
   }
 
   public Void process(ContainerRequestContext requestContext,
                       ContainerResponseContext responseContext) {
     try {
       LOG.info("request Context "+ requestContext.toString());
+          if (!indexesCrated) {
+        createIndexes();
+      }
       String changeEventClazz = ChangeEvent.class.toString();
       if (responseContext.getEntity() != null) {
         Object entity = responseContext.getEntity();
@@ -178,7 +205,6 @@ public class ElasticSearchEventHandler implements EventHandler {
       instance.getTags().forEach(tag -> tags.add(tag.getTagFQN()));
     }
     if (instance.getColumns() != null) {
-
       List<FlattenColumn> cols = new ArrayList<>();
       cols = parseColumns(instance.getColumns(), cols, null);
 
@@ -228,6 +254,7 @@ public class ElasticSearchEventHandler implements EventHandler {
     jsonMap.put("last_updated_timestamp", System.currentTimeMillis());
     UpdateRequest updateRequest = new UpdateRequest("table_search_index", instance.getId().toString());
     updateRequest.doc(jsonMap);
+    updateRequest.docAsUpsert(true);
     return updateRequest;
   }
 
@@ -270,6 +297,7 @@ public class ElasticSearchEventHandler implements EventHandler {
     jsonMap.put("last_updated_timestamp", System.currentTimeMillis());
     UpdateRequest updateRequest = new UpdateRequest("topic_search_index", instance.getId().toString());
     updateRequest.doc(jsonMap);
+    updateRequest.docAsUpsert(true);
     return updateRequest;
   }
 
@@ -312,6 +340,7 @@ public class ElasticSearchEventHandler implements EventHandler {
     jsonMap.put("last_updated_timestamp", System.currentTimeMillis());
     UpdateRequest updateRequest = new UpdateRequest("dashboard_search_index", instance.getId().toString());
     updateRequest.doc(jsonMap);
+    updateRequest.docAsUpsert(true);
     return updateRequest;
   }
 
@@ -354,6 +383,7 @@ public class ElasticSearchEventHandler implements EventHandler {
     jsonMap.put("last_updated_timestamp", System.currentTimeMillis());
     UpdateRequest updateRequest = new UpdateRequest("pipeline_search_index", instance.getId().toString());
     updateRequest.doc(jsonMap);
+    updateRequest.docAsUpsert(true);
     return updateRequest;
   }
 
@@ -373,6 +403,7 @@ public class ElasticSearchEventHandler implements EventHandler {
       FlattenColumn flattenColumn = FlattenColumn.builder()
               .name(columnName)
               .description(col.getDescription()).build();
+
       if (!tags.isEmpty()) {
         flattenColumn.tags = tags;
       }
@@ -385,7 +416,7 @@ public class ElasticSearchEventHandler implements EventHandler {
   }
 
   private String getESIndex(String type) {
-    if (type.toLowerCase().equals("table")) {
+    if (type.equalsIgnoreCase("table")) {
       return "table_search_index";
     } else if (type.equalsIgnoreCase("dashboard")) {
       return "dashboard_search_index";
@@ -393,9 +424,13 @@ public class ElasticSearchEventHandler implements EventHandler {
       return "pipeline_search_index";
     } else if (type.equalsIgnoreCase("topic")) {
       return "topic_search_index";
+    } else if (type.equalsIgnoreCase("dbtmodel")) {
+      return "dbt_model_search_index";
     }
     throw new RuntimeException("Failed to find index doc for type {}".format(type));
   }
+
+
   @Getter
   @Builder
   public static class FlattenColumn {
