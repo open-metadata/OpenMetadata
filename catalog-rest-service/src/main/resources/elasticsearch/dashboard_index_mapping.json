@@ -1,4 +1,5 @@
 {
+  "mappings":{
     "properties": {
       "dashboard_name": {
         "type":"text"
@@ -68,4 +69,5 @@
         "type": "long"
       }
     }
+  }
 }
