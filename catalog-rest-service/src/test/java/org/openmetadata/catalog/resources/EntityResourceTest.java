@@ -7,26 +7,22 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.catalog.CatalogApplicationTest;
 import org.openmetadata.catalog.Entity;
-import org.openmetadata.catalog.api.services.CreateDashboardService;
 import org.openmetadata.catalog.api.services.CreateDatabaseService;
 import org.openmetadata.catalog.api.services.CreateDatabaseService.DatabaseServiceType;
 import org.openmetadata.catalog.api.services.CreateMessagingService;
 import org.openmetadata.catalog.api.services.CreateMessagingService.MessagingServiceType;
 import org.openmetadata.catalog.api.services.CreatePipelineService;
 import org.openmetadata.catalog.api.services.CreatePipelineService.PipelineServiceType;
-import org.openmetadata.catalog.entity.services.DashboardService;
 import org.openmetadata.catalog.entity.services.DatabaseService;
 import org.openmetadata.catalog.entity.services.MessagingService;
 import org.openmetadata.catalog.entity.services.PipelineService;
 import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
-import org.openmetadata.catalog.jdbi3.DashboardServiceRepository;
 import org.openmetadata.catalog.jdbi3.DatabaseServiceRepository.DatabaseServiceEntityInterface;
 import org.openmetadata.catalog.jdbi3.MessagingServiceRepository.MessagingServiceEntityInterface;
 import org.openmetadata.catalog.jdbi3.PipelineServiceRepository.PipelineServiceEntityInterface;
 import org.openmetadata.catalog.resources.events.EventResource.ChangeEventList;
-import org.openmetadata.catalog.resources.services.DashboardServiceResourceTest;
 import org.openmetadata.catalog.resources.services.DatabaseServiceResourceTest;
 import org.openmetadata.catalog.resources.services.MessagingServiceResourceTest;
 import org.openmetadata.catalog.resources.services.PipelineServiceResourceTest;
@@ -113,8 +109,6 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
   public static EntityReference PULSAR_REFERENCE;
   public static EntityReference AIRFLOW_REFERENCE;
   public static EntityReference PREFECT_REFERENCE;
-
-  public static EntityReference SUPERSET_REFERENCE;
 
   public static TagLabel USER_ADDRESS_TAG_LABEL;
   public static TagLabel USER_BANK_ACCOUNT_TAG_LABEL;
@@ -1042,7 +1036,8 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
    * Given a list of properties of an Entity (e.g., List<Column> or List<MlFeature> and
    * a function that validate the elements of T, validate lists
    */
-  public <P> void assertListProperty(List<P> expected, List<P> actual, BiConsumer<P, P> validate) throws HttpResponseException {
+  public <P> void assertListProperty(List<P> expected, List<P> actual, BiConsumer<P, P> validate)
+          throws HttpResponseException {
     if (expected == null && actual == null) {
       return;
     }
