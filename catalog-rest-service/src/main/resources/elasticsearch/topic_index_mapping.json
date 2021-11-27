@@ -1,17 +1,7 @@
 {
-  "mappings":{
     "properties": {
-      "topic_name": {
+      "name": {
         "type":"text"
-      },
-      "schema": {
-        "type":"text",
-        "analyzer": "simple",
-        "fields": {
-          "raw": {
-            "type": "keyword"
-          }
-        }
       },
       "display_name": {
         "type": "text"
@@ -35,6 +25,12 @@
       "tags": {
         "type": "keyword"
       },
+      "column_names": {
+        "type":"text"
+      },
+      "column_descriptions": {
+        "type": "text"
+      },
       "service": {
         "type": "keyword"
       },
@@ -47,9 +43,29 @@
       "entity_type": {
         "type": "keyword"
       },
+      "database": {
+        "type": "text"
+      },
       "suggest": {
         "type": "completion"
+      },
+      "monthly_stats":{
+        "type": "long"
+      },
+      "monthly_percentile_rank":{
+        "type": "long"
+      },
+      "weekly_stats":{
+        "type": "long"
+      },
+      "weekly_percentile_rank":{
+        "type": "long"
+      },
+      "daily_percentile_rank": {
+        "type": "long"
+      },
+      "daily_stats": {
+        "type": "long"
       }
     }
-  }
 }

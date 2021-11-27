@@ -11,10 +11,9 @@
  *  limitations under the License.
  */
 
-package org.openmetadata.catalog.events;
+package org.openmetadata.catalog.elasticsearch;
 
-import lombok.Builder;
-import lombok.Getter;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.http.HttpHost;
 import org.apache.http.auth.AuthScope;
@@ -37,18 +36,19 @@ import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.ElasticSearchConfiguration;
 import org.openmetadata.catalog.Entity;
-import org.openmetadata.catalog.elasticsearch.ElasticSearchIndexDefinition;
 import org.openmetadata.catalog.elasticsearch.ElasticSearchIndexDefinition.ElasticSearchIndexType;
 import org.openmetadata.catalog.entity.data.Dashboard;
+import org.openmetadata.catalog.entity.data.DbtModel;
 import org.openmetadata.catalog.entity.data.Pipeline;
 import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.entity.data.Topic;
+import org.openmetadata.catalog.events.AuditEventHandler;
+import org.openmetadata.catalog.events.EventHandler;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.ChangeEvent;
-import org.openmetadata.catalog.type.Column;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.FieldChange;
-import org.openmetadata.catalog.type.TagLabel;
+import org.openmetadata.catalog.util.JsonUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -56,14 +56,9 @@ import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.container.ContainerResponseContext;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
-import java.util.function.Predicate;
-import java.util.stream.Collectors;
 
 
 public class ElasticSearchEventHandler implements EventHandler {
@@ -135,9 +130,12 @@ public class ElasticSearchEventHandler implements EventHandler {
         } else if (entityClass.toLowerCase().endsWith(Entity.TOPIC.toLowerCase())) {
           Topic instance = (Topic) entity;
           updateRequest = updateTopic(instance);
-        }  else if (entityClass.toLowerCase().endsWith(Entity.PIPELINE.toLowerCase())) {
+        } else if (entityClass.toLowerCase().endsWith(Entity.PIPELINE.toLowerCase())) {
           Pipeline instance = (Pipeline) entity;
           updateRequest = updatePipeline(instance);
+        } else if (entityClass.toLowerCase().endsWith(Entity.DBTMODEL.toLowerCase())) {
+          DbtModel instance = (DbtModel) entity;
+          updateRequest = updateDbtModel(instance);
         } else if (entityClass.toLowerCase().equalsIgnoreCase(ChangeEvent.class.toString())) {
           ChangeEvent changeEvent = (ChangeEvent) entity;
           updateRequest = applyChangeEvent(changeEvent);
@@ -195,225 +193,47 @@ public class ElasticSearchEventHandler implements EventHandler {
     }
   }
 
-  private UpdateRequest updateTable(Table instance) {
-    Map<String, Object> jsonMap = new HashMap<>();
-    jsonMap.put("description", instance.getDescription());
-    Set<String> tags = new HashSet<>();
-    List<String> columnDescriptions = new ArrayList<>();
-    List<String> columnNames = new ArrayList<>();
-    if (instance.getTags() != null) {
-      instance.getTags().forEach(tag -> tags.add(tag.getTagFQN()));
-    }
-    if (instance.getColumns() != null) {
-      List<FlattenColumn> cols = new ArrayList<>();
-      cols = parseColumns(instance.getColumns(), cols, null);
-
-      for (FlattenColumn col : cols) {
-        if (col.getTags() != null) {
-          tags.addAll(col.getTags());
-        }
-        columnDescriptions.add(col.getDescription());
-        columnNames.add(col.getName());
-      }
-    }
-    
-    if (!tags.isEmpty()) {
-      List<String> tagsList = new ArrayList<>(tags);
-      String tierTag = null;
-      for (String tag: tagsList) {
-        if (tag.toLowerCase().matches("(.*)tier(.*)")) {
-          tierTag = tag;
-          break;
-        }
-      }
-      if (tierTag != null) {
-        tagsList.remove(tierTag);
-        jsonMap.put("tier", tierTag);
-      }
-      jsonMap.put("tags", tagsList);
-    } else {
-      jsonMap.put("tags", tags);
-    }
-
-    if (!columnNames.isEmpty()) {
-      jsonMap.put("column_names", columnNames);
-    }
-    if (!columnDescriptions.isEmpty()) {
-      jsonMap.put("column_descriptions", columnDescriptions);
-    }
-    if(instance.getOwner() != null) {
-      jsonMap.put("owner", instance.getOwner().getId().toString());
-    }
-    if (instance.getFollowers() != null) {
-      List<String> followers = new ArrayList<>();
-      for(EntityReference follower: instance.getFollowers()) {
-        followers.add(follower.getId().toString());
-      }
-      jsonMap.put("followers", followers);
-    }
-    jsonMap.put("last_updated_timestamp", System.currentTimeMillis());
+  private UpdateRequest updateTable(Table instance) throws JsonProcessingException {
+    TableESIndex tableESIndex = TableESIndex.builder(instance).build();
     UpdateRequest updateRequest = new UpdateRequest("table_search_index", instance.getId().toString());
-    updateRequest.doc(jsonMap);
+    String json = JsonUtils.pojoToJson(tableESIndex);
+    updateRequest.doc(json, XContentType.JSON);
     updateRequest.docAsUpsert(true);
     return updateRequest;
   }
 
-  private UpdateRequest updateTopic(Topic instance) {
-    Map<String, Object> jsonMap = new HashMap<>();
-    jsonMap.put("description", instance.getDescription());
-    Set<String> tags = new HashSet<>();
-
-    if (instance.getTags() != null) {
-      instance.getTags().forEach(tag -> tags.add(tag.getTagFQN()));
-    }
-    if (!tags.isEmpty()) {
-      List<String> tagsList = new ArrayList<>(tags);
-      String tierTag = null;
-      for (String tag: tagsList) {
-        if (tag.toLowerCase().matches("(.*)tier(.*)")) {
-          tierTag = tag;
-          break;
-        }
-      }
-      if (tierTag != null) {
-        tagsList.remove(tierTag);
-        jsonMap.put("tier", tierTag);
-      }
-      jsonMap.put("tags", tagsList);
-    } else {
-      jsonMap.put("tags", tags);
-    }
-
-    if(instance.getOwner() != null) {
-      jsonMap.put("owner", instance.getOwner().getId().toString());
-    }
-    if (instance.getFollowers() != null) {
-      List<String> followers = new ArrayList<>();
-      for(EntityReference follower: instance.getFollowers()) {
-        followers.add(follower.getId().toString());
-      }
-      jsonMap.put("followers", followers);
-    }
-    jsonMap.put("last_updated_timestamp", System.currentTimeMillis());
+  private UpdateRequest updateTopic(Topic instance) throws JsonProcessingException {
+    TopicESIndex topicESIndex = TopicESIndex.builder(instance).build();
     UpdateRequest updateRequest = new UpdateRequest("topic_search_index", instance.getId().toString());
-    updateRequest.doc(jsonMap);
+    updateRequest.doc(JsonUtils.pojoToJson(topicESIndex), XContentType.JSON);
     updateRequest.docAsUpsert(true);
     return updateRequest;
   }
 
-  private UpdateRequest updateDashboard(Dashboard instance) {
-    Map<String, Object> jsonMap = new HashMap<>();
-    jsonMap.put("description", instance.getDescription());
-    Set<String> tags = new HashSet<>();
-    if (instance.getTags() != null) {
-      instance.getTags().forEach(tag -> tags.add(tag.getTagFQN()));
-    }
-
-    if (!tags.isEmpty()) {
-      List<String> tagsList = new ArrayList<>(tags);
-      String tierTag = null;
-      for (String tag: tagsList) {
-        if (tag.toLowerCase().matches("(.*)tier(.*)")) {
-          tierTag = tag;
-          break;
-        }
-      }
-      if (tierTag != null) {
-        tagsList.remove(tierTag);
-        jsonMap.put("tier", tierTag);
-      }
-      jsonMap.put("tags", tagsList);
-    } else {
-      jsonMap.put("tags", tags);
-    }
-
-    if(instance.getOwner() != null) {
-      jsonMap.put("owner", instance.getOwner().getId().toString());
-    }
-    if (instance.getFollowers() != null) {
-      List<String> followers = new ArrayList<>();
-      for(EntityReference follower: instance.getFollowers()) {
-        followers.add(follower.getId().toString());
-      }
-      jsonMap.put("followers", followers);
-    }
-    jsonMap.put("last_updated_timestamp", System.currentTimeMillis());
+  private UpdateRequest updateDashboard(Dashboard instance) throws JsonProcessingException {
+    DashboardESIndex dashboardESIndex = DashboardESIndex.builder(instance).build();
     UpdateRequest updateRequest = new UpdateRequest("dashboard_search_index", instance.getId().toString());
-    updateRequest.doc(jsonMap);
+    updateRequest.doc(JsonUtils.pojoToJson(dashboardESIndex), XContentType.JSON);
     updateRequest.docAsUpsert(true);
     return updateRequest;
   }
 
-  private UpdateRequest updatePipeline(Pipeline instance) {
-    Map<String, Object> jsonMap = new HashMap<>();
-    jsonMap.put("description", instance.getDescription());
-    Set<String> tags = new HashSet<>();
-    if (instance.getTags() != null) {
-      instance.getTags().forEach(tag -> tags.add(tag.getTagFQN()));
-    }
-
-    if (!tags.isEmpty()) {
-      List<String> tagsList = new ArrayList<>(tags);
-      String tierTag = null;
-      for (String tag: tagsList) {
-        if (tag.toLowerCase().matches("(.*)tier(.*)")) {
-          tierTag = tag;
-          break;
-        }
-      }
-      if (tierTag != null) {
-        tagsList.remove(tierTag);
-        jsonMap.put("tier", tierTag);
-      }
-      jsonMap.put("tags", tagsList);
-    } else {
-      jsonMap.put("tags", tags);
-    }
-
-    if(instance.getOwner() != null) {
-      jsonMap.put("owner", instance.getOwner().getId().toString());
-    }
-    if (instance.getFollowers() != null) {
-      List<String> followers = new ArrayList<>();
-      for(EntityReference follower: instance.getFollowers()) {
-        followers.add(follower.getId().toString());
-      }
-      jsonMap.put("followers", followers);
-    }
-    jsonMap.put("last_updated_timestamp", System.currentTimeMillis());
+  private UpdateRequest updatePipeline(Pipeline instance) throws JsonProcessingException {
+    PipelineESIndex pipelineESIndex = PipelineESIndex.builder(instance).build();
     UpdateRequest updateRequest = new UpdateRequest("pipeline_search_index", instance.getId().toString());
-    updateRequest.doc(jsonMap);
+    updateRequest.doc(JsonUtils.pojoToJson(pipelineESIndex), XContentType.JSON);
     updateRequest.docAsUpsert(true);
     return updateRequest;
   }
 
-  private List<FlattenColumn> parseColumns(List<Column> columns, List<FlattenColumn> flattenColumns,
-                                           String parentColumn) {
-    Optional<String> optParentColumn = Optional.ofNullable(parentColumn).filter(Predicate.not(String::isEmpty));
-    List<String> tags = new ArrayList<>();
-    for (Column col: columns) {
-      String columnName = col.getName();
-      if (optParentColumn.isPresent()) {
-        columnName = optParentColumn.get() + "." + columnName;
-      }
-      if (col.getTags() != null) {
-        tags = col.getTags().stream().map(TagLabel::getTagFQN).collect(Collectors.toList());
-      }
-
-      FlattenColumn flattenColumn = FlattenColumn.builder()
-              .name(columnName)
-              .description(col.getDescription()).build();
-
-      if (!tags.isEmpty()) {
-        flattenColumn.tags = tags;
-      }
-      flattenColumns.add(flattenColumn);
-      if (col.getChildren() != null) {
-        parseColumns(col.getChildren(), flattenColumns, col.getName());
-      }
-    }
-    return flattenColumns;
+  private UpdateRequest updateDbtModel(DbtModel instance) throws JsonProcessingException {
+    DbtModelESIndex dbtModelESIndex = DbtModelESIndex.builder(instance).build();
+    UpdateRequest updateRequest = new UpdateRequest("dbt_model_search_index", instance.getId().toString());
+    updateRequest.doc(JsonUtils.pojoToJson(dbtModelESIndex), XContentType.JSON);
+    updateRequest.docAsUpsert(true);
+    return updateRequest;
   }
+
 
   private String getESIndex(String type) {
     if (type.equalsIgnoreCase("table")) {
@@ -430,14 +250,6 @@ public class ElasticSearchEventHandler implements EventHandler {
     throw new RuntimeException("Failed to find index doc for type {}".format(type));
   }
 
-
-  @Getter
-  @Builder
-  public static class FlattenColumn {
-    String name;
-    String description;
-    List<String> tags;
-  }
 
   public void close() {
     try {

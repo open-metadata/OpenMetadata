@@ -1,7 +1,6 @@
 {
-  "mappings":{
     "properties": {
-      "dashboard_name": {
+      "name": {
         "type":"text"
       },
       "display_name": {
@@ -66,5 +65,4 @@
         "type": "long"
       }
     }
-  }
 }

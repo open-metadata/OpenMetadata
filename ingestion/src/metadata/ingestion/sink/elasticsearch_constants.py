@@ -14,19 +14,9 @@ import textwrap
 TABLE_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
     """
     {
-    "mappings":{
           "properties": {
             "table_name": {
               "type":"text"
-            },
-            "schema": {
-              "type":"text",
-              "analyzer": "simple",
-              "fields": {
-                "raw": {
-                  "type": "keyword"
-                }
-              }
             },
             "display_name": {
               "type": "text"
@@ -55,9 +45,6 @@ TABLE_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
             },
             "tags": {
               "type": "keyword"
-            },
-            "badges": {
-              "type": "text"
             },
             "service": {
               "type": "keyword"
@@ -96,7 +83,6 @@ TABLE_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
               "type": "long"
             }
           }
-        }
     }
     """
 )
@@ -106,17 +92,8 @@ TOPIC_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
     {
     "mappings":{
           "properties": {
-            "topic_name": {
+            "name": {
               "type":"text"
-            },
-            "schema": {
-              "type":"text",
-              "analyzer": "simple",
-              "fields": {
-                "raw": {
-                  "type": "keyword"
-                }
-              }
             },
             "display_name": {
               "type": "text"
@@ -166,7 +143,7 @@ DASHBOARD_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
     {
     "mappings":{
           "properties": {
-            "dashboard_name": {
+            "name": {
               "type":"text"
             },
             "display_name": {
@@ -241,7 +218,7 @@ PIPELINE_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
     {
     "mappings":{
           "properties": {
-            "pipeline_name": {
+            "name": {
               "type":"text"
             },
             "display_name": {
@@ -299,7 +276,7 @@ DBT_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
     {
     "mappings":{
           "properties": {
-            "dbt_model_name": {
+            "name": {
               "type":"text"
             },
             "schema": {

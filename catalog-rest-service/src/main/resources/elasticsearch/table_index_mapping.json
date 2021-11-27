@@ -1,17 +1,7 @@
 {
-  "mappings":{
     "properties": {
-      "table_name": {
+      "name": {
         "type":"text"
-      },
-      "schema": {
-        "type":"text",
-        "analyzer": "simple",
-        "fields": {
-          "raw": {
-            "type": "keyword"
-          }
-        }
       },
       "display_name": {
         "type": "text"
@@ -40,9 +30,6 @@
       },
       "tags": {
         "type": "keyword"
-      },
-      "badges": {
-        "type": "text"
       },
       "service": {
         "type": "keyword"
@@ -81,5 +68,4 @@
         "type": "long"
       }
     }
-  }
 }

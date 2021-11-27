@@ -52,7 +52,7 @@ elasticsearch:
 eventHandlerConfiguration:
   eventHandlerClassNames:
     - "org.openmetadata.catalog.events.AuditEventHandler"
-    - "org.openmetadata.catalog.events.ElasticSearchEventHandler"
+    - "org.openmetadata.catalog.elasticsearch.ElasticSearchEventHandler"
 
 health:
   delayedShutdownHandlerEnabled: true
@@ -114,7 +114,7 @@ ElasticSearch is one of the pre-requisites to run OpenMetadata. Default configur
 eventHandlerConfiguration:
   eventHandlerClassNames:
     - "org.openmetadata.catalog.events.AuditEventHandler"
-    - "org.openmetadata.catalog.events.ElasticSearchEventHandler"
+    - "org.openmetadata.catalog.elasticsearch.ElasticSearchEventHandler"
 ```
 
 EventHandler configuration is optional. It will update the AuditLog in MySQL DB and also ElasticSearch indexes whenever any entity is updated either through UI or API interactions. We recommend you leave it there as it enhances the user experience.

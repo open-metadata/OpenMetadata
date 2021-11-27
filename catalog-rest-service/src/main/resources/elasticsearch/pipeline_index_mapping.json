@@ -1,7 +1,6 @@
 {
-  "mappings":{
     "properties": {
-      "pipeline_name": {
+      "name": {
         "type":"text"
       },
       "display_name": {
@@ -48,5 +47,4 @@
         "type": "completion"
       }
     }
-  }
 }
