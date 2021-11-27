@@ -577,7 +577,8 @@ public class DbtModelResourceTest extends EntityResourceTest<DbtModel> {
   public void patch_DbtModelAttributes_200_ok(TestInfo test) throws IOException {
     String viewDefinition = "select * from raw_customer";
     // Create DbtModel without nodeType
-    DbtModel dbtModel = createEntity(create(test).withViewDefinition(viewDefinition), adminAuthHeaders());
+    DbtModel dbtModel = createEntity(create(test).withViewDefinition(viewDefinition).withDescription("description1"),
+        adminAuthHeaders());
 
 
     // Add description,
@@ -585,9 +586,10 @@ public class DbtModelResourceTest extends EntityResourceTest<DbtModel> {
     String originalJson = JsonUtils.pojoToJson(dbtModel);
     ChangeDescription change = getChangeDescription(dbtModel.getVersion());
 
-    dbtModel.withDbtNodeType(DbtNodeType.Model).withDescription("description");
+    dbtModel.withDbtNodeType(DbtNodeType.Model).withDescription("description2");
     change.getFieldsAdded().add(new FieldChange().withName("dbtNodeType").withNewValue(DbtNodeType.Model.value()));
-    change.getFieldsAdded().add(new FieldChange().withName("description").withNewValue("description"));
+    change.getFieldsUpdated().add(new FieldChange().withName("description").withNewValue("description2")
+        .withOldValue("description1"));
 
 
     DbtModel dbtModel1 = patchEntityAndCheck(dbtModel, originalJson, adminAuthHeaders(), MINOR_UPDATE, change);
