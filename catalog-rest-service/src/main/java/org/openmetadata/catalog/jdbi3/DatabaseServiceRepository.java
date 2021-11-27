@@ -32,7 +32,6 @@ import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
 
-import javax.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.net.URI;
 import java.text.ParseException;
@@ -48,8 +47,8 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
   private final CollectionDAO dao;
 
   public DatabaseServiceRepository(CollectionDAO dao) {
-    super(DatabaseServiceResource.COLLECTION_PATH, DatabaseService.class, dao.dbServiceDAO(), dao, Fields.EMPTY_FIELDS,
-            Fields.EMPTY_FIELDS);
+    super(DatabaseServiceResource.COLLECTION_PATH, Entity.DATABASE_SERVICE, DatabaseService.class,
+            dao.dbServiceDAO(), dao, Fields.EMPTY_FIELDS, Fields.EMPTY_FIELDS);
     this.dao = dao;
   }
 
@@ -213,7 +212,7 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
     private void updateIngestionSchedule() throws JsonProcessingException {
       Schedule origSchedule = original.getEntity().getIngestionSchedule();
       Schedule updatedSchedule = updated.getEntity().getIngestionSchedule();
-      recordChange("ingestionSchedule", origSchedule, updatedSchedule);
+      recordChange("ingestionSchedule", origSchedule, updatedSchedule, true);
     }
   }
 }

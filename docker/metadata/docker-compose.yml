@@ -16,7 +16,6 @@
 version: "3.9"
 services:
   mysql:
-    platform: linux/x86_64
     image: openmetadata/db:latest
     restart: always
     environment:

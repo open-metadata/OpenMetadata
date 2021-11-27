@@ -103,12 +103,12 @@ public class LocationResourceTest extends CatalogApplicationTest {
 
     CreateStorageService createService = new CreateStorageService().withName("s3")
             .withServiceType(StorageServiceType.S3);
-    StorageService service = StorageServiceResourceTest.createService(createService, adminAuthHeaders());
+    StorageService service = new StorageServiceResourceTest().createEntity(createService, adminAuthHeaders());
     AWS_REFERENCE = new EntityReference().withName(service.getName()).withId(service.getId())
             .withType(Entity.STORAGE_SERVICE);
 
     createService.withName("gs").withServiceType(StorageServiceType.GCS);
-    service = StorageServiceResourceTest.createService(createService, adminAuthHeaders());
+    service = new StorageServiceResourceTest().createEntity(createService, adminAuthHeaders());
     GCP_REFERENCE = new EntityReference().withName(service.getName()).withId(service.getId())
             .withType(Entity.STORAGE_SERVICE);
 

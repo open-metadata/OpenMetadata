@@ -31,7 +31,6 @@ import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
 
-import javax.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.net.URI;
 import java.text.ParseException;
@@ -46,8 +45,8 @@ public class PipelineServiceRepository extends EntityRepository<PipelineService>
   private final CollectionDAO dao;
 
   public PipelineServiceRepository(CollectionDAO dao) {
-    super(PipelineServiceResource.COLLECTION_PATH, PipelineService.class, dao.pipelineServiceDAO(), dao,
-            Fields.EMPTY_FIELDS, Fields.EMPTY_FIELDS);
+    super(PipelineServiceResource.COLLECTION_PATH, Entity.PIPELINE_SERVICE, PipelineService.class,
+            dao.pipelineServiceDAO(), dao, Fields.EMPTY_FIELDS, Fields.EMPTY_FIELDS);
     this.dao = dao;
   }
 
@@ -201,18 +200,14 @@ public class PipelineServiceRepository extends EntityRepository<PipelineService>
 
     @Override
     public void entitySpecificUpdate() throws IOException {
-      updatePipelineUrl();
-      updateIngestionSchedule();
-    }
-
-    private void updatePipelineUrl() throws JsonProcessingException {
       recordChange("pipelineUrl", original.getEntity().getPipelineUrl(), updated.getEntity().getPipelineUrl());
+      updateIngestionSchedule();
     }
 
     private void updateIngestionSchedule() throws JsonProcessingException {
       Schedule origSchedule = original.getEntity().getIngestionSchedule();
       Schedule updatedSchedule = updated.getEntity().getIngestionSchedule();
-      recordChange("ingestionSchedule", origSchedule, updatedSchedule);
+      recordChange("ingestionSchedule", origSchedule, updatedSchedule, true);
     }
   }
 }

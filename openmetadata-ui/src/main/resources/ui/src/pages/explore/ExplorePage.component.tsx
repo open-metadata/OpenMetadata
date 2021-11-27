@@ -40,8 +40,8 @@ import {
   ZERO_SIZE,
 } from '../../constants/explore.constants';
 import { SearchIndex } from '../../enums/search.enum';
+import { getTotalEntityCountByType } from '../../utils/EntityUtils';
 import { getFilterString } from '../../utils/FilterUtils';
-import { getTotalEntityCountByService } from '../../utils/ServiceUtils';
 
 const ExplorePage: FunctionComponent = () => {
   const initialFilter = getFilterString(
@@ -58,6 +58,7 @@ const ExplorePage: FunctionComponent = () => {
   const [topicCount, setTopicCount] = useState<number>(0);
   const [dashboardCount, setDashboardCount] = useState<number>(0);
   const [pipelineCount, setPipelineCount] = useState<number>(0);
+  const [dbtModelCount, setDbtModelCount] = useState<number>(0);
   const [searchResult, setSearchResult] = useState<ExploreSearchData>();
   const [initialSortField] = useState<string>(
     searchQuery
@@ -85,6 +86,10 @@ const ExplorePage: FunctionComponent = () => {
     setPipelineCount(count);
   };
 
+  const handleDbtModelCount = (count: number) => {
+    setDbtModelCount(count);
+  };
+
   const handlePathChange = (path: string) => {
     AppState.explorePageTab = path;
   };
@@ -95,6 +100,7 @@ const ExplorePage: FunctionComponent = () => {
       SearchIndex.TOPIC,
       SearchIndex.DASHBOARD,
       SearchIndex.PIPELINE,
+      SearchIndex.DBT_MODEL,
     ];
 
     const entityCounts = entities.map((entity) =>
@@ -116,35 +122,44 @@ const ExplorePage: FunctionComponent = () => {
           topic,
           dashboard,
           pipeline,
+          dbtModel,
         ]: PromiseSettledResult<SearchResponse>[]) => {
           setTableCount(
             table.status === 'fulfilled'
-              ? getTotalEntityCountByService(
-                  table.value.data.aggregations?.['sterms#Service']
+              ? getTotalEntityCountByType(
+                  table.value.data.aggregations?.['sterms#EntityType']
                     ?.buckets as Bucket[]
                 )
               : 0
           );
           setTopicCount(
             topic.status === 'fulfilled'
-              ? getTotalEntityCountByService(
-                  topic.value.data.aggregations?.['sterms#Service']
+              ? getTotalEntityCountByType(
+                  topic.value.data.aggregations?.['sterms#EntityType']
                     ?.buckets as Bucket[]
                 )
               : 0
           );
           setDashboardCount(
             dashboard.status === 'fulfilled'
-              ? getTotalEntityCountByService(
-                  dashboard.value.data.aggregations?.['sterms#Service']
+              ? getTotalEntityCountByType(
+                  dashboard.value.data.aggregations?.['sterms#EntityType']
                     ?.buckets as Bucket[]
                 )
               : 0
           );
           setPipelineCount(
             pipeline.status === 'fulfilled'
-              ? getTotalEntityCountByService(
-                  pipeline.value.data.aggregations?.['sterms#Service']
+              ? getTotalEntityCountByType(
+                  pipeline.value.data.aggregations?.['sterms#EntityType']
+                    ?.buckets as Bucket[]
+                )
+              : 0
+          );
+          setDbtModelCount(
+            dbtModel.status === 'fulfilled'
+              ? getTotalEntityCountByType(
+                  dbtModel.value.data.aggregations?.['sterms#EntityType']
                     ?.buckets as Bucket[]
                 )
               : 0
@@ -258,8 +273,10 @@ const ExplorePage: FunctionComponent = () => {
             topic: topicCount,
             dashboard: dashboardCount,
             pipeline: pipelineCount,
+            dbtModel: dbtModelCount,
           }}
           updateDashboardCount={handleDashboardCount}
+          updateDbtModelCount={handleDbtModelCount}
           updatePipelineCount={handlePipelineCount}
           updateTableCount={handleTableCount}
           updateTopicCount={handleTopicCount}

@@ -38,7 +38,7 @@ public class ReportRepository extends EntityRepository<Report> {
   private final CollectionDAO dao;
 
   public ReportRepository(CollectionDAO dao) {
-    super(ReportResource.COLLECTION_PATH, Report.class, dao.reportDAO(), dao, Fields.EMPTY_FIELDS,
+    super(ReportResource.COLLECTION_PATH, Entity.REPORT, Report.class, dao.reportDAO(), dao, Fields.EMPTY_FIELDS,
             REPORT_UPDATE_FIELDS);
     this.dao = dao;
   }

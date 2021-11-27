@@ -50,7 +50,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   private final CollectionDAO dao;
 
   public MlModelRepository(CollectionDAO dao) {
-    super(MlModelResource.COLLECTION_PATH, MlModel.class, dao.mlModelDAO(), dao,
+    super(MlModelResource.COLLECTION_PATH, Entity.MLMODEL, MlModel.class, dao.mlModelDAO(), dao,
             MODEL_PATCH_FIELDS, MODEL_UPDATE_FIELDS);
     this.dao = dao;
   }

@@ -49,7 +49,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
   private final CollectionDAO dao;
 
   public PolicyRepository(CollectionDAO dao) {
-    super(PolicyResource.COLLECTION_PATH, Policy.class, dao.policyDAO(), dao, POLICY_PATCH_FIELDS,
+    super(PolicyResource.COLLECTION_PATH, Entity.POLICY, Policy.class, dao.policyDAO(), dao, POLICY_PATCH_FIELDS,
             POLICY_UPDATE_FIELDS);
     this.dao = dao;
   }

@@ -52,8 +52,8 @@ public class LocationRepository extends EntityRepository<Location> {
   private final CollectionDAO dao;
 
   public LocationRepository(CollectionDAO dao) {
-    super(LocationResource.COLLECTION_PATH, Location.class, dao.locationDAO(), dao, LOCATION_PATCH_FIELDS,
-            LOCATION_UPDATE_FIELDS);
+    super(LocationResource.COLLECTION_PATH, Entity.LOCATION, Location.class, dao.locationDAO(), dao,
+            LOCATION_PATCH_FIELDS, LOCATION_UPDATE_FIELDS);
     this.dao = dao;
   }
 

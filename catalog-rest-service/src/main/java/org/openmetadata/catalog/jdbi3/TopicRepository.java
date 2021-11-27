@@ -50,7 +50,8 @@ public class TopicRepository extends EntityRepository<Topic> {
   }
 
   public TopicRepository(CollectionDAO dao) {
-    super(TopicResource.COLLECTION_PATH, Topic.class, dao.topicDAO(), dao, TOPIC_PATCH_FIELDS, TOPIC_UPDATE_FIELDS);
+    super(TopicResource.COLLECTION_PATH, Entity.TOPIC, Topic.class, dao.topicDAO(), dao, TOPIC_PATCH_FIELDS,
+            TOPIC_UPDATE_FIELDS);
     this.dao = dao;
   }
 

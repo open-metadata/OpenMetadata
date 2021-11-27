@@ -16,14 +16,10 @@
 version: "3.9"
 services:
   mysql:
-    platform: linux/x86_64
-    image: mysql:latest
+    image: openmetadata/db:latest
     restart: always
     environment:
       MYSQL_ROOT_PASSWORD: password
-      MYSQL_USER: openmetadata_user
-      MYSQL_PASSWORD: openmetadata_password
-      MYSQL_DATABASE: openmetadata_db
     ports:
       - 3306:3306
     networks:

@@ -49,8 +49,8 @@ public class DatabaseRepository extends EntityRepository<Database> {
   private final CollectionDAO dao;
 
   public DatabaseRepository(CollectionDAO dao) {
-    super(DatabaseResource.COLLECTION_PATH, Database.class, dao.databaseDAO(), dao, DATABASE_PATCH_FIELDS,
-            DATABASE_UPDATE_FIELDS);
+    super(DatabaseResource.COLLECTION_PATH, Entity.DATABASE, Database.class, dao.databaseDAO(), dao,
+            DATABASE_PATCH_FIELDS, DATABASE_UPDATE_FIELDS);
     this.dao = dao;
   }
 

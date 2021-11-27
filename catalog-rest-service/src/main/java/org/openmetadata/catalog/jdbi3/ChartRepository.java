@@ -47,7 +47,8 @@ public class ChartRepository extends EntityRepository<Chart> {
   private final CollectionDAO dao;
 
   public ChartRepository(CollectionDAO dao) {
-    super(ChartResource.COLLECTION_PATH, Chart.class, dao.chartDAO(), dao, CHART_PATCH_FIELDS, CHART_UPDATE_FIELDS);
+    super(ChartResource.COLLECTION_PATH, Entity.CHART, Chart.class, dao.chartDAO(), dao, CHART_PATCH_FIELDS,
+            CHART_UPDATE_FIELDS);
     this.dao = dao;
   }
 
