@@ -26,6 +26,7 @@ import {
   TypeUsedToReturnUsageDetailsOfAnEntity,
 } from '../../generated/entity/data/table';
 import { EntityLineage } from '../../generated/type/entityLineage';
+import { TagLabel } from '../../generated/type/tagLabel';
 import DatasetDetails from './DatasetDetails.component';
 import { DatasetOwner } from './DatasetDetails.interface';
 
@@ -69,7 +70,7 @@ const DatasetDetailsProps = {
   tableDetails: {} as Table,
   tableProfile: [],
   tableTags: [],
-  tier: '',
+  tier: {} as TagLabel,
   unfollowTableHandler: jest.fn(),
   usageSummary: {} as TypeUsedToReturnUsageDetailsOfAnEntity,
   users: [],
