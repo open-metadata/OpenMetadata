@@ -185,6 +185,11 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
     createAndCheckEntity(create(test).withOwner(TEAM_OWNER1).withDisplayName("Model1"), adminAuthHeaders());
   }
 
+  @Test public void post_MlModelWithoutFeatures_200_ok(TestInfo test) throws IOException {
+    CreateMlModel create = new CreateMlModel().withName(getModelName(test, 0)).withAlgorithm(ALGORITHM);
+    createAndCheckEntity(create, adminAuthHeaders());
+  }
+
   @Test
   public void post_MlModelWithDashboard_200_ok(TestInfo test) throws IOException {
     CreateMlModel create = create(test).withDashboard(DASHBOARD_REFERENCE);
