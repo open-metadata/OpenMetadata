@@ -77,12 +77,12 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
   }
 
   @Override
-  public void validate(DatabaseService entity) throws IOException {
+  public void prepare(DatabaseService entity) throws IOException {
     EntityUtil.validateIngestionSchedule(entity.getIngestionSchedule());
   }
 
   @Override
-  public void store(DatabaseService service, boolean update) throws IOException {
+  public void storeEntity(DatabaseService service, boolean update) throws IOException {
     if (update) {
       dao.dbServiceDAO().update(service.getId(), JsonUtils.pojoToJson(service));
     } else {

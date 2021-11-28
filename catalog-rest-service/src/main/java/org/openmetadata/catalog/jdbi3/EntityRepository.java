@@ -19,10 +19,12 @@ package org.openmetadata.catalog.jdbi3;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
+import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.EntityVersionPair;
+import org.openmetadata.catalog.jdbi3.TableRepository.TableUpdater;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.ChangeEvent;
 import org.openmetadata.catalog.type.EntityHistory;
@@ -60,8 +62,39 @@ import java.util.UUID;
 import java.util.function.BiPredicate;
 
 /**
- * Interface used for accessing the concrete entity DAOs such as table, dashboard etc.
- * This gives a uniform access so that common boiler plate code can be reduced.
+ * This is the base class used by Entity Resources to perform READ and WRITE operations to the backend database to
+ * Create, * Retrieve, Update, and Delete entities.
+ *
+ * An entity has two types of fields - `attributes` and `relationships`.
+ * <ul>
+ * <li>The `attributes` are the core properties of the entity, example - entity id, name, fullyQualifiedName, columns
+ * for a table, etc.</li>
+ * <li>The `relationships` are an associated between two entities, example - table belongs to a database,
+ * table has a tag, user owns a table, etc. All relationships are captured using {@code EntityReference}. </li>
+ * </ul>
+ *
+ * Entities are stored as JSON documents in the database. Each entity is stored in a separate table and is accessed
+ * through a <i>Data Access Object</i> or <i>DAO</i> that corresponds to each of the entity. For example,
+ * <i>table_entity</i> is the database table used to store JSON docs corresponding to <i>table</i> entity and
+ * {@link org.openmetadata.catalog.jdbi3.CollectionDAO.TableDAO} is used as the DAO object to access the table_entity
+ * table. All DAO objects for an entity are available in {@code daoCollection}.
+ *
+ * <br><br>
+ * Relationships between entity is stored in a separate table that captures the edge - fromEntity, toEntity, and
+ * the relationship name <i>entity_relationship</i> table and are supported by
+ * {@link org.openmetadata.catalog.jdbi3.CollectionDAO.EntityRelationshipDAO} DAO object.
+ *
+ * JSON document of an entity stores only <i>required</i> attributes of an entity. Some attributes such as
+ * <i>href</i> are not stored and are created on the fly.
+ *
+ * <br><br>
+ *
+ * Json document of an entity does not store relationships. As an example, JSON document for <i>table</i> entity
+ * does not store the relationship <i>database</i> which is of type <i>EntityReference</i>. This is always retrieved
+ * from the the relationship table when required to ensure, the data stored is efficiently and consistently, and
+ * relationship information does not become stale.
+ * </p>
+ *
  */
 public abstract class EntityRepository<T> {
   public static final Logger LOG = LoggerFactory.getLogger(EntityRepository.class);
@@ -70,23 +103,12 @@ public abstract class EntityRepository<T> {
   private final String entityName;
   private final EntityDAO<T> dao;
   private final CollectionDAO daoCollection;
+
+  /** Fields that can be updated during PATCH operation */
   private final Fields patchFields;
+
+  /** Fields that can be updated during PUT operation */
   private final Fields putFields;
-
-  /**
-   * Entity related operations that should be implemented or overridden by entities
-   */
-  public abstract EntityInterface<T> getEntityInterface(T entity);
-
-  public abstract T setFields(T entity, Fields fields) throws IOException, ParseException;
-  public abstract void restorePatchAttributes(T original, T updated) throws IOException, ParseException;
-  public abstract void validate(T entity) throws IOException;
-  public abstract void store(T entity, boolean update) throws IOException;
-  public abstract void storeRelationships(T entity) throws IOException;
-
-  public EntityUpdater getUpdater(T original, T updated, boolean patchOperation) throws IOException {
-    return new EntityUpdater(original, updated, patchOperation);
-  }
 
   EntityRepository(String collectionPath, String entityName, Class<T> entityClass, EntityDAO<T> entityDAO,
                    CollectionDAO collectionDAO,
@@ -99,6 +121,75 @@ public abstract class EntityRepository<T> {
     this.putFields = putFields;
     this.entityName = entityName;
     Entity.registerEntity(entityName, dao, this);
+  }
+
+  /**
+   * Entity related operations that should be implemented or overridden by entities
+   */
+  public abstract EntityInterface<T> getEntityInterface(T entity);
+
+  /**
+   * Set the requested fields in an entity. This is used for requesting specific fields in the object during GET
+   * operations. It is also used during PUT and PATCH operations to set up fields that can be updated.
+   */
+  public abstract T setFields(T entity, Fields fields) throws IOException, ParseException;
+
+  /**
+   * This method is used for validating an entity to be created during POST, PUT, and PATCH operations and prepare the
+   * entity with all the required attributes and relationships.
+   *
+   * The implementation of this method must perform the following:
+   * <ol>
+   *   <li>Prepare the values for attributes that are not required in the request but can be derived on the server side.
+   *   Example - <i>>FullyQualifiedNames</i> of an entity can be derived from the hierarchy that an entity belongs to
+   *   .</li>
+   *   <li>Validate all the attributes of an entity.</li>
+   *   <li>Validate all the relationships of an entity. As an example - during <i>table</i> creation,
+   *   relationships such as <i>Tags</i>, <i>Owner</i>, <i>Database</i>a table belongs to are validated.
+   *   During validation additional information that is not required in the create/update request are set up
+   *   in the corresponding relationship fields.</li>
+   * </ol>
+   *
+   * At the end of this operation, entity is expected to be valid and fully constructed with all the fields that will
+   * be sent as payload in the POST, PUT, and PATCH operations response.
+   *
+   * @see TableRepository#prepare(Table) for an example implementation
+   */
+  public abstract void prepare(T entity) throws IOException;
+
+  /**
+   * An entity is stored in the backend database as JSON document. The JSON includes only some of the attributes of the
+   * entity and does not include attributes such as <i>href</i>. The relationship fields of an entity is never stored
+   * in the JSON document. It is always reconstructed based on relationship edges from the backend database.
+   *
+   * <br><br>
+   *
+   * As an example, when <i>table</i> entity is stored, the attributes such as <i>href</i> and the relationships such
+   * as <i>owner</i>, <i>database</i>, and <i>tags</i> are set to null. These attributes are restored back after the
+   * JSON document is stored to be sent as response.
+   *
+   * @see TableRepository#storeEntity(Table, boolean) for an example implementation
+   */
+  public abstract void storeEntity(T entity, boolean update) throws IOException;
+
+  /**
+   * This method is called to store all the relationships of an entity. It is expected that all relationships are
+   * already validated and completely setup before this method is called and no validation of relationships is required.
+   *
+   * @see TableRepository#storeRelationships(Table) for an example implementation
+   */
+  public abstract void storeRelationships(T entity) throws IOException;
+
+  /**
+   * PATCH operations can't overwrite certain fields, such as entity ID, fullyQualifiedNames etc. Instead of throwing
+   * an error, we take lenient approach of ignoring the user error and restore those attributes based on what is
+   * already stored in the original entity.
+   */
+  public abstract void restorePatchAttributes(T original, T updated) throws IOException, ParseException;
+
+
+  public EntityUpdater getUpdater(T original, T updated, boolean patchOperation) throws IOException {
+    return new EntityUpdater(original, updated, patchOperation);
   }
 
   @Transaction
@@ -195,23 +286,23 @@ public abstract class EntityRepository<T> {
 
   @Transaction
   public final T createInternal(T entity) throws IOException, ParseException {
-    validate(entity);
+    prepare(entity);
     return createNewEntity(entity);
   }
 
   @Transaction
   public final PutResponse<T> createOrUpdate(UriInfo uriInfo, T updated) throws IOException, ParseException {
-    validate(updated);
+    prepare(updated);
     T original = JsonUtils.readValue(dao.findJsonByFqn(getFullyQualifiedName(updated)), entityClass);
     if (original == null) {
       return new PutResponse<>(Status.CREATED, withHref(uriInfo, createNewEntity(updated)), RestUtil.ENTITY_CREATED);
     }
-    // Update the existing entity
+    // Get all the fields in the original entity that can be updated during PUT operation
     setFields(original, putFields);
 
+    // Update the attributes and relationships of an entity
     EntityUpdater entityUpdater = getUpdater(original, updated, false);
     entityUpdater.update();
-    entityUpdater.store();
     String change = entityUpdater.fieldsChanged() ? RestUtil.ENTITY_UPDATED : RestUtil.ENTITY_NO_CHANGE;
     return new PutResponse<>(Status.OK, withHref(uriInfo, updated), change);
   }
@@ -219,16 +310,20 @@ public abstract class EntityRepository<T> {
   @Transaction
   public final PatchResponse<T> patch(UriInfo uriInfo, UUID id, String user, JsonPatch patch) throws IOException,
           ParseException {
+    // Get all the fields in the original entity that can be updated during PATCH operation
     T original = setFields(dao.findEntityById(id), patchFields);
+
+    // Apply JSON patch to the original entity to get the updated entity
     T updated = JsonUtils.applyPatch(original, patch, entityClass);
     EntityInterface<T> updatedEntity = getEntityInterface(updated);
     updatedEntity.setUpdateDetails(user, new Date());
 
-    validate(updated);
+    prepare(updated);
     restorePatchAttributes(original, updated);
+
+    // Update the attributes and relationships of an entity
     EntityUpdater entityUpdater = getUpdater(original, updated, true);
     entityUpdater.update();
-    entityUpdater.store();
     String change = entityUpdater.fieldsChanged() ? RestUtil.ENTITY_UPDATED : RestUtil.ENTITY_NO_CHANGE;
     return new PatchResponse<>(Status.OK, withHref(uriInfo, updated), change);
   }
@@ -239,7 +334,7 @@ public abstract class EntityRepository<T> {
     T entity = dao.findEntityById(entityId);
     EntityInterface<T> entityInterface = getEntityInterface(entity);
 
-    // Validate user
+    // Validate follower
     User user = daoCollection.userDAO().findEntityById(userId);
     if (user.getDeactivated()) {
       throw new IllegalArgumentException(CatalogExceptionMessage.deactivatedUser(userId));
@@ -266,7 +361,7 @@ public abstract class EntityRepository<T> {
     T entity = dao.findEntityById(entityId);
     EntityInterface<T> entityInterface = getEntityInterface(entity);
 
-    // Validate user
+    // Validate follower
     User user = daoCollection.userDAO().findEntityById(userId);
 
     // Remove follower
@@ -294,7 +389,7 @@ public abstract class EntityRepository<T> {
   }
 
   private T createNewEntity(T entity) throws IOException {
-    store(entity, false);
+    storeEntity(entity, false);
     storeRelationships(entity);
     return entity;
   }
@@ -312,8 +407,15 @@ public abstract class EntityRepository<T> {
   }
 
   /**
-   * Class that performs PUT and PATCH UPDATE operation. Override {@code entitySpecificUpdate()} to add
-   * additional entity specific fields to be updated.
+   * Class that performs PUT and PATCH update operation. It takes an <i>updated</i> entity and <i>original</i> entity.
+   * Performs comparison between then and updates the stored entity and also updates all the relationships. This class
+   * also tracks the changes between original and updated to version the entity and produce change events.
+   *
+   * <br><br>
+   *
+   * Common entity attributes such as description, displayName, owner, tags are handled by this class.
+   * Override {@code entitySpecificUpdate()} to add additional entity specific fields to be updated.
+   * @see TableUpdater#entitySpecificUpdate() for example.
    */
   public class EntityUpdater {
     protected final EntityInterface<T> original;
@@ -328,13 +430,19 @@ public abstract class EntityRepository<T> {
       this.patchOperation = patchOperation;
     }
 
-    public final void update() throws IOException {
+    /**
+     * Compare original and updated entities and perform updates. Update the entity version and track changes.
+     */
+    public final void update() throws IOException, ParseException {
       updated.setId(original.getId());
       updateDescription();
       updateDisplayName();
       updateOwner();
       updateTags(updated.getFullyQualifiedName(), "tags", original.getTags(), updated.getTags());
       entitySpecificUpdate();
+
+      // Store the updated entity
+      store();
     }
 
     public void entitySpecificUpdate() throws IOException {
@@ -488,7 +596,7 @@ public abstract class EntityRepository<T> {
                 JsonUtils.pojoToJson(original.getEntity()));
 
         // Store the new version
-        EntityRepository.this.store(updated.getEntity(), true);
+        EntityRepository.this.storeEntity(updated.getEntity(), true);
       } else {
         updated.setUpdateDetails(original.getUpdatedBy(), original.getUpdatedAt());
       }
