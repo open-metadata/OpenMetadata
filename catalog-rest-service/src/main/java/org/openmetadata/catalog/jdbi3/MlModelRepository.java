@@ -121,7 +121,10 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   @Override
   public void validate(MlModel mlModel) throws IOException {
     mlModel.setFullyQualifiedName(getFQN(mlModel));
-    setMlFeatureFQN(mlModel.getFullyQualifiedName(), mlModel.getMlFeatures());
+
+    if (mlModel.getMlFeatures() != null && !mlModel.getMlFeatures().isEmpty()) {
+      setMlFeatureFQN(mlModel.getFullyQualifiedName(), mlModel.getMlFeatures());
+    }
 
     // Check if owner is valid and set the relationship
     mlModel.setOwner(EntityUtil.populateOwner(dao.userDAO(), dao.teamDAO(), mlModel.getOwner()));
