@@ -199,6 +199,8 @@ public class DbtModelResourceTest extends EntityResourceTest<DbtModel> {
     Column c2_c_d = getColumn("d", INT, USER_ADDRESS_TAG_LABEL);
     Column c2_c = getColumn("c", STRUCT, "struct<int: d>>", USER_ADDRESS_TAG_LABEL)
             .withChildren(new ArrayList<>(singletonList(c2_c_d)));
+    String viewDefinition1 = "select * from dim_customer";
+    String viewDefinition2 = "select * from raw_customer";
 
     // Column struct<a: int, b:char, c: struct<int: d>>>
     Column c2 = getColumn("c2", STRUCT, "struct<a: int, b:string, c: struct<int: d>>",
@@ -211,17 +213,18 @@ public class DbtModelResourceTest extends EntityResourceTest<DbtModel> {
     //   c2.b char
     //   c2.c struct<int: d>>
     //     c2.c.d int
-    CreateDbtModel create1 = create(test, 1).withColumns(Arrays.asList(c1, c2));
+    CreateDbtModel create1 = create(test, 1).withColumns(Arrays.asList(c1, c2))
+        .withViewDefinition(viewDefinition1);
     DbtModel dbtModel1 = createAndCheckEntity(create1, adminAuthHeaders());
 
     // Test PUT operation - put operation to create
-    CreateDbtModel create2 = create(test, 2).withColumns(Arrays.asList(c1, c2)).withName("put_complexColumnType");
+    CreateDbtModel create2 = create(test, 2).withColumns(Arrays.asList(c1, c2))
+        .withName("put_complexColumnType").withViewDefinition(viewDefinition2);
     DbtModel dbtModel2 = updateAndCheckEntity(create2, CREATED, adminAuthHeaders(), UpdateType.CREATED, null);
-
+    assertEquals(viewDefinition2, dbtModel2.getViewDefinition());
     // Test PUT operation again without any change
     ChangeDescription change = getChangeDescription(dbtModel2.getVersion());
     updateAndCheckEntity(create2, Status.OK, adminAuthHeaders(), NO_CHANGE, change);
-
     //
     // Update the complex columns
     //
@@ -288,6 +291,9 @@ public class DbtModelResourceTest extends EntityResourceTest<DbtModel> {
     c2_c_d.setTags(singletonList(USER_BANK_ACCOUNT_TAG_LABEL)); // c2.c.d new tag added
     dbtModel1 = patchEntity(dbtModel1.getId(), dbtModelJson, dbtModel1, adminAuthHeaders());
     assertColumns(Arrays.asList(c1, c2), dbtModel1.getColumns());
+    assertEquals(viewDefinition1, dbtModel1.getViewDefinition());
+    String dbtModelJson1 = JsonUtils.pojoToJson(dbtModel1);
+    LOG.info(dbtModelJson1);
   }
 
   @Test
@@ -569,8 +575,10 @@ public class DbtModelResourceTest extends EntityResourceTest<DbtModel> {
    */
   @Test
   public void patch_DbtModelAttributes_200_ok(TestInfo test) throws IOException {
+    String viewDefinition = "select * from raw_customer";
     // Create DbtModel without nodeType
-    DbtModel dbtModel = createEntity(create(test), adminAuthHeaders());
+    DbtModel dbtModel = createEntity(create(test).withViewDefinition(viewDefinition).withDescription("description1"),
+        adminAuthHeaders());
 
 
     // Add description,
@@ -578,20 +586,23 @@ public class DbtModelResourceTest extends EntityResourceTest<DbtModel> {
     String originalJson = JsonUtils.pojoToJson(dbtModel);
     ChangeDescription change = getChangeDescription(dbtModel.getVersion());
 
-    dbtModel.withDbtNodeType(DbtNodeType.Model);
-
+    dbtModel.withDbtNodeType(DbtNodeType.Model).withDescription("description2");
     change.getFieldsAdded().add(new FieldChange().withName("dbtNodeType").withNewValue(DbtNodeType.Model.value()));
+    change.getFieldsUpdated().add(new FieldChange().withName("description").withNewValue("description2")
+        .withOldValue("description1"));
 
-    dbtModel = patchEntityAndCheck(dbtModel, originalJson, adminAuthHeaders(), MINOR_UPDATE, change);
 
+    DbtModel dbtModel1 = patchEntityAndCheck(dbtModel, originalJson, adminAuthHeaders(), MINOR_UPDATE, change);
+
+    assertEquals(dbtModel1.getViewDefinition(),  viewDefinition);
     // Remove nodeType, description
-    originalJson = JsonUtils.pojoToJson(dbtModel);
-    change = getChangeDescription(dbtModel.getVersion());
+    originalJson = JsonUtils.pojoToJson(dbtModel1);
+    change = getChangeDescription(dbtModel1.getVersion());
 
-    dbtModel.withDbtNodeType(null);
+    dbtModel1.withDbtNodeType(null);
 
     change.getFieldsDeleted().add(new FieldChange().withName("dbtNodeType").withOldValue(DbtNodeType.Model.value()));
-    patchEntityAndCheck(dbtModel, originalJson, adminAuthHeaders(), MINOR_UPDATE, change);
+    patchEntityAndCheck(dbtModel1, originalJson, adminAuthHeaders(), MINOR_UPDATE, change);
   }
 
   @Test
