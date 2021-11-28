@@ -160,7 +160,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   }
 
   @Override
-  public void addRelationships(MlModel mlModel) throws IOException {
+  public void storeRelationships(MlModel mlModel) throws IOException {
 
     EntityUtil.setOwner(dao.relationshipDAO(), mlModel.getId(), Entity.MLMODEL, mlModel.getOwner());
 

@@ -171,7 +171,7 @@ public class DbtModelRepository extends EntityRepository<DbtModel> {
   }
 
   @Override
-  public void addRelationships(DbtModel dbtModel) throws IOException {
+  public void storeRelationships(DbtModel dbtModel) throws IOException {
     // Add relationship from database to model
     String databaseId = dbtModel.getDatabase().getId().toString();
     dao.relationshipDAO().insert(databaseId, dbtModel.getId().toString(), Entity.DATABASE, Entity.DBTMODEL,

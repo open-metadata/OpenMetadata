@@ -90,7 +90,7 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   @Override
-  public void addRelationships(User user) throws IOException {
+  public void storeRelationships(User user) throws IOException {
     assignTeams(user, user.getTeams());
   }
 

@@ -24,6 +24,7 @@ import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.EntityVersionPair;
+import org.openmetadata.catalog.jdbi3.TableRepository.TableUpdater;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.ChangeEvent;
 import org.openmetadata.catalog.type.EntityHistory;
@@ -61,28 +62,39 @@ import java.util.UUID;
 import java.util.function.BiPredicate;
 
 /**
- * This class is used by Entity Resources to perform READ and WRITE operations to the backend database to Create,
- * Retrieve, Update, and Delete entities.
+ * This is the base class used by Entity Resources to perform READ and WRITE operations to the backend database to
+ * Create, * Retrieve, Update, and Delete entities.
  *
- * An entity has two types of fields - `attributes` and `relationships`. The `attributes` are the core properties of
- * the entity, example - entity id, name, fullyQualifiedName, columns for a table, etc. The `relationships` are
- * an associated between two entities, example - table belongs to a database, table has a tag, user owns a table, etc.
- * All relationships are captured using {@code EntityReference}.
+ * An entity has two types of fields - `attributes` and `relationships`.
+ * <ul>
+ * <li>The `attributes` are the core properties of the entity, example - entity id, name, fullyQualifiedName, columns
+ * for a table, etc.</li>
+ * <li>The `relationships` are an associated between two entities, example - table belongs to a database,
+ * table has a tag, user owns a table, etc. All relationships are captured using {@code EntityReference}. </li>
+ * </ul>
  *
  * Entities are stored as JSON documents in the database. Each entity is stored in a separate table and is accessed
- * through a <i>Data Access Object</i> or <i>DAO</i> that corresponds to each of the entity. All DAO objects for an
- * entity are available in {@code daoCollection}.
+ * through a <i>Data Access Object</i> or <i>DAO</i> that corresponds to each of the entity. For example,
+ * <i>table_entity</i> is the database table used to store JSON docs corresponding to <i>table</i> entity and
+ * {@link org.openmetadata.catalog.jdbi3.CollectionDAO.TableDAO} is used as the DAO object to access the table_entity
+ * table. All DAO objects for an entity are available in {@code daoCollection}.
  *
+ * <br><br>
  * Relationships between entity is stored in a separate table that captures the edge - fromEntity, toEntity, and
- * the relationship name.
+ * the relationship name <i>entity_relationship</i> table and are supported by
+ * {@link org.openmetadata.catalog.jdbi3.CollectionDAO.EntityRelationshipDAO} DAO object.
  *
- * JSON document of an entity stores only required attributes of an entity. Some attributes such as <i>href</i>
- * are not stored and are created on the fly.
+ * JSON document of an entity stores only <i>required</i> attributes of an entity. Some attributes such as
+ * <i>href</i> are not stored and are created on the fly.
+ *
+ * <br><br>
  *
  * Json document of an entity does not store relationships. As an example, JSON document for <i>table</i> entity
  * does not store the relationship <i>database</i> which is of type <i>EntityReference</i>. This is always retrieved
- * from the the relationship edges when required to ensure, the data stored is consistent and information in
- * responses is not stale.
+ * from the the relationship table when required to ensure, the data stored is efficiently and consistently, and
+ * relationship information does not become stale.
+ * </p>
+ *
  */
 public abstract class EntityRepository<T> {
   public static final Logger LOG = LoggerFactory.getLogger(EntityRepository.class);
@@ -150,6 +162,8 @@ public abstract class EntityRepository<T> {
    * entity and does not include attributes such as <i>href</i>. The relationship fields of an entity is never stored
    * in the JSON document. It is always reconstructed based on relationship edges from the backend database.
    *
+   * <br><br>
+   *
    * As an example, when <i>table</i> entity is stored, the attributes such as <i>href</i> and the relationships such
    * as <i>owner</i>, <i>database</i>, and <i>tags</i> are set to null. These attributes are restored back after the
    * JSON document is stored to be sent as response.
@@ -162,14 +176,14 @@ public abstract class EntityRepository<T> {
    * This method is called to store all the relationships of an entity. It is expected that all relationships are
    * already validated and completely setup before this method is called and no validation of relationships is required.
    *
-   * @see TableRepository#addRelationships(Table) for an example implementation
+   * @see TableRepository#storeRelationships(Table) for an example implementation
    */
-  public abstract void addRelationships(T entity) throws IOException;
+  public abstract void storeRelationships(T entity) throws IOException;
 
   /**
    * PATCH operations can't overwrite certain fields, such as entity ID, fullyQualifiedNames etc. Instead of throwing
    * an error, we take lenient approach of ignoring the user error and restore those attributes based on what is
-   * already stored as original entity.
+   * already stored in the original entity.
    */
   public abstract void restorePatchAttributes(T original, T updated) throws IOException, ParseException;
 
@@ -376,7 +390,7 @@ public abstract class EntityRepository<T> {
 
   private T createNewEntity(T entity) throws IOException {
     storeEntity(entity, false);
-    addRelationships(entity);
+    storeRelationships(entity);
     return entity;
   }
 
@@ -393,8 +407,15 @@ public abstract class EntityRepository<T> {
   }
 
   /**
-   * Class that performs PUT and PATCH update operation. Override {@code entitySpecificUpdate()} to add
-   * additional entity specific fields to be updated.
+   * Class that performs PUT and PATCH update operation. It takes an <i>updated</i> entity and <i>original</i> entity.
+   * Performs comparison between then and updates the stored entity and also updates all the relationships. This class
+   * also tracks the changes between original and updated to version the entity and produce change events.
+   *
+   * <br><br>
+   *
+   * Common entity attributes such as description, displayName, owner, tags are handled by this class.
+   * Override {@code entitySpecificUpdate()} to add additional entity specific fields to be updated.
+   * @see TableUpdater#entitySpecificUpdate() for example.
    */
   public class EntityUpdater {
     protected final EntityInterface<T> original;
@@ -409,6 +430,9 @@ public abstract class EntityRepository<T> {
       this.patchOperation = patchOperation;
     }
 
+    /**
+     * Compare original and updated entities and perform updates. Update the entity version and track changes.
+     */
     public final void update() throws IOException, ParseException {
       updated.setId(original.getId());
       updateDescription();

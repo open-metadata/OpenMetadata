@@ -101,7 +101,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
   }
 
   @Override
-  public void addRelationships(Database database) throws IOException {
+  public void storeRelationships(Database database) throws IOException {
     dao.relationshipDAO().insert(database.getService().getId().toString(), database.getId().toString(),
             database.getService().getType(), Entity.DATABASE, Relationship.CONTAINS.ordinal());
     EntityUtil.setOwner(dao.relationshipDAO(), database.getId(), Entity.DATABASE, database.getOwner());

@@ -143,7 +143,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   }
 
   @Override
-  public void addRelationships(Pipeline pipeline) throws IOException {
+  public void storeRelationships(Pipeline pipeline) throws IOException {
     EntityReference service = pipeline.getService();
     dao.relationshipDAO().insert(service.getId().toString(), pipeline.getId().toString(), service.getType(),
             Entity.PIPELINE, Relationship.CONTAINS.ordinal());

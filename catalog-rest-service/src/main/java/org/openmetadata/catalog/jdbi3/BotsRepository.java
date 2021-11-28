@@ -69,7 +69,7 @@ public class BotsRepository extends EntityRepository<Bots>{
   }
 
   @Override
-  public void addRelationships(Bots entity) throws IOException { }
+  public void storeRelationships(Bots entity) throws IOException { }
 
   public static class BotsEntityInterface implements EntityInterface<Bots> {
     private final Bots entity;

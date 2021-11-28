@@ -89,7 +89,7 @@ public class PipelineServiceRepository extends EntityRepository<PipelineService>
   }
 
   @Override
-  public void addRelationships(PipelineService entity) throws IOException {
+  public void storeRelationships(PipelineService entity) throws IOException {
 
   }
 

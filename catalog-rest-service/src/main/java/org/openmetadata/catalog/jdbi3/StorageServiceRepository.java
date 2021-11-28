@@ -84,7 +84,7 @@ public class StorageServiceRepository extends EntityRepository<StorageService> {
   }
 
   @Override
-  public void addRelationships(StorageService entity) throws IOException {
+  public void storeRelationships(StorageService entity) throws IOException {
   }
 
   public static class StorageServiceEntityInterface implements EntityInterface<StorageService> {
