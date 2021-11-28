@@ -110,7 +110,8 @@ public class MlModelResource {
     }
   }
 
-  static final String FIELDS = "owner,dashboard,algorithm,mlFeatures,mlHyperParameters,followers,tags,usageSummary";
+  static final String FIELDS = "owner,dashboard,algorithm,mlFeatures,mlHyperParameters,mlStore,server," +
+          "followers,tags,usageSummary";
   public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replaceAll(" ", "")
           .split(","));
 
@@ -357,6 +358,8 @@ public class MlModelResource {
               .withAlgorithm(create.getAlgorithm())
               .withMlFeatures(create.getMlFeatures())
               .withMlHyperParameters(create.getMlHyperParameters())
+              .withMlStore(create.getMlStore())
+              .withServer(create.getServer())
               .withTags(create.getTags())
               .withOwner(create.getOwner())
               .withUpdatedBy(securityContext.getUserPrincipal().getName())
