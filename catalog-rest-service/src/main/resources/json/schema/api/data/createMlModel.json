@@ -43,6 +43,14 @@
       "description": "Performance Dashboard URL to track metric evolution",
       "$ref" : "../../type/entityReference.json"
     },
+    "mlStore": {
+      "description": "Location containing the ML Model. It can be a storage layer and/or a container repository.",
+      "$ref": "../../entity/data/mlmodel.json#/definitions/mlStore"
+    },
+    "server": {
+      "description": "Endpoint that makes the ML Model available, e.g,. a REST API serving the data or computing predictions.",
+      "$ref": "../../type/basic.json#/definitions/href"
+    },
     "tags": {
       "description": "Tags for this ML Model",
       "type": "array",
