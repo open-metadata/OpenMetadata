@@ -8,6 +8,7 @@ from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.dbtmodel import DbtModel
+from metadata.generated.schema.entity.data.location import Location
 from metadata.generated.schema.entity.data.metrics import Metrics
 from metadata.generated.schema.entity.data.mlmodel import MlModel
 from metadata.generated.schema.entity.data.pipeline import Pipeline
@@ -18,6 +19,7 @@ from metadata.generated.schema.entity.services.dashboardService import Dashboard
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.messagingService import MessagingService
 from metadata.generated.schema.entity.services.pipelineService import PipelineService
+from metadata.generated.schema.entity.services.storageService import StorageService
 from metadata.generated.schema.entity.tags.tagCategory import Tag
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
@@ -142,6 +144,11 @@ class OpenMetadata(OMetaLineageMixin, OMetaTableMixin, Generic[T, C]):
             return "/pipelines"
 
         if issubclass(
+            entity, get_args(Union[Location, self.get_create_entity_type(Location)])
+        ):
+            return "/locations"
+
+        if issubclass(
             entity, get_args(Union[Table, self.get_create_entity_type(Table)])
         ):
             return "/tables"
@@ -206,6 +213,14 @@ class OpenMetadata(OMetaLineageMixin, OMetaTableMixin, Generic[T, C]):
             ),
         ):
             return "/services/pipelineServices"
+
+        if issubclass(
+            entity,
+            get_args(
+                Union[StorageService, self.get_create_entity_type(StorageService)]
+            ),
+        ):
+            return "/services/storageServices"
 
         raise MissingEntityTypeException(
             f"Missing {entity} type when generating suffixes"
