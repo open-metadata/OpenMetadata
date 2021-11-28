@@ -442,7 +442,7 @@ public abstract class EntityRepository<T> {
       entitySpecificUpdate();
 
       // Store the updated entity
-      store();
+      storeUpdate();
     }
 
     public void entitySpecificUpdate() throws IOException {
@@ -588,7 +588,7 @@ public abstract class EntityRepository<T> {
       }
     }
 
-    public final void store() throws IOException, ParseException {
+    public final void storeUpdate() throws IOException, ParseException {
       if (updateVersion(original.getVersion())) {
         // Store the old version
         String extensionName = EntityUtil.getVersionExtension(entityName, original.getVersion());
