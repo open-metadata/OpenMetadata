@@ -89,7 +89,7 @@ public class MessagingServiceRepository extends EntityRepository<MessagingServic
   }
 
   @Override
-  public void addRelationships(MessagingService entity) throws IOException { }
+  public void storeRelationships(MessagingService entity) throws IOException { }
 
   @Override
   public EntityUpdater getUpdater(MessagingService original, MessagingService updated, boolean patchOperation) throws IOException {

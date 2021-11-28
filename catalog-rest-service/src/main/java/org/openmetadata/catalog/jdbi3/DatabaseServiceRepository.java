@@ -91,7 +91,7 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
   }
 
   @Override
-  public void addRelationships(DatabaseService entity) throws IOException {
+  public void storeRelationships(DatabaseService entity) throws IOException {
   }
 
   @Override

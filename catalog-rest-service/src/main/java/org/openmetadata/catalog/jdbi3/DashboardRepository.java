@@ -156,7 +156,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
   }
 
   @Override
-  public void addRelationships(Dashboard dashboard) throws IOException {
+  public void storeRelationships(Dashboard dashboard) throws IOException {
     setService(dashboard, dashboard.getService());
 
     // Add relationship from dashboard to chart

@@ -130,7 +130,7 @@ public class TeamRepository extends EntityRepository<Team> {
   }
 
   @Override
-  public void addRelationships(Team team) throws IOException {
+  public void storeRelationships(Team team) throws IOException {
     for (EntityReference user : Optional.ofNullable(team.getUsers()).orElse(Collections.emptyList())) {
       dao.relationshipDAO().insert(team.getId().toString(), user.getId().toString(), "team", "user",
               Relationship.CONTAINS.ordinal());

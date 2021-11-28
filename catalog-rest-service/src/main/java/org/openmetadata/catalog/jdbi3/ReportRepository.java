@@ -76,7 +76,7 @@ public class ReportRepository extends EntityRepository<Report> {
   }
 
   @Override
-  public void addRelationships(Report entity) throws IOException {
+  public void storeRelationships(Report entity) throws IOException {
     // TODO
   }
 

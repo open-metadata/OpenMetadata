@@ -101,7 +101,7 @@ public class DashboardServiceRepository extends EntityRepository<DashboardServic
   }
 
   @Override
-  public void addRelationships(DashboardService entity) throws IOException {
+  public void storeRelationships(DashboardService entity) throws IOException {
   }
 
   @Override

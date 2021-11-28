@@ -304,7 +304,7 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   @Override
-  public void addRelationships(Table table) throws IOException {
+  public void storeRelationships(Table table) throws IOException {
     // Add relationship from database to table
     String databaseId = table.getDatabase().getId().toString();
     dao.relationshipDAO().insert(databaseId, table.getId().toString(), Entity.DATABASE, Entity.TABLE,

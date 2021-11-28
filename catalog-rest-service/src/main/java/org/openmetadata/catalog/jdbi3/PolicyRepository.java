@@ -122,7 +122,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
   }
 
   @Override
-  public void addRelationships(Policy policy) throws IOException {
+  public void storeRelationships(Policy policy) throws IOException {
     // Add policy owner relationship
     setOwner(policy, policy.getOwner());
   }

@@ -96,7 +96,7 @@ public class MetricsRepository extends EntityRepository<Metrics> {
   }
 
   @Override
-  public void addRelationships(Metrics metrics) throws IOException {
+  public void storeRelationships(Metrics metrics) throws IOException {
     dao.relationshipDAO().insert(metrics.getService().getId().toString(), metrics.getId().toString(),
             metrics.getService().getType(), Entity.METRICS, Relationship.CONTAINS.ordinal());
     setOwner(metrics, metrics.getOwner());

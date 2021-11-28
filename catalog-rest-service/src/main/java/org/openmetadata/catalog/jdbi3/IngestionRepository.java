@@ -129,7 +129,7 @@ public class IngestionRepository extends EntityRepository<Ingestion> {
   }
 
   @Override
-  public void addRelationships(Ingestion ingestion) throws IOException {
+  public void storeRelationships(Ingestion ingestion) throws IOException {
     EntityReference service = ingestion.getService();
     dao.relationshipDAO().insert(service.getId().toString(), ingestion.getId().toString(), service.getType(),
             Entity.INGESTION, Relationship.CONTAINS.ordinal());
