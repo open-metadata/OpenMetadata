@@ -302,7 +302,7 @@ class SampleDataSource(Source):
         yield from self.ingest_pipelines()
         yield from self.ingest_lineage()
         yield from self.ingest_users()
-        # yield from self.ingest_mlmodels()
+        yield from self.ingest_mlmodels()
 
     def ingest_tables(self) -> Iterable[OMetaDatabaseAndTable]:
         db = Database(
