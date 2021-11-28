@@ -89,7 +89,7 @@ def get_table_key(row: Dict[str, Any]) -> Union[TableKey, None]:
 
 class SampleDataSourceConfig(ConfigModel):
     sample_data_folder: str
-    service_name: str = "bigquery_gcp"
+    service_name: str = "bigquery"
     database: str = "warehouse"
     service_type: str = "BigQuery"
     scheme: str = "bigquery+pymysql"
@@ -233,7 +233,7 @@ class SampleDataSource(Source):
             open(self.config.sample_data_folder + "/datasets/tables.json", "r")
         )
         self.database_service = get_database_service_or_create(
-            config, self.metadata_config
+            self.config, self.metadata_config
         )
         self.kafka_service_json = json.load(
             open(self.config.sample_data_folder + "/topics/service.json", "r")
