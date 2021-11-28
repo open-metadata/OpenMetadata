@@ -29,26 +29,10 @@ from pydantic import ValidationError
 from metadata.config.common import ConfigModel
 from metadata.generated.schema.api.data.createTopic import CreateTopicEntityRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineage
-from metadata.generated.schema.api.services.createDashboardService import (
-    CreateDashboardServiceEntityRequest,
-)
-from metadata.generated.schema.api.services.createDatabaseService import (
-    CreateDatabaseServiceEntityRequest,
-)
-from metadata.generated.schema.api.services.createMessagingService import (
-    CreateMessagingServiceEntityRequest,
-)
-from metadata.generated.schema.api.services.createPipelineService import (
-    CreatePipelineServiceEntityRequest,
-)
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.mlmodel import MlModel
 from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.data.table import Table
-from metadata.generated.schema.entity.services.dashboardService import DashboardService
-from metadata.generated.schema.entity.services.databaseService import DatabaseService
-from metadata.generated.schema.entity.services.messagingService import MessagingService
-from metadata.generated.schema.entity.services.pipelineService import PipelineService
 from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.common import Record
@@ -59,9 +43,9 @@ from metadata.ingestion.models.user import User
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.utils.helpers import (
+    get_dashboard_service_or_create,
     get_database_service_or_create,
     get_messaging_service_or_create,
-    get_dashboard_service_or_create,
     get_pipeline_service_or_create,
 )
 
@@ -108,8 +92,8 @@ class SampleDataSourceConfig(ConfigModel):
     service_name: str = "bigquery_gcp"
     database: str = "warehouse"
     service_type: str = "BigQuery"
-    scheme = "bigquery+pymysql"
-    host_port = "9999"
+    scheme: str = "bigquery+pymysql"
+    host_port: str = "9999"
 
     def get_sample_data_folder(self):
         return self.sample_data_folder
@@ -288,7 +272,7 @@ class SampleDataSource(Source):
             open(self.config.sample_data_folder + "/pipelines/pipelines.json", "r")
         )
         self.pipeline_service = get_pipeline_service_or_create(
-            SampleDataSourceConfig.parse_obj(self.pipeline_service_json),
+            self.pipeline_service_json,
             metadata_config,
         )
         self.lineage = json.load(
@@ -318,7 +302,7 @@ class SampleDataSource(Source):
         yield from self.ingest_pipelines()
         yield from self.ingest_lineage()
         yield from self.ingest_users()
-        yield from self.ingest_mlmodels()
+        # yield from self.ingest_mlmodels()
 
     def ingest_tables(self) -> Iterable[OMetaDatabaseAndTable]:
         db = Database(
