@@ -17,15 +17,16 @@ import logging
 import time
 from datetime import datetime
 
-
 import pytest
 import requests
 from ldap3 import ALL, Connection, Server
 
-from metadata.ingestion.models.user import MetadataUser, User
+# from metadata.ingestion.models.user import MetadataUser, User
+from metadata.generated.schema.api.teams.createUser import CreateUserEntityRequest
 
 headers = {"Content-type": "application/json"}
 url = "http://localhost:8585/api/v1/users"
+
 
 def sleep(timeout_s):
     print(f"sleeping for {timeout_s} seconds")
@@ -96,22 +97,12 @@ def datetime_suffix():
 
 
 def test_insert_user(ldap_user_entry, datetime_suffix):
-    user = User(
-        str(ldap_user_entry['mail']),
-        str(ldap_user_entry['givenName']),
-        str(ldap_user_entry['sn']),
-        str(ldap_user_entry['cn']),
-        str(ldap_user_entry['uid']) + datetime_suffix,
-        "",
-        "",
-        "",
-        True,
-        0,
+    metadata_user = CreateUserEntityRequest(
+        name=str(ldap_user_entry['uid']) + datetime_suffix,
+        displayName=str(ldap_user_entry['cn']),
+        email=str(ldap_user_entry['mail'])
     )
-    metadata_user = MetadataUser(
-        name=user.github_username, display_name=user.name, email=user.email
-    )
-    r = requests.post(url, data=metadata_user.to_json(), headers=headers)
+    r = requests.post(url, data=metadata_user.json(), headers=headers)
     r.raise_for_status()
     if r.status_code == 200 or r.status_code == 201:
         assert 1
@@ -126,12 +117,12 @@ def test_read_user(ldap_user_entry, datetime_suffix):
 def test_update_user(ldap_user_entry, datetime_suffix):
     user = read_user_by_name(str(ldap_user_entry['uid']) + datetime_suffix)
     user[1]["displayName"] = "Jane Doe"
-    metadata_user = MetadataUser(
+    metadata_user = CreateUserEntityRequest(
         name=user[1]["name"],
-        display_name=user[1]["displayName"],
-        email=user[1]["name"],
+        displayName=user[1]["displayName"],
+        email=user[1]["email"],
     )
-    r = requests.patch(url, data=metadata_user.to_json(), headers=headers)
+    r = requests.patch(url, data=metadata_user.json(), headers=headers)
 
 
 def test_delete_user(ldap_user_entry, datetime_suffix):
