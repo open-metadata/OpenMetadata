@@ -349,7 +349,6 @@ public class TableRepository extends EntityRepository<Table> {
     // Add column level tags by adding tag to column relationship
     for (Column column : columns) {
       EntityUtil.applyTags(dao.tagDAO(), column.getTags(), column.getFullyQualifiedName());
-      column.setTags(getTags(column.getFullyQualifiedName())); // Update tag list to handle derived tags
       if (column.getChildren() != null) {
         applyTags(column.getChildren());
       }
@@ -359,7 +358,6 @@ public class TableRepository extends EntityRepository<Table> {
   private void applyTags(Table table) throws IOException {
     // Add table level tags by adding tag to table relationship
     EntityUtil.applyTags(dao.tagDAO(), table.getTags(), table.getFullyQualifiedName());
-    table.setTags(getTags(table.getFullyQualifiedName())); // Update tag to handle additional derived tags
     applyTags(table.getColumns());
   }
 
@@ -741,7 +739,7 @@ public class TableRepository extends EntityRepository<Table> {
       // Delete tags related to deleted columns
       deletedColumns.forEach(deleted -> EntityUtil.removeTags(dao.tagDAO(), deleted.getFullyQualifiedName()));
 
-      // Add tags related to deleted columns
+      // Add tags related to newly added columns
       for (Column added : addedColumns) {
         EntityUtil.applyTags(dao.tagDAO(), added.getTags(), added.getFullyQualifiedName());
       }
@@ -755,8 +753,8 @@ public class TableRepository extends EntityRepository<Table> {
         }
 
         updateColumnDescription(stored, updated);
-        updateTags(stored.getFullyQualifiedName(), fieldName + "." + updated.getName() + ".tags", stored.getTags(),
-                updated.getTags());
+        updateTags(stored.getFullyQualifiedName(), fieldName + "." + updated.getName() + ".tags",
+                stored.getTags(), updated.getTags());
         updateColumnConstraint(stored, updated);
 
         if (updated.getChildren() != null && stored.getChildren() != null) {
@@ -765,9 +763,7 @@ public class TableRepository extends EntityRepository<Table> {
         }
       }
 
-      if (!deletedColumns.isEmpty()) {
-        majorVersionChange = true;
-      }
+      majorVersionChange = !deletedColumns.isEmpty();
     }
 
     private void updateColumnDescription(Column origColumn, Column updatedColumn) throws JsonProcessingException {

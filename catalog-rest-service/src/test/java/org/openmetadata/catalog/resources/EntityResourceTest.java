@@ -646,7 +646,6 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
   protected final T createAndCheckEntity(Object create, Map<String, String> authHeaders) throws IOException {
     // Validate an entity that is created has all the information set in create request
     String updatedBy = TestUtils.getPrincipal(authHeaders);
-    // aqui si que tenim HREF
     T entity = createEntity(create, authHeaders);
     EntityInterface<T> entityInterface = getEntityInterface(entity);
 

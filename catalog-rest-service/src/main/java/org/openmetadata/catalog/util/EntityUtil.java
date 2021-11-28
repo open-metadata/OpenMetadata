@@ -91,8 +91,7 @@ public final class EntityUtil {
   public static BiPredicate<Task, Task> taskMatch = (task1, task2) ->
           task1.getName().equals(task2.getName());
 
-  public static BiPredicate<String, String> stringMatch = (string1, string2) ->
-          string1.equals(string2);
+  public static BiPredicate<String, String> stringMatch = String::equals;
 
   public static BiPredicate<Column, Column> columnMatch = (column1, column2) ->
           column1.getName().equals(column2.getName()) &&
@@ -285,10 +284,6 @@ public final class EntityUtil {
       // Apply tagLabel to targetFQN that identifies an entity or field
       tagDAO.applyTag(tagLabel.getTagFQN(), targetFQN, tagLabel.getLabelType().ordinal(),
               tagLabel.getState().ordinal());
-
-      // Apply derived tags
-      List<TagLabel> derivedTags = getDerivedTags(tagDAO, tagLabel, tag);
-      applyTags(tagDAO, derivedTags, targetFQN);
     }
   }
 
