@@ -68,7 +68,11 @@ openmetadata-dist/target/open-metadata-<version>.tar.gz
 
 Add a new Run/Debug configuration like the below screenshot.
 
-![Intellij Application Runtime Config](<../../.gitbook/assets/image (1) (1).png>)
+1. Click on Intellij - Run menu
+2. Click on "Edit Configurations"
+3. Click + sign and Select Application and make sure your config looks similar to the below image
+
+![Intellij Runtime Configuration](<../../.gitbook/assets/Intellij-Runtime Config.png>)
 
 ## Add missing dependency
 
