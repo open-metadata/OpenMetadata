@@ -21,7 +21,7 @@ cd ../ && mvn -DskipTests clean package
 cd docker/local-metadata
 echo "Starting Local Docker Containers"
 docker-compose down && docker-compose up --build -d
-until curl -s -f -o /dev/null "http://localhost:8585/api/v1/tables/name/bigquery.shopify.fact_sale"; do
+until curl -s -f -o /dev/null "http://localhost:8585/api/v1/tables/name/bigquery_gcp.shopify.fact_sale"; do
     printf '.'
     sleep 2
 done
