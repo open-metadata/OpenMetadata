@@ -134,7 +134,7 @@ const Suggestions = ({ searchText, isOpen, setIsOpen }: SuggestionProp) => {
         break;
       case SearchIndex.DBT_MODEL:
         label = 'DBT Models';
-        icon = Icons.TABLE_GREY;
+        icon = Icons.DBTMODEL_GREY;
 
         break;
       case SearchIndex.TABLE:
