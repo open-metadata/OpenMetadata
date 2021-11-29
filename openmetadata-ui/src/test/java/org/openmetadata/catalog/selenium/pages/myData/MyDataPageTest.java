@@ -134,6 +134,34 @@ public class MyDataPageTest {
 
   @Test
   @Order(6)
+  public void checkMyDataTab() {
+    checkWhatsNew();
+    Events.click(webDriver, By.cssSelector("[data-testid='tables']")); // Tables
+    Events.click(webDriver, By.xpath("(//a[@data-testid='table-link'])[last()]"));
+    Events.click(webDriver, By.xpath("(//button[@data-testid='tab'])[4]")); // Manage
+    Events.click(webDriver, By.cssSelector("[data-testid='owner-dropdown']")); // Owner
+    Events.click(webDriver, By.xpath("//div[@data-testid='dropdown-list']//div[2]//button[2]"));
+    Events.click(webDriver, By.cssSelector("[data-testid='list-item']")); // Select User/Team
+    Events.click(webDriver, By.cssSelector("[data-testid='saveManageTab']")); // Save
+    Events.click(webDriver, By.cssSelector("[data-testid='image']"));
+    Events.click(webDriver, By.cssSelector("[data-testid='tab'][id='myDataTab']")); // My Data
+    Events.click(webDriver, By.cssSelector("[data-testid='table-link']"));
+  }
+
+  @Test
+  @Order(7)
+  public void checkFollowingTab() {
+    checkWhatsNew();
+    Events.click(webDriver, By.cssSelector("[data-testid='tables']")); // Tables
+    Events.click(webDriver, By.xpath("(//a[@data-testid='table-link'])[last()]"));
+    Events.click(webDriver, By.cssSelector("[data-testid='follow-button']"));
+    Events.click(webDriver, By.cssSelector("[data-testid='image']"));
+    Events.click(webDriver, By.cssSelector("[data-testid='tab'][id='followingTab']")); // Following
+    Events.click(webDriver, By.cssSelector("[data-testid='table-link']"));
+  }
+
+  @Test
+  @Order(8)
   public void checkLogout() {
     checkWhatsNew();
     Events.click(webDriver, By.cssSelector("[data-testid='greeting-text']"));
