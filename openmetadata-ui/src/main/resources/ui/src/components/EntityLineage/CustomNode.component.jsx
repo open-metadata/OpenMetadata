@@ -63,7 +63,7 @@ const CustomNode = (props) => {
         <div className="tw-flex tw-flex-col tw-gap-y-1">
           {columns?.map((c) => (
             <p
-              className="tw-p-1 tw-rounded tw-border tw-text-primary"
+              className="tw-p-1 tw-rounded tw-border tw-text-grey-body"
               key={c.name}>
               {c.name}
             </p>
