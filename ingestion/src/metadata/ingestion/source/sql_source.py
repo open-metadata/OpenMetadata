@@ -22,6 +22,7 @@ from datetime import datetime
 from typing import Any, Dict, Iterable, List, Optional, Set, Tuple, Type
 from urllib.parse import quote_plus
 
+from pydantic import SecretStr
 from sqlalchemy import create_engine
 from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.inspection import inspect
@@ -74,7 +75,7 @@ class SQLSourceStatus(SourceStatus):
 
 class SQLConnectionConfig(ConfigModel):
     username: Optional[str] = None
-    password: Optional[str] = None
+    password: Optional[SecretStr] = None
     host_port: str
     database: Optional[str] = None
     scheme: str
@@ -97,12 +98,11 @@ class SQLConnectionConfig(ConfigModel):
         if self.username is not None:
             url += f"{quote_plus(self.username)}"
             if self.password is not None:
-                url += f":{quote_plus(self.password)}"
+                url += f":{quote_plus(self.password.get_secret_value())}"
             url += "@"
         url += f"{self.host_port}"
         if self.database:
             url += f"/{self.database}"
-        logger.info(url)
         return url
 
     def get_service_type(self) -> DatabaseServiceType:

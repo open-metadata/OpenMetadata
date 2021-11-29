@@ -22,6 +22,7 @@ import looker_sdk
 from looker_sdk.error import SDKError
 from looker_sdk.sdk.api31.models import Dashboard as LookerDashboard
 from looker_sdk.sdk.api31.models import DashboardElement
+from pydantic import SecretStr
 
 from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.dashboard import Dashboard
@@ -45,7 +46,7 @@ logger = logging.getLogger(__name__)
 
 class LookerSourceConfig(ConfigModel):
     username: str
-    password: str
+    password: SecretStr
     url: str
     platform_name: str = "looker"
     actor: str = ""
@@ -95,7 +96,7 @@ class LookerSource(Source):
             config.service_name,
             DashboardServiceType.Looker.name,
             config.username,
-            config.password,
+            config.password.get_secret_value(),
             config.url,
             metadata_config,
         )
