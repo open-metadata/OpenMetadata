@@ -43,7 +43,7 @@ config = """
     "type": "sample-usage",
     "config": {
       "database": "warehouse",
-      "service_name": "gcp_bigquery",
+      "service_name": "bigquery_gcp",
       "sample_data_folder": "./examples/sample_data"
     }
   },

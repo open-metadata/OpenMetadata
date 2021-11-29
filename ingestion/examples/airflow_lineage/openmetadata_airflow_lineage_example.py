@@ -34,16 +34,19 @@ def openmetadata_airflow_lineage_example():
     @task(
         inlets={
             "tables": [
-                Table(fullyQualifiedName="bigquery.shopify.raw_order"),
-                Table(fullyQualifiedName="bigquery.shopify.raw_customer")
+                Table(fullyQualifiedName="bigquery_gcp.shopify.raw_order"),
+                Table(fullyQualifiedName="bigquery_gcp.shopify.raw_customer"),
             ],
         },
-        outlets={"tables": [Table(fullyQualifiedName="bigquery.shopify.fact_order")]},
+        outlets={
+            "tables": [Table(fullyQualifiedName="bigquery_gcp.shopify.fact_order")]
+        },
     )
     def generate_data():
-        """ write your query to generate ETL"""
+        """write your query to generate ETL"""
         pass
 
     generate_data()
+
 
 openmetadata_airflow_lineage_example_dag = openmetadata_airflow_lineage_example()
