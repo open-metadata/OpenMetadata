@@ -18,7 +18,6 @@ from collections import namedtuple
 from dataclasses import dataclass, field
 from typing import Any, Dict, Iterable, List, Union
 
-from faker import Faker
 from pydantic import ValidationError
 
 from metadata.config.common import ConfigModel
@@ -161,58 +160,6 @@ class SampleTableMetadataGenerator:
         for c in columns:
             data[c] = []
         return data
-
-
-class GenerateFakeSampleData:
-    def __init__(self) -> None:
-        pass
-
-    @classmethod
-    def check_columns(self, columns):
-        fake = Faker()
-        colData = []
-        colList = [column["name"] for column in columns]
-        for i in range(25):
-            row = []
-            for column in columns:
-                col_name = column["name"]
-                value = None
-                if "id" in col_name:
-                    value = uuid.uuid4()
-                elif "price" in col_name or "currency" in col_name:
-                    value = fake.pricetag()
-                elif "barcode" in col_name:
-                    value = fake.ean(length=13)
-                elif "phone" in col_name:
-                    value = fake.phone_number()
-                elif "zip" in col_name:
-                    value = fake.postcode()
-                elif "address" in col_name:
-                    value = fake.street_address()
-                elif "company" in col_name:
-                    value = fake.company()
-                elif "region" in col_name:
-                    value = fake.street_address()
-                elif "name" in col_name:
-                    value = fake.first_name()
-                elif "city" in col_name:
-                    value = fake.city()
-                elif "country" in col_name:
-                    value = fake.country()
-                if value is None:
-                    if "TIMESTAMP" in column["dataType"] or "date" in col_name:
-                        value = fake.unix_time()
-                    elif "BOOLEAN" in column["dataType"]:
-                        value = fake.pybool()
-                    elif "NUMERIC" in column["dataType"]:
-                        value = fake.pyint()
-                    elif "VARCHAR" in column["dataType"]:
-                        value = fake.text(max_nb_chars=20)
-                    else:
-                        value = None
-                row.append(value)
-            colData.append(row)
-        return {"columns": colList, "rows": colData}
 
 
 class SampleDataSource(Source):
@@ -393,10 +340,6 @@ class SampleDataSource(Source):
             ),
         )
         for table in self.tables["tables"]:
-            if not table.get("sampleData"):
-                table["sampleData"] = GenerateFakeSampleData.check_columns(
-                    table["columns"]
-                )
             table_metadata = Table(**table)
             table_and_db = OMetaDatabaseAndTable(table=table_metadata, database=db)
             self.status.scanned("table", table_metadata.name.__root__)

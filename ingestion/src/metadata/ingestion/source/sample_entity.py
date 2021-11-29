@@ -12,11 +12,18 @@
 import json
 import logging
 import random
+import subprocess
+import sys
 import uuid
 from dataclasses import dataclass, field
 from typing import Iterable, List
 
-from faker import Faker
+try:
+    from faker import Faker
+except ImportError:
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "faker~=8.1.1"])
+finally:
+    from faker import Faker
 
 from metadata.generated.schema.api.data.createTopic import CreateTopicEntityRequest
 from metadata.generated.schema.api.services.createDashboardService import (
@@ -40,7 +47,6 @@ from metadata.ingestion.models.table_metadata import Chart, Dashboard
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
-from metadata.ingestion.processor.pii import ColumnNameScanner
 from metadata.ingestion.source.sql_source import SQLConnectionConfig
 from metadata.utils.helpers import snake_to_camel
 
@@ -91,7 +97,6 @@ class SampleEntitySource(Source):
         self.config = config
         self.metadata_config = metadata_config
         self.metadata = OpenMetadata(metadata_config)
-        self.column_scanner = ColumnNameScanner()
         self.service_name = lambda: self.faker.word()
         self.service_type = lambda: random.choice(
             ["BigQuery", "Hive", "MSSQL", "MySQL", "Postgres", "Redshift", "Snowflake"]
