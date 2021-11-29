@@ -39,16 +39,7 @@ OpenMetadata includes the following:
 Visit our demo at [http://sandbox.open-metadata.org](http://sandbox.open-metadata.org)
 
 ## Install and run OpenMetadata
-Get up and running in few mins
-
-```sh
-git clone https://github.com/open-metadata/OpenMetadata
-cd OpenMetadata/docker/metadata
-docker-compose up -d
-```
-Then visit [http://localhost:8585](http://localhost:8585)
-
-For more details on running OpenMetadata on your local machine or in production, see our [Install Doc](https://docs.open-metadata.org/install/run-openmetadata).
+Get up and running in few minutes. See the OpenMetadata documentation for [installation instructions](https://docs.open-metadata.org/install/run-openmetadata).
 
 ## Documentation and Support
 
