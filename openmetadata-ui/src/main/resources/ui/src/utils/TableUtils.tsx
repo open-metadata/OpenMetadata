@@ -207,6 +207,10 @@ export const getEntityIcon = (indexType: string) => {
       icon = 'pipeline';
 
       break;
+    case SearchIndex.DBT_MODEL:
+      icon = 'dbtmodel';
+
+      break;
 
     case SearchIndex.TABLE:
     case EntityType.TABLE:
