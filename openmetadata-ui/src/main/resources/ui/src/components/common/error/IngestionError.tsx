@@ -25,7 +25,7 @@ const stepsData = [
   },
   {
     step: 4,
-    title: 'Step4s',
+    title: 'Step4',
     description:
       'Lorem ipsum dolor sit amet consectetur adipisicing elit. Corporis, quos.',
     link: 'https://slack.open-metadata.org',
