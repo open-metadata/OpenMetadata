@@ -59,7 +59,7 @@ export const getSuggestions: Function = (
   queryString: string
 ): Promise<AxiosResponse> => {
   return APIClient.get(
-    `/search/suggest?q=${queryString}&index=${SearchIndex.DASHBOARD},${SearchIndex.TABLE},${SearchIndex.TOPIC},${SearchIndex.PIPELINE}
+    `/search/suggest?q=${queryString}&index=${SearchIndex.DASHBOARD},${SearchIndex.TABLE},${SearchIndex.TOPIC},${SearchIndex.PIPELINE},${SearchIndex.DBT_MODEL}
     `
   );
 };
