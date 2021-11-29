@@ -1,6 +1,8 @@
 import classNames from 'classnames';
+import { isNil } from 'lodash';
 import React from 'react';
 import { TITLE_FOR_NON_OWNER_ACTION } from '../../../constants/constants';
+import { getCountBadge } from '../../../utils/CommonUtils';
 import SVGIcons from '../../../utils/SvgUtils';
 import NonAdminAction from '../non-admin-action/NonAdminAction';
 type Tab = {
@@ -12,6 +14,7 @@ type Tab = {
   };
   isProtected: boolean;
   protectedState?: boolean;
+  count?: number;
   position: number;
 };
 type Props = {
@@ -62,6 +65,7 @@ const TabsPane = ({ activeTab, setActiveTab, tabs, className = '' }: Props) => {
                 width="16"
               />{' '}
               {tab.name}
+              {!isNil(tab.count) ? getCountBadge(tab.count) : null}
             </button>
           )
         )}
