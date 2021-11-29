@@ -2,7 +2,7 @@
 
 This schema defines the Pipeline Service entity, such as Airflow and Prefect.
 
-**$id: **[**https://open-metadata.org/schema/entity/services/messagingservice.json**](https://open-metadata.org/schema/entity/services/messagingservice.json)
+**$id:** [**https://open-metadata.org/schema/entity/services/messagingservice.json**](https://open-metadata.org/schema/entity/services/messagingservice.json)
 
 Type: `object`
 

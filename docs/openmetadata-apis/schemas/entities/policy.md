@@ -2,7 +2,7 @@
 
 This schema defines the Policy entity. A Policy defines lifecycle or access control that needs to be applied across different Data Entities.
 
-**$id: **[**https://open-metadata.org/schema/entity/policies/policy.json**](https://open-metadata.org/schema/entity/policies/policy.json)
+**$id:** [**https://open-metadata.org/schema/entity/policies/policy.json**](https://open-metadata.org/schema/entity/policies/policy.json)
 
 Type: `object`
 

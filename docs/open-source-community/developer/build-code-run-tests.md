@@ -44,7 +44,7 @@ The following commands must be run from the top-level directory.
 
 `mvn clean install`
 
-If you wish to skip the unit tests you can do this by adding `-DskipTests `to the command line.
+If you wish to skip the unit tests you can do this by adding `-DskipTests` to the command line.
 
 ## Create a distribution (packaging)
 
@@ -68,7 +68,7 @@ openmetadata-dist/target/open-metadata-<version>.tar.gz
 
 Add a new Run/Debug configuration like the below screenshot.
 
-![Intellij Run Configuration](<../../.gitbook/assets/image (1).png>)
+![Intellij Application Runtime Config](<../../.gitbook/assets/image (1) (1).png>)
 
 ## Add missing dependency
 
