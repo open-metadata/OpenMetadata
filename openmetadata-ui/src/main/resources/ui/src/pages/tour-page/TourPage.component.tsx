@@ -2,18 +2,38 @@ import { observer } from 'mobx-react';
 import { SearchResponse } from 'Models';
 import React, { useEffect, useState } from 'react';
 import AppState from '../../AppState';
+import Explore from '../../components/Explore/Explore.component';
+import { ExploreSearchData } from '../../components/Explore/explore.interface';
 import MyData from '../../components/MyData/MyData.component';
 import Tour from '../../components/tour/Tour';
 import { useTour } from '../../hooks/useTour';
+import data from './mockData.json';
 
 const mockData = {
   data: { hits: { hits: [] } },
 };
 
+const exploreSearchData = data as unknown as ExploreSearchData;
+
+const exploreCount = {
+  table: 4,
+  topic: 0,
+  dashboard: 0,
+  pipeline: 0,
+  dbtModel: 0,
+};
+
 const TourPage = () => {
   const { handleIsTourOpen } = useTour();
-  const [searchResult, setSearchResult] = useState(mockData);
+  const [myDataSearchResult, setMyDataSearchResult] = useState(mockData);
+  const [exploreSearchResult, setExploreSearchResult] =
+    useState(exploreSearchData);
   const [showExplore, setShowExplore] = useState(AppState.toggleExplore);
+  const [explorePageCounts, setExplorePageCounts] = useState(exploreCount);
+
+  const handleCountChange = () => {
+    setExplorePageCounts(exploreCount);
+  };
 
   useEffect(() => {
     handleIsTourOpen(true);
@@ -37,14 +57,31 @@ const TourPage = () => {
           }}
           error=""
           fetchData={() => {
-            setSearchResult(mockData);
+            setMyDataSearchResult(mockData);
           }}
           ingestionCount={0}
-          searchResult={searchResult as unknown as SearchResponse}
+          searchResult={myDataSearchResult as unknown as SearchResponse}
           userDetails={AppState.userDetails}
         />
       ) : (
-        <p>explore</p>
+        <Explore
+          error=""
+          fetchCount={handleCountChange}
+          fetchData={() => setExploreSearchResult(exploreSearchData)}
+          handlePathChange={handleCountChange}
+          handleSearchText={() => setExploreSearchResult(exploreSearchData)}
+          searchQuery=""
+          searchResult={exploreSearchResult as unknown as ExploreSearchData}
+          searchText=""
+          sortValue=""
+          tab=""
+          tabCounts={explorePageCounts}
+          updateDashboardCount={handleCountChange}
+          updateDbtModelCount={handleCountChange}
+          updatePipelineCount={handleCountChange}
+          updateTableCount={handleCountChange}
+          updateTopicCount={handleCountChange}
+        />
       )}
     </div>
   );

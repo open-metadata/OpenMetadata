@@ -211,7 +211,7 @@ const Appbar: React.FC = (): JSX.Element => {
                       setIsOpen(false);
 
                       // below code is for tour feature
-                      if (appState.isTourOpen) {
+                      if (location.pathname.includes(ROUTES.TOUR)) {
                         appState.toggleExplore = true;
 
                         return;

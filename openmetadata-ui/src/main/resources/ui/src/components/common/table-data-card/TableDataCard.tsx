@@ -33,6 +33,7 @@ type Props = {
   description?: string;
   tableType?: string;
   tier?: string;
+  id?: string;
   usage?: number;
   serviceType?: string;
   fullyQualifiedName: string;
@@ -48,6 +49,7 @@ const TableDataCard: FunctionComponent<Props> = ({
   name,
   owner = '--',
   description,
+  id,
   tier = '',
   usage,
   serviceType,
@@ -81,7 +83,8 @@ const TableDataCard: FunctionComponent<Props> = ({
   return (
     <div
       className="tw-bg-white tw-p-3 tw-border tw-border-main tw-rounded-md"
-      data-testid="table-data-card">
+      data-testid="table-data-card"
+      id={id}>
       <div>
         <div className="tw-flex">
           {getEntityIcon(indexType)}

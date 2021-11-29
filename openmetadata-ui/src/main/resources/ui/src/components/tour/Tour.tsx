@@ -1,5 +1,5 @@
 import { observer } from 'mobx-react';
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import ReactTutorial from 'react-tutorial';
 import { useTour } from '../../hooks/useTour';
 
@@ -29,10 +29,6 @@ const getSteps = (value: string) => {
       actionType: 'enter',
       position: 'bottom',
       selector: '#searchBox',
-    },
-    {
-      actionType: 'wait',
-      waitTimer: 100,
     },
     {
       content: 'Click on the assets title for more details.',
@@ -84,17 +80,7 @@ const getSteps = (value: string) => {
 
 const Tour = () => {
   const { isTourOpen, handleIsTourOpen } = useTour();
-  const [steps, setSteps] = useState<Steps[]>([]);
-
-  useEffect(() => {
-    // searchData('', 1, PAGE_SIZE, '', '', '', SearchIndex.TABLE).then(
-    //   (res: AxiosResponse) => {
-    //     const table = res.data.hits.hits[0];
-    //     setSteps(getSteps(table._source.table_name));
-    //   }
-    //   );
-    setSteps(getSteps('dim_c'));
-  }, []);
+  const [steps] = useState<Steps[]>(getSteps('dim_a'));
 
   return (
     <div>
