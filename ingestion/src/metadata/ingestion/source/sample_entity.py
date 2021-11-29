@@ -20,7 +20,7 @@ from typing import Iterable, List
 
 try:
     from faker import Faker
-except ImportError:
+except (ImportError, ModuleNotFoundError):
     subprocess.check_call([sys.executable, "-m", "pip", "install", "faker~=8.1.1"])
 finally:
     from faker import Faker
