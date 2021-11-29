@@ -95,7 +95,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.openmetadata.catalog.resources.databases.DatabaseResourceTest.createAndCheckDatabase;
 import static org.openmetadata.catalog.resources.locations.LocationResourceTest.createLocation;
 import static org.openmetadata.catalog.resources.locations.LocationResourceTest.getLocationName;
-import static org.openmetadata.catalog.resources.services.DatabaseServiceResourceTest.createService;
 import static org.openmetadata.catalog.type.ColumnDataType.ARRAY;
 import static org.openmetadata.catalog.type.ColumnDataType.BIGINT;
 import static org.openmetadata.catalog.type.ColumnDataType.BINARY;
@@ -120,11 +119,7 @@ public class TableResourceTest extends EntityResourceTest<Table> {
   private static final Logger LOG = LoggerFactory.getLogger(TableResourceTest.class);
   public static Database DATABASE;
 
-  public static final List<Column> COLUMNS = Arrays.asList(
-          getColumn("c1", BIGINT, USER_ADDRESS_TAG_LABEL),
-          getColumn("c2", ColumnDataType.VARCHAR, USER_ADDRESS_TAG_LABEL).withDataLength(10),
-          getColumn("c3", BIGINT, USER_BANK_ACCOUNT_TAG_LABEL));
-
+  public static List<Column> COLUMNS;
 
   public TableResourceTest() {
     super(Entity.TABLE, Table.class, TableList.class, "tables", TableResource.FIELDS,
@@ -136,6 +131,11 @@ public class TableResourceTest extends EntityResourceTest<Table> {
     EntityResourceTest.setup(test);
     CreateDatabase create = DatabaseResourceTest.create(test).withService(SNOWFLAKE_REFERENCE);
     DATABASE = createAndCheckDatabase(create, adminAuthHeaders());
+
+    COLUMNS = Arrays.asList(
+            getColumn("c1", BIGINT, USER_ADDRESS_TAG_LABEL),
+            getColumn("c2", ColumnDataType.VARCHAR, USER_ADDRESS_TAG_LABEL).withDataLength(10),
+            getColumn("c3", BIGINT, USER_BANK_ACCOUNT_TAG_LABEL));
   }
 
   public static Table createTable(TestInfo test, int i) throws IOException {
@@ -1052,7 +1052,7 @@ public class TableResourceTest extends EntityResourceTest<Table> {
     // Add location to the table
     CreateStorageService createService = new CreateStorageService().withName("s3")
             .withServiceType(StorageServiceType.S3);
-    StorageService service = StorageServiceResourceTest.createService(createService, adminAuthHeaders());
+    StorageService service = new StorageServiceResourceTest().createEntity(createService, adminAuthHeaders());
     EntityReference serviceRef =
             new EntityReference().withName(service.getName()).withId(service.getId()).withType(Entity.STORAGE_SERVICE);
     CreateLocation create = new CreateLocation().withName(getLocationName(test)).withService(serviceRef);
@@ -1217,7 +1217,8 @@ public class TableResourceTest extends EntityResourceTest<Table> {
    * set up in the {@code setup()} method
    */
   public Table createEntity(TestInfo test, int index) throws IOException {
-    DatabaseService service = createService(DatabaseServiceResourceTest.create(test), adminAuthHeaders());
+    DatabaseService service = new DatabaseServiceResourceTest().createEntity(DatabaseServiceResourceTest.create(test),
+            adminAuthHeaders());
     EntityReference serviceRef =
             new EntityReference().withName(service.getName()).withId(service.getId()).withType(Entity.DATABASE_SERVICE);
     Database database = createAndCheckDatabase(DatabaseResourceTest.create(test).withService(serviceRef),

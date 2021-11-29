@@ -1,11 +1,12 @@
 import json
+import logging
 import re
 import uuid
 from typing import Dict, Iterable, Optional
 
 from metadata.config.common import ConfigModel
 from metadata.generated.schema.entity.data.database import Database
-from metadata.generated.schema.entity.data.model import Model
+from metadata.generated.schema.entity.data.dbtmodel import DbtModel
 from metadata.generated.schema.entity.data.table import Column
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
@@ -17,8 +18,10 @@ from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndModel
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.source.sql_source import SQLSourceStatus
-from metadata.utils.column_helpers import get_column_type
+from metadata.utils.column_helpers import get_column_type, register_custom_str_type
 from metadata.utils.helpers import get_database_service_or_create
+
+logger: logging.Logger = logging.getLogger(__name__)
 
 
 class DBTSourceConfig(ConfigModel):
@@ -33,6 +36,9 @@ class DBTSourceConfig(ConfigModel):
 
     def get_service_type(self) -> DatabaseServiceType:
         return DatabaseServiceType[self.service_type]
+
+
+register_custom_str_type("CHARACTER VARYING", "VARCHAR")
 
 
 class DbtSource(Source):
@@ -96,9 +102,6 @@ class DbtSource(Source):
             ccolumn = ccolumns[key]
             try:
                 ctype = ccolumn["type"]
-                if re.match("character varying", ctype):
-                    ctype = "varchar"
-
                 col_type = get_column_type(self.status, model_name, ctype)
                 col = Column(
                     name=ccolumn["name"].lower(),
@@ -107,10 +110,10 @@ class DbtSource(Source):
                     dataLength=1,
                     ordinalPosition=ccolumn["index"],
                 )
+                columns.append(col)
             except Exception as e:
-                print(ccolumn["type"])
+                logger.error(f"Failed to parse column type due to {e}")
 
-            columns.append(col)
         return columns
 
     def _parse_dbt(self):
@@ -132,11 +135,11 @@ class DbtSource(Source):
                 columns = []
             if mnode["resource_type"] == "test":
                 continue
-            model = Model(
+            model = DbtModel(
                 id=uuid.uuid4(),
                 name=name,
                 description=description,
-                nodeType=mnode["resource_type"].capitalize(),
+                dbtNodeType=mnode["resource_type"].capitalize(),
                 viewDefinition=mnode["raw_sql"],
                 columns=columns,
             )

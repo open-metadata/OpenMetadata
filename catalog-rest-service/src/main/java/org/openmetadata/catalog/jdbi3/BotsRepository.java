@@ -37,7 +37,8 @@ public class BotsRepository extends EntityRepository<Bots>{
   private final CollectionDAO dao;
 
   public BotsRepository(CollectionDAO dao) {
-    super(BotsResource.COLLECTION_PATH, Bots.class, dao.botsDAO(), dao, Fields.EMPTY_FIELDS, Fields.EMPTY_FIELDS);
+    super(BotsResource.COLLECTION_PATH, Entity.BOTS, Bots.class, dao.botsDAO(), dao, Fields.EMPTY_FIELDS,
+            Fields.EMPTY_FIELDS);
     this.dao = dao; }
 
   public Bots insert(Bots bots) throws JsonProcessingException {
@@ -60,10 +61,10 @@ public class BotsRepository extends EntityRepository<Bots>{
   }
 
   @Override
-  public void validate(Bots entity) throws IOException { }
+  public void prepare(Bots entity) throws IOException { }
 
   @Override
-  public void store(Bots entity, boolean update) throws IOException {
+  public void storeEntity(Bots entity, boolean update) throws IOException {
     dao.botsDAO().insert(entity);
   }
 

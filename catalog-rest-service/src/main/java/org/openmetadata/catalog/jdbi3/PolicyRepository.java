@@ -49,7 +49,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
   private final CollectionDAO dao;
 
   public PolicyRepository(CollectionDAO dao) {
-    super(PolicyResource.COLLECTION_PATH, Policy.class, dao.policyDAO(), dao, POLICY_PATCH_FIELDS,
+    super(PolicyResource.COLLECTION_PATH, Entity.POLICY, Policy.class, dao.policyDAO(), dao, POLICY_PATCH_FIELDS,
             POLICY_UPDATE_FIELDS);
     this.dao = dao;
   }
@@ -95,7 +95,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
 
 
   @Override
-  public void validate(Policy policy) throws IOException {
+  public void prepare(Policy policy) throws IOException {
     policy.setFullyQualifiedName(getFQN(policy));
 
     // Check if owner is valid and set the relationship
@@ -103,7 +103,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
   }
 
   @Override
-  public void store(Policy policy, boolean update) throws IOException {
+  public void storeEntity(Policy policy, boolean update) throws IOException {
     // Relationships and fields such as href are derived and not stored as part of json
     EntityReference owner = policy.getOwner();
     URI href = policy.getHref();

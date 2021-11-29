@@ -27,7 +27,6 @@ import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.JsonUtils;
 
-import javax.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.net.URI;
 import java.text.ParseException;
@@ -42,18 +41,9 @@ public class StorageServiceRepository extends EntityRepository<StorageService> {
   private final CollectionDAO dao;
 
   public StorageServiceRepository(CollectionDAO dao) {
-    super(StorageServiceResource.COLLECTION_PATH, StorageService.class, dao.storageServiceDAO(), dao,
-            Fields.EMPTY_FIELDS, Fields.EMPTY_FIELDS);
+    super(StorageServiceResource.COLLECTION_PATH, Entity.STORAGE_SERVICE, StorageService.class,
+            dao.storageServiceDAO(), dao, Fields.EMPTY_FIELDS, Fields.EMPTY_FIELDS);
     this.dao = dao;
-  }
-
-  public StorageService update(UriInfo uriInfo, UUID id, String description)
-          throws IOException {
-    StorageService storageService = dao.storageServiceDAO().findEntityById(id);
-    // Update fields
-    storageService.withDescription(description);
-    dao.storageServiceDAO().update(id, JsonUtils.pojoToJson(storageService));
-    return withHref(uriInfo, storageService);
   }
 
   @Transaction
@@ -80,14 +70,17 @@ public class StorageServiceRepository extends EntityRepository<StorageService> {
   }
 
   @Override
-  public void validate(StorageService entity) throws IOException {
+  public void prepare(StorageService entity) throws IOException {
   }
 
 
   @Override
-  public void store(StorageService entity, boolean update) throws IOException {
-    dao.storageServiceDAO().insert(entity);
-    // TODO other cleanup
+  public void storeEntity(StorageService service, boolean update) throws IOException {
+    if (update) {
+      dao.storageServiceDAO().update(service.getId(), JsonUtils.pojoToJson(service));
+    } else {
+      dao.storageServiceDAO().insert(service);
+    }
   }
 
   @Override

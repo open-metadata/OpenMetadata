@@ -49,8 +49,8 @@ public class DatabaseRepository extends EntityRepository<Database> {
   private final CollectionDAO dao;
 
   public DatabaseRepository(CollectionDAO dao) {
-    super(DatabaseResource.COLLECTION_PATH, Database.class, dao.databaseDAO(), dao, DATABASE_PATCH_FIELDS,
-            DATABASE_UPDATE_FIELDS);
+    super(DatabaseResource.COLLECTION_PATH, Entity.DATABASE, Database.class, dao.databaseDAO(), dao,
+            DATABASE_PATCH_FIELDS, DATABASE_UPDATE_FIELDS);
     this.dao = dao;
   }
 
@@ -75,14 +75,14 @@ public class DatabaseRepository extends EntityRepository<Database> {
   }
 
   @Override
-  public void validate(Database database) throws IOException {
+  public void prepare(Database database) throws IOException {
     database.setService(getService(database.getService()));
     database.setFullyQualifiedName(getFQN(database));
     database.setOwner(EntityUtil.populateOwner(dao.userDAO(), dao.teamDAO(), database.getOwner())); // Validate owner
   }
 
   @Override
-  public void store(Database database, boolean update) throws IOException {
+  public void storeEntity(Database database, boolean update) throws IOException {
     // Relationships and fields such as href are derived and not stored as part of json
     EntityReference owner = database.getOwner();
     EntityReference service = database.getService();

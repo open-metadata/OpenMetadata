@@ -51,8 +51,8 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
   private final CollectionDAO dao;
 
   public DashboardRepository(CollectionDAO dao) {
-    super(DashboardResource.COLLECTION_PATH, Dashboard.class, dao.dashboardDAO(), dao, DASHBOARD_PATCH_FIELDS,
-            DASHBOARD_UPDATE_FIELDS);
+    super(DashboardResource.COLLECTION_PATH, Entity.DASHBOARD, Dashboard.class, dao.dashboardDAO(), dao,
+            DASHBOARD_PATCH_FIELDS, DASHBOARD_UPDATE_FIELDS);
     this.dao = dao;
   }
 
@@ -129,7 +129,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
   }
 
   @Override
-  public void validate(Dashboard dashboard) throws IOException {
+  public void prepare(Dashboard dashboard) throws IOException {
     dashboard.setService(getService(dashboard.getService()));
     dashboard.setFullyQualifiedName(getFQN(dashboard));
     EntityUtil.populateOwner(dao.userDAO(), dao.teamDAO(), dashboard.getOwner()); // Validate owner
@@ -137,7 +137,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
   }
 
   @Override
-  public void store(Dashboard dashboard, boolean update) throws JsonProcessingException {
+  public void storeEntity(Dashboard dashboard, boolean update) throws JsonProcessingException {
     // Relationships and fields such as href are derived and not stored as part of json
     EntityReference owner = dashboard.getOwner();
     List<TagLabel> tags = dashboard.getTags();
@@ -287,7 +287,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     @Override
     public EntityReference getEntityReference() {
       return new EntityReference().withId(getId()).withName(getFullyQualifiedName()).withDescription(getDescription())
-              .withDisplayName(getDisplayName()).withType(Entity.DASHBOARD);
+              .withDisplayName(getDisplayName()).withType(Entity.DASHBOARD).withHref(getHref());
     }
 
     @Override

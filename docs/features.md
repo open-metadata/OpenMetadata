@@ -81,3 +81,32 @@ Integrate your database, dashboard, messaging, and pipeline services with OpenMe
 ![](.gitbook/assets/connectors-feature.gif)
 
 See the [Connectors](install/metadata-ingestion/connectors/) documentation for information on available connectors and how to integrate your services with OpenMetadata.
+
+### Metadata Versioning & Events API
+
+Starting in 0.6, OpenMetadata captures changes in both technical metadata (e.g., table schemas) and business metadata (e.g., tags, ownership, descriptions) as new versions of an entity. Metadata changes generate events that indicates which entity changed, who changed it, and how it changed. You may use these events to integrate metadata into other tools or trigger actions.&#x20;
+
+#### Metadata Versioning
+
+OpenMetadata maintains the version history for all entities using a number with the format _major.minor_, starting with 0.1 as the initial version of an entity.&#x20;
+
+Changes in metadata result in version changes as follows:
+
+* Backward **compatible** changes result in a Minor version change. A change in the description, tags, or ownership will increase the version of the entity metadata by 0.1 (e.g., from 0.1 to 0.2).
+* Backward **incompatible** changes result in a Major version change. For example, when a column in a table is deleted, the version increases by 1.0 (e.g., from 0.2 to 1.2).
+
+Metadata versioning helps **simplify debugging processes**. View the version history to see if a recent change led to a data issue. Data owners and admins can review changes and revert if necessary.
+
+Versioning also helps in **broader collaboration** among consumers and producers of data. Admins can provide access to more users in the organization to change certain fields. Crowdsourcing makes metadata the collective responsibility of the entire organization.
+
+![](<.gitbook/assets/versioning-wrapping-text.2021-11-17 16\_29\_01.gif>)
+
+#### Events API
+
+Starting in the 0.6 release, OpenMetadata captures changes in both technical metadata (e.g., table schemas) and business metadata (e.g., tags, ownership, descriptions) as change events. This lays the groundwork for notifications. In an upcoming release we will add support for push based events, enabling applications to register webhooks to be notified of change events. We will also enable users to subscribe to notifications and alerts for assets of interest. &#x20;
+
+### One-Click Ingestion Pipelines
+
+OpenMetadata provides a UI integration with Apache Airflow as a workflow engine to run ingestion, data profiling, data quality and other automation jobs. Admins can configure a service to run the OpenMetadata pipelines and add an ingestion schedule to automatically kick off the ingestion jobs directly from the OpenMetadata UI.
+
+![](<.gitbook/assets/ingestion for gif.2021-11-17 17\_50\_37.gif>)

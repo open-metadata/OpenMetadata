@@ -16,6 +16,7 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.services.DatabaseService;
@@ -31,7 +32,6 @@ import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
 
-import javax.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.net.URI;
 import java.text.ParseException;
@@ -47,19 +47,9 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
   private final CollectionDAO dao;
 
   public DatabaseServiceRepository(CollectionDAO dao) {
-    super(DatabaseServiceResource.COLLECTION_PATH, DatabaseService.class, dao.dbServiceDAO(), dao, Fields.EMPTY_FIELDS,
-            Fields.EMPTY_FIELDS);
+    super(DatabaseServiceResource.COLLECTION_PATH, Entity.DATABASE_SERVICE, DatabaseService.class,
+            dao.dbServiceDAO(), dao, Fields.EMPTY_FIELDS, Fields.EMPTY_FIELDS);
     this.dao = dao;
-  }
-
-  public DatabaseService update(UriInfo uriInfo, UUID id, String description, JdbcInfo jdbc, Schedule ingestionSchedule)
-          throws IOException {
-    EntityUtil.validateIngestionSchedule(ingestionSchedule);
-    DatabaseService dbService = dao.dbServiceDAO().findEntityById(id);
-    // Update fields
-    dbService.withDescription(description).withJdbc((jdbc)).withIngestionSchedule(ingestionSchedule);
-    dao.dbServiceDAO().update(id, JsonUtils.pojoToJson(dbService));
-    return withHref(uriInfo, dbService);
   }
 
   @Transaction
@@ -87,18 +77,26 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
   }
 
   @Override
-  public void validate(DatabaseService entity) throws IOException {
+  public void prepare(DatabaseService entity) throws IOException {
     EntityUtil.validateIngestionSchedule(entity.getIngestionSchedule());
   }
 
   @Override
-  public void store(DatabaseService entity, boolean update) throws IOException {
-    dao.dbServiceDAO().insert(entity);
-    // TODO other cleanup
+  public void storeEntity(DatabaseService service, boolean update) throws IOException {
+    if (update) {
+      dao.dbServiceDAO().update(service.getId(), JsonUtils.pojoToJson(service));
+    } else {
+      dao.dbServiceDAO().insert(service);
+    }
   }
 
   @Override
   public void storeRelationships(DatabaseService entity) throws IOException {
+  }
+
+  @Override
+  public EntityUpdater getUpdater(DatabaseService original, DatabaseService updated, boolean patchOperation) throws IOException {
+    return new DatabaseServiceUpdater(original, updated, patchOperation);
   }
 
   public static class DatabaseServiceEntityInterface implements EntityInterface<DatabaseService> {
@@ -192,5 +190,29 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
 
     @Override
     public void setTags(List<TagLabel> tags) { }
+  }
+
+  public class DatabaseServiceUpdater extends EntityUpdater {
+    public DatabaseServiceUpdater(DatabaseService original, DatabaseService updated, boolean patchOperation) {
+      super(original, updated, patchOperation);
+    }
+
+    @Override
+    public void entitySpecificUpdate() throws IOException {
+      updateJdbc();
+      updateIngestionSchedule();
+    }
+
+    private void updateJdbc() throws JsonProcessingException {
+      JdbcInfo origJdbc = original.getEntity().getJdbc();
+      JdbcInfo updatedJdbc = updated.getEntity().getJdbc();
+      recordChange("jdbc", origJdbc, updatedJdbc);
+    }
+
+    private void updateIngestionSchedule() throws JsonProcessingException {
+      Schedule origSchedule = original.getEntity().getIngestionSchedule();
+      Schedule updatedSchedule = updated.getEntity().getIngestionSchedule();
+      recordChange("ingestionSchedule", origSchedule, updatedSchedule, true);
+    }
   }
 }

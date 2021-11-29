@@ -48,7 +48,8 @@ public class TeamRepository extends EntityRepository<Team> {
   private final CollectionDAO dao;
 
   public TeamRepository(CollectionDAO dao) {
-    super(TeamResource.COLLECTION_PATH, Team.class, dao.teamDAO(), dao, TEAM_PATCH_FIELDS, Fields.EMPTY_FIELDS);
+    super(TeamResource.COLLECTION_PATH, Entity.TEAM, Team.class, dao.teamDAO(), dao, TEAM_PATCH_FIELDS,
+            Fields.EMPTY_FIELDS);
     this.dao = dao;
   }
 
@@ -106,12 +107,12 @@ public class TeamRepository extends EntityRepository<Team> {
   }
 
   @Override
-  public void validate(Team team) throws IOException {
+  public void prepare(Team team) throws IOException {
     validateUsers(team.getUsers());
   }
 
   @Override
-  public void store(Team team, boolean update) throws IOException {
+  public void storeEntity(Team team, boolean update) throws IOException {
     // Relationships and fields such as href are derived and not stored as part of json
     List<EntityReference> users = team.getUsers();
 

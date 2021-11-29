@@ -15,7 +15,6 @@
 
 import logging
 import traceback
-from typing import List
 
 from pydantic import ValidationError
 
@@ -27,8 +26,13 @@ from metadata.generated.schema.api.data.createDashboard import (
 from metadata.generated.schema.api.data.createDatabase import (
     CreateDatabaseEntityRequest,
 )
+from metadata.generated.schema.api.data.createDbtModel import (
+    CreateDbtModelEntityRequest,
+)
+from metadata.generated.schema.api.data.createLocation import (
+    CreateLocationEntityRequest,
+)
 from metadata.generated.schema.api.data.createMlModel import CreateMlModelEntityRequest
-from metadata.generated.schema.api.data.createModel import CreateModelEntityRequest
 from metadata.generated.schema.api.data.createPipeline import (
     CreatePipelineEntityRequest,
 )
@@ -38,6 +42,7 @@ from metadata.generated.schema.api.lineage.addLineage import AddLineage
 from metadata.generated.schema.api.teams.createTeam import CreateTeamEntityRequest
 from metadata.generated.schema.api.teams.createUser import CreateUserEntityRequest
 from metadata.generated.schema.entity.data.chart import ChartType
+from metadata.generated.schema.entity.data.location import Location
 from metadata.generated.schema.entity.data.mlmodel import MlModel
 from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.type.entityReference import EntityReference
@@ -112,6 +117,8 @@ class MetadataRestSink(Sink):
             self.write_charts(record)
         elif isinstance(record, Dashboard):
             self.write_dashboards(record)
+        elif isinstance(record, Location):
+            self.write_locations(record)
         elif isinstance(record, Pipeline):
             self.write_pipelines(record)
         elif isinstance(record, AddLineage):
@@ -121,7 +128,7 @@ class MetadataRestSink(Sink):
         elif isinstance(record, MlModel):
             self.write_ml_model(record)
         elif isinstance(record, OMetaDatabaseAndModel):
-            self.write_models(record)
+            self.write_dbt_models(record)
         else:
             logging.info(
                 f"Ignoring the record due to unknown Record type {type(record)}"
@@ -187,7 +194,7 @@ class MetadataRestSink(Sink):
             logger.error(err)
             self.status.failure(f"Table: {table_and_db.table.name.__root__}")
 
-    def write_models(self, model_and_db: OMetaDatabaseAndModel):
+    def write_dbt_models(self, model_and_db: OMetaDatabaseAndModel):
         try:
             db_request = CreateDatabaseEntityRequest(
                 name=model_and_db.database.name,
@@ -198,12 +205,12 @@ class MetadataRestSink(Sink):
             )
             db = self.metadata.create_or_update(db_request)
             model = model_and_db.model
-            model_request = CreateModelEntityRequest(
+            model_request = CreateDbtModelEntityRequest(
                 name=model.name,
                 description=model.description,
                 viewDefinition=model.viewDefinition,
                 database=db.id,
-                nodeType=model.nodeType,
+                dbtNodeType=model.dbtNodeType,
                 columns=model.columns,
             )
             created_model = self.metadata.create_or_update(model_request)
@@ -291,6 +298,24 @@ class MetadataRestSink(Sink):
             if chart_id in self.charts_dict.keys():
                 chart_references.append(self.charts_dict[chart_id])
         return chart_references
+
+    def write_locations(self, location: Location):
+        try:
+            location_request = CreateLocationEntityRequest(
+                name=location.name,
+                description=location.description,
+                locationType=location.locationType,
+                tags=location.tags,
+                owner=location.owner,
+                service=location.service,
+            )
+            created_location = self.metadata.create_or_update(location_request)
+            logger.info(f"Successfully ingested Location {created_location.name}")
+            self.status.records_written(f"Location: {created_location.name}")
+        except (APIError, ValidationError) as err:
+            logger.error(f"Failed to ingest Location {location.name}")
+            logger.error(err)
+            self.status.failure(f"Location: {location.name}")
 
     def write_pipelines(self, pipeline: Pipeline):
         try:

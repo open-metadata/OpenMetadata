@@ -38,7 +38,7 @@ public class ReportRepository extends EntityRepository<Report> {
   private final CollectionDAO dao;
 
   public ReportRepository(CollectionDAO dao) {
-    super(ReportResource.COLLECTION_PATH, Report.class, dao.reportDAO(), dao, Fields.EMPTY_FIELDS,
+    super(ReportResource.COLLECTION_PATH, Entity.REPORT, Report.class, dao.reportDAO(), dao, Fields.EMPTY_FIELDS,
             REPORT_UPDATE_FIELDS);
     this.dao = dao;
   }
@@ -63,14 +63,14 @@ public class ReportRepository extends EntityRepository<Report> {
   }
 
   @Override
-  public void validate(Report report) throws IOException {
+  public void prepare(Report report) throws IOException {
     setService(report, report.getService());
     setOwner(report, report.getOwner());
     EntityUtil.populateOwner(dao.userDAO(), dao.teamDAO(), report.getOwner()); // Validate owner
   }
 
   @Override
-  public void store(Report report, boolean update) throws IOException {
+  public void storeEntity(Report report, boolean update) throws IOException {
     // TODO add right checks
     dao.reportDAO().insert(report);
   }

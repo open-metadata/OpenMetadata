@@ -29,10 +29,10 @@ import org.openmetadata.catalog.entity.Bots;
 import org.openmetadata.catalog.entity.data.Chart;
 import org.openmetadata.catalog.entity.data.Dashboard;
 import org.openmetadata.catalog.entity.data.Database;
+import org.openmetadata.catalog.entity.data.DbtModel;
 import org.openmetadata.catalog.entity.data.Location;
-import org.openmetadata.catalog.entity.data.MlModel;
 import org.openmetadata.catalog.entity.data.Metrics;
-import org.openmetadata.catalog.entity.data.Model;
+import org.openmetadata.catalog.entity.data.MlModel;
 import org.openmetadata.catalog.entity.data.Pipeline;
 import org.openmetadata.catalog.entity.data.Report;
 import org.openmetadata.catalog.entity.data.Table;
@@ -53,11 +53,11 @@ import org.openmetadata.catalog.jdbi3.DashboardRepository.DashboardEntityInterfa
 import org.openmetadata.catalog.jdbi3.DashboardServiceRepository.DashboardServiceEntityInterface;
 import org.openmetadata.catalog.jdbi3.DatabaseRepository.DatabaseEntityInterface;
 import org.openmetadata.catalog.jdbi3.DatabaseServiceRepository.DatabaseServiceEntityInterface;
+import org.openmetadata.catalog.jdbi3.DbtModelRepository.DbtModelEntityInterface;
 import org.openmetadata.catalog.jdbi3.LocationRepository.LocationEntityInterface;
 import org.openmetadata.catalog.jdbi3.MessagingServiceRepository.MessagingServiceEntityInterface;
 import org.openmetadata.catalog.jdbi3.MetricsRepository.MetricsEntityInterface;
 import org.openmetadata.catalog.jdbi3.MlModelRepository.MlModelEntityInterface;
-import org.openmetadata.catalog.jdbi3.ModelRepository.ModelEntityInterface;
 import org.openmetadata.catalog.jdbi3.PipelineRepository.PipelineEntityInterface;
 import org.openmetadata.catalog.jdbi3.PipelineServiceRepository.PipelineServiceEntityInterface;
 import org.openmetadata.catalog.jdbi3.PolicyRepository.PolicyEntityInterface;
@@ -126,7 +126,7 @@ public interface CollectionDAO {
   TopicDAO topicDAO();
 
   @CreateSqlObject
-  ModelDAO modelDAO();
+  DbtModelDAO dbtModelDAO();
 
   @CreateSqlObject
   MlModelDAO mlModelDAO();
@@ -512,19 +512,19 @@ public interface CollectionDAO {
     }
   }
 
-  interface ModelDAO extends EntityDAO<Model>{
+  interface DbtModelDAO extends EntityDAO<DbtModel>{
     @Override
-    default String getTableName() { return "model_entity"; }
+    default String getTableName() { return "dbt_model_entity"; }
 
     @Override
-    default Class<Model> getEntityClass() { return Model.class; }
+    default Class<DbtModel> getEntityClass() { return DbtModel.class; }
 
     @Override
     default String getNameColumn() { return "fullyQualifiedName"; }
 
     @Override
-    default EntityReference getEntityReference(Model entity) {
-      return new ModelEntityInterface(entity).getEntityReference();
+    default EntityReference getEntityReference(DbtModel entity) {
+      return new DbtModelEntityInterface(entity).getEntityReference();
     }
   }
 
@@ -722,7 +722,8 @@ public interface CollectionDAO {
     void applyTag(@Bind("tagFQN") String tagFQN, @Bind("targetFQN") String targetFQN,
                   @Bind("labelType") int labelType, @Bind("state") int state);
 
-    @SqlQuery("SELECT tagFQN, labelType, state FROM tag_usage WHERE targetFQN = :targetFQN ORDER BY tagFQN")
+    @SqlQuery("SELECT tu.tagFQN, tu.labelType, tu.state, t.json ->> '$.description' AS description FROM tag_usage tu " +
+            "JOIN tag t ON tu.tagFQN = t.fullyQualifiedName WHERE tu.targetFQN = :targetFQN ORDER BY tu.tagFQN")
     List<TagLabel> getTags(@Bind("targetFQN") String targetFQN);
 
     @SqlQuery("SELECT COUNT(*) FROM tag_usage WHERE tagFQN LIKE CONCAT(:fqnPrefix, '%')")
@@ -739,7 +740,8 @@ public interface CollectionDAO {
       public TagLabel map(ResultSet r, StatementContext ctx) throws SQLException {
         return new TagLabel().withLabelType(TagLabel.LabelType.values()[r.getInt("labelType")])
                 .withState(TagLabel.State.values()[r.getInt("state")])
-                .withTagFQN(r.getString("tagFQN"));
+                .withTagFQN(r.getString("tagFQN"))
+                .withDescription(r.getString("description"));
       }
     }
   }
@@ -870,13 +872,27 @@ public interface CollectionDAO {
     @SqlUpdate("INSERT INTO change_event (json) VALUES (:json)")
     void insert(@Bind("json") String json);
 
+    default List<String> list(String eventType, List<String> entityTypes, long dateTime) {
+      if (entityTypes == null || entityTypes.isEmpty()) {
+        return listWithoutEntityFilter(eventType, dateTime);
+      }
+      return listWithEntityFilter(eventType, entityTypes, dateTime);
+    }
+
     @SqlQuery("SELECT json FROM change_event WHERE " +
             "eventType = :eventType AND " +
-            "(entityType IN (<entityTypes>) OR entityType IS NULL) AND " +
+            "(entityType IN (<entityTypes>)) AND " +
             "dateTime >= :dateTime " +
             "ORDER BY dateTime DESC")
-    List<String> list(@Bind("eventType") String eventType,
+    List<String> listWithEntityFilter(@Bind("eventType") String eventType,
                       @BindList("entityTypes") List<String> entityTypes,
                       @Bind("dateTime") long dateTime);
+
+    @SqlQuery("SELECT json FROM change_event WHERE " +
+            "eventType = :eventType AND " +
+            "dateTime >= :dateTime " +
+            "ORDER BY dateTime DESC")
+    List<String> listWithoutEntityFilter(@Bind("eventType") String eventType,
+                                @Bind("dateTime") long dateTime);
   }
 }

@@ -47,7 +47,8 @@ public class ChartRepository extends EntityRepository<Chart> {
   private final CollectionDAO dao;
 
   public ChartRepository(CollectionDAO dao) {
-    super(ChartResource.COLLECTION_PATH, Chart.class, dao.chartDAO(), dao, CHART_PATCH_FIELDS, CHART_UPDATE_FIELDS);
+    super(ChartResource.COLLECTION_PATH, Entity.CHART, Chart.class, dao.chartDAO(), dao, CHART_PATCH_FIELDS,
+            CHART_UPDATE_FIELDS);
     this.dao = dao;
   }
 
@@ -67,7 +68,7 @@ public class ChartRepository extends EntityRepository<Chart> {
   }
 
   @Override
-  public void validate(Chart chart) throws IOException {
+  public void prepare(Chart chart) throws IOException {
     chart.setService(getService(chart.getService()));
     chart.setFullyQualifiedName(getFQN(chart));
     EntityUtil.populateOwner(dao.userDAO(), dao.teamDAO(), chart.getOwner()); // Validate owner
@@ -75,7 +76,7 @@ public class ChartRepository extends EntityRepository<Chart> {
   }
 
   @Override
-  public void store(Chart chart, boolean update) throws JsonProcessingException {
+  public void storeEntity(Chart chart, boolean update) throws JsonProcessingException {
     // Relationships and fields such as href are derived and not stored as part of json
     EntityReference owner = chart.getOwner();
     List<TagLabel> tags = chart.getTags();

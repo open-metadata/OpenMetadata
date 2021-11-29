@@ -55,8 +55,8 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   private final CollectionDAO dao;
 
   public PipelineRepository(CollectionDAO dao) {
-    super(PipelineResource.COLLECTION_PATH, Pipeline.class, dao.pipelineDAO(), dao, PIPELINE_PATCH_FIELDS,
-            PIPELINE_UPDATE_FIELDS);
+    super(PipelineResource.COLLECTION_PATH, Entity.PIPELINE, Pipeline.class, dao.pipelineDAO(), dao,
+            PIPELINE_PATCH_FIELDS, PIPELINE_UPDATE_FIELDS);
     this.dao = dao;
   }
 
@@ -114,7 +114,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
 
   @Override
-  public void validate(Pipeline pipeline) throws IOException {
+  public void prepare(Pipeline pipeline) throws IOException {
     pipeline.setService(getService(pipeline.getService()));
     pipeline.setFullyQualifiedName(getFQN(pipeline));
     EntityUtil.populateOwner(dao.userDAO(), dao.teamDAO(), pipeline.getOwner()); // Validate owner
@@ -123,7 +123,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   }
 
   @Override
-  public void store(Pipeline pipeline, boolean update) throws IOException {
+  public void storeEntity(Pipeline pipeline, boolean update) throws IOException {
     // Relationships and fields such as href are derived and not stored as part of json
     EntityReference owner = pipeline.getOwner();
     List<TagLabel> tags = pipeline.getTags();
@@ -329,5 +329,4 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
       recordListChange("tasks", origTasks, updatedTasks, added, deleted, EntityUtil.taskMatch);
     }
   }
-
 }

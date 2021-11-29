@@ -50,7 +50,8 @@ public class TopicRepository extends EntityRepository<Topic> {
   }
 
   public TopicRepository(CollectionDAO dao) {
-    super(TopicResource.COLLECTION_PATH, Topic.class, dao.topicDAO(), dao, TOPIC_PATCH_FIELDS, TOPIC_UPDATE_FIELDS);
+    super(TopicResource.COLLECTION_PATH, Entity.TOPIC, Topic.class, dao.topicDAO(), dao, TOPIC_PATCH_FIELDS,
+            TOPIC_UPDATE_FIELDS);
     this.dao = dao;
   }
 
@@ -71,7 +72,7 @@ public class TopicRepository extends EntityRepository<Topic> {
   }
 
   @Override
-  public void validate(Topic topic) throws IOException {
+  public void prepare(Topic topic) throws IOException {
     EntityReference messagingService = getService(topic.getService());
     topic.setService(messagingService);
     topic.setFullyQualifiedName(getFQN(topic));
@@ -80,7 +81,7 @@ public class TopicRepository extends EntityRepository<Topic> {
   }
 
   @Override
-  public void store(Topic topic, boolean update) throws IOException {
+  public void storeEntity(Topic topic, boolean update) throws IOException {
     // Relationships and fields such as href are derived and not stored as part of json
     EntityReference owner = topic.getOwner();
     List<TagLabel> tags = topic.getTags();

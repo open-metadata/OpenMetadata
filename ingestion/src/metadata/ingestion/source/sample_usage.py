@@ -5,13 +5,12 @@ from typing import Iterable
 
 from metadata.ingestion.api.source import Source
 from metadata.ingestion.models.table_queries import TableQuery
-
-from ..ometa.openmetadata_rest import MetadataServerConfig
-from .sample_data import (
+from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
+from metadata.ingestion.source.sample_data import (
     SampleDataSourceConfig,
     SampleDataSourceStatus,
-    get_database_service_or_create,
 )
+from metadata.utils.helpers import get_database_service_or_create
 
 
 class SampleUsageSource(Source):
@@ -31,9 +30,7 @@ class SampleUsageSource(Source):
         self.query_log_csv = config.sample_data_folder + "/datasets/query_log"
         with open(self.query_log_csv, "r") as fin:
             self.query_logs = [dict(i) for i in csv.DictReader(fin)]
-        self.service = get_database_service_or_create(
-            self.service_json, metadata_config
-        )
+        self.service = get_database_service_or_create(self.config, metadata_config)
 
     @classmethod
     def create(cls, config_dict, metadata_config_dict, ctx):

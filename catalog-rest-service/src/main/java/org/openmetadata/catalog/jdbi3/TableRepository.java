@@ -20,7 +20,6 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import org.apache.commons.codec.binary.Hex;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
-import org.openmetadata.catalog.entity.data.Location;
 import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
@@ -32,11 +31,11 @@ import org.openmetadata.catalog.type.ColumnProfile;
 import org.openmetadata.catalog.type.DailyCount;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.JoinedWith;
+import org.openmetadata.catalog.type.SQLQuery;
 import org.openmetadata.catalog.type.TableConstraint;
 import org.openmetadata.catalog.type.TableData;
 import org.openmetadata.catalog.type.TableJoins;
 import org.openmetadata.catalog.type.TableProfile;
-import org.openmetadata.catalog.type.SQLQuery;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
@@ -46,7 +45,6 @@ import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.common.utils.CommonUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 
 import javax.ws.rs.core.Response.Status;
 import java.io.IOException;
@@ -83,7 +81,8 @@ public class TableRepository extends EntityRepository<Table> {
   private final CollectionDAO dao;
 
   public TableRepository(CollectionDAO dao) {
-    super(TableResource.COLLECTION_PATH, Table.class, dao.tableDAO(), dao, TABLE_PATCH_FIELDS, TABLE_UPDATE_FIELDS);
+    super(TableResource.COLLECTION_PATH, Entity.TABLE, Table.class, dao.tableDAO(), dao, TABLE_PATCH_FIELDS,
+            TABLE_UPDATE_FIELDS);
     this.dao = dao;
   }
 
@@ -109,7 +108,7 @@ public class TableRepository extends EntityRepository<Table> {
 
   @Override
   public void restorePatchAttributes(Table original, Table updated) throws IOException, ParseException {
-    // Patch can't make changes to following fields. Ignore the changes
+    // Patch can't make changes to following fields. Ignore the changes.
     updated.withFullyQualifiedName(original.getFullyQualifiedName()).withName(original.getName())
             .withDatabase(original.getDatabase()).withId(original.getId());
   }
@@ -261,7 +260,7 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   @Override
-  public void validate(Table table) throws IOException {
+  public void prepare(Table table) throws IOException {
     table.setDatabase(dao.databaseDAO().findEntityReferenceById(table.getDatabase().getId()));
 
     // Set data in table entity based on database relationship
@@ -279,7 +278,7 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   @Override
-  public void store(Table table, boolean update) throws IOException {
+  public void storeEntity(Table table, boolean update) throws IOException {
     // Relationships and fields such as href are derived and not stored as part of json
     EntityReference owner = table.getOwner();
     EntityReference database = table.getDatabase();
@@ -350,7 +349,6 @@ public class TableRepository extends EntityRepository<Table> {
     // Add column level tags by adding tag to column relationship
     for (Column column : columns) {
       EntityUtil.applyTags(dao.tagDAO(), column.getTags(), column.getFullyQualifiedName());
-      column.setTags(getTags(column.getFullyQualifiedName())); // Update tag list to handle derived tags
       if (column.getChildren() != null) {
         applyTags(column.getChildren());
       }
@@ -360,7 +358,6 @@ public class TableRepository extends EntityRepository<Table> {
   private void applyTags(Table table) throws IOException {
     // Add table level tags by adding tag to table relationship
     EntityUtil.applyTags(dao.tagDAO(), table.getTags(), table.getFullyQualifiedName());
-    table.setTags(getTags(table.getFullyQualifiedName())); // Update tag to handle additional derived tags
     applyTags(table.getColumns());
   }
 
@@ -742,7 +739,7 @@ public class TableRepository extends EntityRepository<Table> {
       // Delete tags related to deleted columns
       deletedColumns.forEach(deleted -> EntityUtil.removeTags(dao.tagDAO(), deleted.getFullyQualifiedName()));
 
-      // Add tags related to deleted columns
+      // Add tags related to newly added columns
       for (Column added : addedColumns) {
         EntityUtil.applyTags(dao.tagDAO(), added.getTags(), added.getFullyQualifiedName());
       }
@@ -756,8 +753,8 @@ public class TableRepository extends EntityRepository<Table> {
         }
 
         updateColumnDescription(stored, updated);
-        updateTags(stored.getFullyQualifiedName(), fieldName + "." + updated.getName() + ".tags", stored.getTags(),
-                updated.getTags());
+        updateTags(stored.getFullyQualifiedName(), fieldName + "." + updated.getName() + ".tags",
+                stored.getTags(), updated.getTags());
         updateColumnConstraint(stored, updated);
 
         if (updated.getChildren() != null && stored.getChildren() != null) {
@@ -766,9 +763,7 @@ public class TableRepository extends EntityRepository<Table> {
         }
       }
 
-      if (!deletedColumns.isEmpty()) {
-        majorVersionChange = true;
-      }
+      majorVersionChange = !deletedColumns.isEmpty();
     }
 
     private void updateColumnDescription(Column origColumn, Column updatedColumn) throws JsonProcessingException {
