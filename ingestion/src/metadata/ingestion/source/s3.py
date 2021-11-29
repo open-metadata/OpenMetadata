@@ -21,7 +21,7 @@ logger: logging.Logger = logging.getLogger(__name__)
 
 
 class S3SourceConfig(ConfigModel):
-    service_name: str = ""
+    service_name: str
     aws_access_key_id: str
     aws_secret_access_key: str
 
@@ -58,19 +58,31 @@ class S3Source(Source):
     def next_record(self) -> Iterable[Record]:
         try:
             for bucket in self.s3.buckets.all():
-                self.status.scanned(bucket.name)
+                self.status.scanned(bucket)
+                bucket_name = self._get_bucket_name_with_prefix(bucket.name)
                 yield Location(
                     id=uuid.uuid4(),
-                    name=bucket.name,
-                    displayName=bucket.name,
+                    name=bucket_name,
+                    displayName=bucket_name,
                     locationType=LocationType.Bucket,
-                    service=EntityReference(id=self.service.id, type="storageService"),
+                    service=EntityReference(
+                        id=self.service.id,
+                        type="storageService",
+                        name=self.service.name,
+                    ),
                 )
         except Exception as e:
             self.status.failure("error", str(e))
 
     def get_status(self) -> SourceStatus:
         return self.status
+
+    def _get_bucket_name_with_prefix(self, bucket_name: str) -> str:
+        return (
+            "s3://" + bucket_name
+            if not bucket_name.startswith("s3://")
+            else bucket_name
+        )
 
 
 def get_storage_service_or_create(
