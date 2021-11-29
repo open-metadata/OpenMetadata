@@ -19,6 +19,7 @@ import classNames from 'classnames';
 import { isString } from 'lodash';
 import React, { FunctionComponent } from 'react';
 import PopOver from '../common/popover/PopOver';
+import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
 import { TagProps } from './tags.interface';
 import { tagStyles } from './tags.styles';
 
@@ -75,9 +76,14 @@ const Tags: FunctionComponent<TagProps> = ({
           {tag.description || tag.labelType ? (
             <PopOver
               html={
-                <div className="tw-text-left">
-                  <p>{tag.description}</p>
-                  <p>Type: {tag.labelType}</p>
+                <div className="tw-text-left tw-p-1">
+                  {tag.description && (
+                    <RichTextEditorPreviewer
+                      className="tw-p-2"
+                      markdown={tag.description}
+                    />
+                  )}
+                  <p className="tw-mt-3">Set as {tag.labelType}</p>
                 </div>
               }
               position="top"
