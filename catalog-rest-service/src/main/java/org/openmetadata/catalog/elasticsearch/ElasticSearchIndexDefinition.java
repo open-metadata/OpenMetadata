@@ -1,18 +1,18 @@
 package org.openmetadata.catalog.elasticsearch;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
+import lombok.Data;
 import lombok.Getter;
+import lombok.Value;
 import lombok.experimental.SuperBuilder;
-import org.checkerframework.checker.units.qual.A;
 import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.client.RestHighLevelClient;
 import org.elasticsearch.client.indices.CreateIndexRequest;
 import org.elasticsearch.client.indices.CreateIndexResponse;
 import org.elasticsearch.client.indices.GetIndexRequest;
 import org.elasticsearch.common.xcontent.XContentType;
-import org.openmetadata.catalog.Entity;
-import org.openmetadata.catalog.entity.data.Chart;
 import org.openmetadata.catalog.entity.data.Dashboard;
 import org.openmetadata.catalog.entity.data.DbtModel;
 import org.openmetadata.catalog.entity.data.Pipeline;
@@ -129,6 +129,7 @@ public class ElasticSearchIndexDefinition {
 }
 
 @SuperBuilder
+@Data
 class ElasticSearchIndex {
   @JsonProperty("display_name")
   String displayName;
@@ -163,6 +164,8 @@ class ElasticSearchIndex {
       if (tierTag != null) {
         tagsList.remove(tierTag);
         this.tier = tierTag;
+      } else {
+        this.tier = "";
       }
       this.tags = tagsList;
     } else {
@@ -190,6 +193,8 @@ class FlattenColumn {
 
 @Getter
 @SuperBuilder(builderMethodName = "internalBuilder")
+@Value
+@JsonInclude(JsonInclude.Include.NON_NULL)
 class TableESIndex extends ElasticSearchIndex {
   @JsonProperty("table_name")
   String tableName;
@@ -260,6 +265,11 @@ class TableESIndex extends ElasticSearchIndex {
        tableESIndexBuilder.database(table.getDatabase().getName());
     }
 
+    if (table.getDatabaseService() != null) {
+      tableESIndexBuilder.service(table.getDatabaseService().getName());
+      tableESIndexBuilder.serviceType(table.getDatabaseService().getType());
+    }
+
     if (table.getUsageSummary() != null) {
         tableESIndexBuilder.weeklyStats(table.getUsageSummary().getWeeklyStats().getCount())
           .weeklyPercentileRank(table.getUsageSummary().getWeeklyStats().getPercentileRank().intValue())
@@ -273,7 +283,7 @@ class TableESIndex extends ElasticSearchIndex {
            item.getId().toString()).collect(Collectors.toList()));
     }
     if (table.getOwner() != null) {
-        tableESIndexBuilder.owner(table.getOwner().getId().toString());
+      tableESIndexBuilder.owner(table.getOwner().getId().toString());
     }
     return tableESIndexBuilder;
   }
@@ -311,6 +321,8 @@ class TableESIndex extends ElasticSearchIndex {
 
 @Getter
 @SuperBuilder(builderMethodName = "internalBuilder")
+@Value
+@JsonInclude(JsonInclude.Include.NON_NULL)
 class TopicESIndex extends ElasticSearchIndex {
   @JsonProperty("topic_name")
   String topicName;
@@ -353,6 +365,8 @@ class TopicESIndex extends ElasticSearchIndex {
 
 @Getter
 @SuperBuilder(builderMethodName = "internalBuilder")
+@Value
+@JsonInclude(JsonInclude.Include.NON_NULL)
 class DashboardESIndex extends ElasticSearchIndex {
   @JsonProperty("dashboard_name")
   String dashboardName;
@@ -414,6 +428,7 @@ class DashboardESIndex extends ElasticSearchIndex {
           .monthlyStats(dashboard.getUsageSummary().getMonthlyStats().getCount())
           .monthlyPercentileRank(dashboard.getUsageSummary().getMonthlyStats().getPercentileRank().intValue());
     }
+
     if (dashboard.getFollowers() != null) {
       dashboardESIndexBuilder.followers(dashboard.getFollowers().stream().map(item ->
           item.getId().toString()).collect(Collectors.toList()));
@@ -421,7 +436,6 @@ class DashboardESIndex extends ElasticSearchIndex {
     if (dashboard.getOwner() != null) {
       dashboardESIndexBuilder.owner(dashboard.getOwner().getId().toString());
     }
-
     return dashboardESIndexBuilder;
   }
 }
@@ -429,6 +443,8 @@ class DashboardESIndex extends ElasticSearchIndex {
 
 @Getter
 @SuperBuilder(builderMethodName = "internalBuilder")
+@Value
+@JsonInclude(JsonInclude.Include.NON_NULL)
 class PipelineESIndex extends ElasticSearchIndex {
   @JsonProperty("pipeline_name")
   String pipelineName;
@@ -477,7 +493,6 @@ class PipelineESIndex extends ElasticSearchIndex {
     if (pipeline.getOwner() != null) {
       pipelineESIndexBuilder.owner(pipeline.getOwner().getId().toString());
     }
-
     return pipelineESIndexBuilder;
   }
 }
@@ -485,6 +500,8 @@ class PipelineESIndex extends ElasticSearchIndex {
 
 @Getter
 @SuperBuilder(builderMethodName = "internalBuilder")
+@Value
+@JsonInclude(JsonInclude.Include.NON_NULL)
 class DbtModelESIndex extends ElasticSearchIndex {
   @JsonProperty("dbt_model_name")
   String dbtModelName;

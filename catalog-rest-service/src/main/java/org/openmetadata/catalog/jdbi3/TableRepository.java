@@ -399,8 +399,10 @@ public class TableRepository extends EntityRepository<Table> {
 
   private EntityReference getDatabaseService(UUID databaseId) throws IOException {
     // Find database for the table
-    return EntityUtil.getService(dao.relationshipDAO(), databaseId,
+     EntityReference serviceRef =  EntityUtil.getService(dao.relationshipDAO(), databaseId,
         Entity.DATABASE_SERVICE);
+     serviceRef = dao.dbServiceDAO().findEntityReferenceById(serviceRef.getId());
+     return serviceRef;
   }
 
   private EntityReference getLocation(UUID tableId) throws IOException {

@@ -6,6 +6,9 @@
       "display_name": {
         "type": "text"
       },
+      "fqdn": {
+        "type": "keyword"
+      },
       "owner": {
         "type": "text"
       },

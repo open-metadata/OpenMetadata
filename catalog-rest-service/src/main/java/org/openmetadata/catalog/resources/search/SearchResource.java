@@ -126,6 +126,7 @@ public class SearchResource {
     if (sortOrderParam.equals("asc")) {
       sortOrder = SortOrder.ASC;
     }
+
     if (index.equals("topic_search_index")) {
       searchSourceBuilder = buildTopicSearchBuilder(query, from, size);
     } else if (index.equals("dashboard_search_index")) {

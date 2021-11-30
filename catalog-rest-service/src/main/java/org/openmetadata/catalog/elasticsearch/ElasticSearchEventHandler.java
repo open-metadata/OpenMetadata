@@ -107,35 +107,35 @@ public class ElasticSearchEventHandler implements EventHandler {
               esIndexDefinition.checkIndexExistsOrCreate(ElasticSearchIndexType.TABLE_SEARCH_INDEX);
           if (exists) {
             Table instance = (Table) entity;
-            updateRequest = updateTable(instance);
+            updateRequest = updateTable(instance, responseContext);
           }
         } else if (entityClass.toLowerCase().endsWith(Entity.DASHBOARD.toLowerCase())) {
           boolean exists =
               esIndexDefinition.checkIndexExistsOrCreate(ElasticSearchIndexType.DASHBOARD_SEARCH_INDEX);
            if (exists) {
             Dashboard instance = (Dashboard) entity;
-            updateRequest = updateDashboard(instance);
+            updateRequest = updateDashboard(instance, responseContext);
           }
         } else if (entityClass.toLowerCase().endsWith(Entity.TOPIC.toLowerCase())) {
           boolean exists =
               esIndexDefinition.checkIndexExistsOrCreate(ElasticSearchIndexType.TOPIC_SEARCH_INDEX);
           if (exists) {
             Topic instance = (Topic) entity;
-            updateRequest = updateTopic(instance);
+            updateRequest = updateTopic(instance, responseContext);
           }
         } else if (entityClass.toLowerCase().endsWith(Entity.PIPELINE.toLowerCase())) {
           boolean exists =
               esIndexDefinition.checkIndexExistsOrCreate(ElasticSearchIndexType.PIPELINE_SEARCH_INDEX);
           if (exists) {
             Pipeline instance = (Pipeline) entity;
-            updateRequest = updatePipeline(instance);
+            updateRequest = updatePipeline(instance, responseContext);
           }
         } else if (entityClass.toLowerCase().endsWith(Entity.DBTMODEL.toLowerCase())) {
           boolean exists =
               esIndexDefinition.checkIndexExistsOrCreate(ElasticSearchIndexType.DBT_MODEL_SEARCH_INDEX);
           if (exists) {
             DbtModel instance = (DbtModel) entity;
-            updateRequest = updateDbtModel(instance);
+            updateRequest = updateDbtModel(instance, responseContext);
           }
         } else if (entityClass.toLowerCase().equalsIgnoreCase(ChangeEvent.class.toString())) {
           ChangeEvent changeEvent = (ChangeEvent) entity;
@@ -194,17 +194,22 @@ public class ElasticSearchEventHandler implements EventHandler {
     }
   }
 
-  private UpdateRequest updateTable(Table instance) throws JsonProcessingException {
+  private UpdateRequest updateTable(Table instance, ContainerResponseContext responseContext)
+      throws JsonProcessingException {
+    int responseCode = responseContext.getStatus();
     TableESIndex tableESIndex = TableESIndex.builder(instance).build();
     UpdateRequest updateRequest = new UpdateRequest(ElasticSearchIndexType.TABLE_SEARCH_INDEX.indexName
         , instance.getId().toString());
     String json = JsonUtils.pojoToJson(tableESIndex);
     updateRequest.doc(json, XContentType.JSON);
+    //only upsert if its a new entity
     updateRequest.docAsUpsert(true);
     return updateRequest;
   }
 
-  private UpdateRequest updateTopic(Topic instance) throws JsonProcessingException {
+  private UpdateRequest updateTopic(Topic instance, ContainerResponseContext responseContext)
+      throws JsonProcessingException {
+    int responseCode = responseContext.getStatus();
     TopicESIndex topicESIndex = TopicESIndex.builder(instance).build();
     UpdateRequest updateRequest = new UpdateRequest(ElasticSearchIndexType.TOPIC_SEARCH_INDEX.indexName,
         instance.getId().toString());
@@ -213,7 +218,9 @@ public class ElasticSearchEventHandler implements EventHandler {
     return updateRequest;
   }
 
-  private UpdateRequest updateDashboard(Dashboard instance) throws JsonProcessingException {
+  private UpdateRequest updateDashboard(Dashboard instance, ContainerResponseContext responseContext)
+      throws JsonProcessingException {
+    int responseCode = responseContext.getStatus();
     DashboardESIndex dashboardESIndex = DashboardESIndex.builder(instance).build();
     UpdateRequest updateRequest = new UpdateRequest(ElasticSearchIndexType.DASHBOARD_SEARCH_INDEX.indexName,
         instance.getId().toString());
@@ -222,7 +229,9 @@ public class ElasticSearchEventHandler implements EventHandler {
     return updateRequest;
   }
 
-  private UpdateRequest updatePipeline(Pipeline instance) throws JsonProcessingException {
+  private UpdateRequest updatePipeline(Pipeline instance, ContainerResponseContext responseContext)
+      throws JsonProcessingException {
+    int responseCode = responseContext.getStatus();
     PipelineESIndex pipelineESIndex = PipelineESIndex.builder(instance).build();
     UpdateRequest updateRequest = new UpdateRequest(ElasticSearchIndexType.PIPELINE_SEARCH_INDEX.indexName,
         instance.getId().toString());
@@ -231,7 +240,9 @@ public class ElasticSearchEventHandler implements EventHandler {
     return updateRequest;
   }
 
-  private UpdateRequest updateDbtModel(DbtModel instance) throws JsonProcessingException {
+  private UpdateRequest updateDbtModel(DbtModel instance, ContainerResponseContext responseContext)
+      throws JsonProcessingException {
+    int responseCode = responseContext.getStatus();
     DbtModelESIndex dbtModelESIndex = DbtModelESIndex.builder(instance).build();
     UpdateRequest updateRequest = new UpdateRequest(ElasticSearchIndexType.DBT_MODEL_SEARCH_INDEX.indexName,
         instance.getId().toString());

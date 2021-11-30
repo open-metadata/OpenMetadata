@@ -9,6 +9,9 @@
       "owner": {
         "type": "text"
       },
+      "fqdn": {
+        "type": "keyword"
+      },
       "followers": {
         "type": "keyword"
       },

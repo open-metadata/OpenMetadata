@@ -19,6 +19,9 @@
       "description": {
         "type": "text"
       },
+      "fqdn": {
+        "type": "keyword"
+      },
       "task_names": {
         "type":"text"
       },
