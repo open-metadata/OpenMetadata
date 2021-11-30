@@ -45,6 +45,7 @@ from metadata.generated.schema.entity.data.chart import ChartType
 from metadata.generated.schema.entity.data.location import Location
 from metadata.generated.schema.entity.data.mlmodel import MlModel
 from metadata.generated.schema.entity.data.pipeline import Pipeline
+from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.common import Record, WorkflowContext
 from metadata.ingestion.api.sink import Sink, SinkStatus
@@ -53,7 +54,6 @@ from metadata.ingestion.models.ometa_table_db import (
     OMetaDatabaseAndTable,
 )
 from metadata.ingestion.models.table_metadata import Chart, Dashboard
-from metadata.ingestion.models.user import MetadataTeam, User
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
@@ -371,32 +371,33 @@ class MetadataRestSink(Sink):
         for team in team_response["data"]:
             self.team_entities[team["name"]] = team["id"]
 
-    def _create_team(self, record: User) -> None:
+    def _create_team(self, team: EntityReference) -> None:
         metadata_team = CreateTeamEntityRequest(
-            name=record.team_name, displayName=record.team_name, description="Team Name"
+            name=team.name, displayName=team.name, description="Team Name"
         )
         try:
             r = self.metadata.create_or_update(metadata_team)
             instance_id = r.id.__root__
-            self.team_entities[record.team_name] = instance_id
+            self.team_entities[team.name] = instance_id
         except Exception as err:
             logger.error(traceback.format_exc())
             logger.error(traceback.print_exc())
             logger.error(err)
 
     def write_users(self, record: User):
-        if record.team_name not in self.team_entities:
-            self._create_team(record)
-        teams = [self.team_entities[record.team_name]]
+        teams = []
+        for team in record.teams:
+            self._create_team(team)
+            teams.append([self.team_entities[team.name]])
         metadata_user = CreateUserEntityRequest(
-            name=record.name,
-            displayName=record.name,
+            name=record.name.__root__,
+            displayName=record.name.__root__,
             email=record.email,
             teams=teams,
         )
         try:
             self.metadata.create_or_update(metadata_user)
-            self.status.records_written(record.name)
+            self.status.records_written(record.name.__root__)
             logger.info("Sink: {}".format(record.name))
         except Exception as err:
             logger.error(traceback.format_exc())
