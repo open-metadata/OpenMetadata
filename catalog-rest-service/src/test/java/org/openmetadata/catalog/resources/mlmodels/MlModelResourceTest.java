@@ -72,6 +72,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.ENTITY_ALREADY_EXISTS;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
+import static org.openmetadata.catalog.util.TestUtils.UpdateType.MAJOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.NO_CHANGE;
 import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
@@ -262,7 +263,7 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
             new FieldChange().withName("algorithm").withNewValue("SVM").withOldValue("regression")
     );
 
-    updateAndCheckEntity(request.withAlgorithm("SVM"), Status.OK, adminAuthHeaders(), MINOR_UPDATE, change);
+    updateAndCheckEntity(request.withAlgorithm("SVM"), Status.OK, adminAuthHeaders(), MAJOR_UPDATE, change);
   }
 
   @Test
@@ -285,7 +286,23 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
     change.getFieldsAdded().add(new FieldChange().withName("server").withNewValue(SERVER));
 
     updateAndCheckEntity(
-            request.withServer(SERVER), Status.OK, adminAuthHeaders(), MINOR_UPDATE, change
+            request.withServer(SERVER), Status.OK, adminAuthHeaders(), MAJOR_UPDATE, change
+    );
+  }
+
+  @Test
+  public void put_MlModelUpdateServer_200(TestInfo test) throws IOException {
+    CreateMlModel request = create(test).withServer(SERVER);
+    MlModel model = createAndCheckEntity(request, adminAuthHeaders());
+    ChangeDescription change = getChangeDescription(model.getVersion());
+
+    URI newServer = URI.create("http://localhost.com/mlModel/v2");
+    change.getFieldsUpdated().add(
+            new FieldChange().withName("server").withNewValue(newServer).withOldValue(SERVER)
+    );
+
+    updateAndCheckEntity(
+            request.withServer(newServer), Status.OK, adminAuthHeaders(), MAJOR_UPDATE, change
     );
   }
 

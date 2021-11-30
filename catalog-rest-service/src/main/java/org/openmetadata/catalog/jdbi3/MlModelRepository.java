@@ -345,6 +345,9 @@ public class MlModelRepository extends EntityRepository<MlModel> {
     }
 
     private void updateAlgorithm(MlModel origModel, MlModel updatedModel) throws JsonProcessingException {
+      // Mark the EntityUpdater version change to major
+      // Updating an algorithm should be flagged for an ML Model
+      majorVersionChange = true;
       recordChange("algorithm", origModel.getAlgorithm(), updatedModel.getAlgorithm());
     }
 
@@ -361,6 +364,9 @@ public class MlModelRepository extends EntityRepository<MlModel> {
     }
 
     private void updateServer(MlModel origModel, MlModel updatedModel) throws JsonProcessingException {
+      // Mark the EntityUpdater version change to major
+      // Updating the server can break current integrations to the ML services
+      majorVersionChange = true;
       recordChange("server", origModel.getServer(), updatedModel.getServer());
     }
 
