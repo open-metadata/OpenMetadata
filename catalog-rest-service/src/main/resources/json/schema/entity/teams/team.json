@@ -10,7 +10,7 @@
       "description": "A unique name of the team typically the team ID from an identity provider. Example - group Id from LDAP.",
       "type": "string",
       "minLength": 1,
-      "maxLength": 64
+      "maxLength": 128
     }
   },
 

@@ -72,6 +72,8 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.catalog.util.TestUtils.ENTITY_NAME_LENGTH_ERROR;
+import static org.openmetadata.catalog.util.TestUtils.LONG_ENTITY_NAME;
 import static org.openmetadata.catalog.util.TestUtils.NON_EXISTENT_ENTITY;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
@@ -129,15 +131,18 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
 
   @BeforeAll
   public static void setup(TestInfo test) throws URISyntaxException, IOException {
-    USER1 = UserResourceTest.createUser(UserResourceTest.create(test), authHeaders("test@open-metadata.org"));
+    UserResourceTest userResourceTest = new UserResourceTest();
+    USER1 = UserResourceTest.createUser(userResourceTest.create(test), authHeaders("test@open-metadata.org"));
     USER_OWNER1 = new EntityReference().withId(USER1.getId()).withType("user");
 
-    TEAM1 = TeamResourceTest.createTeam(TeamResourceTest.create(test), adminAuthHeaders());
+    TeamResourceTest teamResourceTest = new TeamResourceTest();
+    TEAM1 = TeamResourceTest.createTeam(teamResourceTest.create(test), adminAuthHeaders());
     TEAM_OWNER1 = new EntityReference().withId(TEAM1.getId()).withType("team");
 
     // Create snowflake database service
+    DatabaseServiceResourceTest databaseServiceResourceTest = new DatabaseServiceResourceTest();
     CreateDatabaseService createDatabaseService = new CreateDatabaseService()
-            .withName(DatabaseServiceResourceTest.getName(test, 1))
+            .withName(databaseServiceResourceTest.getEntityName(test, 1))
             .withServiceType(DatabaseServiceType.Snowflake).withJdbc(TestUtils.JDBC_INFO);
     DatabaseService databaseService = new DatabaseServiceResourceTest().createEntity(createDatabaseService,
             adminAuthHeaders());
@@ -196,13 +201,9 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // Methods to be overridden entity test class
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  public final Object createRequest(TestInfo test, String description, String displayName, EntityReference owner)
-          throws URISyntaxException {
-    return createRequest(test, 0, description, displayName, owner);
-  }
 
   // Create request such as CreateTable, CreateChart returned by concrete implementation
-  public abstract Object createRequest(TestInfo test, int index, String description, String displayName,
+  public abstract Object createRequest(String name, String description, String displayName,
                                        EntityReference owner) throws URISyntaxException;
 
   // Entity specific validate for entity create using POST
@@ -232,7 +233,7 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     // Create a large number of tables
     int maxEntities = 40;
     for (int i = 0; i < maxEntities; i++) {
-      createEntity(createRequest(test, i, null, null, null), adminAuthHeaders());
+      createEntity(createRequest(getEntityName(test, i), null, null, null), adminAuthHeaders());
     }
 
     // List all tables and use it for checking pagination
@@ -310,19 +311,41 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
   }
 
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  // Common entity tests for POST operations
+  ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  @Test
+  public void post_entityCreateWithInvalidName_400() throws URISyntaxException {
+    // Create an entity with mandatory name field null
+    final Object request = createRequest(null, "description", "displayName", null);
+    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
+            createEntity(request, adminAuthHeaders()));
+    assertResponse(exception, BAD_REQUEST, "[name must not be null]");
+
+    // Create an entity with mandatory name field empty
+    final Object request1 = createRequest("", "description", "displayName", null);
+    exception = assertThrows(HttpResponseException.class, () -> createEntity(request1, adminAuthHeaders()));
+    assertResponse(exception, BAD_REQUEST, ENTITY_NAME_LENGTH_ERROR);
+
+    // Create an entity with mandatory name field too long
+    final Object request2 = createRequest(LONG_ENTITY_NAME, "description", "displayName", null);
+    exception = assertThrows(HttpResponseException.class, () -> createEntity(request2, adminAuthHeaders()));
+    assertResponse(exception, BAD_REQUEST, ENTITY_NAME_LENGTH_ERROR);
+  }
+
+  ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // Common entity tests for PUT operations
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   @Test
   public void put_entityCreate_200(TestInfo test) throws IOException, URISyntaxException {
     // Create a new entity with PUT
-    Object request = createRequest(test, "description", "displayName", null);
+    Object request = createRequest(getEntityName(test), "description", "displayName", null);
     updateAndCheckEntity(request, CREATED, adminAuthHeaders(), UpdateType.CREATED, null);
   }
 
   @Test
   public void put_entityUpdateWithNoChange_200(TestInfo test) throws IOException, URISyntaxException {
     // Create a chart with POST
-    Object request = createRequest(test, "description", "display", USER_OWNER1);
+    Object request = createRequest(getEntityName(test), "description", "display", USER_OWNER1);
     T entity = createAndCheckEntity(request, adminAuthHeaders());
     EntityInterface<T> entityInterface = getEntityInterface(entity);
 
@@ -338,12 +361,12 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
       return; // Entity doesn't support ownership
     }
     // Create a new entity with PUT as admin user
-    Object request = createRequest(test, null, null, USER_OWNER1);
+    Object request = createRequest(getEntityName(test), null, null, USER_OWNER1);
     T entity = createAndCheckEntity(request, adminAuthHeaders());
     EntityInterface<T> entityInterface = getEntityInterface(entity);
 
     // Update the entity as USER_OWNER1
-    request = createRequest(test, "newDescription", null, USER_OWNER1);
+    request = createRequest(getEntityName(test), "newDescription", null, USER_OWNER1);
     FieldChange fieldChange = new FieldChange().withName("description").withNewValue("newDescription");
     ChangeDescription change = getChangeDescription(entityInterface.getVersion())
             .withFieldsAdded(Collections.singletonList(fieldChange));
@@ -356,13 +379,13 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
       return; // Entity doesn't support ownership
     }
     // Create an entity without owner
-    Object request = createRequest(test, "description", "displayName", null);
+    Object request = createRequest(getEntityName(test), "description", "displayName", null);
     T entity = createAndCheckEntity(request, adminAuthHeaders());
     EntityInterface<T> entityInterface = getEntityInterface(entity);
 
     // Set TEAM_OWNER1 as owner using PUT request
     FieldChange fieldChange = new FieldChange().withName("owner").withNewValue(TEAM_OWNER1);
-    request = createRequest(test, "description", "displayName", TEAM_OWNER1);
+    request = createRequest(getEntityName(test), "description", "displayName", TEAM_OWNER1);
     ChangeDescription change = getChangeDescription(entityInterface.getVersion())
             .withFieldsAdded(Collections.singletonList(fieldChange));
     entity = updateAndCheckEntity(request, OK, adminAuthHeaders(), MINOR_UPDATE, change);
@@ -370,7 +393,7 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     checkOwnerOwns(TEAM_OWNER1, entityInterface.getId(), true);
 
     // Change owner from TEAM_OWNER1 to USER_OWNER1 using PUT request
-    request = createRequest(test, "description", "displayName", USER_OWNER1);
+    request = createRequest(getEntityName(test), "description", "displayName", USER_OWNER1);
     fieldChange = new FieldChange().withName("owner").withOldValue(TEAM_OWNER1).withNewValue(USER_OWNER1);
     change = getChangeDescription(entityInterface.getVersion())
             .withFieldsUpdated(Collections.singletonList(fieldChange));
@@ -380,7 +403,7 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     checkOwnerOwns(TEAM_OWNER1, entityInterface.getId(), false);
 
     // Remove ownership (from USER_OWNER1) using PUT request
-    request = createRequest(test, "description", "displayName", null);
+    request = createRequest(getEntityName(test), "description", "displayName", null);
     fieldChange = new FieldChange().withName("owner").withOldValue(USER_OWNER1);
     change = getChangeDescription(entityInterface.getVersion())
             .withFieldsDeleted(Collections.singletonList(fieldChange));
@@ -391,12 +414,12 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
   @Test
   public void put_entityNullDescriptionUpdate_200(TestInfo test) throws IOException, URISyntaxException {
     // Create entity with null description
-    Object request = createRequest(test, null, "displayName", null);
+    Object request = createRequest(getEntityName(test), null, "displayName", null);
     T entity = createAndCheckEntity(request, adminAuthHeaders());
     EntityInterface<T> entityInterface = getEntityInterface(entity);
 
     // Update null description with a new description
-    request = createRequest(test, "updatedDescription", "displayName", null);
+    request = createRequest(getEntityName(test), "updatedDescription", "displayName", null);
     FieldChange fieldChange = new FieldChange().withName("description").withNewValue("updatedDescription");
     ChangeDescription change = getChangeDescription(entityInterface.getVersion())
             .withFieldsAdded(Collections.singletonList(fieldChange));
@@ -406,12 +429,12 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
   @Test
   public void put_entityEmptyDescriptionUpdate_200(TestInfo test) throws IOException, URISyntaxException {
     // Create entity with empty description
-    Object request = createRequest(test, "", "displayName", null);
+    Object request = createRequest(getEntityName(test), "", "displayName", null);
     T entity = createAndCheckEntity(request, adminAuthHeaders());
     EntityInterface<T> entityInterface = getEntityInterface(entity);
 
     // Update empty description with a new description
-    request = createRequest(test, "updatedDescription", "displayName", null);
+    request = createRequest(getEntityName(test), "updatedDescription", "displayName", null);
     FieldChange fieldChange = new FieldChange().withName("description").withOldValue("")
             .withNewValue("updatedDescription");
     ChangeDescription change = getChangeDescription(entityInterface.getVersion())
@@ -422,13 +445,13 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
   @Test
   public void put_entityNonEmptyDescriptionUpdate_200(TestInfo test) throws IOException, URISyntaxException {
     // Create entity with non-empty description
-    Object request = createRequest(test, "description", "displayName", null);
+    Object request = createRequest(getEntityName(test), "description", "displayName", null);
     T entity = createAndCheckEntity(request, adminAuthHeaders());
     EntityInterface<T> entityInterface = getEntityInterface(entity);
 
     // Update non-empty description with a new description
     Double oldVersion = entityInterface.getVersion();
-    request = createRequest(test, "updatedDescription", "displayName", null);
+    request = createRequest(getEntityName(test), "updatedDescription", "displayName", null);
     entity = updateEntity(request, OK, adminAuthHeaders());
     entityInterface = getEntityInterface(entity);
     assertEquals(oldVersion, entityInterface.getVersion());                 // Version did not change
@@ -440,19 +463,20 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     if (!supportsFollowers) {
       return; // Entity does not support following
     }
-    Object request = createRequest(test, "description", "displayName", null);
+    Object request = createRequest(getEntityName(test), "description", "displayName", null);
     T entity = createAndCheckEntity(request, adminAuthHeaders());
     UUID entityId = getEntityInterface(entity).getId();
 
     // Add follower to the entity
-    User user1 = UserResourceTest.createUser(UserResourceTest.create(test, 1), userAuthHeaders());
+    UserResourceTest userResourceTest = new UserResourceTest();
+    User user1 = UserResourceTest.createUser(userResourceTest.create(test, 1), userAuthHeaders());
     addAndCheckFollower(entityId, user1.getId(), CREATED, 1, userAuthHeaders());
 
     // Add the same user as follower and make sure no errors are thrown and return response is OK (and not CREATED)
     addAndCheckFollower(entityId, user1.getId(), OK, 1, userAuthHeaders());
 
     // Add a new follower to the entity
-    User user2 = UserResourceTest.createUser(UserResourceTest.create(test, 2), userAuthHeaders());
+    User user2 = UserResourceTest.createUser(userResourceTest.create(test, 2), userAuthHeaders());
     addAndCheckFollower(entityId, user2.getId(), CREATED, 2, userAuthHeaders());
 
     // Delete followers and make sure they are deleted
@@ -465,7 +489,7 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     if (!supportsFollowers) {
       return; // Entity does not support following
     }
-    Object request = createRequest(test, "description", "displayName", null);
+    Object request = createRequest(getEntityName(test), "description", "displayName", null);
     T entity = createAndCheckEntity(request, adminAuthHeaders());
     UUID entityId = getEntityInterface(entity).getId();
 
@@ -489,7 +513,7 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
       return;
     }
     // Create chart without description, owner
-    T entity = createEntity(createRequest(test, null, null, null), adminAuthHeaders());
+    T entity = createEntity(createRequest(getEntityName(test), null, null, null), adminAuthHeaders());
     EntityInterface<T> entityInterface = getEntityInterface(entity);
     assertNull(entityInterface.getDescription());
     assertNull(entityInterface.getOwner());
@@ -643,7 +667,7 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     return TestUtils.patch(getResource(id), patch, entityClass, authHeaders);
   }
 
-  protected final T createAndCheckEntity(Object create, Map<String, String> authHeaders) throws IOException {
+  public final T createAndCheckEntity(Object create, Map<String, String> authHeaders) throws IOException {
     // Validate an entity that is created has all the information set in create request
     String updatedBy = TestUtils.getPrincipal(authHeaders);
     T entity = createEntity(create, authHeaders);
@@ -796,22 +820,22 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     validateChangeEvents(entityInterface, updateTime, expectedEventType, expectedChangeDescription, authHeaders, false);
   }
 
-  private void validateChangeEvents(EntityInterface<T> entityInterface,
-                                          Date updateTime, EventType expectedEventType,
-                                          ChangeDescription expectedChangeDescription,
-                                          Map<String, String> authHeaders,
-                                          boolean withEventFilter) throws IOException {
+  private void validateChangeEvents(EntityInterface<T> entityInterface, Date updateTime, EventType expectedEventType,
+                                    ChangeDescription expectedChangeDescription, Map<String, String> authHeaders,
+                                    boolean withEventFilter) throws IOException {
     String updatedBy = TestUtils.getPrincipal(authHeaders);
     ResultList<ChangeEvent> changeEvents;
     ChangeEvent changeEvent = null;
 
     int iteration = 1;
-    while (iteration < 10) {
+    while (changeEvent == null && iteration < 25) {
       // Some times change event is not returned on quickly querying with a millisecond
       // Try multiple times before giving up
       if (withEventFilter) {
+        // Get change event with an event filter for specific entity entityName
         changeEvents = getChangeEvents(entityName, entityName, null, updateTime, authHeaders);
       } else {
+        // Get change event with no event filter for entity types
         changeEvents = getChangeEvents(null, null, null, updateTime, authHeaders);
       }
 
@@ -822,13 +846,12 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
           break;
         }
       }
-      if (changeEvent != null) {
-        break;
-      }
-      try {
-        Thread.sleep(iteration * 10L); // Sleep with backoff
-      } catch (InterruptedException e) {
-        e.printStackTrace();
+      if (changeEvent == null) {
+        try {
+          Thread.sleep(iteration * 10L); // Sleep with backoff
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }
       }
       iteration++;
     }
@@ -1035,8 +1058,7 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
    * Given a list of properties of an Entity (e.g., List<Column> or List<MlFeature> and
    * a function that validate the elements of T, validate lists
    */
-  public <P> void assertListProperty(List<P> expected, List<P> actual, BiConsumer<P, P> validate)
-          throws HttpResponseException {
+  public <P> void assertListProperty(List<P> expected, List<P> actual, BiConsumer<P, P> validate) {
     if (expected == null && actual == null) {
       return;
     }
@@ -1046,5 +1068,13 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     for (int i = 0; i < expected.size(); i++) {
       validate.accept(expected.get(i), actual.get(i));
     }
+  }
+
+  public final String getEntityName(TestInfo test) {
+    return String.format("%s_%s", entityName, test.getDisplayName());
+  }
+
+  public final String getEntityName(TestInfo test, int index) {
+    return String.format("%s_%d_%s", entityName, index, test.getDisplayName());
   }
 }

@@ -75,22 +75,6 @@ public class TeamResourceTest extends EntityResourceTest<Team> {
   }
 
   @Test
-  public void post_teamWithLongName_400_badRequest(TestInfo test) {
-    // Create team with mandatory name field empty
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-                    createTeam(create(test).withName(TestUtils.LONG_ENTITY_NAME), adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, "[name size must be between 1 and 64]");
-  }
-
-  @Test
-  public void post_teamWithoutName_400_badRequest(TestInfo test) {
-    // Create team with mandatory name field empty
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            createTeam(create(test).withName(""), adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, "[name size must be between 1 and 64]");
-  }
-
-  @Test
   public void post_teamAlreadyExists_409_conflict(TestInfo test) throws HttpResponseException {
     CreateTeam create = create(test);
     createTeam(create, adminAuthHeaders());
@@ -131,9 +115,10 @@ public class TeamResourceTest extends EntityResourceTest<Team> {
   @Test
   public void post_teamWithUsers_200_OK(TestInfo test) throws IOException {
     // Add team to user relationships while creating a team
-    User user1 = createUser(UserResourceTest.create(test, 1),
+    UserResourceTest userResourceTest = new UserResourceTest();
+    User user1 = createUser(userResourceTest.create(test, 1),
             authHeaders("test@open-metadata.org"));
-    User user2 = createUser(UserResourceTest.create(test, 2),
+    User user2 = createUser(userResourceTest.create(test, 2),
             authHeaders("test@open-metadata.org"));
     List<UUID> users = Arrays.asList(user1.getId(), user2.getId());
     CreateTeam create = create(test).withDisplayName("displayName").withDescription("description")
@@ -156,8 +141,8 @@ public class TeamResourceTest extends EntityResourceTest<Team> {
 
   @Test
   public void get_teamWithDifferentFields_200_OK(TestInfo test) throws HttpResponseException {
-    User user1 = createUser(UserResourceTest.create(test, 1),
-            authHeaders("test@open-metadata.org"));
+    UserResourceTest userResourceTest = new UserResourceTest();
+    User user1 = createUser(userResourceTest.create(test, 1), authHeaders("test@open-metadata.org"));
     List<UUID> users = Collections.singletonList(user1.getId());
 
     CreateTeam create = create(test).withDisplayName("displayName").withDescription("description")
@@ -168,7 +153,8 @@ public class TeamResourceTest extends EntityResourceTest<Team> {
 
   @Test
   public void get_teamByNameWithDifferentFields_200_OK(TestInfo test) throws HttpResponseException {
-    User user1 = createUser(UserResourceTest.create(test), adminAuthHeaders());
+    UserResourceTest userResourceTest = new UserResourceTest();
+    User user1 = createUser(userResourceTest.create(test), adminAuthHeaders());
     List<UUID> users = Collections.singletonList(user1.getId());
 
     CreateTeam create = create(test).withDisplayName("displayName").withDescription("description")
@@ -200,7 +186,8 @@ public class TeamResourceTest extends EntityResourceTest<Team> {
 
   @Test
   public void delete_validTeam_200_OK(TestInfo test) throws IOException {
-    User user1 = createUser(UserResourceTest.create(test, 1), adminAuthHeaders());
+    UserResourceTest userResourceTest = new UserResourceTest();
+    User user1 = createUser(userResourceTest.create(test, 1), adminAuthHeaders());
     List<UUID> users = Collections.singletonList(user1.getId());
     CreateTeam create = create(test).withUsers(users);
     Team team = createAndCheckEntity(create, adminAuthHeaders());
@@ -218,7 +205,8 @@ public class TeamResourceTest extends EntityResourceTest<Team> {
 
   @Test
   public void delete_validTeam_as_non_admin_401(TestInfo test) throws IOException {
-    User user1 = createUser(UserResourceTest.create(test, 1),
+    UserResourceTest userResourceTest = new UserResourceTest();
+    User user1 = createUser(userResourceTest.create(test, 1),
             authHeaders("test@open-metadata.org"));
     List<UUID> users = Collections.singletonList(user1.getId());
     CreateTeam create = create(test).withUsers(users);
@@ -390,21 +378,21 @@ public class TeamResourceTest extends EntityResourceTest<Team> {
     TestUtils.delete(CatalogApplicationTest.getResource("teams/" + id), authHeaders);
   }
 
-  public static CreateTeam create(TestInfo test, int index) {
-    return new CreateTeam().withName(getTeamName(test) + index);
+  CreateTeam create(TestInfo test, int index) {
+    return new CreateTeam().withName(getEntityName(test) + index);
   }
 
-  public static CreateTeam create(TestInfo test) {
-    return new CreateTeam().withName(getTeamName(test));
+  public CreateTeam create(TestInfo test) {
+    return create(getEntityName(test));
   }
 
-  public static String getTeamName(TestInfo test) {
-    return String.format("team_%s", test.getDisplayName());
+  public CreateTeam create(String entityName) {
+    return new CreateTeam().withName(entityName);
   }
 
   @Override
-  public Object createRequest(TestInfo test, int index, String description, String displayName, EntityReference owner) {
-    return create(test, index).withDescription(description).withDisplayName(displayName);
+  public Object createRequest(String name, String description, String displayName, EntityReference owner) {
+    return create(name).withDescription(description).withDisplayName(displayName);
   }
 
   @Override

@@ -9,7 +9,7 @@
       "description": "Name that identifies this ingestion instance uniquely.",
       "type": "string",
       "minLength": 1,
-      "maxLength": 256
+      "maxLength": 128
     },
     "displayName": {
       "description": "Display Name that identifies this Ingestion.",
