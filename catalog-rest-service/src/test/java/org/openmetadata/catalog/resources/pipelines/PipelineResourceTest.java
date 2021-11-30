@@ -85,8 +85,8 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline> {
   }
 
   @Override
-  public Object createRequest(TestInfo test, int index, String description, String displayName, EntityReference owner) {
-    return create(test, index).withDescription(description).withDisplayName(displayName).withOwner(owner);
+  public Object createRequest(String name, String description, String displayName, EntityReference owner) {
+    return create(name).withDescription(description).withDisplayName(displayName).withOwner(owner);
   }
 
   @Override
@@ -138,24 +138,6 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline> {
   }
 
   @Test
-  public void post_pipelineWithLongName_400_badRequest(TestInfo test) {
-    // Create pipeline with mandatory name field empty
-    CreatePipeline create = create(test).withName(TestUtils.LONG_ENTITY_NAME);
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            createPipeline(create, adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, "[name size must be between 1 and 64]");
-  }
-
-  @Test
-  public void post_pipelineWithoutName_400_badRequest(TestInfo test) {
-    // Create Pipeline with mandatory name field empty
-    CreatePipeline create = create(test).withName("");
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            createPipeline(create, adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, "[name size must be between 1 and 64]");
-  }
-
-  @Test
   public void post_PipelineAlreadyExists_409_conflict(TestInfo test) throws HttpResponseException {
     CreatePipeline create = create(test);
     createPipeline(create, adminAuthHeaders());
@@ -170,7 +152,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline> {
     CreatePipeline create = create(test);
     createAndCheckEntity(create, adminAuthHeaders());
 
-    create.withName(getPipelineName(test, 1)).withDescription("description");
+    create.withName(getEntityName(test, 1)).withDescription("description");
     createAndCheckEntity(create, adminAuthHeaders());
   }
 
@@ -405,19 +387,11 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline> {
     assertResponse(exception, NOT_FOUND, entityNotFound(Entity.PIPELINE, id));
   }
 
-  public static String getPipelineName(TestInfo test) {
-    return String.format("pipe_%s", test.getDisplayName());
+  private CreatePipeline create(TestInfo test) {
+    return create(getEntityName(test));
   }
 
-  public static String getPipelineName(TestInfo test, int index) {
-    return String.format("pipe%d_%s", index, test.getDisplayName());
-  }
-
-  public static CreatePipeline create(TestInfo test) {
-    return new CreatePipeline().withName(getPipelineName(test)).withService(AIRFLOW_REFERENCE);
-  }
-
-  public static CreatePipeline create(TestInfo test, int index) {
-    return new CreatePipeline().withName(getPipelineName(test, index)).withService(AIRFLOW_REFERENCE);
+  private CreatePipeline create(String entityName) {
+    return new CreatePipeline().withName(entityName).withService(AIRFLOW_REFERENCE);
   }
 }
