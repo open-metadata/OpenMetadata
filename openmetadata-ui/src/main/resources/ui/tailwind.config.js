@@ -49,7 +49,7 @@ const backdropBG = '#302E36';
 
 // Borders and Separators
 const mainBorder = '#DCE3EC';
-const mainSeparator = '#7147E8';
+const mainSeparator = '#DCE3EC';
 
 // Text color - Gray variants
 const textBody = '#37352f';
