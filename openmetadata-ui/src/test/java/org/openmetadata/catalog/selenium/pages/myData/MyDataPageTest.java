@@ -151,7 +151,7 @@ public class MyDataPageTest {
     Events.click(webDriver, By.cssSelector("[data-testid='image']"));
     webDriver.navigate().refresh();
     Events.click(webDriver, By.cssSelector("[data-testid='tab'][id='myDataTab']")); // My Data
-    Events.click(webDriver, By.cssSelector("[data-testid='table-link']"));
+    Events.click(webDriver, By.xpath("//a[@data-testid='table-link']//button"));
   }
 
   @Test
