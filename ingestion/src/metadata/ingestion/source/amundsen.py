@@ -36,7 +36,7 @@ from metadata.ingestion.api.common import Record
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.models.table_metadata import Chart, Dashboard
-from metadata.ingestion.models.user import User
+from metadata.generated.schema.entity.teams.user import User
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.source.neo4j_helper import Neo4JConfig, Neo4jHelper
@@ -219,11 +219,8 @@ class AmundsenSource(Source):
         try:
             user_metadata = User(
                 email=user["email"],
-                first_name=user["first_name"],
-                last_name=user["last_name"],
                 name=user["full_name"],
-                team_name=user["team_name"],
-                is_active=user["is_active"],
+                deactivated=not user["is_active"],
             )
             self.status.scanned(user_metadata.email)
             yield user_metadata

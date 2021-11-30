@@ -53,7 +53,8 @@ from metadata.ingestion.models.ometa_table_db import (
     OMetaDatabaseAndTable,
 )
 from metadata.ingestion.models.table_metadata import Chart, Dashboard
-from metadata.ingestion.models.user import MetadataTeam, User
+from metadata.ingestion.models.user import MetadataTeam
+from metadata.generated.schema.entity.teams.user import User
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig

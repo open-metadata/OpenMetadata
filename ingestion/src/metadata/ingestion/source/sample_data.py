@@ -39,7 +39,7 @@ from metadata.ingestion.api.common import Record
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.models.table_metadata import Chart, Dashboard
-from metadata.ingestion.models.user import User
+from metadata.generated.schema.entity.teams.user import User
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.utils.helpers import (
@@ -421,18 +421,14 @@ class SampleDataSource(Source):
     def ingest_users(self) -> Iterable[User]:
         try:
             for user in self.users["users"]:
-                user_metadata = User(
+                user = User(
                     email=user["email"],
-                    first_name=user["displayName"].split(" ")[0],
-                    last_name=user["displayName"].split(" ")[1],
-                    name=user["displayName"],
-                    updated_at=user["updatedAt"],
-                    github_username=user["name"],
-                    team_name=user["teams"],
-                    is_active=True,
-                    do_not_update_empty_attribute=0,
+                    displayName=user["displayName"],
+                    name=user["name"],
+                    updatedAt=user["updatedAt"],
+                    deactivated=False,
                 )
-                yield user_metadata
+                yield user
         except Exception as err:
             logger.error(err)
 
