@@ -36,6 +36,7 @@ import org.junit.jupiter.api.MethodOrderer;
 import java.time.Duration;
 import java.util.ArrayList;
 
+@Order(7)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class TopicDetailsPageTest {
   static WebDriver webDriver;
