@@ -1,9 +1,15 @@
 import { isEmpty } from 'lodash';
-import { RecentlyViewed, RecentlyViewedData } from 'Models';
+import {
+  RecentlySearchData,
+  RecentlyViewed,
+  RecentlyViewedData,
+  SearchData,
+} from 'Models';
 import React from 'react';
 import { reactLocalStorage } from 'reactjs-localstorage';
 import AppState from '../AppState';
 import {
+  LOCALSTORAGE_RECENTLY_SEARCH,
   LOCALSTORAGE_RECENTLY_VIEWED,
   TITLE_FOR_NON_OWNER_ACTION,
 } from '../constants/constants';
@@ -120,6 +126,36 @@ export const getCountBadge = (count = 0) => {
   );
 };
 
+export const addToRecentSearch = (searchTerm: string): void => {
+  const searchData = { term: searchTerm, timestamp: Date.now() };
+  let recentlySearch: SearchData = reactLocalStorage.getObject(
+    LOCALSTORAGE_RECENTLY_SEARCH
+  ) as SearchData;
+  if (recentlySearch?.data) {
+    const arrData = recentlySearch.data
+      // search term is case-insensetive so we should also take care of it.
+      // TODO : after discussion make this check for case-insensetive
+      .filter((item) => item.term !== searchData.term)
+      .sort(
+        arraySorterByKey('timestamp', true) as (
+          a: RecentlySearchData,
+          b: RecentlySearchData
+        ) => number
+      );
+    arrData.unshift(searchData);
+
+    if (arrData.length > 5) {
+      arrData.pop();
+    }
+    recentlySearch.data = arrData;
+  } else {
+    recentlySearch = {
+      data: [searchData],
+    };
+  }
+  reactLocalStorage.setObject(LOCALSTORAGE_RECENTLY_SEARCH, recentlySearch);
+};
+
 export const addToRecentViewed = (eData: RecentlyViewedData): void => {
   const entityData = { ...eData, timestamp: Date.now() };
   let recentlyViewed: RecentlyViewed = reactLocalStorage.getObject(
@@ -155,6 +191,17 @@ export const getRecentlyViewedData = (): Array<RecentlyViewedData> => {
 
   if (recentlyViewed?.data) {
     return recentlyViewed.data;
+  }
+
+  return [];
+};
+
+export const getRecentlySearchData = (): Array<RecentlySearchData> => {
+  const recentlySearch: SearchData = reactLocalStorage.getObject(
+    LOCALSTORAGE_RECENTLY_SEARCH
+  ) as SearchData;
+  if (recentlySearch?.data) {
+    return recentlySearch.data;
   }
 
   return [];

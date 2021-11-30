@@ -195,6 +195,6 @@ export const tabsInfo = [
     sortField: '',
     tab: 5,
     path: 'dbt_model',
-    icon: Icons.PIPELINE_GREY,
+    icon: Icons.DBTMODEL_GREY,
   },
 ];

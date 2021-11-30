@@ -51,10 +51,10 @@ public class DbtModelRepository extends EntityRepository<DbtModel> {
   static final Logger LOG = LoggerFactory.getLogger(DbtModelRepository.class);
   // Model fields that can be patched in a PATCH request
   static final Fields DBT_MODEL_PATCH_FIELDS = new Fields(DbtModelResource.FIELD_LIST,
-           "owner,columns,database,tags");
+           "owner,columns,database,tags,viewDefinition");
     // Model fields that can be updated in a PUT request
   static final Fields DBT_MODEL_UPDATE_FIELDS = new Fields(DbtModelResource.FIELD_LIST,
-           "owner,columns,database,tags");
+           "owner,columns,database,tags,viewDefinition");
 
   private final CollectionDAO dao;
 
@@ -127,7 +127,7 @@ public class DbtModelRepository extends EntityRepository<DbtModel> {
   }
 
   @Override
-  public void validate(DbtModel dbtModel) throws IOException {
+  public void prepare(DbtModel dbtModel) throws IOException {
     dbtModel.setDatabase(dao.databaseDAO().findEntityReferenceById(dbtModel.getDatabase().getId()));
 
     // Set data in table entity based on database relationship
@@ -145,7 +145,7 @@ public class DbtModelRepository extends EntityRepository<DbtModel> {
   }
 
   @Override
-  public void store(DbtModel dbtModel, boolean update) throws IOException {
+  public void storeEntity(DbtModel dbtModel, boolean update) throws IOException {
     // Relationships and fields such as href are derived and not stored as part of json
     EntityReference owner = dbtModel.getOwner();
     EntityReference database = dbtModel.getDatabase();

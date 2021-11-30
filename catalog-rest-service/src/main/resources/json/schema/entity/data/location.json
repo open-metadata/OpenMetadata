@@ -1,7 +1,7 @@
 {
   "$id": "https://open-metadata.org/schema/entity/data/location.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Table",
+  "title": "Location",
   "description": "This schema defines the Location entity. A Location can contain the data of a table or group other sublocation together.",
   "type": "object",
   "javaType": "org.openmetadata.catalog.entity.data.Location",

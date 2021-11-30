@@ -155,6 +155,22 @@
           "type": "string"
         }
       }
+    },
+    "mlStore": {
+      "type": "object",
+      "javaType": "org.openmetadata.catalog.type.MlStore",
+      "description": "Location containing the ML Model. It can be a storage layer and/or a container repository.",
+      "additionalProperties": false,
+      "properties": {
+        "storage": {
+          "description": "Storage Layer containing the ML Model data.",
+          "$ref": "../../type/basic.json#/definitions/href"
+        },
+        "imageRepository": {
+          "description": "Container Repository with the ML Model image.",
+          "$ref": "../../type/basic.json#/definitions/href"
+        }
+      }
     }
   },
   "properties" : {
@@ -205,6 +221,14 @@
     "dashboard" : {
       "description": "Performance Dashboard URL to track metric evolution.",
       "$ref" : "../../type/entityReference.json"
+    },
+    "mlStore": {
+      "description": "Location containing the ML Model. It can be a storage layer and/or a container repository.",
+      "$ref": "#/definitions/mlStore"
+    },
+    "server": {
+      "description": "Endpoint that makes the ML Model available, e.g,. a REST API serving the data or computing predictions.",
+      "$ref": "../../type/basic.json#/definitions/href"
     },
     "href": {
       "description": "Link to the resource corresponding to this entity.",

@@ -119,11 +119,7 @@ public class TableResourceTest extends EntityResourceTest<Table> {
   private static final Logger LOG = LoggerFactory.getLogger(TableResourceTest.class);
   public static Database DATABASE;
 
-  public static final List<Column> COLUMNS = Arrays.asList(
-          getColumn("c1", BIGINT, USER_ADDRESS_TAG_LABEL),
-          getColumn("c2", ColumnDataType.VARCHAR, USER_ADDRESS_TAG_LABEL).withDataLength(10),
-          getColumn("c3", BIGINT, USER_BANK_ACCOUNT_TAG_LABEL));
-
+  public static List<Column> COLUMNS;
 
   public TableResourceTest() {
     super(Entity.TABLE, Table.class, TableList.class, "tables", TableResource.FIELDS,
@@ -135,6 +131,11 @@ public class TableResourceTest extends EntityResourceTest<Table> {
     EntityResourceTest.setup(test);
     CreateDatabase create = DatabaseResourceTest.create(test).withService(SNOWFLAKE_REFERENCE);
     DATABASE = createAndCheckDatabase(create, adminAuthHeaders());
+
+    COLUMNS = Arrays.asList(
+            getColumn("c1", BIGINT, USER_ADDRESS_TAG_LABEL),
+            getColumn("c2", ColumnDataType.VARCHAR, USER_ADDRESS_TAG_LABEL).withDataLength(10),
+            getColumn("c3", BIGINT, USER_BANK_ACCOUNT_TAG_LABEL));
   }
 
   public static Table createTable(TestInfo test, int i) throws IOException {

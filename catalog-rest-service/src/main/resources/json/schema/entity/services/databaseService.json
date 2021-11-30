@@ -22,7 +22,8 @@
         "Trino",
         "Vertica",
         "Glue",
-        "MariaDB"
+        "MariaDB",
+        "Druid"
       ],
       "javaEnums": [
         {
@@ -66,6 +67,9 @@
         },
         {
           "name": "MariaDB"
+        },
+        {
+          "name": "Druid"
         }
       ]
     }

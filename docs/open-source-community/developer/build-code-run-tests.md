@@ -17,7 +17,7 @@
     2. Extract the distribution tar.gz file and run the following command
 
     ```
-    cd open-metadata-<version>/bootstrap
+    cd openmetadata-<version>/bootstrap
     sh bootstrap_storage.sh drop-create
     ```
 *   Bootstrap ES with indexes and load sample data into MySQL
@@ -26,8 +26,8 @@
     2. Once the logs indicate that the instance is up, run the following commands from the top-level directory
 
     ```
-    python3 -m venv /tmp/venv
-    source /tmp/venv/bin/activate
+    python3 -m venv venv
+    source venv/bin/activate
     pip install -r ingestion/requirements.txt
     make install_dev generate
     cd ingestion
@@ -54,7 +54,7 @@ You can create a _distribution_ as follows.
 $ mvn clean install
 
 # Create the binary distribution.
-$ cd dist && mvn package
+$ cd openmetadata-dist && mvn package
 ```
 
 The binaries will be created at:

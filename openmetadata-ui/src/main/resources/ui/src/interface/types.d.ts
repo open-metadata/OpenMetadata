@@ -393,8 +393,16 @@ declare module 'Models' {
     serviceType?: string;
     timestamp: number;
   }
+
+  interface RecentlySearchData {
+    term: string;
+    timestamp: number;
+  }
   export interface RecentlyViewed {
     data: Array<RecentlyViewedData>;
+  }
+  export interface SearchData {
+    data: Array<RecentlySearchData>;
   }
 
   export type DatasetSchemaTableTab = 'schema' | 'sample_data';
