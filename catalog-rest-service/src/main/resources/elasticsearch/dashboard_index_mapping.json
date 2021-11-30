@@ -1,6 +1,6 @@
 {
     "properties": {
-      "name": {
+      "dashboard_name": {
         "type":"text"
       },
       "display_name": {

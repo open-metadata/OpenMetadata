@@ -1,6 +1,6 @@
 {
     "properties": {
-      "name": {
+      "table_name": {
         "type":"text"
       },
       "display_name": {

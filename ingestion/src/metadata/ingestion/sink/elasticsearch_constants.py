@@ -97,7 +97,7 @@ TOPIC_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
     {
     "mappings":{
           "properties": {
-            "name": {
+            "topic_name": {
               "type":"text"
             },
             "display_name": {
@@ -151,7 +151,7 @@ DASHBOARD_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
     {
     "mappings":{
           "properties": {
-            "name": {
+            "dashboard_name": {
               "type":"text"
             },
             "display_name": {
@@ -229,7 +229,7 @@ PIPELINE_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
     {
     "mappings":{
           "properties": {
-            "name": {
+            "pipeline_name": {
               "type":"text"
             },
             "display_name": {
@@ -290,7 +290,7 @@ DBT_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
     {
     "mappings":{
           "properties": {
-            "name": {
+            "dbt_model_name": {
               "type":"text"
             },
             "display_name": {

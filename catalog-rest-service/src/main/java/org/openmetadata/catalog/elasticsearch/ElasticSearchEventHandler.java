@@ -29,8 +29,6 @@ import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.client.RestClient;
 import org.elasticsearch.client.RestClientBuilder;
 import org.elasticsearch.client.RestHighLevelClient;
-import org.elasticsearch.client.indices.CreateIndexRequest;
-import org.elasticsearch.client.indices.CreateIndexResponse;
 import org.elasticsearch.common.xcontent.XContentType;
 import org.elasticsearch.script.Script;
 import org.elasticsearch.script.ScriptType;
@@ -44,7 +42,6 @@ import org.openmetadata.catalog.entity.data.DbtModel;
 import org.openmetadata.catalog.entity.data.Pipeline;
 import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.entity.data.Topic;
-import org.openmetadata.catalog.events.AuditEventHandler;
 import org.openmetadata.catalog.events.EventHandler;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.ChangeEvent;
@@ -98,30 +95,11 @@ public class ElasticSearchEventHandler implements EventHandler {
     esIndexDefinition.createIndexes();
   }
 
-  private void createIndexes() {
-    try {
-      for (ElasticSearchIndexType elasticSearchIndexType : ElasticSearchIndexType.values()) {
-        String elasticSearchIndexMapping = ElasticSearchIndexDefinition.getIndexMapping(elasticSearchIndexType);
-        CreateIndexRequest request = new CreateIndexRequest(elasticSearchIndexType.indexName);
-        request.mapping(elasticSearchIndexMapping, XContentType.JSON);
-        CreateIndexResponse createIndexResponse = client.indices().create(request, RequestOptions.DEFAULT);
-        LOG.info(elasticSearchIndexType.indexName + " Created " + createIndexResponse.isAcknowledged());
-      }
-      this.indexesCrated = true;
-    } catch(Exception e) {
-      LOG.error("Failed to created Elastic Search indexes due to", e);
-      this.indexesCrated = false;
-    }
-  }
 
   public Void process(ContainerRequestContext requestContext,
                       ContainerResponseContext responseContext) {
     try {
       LOG.info("request Context "+ requestContext.toString());
-          if (!indexesCrated) {
-        createIndexes();
-      }
-      String changeEventClazz = ChangeEvent.class.toString();
       if (responseContext.getEntity() != null) {
         Object entity = responseContext.getEntity();
         UpdateRequest updateRequest = null;

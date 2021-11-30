@@ -13,6 +13,8 @@ import org.elasticsearch.client.indices.CreateIndexRequest;
 import org.elasticsearch.client.indices.CreateIndexResponse;
 import org.elasticsearch.client.indices.GetIndexRequest;
 import org.elasticsearch.common.xcontent.XContentType;
+import org.openmetadata.catalog.Entity;
+import org.openmetadata.catalog.entity.data.Chart;
 import org.openmetadata.catalog.entity.data.Dashboard;
 import org.openmetadata.catalog.entity.data.DbtModel;
 import org.openmetadata.catalog.entity.data.Pipeline;
@@ -131,7 +133,6 @@ public class ElasticSearchIndexDefinition {
 @SuperBuilder
 @Data
 class ElasticSearchIndex {
-  String name;
   @JsonProperty("display_name")
   String displayName;
   String fqdn;
@@ -419,8 +420,6 @@ class DashboardESIndex extends ElasticSearchIndex {
         .service(dashboard.getService().getName())
         .serviceType(dashboard.getService().getType())
         .serviceCategory("dashboardService")
-        .followers(dashboard.getFollowers().stream().map(item -> item.getId().toString()).collect(Collectors.toList()))
-        .owner(dashboard.getOwner().getId().toString())
         .tags(tags);
 
     if (dashboard.getUsageSummary() != null) {
