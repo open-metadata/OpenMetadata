@@ -36,11 +36,11 @@ OpenMetadata provides connectors that enable you to perform metadata ingestion f
 
 The key components of OpenMetadata include the following:
 
-* [**OpenMetadata User Interface**](features.md) - a central place for users to discover and collaborate on all data.
-* [**Ingestion framework**](open-source-community/developer/build-a-connector/) - a pluggable framework for integrating tools and ingesting metadata to the metadata store. The ingestion framework already supports well-known data warehouses - Google BigQuery, Snowflake, Amazon Redshift, and Apache Hive and databases - MySQL, Postgres, Oracle, and MSSQL.
-* [**Metadata APIs**](openmetadata-apis/apis/) - for producing and consuming metadata built on schemas for User Interfaces and for Integrating tools, systems, and services.
-* ****[**Metadata store**](install/run-openmetadata.md) - stores a metadata graph that connects data assets and user and tool generated metadata.
-* [**Metadata schemas**](openmetadata-apis/schemas/) - defines core abstractions and vocabulary for metadata with schemas for Types, Entities, and Relationships between entities. This is the foundation of the Open Metadata Standard.
+* **OpenMetadata User Interface (UI)** - a central place for users to discover and collaborate on all data. See [Features](features.md) for an overview of the OpenMetadata UI.
+* **Ingestion framework** - a pluggable framework for integrating tools and ingesting metadata to the metadata store. The ingestion framework already supports well-known data warehouses. See the [Connectors](./#connectors) section for a complete list and documentation on supported services.
+* **Metadata APIs** - for producing and consuming metadata built on schemas for User Interfaces and for Integrating tools, systems, and services. See the API [Overview](openmetadata-apis/apis/overview.md) for details.
+* **Metadata store** - stores a metadata graph that connects data assets and user and tool generated metadata.
+* **Metadata schemas** - defines core abstractions and vocabulary for metadata with schemas for Types, Entities, and Relationships between entities. This is the foundation of the Open Metadata Standard. See the [Schema Concepts](openmetadata-apis/schemas/overview.md) section to learn more about metadata schemas.
 
 ![](<.gitbook/assets/openmetadata-overview (1).png>)
 
