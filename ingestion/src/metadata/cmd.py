@@ -223,7 +223,7 @@ def docker(start, stop, clean, type, path) -> None:
             ometa_client = OpenMetadata(metadata_config).client
             while True:
                 try:
-                    ometa_client.get(f"/tables/name/bigquery.shopify.dim_customer")
+                    ometa_client.get(f"/tables/name/bigquery_gcp.shopify.dim_customer")
                     break
                 except Exception as err:
                     sys.stdout.write(".")
