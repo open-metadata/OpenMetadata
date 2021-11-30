@@ -48,8 +48,8 @@ const primaryBG = '#7147E840'; // 'rgba(113, 71, 232, 0.25)';
 const backdropBG = '#302E36';
 
 // Borders and Separators
-const mainBorder = '#E2DCE4';
-const mainSeparator = '#D9CEEE';
+const mainBorder = '#DCE3EC';
+const mainSeparator = '#7147E8';
 
 // Text color - Gray variants
 const textBody = '#37352f';

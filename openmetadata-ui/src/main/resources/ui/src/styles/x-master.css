@@ -739,4 +739,5 @@ body .profiler-graph .recharts-active-dot circle {
 
 .page-container-v1 {
   height: calc(100% - 61px);
+  overflow-y: auto;
 }
