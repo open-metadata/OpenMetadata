@@ -17,7 +17,7 @@
 package org.openmetadata.catalog.selenium.pages.dashboardDetails;
 
 import com.github.javafaker.Faker;
-import org.junit.jupiter.api.Test;
+import io.github.artsok.RepeatedIfExceptionsTest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Order;
@@ -61,7 +61,7 @@ public class DashboardDetailsPageTest {
     webDriver.get(url);
   }
 
-  @Test
+  @RepeatedIfExceptionsTest(repeats = 2)
   @Order(1)
   public void openExplorePage() throws InterruptedException {
     Events.click(webDriver, By.cssSelector("[data-testid='closeWhatsNew']")); // Close What's new
@@ -70,7 +70,7 @@ public class DashboardDetailsPageTest {
     Thread.sleep(waitTime);
   }
 
-  @Test
+  @RepeatedIfExceptionsTest(repeats = 2)
   @Order(2)
   public void editDescription() throws InterruptedException {
     openExplorePage();
@@ -82,7 +82,7 @@ public class DashboardDetailsPageTest {
     Events.click(webDriver, By.cssSelector("[data-testid='save']"));
   }
 
-  @Test
+  @RepeatedIfExceptionsTest(repeats = 2)
   @Order(3)
   public void addTag() throws InterruptedException {
     openExplorePage();
@@ -101,7 +101,7 @@ public class DashboardDetailsPageTest {
     webDriver.navigate().refresh();
   }
 
-  @Test
+  @RepeatedIfExceptionsTest(repeats = 2)
   @Order(4)
   public void removeTag() throws InterruptedException {
     openExplorePage();
@@ -114,7 +114,7 @@ public class DashboardDetailsPageTest {
     Events.click(webDriver, By.cssSelector("[data-testid='saveAssociatedTag']"));
   }
 
-  @Test
+  @RepeatedIfExceptionsTest(repeats = 2)
   @Order(5)
   public void editChartDescription() throws InterruptedException {
     openExplorePage();
@@ -128,7 +128,7 @@ public class DashboardDetailsPageTest {
     Events.click(webDriver, By.cssSelector("[data-testid='save']"));
   }
 
-  @Test
+  @RepeatedIfExceptionsTest(repeats = 2)
   @Order(6)
   public void addChartTags() throws InterruptedException {
     openExplorePage();
@@ -147,7 +147,7 @@ public class DashboardDetailsPageTest {
     Events.click(webDriver, By.cssSelector("[data-testid='saveAssociatedTag']"));
   }
 
-  @Test
+  @RepeatedIfExceptionsTest(repeats = 2)
   @Order(7)
   public void removeChartTag() throws InterruptedException {
     openExplorePage();
@@ -165,7 +165,7 @@ public class DashboardDetailsPageTest {
     Events.click(webDriver, By.cssSelector("[data-testid='saveAssociatedTag']"));
   }
 
-  @Test
+  @RepeatedIfExceptionsTest(repeats = 2)
   @Order(8)
   public void checkManage() throws InterruptedException {
     openExplorePage();
@@ -182,7 +182,7 @@ public class DashboardDetailsPageTest {
     webDriver.navigate().refresh();
   }
 
-  @Test
+  @RepeatedIfExceptionsTest(repeats = 2)
   @Order(9)
   public void checkBreadCrumb() throws InterruptedException {
     openExplorePage();

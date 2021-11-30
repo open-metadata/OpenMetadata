@@ -17,6 +17,7 @@
 package org.openmetadata.catalog.selenium.pages.pipelineService;
 
 import com.github.javafaker.Faker;
+import io.github.artsok.RepeatedIfExceptionsTest;
 import org.openmetadata.catalog.selenium.events.Events;
 import org.openmetadata.catalog.selenium.properties.Property;
 import org.openqa.selenium.By;
@@ -27,7 +28,6 @@ import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.interactions.Actions;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Order;
@@ -62,7 +62,7 @@ public class PipelineServiceTestPage {
     webDriver.get(url);
   }
 
-  @Test
+  @RepeatedIfExceptionsTest(repeats = 2)
   @Order(1)
   public void openPipelineServicePage() throws InterruptedException {
     Events.click(webDriver, By.cssSelector("[data-testid='closeWhatsNew']")); // Close What's new
@@ -72,7 +72,7 @@ public class PipelineServiceTestPage {
     Thread.sleep(waitTime);
   }
 
-  @Test
+  @RepeatedIfExceptionsTest(repeats = 2)
   @Order(2)
   public void addPipelineService() throws InterruptedException {
     openPipelineServicePage();
@@ -99,7 +99,7 @@ public class PipelineServiceTestPage {
     Events.click(webDriver, By.cssSelector("[data-testid='save-button']"));
   }
 
-  @Test
+  @RepeatedIfExceptionsTest(repeats = 2)
   @Order(3)
   public void editPipelineService() throws InterruptedException {
     openPipelineServicePage();
@@ -114,7 +114,7 @@ public class PipelineServiceTestPage {
     Events.click(webDriver, By.cssSelector("[data-testid='save-button']"));
   }
 
-  @Test
+  @RepeatedIfExceptionsTest(repeats = 2)
   @Order(4)
   public void checkPipelineServiceDetails() throws InterruptedException {
     openPipelineServicePage();
@@ -131,7 +131,7 @@ public class PipelineServiceTestPage {
     Events.click(webDriver, By.cssSelector("[data-testid='save']"));
   }
 
-  @Test
+  @RepeatedIfExceptionsTest(repeats = 2)
   @Order(5)
   public void searchPipelineService() throws InterruptedException {
     openPipelineServicePage();
@@ -142,7 +142,7 @@ public class PipelineServiceTestPage {
     Events.click(webDriver, By.cssSelector("[data-testid='service-name']"));
   }
 
-  @Test
+  @RepeatedIfExceptionsTest(repeats = 2)
   @Order(6)
   public void deletePipelineService() throws InterruptedException {
     openPipelineServicePage();
