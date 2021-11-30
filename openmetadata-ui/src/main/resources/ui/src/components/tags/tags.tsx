@@ -78,12 +78,14 @@ const Tags: FunctionComponent<TagProps> = ({
               html={
                 <div className="tw-text-left tw-p-1">
                   {tag.description && (
-                    <RichTextEditorPreviewer
-                      className="tw-p-2"
-                      markdown={tag.description}
-                    />
+                    <div className="tw-mb-3">
+                      <RichTextEditorPreviewer
+                        className="tw-p-2"
+                        markdown={tag.description}
+                      />
+                    </div>
                   )}
-                  <p className="tw-mt-3">Set as {tag.labelType}</p>
+                  <p>Set as {tag.labelType}</p>
                 </div>
               }
               position="top"
