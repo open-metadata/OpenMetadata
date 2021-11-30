@@ -44,7 +44,7 @@ export const getDatabaseDBTModels: Function = (
   arrQueryFields?: string
 ): Promise<AxiosResponse> => {
   const url = `${getURLWithQueryFields(
-    `/tables`,
+    `/dbtmodels`,
     arrQueryFields
   )}&database=${databaseName}${paging ? paging : ''}`;
 

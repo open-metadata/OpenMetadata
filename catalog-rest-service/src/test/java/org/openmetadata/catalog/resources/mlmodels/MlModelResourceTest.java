@@ -36,6 +36,7 @@ import org.openmetadata.catalog.type.FeatureSourceDataType;
 import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.type.MlFeature;
 import org.openmetadata.catalog.type.MlFeatureDataType;
+import org.openmetadata.catalog.type.MlStore;
 import org.openmetadata.catalog.type.MlFeatureSource;
 import org.openmetadata.catalog.type.MlHyperParameter;
 import org.openmetadata.catalog.entity.services.DashboardService;
@@ -52,6 +53,7 @@ import org.openmetadata.catalog.util.JsonUtils;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response.Status;
 import java.io.IOException;
+import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Arrays;
 import java.util.Collections;
@@ -83,6 +85,12 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
   public static String ALGORITHM = "regression";
   public static Dashboard DASHBOARD;
   public static EntityReference DASHBOARD_REFERENCE;
+
+  public static URI SERVER = URI.create("http://localhost.com/mlModel");
+  public static MlStore ML_STORE = new MlStore()
+          .withStorage(URI.create("s3://my-bucket.com/mlModel"))
+          .withImageRepository(URI.create("https://12345.dkr.ecr.region.amazonaws.com"));
+
   public static List<MlFeature> ML_FEATURES = Arrays.asList(
           new MlFeature()
                   .withName("age")
@@ -197,6 +205,18 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
   }
 
   @Test
+  public void post_MlModelWitMlStore_200_ok(TestInfo test) throws IOException {
+    CreateMlModel create = create(test).withMlStore(ML_STORE);
+    createAndCheckEntity(create, adminAuthHeaders());
+  }
+
+  @Test
+  public void post_MlModelWitServer_200_ok(TestInfo test) throws IOException {
+    CreateMlModel create = create(test).withServer(SERVER);
+    createAndCheckEntity(create, adminAuthHeaders());
+  }
+
+  @Test
   public void post_MlModel_as_non_admin_401(TestInfo test) {
     CreateMlModel create = create(test);
     assertResponse(() -> createMlModel(create, authHeaders("test@open-metadata.org")), FORBIDDEN,
@@ -254,6 +274,30 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
 
     updateAndCheckEntity(
             request.withDashboard(DASHBOARD_REFERENCE), Status.OK, adminAuthHeaders(), MINOR_UPDATE, change
+    );
+  }
+
+  @Test
+  public void put_MlModelAddServer_200(TestInfo test) throws IOException {
+    CreateMlModel request = create(test);
+    MlModel model = createAndCheckEntity(request, adminAuthHeaders());
+    ChangeDescription change = getChangeDescription(model.getVersion());
+    change.getFieldsAdded().add(new FieldChange().withName("server").withNewValue(SERVER));
+
+    updateAndCheckEntity(
+            request.withServer(SERVER), Status.OK, adminAuthHeaders(), MINOR_UPDATE, change
+    );
+  }
+
+  @Test
+  public void put_MlModelAddMlStore_200(TestInfo test) throws IOException {
+    CreateMlModel request = create(test);
+    MlModel model = createAndCheckEntity(request, adminAuthHeaders());
+    ChangeDescription change = getChangeDescription(model.getVersion());
+    change.getFieldsAdded().add(new FieldChange().withName("mlStore").withNewValue(ML_STORE));
+
+    updateAndCheckEntity(
+            request.withMlStore(ML_STORE), Status.OK, adminAuthHeaders(), MINOR_UPDATE, change
     );
   }
 
@@ -469,23 +513,30 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
     if (expected == actual) {
       return;
     }
-    if (fieldName.contains("mlFeatures") && !fieldName.endsWith("tags") && !fieldName.endsWith("description")) {
+    if (fieldName.contains("mlFeatures")) {
       List<MlFeature> expectedFeatures = (List<MlFeature>) expected;
       List<MlFeature> actualFeatures = JsonUtils.readObjects(actual.toString(), MlFeature.class);
       assertEquals(expectedFeatures, actualFeatures);
-    } else if (fieldName.contains("mlHyperParameters") && !fieldName.endsWith("tags")
-            && !fieldName.endsWith("description")) {
+    } else if (fieldName.contains("mlHyperParameters")) {
       List<MlHyperParameter> expectedConstraints = (List<MlHyperParameter>) expected;
       List<MlHyperParameter> actualConstraints = JsonUtils.readObjects(actual.toString(), MlHyperParameter.class);
       assertEquals(expectedConstraints, actualConstraints);
-    } else if (fieldName.endsWith("algorithm")) {
+    } else if (fieldName.contains("algorithm")) {
       String expectedAlgorithm = (String) expected;
       String actualAlgorithm = actual.toString();
       assertEquals(expectedAlgorithm, actualAlgorithm);
-    } else if (fieldName.endsWith("dashboard")) {
+    } else if (fieldName.contains("dashboard")) {
       EntityReference expectedDashboard = (EntityReference) expected;
       EntityReference actualDashboard = JsonUtils.readValue(actual.toString(), EntityReference.class);
       assertEquals(expectedDashboard, actualDashboard);
+    } else if (fieldName.contains("server")) {
+      URI expectedServer = (URI) expected;
+      URI actualServer = URI.create(actual.toString());
+      assertEquals(expectedServer, actualServer);
+    } else if (fieldName.contains("mlStore")) {
+      MlStore expectedMlStore = (MlStore) expected;
+      MlStore actualMlStore = JsonUtils.readValue(actual.toString(), MlStore.class);
+      assertEquals(expectedMlStore, actualMlStore);
     } else {
       assertCommonFieldChange(fieldName, expected, actual);
     }

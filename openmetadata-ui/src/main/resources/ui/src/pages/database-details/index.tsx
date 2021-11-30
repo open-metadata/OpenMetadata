@@ -28,6 +28,7 @@ import {
   getDatabaseDetailsByFQN,
   patchDatabaseDetails,
 } from '../../axiosAPIs/databaseAPI';
+import { getDatabaseDBTModels } from '../../axiosAPIs/dbtModelAPI';
 import { postFeed } from '../../axiosAPIs/feedsAPI';
 import { getServiceById } from '../../axiosAPIs/serviceAPI';
 import { getDatabaseTables } from '../../axiosAPIs/tableAPI';
@@ -35,6 +36,7 @@ import NextPrevious from '../../components/common/next-previous/NextPrevious';
 import NonAdminAction from '../../components/common/non-admin-action/NonAdminAction';
 import PopOver from '../../components/common/popover/PopOver';
 import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
+import TabsPane from '../../components/common/TabsPane/TabsPane';
 import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-breadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
 import PageContainer from '../../components/containers/PageContainer';
@@ -43,6 +45,7 @@ import { ModalWithMarkdownEditor } from '../../components/Modals/ModalWithMarkdo
 import Tags from '../../components/tags/tags';
 import {
   getDatasetDetailsPath,
+  getDBTModelDetailsPath,
   getExplorePathWithSearch,
   getServiceDetailsPath,
   pagingObject,
@@ -50,6 +53,7 @@ import {
 } from '../../constants/constants';
 import { ServiceCategory } from '../../enums/service.enum';
 import { Database } from '../../generated/entity/data/database';
+import { Dbtmodel } from '../../generated/entity/data/dbtmodel';
 import { Table } from '../../generated/entity/data/table';
 import useToastContext from '../../hooks/useToastContext';
 import { getCurrentUserId, isEven } from '../../utils/CommonUtils';
@@ -68,7 +72,8 @@ const DatabaseDetails: FunctionComponent = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [database, setDatabase] = useState<Database>();
   const [serviceName, setServiceName] = useState<string>();
-  const [data, setData] = useState<Array<Table>>([]);
+  const [tableData, setTableData] = useState<Array<Table>>([]);
+  const [dbtModelData, setDbtModelData] = useState<Array<Dbtmodel>>([]);
 
   const [databaseName, setDatabaseName] = useState<string>(
     databaseFQN.split('.').slice(-1).pop() || ''
@@ -76,36 +81,95 @@ const DatabaseDetails: FunctionComponent = () => {
   const [isEdit, setIsEdit] = useState(false);
   const [description, setDescription] = useState('');
   const [databaseId, setDatabaseId] = useState('');
-  const [paging, setPaging] = useState<Paging>(pagingObject);
-  const [instanceCount, setInstanceCount] = useState<number>(0);
+  const [tablePaging, setTablePaging] = useState<Paging>(pagingObject);
+  const [dbtModelPaging, setDbtModelPaging] = useState<Paging>(pagingObject);
+  const [tableInstanceCount, setTableInstanceCount] = useState<number>(0);
+  const [dbtModelInstanceCount, setDbtModelInstanceCount] = useState<number>(0);
+
+  const [activeTab, setActiveTab] = useState<number>(1);
 
   const history = useHistory();
   const showToast = useToastContext();
   const isMounting = useRef(true);
 
+  const tabs = [
+    {
+      name: 'Tables',
+      icon: {
+        alt: 'tables',
+        name: 'table-grey',
+        title: 'Tables',
+      },
+      count: tableInstanceCount,
+      isProtected: false,
+      position: 1,
+    },
+    {
+      name: 'DBT Models',
+      icon: {
+        alt: 'dbt_models',
+        name: 'dbtmodel-grey',
+        title: 'DBT Models',
+      },
+      count: dbtModelInstanceCount,
+      isProtected: false,
+      position: 2,
+    },
+  ];
+
   const fetchDatabaseTables = (paging?: string) => {
+    return new Promise<void>((resolve, reject) => {
+      getDatabaseTables(databaseFQN, paging, [
+        'owner',
+        'tags',
+        'columns',
+        'usageSummary',
+      ])
+        .then((res: AxiosResponse) => {
+          if (res.data.data) {
+            setTableData(res.data.data);
+            setTablePaging(res.data.paging);
+            setTableInstanceCount(res.data.paging.total);
+          } else {
+            setTableData([]);
+            setTablePaging(pagingObject);
+          }
+          resolve();
+        })
+        .catch(() => {
+          reject();
+        });
+    });
+  };
+
+  const fetchDatabaseDBTModels = (paging?: string) => {
+    return new Promise<void>((resolve, reject) => {
+      getDatabaseDBTModels(databaseFQN, paging, ['owner', 'tags', 'columns'])
+        .then((res: AxiosResponse) => {
+          if (res.data.data) {
+            setDbtModelData(res.data.data);
+            setDbtModelPaging(res.data.paging);
+            setDbtModelInstanceCount(res.data.paging.total);
+          } else {
+            setDbtModelData([]);
+            setDbtModelPaging(pagingObject);
+          }
+          resolve();
+        })
+        .catch(() => {
+          reject();
+        });
+    });
+  };
+
+  const fetchDatabaseTablesAndDBTModels = () => {
     setIsLoading(true);
-    getDatabaseTables(databaseFQN, paging, [
-      'owner',
-      'tags',
-      'columns',
-      'usageSummary',
-    ])
-      .then((res: AxiosResponse) => {
-        if (res.data.data) {
-          setData(res.data.data);
-          setPaging(res.data.paging);
-          setInstanceCount(res.data.paging.total);
-          setIsLoading(false);
-        } else {
-          setData([]);
-          setPaging(pagingObject);
-          setIsLoading(false);
-        }
-      })
-      .catch(() => {
-        setIsLoading(false);
-      });
+    Promise.allSettled([
+      fetchDatabaseTables(),
+      fetchDatabaseDBTModels(),
+    ]).finally(() => {
+      setIsLoading(false);
+    });
   };
 
   const getDetailsByFQN = () => {
@@ -144,7 +208,7 @@ const DatabaseDetails: FunctionComponent = () => {
         );
       }
     );
-    fetchDatabaseTables();
+    fetchDatabaseTablesAndDBTModels();
   };
 
   const onCancel = () => {
@@ -204,11 +268,28 @@ const DatabaseDetails: FunctionComponent = () => {
     setIsEdit(true);
   };
 
-  const pagingHandler = (cursorType: string) => {
+  const activeTabHandler = (tabValue: number) => {
+    setActiveTab(tabValue);
+  };
+
+  const tablePagingHandler = (cursorType: string) => {
     const pagingString = `&${cursorType}=${
-      paging[cursorType as keyof typeof paging]
+      tablePaging[cursorType as keyof typeof tablePaging]
     }`;
-    fetchDatabaseTables(pagingString);
+    setIsLoading(true);
+    fetchDatabaseTables(pagingString).finally(() => {
+      setIsLoading(false);
+    });
+  };
+
+  const dbtModelPagingHandler = (cursorType: string) => {
+    const pagingString = `&${cursorType}=${
+      dbtModelPaging[cursorType as keyof typeof dbtModelPaging]
+    }`;
+    setIsLoading(true);
+    fetchDatabaseDBTModels(pagingString).finally(() => {
+      setIsLoading(false);
+    });
   };
 
   useEffect(() => {
@@ -237,22 +318,12 @@ const DatabaseDetails: FunctionComponent = () => {
         <Loader />
       ) : (
         <PageContainer>
-          <div className="tw-px-4" data-testid="page-container">
+          <div
+            className="tw-px-4 tw-w-full tw-h-full tw-flex tw-flex-col"
+            data-testid="page-container">
             <TitleBreadcrumb titleLinks={slashedTableName} />
 
-            <div className="tw-flex tw-gap-1 tw-mb-2 tw-mt-1">
-              <span>
-                <span className="tw-text-grey-muted tw-font-normal">
-                  Tables :
-                </span>{' '}
-                <span
-                  className="tw-pl-1 tw-font-normal"
-                  data-testid="table-count">
-                  {instanceCount}
-                </span>
-              </span>
-            </div>
-            <div className="tw-bg-white tw-mb-4">
+            <div className="tw-bg-white tw-my-4">
               <div className="tw-col-span-3">
                 <div
                   className="schema-description tw-flex tw-flex-col tw-h-full tw-relative tw-border tw-border-main tw-rounded-md"
@@ -302,119 +373,280 @@ const DatabaseDetails: FunctionComponent = () => {
                 </div>
               </div>
             </div>
-            <table
-              className="tw-bg-white tw-w-full tw-mb-4"
-              data-testid="database-tables">
-              <thead data-testid="table-header">
-                <tr className="tableHead-row">
-                  <th className="tableHead-cell" data-testid="header-name">
-                    Table Name
-                  </th>
-                  <th
-                    className="tableHead-cell"
-                    data-testid="header-description">
-                    Description
-                  </th>
-                  <th className="tableHead-cell" data-testid="header-owner">
-                    Owner
-                  </th>
-                  <th className="tableHead-cell" data-testid="header-usage">
-                    Usage
-                  </th>
-                  <th
-                    className="tableHead-cell tw-w-60"
-                    data-testid="header-tags">
-                    Tags
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="tableBody">
-                {data.length > 0 ? (
-                  data.map((table, index) => (
-                    <tr
-                      className={classNames(
-                        'tableBody-row',
-                        !isEven(index + 1) ? 'odd-row' : null
-                      )}
-                      data-testid="tabale-column"
-                      key={index}>
-                      <td className="tableBody-cell">
-                        <Link
-                          to={
-                            table.fullyQualifiedName
-                              ? getDatasetDetailsPath(table.fullyQualifiedName)
-                              : ''
-                          }>
-                          {table.name}
-                        </Link>
-                      </td>
-                      <td className="tableBody-cell">
-                        {table.description?.trim() ? (
-                          <RichTextEditorPreviewer
-                            markdown={table.description}
-                          />
+            <div className="tw-mt-1 tw-flex tw-flex-col tw-flex-grow">
+              <TabsPane
+                activeTab={activeTab}
+                className="tw-flex-initial"
+                setActiveTab={activeTabHandler}
+                tabs={tabs}
+              />
+              <div className="tw-bg-white tw-flex-grow">
+                {activeTab === 1 && (
+                  <>
+                    <table
+                      className="tw-bg-white tw-w-full tw-mb-4"
+                      data-testid="database-tables">
+                      <thead data-testid="table-header">
+                        <tr className="tableHead-row">
+                          <th
+                            className="tableHead-cell"
+                            data-testid="header-name">
+                            Table Name
+                          </th>
+                          <th
+                            className="tableHead-cell"
+                            data-testid="header-description">
+                            Description
+                          </th>
+                          <th
+                            className="tableHead-cell"
+                            data-testid="header-owner">
+                            Owner
+                          </th>
+                          <th
+                            className="tableHead-cell"
+                            data-testid="header-usage">
+                            Usage
+                          </th>
+                          <th
+                            className="tableHead-cell tw-w-60"
+                            data-testid="header-tags">
+                            Tags
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="tableBody">
+                        {tableData.length > 0 ? (
+                          tableData.map((table, index) => (
+                            <tr
+                              className={classNames(
+                                'tableBody-row',
+                                !isEven(index + 1) ? 'odd-row' : null
+                              )}
+                              data-testid="tabale-column"
+                              key={index}>
+                              <td className="tableBody-cell">
+                                <Link
+                                  to={
+                                    table.fullyQualifiedName
+                                      ? getDatasetDetailsPath(
+                                          table.fullyQualifiedName
+                                        )
+                                      : ''
+                                  }>
+                                  {table.name}
+                                </Link>
+                              </td>
+                              <td className="tableBody-cell">
+                                {table.description?.trim() ? (
+                                  <RichTextEditorPreviewer
+                                    markdown={table.description}
+                                  />
+                                ) : (
+                                  <span className="tw-no-description">
+                                    No description added
+                                  </span>
+                                )}
+                              </td>
+                              <td className="tableBody-cell">
+                                <p>
+                                  {getOwnerFromId(table?.owner?.id)?.name ||
+                                    '--'}
+                                </p>
+                              </td>
+                              <td className="tableBody-cell">
+                                <p>
+                                  {getUsagePercentile(
+                                    table.usageSummary?.weeklyStats
+                                      ?.percentileRank || 0
+                                  )}
+                                </p>
+                              </td>
+                              <td className="tableBody-cell">
+                                {table.tags?.map((tag, tagIndex) => (
+                                  <PopOver
+                                    key={tagIndex}
+                                    position="top"
+                                    size="small"
+                                    title={tag.labelType}
+                                    trigger="mouseenter">
+                                    <Tags
+                                      className="tw-bg-gray-200"
+                                      tag={`#${
+                                        tag.tagFQN?.startsWith('Tier.Tier')
+                                          ? tag.tagFQN.split('.')[1]
+                                          : tag.tagFQN
+                                      }`}
+                                    />
+                                  </PopOver>
+                                ))}
+                                {getTableTags(table.columns).map(
+                                  (tag, tagIdx) => (
+                                    <PopOver
+                                      key={tagIdx}
+                                      position="top"
+                                      size="small"
+                                      title={tag.labelType}
+                                      trigger="mouseenter">
+                                      <Tags
+                                        className="tw-bg-gray-200"
+                                        tag={`#${tag.tagFQN}`}
+                                      />
+                                    </PopOver>
+                                  )
+                                )}
+                              </td>
+                            </tr>
+                          ))
                         ) : (
-                          <span className="tw-no-description">
-                            No description added
-                          </span>
+                          <tr className="tableBody-row">
+                            <td
+                              className="tableBody-cell tw-text-center"
+                              colSpan={5}>
+                              No records found.
+                            </td>
+                          </tr>
                         )}
-                      </td>
-                      <td className="tableBody-cell">
-                        <p>{getOwnerFromId(table?.owner?.id)?.name || '--'}</p>
-                      </td>
-                      <td className="tableBody-cell">
-                        <p>
-                          {getUsagePercentile(
-                            table.usageSummary?.weeklyStats?.percentileRank || 0
-                          )}
-                        </p>
-                      </td>
-                      <td className="tableBody-cell">
-                        {table.tags?.map((tag, tagIndex) => (
-                          <PopOver
-                            key={tagIndex}
-                            position="top"
-                            size="small"
-                            title={tag.labelType}
-                            trigger="mouseenter">
-                            <Tags
-                              className="tw-bg-gray-200"
-                              tag={`#${
-                                tag.tagFQN?.startsWith('Tier.Tier')
-                                  ? tag.tagFQN.split('.')[1]
-                                  : tag.tagFQN
-                              }`}
-                            />
-                          </PopOver>
-                        ))}
-                        {getTableTags(table.columns).map((tag, tagIdx) => (
-                          <PopOver
-                            key={tagIdx}
-                            position="top"
-                            size="small"
-                            title={tag.labelType}
-                            trigger="mouseenter">
-                            <Tags
-                              className="tw-bg-gray-200"
-                              tag={`#${tag.tagFQN}`}
-                            />
-                          </PopOver>
-                        ))}
-                      </td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr className="tableBody-row">
-                    <td className="tableBody-cell tw-text-center" colSpan={5}>
-                      No records found.
-                    </td>
-                  </tr>
+                      </tbody>
+                    </table>
+                    {Boolean(
+                      !isNil(tablePaging.after) || !isNil(tablePaging.before)
+                    ) && (
+                      <NextPrevious
+                        paging={tablePaging}
+                        pagingHandler={tablePagingHandler}
+                      />
+                    )}
+                  </>
                 )}
-              </tbody>
-            </table>
-            {Boolean(!isNil(paging.after) || !isNil(paging.before)) && (
-              <NextPrevious paging={paging} pagingHandler={pagingHandler} />
-            )}
+                {activeTab === 2 && (
+                  <>
+                    <table
+                      className="tw-bg-white tw-w-full tw-mb-4"
+                      data-testid="database-tables">
+                      <thead data-testid="table-header">
+                        <tr className="tableHead-row">
+                          <th
+                            className="tableHead-cell"
+                            data-testid="header-name">
+                            DBT Model Name
+                          </th>
+                          <th
+                            className="tableHead-cell"
+                            data-testid="header-description">
+                            Description
+                          </th>
+                          <th
+                            className="tableHead-cell"
+                            data-testid="header-owner">
+                            Owner
+                          </th>
+                          <th
+                            className="tableHead-cell tw-w-60"
+                            data-testid="header-tags">
+                            Tags
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="tableBody">
+                        {dbtModelData.length > 0 ? (
+                          dbtModelData.map((dbtModel, index) => (
+                            <tr
+                              className={classNames(
+                                'tableBody-row',
+                                !isEven(index + 1) ? 'odd-row' : null
+                              )}
+                              data-testid="tabale-column"
+                              key={index}>
+                              <td className="tableBody-cell">
+                                <Link
+                                  to={
+                                    dbtModel.fullyQualifiedName
+                                      ? getDBTModelDetailsPath(
+                                          dbtModel.fullyQualifiedName
+                                        )
+                                      : ''
+                                  }>
+                                  {dbtModel.name}
+                                </Link>
+                              </td>
+                              <td className="tableBody-cell">
+                                {dbtModel.description?.trim() ? (
+                                  <RichTextEditorPreviewer
+                                    markdown={dbtModel.description}
+                                  />
+                                ) : (
+                                  <span className="tw-no-description">
+                                    No description added
+                                  </span>
+                                )}
+                              </td>
+                              <td className="tableBody-cell">
+                                <p>
+                                  {getOwnerFromId(dbtModel?.owner?.id)?.name ||
+                                    '--'}
+                                </p>
+                              </td>
+                              <td className="tableBody-cell">
+                                {dbtModel.tags?.map((tag, tagIndex) => (
+                                  <PopOver
+                                    key={tagIndex}
+                                    position="top"
+                                    size="small"
+                                    title={tag.labelType}
+                                    trigger="mouseenter">
+                                    <Tags
+                                      className="tw-bg-gray-200"
+                                      tag={`#${
+                                        tag.tagFQN?.startsWith('Tier.Tier')
+                                          ? tag.tagFQN.split('.')[1]
+                                          : tag.tagFQN
+                                      }`}
+                                    />
+                                  </PopOver>
+                                ))}
+                                {getTableTags(dbtModel.columns).map(
+                                  (tag, tagIdx) => (
+                                    <PopOver
+                                      key={tagIdx}
+                                      position="top"
+                                      size="small"
+                                      title={tag.labelType}
+                                      trigger="mouseenter">
+                                      <Tags
+                                        className="tw-bg-gray-200"
+                                        tag={`#${tag.tagFQN}`}
+                                      />
+                                    </PopOver>
+                                  )
+                                )}
+                              </td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr className="tableBody-row">
+                            <td
+                              className="tableBody-cell tw-text-center"
+                              colSpan={5}>
+                              No records found.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                    {Boolean(
+                      !isNil(dbtModelPaging.after) ||
+                        !isNil(dbtModelPaging.before)
+                    ) && (
+                      <NextPrevious
+                        paging={dbtModelPaging}
+                        pagingHandler={dbtModelPagingHandler}
+                      />
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
           </div>
         </PageContainer>
       )}

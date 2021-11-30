@@ -43,7 +43,7 @@ import java.util.UUID;
 public class MlModelRepository extends EntityRepository<MlModel> {
   private static final Logger LOG = LoggerFactory.getLogger(MlModelRepository.class);
   private static final Fields MODEL_UPDATE_FIELDS = new Fields(MlModelResource.FIELD_LIST,
-          "owner,algorithm,dashboard,mlHyperParameters,mlFeatures,tags");
+          "owner,algorithm,dashboard,mlHyperParameters,mlFeatures,mlStore,server,tags");
   private static final Fields MODEL_PATCH_FIELDS = new Fields(MlModelResource.FIELD_LIST,
           "owner,algorithm,dashboard,mlHyperParameters,mlFeatures,tags");
   private final CollectionDAO dao;
@@ -77,6 +77,8 @@ public class MlModelRepository extends EntityRepository<MlModel> {
     mlModel.setDashboard(fields.contains("dashboard") ? getDashboard(mlModel) : null);
     mlModel.setMlFeatures(fields.contains("mlFeatures") ? mlModel.getMlFeatures(): null);
     mlModel.setMlHyperParameters(fields.contains("mlHyperParameters") ? mlModel.getMlHyperParameters(): null);
+    mlModel.setMlStore(fields.contains("mlStore") ? mlModel.getMlStore(): null);
+    mlModel.setServer(fields.contains("server") ? mlModel.getServer(): null);
     mlModel.setFollowers(fields.contains("followers") ? getFollowers(mlModel) : null);
     mlModel.setTags(fields.contains("tags") ? getTags(mlModel.getFullyQualifiedName()) : null);
     mlModel.setUsageSummary(fields.contains("usageSummary") ? EntityUtil.getLatestUsage(dao.usageDAO(),
@@ -338,6 +340,8 @@ public class MlModelRepository extends EntityRepository<MlModel> {
       updateDashboard(origMlModel, updatedMlModel);
       updateMlFeatures(origMlModel, updatedMlModel);
       updateMlHyperParameters(origMlModel, updatedMlModel);
+      updateMlStore(origMlModel, updatedMlModel);
+      updateServer(origMlModel, updatedMlModel);
     }
 
     private void updateAlgorithm(MlModel origModel, MlModel updatedModel) throws JsonProcessingException {
@@ -350,6 +354,14 @@ public class MlModelRepository extends EntityRepository<MlModel> {
 
     private void updateMlHyperParameters(MlModel origModel, MlModel updatedModel) throws JsonProcessingException {
       recordChange("mlHyperParameters", origModel.getMlHyperParameters(), updatedModel.getMlHyperParameters());
+    }
+
+    private void updateMlStore(MlModel origModel, MlModel updatedModel) throws JsonProcessingException {
+      recordChange("mlStore", origModel.getMlStore(), updatedModel.getMlStore(), true);
+    }
+
+    private void updateServer(MlModel origModel, MlModel updatedModel) throws JsonProcessingException {
+      recordChange("server", origModel.getServer(), updatedModel.getServer());
     }
 
     private void updateDashboard(MlModel origModel, MlModel updatedModel) throws JsonProcessingException {

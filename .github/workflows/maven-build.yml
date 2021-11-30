@@ -18,8 +18,14 @@ name: Maven CI
 on:
   push:
     branches: [main]
+    paths:
+      - "catalog-rest-service/**"
+      - "openmetadata-ui/**"
   pull_request:
     branches: [main]
+    paths:
+      - "catalog-rest-service/**"
+      - "openmetadata-ui/**"
 
 jobs:
   test:

@@ -39,6 +39,7 @@ import { urlGitbookDocs, urlJoinSlack } from '../../constants/url.const';
 import { useAuth } from '../../hooks/authHooks';
 import { useTour } from '../../hooks/useTour';
 import { userSignOut } from '../../utils/AuthUtils';
+import { addToRecentSearch } from '../../utils/CommonUtils';
 import {
   inPageSearchOptions,
   isInPageSearchAllowed,
@@ -48,7 +49,6 @@ import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import DropDown from '../dropdown/DropDown';
 import { WhatsNewModal } from '../Modals/WhatsNewModal';
 import { COOKIE_VERSION } from '../Modals/WhatsNewModal/whatsNewData';
-// import Tour from '../tour/Tour';
 import { ReactComponent as IconDefaultUserProfile } from './../../assets/svg/ic-default-profile.svg';
 import SearchOptions from './SearchOptions';
 import Suggestions from './Suggestions';
@@ -197,6 +197,7 @@ const Appbar: React.FC = (): JSX.Element => {
                 data-testid="appbar-item">
                 <span className="fa fa-search tw-absolute tw-block tw-z-10 tw-w-9 tw-h-8 tw-leading-8 tw-text-center tw-pointer-events-none tw-text-gray-400" />
                 <input
+                  autoComplete="off"
                   className="tw-relative search-grey tw-rounded tw-border tw-border-main tw-bg-body-main focus:tw-outline-none tw-pl-8 tw-py-1 tw-form-inputs"
                   data-testid="searchBox"
                   id="searchBox"
@@ -217,6 +218,7 @@ const Appbar: React.FC = (): JSX.Element => {
                         return;
                       }
 
+                      addToRecentSearch(target.value);
                       history.push(
                         getExplorePathWithSearch(
                           target.value,
@@ -278,21 +280,6 @@ const Appbar: React.FC = (): JSX.Element => {
               />
               <span>What&#39;s new</span>
             </button>
-            {/* <NavLink
-              className="tw-nav focus:tw-no-underline hover:tw-underline"
-              data-testid="tour"
-              style={navStyle(location.pathname.startsWith('/explore'))}
-              to={{
-                pathname: '/tour',
-              }}>
-              <SVGIcons
-                alt="Doc icon"
-                className="tw-align-middle tw--mt-0.5 tw-mr-1"
-                icon={Icons.WHATS_NEW}
-                width="16"
-              />
-              <span>Tour</span>
-            </NavLink> */}
             <div>
               <DropDown
                 dropDownList={supportLinks}
