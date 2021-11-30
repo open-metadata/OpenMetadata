@@ -17,7 +17,7 @@
 
 import classNames from 'classnames';
 import React, { FunctionComponent } from 'react';
-import { countBackground } from '../../../utils/styleconstant';
+import { getCountBadge } from '../../../utils/CommonUtils';
 import { FilterContainerProp } from './FacetTypes';
 const FilterContainer: FunctionComponent<FilterContainerProp> = ({
   name,
@@ -49,11 +49,16 @@ const FilterContainer: FunctionComponent<FilterContainerProp> = ({
         )}>
         {name.startsWith('Tier.Tier') ? name.split('.')[1] : name}
       </div>
-      <div
-        className="tw-ml-auto tw-py-1 tw-px-2 tw-border tw-rounded tw-text-xs"
-        style={{ background: countBackground }}>
-        <span data-testid="filter-count">{count}</span>
-      </div>
+      {getCountBadge(
+        count,
+        classNames(
+          'tw-text-center tw-py-0 tw-px-0',
+          { 'tw-bg-tag': !isSelected },
+          {
+            'tw-bg-primary tw-text-white tw-border-none': isSelected,
+          }
+        )
+      )}
     </div>
   );
 };

@@ -17,7 +17,10 @@
 
 import { isNil } from 'lodash';
 import React, { FunctionComponent } from 'react';
+import { serviceTypeLogo } from '../../../utils/ServiceUtils';
+import SVGIcons from '../../../utils/SvgUtils';
 import Tag from '../../tags/tags';
+import Avatar from '../avatar/Avatar';
 import RichTextEditorPreviewer from '../rich-text-editor/RichTextEditorPreviewer';
 
 type Props = {
@@ -34,41 +37,69 @@ const TableDataCardBody: FunctionComponent<Props> = ({
   extraInfo,
   tags,
 }: Props) => {
+  const getInfoLabel = (data: { key: string; value: string }) => {
+    switch (data.key) {
+      case 'Owner':
+        return data.value !== '--' ? (
+          <div className="tw-inline-block">
+            <Avatar name={data.value} textClass="tw-text-xs" width="22" />
+          </div>
+        ) : (
+          `${data.key} : `
+        );
+      case 'Service':
+        return (
+          <img
+            alt=""
+            className="tw-inline tw-h-5 tw-w-5"
+            src={serviceTypeLogo(data.value)}
+          />
+        );
+      case 'Tier':
+        return <SVGIcons alt="icon-tier" icon="icon-tier" width="16px" />;
+
+      default:
+        return `${data.key} : `;
+    }
+  };
+
   return (
     <div data-testid="table-body">
-      <div className="tw-mb-1 description-text">
-        {description.trim() ? (
-          <RichTextEditorPreviewer markdown={description} />
-        ) : (
-          <span className="tw-no-description">No description added</span>
-        )}
-      </div>
-      <p className="tw-py-1">
+      <p className="tw-mb-3">
         {extraInfo.map(({ key, value }, i) =>
           !isNil(value) ? (
             <span key={i}>
-              <span className="tw-text-grey-muted">{key} :</span>{' '}
+              <span className="tw-text-grey-muted">
+                {getInfoLabel({ key, value })}
+              </span>{' '}
               <span className="tw-pl-1 ">{value}</span>
               {i !== extraInfo.length - 1 && (
                 <span className="tw-mx-3 tw-inline-block tw-text-gray-400">
-                  •
+                  |
                 </span>
               )}
             </span>
           ) : null
         )}
       </p>
+      <div className="description-text">
+        {description.trim() ? (
+          <RichTextEditorPreviewer markdown={description} />
+        ) : (
+          <span className="tw-no-description">No description added</span>
+        )}
+      </div>
       {Boolean(tags?.length) && (
-        <div className="tw-mt-1" data-testid="tags-container">
+        <div className="tw-mt-3" data-testid="tags-container">
+          <hr className="tw--mx-3 tw-pt-1.5" />
           <span>
-            <i className="fas fa-tags tw-px-1 tw-text-xs tw-text-grey-muted" />
+            <SVGIcons alt="icon-tag" className="tw-px-1" icon="icon-tag" />
           </span>
           {tags?.map((tag, index) => (
             <Tag
-              className="tw-border-none tw-bg-gray-200"
               key={index}
               tag={`#${tag.startsWith('Tier.Tier') ? tag.split('.')[1] : tag}`}
-              type="contained"
+              type="label"
             />
           ))}
         </div>

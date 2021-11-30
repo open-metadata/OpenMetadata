@@ -125,25 +125,39 @@ const FacetFilter: FunctionComponent<FacetProp> = ({
           <Fragment key={index}>
             {aggregation.buckets.length > 0 ? (
               <>
-                <div className="tw-flex tw-justify-between">
-                  <h6 className="tw-heading" data-testid="filter-heading">
+                <div className="tw-flex tw-justify-between tw-flex-col">
+                  <h6
+                    className="tw-heading tw-mb-0"
+                    data-testid="filter-heading">
                     {
                       facetFilterPlaceholder.find(
                         (filter) => filter.name === aggregation.title
                       )?.value
                     }
                   </h6>
-                  {isClearFilter(aggregation) && (
-                    <p
-                      className="link-text"
+                  <div className="tw-flex tw-mt-1 tw-gap-x-1">
+                    <span
+                      className="link-text tw-text-sm"
                       onClick={() =>
                         onClearFilter(
                           lowerCase(aggregation.title) as keyof FilterObject
                         )
                       }>
-                      Clear filter
-                    </p>
-                  )}
+                      Select All
+                    </span>
+                    <span>|</span>
+                    <span
+                      className="link-text tw-text-sm tw-text-grey-muted"
+                      onClick={() => {
+                        if (isClearFilter(aggregation)) {
+                          onClearFilter(
+                            lowerCase(aggregation.title) as keyof FilterObject
+                          );
+                        }
+                      }}>
+                      Deselect All
+                    </span>
+                  </div>
                 </div>
                 <div className="sidebar-my-data-holder mt-2 mb-3">
                   {getFilterItems(aggregation)}

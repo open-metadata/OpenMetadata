@@ -59,6 +59,7 @@ const TableDataCard: FunctionComponent<Props> = ({
   const OtherDetails = [
     { key: 'Owner', value: owner },
     { key: 'Service', value: serviceType },
+    { key: 'Tier', value: tier ? tier : 'No Tier' },
     {
       key: 'Usage',
       value:
@@ -66,7 +67,6 @@ const TableDataCard: FunctionComponent<Props> = ({
           ? getUsagePercentile(usage)
           : undefined,
     },
-    { key: 'Tier', value: tier ? tier : 'No Tier' },
   ];
 
   const getAssetTags = () => {
@@ -96,7 +96,7 @@ const TableDataCard: FunctionComponent<Props> = ({
           </h6>
         </div>
       </div>
-      <div className="tw-pt-2">
+      <div className="tw-pt-3">
         <TableDataCardBody
           description={description || ''}
           extraInfo={OtherDetails}
