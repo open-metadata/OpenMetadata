@@ -16,6 +16,7 @@ package org.openmetadata.catalog.jdbi3;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
+import org.openmetadata.catalog.entity.data.Chart;
 import org.openmetadata.catalog.entity.data.Dashboard;
 import org.openmetadata.catalog.entity.services.DashboardService;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
@@ -141,6 +142,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     dashboard.setFullyQualifiedName(getFQN(dashboard));
     EntityUtil.populateOwner(dao.userDAO(), dao.teamDAO(), dashboard.getOwner()); // Validate owner
     dashboard.setTags(EntityUtil.addDerivedTags(dao.tagDAO(), dashboard.getTags()));
+    dashboard.setCharts(getCharts(dashboard.getCharts()));
   }
 
   @Override
@@ -219,6 +221,24 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
       charts.add(dao.chartDAO().findEntityReferenceById(UUID.fromString(chartId)));
     }
     return charts.isEmpty() ? null : charts;
+  }
+
+  /**
+   This method is used to populate the dashboard entity with all details of Chart EntityReference
+   Users/Tools can send minimum details required to set relationship as id, type are the only required
+   fields in entity reference, whereas we need to send fully populated object such that ElasticSearch index
+   has all the details.
+   */
+  private List<EntityReference> getCharts(List<EntityReference> charts) throws IOException {
+    if (charts == null) {
+      return null;
+    }
+    List<EntityReference> chartRefs = new ArrayList<>();
+    for (EntityReference chart: charts) {
+      EntityReference chartRef = dao.chartDAO().findEntityReferenceById(chart.getId());
+      chartRefs.add(chartRef);
+    }
+    return chartRefs.isEmpty() ? null : chartRefs;
   }
 
   public void updateCharts(Dashboard original, Dashboard updated, EntityUpdater updater) throws JsonProcessingException {

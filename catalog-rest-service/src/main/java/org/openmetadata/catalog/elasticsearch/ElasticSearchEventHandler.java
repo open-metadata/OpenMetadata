@@ -27,8 +27,6 @@ import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.client.RestClient;
 import org.elasticsearch.client.RestClientBuilder;
 import org.elasticsearch.client.RestHighLevelClient;
-import org.elasticsearch.client.indices.CreateIndexRequest;
-import org.elasticsearch.client.indices.CreateIndexResponse;
 import org.elasticsearch.common.xcontent.XContentType;
 import org.elasticsearch.script.Script;
 import org.elasticsearch.script.ScriptType;
@@ -42,7 +40,6 @@ import org.openmetadata.catalog.entity.data.DbtModel;
 import org.openmetadata.catalog.entity.data.Pipeline;
 import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.entity.data.Topic;
-import org.openmetadata.catalog.events.AuditEventHandler;
 import org.openmetadata.catalog.events.EventHandler;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.ChangeEvent;
@@ -62,9 +59,9 @@ import java.util.UUID;
 
 
 public class ElasticSearchEventHandler implements EventHandler {
-  private static final Logger LOG = LoggerFactory.getLogger(AuditEventHandler.class);
+  private static final Logger LOG = LoggerFactory.getLogger(ElasticSearchEventHandler.class);
   private RestHighLevelClient client;
-  private boolean indexesCrated;
+  private ElasticSearchIndexDefinition esIndexDefinition;
 
   private final ActionListener<UpdateResponse> listener = new ActionListener<>() {
     @Override
@@ -80,62 +77,66 @@ public class ElasticSearchEventHandler implements EventHandler {
 
   public void init(CatalogApplicationConfig config, Jdbi jdbi) {
     ElasticSearchConfiguration esConfig = config.getElasticSearchConfiguration();
-    RestClientBuilder restClientBuilder = RestClient.builder(new HttpHost(esConfig.getHost(), esConfig.getPort(), "http"));
+    RestClientBuilder restClientBuilder = RestClient.builder(new HttpHost(esConfig.getHost(), esConfig.getPort(),
+        "http"));
     if(StringUtils.isNotEmpty(esConfig.getUsername())){
       CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
-      credentialsProvider.setCredentials(AuthScope.ANY, new UsernamePasswordCredentials(esConfig.getUsername(), esConfig.getPassword()));
+      credentialsProvider.setCredentials(AuthScope.ANY, new UsernamePasswordCredentials(esConfig.getUsername(),
+          esConfig.getPassword()));
       restClientBuilder.setHttpClientConfigCallback(httpAsyncClientBuilder -> {
         httpAsyncClientBuilder.setDefaultCredentialsProvider(credentialsProvider);
         return  httpAsyncClientBuilder;
       });
     }
-    this.client = new RestHighLevelClient(restClientBuilder);
-    createIndexes();
+    client = new RestHighLevelClient(restClientBuilder);
+    esIndexDefinition = new ElasticSearchIndexDefinition(client);
+    esIndexDefinition.createIndexes();
   }
 
-  private void createIndexes() {
-    try {
-      for (ElasticSearchIndexType elasticSearchIndexType : ElasticSearchIndexType.values()) {
-        String elasticSearchIndexMapping = ElasticSearchIndexDefinition.getIndexMapping(elasticSearchIndexType);
-        CreateIndexRequest request = new CreateIndexRequest(elasticSearchIndexType.indexName);
-        request.mapping(elasticSearchIndexMapping, XContentType.JSON);
-        CreateIndexResponse createIndexResponse = client.indices().create(request, RequestOptions.DEFAULT);
-        LOG.info(elasticSearchIndexType.indexName + " Created " + createIndexResponse.isAcknowledged());
-      }
-      this.indexesCrated = true;
-    } catch(Exception e) {
-      LOG.error("Failed to created Elastic Search indexes due to", e);
-      this.indexesCrated = false;
-    }
-  }
 
   public Void process(ContainerRequestContext requestContext,
                       ContainerResponseContext responseContext) {
     try {
       LOG.info("request Context "+ requestContext.toString());
-          if (!indexesCrated) {
-        createIndexes();
-      }
-      String changeEventClazz = ChangeEvent.class.toString();
       if (responseContext.getEntity() != null) {
         Object entity = responseContext.getEntity();
         UpdateRequest updateRequest = null;
         String entityClass = entity.getClass().toString();
         if (entityClass.toLowerCase().endsWith(Entity.TABLE.toLowerCase())) {
-          Table instance = (Table) entity;
-          updateRequest = updateTable(instance);
+          boolean exists =
+              esIndexDefinition.checkIndexExistsOrCreate(ElasticSearchIndexType.TABLE_SEARCH_INDEX);
+          if (exists) {
+            Table instance = (Table) entity;
+            updateRequest = updateTable(instance);
+          }
         } else if (entityClass.toLowerCase().endsWith(Entity.DASHBOARD.toLowerCase())) {
-          Dashboard instance = (Dashboard) entity;
-          updateRequest = updateDashboard(instance);
+          boolean exists =
+              esIndexDefinition.checkIndexExistsOrCreate(ElasticSearchIndexType.DASHBOARD_SEARCH_INDEX);
+           if (exists) {
+            Dashboard instance = (Dashboard) entity;
+            updateRequest = updateDashboard(instance);
+          }
         } else if (entityClass.toLowerCase().endsWith(Entity.TOPIC.toLowerCase())) {
-          Topic instance = (Topic) entity;
-          updateRequest = updateTopic(instance);
+          boolean exists =
+              esIndexDefinition.checkIndexExistsOrCreate(ElasticSearchIndexType.TOPIC_SEARCH_INDEX);
+          if (exists) {
+            Topic instance = (Topic) entity;
+            updateRequest = updateTopic(instance);
+          }
         } else if (entityClass.toLowerCase().endsWith(Entity.PIPELINE.toLowerCase())) {
-          Pipeline instance = (Pipeline) entity;
-          updateRequest = updatePipeline(instance);
+          boolean exists =
+              esIndexDefinition.checkIndexExistsOrCreate(ElasticSearchIndexType.PIPELINE_SEARCH_INDEX);
+          if (exists) {
+            Pipeline instance = (Pipeline) entity;
+            updateRequest = updatePipeline(instance);
+          }
         } else if (entityClass.toLowerCase().endsWith(Entity.DBTMODEL.toLowerCase())) {
-          DbtModel instance = (DbtModel) entity;
-          updateRequest = updateDbtModel(instance);
+          boolean exists =
+              esIndexDefinition.checkIndexExistsOrCreate(ElasticSearchIndexType.DBT_MODEL_SEARCH_INDEX);
+          if (exists) {
+            DbtModel instance = (DbtModel) entity;
+            updateRequest = updateDbtModel(instance);
+          }
         } else if (entityClass.toLowerCase().equalsIgnoreCase(ChangeEvent.class.toString())) {
           ChangeEvent changeEvent = (ChangeEvent) entity;
           updateRequest = applyChangeEvent(changeEvent);
@@ -195,7 +196,8 @@ public class ElasticSearchEventHandler implements EventHandler {
 
   private UpdateRequest updateTable(Table instance) throws JsonProcessingException {
     TableESIndex tableESIndex = TableESIndex.builder(instance).build();
-    UpdateRequest updateRequest = new UpdateRequest("table_search_index", instance.getId().toString());
+    UpdateRequest updateRequest = new UpdateRequest(ElasticSearchIndexType.TABLE_SEARCH_INDEX.indexName
+        , instance.getId().toString());
     String json = JsonUtils.pojoToJson(tableESIndex);
     updateRequest.doc(json, XContentType.JSON);
     updateRequest.docAsUpsert(true);
@@ -204,7 +206,8 @@ public class ElasticSearchEventHandler implements EventHandler {
 
   private UpdateRequest updateTopic(Topic instance) throws JsonProcessingException {
     TopicESIndex topicESIndex = TopicESIndex.builder(instance).build();
-    UpdateRequest updateRequest = new UpdateRequest("topic_search_index", instance.getId().toString());
+    UpdateRequest updateRequest = new UpdateRequest(ElasticSearchIndexType.TOPIC_SEARCH_INDEX.indexName,
+        instance.getId().toString());
     updateRequest.doc(JsonUtils.pojoToJson(topicESIndex), XContentType.JSON);
     updateRequest.docAsUpsert(true);
     return updateRequest;
@@ -212,7 +215,8 @@ public class ElasticSearchEventHandler implements EventHandler {
 
   private UpdateRequest updateDashboard(Dashboard instance) throws JsonProcessingException {
     DashboardESIndex dashboardESIndex = DashboardESIndex.builder(instance).build();
-    UpdateRequest updateRequest = new UpdateRequest("dashboard_search_index", instance.getId().toString());
+    UpdateRequest updateRequest = new UpdateRequest(ElasticSearchIndexType.DASHBOARD_SEARCH_INDEX.indexName,
+        instance.getId().toString());
     updateRequest.doc(JsonUtils.pojoToJson(dashboardESIndex), XContentType.JSON);
     updateRequest.docAsUpsert(true);
     return updateRequest;
@@ -220,7 +224,8 @@ public class ElasticSearchEventHandler implements EventHandler {
 
   private UpdateRequest updatePipeline(Pipeline instance) throws JsonProcessingException {
     PipelineESIndex pipelineESIndex = PipelineESIndex.builder(instance).build();
-    UpdateRequest updateRequest = new UpdateRequest("pipeline_search_index", instance.getId().toString());
+    UpdateRequest updateRequest = new UpdateRequest(ElasticSearchIndexType.PIPELINE_SEARCH_INDEX.indexName,
+        instance.getId().toString());
     updateRequest.doc(JsonUtils.pojoToJson(pipelineESIndex), XContentType.JSON);
     updateRequest.docAsUpsert(true);
     return updateRequest;
@@ -228,7 +233,8 @@ public class ElasticSearchEventHandler implements EventHandler {
 
   private UpdateRequest updateDbtModel(DbtModel instance) throws JsonProcessingException {
     DbtModelESIndex dbtModelESIndex = DbtModelESIndex.builder(instance).build();
-    UpdateRequest updateRequest = new UpdateRequest("dbt_model_search_index", instance.getId().toString());
+    UpdateRequest updateRequest = new UpdateRequest(ElasticSearchIndexType.DBT_MODEL_SEARCH_INDEX.indexName,
+        instance.getId().toString());
     updateRequest.doc(JsonUtils.pojoToJson(dbtModelESIndex), XContentType.JSON);
     updateRequest.docAsUpsert(true);
     return updateRequest;

@@ -5,6 +5,13 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.experimental.SuperBuilder;
 import org.checkerframework.checker.units.qual.A;
+import org.elasticsearch.client.RequestOptions;
+import org.elasticsearch.client.RestHighLevelClient;
+import org.elasticsearch.client.indices.CreateIndexRequest;
+import org.elasticsearch.client.indices.CreateIndexResponse;
+import org.elasticsearch.client.indices.GetIndexRequest;
+import org.elasticsearch.common.xcontent.XContentType;
+import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Chart;
 import org.openmetadata.catalog.entity.data.Dashboard;
 import org.openmetadata.catalog.entity.data.DbtModel;
@@ -15,6 +22,8 @@ import org.openmetadata.catalog.type.Column;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.type.Task;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
@@ -23,14 +32,29 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
-public  final class ElasticSearchIndexDefinition {
+public class ElasticSearchIndexDefinition {
+  Map<ElasticSearchIndexType, ElasticSearchIndexStatus> elasticSearchIndexes = new HashMap<>();
+  private final RestHighLevelClient client;
+  private static final Logger LOG = LoggerFactory.getLogger(ElasticSearchIndexDefinition.class);
 
-  private ElasticSearchIndexDefinition() {
+  public ElasticSearchIndexDefinition(RestHighLevelClient client) {
+    this.client = client;
+    for (ElasticSearchIndexType elasticSearchIndexType : ElasticSearchIndexType.values()) {
+      elasticSearchIndexes.put(elasticSearchIndexType, ElasticSearchIndexStatus.NOT_CREATED);
+    }
+  }
+
+  public enum ElasticSearchIndexStatus {
+    CREATED,
+    NOT_CREATED,
+    FAILED
   }
 
   public enum ElasticSearchIndexType {
@@ -49,7 +73,52 @@ public  final class ElasticSearchIndexDefinition {
     }
   }
 
-  public static String getIndexMapping(ElasticSearchIndexType elasticSearchIndexType)
+  public void createIndexes() {
+    try {
+      for (ElasticSearchIndexType elasticSearchIndexType : ElasticSearchIndexType.values()) {
+        createIndex(elasticSearchIndexType);
+      }
+    } catch(Exception e) {
+      LOG.error("Failed to created Elastic Search indexes due to", e);
+    }
+  }
+
+  public boolean checkIndexExistsOrCreate(ElasticSearchIndexType indexType) {
+    boolean exists = elasticSearchIndexes.get(indexType) == ElasticSearchIndexStatus.CREATED;
+    if (!exists) {
+      exists = createIndex(indexType);
+    }
+    return exists;
+  }
+
+  private boolean createIndex(ElasticSearchIndexType elasticSearchIndexType) {
+    try {
+      GetIndexRequest gRequest = new GetIndexRequest(elasticSearchIndexType.indexName);
+      gRequest.local(false);
+      boolean exists = client.indices().exists(gRequest, RequestOptions.DEFAULT);
+      if (!exists) {
+        String elasticSearchIndexMapping = getIndexMapping(elasticSearchIndexType);
+        CreateIndexRequest request = new CreateIndexRequest(elasticSearchIndexType.indexName);
+        request.mapping(elasticSearchIndexMapping, XContentType.JSON);
+        CreateIndexResponse createIndexResponse = client.indices().create(request, RequestOptions.DEFAULT);
+        LOG.info(elasticSearchIndexType.indexName + " Created " + createIndexResponse.isAcknowledged());
+      }
+      setIndexStatus(elasticSearchIndexType,
+          ElasticSearchIndexStatus.CREATED);
+    } catch(Exception e) {
+      setIndexStatus(elasticSearchIndexType,
+          ElasticSearchIndexStatus.FAILED);
+      LOG.error("Failed to created Elastic Search indexes due to", e);
+      return false;
+    }
+    return true;
+  }
+
+  private void setIndexStatus(ElasticSearchIndexType indexType, ElasticSearchIndexStatus elasticSearchIndexStatus) {
+    elasticSearchIndexes.put(indexType, elasticSearchIndexStatus);
+  }
+
+  public  String getIndexMapping(ElasticSearchIndexType elasticSearchIndexType)
       throws URISyntaxException, IOException {
     URL resource = ElasticSearchIndexDefinition.class
         .getClassLoader().getResource(elasticSearchIndexType.indexMappingFile);
@@ -61,7 +130,6 @@ public  final class ElasticSearchIndexDefinition {
 
 @SuperBuilder
 class ElasticSearchIndex {
-  String name;
   @JsonProperty("display_name")
   String displayName;
   String fqdn;
@@ -123,6 +191,8 @@ class FlattenColumn {
 @Getter
 @SuperBuilder(builderMethodName = "internalBuilder")
 class TableESIndex extends ElasticSearchIndex {
+  @JsonProperty("table_name")
+  String tableName;
   @JsonProperty("table_id")
   String tableId;
   String database;
@@ -174,7 +244,7 @@ class TableESIndex extends ElasticSearchIndex {
       }
     }
     TableESIndexBuilder tableESIndexBuilder =  internalBuilder().tableId(tableId)
-        .name(tableName)
+        .tableName(tableName)
         .displayName(tableName)
         .description(description)
         .fqdn(table.getFullyQualifiedName())
@@ -242,6 +312,8 @@ class TableESIndex extends ElasticSearchIndex {
 @Getter
 @SuperBuilder(builderMethodName = "internalBuilder")
 class TopicESIndex extends ElasticSearchIndex {
+  @JsonProperty("topic_name")
+  String topicName;
   @JsonProperty("topic_id")
   String topicId;
 
@@ -256,7 +328,7 @@ class TopicESIndex extends ElasticSearchIndex {
     }
 
     TopicESIndexBuilder topicESIndexBuilder =  internalBuilder().topicId(topic.getId().toString())
-        .name(topic.getDisplayName())
+        .topicName(topic.getName())
         .displayName(topic.getDisplayName())
         .description(topic.getDescription())
         .fqdn(topic.getFullyQualifiedName())
@@ -282,6 +354,8 @@ class TopicESIndex extends ElasticSearchIndex {
 @Getter
 @SuperBuilder(builderMethodName = "internalBuilder")
 class DashboardESIndex extends ElasticSearchIndex {
+  @JsonProperty("dashboard_name")
+  String dashboardName;
   @JsonProperty("dashboard_id")
   String dashboardId;
   @JsonProperty("chart_names")
@@ -319,7 +393,7 @@ class DashboardESIndex extends ElasticSearchIndex {
     }
 
     DashboardESIndexBuilder dashboardESIndexBuilder =  internalBuilder().dashboardId(dashboard.getId().toString())
-        .name(dashboard.getDisplayName())
+        .dashboardName(dashboard.getDisplayName())
         .displayName(dashboard.getDisplayName())
         .description(dashboard.getDescription())
         .fqdn(dashboard.getFullyQualifiedName())
@@ -330,8 +404,6 @@ class DashboardESIndex extends ElasticSearchIndex {
         .service(dashboard.getService().getName())
         .serviceType(dashboard.getService().getType())
         .serviceCategory("dashboardService")
-        .followers(dashboard.getFollowers().stream().map(item -> item.getId().toString()).collect(Collectors.toList()))
-        .owner(dashboard.getOwner().getId().toString())
         .tags(tags);
 
     if (dashboard.getUsageSummary() != null) {
@@ -358,6 +430,8 @@ class DashboardESIndex extends ElasticSearchIndex {
 @Getter
 @SuperBuilder(builderMethodName = "internalBuilder")
 class PipelineESIndex extends ElasticSearchIndex {
+  @JsonProperty("pipeline_name")
+  String pipelineName;
   @JsonProperty("pipeine_id")
   String pipelineId;
   @JsonProperty("task_names")
@@ -383,7 +457,7 @@ class PipelineESIndex extends ElasticSearchIndex {
     }
 
     PipelineESIndexBuilder pipelineESIndexBuilder = internalBuilder().pipelineId(pipeline.getId().toString())
-        .name(pipeline.getDisplayName())
+        .pipelineName(pipeline.getDisplayName())
         .displayName(pipeline.getDisplayName())
         .description(pipeline.getDescription())
         .fqdn(pipeline.getFullyQualifiedName())
@@ -412,6 +486,8 @@ class PipelineESIndex extends ElasticSearchIndex {
 @Getter
 @SuperBuilder(builderMethodName = "internalBuilder")
 class DbtModelESIndex extends ElasticSearchIndex {
+  @JsonProperty("dbt_model_name")
+  String dbtModelName;
   @JsonProperty("dbt_model_id")
   String dbtModelId;
   @JsonProperty("column_names")
@@ -440,7 +516,7 @@ class DbtModelESIndex extends ElasticSearchIndex {
     }
 
     DbtModelESIndexBuilder dbtModelESIndexBuilder =  internalBuilder().dbtModelId(dbtModel.getId().toString())
-        .name(dbtModel.getName())
+        .dbtModelName(dbtModel.getName())
         .displayName(dbtModel.getName())
         .description(dbtModel.getDescription())
         .fqdn(dbtModel.getFullyQualifiedName())

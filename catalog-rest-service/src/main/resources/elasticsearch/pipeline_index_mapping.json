@@ -1,6 +1,6 @@
 {
     "properties": {
-      "name": {
+      "pipeline_name": {
         "type":"text"
       },
       "display_name": {

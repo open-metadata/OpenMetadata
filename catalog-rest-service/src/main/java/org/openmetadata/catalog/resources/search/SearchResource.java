@@ -134,8 +134,10 @@ public class SearchResource {
       searchSourceBuilder = buildPipelineSearchBuilder(query, from, size);
     } else if (index.equals("dbt_model_search_index")) {
       searchSourceBuilder = buildDbtModelSearchBuilder(query, from, size);
-    } else {
+    } else if (index.equals("table_search_index")) {
       searchSourceBuilder = buildTableSearchBuilder(query, from, size);
+    } else {
+      searchSourceBuilder = buildAggregateSearchBuilder(query, from, size);
     }
 
     if (sortFieldParam != null && !sortFieldParam.isEmpty()) {
@@ -182,6 +184,20 @@ public class SearchResource {
     return Response.status(OK)
             .entity(suggest.toString())
             .build();
+  }
+
+  private SearchSourceBuilder buildAggregateSearchBuilder(String query, int from, int size) {
+    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+    searchSourceBuilder.query(QueryBuilders.queryStringQuery(query)
+            .lenient(true))
+        .aggregation(AggregationBuilders.terms("Service").field("service_type"))
+        .aggregation(AggregationBuilders.terms("ServiceCategory").field("service_category"))
+        .aggregation(AggregationBuilders.terms("EntityType").field("entity_type"))
+        .aggregation(AggregationBuilders.terms("Tier").field("tier"))
+        .aggregation(AggregationBuilders.terms("Tags").field("tags"))
+        .from(from).size(size);
+
+    return searchSourceBuilder;
   }
 
   private SearchSourceBuilder buildTableSearchBuilder(String query, int from, int size) {

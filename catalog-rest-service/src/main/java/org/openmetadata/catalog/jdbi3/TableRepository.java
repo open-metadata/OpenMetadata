@@ -397,6 +397,12 @@ public class TableRepository extends EntityRepository<Table> {
     return dao.databaseDAO().findEntityReferenceById(UUID.fromString(result.get(0)));
   }
 
+  private EntityReference getDatabaseService(UUID databaseId) throws IOException {
+    // Find database for the table
+    return EntityUtil.getService(dao.relationshipDAO(), databaseId,
+        Entity.DATABASE_SERVICE);
+  }
+
   private EntityReference getLocation(UUID tableId) throws IOException {
     // Find the location of the table
     List<String> result = dao.relationshipDAO().findTo(tableId.toString(), Relationship.HAS.ordinal(), Entity.LOCATION);
