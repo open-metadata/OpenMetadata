@@ -45,7 +45,8 @@ logs
 *.iml
 *.ipr
 *.iws
-.idea/
+.idea/workspace.xml
+.idea/tasks.xml
 
 # Package Files
 *.jar
