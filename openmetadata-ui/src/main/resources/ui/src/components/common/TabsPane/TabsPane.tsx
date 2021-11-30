@@ -1,4 +1,5 @@
 import classNames from 'classnames';
+import { lowerCase } from 'lodash';
 import React from 'react';
 import { TITLE_FOR_NON_OWNER_ACTION } from '../../../constants/constants';
 import SVGIcons from '../../../utils/SvgUtils';
@@ -39,6 +40,7 @@ const TabsPane = ({ activeTab, setActiveTab, tabs, className = '' }: Props) => {
               <button
                 className={getTabClasses(tab.position, activeTab)}
                 data-testid="tab"
+                id={lowerCase(tab.name)}
                 onClick={() => setActiveTab?.(tab.position)}>
                 <SVGIcons
                   alt={tab.icon.alt}
@@ -53,6 +55,7 @@ const TabsPane = ({ activeTab, setActiveTab, tabs, className = '' }: Props) => {
             <button
               className={getTabClasses(tab.position, activeTab)}
               data-testid="tab"
+              id={lowerCase(tab.name)}
               key={tab.position}
               onClick={() => setActiveTab?.(tab.position)}>
               <SVGIcons

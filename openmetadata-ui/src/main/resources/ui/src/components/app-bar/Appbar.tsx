@@ -212,7 +212,7 @@ const Appbar: React.FC = (): JSX.Element => {
 
                       // below code is for tour feature
                       if (location.pathname.includes(ROUTES.TOUR)) {
-                        appState.toggleExplore = true;
+                        appState.currentTourPage = 'explorePage';
 
                         return;
                       }

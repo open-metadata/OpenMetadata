@@ -57,6 +57,19 @@ const getSteps = (value: string) => {
       waitTimer: 8000,
     },
     {
+      content: 'Click on lineage tab.',
+      position: 'bottom',
+      selector: '#lineage',
+      actionType: 'click',
+    },
+    {
+      content: 'understand lineage.',
+      position: 'bottom',
+      selector: '#lineage',
+      actionType: 'wait',
+      waitTimer: 8000,
+    },
+    {
       content: 'Click on manage tab.',
       position: 'bottom',
       selector: '#manage',
