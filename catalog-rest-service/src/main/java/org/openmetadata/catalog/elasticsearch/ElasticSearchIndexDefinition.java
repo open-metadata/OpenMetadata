@@ -13,8 +13,6 @@ import org.elasticsearch.client.indices.CreateIndexRequest;
 import org.elasticsearch.client.indices.CreateIndexResponse;
 import org.elasticsearch.client.indices.GetIndexRequest;
 import org.elasticsearch.common.xcontent.XContentType;
-import org.openmetadata.catalog.Entity;
-import org.openmetadata.catalog.entity.data.Chart;
 import org.openmetadata.catalog.entity.data.Dashboard;
 import org.openmetadata.catalog.entity.data.DbtModel;
 import org.openmetadata.catalog.entity.data.Pipeline;
@@ -438,7 +436,6 @@ class DashboardESIndex extends ElasticSearchIndex {
     if (dashboard.getOwner() != null) {
       dashboardESIndexBuilder.owner(dashboard.getOwner().getId().toString());
     }
-
     return dashboardESIndexBuilder;
   }
 }
@@ -496,7 +493,6 @@ class PipelineESIndex extends ElasticSearchIndex {
     if (pipeline.getOwner() != null) {
       pipelineESIndexBuilder.owner(pipeline.getOwner().getId().toString());
     }
-
     return pipelineESIndexBuilder;
   }
 }
