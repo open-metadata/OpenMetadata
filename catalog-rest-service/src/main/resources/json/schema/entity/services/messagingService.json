@@ -39,7 +39,7 @@
       "description": "Name that identifies this messaging service.",
       "type": "string",
       "minLength": 1,
-      "maxLength": 64
+      "maxLength": 128
     },
     "serviceType": {
       "description": "Type of messaging service such as Kafka or Pulsar...",

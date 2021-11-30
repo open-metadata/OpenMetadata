@@ -32,13 +32,13 @@
       "description": "Name that identifies this Policy.",
       "type": "string",
       "minLength": 1,
-      "maxLength": 64
+      "maxLength": 128
     },
     "fullyQualifiedName": {
       "description": "Name that uniquely identifies a Policy.",
       "type": "string",
       "minLength": 1,
-      "maxLength": 128
+      "maxLength": 256
     },
     "displayName": {
       "description": "Title for this Policy.",

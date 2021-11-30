@@ -14,13 +14,13 @@
       "description": "Name that identifies this metrics instance uniquely.",
       "type": "string",
       "minLength": 1,
-      "maxLength": 64
+      "maxLength": 128
     },
     "fullyQualifiedName": {
       "description": "A unique name that identifies a metric in the format 'ServiceName.MetricName'.",
       "type": "string",
       "minLength": 1,
-      "maxLength": 64
+      "maxLength": 256
     },
     "displayName": {
       "description": "Display Name that identifies this metric.",

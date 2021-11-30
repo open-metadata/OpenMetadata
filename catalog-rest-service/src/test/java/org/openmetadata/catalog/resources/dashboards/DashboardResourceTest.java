@@ -100,27 +100,12 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard> {
     service = new DashboardServiceResourceTest().createEntity(createService, adminAuthHeaders());
     LOOKER_REFERENCE = new DashboardServiceEntityInterface(service).getEntityReference();
     CHART_REFERENCES = new ArrayList<>();
+    ChartResourceTest chartResourceTest = new ChartResourceTest();
     for (int i=0; i < 3; i++) {
-      CreateChart createChart = ChartResourceTest.create(test, i).withService(SUPERSET_REFERENCE);
-      Chart chart = ChartResourceTest.createChart(createChart, adminAuthHeaders());
+      CreateChart createChart = chartResourceTest.create(test, i).withService(SUPERSET_REFERENCE);
+      Chart chart = chartResourceTest.createEntity(createChart, adminAuthHeaders());
       CHART_REFERENCES.add(new ChartEntityInterface(chart).getEntityReference());
     }
-  }
-
-  @Test
-  public void post_dashboardWithLongName_400_badRequest(TestInfo test) {
-    // Create dashboard with mandatory name field empty
-    CreateDashboard create = create(test).withName(TestUtils.LONG_ENTITY_NAME);
-    assertResponse(() -> createDashboard(create, adminAuthHeaders()), BAD_REQUEST,
-            "[name size must be between 1 and 64]");
-  }
-
-  @Test
-  public void post_DashboardWithoutName_400_badRequest(TestInfo test) {
-    // Create Dashboard with mandatory name field empty
-    CreateDashboard create = create(test).withName("");
-    assertResponse(() -> createDashboard(create, adminAuthHeaders()), BAD_REQUEST,
-            "[name size must be between 1 and 64]");
   }
 
   @Test
@@ -136,7 +121,7 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard> {
     CreateDashboard create = create(test);
     createAndCheckEntity(create, adminAuthHeaders());
 
-    create.withName(getDashboardName(test, 1)).withDescription("description");
+    create.withName(getEntityName(test, 1)).withDescription("description");
     createAndCheckEntity(create, adminAuthHeaders());
   }
 
@@ -288,7 +273,7 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard> {
             entityNotFound(Entity.DASHBOARD, TestUtils.NON_EXISTENT_ENTITY));
   }
 
-  public static Dashboard createDashboard(CreateDashboard create,
+  public Dashboard createDashboard(CreateDashboard create,
                                         Map<String, String> authHeaders) throws HttpResponseException {
     return TestUtils.post(getResource("dashboards"), create, Dashboard.class, authHeaders);
   }
@@ -361,25 +346,17 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard> {
     assertResponse(() -> getDashboard(id, authHeaders), NOT_FOUND, entityNotFound(Entity.DASHBOARD, id));
   }
 
-  public static String getDashboardName(TestInfo test) {
-    return String.format("dash_%s", test.getDisplayName());
+  public CreateDashboard create(TestInfo test) {
+    return create(getEntityName(test));
   }
 
-  public static String getDashboardName(TestInfo test, int index) {
-    return String.format("dash%d_%s", index, test.getDisplayName());
-  }
-
-  public static CreateDashboard create(TestInfo test) {
-    return new CreateDashboard().withName(getDashboardName(test)).withService(SUPERSET_REFERENCE);
-  }
-
-  public static CreateDashboard create(TestInfo test, int index) {
-    return new CreateDashboard().withName(getDashboardName(test, index)).withService(SUPERSET_REFERENCE);
+  public CreateDashboard create(String entityName) {
+    return new CreateDashboard().withName(entityName).withService(SUPERSET_REFERENCE);
   }
 
   @Override
-  public Object createRequest(TestInfo test, int index, String description, String displayName, EntityReference owner) {
-    return create(test, index).withDescription(description).withDisplayName(displayName).withOwner(owner);
+  public Object createRequest(String name, String description, String displayName, EntityReference owner) {
+    return create(name).withDescription(description).withDisplayName(displayName).withOwner(owner);
   }
 
   @Override

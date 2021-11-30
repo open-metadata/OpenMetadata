@@ -73,28 +73,9 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
   }
 
   @Test
-  public void post_serviceWithLongName_400_badRequest(TestInfo test) {
-    // Create pipeline with mandatory name field empty
-    CreatePipelineService create = create(test).withName(TestUtils.LONG_ENTITY_NAME);
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            createEntity(create, adminAuthHeaders()));
-    TestUtils.assertResponse(exception, BAD_REQUEST, "[name size must be between 1 and 64]");
-  }
-
-  @Test
   public void post_withoutRequiredFields_400_badRequest(TestInfo test) {
-    // Create pipeline with mandatory name field null
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            createEntity(create(test).withName(null), adminAuthHeaders()));
-    TestUtils.assertResponse(exception, BAD_REQUEST, "[name must not be null]");
-
-    // Create pipeline with mandatory name field empty
-    exception = assertThrows(HttpResponseException.class, () ->
-            createEntity(create(test).withName(""), adminAuthHeaders()));
-    TestUtils.assertResponse(exception, BAD_REQUEST, "[name size must be between 1 and 64]");
-
     // Create pipeline with mandatory serviceType field empty
-    exception = assertThrows(HttpResponseException.class, () ->
+    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
             createEntity(create(test).withServiceType(null), adminAuthHeaders()));
     TestUtils.assertResponse(exception, BAD_REQUEST, "[serviceType must not be null]");
 
@@ -261,14 +242,6 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
     return TestUtils.get(target, PipelineService.class, authHeaders);
   }
 
-  public static String getName(TestInfo test) {
-    return String.format("pservice_%s", test.getDisplayName());
-  }
-
-  public static String getName(TestInfo test, int index) {
-    return String.format("pservice_%d_%s", index, test.getDisplayName());
-  }
-
   @Test
   public void delete_ExistentPipelineService_as_admin_200(TestInfo test) throws HttpResponseException {
     Map<String, String> authHeaders = adminAuthHeaders();
@@ -309,24 +282,25 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
             CatalogExceptionMessage.entityNotFound(Entity.PIPELINE_SERVICE, name));
   }
 
-  public static CreatePipelineService create(TestInfo test) {
-    return new CreatePipelineService().withName(getName(test))
-            .withServiceType(CreatePipelineService.PipelineServiceType.Airflow)
-            .withPipelineUrl(PIPELINE_SERVICE_URL)
-            .withIngestionSchedule(new Schedule().withStartDate(new Date()).withRepeatFrequency("P1D"));
+  private CreatePipelineService create(TestInfo test) {
+    return create(getEntityName(test));
   }
 
-  private static CreatePipelineService create(TestInfo test, int index) {
-    return new CreatePipelineService().withName(getName(test, index))
+  private CreatePipelineService create(TestInfo test, int index) {
+    return create(getEntityName(test, index));
+  }
+
+  private CreatePipelineService create(String entityName) {
+    return new CreatePipelineService().withName(entityName)
             .withServiceType(CreatePipelineService.PipelineServiceType.Airflow)
             .withPipelineUrl(PIPELINE_SERVICE_URL)
             .withIngestionSchedule(new Schedule().withStartDate(new Date()).withRepeatFrequency("P1D"));
   }
 
   @Override
-  public Object createRequest(TestInfo test, int index, String description, String displayName, EntityReference owner)
+  public Object createRequest(String name, String description, String displayName, EntityReference owner)
           throws URISyntaxException {
-    return create(test, index).withDescription(description).withIngestionSchedule(null);
+    return create(name).withDescription(description).withIngestionSchedule(null);
   }
 
   @Override

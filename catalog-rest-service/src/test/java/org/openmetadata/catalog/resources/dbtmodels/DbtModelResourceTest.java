@@ -74,7 +74,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.openmetadata.catalog.resources.databases.DatabaseResourceTest.createAndCheckDatabase;
 import static org.openmetadata.catalog.type.ColumnDataType.ARRAY;
 import static org.openmetadata.catalog.type.ColumnDataType.BIGINT;
 import static org.openmetadata.catalog.type.ColumnDataType.BINARY;
@@ -112,19 +111,10 @@ public class DbtModelResourceTest extends EntityResourceTest<DbtModel> {
   @BeforeAll
   public static void setup(TestInfo test) throws IOException, URISyntaxException {
     EntityResourceTest.setup(test);
-    CreateDatabase create = DatabaseResourceTest.create(test).withService(SNOWFLAKE_REFERENCE);
-    DATABASE = createAndCheckDatabase(create, adminAuthHeaders());
+    DatabaseResourceTest databaseResourceTest = new DatabaseResourceTest();
+    CreateDatabase create = databaseResourceTest.create(test).withService(SNOWFLAKE_REFERENCE);
+    DATABASE = databaseResourceTest.createAndCheckEntity(create, adminAuthHeaders());
   }
-
-  @Test
-  public void post_DbtModelWithoutName_400_badRequest(TestInfo test) {
-    // Create DbtModel with mandatory name field empty
-    CreateDbtModel create = create(test).withName("");
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            createEntity(create, adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, "[name size must be between 1 and 256]");
-  }
-
 
   @Test
   public void post_DbtModelInvalidArrayColumn_400(TestInfo test) {
@@ -172,7 +162,7 @@ public class DbtModelResourceTest extends EntityResourceTest<DbtModel> {
     createAndCheckEntity(create, adminAuthHeaders());
 
     // Optional fields nodeType
-    create.withName(getDbtModelName(test, 1)).withDbtNodeType(DbtNodeType.Model);
+    create.withName(getEntityName(test, 1)).withDbtNodeType(DbtNodeType.Model);
     DbtModel dbtModel = createAndCheckEntity(create, adminAuthHeaders());
 
     // check the FQN
@@ -745,13 +735,16 @@ public class DbtModelResourceTest extends EntityResourceTest<DbtModel> {
     return TestUtils.get(target, DbtModel.class, authHeaders);
   }
 
-  public static CreateDbtModel create(TestInfo test) {
-    return create(test, 0);
+  private CreateDbtModel create(TestInfo test) {
+    return create(getEntityName(test));
   }
 
-  public static CreateDbtModel create(TestInfo test, int index) {
-    return new CreateDbtModel().withName(getDbtModelName(test, index)).
-        withDatabase(DATABASE.getId()).withColumns(COLUMNS);
+  private CreateDbtModel create(TestInfo test, int index) {
+    return create(getEntityName(test, index));
+  }
+
+  private CreateDbtModel create(String entityName) {
+    return new CreateDbtModel().withName(entityName).withDatabase(DATABASE.getId()).withColumns(COLUMNS);
   }
 
   /**
@@ -759,13 +752,15 @@ public class DbtModelResourceTest extends EntityResourceTest<DbtModel> {
    * set up in the {@code setup()} method
    */
   public DbtModel createEntity(TestInfo test, int index) throws IOException {
-    DatabaseService service = new DatabaseServiceResourceTest().createEntity(DatabaseServiceResourceTest.create(test),
+    DatabaseServiceResourceTest databaseServiceResourceTest = new DatabaseServiceResourceTest();
+    DatabaseService service = new DatabaseServiceResourceTest().createEntity(databaseServiceResourceTest.create(test),
             adminAuthHeaders());
     EntityReference serviceRef =
             new EntityReference().withName(service.getName()).withId(service.getId()).withType(Entity.DATABASE_SERVICE);
-    Database database = createAndCheckDatabase(DatabaseResourceTest.create(test).withService(serviceRef),
+    DatabaseResourceTest databaseResourceTest = new DatabaseResourceTest();
+    Database database = databaseResourceTest.createAndCheckEntity(databaseResourceTest.create(test).withService(serviceRef),
             adminAuthHeaders());
-    CreateDbtModel create = new CreateDbtModel().withName(getDbtModelName(test, index))
+    CreateDbtModel create = new CreateDbtModel().withName(getEntityName(test, index))
             .withDatabase(database.getId()).withColumns(COLUMNS);
     return createEntity(create, adminAuthHeaders());
   }
@@ -779,13 +774,9 @@ public class DbtModelResourceTest extends EntityResourceTest<DbtModel> {
     assertResponse(exception, NOT_FOUND, CatalogExceptionMessage.entityNotFound("dbtModel", id));
   }
 
-  public static String getDbtModelName(TestInfo test, int index) {
-    return String.format("DbtModel%d_%s", index, test.getDisplayName());
-  }
-
   @Override
-  public Object createRequest(TestInfo test, int index, String description, String displayName, EntityReference owner) {
-    return create(test, index).withDescription(description).withOwner(owner);
+  public Object createRequest(String name, String description, String displayName, EntityReference owner) {
+    return create(name).withDescription(description).withOwner(owner);
   }
 
   @Override
