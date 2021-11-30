@@ -194,7 +194,7 @@ const TableProfiler = ({ tableProfiles, columns }: Props) => {
             target="_blank"
             to={{
               pathname:
-                'https://docs.open-metadata.org/openmetadata/connectors',
+                'https://docs.open-metadata.org/connectors',
             }}>
             here
           </Link>
