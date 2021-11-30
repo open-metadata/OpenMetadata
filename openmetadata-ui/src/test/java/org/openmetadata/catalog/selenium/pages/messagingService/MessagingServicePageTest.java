@@ -38,6 +38,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 
+@Order(11)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class MessagingServicePageTest {
   static WebDriver webDriver;

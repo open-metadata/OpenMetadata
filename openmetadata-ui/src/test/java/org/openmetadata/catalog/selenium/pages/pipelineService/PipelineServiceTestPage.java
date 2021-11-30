@@ -38,6 +38,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 
+@Order(10)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class PipelineServiceTestPage {
   static WebDriver webDriver;
