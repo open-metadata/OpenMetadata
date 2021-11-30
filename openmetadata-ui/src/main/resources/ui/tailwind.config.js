@@ -41,7 +41,7 @@ const statusRunning = '#276EF1';
 const statusQueued = '#777777';
 
 // Background colors
-const bodyBG = '#FCFBFE';
+const bodyBG = '#F8F9FA';
 const bodyHoverBG = '#F9F8FD';
 const tagBG = '#EEEAF8';
 const primaryBG = '#7147E840'; // 'rgba(113, 71, 232, 0.25)';
