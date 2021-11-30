@@ -44,7 +44,7 @@ const IngestionPage = () => {
   const [serviceList, setServiceList] = useState<Array<DatabaseService>>([]);
   const [paging, setPaging] = useState<Paging>({} as Paging);
   const [isConnectionAvailable, setConnectionAvailable] =
-    useState<boolean>(false);
+    useState<boolean>(true);
   const getDatabaseServices = () => {
     getServices('databaseServices')
       .then((res: AxiosResponse) => {
