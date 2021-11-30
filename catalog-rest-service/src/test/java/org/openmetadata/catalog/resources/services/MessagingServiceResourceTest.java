@@ -76,28 +76,9 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
   }
 
   @Test
-  public void post_serviceWithLongName_400_badRequest(TestInfo test) {
-    // Create messaging with mandatory name field empty
-    CreateMessagingService create = create(test).withName(TestUtils.LONG_ENTITY_NAME);
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            createEntity(create, adminAuthHeaders()));
-    TestUtils.assertResponse(exception, BAD_REQUEST, "[name size must be between 1 and 64]");
-  }
-
-  @Test
   public void post_withoutRequiredFields_400_badRequest(TestInfo test) {
-    // Create messaging with mandatory name field null
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            createEntity(create(test).withName(null), adminAuthHeaders()));
-    TestUtils.assertResponse(exception, BAD_REQUEST, "[name must not be null]");
-
-    // Create messaging with mandatory name field empty
-    exception = assertThrows(HttpResponseException.class, () ->
-            createEntity(create(test).withName(""), adminAuthHeaders()));
-    TestUtils.assertResponse(exception, BAD_REQUEST, "[name size must be between 1 and 64]");
-
     // Create messaging with mandatory serviceType field empty
-    exception = assertThrows(HttpResponseException.class, () ->
+    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
             createEntity(create(test).withServiceType(null), adminAuthHeaders()));
     TestUtils.assertResponse(exception, BAD_REQUEST, "[serviceType must not be null]");
 
@@ -274,14 +255,6 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
     return TestUtils.get(target, MessagingService.class, authHeaders);
   }
 
-  public static String getName(TestInfo test) {
-    return String.format("dbservice_%s", test.getDisplayName());
-  }
-
-  public static String getName(TestInfo test, int index) {
-    return String.format("dbservice_%d_%s", index, test.getDisplayName());
-  }
-
   @Test
   public void delete_ExistentMessagingService_as_admin_200(TestInfo test) throws HttpResponseException {
     Map<String, String> authHeaders = adminAuthHeaders();
@@ -322,23 +295,25 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
             CatalogExceptionMessage.entityNotFound(Entity.MESSAGING_SERVICE, name));
   }
 
-  public static CreateMessagingService create(TestInfo test) {
-    return new CreateMessagingService().withName(getName(test)).withServiceType(MessagingServiceType.Kafka)
+  private CreateMessagingService create(TestInfo test) {
+    return create(getEntityName(test));
+  }
+
+  private CreateMessagingService create(TestInfo test, int index) {
+    return create(getEntityName(test, index));
+  }
+
+  private CreateMessagingService create(String entityName) {
+    return new CreateMessagingService().withName(entityName).withServiceType(MessagingServiceType.Kafka)
             .withBrokers(KAFKA_BROKERS)
             .withSchemaRegistry(SCHEMA_REGISTRY_URL)
             .withIngestionSchedule(new Schedule().withStartDate(new Date()).withRepeatFrequency("P1D"));
   }
 
-  private static CreateMessagingService create(TestInfo test, int index) {
-    return new CreateMessagingService().withName(getName(test, index)).withServiceType(MessagingServiceType.Pulsar)
-            .withBrokers(List.of("192.1.1.1:0"))
-            .withIngestionSchedule(new Schedule().withStartDate(new Date()).withRepeatFrequency("P1D"));
-  }
-
   @Override
-  public Object createRequest(TestInfo test, int index, String description, String displayName, EntityReference owner)
+  public Object createRequest(String name, String description, String displayName, EntityReference owner)
           throws URISyntaxException {
-    return create(test).withName(getName(test, index)).withDescription(description).withIngestionSchedule(null);
+    return create(name).withDescription(description).withIngestionSchedule(null);
   }
 
   @Override

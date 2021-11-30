@@ -16,8 +16,9 @@
 */
 
 import { AxiosError, AxiosResponse } from 'axios';
+import { toString } from 'lodash';
 import { Paging } from 'Models';
-import React, { useEffect, useState } from 'react';
+import React, { Fragment, useEffect, useState } from 'react';
 import {
   addIngestionWorkflow,
   deleteIngestionWorkflowsById,
@@ -26,6 +27,7 @@ import {
   updateIngestionWorkflow,
 } from '../../axiosAPIs/ingestionWorkflowAPI';
 import { getServices } from '../../axiosAPIs/serviceAPI';
+import IngestionError from '../../components/common/error/IngestionError';
 import Ingestion from '../../components/Ingestion/Ingestion.component';
 import { IngestionData } from '../../components/Ingestion/ingestion.interface';
 import Loader from '../../components/Loader/Loader';
@@ -41,6 +43,8 @@ const IngestionPage = () => {
   const [ingestions, setIngestions] = useState([]);
   const [serviceList, setServiceList] = useState<Array<DatabaseService>>([]);
   const [paging, setPaging] = useState<Paging>({} as Paging);
+  const [isConnectionAvailable, setConnectionAvailable] =
+    useState<boolean>(true);
   const getDatabaseServices = () => {
     getServices('databaseServices')
       .then((res: AxiosResponse) => {
@@ -178,11 +182,10 @@ const IngestionPage = () => {
         }
       })
       .catch((err: AxiosError) => {
-        const msg = err.message;
-        showToast({
-          variant: 'error',
-          body: msg ?? `Something went wrong`,
-        });
+        const errMsg = toString(err.response?.data?.message) ?? '';
+        if (errMsg.includes('Connection refused')) {
+          setConnectionAvailable(false);
+        }
         setIsLoading(false);
       });
   };
@@ -204,16 +207,22 @@ const IngestionPage = () => {
       {isLoading ? (
         <Loader />
       ) : (
-        <Ingestion
-          addIngestion={addIngestionWorkflowHandler}
-          deleteIngestion={deleteIngestionById}
-          ingestionList={ingestions}
-          paging={paging}
-          pagingHandler={pagingHandler}
-          serviceList={serviceList}
-          triggerIngestion={triggerIngestionById}
-          updateIngestion={updateIngestion}
-        />
+        <Fragment>
+          {isConnectionAvailable ? (
+            <Ingestion
+              addIngestion={addIngestionWorkflowHandler}
+              deleteIngestion={deleteIngestionById}
+              ingestionList={ingestions}
+              paging={paging}
+              pagingHandler={pagingHandler}
+              serviceList={serviceList}
+              triggerIngestion={triggerIngestionById}
+              updateIngestion={updateIngestion}
+            />
+          ) : (
+            <IngestionError />
+          )}
+        </Fragment>
       )}
     </>
   );

@@ -40,7 +40,6 @@ import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.StorageServiceType;
 import org.openmetadata.catalog.type.Tag;
 import org.openmetadata.catalog.type.TagLabel;
-import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
 import org.openmetadata.common.utils.JsonSchemaUtil;
@@ -52,12 +51,10 @@ import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response.Status;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.CONFLICT;
@@ -94,11 +91,12 @@ public class LocationResourceTest extends CatalogApplicationTest {
 
   @BeforeAll
   public static void setup(TestInfo test) throws HttpResponseException {
-    USER1 = UserResourceTest.createUser(UserResourceTest.create(test),
+    USER1 = UserResourceTest.createUser(new UserResourceTest().create(test),
             authHeaders("test@open-metadata.org"));
     USER_OWNER1 = new EntityReference().withId(USER1.getId()).withType("user");
 
-    TEAM1 = TeamResourceTest.createTeam(TeamResourceTest.create(test), adminAuthHeaders());
+    TeamResourceTest teamResourceTest = new TeamResourceTest();
+    TEAM1 = TeamResourceTest.createTeam(teamResourceTest.create(test), adminAuthHeaders());
     TEAM_OWNER1 = new EntityReference().withId(TEAM1.getId()).withType("team");
 
     CreateStorageService createService = new CreateStorageService().withName("s3")
@@ -587,14 +585,15 @@ public class LocationResourceTest extends CatalogApplicationTest {
     Location location = createAndCheckLocation(create(test), adminAuthHeaders());
 
     // Add follower to the location
-    User user1 = UserResourceTest.createUser(UserResourceTest.create(test, 1), userAuthHeaders());
+    UserResourceTest userResourceTest = new UserResourceTest();
+    User user1 = UserResourceTest.createUser(userResourceTest.create(test, 1), userAuthHeaders());
     addAndCheckFollower(location, user1.getId(), CREATED, 1, userAuthHeaders());
 
     // Add the same user as follower and make sure no errors are thrown and return response is OK (and not CREATED)
     addAndCheckFollower(location, user1.getId(), OK, 1, userAuthHeaders());
 
     // Add a new follower to the location
-    User user2 = UserResourceTest.createUser(UserResourceTest.create(test, 2), userAuthHeaders());
+    User user2 = UserResourceTest.createUser(userResourceTest.create(test, 2), userAuthHeaders());
     addAndCheckFollower(location, user2.getId(), CREATED, 2, userAuthHeaders());
 
     // Delete followers and make sure they are deleted
@@ -856,7 +855,6 @@ public class LocationResourceTest extends CatalogApplicationTest {
   private static void checkUserFollowing(UUID userId, UUID locationId, boolean expectedFollowing,
                                          Map<String, String> authHeaders) throws HttpResponseException {
     // GET .../users/{userId} shows user as following location
-    boolean following = false;
     User user = UserResourceTest.getUser(userId, "follows", authHeaders);
     existsInEntityReferenceList(user.getFollows(), locationId, expectedFollowing);
   }

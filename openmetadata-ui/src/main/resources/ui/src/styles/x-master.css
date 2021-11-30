@@ -734,3 +734,15 @@ body .profiler-graph .recharts-active-dot circle {
 .version-data {
   width: calc(100% - 330px);
 }
+
+/* page-container v1 */
+
+.page-container-v1 {
+  display: flex;
+  flex-direction: column;
+  flex-wrap: nowrap;
+  align-content: flex-start;
+  position: relative;
+  height: calc(100% - 61px);
+  overflow-y: hidden;
+}

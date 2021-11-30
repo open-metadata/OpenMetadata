@@ -42,14 +42,14 @@
       "description": "Local name (not fully qualified name) of the ML Feature.",
       "type": "string",
       "minLength": 1,
-      "maxLength": 64,
+      "maxLength": 128,
       "pattern": "^[^.]*$"
     },
     "featureSourceName": {
       "description": "Local name (not fully qualified name) of a ML Feature source.",
       "type": "string",
       "minLength": 1,
-      "maxLength": 64,
+      "maxLength": 128,
       "pattern": "^[^.]*$"
     },
     "fullyQualifiedFeatureSourceName": {
@@ -182,13 +182,13 @@
       "description": "Name that identifies this ML Model.",
       "type": "string",
       "minLength": 1,
-      "maxLength": 64
+      "maxLength": 128
     },
     "fullyQualifiedName": {
       "description": "A unique name that identifies an ML Model.",
       "type": "string",
       "minLength": 1,
-      "maxLength": 64
+      "maxLength": 256
     },
     "displayName": {
       "description": "Display Name that identifies this ML Model.",

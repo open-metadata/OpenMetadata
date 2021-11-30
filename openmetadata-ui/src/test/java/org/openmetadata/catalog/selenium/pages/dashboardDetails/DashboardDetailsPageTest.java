@@ -36,6 +36,7 @@ import org.openqa.selenium.support.ui.WebDriverWait;
 import java.time.Duration;
 import java.util.ArrayList;
 
+@Order(5)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class DashboardDetailsPageTest {
   static WebDriver webDriver;

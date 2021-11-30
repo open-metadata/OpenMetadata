@@ -22,7 +22,6 @@ import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.data.CreateTopic;
 import org.openmetadata.catalog.entity.data.Topic;
-import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.jdbi3.TopicRepository.TopicEntityInterface;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.topics.TopicResource.TopicList;
@@ -38,14 +37,12 @@ import java.util.Map;
 import java.util.UUID;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
-import static javax.ws.rs.core.Response.Status.CONFLICT;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
-import static org.openmetadata.catalog.util.TestUtils.LONG_ENTITY_NAME;
 import static org.openmetadata.catalog.util.TestUtils.NON_EXISTENT_ENTITY;
 import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
@@ -59,30 +56,12 @@ public class TopicResourceTest extends EntityResourceTest<Topic> {
   }
 
   @Test
-  public void post_topicWithLongName_400_badRequest(TestInfo test) {
-    // Create topic with mandatory name field empty
-    CreateTopic create = create(test).withName(LONG_ENTITY_NAME);
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            createTopic(create, adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, "[name size must be between 1 and 64]");
-  }
-
-  @Test
-  public void post_topicAlreadyExists_409_conflict(TestInfo test) throws HttpResponseException {
-    CreateTopic create = create(test);
-    createTopic(create, adminAuthHeaders());
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            createTopic(create, adminAuthHeaders()));
-    assertResponse(exception, CONFLICT, CatalogExceptionMessage.ENTITY_ALREADY_EXISTS);
-  }
-
-  @Test
   public void post_validTopics_as_admin_200_OK(TestInfo test) throws IOException {
     // Create team with different optional fields
     CreateTopic create = create(test);
     createAndCheckEntity(create, adminAuthHeaders());
 
-    create.withName(getTopicName(test, 1)).withDescription("description");
+    create.withName(getEntityName(test, 1)).withDescription("description");
     Topic topic = createAndCheckEntity(create, adminAuthHeaders());
     String expectedFQN = KAFKA_REFERENCE.getName() + "." + topic.getName();
     assertEquals(expectedFQN, topic.getFullyQualifiedName());
@@ -108,16 +87,8 @@ public class TopicResourceTest extends EntityResourceTest<Topic> {
 
   @Test
   public void post_topicWithoutRequiredFields_4xx(TestInfo test) {
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            createTopic(create(test).withName(null), adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, "[name must not be null]");
-
-    exception = assertThrows(HttpResponseException.class, () ->
-            createTopic(create(test).withName(LONG_ENTITY_NAME), adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, "[name size must be between 1 and 64]");
-
     // Service is required field
-    exception = assertThrows(HttpResponseException.class, () ->
+    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
             createTopic(create(test).withService(null), adminAuthHeaders()));
     assertResponse(exception, BAD_REQUEST, "[service must not be null]");
 
@@ -267,27 +238,18 @@ public class TopicResourceTest extends EntityResourceTest<Topic> {
     assertResponse(exception, NOT_FOUND, entityNotFound(Entity.TOPIC, id));
   }
 
-  public static String getTopicName(TestInfo test) {
-    return String.format("topic_%s", test.getDisplayName());
+  private CreateTopic create(TestInfo test) {
+    return create(getEntityName(test));
   }
 
-  public static String getTopicName(TestInfo test, int index) {
-    return String.format("topic%d_%s", index, test.getDisplayName());
-  }
-
-  public static CreateTopic create(TestInfo test) {
-    return new CreateTopic().withName(getTopicName(test)).withService(KAFKA_REFERENCE).
+  private CreateTopic create(String entityName) {
+    return new CreateTopic().withName(entityName).withService(KAFKA_REFERENCE).
             withPartitions(1);
   }
 
-  public static CreateTopic create(TestInfo test, int index) {
-    return new CreateTopic().withName(getTopicName(test, index)).withService(KAFKA_REFERENCE).withPartitions(1);
-  }
-
   @Override
-  public CreateTopic createRequest(TestInfo test, int index, String description, String displayName,
-                                   EntityReference owner) {
-    return create(test, index).withDescription(description).withOwner(owner);
+  public CreateTopic createRequest(String name, String description, String displayName, EntityReference owner) {
+    return create(name).withDescription(description).withOwner(owner);
   }
 
   @Override
