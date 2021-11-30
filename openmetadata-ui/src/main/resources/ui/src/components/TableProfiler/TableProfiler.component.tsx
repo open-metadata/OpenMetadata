@@ -193,8 +193,7 @@ const TableProfiler = ({ tableProfiles, columns }: Props) => {
             className="tw-ml-1"
             target="_blank"
             to={{
-              pathname:
-                'https://docs.open-metadata.org/connectors',
+              pathname: 'https://docs.open-metadata.org/connectors',
             }}>
             here
           </Link>
