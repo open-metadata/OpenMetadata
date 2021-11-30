@@ -15,6 +15,7 @@
   * limitations under the License.
 */
 
+import { isString } from 'lodash';
 import { FormatedTableData } from 'Models';
 import React, { FunctionComponent, useEffect, useState } from 'react';
 import { getDashboardByFqn } from '../../axiosAPIs/dashboardAPI';
@@ -27,7 +28,7 @@ import {
   getRecentlyViewedData,
   setRecentlyViewedData,
 } from '../../utils/CommonUtils';
-import { getOwnerFromId, getTierFromTableTags } from '../../utils/TableUtils';
+import { getOwnerFromId, getTierTags } from '../../utils/TableUtils';
 import { getTableTags } from '../../utils/TagsUtils';
 import TableDataCard from '../common/table-data-card/TableDataCard';
 import Loader from '../Loader/Loader';
@@ -74,7 +75,7 @@ const RecentlyViewed: FunctionComponent = () => {
               owner: getOwnerFromId(owner?.id)?.name || '--',
               serviceType: oData.serviceType,
               tags: [...tableTags].filter((tag) => tag),
-              tier: getTierFromTableTags(tags),
+              tier: getTierTags(tags),
               weeklyPercentileRank:
                 usageSummary?.weeklyStats.percentileRank || 0,
             });
@@ -95,7 +96,7 @@ const RecentlyViewed: FunctionComponent = () => {
               owner: getOwnerFromId(owner?.id)?.name || '--',
               serviceType: oData.serviceType,
               tags: tags,
-              tier: getTierFromTableTags(tags),
+              tier: getTierTags(tags),
             });
 
             break;
@@ -123,7 +124,7 @@ const RecentlyViewed: FunctionComponent = () => {
               owner: getOwnerFromId(owner?.id)?.name || '--',
               serviceType: oData.serviceType,
               tags: tags,
-              tier: getTierFromTableTags(tags),
+              tier: getTierTags(tags),
             });
 
             break;
@@ -152,7 +153,7 @@ const RecentlyViewed: FunctionComponent = () => {
               owner: getOwnerFromId(owner?.id)?.name || '--',
               serviceType: oData.serviceType,
               tags: tags,
-              tier: getTierFromTableTags(tags),
+              tier: getTierTags(tags),
             });
 
             break;
@@ -201,7 +202,9 @@ const RecentlyViewed: FunctionComponent = () => {
                     serviceType={item.serviceType || '--'}
                     tableType={item.tableType}
                     tags={item.tags}
-                    tier={item.tier?.split('.')[1]}
+                    tier={
+                      isString(item.tier) ? item.tier?.split('.')[1] : item.tier
+                    }
                     usage={item.weeklyPercentileRank}
                   />
                 </div>

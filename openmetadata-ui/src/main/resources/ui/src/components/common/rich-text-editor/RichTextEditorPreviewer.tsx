@@ -24,7 +24,7 @@ import gfm from 'remark-gfm';
 /*eslint-disable  */
 const RichTextEditorPreviewer = ({
   markdown,
-  className,
+  className = '',
 }: {
   markdown: string;
   className?: string;

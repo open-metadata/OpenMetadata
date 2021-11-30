@@ -79,29 +79,14 @@ const TableDataCard: FunctionComponent<Props> = ({
   ];
 
   const getAssetTags = () => {
-    if (!isUndefined(tags)) {
-      if (isString(tags[0])) {
-        const assetTags = [...(tags as Array<string>)];
-        if (tier && isString(tier)) {
-          assetTags
-            .filter((tag) => !(tag as string).includes(tier))
-            .unshift(tier);
-        }
-
-        return [...new Set(assetTags)];
-      } else {
-        const assetTags = [...(tags as Array<TagLabel>)];
-        if (tier) {
-          assetTags
-            .filter((tag) => !tag.tagFQN.includes((tier as TagLabel).tagFQN))
-            .unshift(tier as TagLabel);
-        }
-
-        return [...new Set(assetTags)];
-      }
+    const assetTags = [...(tags as Array<TagLabel>)];
+    if (tier && !isUndefined(tier)) {
+      assetTags
+        // .filter((tag) => !tag.tagFQN.includes((tier as TagLabel).tagFQN))
+        .unshift(tier as TagLabel);
     }
 
-    return tags;
+    return [...new Set(assetTags)];
   };
 
   return (

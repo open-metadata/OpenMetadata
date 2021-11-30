@@ -75,6 +75,7 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
       .filter((tag) => {
         return !tags.some((selectedTag) => selectedTag.tagFQN === tag);
       })
+      .filter((tag) => !tag.includes('Tier'))
       .map((tag) => {
         return {
           name: tag,
