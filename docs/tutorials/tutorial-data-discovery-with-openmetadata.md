@@ -12,6 +12,8 @@ For this tutorial, we will assume the role of data analysts who have been asked 
 
 ### **1. Log in to the OpenMetadata sandbox using a Google account**
 
+Navigate to the [OpenMetadata sandbox](https://sandbox.open-metadata.org/signin) and log in using your Google account.
+
 ![](../.gitbook/assets/log-in-with-google.png)
 
 ### 2. Add yourself as a user and add yourself to several teams
@@ -38,7 +40,7 @@ Having issued our search for sales, we see results similar to those depicted bel
 
 ![](../.gitbook/assets/search-results-v2.png)
 
-In addition, we’ve identified four dashboards...&#x20;
+In addition, we’ve identified four dashboards...
 
 ![](../.gitbook/assets/dashboards.png)
 
@@ -74,7 +76,7 @@ In general, for analyses that will drive business decisions, we want to ensure t
 
 ![](../.gitbook/assets/tier-1-documentation-v2.png)
 
-Based on our consideration of asset descriptions, tags, and tiers, we now have a better sense for how to locate the data we need in order to perform an analysis of sales by region**.**
+Based on our consideration of asset descriptions, tags, and tiers, we now have a better sense for how to locate the data we need in order to perform an analysis of sales by region\*\*.\*\*
 
 Let’s go back to the tables tab in our search results since that’s where we’ll find the source data we need. Looking at the options for filtering search results, we can select Tier1 to limit results to just the most important tables among the assets matching our query.
 
@@ -110,5 +112,4 @@ Taken together, the Tier1 designation, the frequency of use, and the direction w
 
 In the next tutorial, we will explore how to assess an asset to learn what we need to know about the individual fields, related tables and other assets, and how to get help with specific questions about the asset.
 
-**Thanks for following along with this introduction to OpenMetadata! Have questions? Please join the **[**OpenMetadata Slack**](https://slack.open-metadata.org)**. We have an active and engaged community that is ready to help!**
-
+**Thanks for following along with this introduction to OpenMetadata! Have questions? Please join the** [**OpenMetadata Slack**](https://slack.open-metadata.org)**. We have an active and engaged community that is ready to help!**
