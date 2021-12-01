@@ -342,15 +342,19 @@ public class MlModelRepository extends EntityRepository<MlModel> {
     }
 
     private void updateAlgorithm(MlModel origModel, MlModel updatedModel) throws JsonProcessingException {
-      recordChange("algorithm", origModel.getAlgorithm(), updatedModel.getAlgorithm());
+      // Updating an algorithm should be flagged for an ML Model
+      if (recordChange("algorithm", origModel.getAlgorithm(), updatedModel.getAlgorithm())) {
+        // Mark the EntityUpdater version change to major
+        majorVersionChange = true;
+      }
     }
 
     private void updateMlFeatures(MlModel origModel, MlModel updatedModel) throws JsonProcessingException {
-      recordChange("mlFeatures", origModel.getMlFeatures(), updatedModel.getMlFeatures());
+      recordChange("mlFeatures", origModel.getMlFeatures(), updatedModel.getMlFeatures(), true);
     }
 
     private void updateMlHyperParameters(MlModel origModel, MlModel updatedModel) throws JsonProcessingException {
-      recordChange("mlHyperParameters", origModel.getMlHyperParameters(), updatedModel.getMlHyperParameters());
+      recordChange("mlHyperParameters", origModel.getMlHyperParameters(), updatedModel.getMlHyperParameters(), true);
     }
 
     private void updateMlStore(MlModel origModel, MlModel updatedModel) throws JsonProcessingException {
@@ -358,7 +362,11 @@ public class MlModelRepository extends EntityRepository<MlModel> {
     }
 
     private void updateServer(MlModel origModel, MlModel updatedModel) throws JsonProcessingException {
-      recordChange("server", origModel.getServer(), updatedModel.getServer());
+      // Updating the server can break current integrations to the ML services or enable new integrations
+      if (recordChange("server", origModel.getServer(), updatedModel.getServer())) {
+        // Mark the EntityUpdater version change to major
+        majorVersionChange = true;
+      }
     }
 
     private void updateDashboard(MlModel origModel, MlModel updatedModel) throws JsonProcessingException {
