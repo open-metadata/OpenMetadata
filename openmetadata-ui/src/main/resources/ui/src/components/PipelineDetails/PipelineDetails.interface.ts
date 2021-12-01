@@ -25,6 +25,7 @@ import {
   EntityLineage,
   EntityReference,
 } from '../../generated/type/entityLineage';
+import { TagLabel } from '../../generated/type/tagLabel';
 import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
 
 export interface PipeLineDetailsProp {
@@ -39,7 +40,7 @@ export interface PipeLineDetailsProp {
   activeTab: number;
   owner: TableDetail['owner'];
   description: string;
-  tier: string;
+  tier: TagLabel;
   followers: Array<User>;
   pipelineTags: Array<EntityTags>;
   slashedPipelineName: TitleBreadcrumbProps['titleLinks'];

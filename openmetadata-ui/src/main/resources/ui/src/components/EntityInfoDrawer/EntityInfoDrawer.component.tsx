@@ -230,7 +230,7 @@ const EntityInfoDrawer = ({
             <div className="tw-flex tw-flex-wrap tw-pt-1.5">
               {getEntityTags(selectedNode.type, entityDetail).length > 0 ? (
                 getEntityTags(selectedNode.type, entityDetail).map((t) => {
-                  return <Tags key={t} tag={`#${t}`} />;
+                  return <Tags key={t} startWith="#" tag={t ? t : ''} />;
                 })
               ) : (
                 <p className="tw-text-xs tw-text-grey-muted">No Tags added</p>

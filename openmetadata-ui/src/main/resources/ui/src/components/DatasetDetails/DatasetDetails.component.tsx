@@ -204,7 +204,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
       isLink: owner?.type === 'team',
       openInNewTab: false,
     },
-    { key: 'Tier', value: tier ? tier.split('.')[1] : '' },
+    { key: 'Tier', value: tier?.tagFQN ? tier.tagFQN.split('.')[1] : '' },
     { key: 'Usage', value: usage },
     { key: 'Queries', value: `${weeklyUsageCount} past week` },
     {
@@ -338,7 +338,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
           followHandler={followTable}
           isFollowing={isFollowing}
           tags={tableTags}
-          tier={tier || ''}
+          tier={tier}
           titleLinks={slashedTableName}
           version={version}
           versionHandler={versionHandler}
@@ -411,7 +411,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
             {activeTab === 4 && (
               <div className="tw-mt-4">
                 <ManageTab
-                  currentTier={tier}
+                  currentTier={tier?.tagFQN}
                   currentUser={owner?.id}
                   hasEditAccess={hasEditAccess()}
                   onSave={onSettingsUpdate}

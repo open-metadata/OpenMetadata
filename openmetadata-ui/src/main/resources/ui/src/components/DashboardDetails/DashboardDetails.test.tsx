@@ -16,6 +16,7 @@ import { TableDetail } from 'Models';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { Dashboard } from '../../generated/entity/data/dashboard';
+import { TagLabel } from '../../generated/type/tagLabel';
 import DashboardDetails from './DashboardDetails.component';
 
 const mockUserTeam = [
@@ -48,7 +49,7 @@ const DashboardDetailsProps = {
   activeTab: 1,
   owner: {} as TableDetail['owner'],
   description: '',
-  tier: '',
+  tier: {} as TagLabel,
   followers: [],
   dashboardTags: [],
   slashedDashboardName: [],
