@@ -39,7 +39,7 @@ config = """
   "source": {
     "type": "dbt",
     "config": {
-      "service_name": "bigquery",
+      "service_name": "bigquery_dbt",
       "service_type": "BigQuery",
       "catalog_file": "./examples/sample_data/dbt/catalog.json",
       "manifest_file": "./examples/sample_data/dbt/manifest.json",
