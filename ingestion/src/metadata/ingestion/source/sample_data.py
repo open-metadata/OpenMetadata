@@ -35,6 +35,7 @@ from metadata.generated.schema.entity.data.mlmodel import MlModel
 from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.teams.user import User
+from metadata.generated.schema.type.basic import Href
 from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.common import Record
@@ -419,16 +420,19 @@ class SampleDataSource(Source):
             )
             yield model_ev
 
-    def ingest_users(self) -> Iterable[CreateUserEntityRequest]:
+    def ingest_users(self) -> Iterable[User]:
         try:
             for user in self.users["users"]:
-                teams = [EntityReference(id=uuid.uuid4(), name=user.teams)]
+                teams = [
+                    EntityReference(id=uuid.uuid4(), name=user["teams"], type="team")
+                ]
                 user_metadata = User(
                     id=uuid.uuid4(),
                     name=user["email"],
                     displayName=user["displayName"],
                     email=user["email"],
                     teams=teams,
+                    href=Href(__root__="http://localhost"),
                 )
                 yield user_metadata
         except Exception as err:
