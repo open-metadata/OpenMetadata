@@ -31,21 +31,17 @@ const PageLayout: FC<PageLayoutProp> = ({
   return (
     <div className="tw-grid tw-grid-flow-col tw-gap-x-3 tw-px-4 tw-overflow-y-auto">
       {leftPanel && (
-        <div
-          className="tw-col-span-1 tw-w-64 tw-overflow-y-auto tw-px-2 tw-py-1"
-          id="left-panel">
+        <div className="tw-page-layout-panel" id="left-panel">
           {leftPanel}
         </div>
       )}
       <div
-        className="tw-col-span-3  tw-overflow-y-auto tw-px-2 tw-py-1"
+        className="tw-col-span-3 tw-overflow-y-auto tw-py-1 tw-px-4"
         id="center">
         {children}
       </div>
       {rightPanel && (
-        <div
-          className="tw-col-span-1 tw-w-64  tw-overflow-y-auto tw-px-2 tw-py-1"
-          id="right-panel">
+        <div className="tw-page-layout-panel" id="right-panel">
           {rightPanel}
         </div>
       )}

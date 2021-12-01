@@ -316,6 +316,15 @@
     @apply tw-border-primary-active;
     box-shadow: 0 0 0 0.5px #7147e8;
   }
+  .tw-filter-seperator {
+    @apply tw-border-b tw-border-separator tw-mb-4;
+    width: 95%;
+  }
+
+  /* page layout */
+  .tw-page-layout-panel {
+    @apply tw-col-span-1 tw-w-64 tw-overflow-y-auto tw-px-2 tw-py-1;
+  }
 
   /* Cron editor css */
   .my-project-cron {

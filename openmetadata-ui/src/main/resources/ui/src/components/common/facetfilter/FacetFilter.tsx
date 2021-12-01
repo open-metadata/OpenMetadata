@@ -41,7 +41,7 @@ const FacetFilter: FunctionComponent<FacetProp> = ({
   ) => {
     return (
       length > 5 && (
-        <p className="link-text" onClick={() => setState(!state)}>
+        <p className="link-text tw-text-xs" onClick={() => setState(!state)}>
           {state ? 'View less' : 'View more'}
         </p>
       )
@@ -49,7 +49,7 @@ const FacetFilter: FunctionComponent<FacetProp> = ({
   };
   const getSeparator = (length: number, index: number) => {
     return length !== 1 && index < length - 1 ? (
-      <div className="seperator tw-mb-4 tw--mx-4 " />
+      <div className="tw-filter-seperator" />
     ) : null;
   };
   const sortBuckets = (buckets: Array<Bucket>) => {
@@ -135,9 +135,9 @@ const FacetFilter: FunctionComponent<FacetProp> = ({
                       )?.value
                     }
                   </h6>
-                  <div className="tw-flex tw-mt-1 tw-gap-x-1">
+                  <div className="tw-flex tw-mt-1.5">
                     <span
-                      className="link-text tw-text-sm"
+                      className="link-text tw-text-xs"
                       onClick={() =>
                         onClearFilter(
                           lowerCase(aggregation.title) as keyof FilterObject
@@ -145,9 +145,9 @@ const FacetFilter: FunctionComponent<FacetProp> = ({
                       }>
                       Select All
                     </span>
-                    <span>|</span>
+                    <span className="tw-text-xs tw-px-2">|</span>
                     <span
-                      className="link-text tw-text-sm tw-text-grey-muted"
+                      className="link-text tw-text-xs tw-text-grey-muted"
                       onClick={() => {
                         if (isClearFilter(aggregation)) {
                           onClearFilter(

@@ -366,7 +366,7 @@ const Explore: React.FC<ExploreProps> = ({
   };
   const getTabs = () => {
     return (
-      <div className="tw-mb-3">
+      <div className="tw-mb-5">
         <nav className="tw-flex tw-flex-row tw-gh-tabs-container tw-px-5 tw-pl-16 tw-mx-6 tw-justify-between">
           <div>
             {tabsInfo.map((tabDetail, index) => (
@@ -503,7 +503,7 @@ const Explore: React.FC<ExploreProps> = ({
       {!connectionError && getTabs()}
       <PageLayout
         leftPanel={Boolean(!error) && fetchLeftPanel()}
-        rightPanel={<></>}>
+        rightPanel={Boolean(!error) && <></>}>
         {error ? (
           <ErrorPlaceHolderES errorMessage={error} type="error" />
         ) : (
