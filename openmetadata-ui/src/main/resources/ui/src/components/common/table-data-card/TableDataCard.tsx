@@ -65,15 +65,16 @@ const TableDataCard: FunctionComponent<Props> = ({
     { key: 'Owner', value: owner },
     { key: 'Service', value: serviceType },
     { key: 'Tier', value: getTier() },
-    {
+  ];
+  if (indexType !== SearchIndex.DASHBOARD && usage !== undefined) {
+    OtherDetails.push({
       key: 'Usage',
       value:
         indexType !== SearchIndex.DASHBOARD && usage !== undefined
           ? getUsagePercentile(usage)
           : undefined,
-    },
-  ];
-
+    });
+  }
   const getAssetTags = () => {
     const assetTags = [...(tags as Array<TagLabel>)];
     if (tier && !isUndefined(tier)) {
