@@ -92,7 +92,6 @@ const FacetFilter: FunctionComponent<FacetProp> = ({
           (bucket: Bucket, index: number) => (
             <FilterContainer
               count={bucket.doc_count}
-              isDisabled={aggregation.buckets.length === 1}
               isSelected={filters[
                 lowerCase(aggregation.title) as keyof FilterObject
               ].includes(bucket.key)}

@@ -321,11 +321,6 @@
     width: 95%;
   }
 
-  /* page layout */
-  .tw-page-layout-panel {
-    @apply tw-col-span-1 tw-w-64 tw-overflow-y-auto tw-px-2 tw-py-1;
-  }
-
   /* Cron editor css */
   .my-project-cron {
     display: flex;
