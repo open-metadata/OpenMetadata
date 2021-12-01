@@ -246,6 +246,7 @@ public class TableDetailsPageTest {
     openExplorePage();
     webDriver.findElement(By.cssSelector("[data-testid='searchBox']")).sendKeys("fact_sale");
     Events.click(webDriver, By.cssSelector("[data-testid='data-name']"));
+    Thread.sleep(2000);
     Events.click(webDriver, By.xpath("(//div[@data-testid='related-tables-data']/a)"));
 //    for (int i = 1; i <= 3; i++) {
 //      Events.click(webDriver, By.xpath("(//div[@data-testid='related-tables-data']//a)" + "[" + i + "]"));
@@ -266,6 +267,7 @@ public class TableDetailsPageTest {
     openExplorePage();
     webDriver.findElement(By.cssSelector("[data-testid='searchBox']")).sendKeys("fact_sale");
     Events.click(webDriver, By.cssSelector("[data-testid='data-name']"));
+    Thread.sleep(2000);
     Events.click(webDriver, By.xpath(
         "(//div[@data-testid='frequently-joined-columns']/span/a)"));
   }
