@@ -14,6 +14,7 @@
 package org.openmetadata.catalog.selenium.pages.tags;
 
 import com.github.javafaker.Faker;
+import io.github.artsok.RepeatedIfExceptionsTest;
 import org.openmetadata.catalog.selenium.events.Events;
 import org.openmetadata.catalog.selenium.properties.Property;
 import org.openqa.selenium.By;
@@ -23,7 +24,6 @@ import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.interactions.Actions;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Order;
@@ -60,7 +60,7 @@ public class TagsPageTest {
     webDriver.get(url);
   }
 
-  @Test
+  @RepeatedIfExceptionsTest(repeats = 2)
   @Order(1)
   public void openTagsPage() throws InterruptedException {
     Events.click(webDriver, By.cssSelector("[data-testid='closeWhatsNew']")); // Close What's new
@@ -69,7 +69,7 @@ public class TagsPageTest {
     Thread.sleep(waitTime);
   }
 
-  @Test
+  @RepeatedIfExceptionsTest(repeats = 2)
   @Order(2)
   public void addTagCategory() throws InterruptedException {
     openTagsPage();
@@ -89,7 +89,7 @@ public class TagsPageTest {
     Events.click(webDriver, By.cssSelector("[data-testid='saveButton']"));
   }
 
-  @Test
+  @RepeatedIfExceptionsTest(repeats = 2)
   @Order(3)
   public void editTagCategoryDescription() throws InterruptedException {
     openTagsPage();
@@ -100,7 +100,7 @@ public class TagsPageTest {
     Events.click(webDriver, By.cssSelector("[data-testid='save']"));
   }
 
-  @Test
+  @RepeatedIfExceptionsTest(repeats = 2)
   @Order(4)
   public void addTag() throws InterruptedException {
     openTagsPage();
@@ -123,7 +123,7 @@ public class TagsPageTest {
     Events.click(webDriver, By.cssSelector("[data-testid='saveButton']"));
   }
 
-  @Test
+  @RepeatedIfExceptionsTest(repeats = 2)
   @Order(5)
   public void changeTagDescription() throws InterruptedException {
     openTagsPage();
@@ -136,7 +136,7 @@ public class TagsPageTest {
     Events.click(webDriver, By.cssSelector("[data-testid='save']"));
   }
 
-  @Test
+  @RepeatedIfExceptionsTest(repeats = 2)
   @Order(6)
   public void addAssociatedTag() throws InterruptedException {
     openTagsPage();
@@ -152,7 +152,7 @@ public class TagsPageTest {
     Events.click(webDriver, By.cssSelector("[data-testid='saveAssociatedTag']"));
   }
 
-  @Test
+  @RepeatedIfExceptionsTest(repeats = 2)
   @Order(7)
   public void removeAssociatedTag() throws InterruptedException {
     openTagsPage();
@@ -165,7 +165,7 @@ public class TagsPageTest {
     Events.click(webDriver, By.cssSelector("[data-testid='saveAssociatedTag']"));
   }
 
-  @Test
+  @RepeatedIfExceptionsTest(repeats = 2)
   @Order(8)
   public void addTagToTableColumn() throws InterruptedException {
     Events.click(webDriver, By.cssSelector("[data-testid='closeWhatsNew']")); // Close What's new

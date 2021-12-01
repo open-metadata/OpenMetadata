@@ -13,11 +13,11 @@
 
 package org.openmetadata.catalog.selenium.pages.myData;
 
+import io.github.artsok.RepeatedIfExceptionsTest;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.catalog.selenium.events.Events;
 import org.openmetadata.catalog.selenium.properties.Property;
@@ -55,7 +55,7 @@ public class MyDataPageTest {
     webDriver.get(url);
   }
 
-  @Test
+  @RepeatedIfExceptionsTest(repeats = 2)
   @Order(1)
   public void checkWhatsNew() {
     Events.click(webDriver, By.xpath("//ul[@class='slick-dots testid-dots-button']//li[2]")); // What's new page 2
@@ -63,7 +63,7 @@ public class MyDataPageTest {
     Events.click(webDriver, By.cssSelector("[data-testid='closeWhatsNew']")); // Close What's new
   }
 
-  @Test
+  @RepeatedIfExceptionsTest(repeats = 2)
   @Order(2)
   public void checkTabs() {
     checkWhatsNew();
@@ -71,7 +71,7 @@ public class MyDataPageTest {
     Events.click(webDriver, By.cssSelector("[data-testid='tab'][id='followingTab']")); // Following
   }
 
-  @Test
+  @RepeatedIfExceptionsTest(repeats = 2)
   @Order(3)
   public void checkOverview() throws InterruptedException {
     checkWhatsNew();
@@ -92,7 +92,7 @@ public class MyDataPageTest {
     Events.click(webDriver, By.cssSelector("[data-testid='terms']"));  // Teams
   }
 
-  @Test
+  @RepeatedIfExceptionsTest(repeats = 2)
   @Order(4)
   public void checkSearchBar() throws InterruptedException {
     checkWhatsNew();
@@ -104,7 +104,7 @@ public class MyDataPageTest {
   }
 
 
-  @Test
+  @RepeatedIfExceptionsTest(repeats = 2)
   @Order(5)
   public void checkHeaders() {
     checkWhatsNew();
@@ -134,7 +134,7 @@ public class MyDataPageTest {
     webDriver.switchTo().window(tabs.get(0));
   }
 
-  @Test
+  @RepeatedIfExceptionsTest(repeats = 2)
   @Order(6)
   public void checkMyDataTab() {
     checkWhatsNew();
@@ -151,7 +151,7 @@ public class MyDataPageTest {
     Events.click(webDriver, By.xpath("//a[@data-testid='table-link']//button"));
   }
 
-  @Test
+  @RepeatedIfExceptionsTest(repeats = 2)
   @Order(7)
   public void checkFollowingTab() {
     checkWhatsNew();
@@ -164,7 +164,7 @@ public class MyDataPageTest {
     Events.click(webDriver, By.xpath("//a[@data-testid='table-link']//button"));
   }
 
-  @Test
+  @RepeatedIfExceptionsTest(repeats = 2)
   @Order(8)
   public void checkLogout() {
     checkWhatsNew();
