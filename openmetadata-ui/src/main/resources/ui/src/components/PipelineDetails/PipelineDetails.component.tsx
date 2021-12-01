@@ -132,7 +132,7 @@ const PipelineDetails = ({
       isLink: owner?.type === 'team',
       openInNewTab: false,
     },
-    { key: 'Tier', value: tier ? tier.split('.')[1] : '' },
+    { key: 'Tier', value: tier?.tagFQN ? tier.tagFQN.split('.')[1] : '' },
     {
       key: `${serviceType} Url`,
       value: pipelineUrl,
@@ -278,7 +278,7 @@ const PipelineDetails = ({
             tagList={tagList}
             tags={pipelineTags}
             tagsHandler={onTagUpdate}
-            tier={tier || ''}
+            tier={tier}
             titleLinks={slashedPipelineName}
           />
           <div className="tw-mt-1 tw-flex tw-flex-col tw-flex-grow">
@@ -386,7 +386,7 @@ const PipelineDetails = ({
               {activeTab === 3 && (
                 <div className="tw-mt-4">
                   <ManageTabComponent
-                    currentTier={tier}
+                    currentTier={tier?.tagFQN}
                     currentUser={owner?.id}
                     hasEditAccess={hasEditAccess()}
                     onSave={onSettingsUpdate}

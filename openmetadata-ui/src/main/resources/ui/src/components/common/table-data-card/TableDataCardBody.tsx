@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
-import { isNil } from 'lodash';
+import { isNil, isString } from 'lodash';
 import React, { FunctionComponent } from 'react';
+import { TagLabel } from '../../../generated/type/tagLabel';
 import { serviceTypeLogo } from '../../../utils/ServiceUtils';
 import SVGIcons from '../../../utils/SvgUtils';
 import Tag from '../../tags/tags';
@@ -25,7 +26,7 @@ type Props = {
     key: string;
     value?: string;
   }[];
-  tags?: string[];
+  tags?: string[] | TagLabel[];
 };
 
 const TableDataCardBody: FunctionComponent<Props> = ({
@@ -33,6 +34,18 @@ const TableDataCardBody: FunctionComponent<Props> = ({
   extraInfo,
   tags,
 }: Props) => {
+  const getTagValue = (tag: string | TagLabel): string | TagLabel => {
+    if (isString(tag)) {
+      return tag.startsWith('Tier.Tier') ? tag.split('.')[1] : tag;
+    } else {
+      return {
+        ...tag,
+        tagFQN: tag.tagFQN.startsWith('Tier.Tier')
+          ? tag.tagFQN.split('.')[1]
+          : tag.tagFQN,
+      };
+    }
+  };
   const getInfoLabel = (data: { key: string; value: string }) => {
     switch (data.key) {
       case 'Owner':
@@ -92,13 +105,7 @@ const TableDataCardBody: FunctionComponent<Props> = ({
             <SVGIcons alt="icon-tag" icon="icon-tag" />
             <div className="tw-ml-2">
               {tags?.map((tag, index) => (
-                <Tag
-                  key={index}
-                  tag={`#${
-                    tag.startsWith('Tier.Tier') ? tag.split('.')[1] : tag
-                  }`}
-                  type="label"
-                />
+                <Tag key={index} tag={getTagValue(tag)} type="label" />
               ))}
             </div>
           </div>

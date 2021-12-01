@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { EntityTags, FormatedTableData } from 'Models';
+import { isString } from 'lodash';
+import { FormatedTableData } from 'Models';
 import React, { FunctionComponent, useEffect, useState } from 'react';
 import { getDashboardByFqn } from '../../axiosAPIs/dashboardAPI';
 import { getPipelineByFqn } from '../../axiosAPIs/pipelineAPI';
@@ -23,7 +24,7 @@ import {
   getRecentlyViewedData,
   setRecentlyViewedData,
 } from '../../utils/CommonUtils';
-import { getOwnerFromId, getTierFromTableTags } from '../../utils/TableUtils';
+import { getOwnerFromId, getTierTags } from '../../utils/TableUtils';
 import { getTableTags } from '../../utils/TagsUtils';
 import TableDataCard from '../common/table-data-card/TableDataCard';
 import Loader from '../Loader/Loader';
@@ -69,11 +70,8 @@ const RecentlyViewed: FunctionComponent = () => {
               name,
               owner: getOwnerFromId(owner?.id)?.name || '--',
               serviceType: oData.serviceType,
-              tags: [
-                getTierFromTableTags(tags),
-                ...tableTags.map((tag) => tag.tagFQN),
-              ].filter((tag) => tag),
-              tier: getTierFromTableTags(tags),
+              tags: [...tableTags].filter((tag) => tag),
+              tier: getTierTags(tags),
               weeklyPercentileRank:
                 usageSummary?.weeklyStats.percentileRank || 0,
             });
@@ -93,8 +91,8 @@ const RecentlyViewed: FunctionComponent = () => {
               name,
               owner: getOwnerFromId(owner?.id)?.name || '--',
               serviceType: oData.serviceType,
-              tags: (tags as Array<EntityTags>).map((tag) => tag.tagFQN),
-              tier: getTierFromTableTags(tags as Array<EntityTags>),
+              tags: tags,
+              tier: getTierTags(tags),
             });
 
             break;
@@ -121,8 +119,8 @@ const RecentlyViewed: FunctionComponent = () => {
               name: displayName,
               owner: getOwnerFromId(owner?.id)?.name || '--',
               serviceType: oData.serviceType,
-              tags: (tags as Array<EntityTags>).map((tag) => tag.tagFQN),
-              tier: getTierFromTableTags(tags as Array<EntityTags>),
+              tags: tags,
+              tier: getTierTags(tags),
             });
 
             break;
@@ -150,8 +148,8 @@ const RecentlyViewed: FunctionComponent = () => {
               name: displayName,
               owner: getOwnerFromId(owner?.id)?.name || '--',
               serviceType: oData.serviceType,
-              tags: (tags as Array<EntityTags>).map((tag) => tag.tagFQN),
-              tier: getTierFromTableTags(tags as Array<EntityTags>),
+              tags: tags,
+              tier: getTierTags(tags),
             });
 
             break;
@@ -200,7 +198,9 @@ const RecentlyViewed: FunctionComponent = () => {
                     serviceType={item.serviceType || '--'}
                     tableType={item.tableType}
                     tags={item.tags}
-                    tier={item.tier?.split('.')[1]}
+                    tier={
+                      isString(item.tier) ? item.tier?.split('.')[1] : item.tier
+                    }
                     usage={item.weeklyPercentileRank}
                   />
                 </div>

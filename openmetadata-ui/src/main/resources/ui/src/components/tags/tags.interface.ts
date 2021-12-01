@@ -11,11 +11,14 @@
  *  limitations under the License.
  */
 
+import { TagLabel } from '../../generated/type/tagLabel';
+
 export type TagProps = {
   className?: string;
   editable?: boolean;
-  tag: string;
   type?: 'contained' | 'outlined' | 'label';
+  startWith?: '#' | '+ ';
+  tag: string | TagLabel;
   isRemovable?: boolean;
   removeTag?: (
     event: React.MouseEvent<HTMLElement, MouseEvent>,

@@ -37,6 +37,7 @@ import { ServiceCategory } from '../../enums/service.enum';
 import { Chart } from '../../generated/entity/data/chart';
 import { Dashboard } from '../../generated/entity/data/dashboard';
 import { User } from '../../generated/entity/teams/user';
+import { TagLabel } from '../../generated/type/tagLabel';
 import { addToRecentViewed, getCurrentUserId } from '../../utils/CommonUtils';
 import {
   dashboardDetailsTabs,
@@ -46,7 +47,7 @@ import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import {
   getOwnerFromId,
   getTagsWithoutTier,
-  getTierFromTableTags,
+  getTierTags,
 } from '../../utils/TableUtils';
 import { getTagCategories, getTaglist } from '../../utils/TagsUtils';
 type ChartType = {
@@ -67,7 +68,7 @@ const DashboardDetailsPage = () => {
   const [description, setDescription] = useState<string>('');
   const [followers, setFollowers] = useState<Array<User>>([]);
   const [owner, setOwner] = useState<TableDetail['owner']>();
-  const [tier, setTier] = useState<string>();
+  const [tier, setTier] = useState<TagLabel>();
   const [tags, setTags] = useState<Array<EntityTags>>([]);
   const [activeTab, setActiveTab] = useState<number>(
     getCurrentDashboardTab(tab)
@@ -172,7 +173,7 @@ const DashboardDetailsPage = () => {
       setDescription(description ?? '');
       setFollowers(followers);
       setOwner(getOwnerFromId(owner?.id));
-      setTier(getTierFromTableTags(tags));
+      setTier(getTierTags(tags));
       setTags(getTagsWithoutTier(tags));
       getServiceById('dashboardServices', service?.id).then(
         (serviceRes: AxiosResponse) => {
@@ -239,7 +240,7 @@ const DashboardDetailsPage = () => {
 
   const onTagUpdate = (updatedDashboard: Dashboard) => {
     saveUpdatedDashboardData(updatedDashboard).then((res: AxiosResponse) => {
-      setTier(getTierFromTableTags(res.data.tags));
+      setTier(getTierTags(res.data.tags));
       setTags(getTagsWithoutTier(res.data.tags));
     });
   };
@@ -252,7 +253,7 @@ const DashboardDetailsPage = () => {
         .then((res) => {
           setDashboardDetails(res.data);
           setOwner(getOwnerFromId(res.data.owner?.id));
-          setTier(getTierFromTableTags(res.data.tags));
+          setTier(getTierTags(res.data.tags));
           resolve();
         })
         .catch(() => reject());
@@ -326,7 +327,7 @@ const DashboardDetailsPage = () => {
           slashedDashboardName={slashedDashboardName}
           tagList={tagList}
           tagUpdateHandler={onTagUpdate}
-          tier={tier as string}
+          tier={tier as TagLabel}
           unfollowDashboardHandler={unfollowDashboard}
           users={AppState.users}
         />

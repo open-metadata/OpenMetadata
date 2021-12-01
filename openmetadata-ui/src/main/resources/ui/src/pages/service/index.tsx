@@ -497,21 +497,19 @@ const ServicePage: FunctionComponent = () => {
           <td className="tableBody-cell">
             {topic.tags && topic.tags?.length > 0
               ? topic.tags.map((tag, tagIndex) => (
-                  <PopOver
+                  <Tags
+                    className="tw-bg-gray-200"
                     key={tagIndex}
-                    position="top"
-                    size="small"
-                    title={tag.labelType}
-                    trigger="mouseenter">
-                    <Tags
-                      className="tw-bg-gray-200"
-                      tag={`#${
+                    startWith="#"
+                    tag={{
+                      ...tag,
+                      tagFQN: `${
                         tag.tagFQN?.startsWith('Tier.Tier')
                           ? tag.tagFQN.split('.')[1]
                           : tag.tagFQN
-                      }`}
-                    />
-                  </PopOver>
+                      }`,
+                    }}
+                  />
                 ))
               : '--'}
           </td>
@@ -524,21 +522,19 @@ const ServicePage: FunctionComponent = () => {
           <td className="tableBody-cell">
             {dashboard.tags && dashboard.tags?.length > 0
               ? dashboard.tags.map((tag, tagIndex) => (
-                  <PopOver
+                  <Tags
+                    className="tw-bg-gray-200"
                     key={tagIndex}
-                    position="top"
-                    size="small"
-                    title={tag.labelType}
-                    trigger="mouseenter">
-                    <Tags
-                      className="tw-bg-gray-200"
-                      tag={`#${
+                    startWith="#"
+                    tag={{
+                      ...tag,
+                      tagFQN: `${
                         tag.tagFQN?.startsWith('Tier.Tier')
                           ? tag.tagFQN.split('.')[1]
                           : tag.tagFQN
-                      }`}
-                    />
-                  </PopOver>
+                      }`,
+                    }}
+                  />
                 ))
               : '--'}
           </td>
@@ -551,21 +547,19 @@ const ServicePage: FunctionComponent = () => {
           <td className="tableBody-cell">
             {pipeline.tags && pipeline.tags?.length > 0
               ? pipeline.tags.map((tag, tagIndex) => (
-                  <PopOver
+                  <Tags
+                    className="tw-bg-gray-200"
                     key={tagIndex}
-                    position="top"
-                    size="small"
-                    title={tag.labelType}
-                    trigger="mouseenter">
-                    <Tags
-                      className="tw-bg-gray-200"
-                      tag={`#${
+                    startWith="#"
+                    tag={{
+                      ...tag,
+                      tagFQN: `${
                         tag.tagFQN?.startsWith('Tier.Tier')
                           ? tag.tagFQN.split('.')[1]
                           : tag.tagFQN
-                      }`}
-                    />
-                  </PopOver>
+                      }`,
+                    }}
+                  />
                 ))
               : '--'}
           </td>

@@ -12,11 +12,10 @@
  */
 
 import classNames from 'classnames';
-import { capitalize, isEmpty, isNull } from 'lodash';
+import { isEmpty, isNull } from 'lodash';
 import { EntityTags } from 'Models';
 import React, { FunctionComponent, useEffect, useRef, useState } from 'react';
 import { Button } from '../buttons/Button/Button';
-import PopOver from '../common/popover/PopOver';
 import DropDownList from '../dropdown/DropDownList';
 import Tags from '../tags/tags';
 import { TagsContainerProps } from './tags-container.interface';
@@ -72,6 +71,7 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
       .filter((tag) => {
         return !tags.some((selectedTag) => selectedTag.tagFQN === tag);
       })
+      .filter((tag) => !tag.includes('Tier'))
       .map((tag) => {
         return {
           name: tag,
@@ -126,8 +126,8 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
     onCancel(event);
   };
 
-  const getTagsContainer = (tag: EntityTags, index: number) => {
-    return tag.tagFQN ? (
+  const getTagsElement = (tag: EntityTags, index: number) => {
+    return (
       <Tags
         className="tw-bg-gray-200"
         editable={editable}
@@ -136,26 +136,10 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
         removeTag={(_e, removedTag: string) => {
           handleTagRemoval(removedTag, index);
         }}
-        tag={`#${tag.tagFQN}`}
+        startWith="#"
+        tag={tag}
       />
-    ) : null;
-  };
-
-  const getTagsElement = (tag: EntityTags, index: number) => {
-    if (tag.labelType) {
-      return (
-        <PopOver
-          key={index}
-          position="top"
-          size="small"
-          title={capitalize(tag.labelType)}
-          trigger="mouseenter">
-          {getTagsContainer(tag, index)}
-        </PopOver>
-      );
-    } else {
-      return getTagsContainer(tag, index);
-    }
+    );
   };
   const handleClick = (e: MouseEvent) => {
     if (node?.current?.contains(e.target as Node)) {

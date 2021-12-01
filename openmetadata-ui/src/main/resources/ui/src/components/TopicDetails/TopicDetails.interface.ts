@@ -14,6 +14,7 @@
 import { EntityTags, TableDetail } from 'Models';
 import { Topic } from '../../generated/entity/data/topic';
 import { User } from '../../generated/entity/teams/user';
+import { TagLabel } from '../../generated/type/tagLabel';
 import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
 
 export interface TopicDetailsProps {
@@ -31,7 +32,7 @@ export interface TopicDetailsProps {
   activeTab: number;
   owner: TableDetail['owner'];
   description: string;
-  tier: string;
+  tier: TagLabel;
   followers: Array<User>;
   topicTags: Array<EntityTags>;
   slashedTopicName: TitleBreadcrumbProps['titleLinks'];
