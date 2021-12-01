@@ -48,11 +48,15 @@ To install Airflow, please see the [Airflow Installation](https://airflow.apache
 
 ### 1. Download the distribution
 
-Download the latest [binary release](https://github.com/open-metadata/OpenMetadata/releases/download/0.5.0/openmetadata-0.6.0.tar.gz).&#x20;
+Visit the [releases page](https://github.com/open-metadata/OpenMetadata/releases) and download the latest binary release. Release binaries follow the naming convention of `openmetadata-x.y.z.tar.gz`. Where `x`, `y`, and `z` represent the major, minor, and patch release numbers.
+
+For example, the release for version 0.6 is found in the Assets section at the link highlighted in the figure below.
+
+![](../.gitbook/assets/release-binary.png)
 
 ### 2. Untar the release download
 
-Once the tar file has download, run the following command.
+Once the tar file has download, run the following command, updated if necessary for the version of OpenMetadata that you downloaded.
 
 ```bash
 tar -zxvf openmetadata-0.6.0.tar.gz
