@@ -217,29 +217,29 @@ export const getEntityIcon = (indexType: string) => {
   switch (indexType) {
     case SearchIndex.TOPIC:
     case EntityType.TOPIC:
-      icon = 'topic';
+      icon = 'topic-grey';
 
       break;
 
     case SearchIndex.DASHBOARD:
     case EntityType.DASHBOARD:
-      icon = 'dashboard';
+      icon = 'dashboard-grey';
 
       break;
     case SearchIndex.PIPELINE:
     case EntityType.PIPELINE:
-      icon = 'pipeline';
+      icon = 'pipeline-grey';
 
       break;
     case SearchIndex.DBT_MODEL:
-      icon = 'dbtmodel';
+      icon = 'dbtmodel-grey';
 
       break;
 
     case SearchIndex.TABLE:
     case EntityType.TABLE:
     default:
-      icon = 'table';
+      icon = 'table-grey';
 
       break;
   }

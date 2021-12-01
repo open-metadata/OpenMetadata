@@ -26,6 +26,7 @@ const FacetFilter: FunctionComponent<FacetProp> = ({
   onSelectHandler,
   filters,
   onClearFilter,
+  onSelectAllFilter,
 }: FacetProp) => {
   const [showAllTags, setShowAllTags] = useState<boolean>(false);
   const [showAllServices, setShowAllServices] = useState<boolean>(false);
@@ -37,7 +38,7 @@ const FacetFilter: FunctionComponent<FacetProp> = ({
   ) => {
     return (
       length > 5 && (
-        <p className="link-text" onClick={() => setState(!state)}>
+        <p className="link-text tw-text-xs" onClick={() => setState(!state)}>
           {state ? 'View less' : 'View more'}
         </p>
       )
@@ -45,7 +46,7 @@ const FacetFilter: FunctionComponent<FacetProp> = ({
   };
   const getSeparator = (length: number, index: number) => {
     return length !== 1 && index < length - 1 ? (
-      <div className="seperator tw-mb-4 tw--mx-4 " />
+      <div className="tw-filter-seperator" />
     ) : null;
   };
   const sortBuckets = (buckets: Array<Bucket>) => {
@@ -87,7 +88,6 @@ const FacetFilter: FunctionComponent<FacetProp> = ({
           (bucket: Bucket, index: number) => (
             <FilterContainer
               count={bucket.doc_count}
-              isDisabled={aggregation.buckets.length === 1}
               isSelected={filters[
                 lowerCase(aggregation.title) as keyof FilterObject
               ].includes(bucket.key)}
@@ -114,6 +114,17 @@ const FacetFilter: FunctionComponent<FacetProp> = ({
     return flag;
   };
 
+  const isSelectAllFilter = (aggregation: AggregationType) => {
+    const buckets = getBucketsByTitle(aggregation.title, aggregation.buckets);
+    const flag = buckets.every((bucket) =>
+      filters[lowerCase(aggregation.title) as keyof FilterObject].includes(
+        bucket.key
+      )
+    );
+
+    return !flag;
+  };
+
   return (
     <>
       {aggregations.map((aggregation: AggregationType, index: number) => {
@@ -121,25 +132,42 @@ const FacetFilter: FunctionComponent<FacetProp> = ({
           <Fragment key={index}>
             {aggregation.buckets.length > 0 ? (
               <>
-                <div className="tw-flex tw-justify-between">
-                  <h6 className="tw-heading" data-testid="filter-heading">
+                <div className="tw-flex tw-justify-between tw-flex-col">
+                  <h6
+                    className="tw-heading tw-mb-0"
+                    data-testid="filter-heading">
                     {
                       facetFilterPlaceholder.find(
                         (filter) => filter.name === aggregation.title
                       )?.value
                     }
                   </h6>
-                  {isClearFilter(aggregation) && (
-                    <p
-                      className="link-text"
-                      onClick={() =>
-                        onClearFilter(
-                          lowerCase(aggregation.title) as keyof FilterObject
-                        )
-                      }>
-                      Clear filter
-                    </p>
-                  )}
+                  <div className="tw-flex tw-mt-1.5">
+                    <span
+                      className="link-text tw-text-xs"
+                      onClick={() => {
+                        if (isSelectAllFilter(aggregation)) {
+                          onSelectAllFilter(
+                            lowerCase(aggregation.title) as keyof FilterObject,
+                            aggregation.buckets.map((b) => b.key)
+                          );
+                        }
+                      }}>
+                      Select All
+                    </span>
+                    <span className="tw-text-xs tw-px-2">|</span>
+                    <span
+                      className="link-text tw-text-xs tw-text-grey-muted"
+                      onClick={() => {
+                        if (isClearFilter(aggregation)) {
+                          onClearFilter(
+                            lowerCase(aggregation.title) as keyof FilterObject
+                          );
+                        }
+                      }}>
+                      Deselect All
+                    </span>
+                  </div>
                 </div>
                 <div className="sidebar-my-data-holder mt-2 mb-3">
                   {getFilterItems(aggregation)}

@@ -16,9 +16,9 @@ import { TagLabel } from '../../generated/type/tagLabel';
 export type TagProps = {
   className?: string;
   editable?: boolean;
+  type?: 'contained' | 'outlined' | 'label';
   startWith?: '#' | '+ ';
   tag: string | TagLabel;
-  type?: 'contained' | 'outlined';
   isRemovable?: boolean;
   removeTag?: (
     event: React.MouseEvent<HTMLElement, MouseEvent>,

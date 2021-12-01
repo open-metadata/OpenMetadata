@@ -11,9 +11,20 @@
  *  limitations under the License.
  */
 
+import classNames from 'classnames';
 import React from 'react';
 
-const Avatar = ({ name, width = '36' }: { name: string; width?: string }) => {
+const Avatar = ({
+  name,
+  width = '36',
+  textClass = '',
+  className = '',
+}: {
+  name: string;
+  width?: string;
+  textClass?: string;
+  className?: string;
+}) => {
   const getBgColorByCode = (code: number) => {
     if (code >= 65 && code <= 71) {
       return '#B02AAC40';
@@ -30,7 +41,10 @@ const Avatar = ({ name, width = '36' }: { name: string; width?: string }) => {
 
   return (
     <div
-      className="tw-flex tw-justify-center tw-items-center tw-align-middle"
+      className={classNames(
+        'tw-flex tw-justify-center tw-items-center tw-align-middle',
+        className
+      )}
       style={{
         height: `${width}px`,
         width: `${width}px`,
@@ -38,7 +52,7 @@ const Avatar = ({ name, width = '36' }: { name: string; width?: string }) => {
         background: getBgColorByCode(name?.charCodeAt(0)),
         color: 'black',
       }}>
-      <p className="tw-self-center">{name?.[0]}</p>
+      <p className={classNames('tw-self-center', textClass)}>{name?.[0]}</p>
     </div>
   );
 };

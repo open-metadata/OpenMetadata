@@ -742,3 +742,20 @@ body .profiler-graph .recharts-active-dot circle {
   height: calc(100% - 61px);
   overflow-y: hidden;
 }
+
+#left-panel {
+  grid-area: leftsidebar;
+}
+#right-panel {
+  grid-area: rightsidebar;
+}
+#center {
+  grid-area: centerarea;
+}
+
+.page-layout-container {
+  display: grid;
+  grid-template-columns: 256px auto 256px;
+  grid-auto-flow: column;
+  grid-template-areas: 'leftsidebar centerarea rightsidebar';
+}

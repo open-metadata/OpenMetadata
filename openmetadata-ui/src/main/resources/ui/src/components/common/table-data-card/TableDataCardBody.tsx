@@ -14,7 +14,10 @@
 import { isNil, isString } from 'lodash';
 import React, { FunctionComponent } from 'react';
 import { TagLabel } from '../../../generated/type/tagLabel';
+import { serviceTypeLogo } from '../../../utils/ServiceUtils';
+import SVGIcons from '../../../utils/SvgUtils';
 import Tag from '../../tags/tags';
+import Avatar from '../avatar/Avatar';
 import RichTextEditorPreviewer from '../rich-text-editor/RichTextEditorPreviewer';
 
 type Props = {
@@ -43,45 +46,74 @@ const TableDataCardBody: FunctionComponent<Props> = ({
       };
     }
   };
+  const getInfoLabel = (data: { key: string; value: string }) => {
+    switch (data.key) {
+      case 'Owner':
+        return data.value !== '--' ? (
+          <div className="tw-inline-block">
+            <Avatar name={data.value} textClass="tw-text-xs" width="22" />
+          </div>
+        ) : (
+          `${data.key} : `
+        );
+      case 'Service':
+        return (
+          <img
+            alt=""
+            className="tw-inline tw-h-5 tw-w-5"
+            src={serviceTypeLogo(data.value)}
+          />
+        );
+      case 'Tier':
+        return <SVGIcons alt="icon-tier" icon="icon-tier" width="16px" />;
+
+      default:
+        return `${data.key} : `;
+    }
+  };
 
   return (
     <div data-testid="table-body">
-      <div className="tw-mb-1 description-text">
+      <div className="tw-mb-4">
+        {extraInfo.map(({ key, value }, i) =>
+          !isNil(value) ? (
+            <span key={i}>
+              <span className="tw-text-grey-muted">
+                {getInfoLabel({ key, value })}
+              </span>{' '}
+              <span className="tw-pl-1 ">{value}</span>
+              {i !== extraInfo.length - 1 && (
+                <span className="tw-mx-3 tw-inline-block tw-text-gray-400">
+                  |
+                </span>
+              )}
+            </span>
+          ) : null
+        )}
+      </div>
+      <div className="description-text">
         {description.trim() ? (
           <RichTextEditorPreviewer markdown={description} />
         ) : (
           <span className="tw-no-description">No description added</span>
         )}
       </div>
-      <p className="tw-py-1">
-        {extraInfo.map(({ key, value }, i) =>
-          !isNil(value) ? (
-            <span key={i}>
-              <span className="tw-text-grey-muted">{key} :</span>{' '}
-              <span className="tw-pl-1 ">{value}</span>
-              {i !== extraInfo.length - 1 && (
-                <span className="tw-mx-3 tw-inline-block tw-text-gray-400">
-                  •
-                </span>
-              )}
-            </span>
-          ) : null
-        )}
-      </p>
       {Boolean(tags?.length) && (
-        <div className="tw-mt-1" data-testid="tags-container">
-          <span>
-            <i className="fas fa-tags tw-px-1 tw-text-xs tw-text-grey-muted" />
-          </span>
-          {tags?.map((tag, index) => (
-            <Tag
-              className="tw-border-none tw-bg-gray-200"
-              key={index}
-              startWith="#"
-              tag={getTagValue(tag)}
-              type="contained"
-            />
-          ))}
+        <div className="tw-mt-4" data-testid="tags-container">
+          <hr className="tw--mx-3 tw-pt-2" />
+          <div className="tw-flex">
+            <SVGIcons alt="icon-tag" icon="icon-tag" />
+            <div className="tw-ml-2">
+              {tags?.map((tag, index) => (
+                <Tag
+                  key={index}
+                  startWith="#"
+                  tag={getTagValue(tag)}
+                  type="label"
+                />
+              ))}
+            </div>
+          </div>
         </div>
       )}
     </div>
