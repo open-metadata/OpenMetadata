@@ -125,7 +125,7 @@ const DashboardDetails = ({
       isLink: owner?.type === 'team',
       openInNewTab: false,
     },
-    { key: 'Tier', value: tier ? tier.split('.')[1] : '' },
+    { key: 'Tier', value: tier?.tagFQN ? tier.tagFQN.split('.')[1] : '' },
     {
       key: `${serviceType} Url`,
       value: dashboardUrl,
@@ -441,7 +441,11 @@ const DashboardDetails = ({
                                     </button>
                                   ) : (
                                     <span className="tw-opacity-60 group-hover:tw-opacity-100 tw-text-grey-muted group-hover:tw-text-primary">
-                                      <Tags tag="+ Add tag" type="outlined" />
+                                      <Tags
+                                        startWith="+ "
+                                        tag="Add tag"
+                                        type="outlined"
+                                      />
                                     </span>
                                   )}
                                 </TagsContainer>
@@ -457,7 +461,7 @@ const DashboardDetails = ({
               {activeTab === 2 && (
                 <div className="tw-mt-4">
                   <ManageTabComponent
-                    currentTier={tier}
+                    currentTier={tier?.tagFQN}
                     currentUser={owner?.id}
                     hasEditAccess={hasEditAccess()}
                     onSave={onSettingsUpdate}

@@ -16,6 +16,7 @@ import { EntityTags, TableDetail } from 'Models';
 import { Chart } from '../../generated/entity/data/chart';
 import { Dashboard } from '../../generated/entity/data/dashboard';
 import { User } from '../../generated/entity/teams/user';
+import { TagLabel } from '../../generated/type/tagLabel';
 import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
 
 export interface ChartType extends Chart {
@@ -33,7 +34,7 @@ export interface DashboardDetailsProps {
   activeTab: number;
   owner: TableDetail['owner'];
   description: string;
-  tier: string;
+  tier: TagLabel;
   followers: Array<User>;
   dashboardTags: Array<EntityTags>;
   slashedDashboardName: TitleBreadcrumbProps['titleLinks'];

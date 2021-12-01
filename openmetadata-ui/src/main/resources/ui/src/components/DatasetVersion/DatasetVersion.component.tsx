@@ -126,8 +126,8 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
                 oldTier?.tagFQN?.split('.')[1] || '',
                 newTier?.tagFQN?.split('.')[1] || ''
               )
-            : tier
-            ? tier.split('.')[1]
+            : tier?.tagFQN
+            ? tier?.tagFQN.split('.')[1]
             : '',
       },
     ];
@@ -343,7 +343,7 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
               extraInfo={getExtraInfo()}
               followersList={[]}
               tags={getTableTags(currentVersionData.columns || [])}
-              tier={tier || ''}
+              tier={tier}
               titleLinks={slashedTableName}
               version={version}
               versionHandler={backHandler}

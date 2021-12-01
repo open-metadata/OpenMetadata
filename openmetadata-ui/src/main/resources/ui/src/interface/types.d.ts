@@ -190,14 +190,14 @@ declare module 'Models' {
     fullyQualifiedName: string;
     owner: string;
     tableType?: string;
-    tags: string[];
+    tags: string[] | TagLabel[];
     dailyStats?: number;
     dailyPercentileRank?: number;
     weeklyStats?: number;
     weeklyPercentileRank?: number;
     service?: string;
     serviceType?: string;
-    tier: string;
+    tier: string | TagLabel;
     highlight?: {
       description: string[];
       table_name: string[];

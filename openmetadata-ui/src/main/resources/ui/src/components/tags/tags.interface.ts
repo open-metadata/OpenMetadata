@@ -11,10 +11,13 @@
  *  limitations under the License.
  */
 
+import { TagLabel } from '../../generated/type/tagLabel';
+
 export type TagProps = {
   className?: string;
   editable?: boolean;
-  tag: string;
+  startWith?: '#' | '+ ';
+  tag: string | TagLabel;
   type?: 'contained' | 'outlined';
   isRemovable?: boolean;
   removeTag?: (

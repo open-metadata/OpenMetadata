@@ -26,6 +26,7 @@ import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { ConstraintTypes } from '../enums/table.enum';
 import { Column, Table } from '../generated/entity/data/table';
+import { TagLabel } from '../generated/type/tagLabel';
 import { ordinalize } from './StringsUtils';
 import SVGIcons from './SvgUtils';
 
@@ -69,6 +70,16 @@ export const getTierFromTableTags = (
   );
 
   return tierTag?.tagFQN || '';
+};
+
+export const getTierTags = (tags: Array<TagLabel>) => {
+  const tierTag = tags.find(
+    (item) =>
+      item.tagFQN.startsWith('Tier.Tier') &&
+      !isNaN(parseInt(item.tagFQN.substring(9).trim()))
+  );
+
+  return tierTag;
 };
 
 export const getTagsWithoutTier = (

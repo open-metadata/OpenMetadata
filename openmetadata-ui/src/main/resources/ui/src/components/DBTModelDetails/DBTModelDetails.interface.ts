@@ -15,6 +15,7 @@ import { EntityTags } from 'Models';
 import { Dbtmodel } from '../../generated/entity/data/dbtmodel';
 import { EntityReference } from '../../generated/entity/data/table';
 import { User } from '../../generated/entity/teams/user';
+import { TagLabel } from '../../generated/type/tagLabel';
 import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
 
 export interface DatasetOwner extends EntityReference {
@@ -30,7 +31,7 @@ export interface DBTModelDetailsProps {
   activeTab: number;
   owner: DatasetOwner;
   description: string;
-  tier: string;
+  tier: TagLabel;
   columns: Dbtmodel['columns'];
   followers: Array<User>;
   dbtModelTags: Array<EntityTags>;

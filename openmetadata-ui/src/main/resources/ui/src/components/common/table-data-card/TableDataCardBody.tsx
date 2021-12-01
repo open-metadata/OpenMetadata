@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
-import { isNil } from 'lodash';
+import { isNil, isString } from 'lodash';
 import React, { FunctionComponent } from 'react';
+import { TagLabel } from '../../../generated/type/tagLabel';
 import Tag from '../../tags/tags';
 import RichTextEditorPreviewer from '../rich-text-editor/RichTextEditorPreviewer';
 
@@ -22,7 +23,7 @@ type Props = {
     key: string;
     value?: string;
   }[];
-  tags?: string[];
+  tags?: string[] | TagLabel[];
 };
 
 const TableDataCardBody: FunctionComponent<Props> = ({
@@ -30,6 +31,19 @@ const TableDataCardBody: FunctionComponent<Props> = ({
   extraInfo,
   tags,
 }: Props) => {
+  const getTagValue = (tag: string | TagLabel): string | TagLabel => {
+    if (isString(tag)) {
+      return tag.startsWith('Tier.Tier') ? tag.split('.')[1] : tag;
+    } else {
+      return {
+        ...tag,
+        tagFQN: tag.tagFQN.startsWith('Tier.Tier')
+          ? tag.tagFQN.split('.')[1]
+          : tag.tagFQN,
+      };
+    }
+  };
+
   return (
     <div data-testid="table-body">
       <div className="tw-mb-1 description-text">
@@ -63,7 +77,8 @@ const TableDataCardBody: FunctionComponent<Props> = ({
             <Tag
               className="tw-border-none tw-bg-gray-200"
               key={index}
-              tag={`#${tag.startsWith('Tier.Tier') ? tag.split('.')[1] : tag}`}
+              startWith="#"
+              tag={getTagValue(tag)}
               type="contained"
             />
           ))}

@@ -11,19 +11,26 @@
  *  limitations under the License.
  */
 
+import classNames from 'classnames';
 import React, { useEffect, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import rehypeRaw from 'rehype-raw';
 import gfm from 'remark-gfm';
 
 /*eslint-disable  */
-const RichTextEditorPreviewer = ({ markdown }: { markdown: string }) => {
+const RichTextEditorPreviewer = ({
+  markdown,
+  className = '',
+}: {
+  markdown: string;
+  className?: string;
+}) => {
   const [content, setContent] = useState<string>('');
   useEffect(() => {
     setContent(markdown);
   }, [markdown]);
   return (
-    <div className="content-container">
+    <div className={classNames('content-container', className)}>
       <ReactMarkdown
         children={content
           .replaceAll(/&lt;/g, '<')

@@ -72,7 +72,10 @@ const Description = ({
       <div className="tw-px-3 tw-py-2 tw-overflow-y-auto">
         <div className="tw-pl-3" data-testid="description" id="description">
           {description.trim() ? (
-            <RichTextEditorPreviewer markdown={description} />
+            <RichTextEditorPreviewer
+              className="tw-p-2"
+              markdown={description}
+            />
           ) : (
             <span className="tw-no-description">No description added</span>
           )}

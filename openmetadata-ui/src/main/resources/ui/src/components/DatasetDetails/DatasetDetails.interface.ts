@@ -21,6 +21,7 @@ import {
 } from '../../generated/entity/data/table';
 import { User } from '../../generated/entity/teams/user';
 import { EntityLineage } from '../../generated/type/entityLineage';
+import { TagLabel } from '../../generated/type/tagLabel';
 import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
 
 export interface DatasetOwner extends EntityReference {
@@ -42,7 +43,7 @@ export interface DatasetDetailsProps {
   description: string;
   tableProfile: Table['tableProfile'];
   columns: Table['columns'];
-  tier: string;
+  tier: TagLabel;
   sampleData: TableData;
   entityLineage: EntityLineage;
   followers: Array<User>;

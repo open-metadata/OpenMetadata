@@ -20,7 +20,7 @@ const mockCallback = jest.fn();
 describe('Test tags Component', () => {
   it('Component should render', () => {
     const { container } = render(
-      <Tags editable removeTag={mockCallback} tag="test" />
+      <Tags editable removeTag={mockCallback} startWith="#" tag="test" />
     );
     const tags = getByTestId(container, 'tags');
     const remove = getByTestId(container, 'remove');
@@ -31,7 +31,7 @@ describe('Test tags Component', () => {
 
   it('onClick of X callback function should call', () => {
     const { container } = render(
-      <Tags editable removeTag={mockCallback} tag="test" />
+      <Tags editable removeTag={mockCallback} startWith="#" tag="test" />
     );
     const remove = getByTestId(container, 'remove');
     fireEvent.click(
