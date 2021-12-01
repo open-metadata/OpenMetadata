@@ -38,6 +38,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 
+@Order(8)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class DatabaseServicePageTest {
 

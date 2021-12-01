@@ -10,7 +10,7 @@
       "description": "A unique name of the user, typically the user ID from an identity provider. Example - uid from LDAP.",
       "type": "string",
       "minLength": 1,
-      "maxLength": 64
+      "maxLength": 128
     }
   },
 

@@ -16,9 +16,10 @@
 import logging
 
 from metadata.config.common import ConfigModel
+from metadata.generated.schema.api.teams.createUser import CreateUserEntityRequest
+from metadata.generated.schema.entity.teams.user import User
 from metadata.ingestion.api.common import Record, WorkflowContext
 from metadata.ingestion.api.sink import Sink, SinkStatus
-from metadata.ingestion.models.user import MetadataUser
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 
@@ -57,13 +58,11 @@ class LdapRestUsersSink(Sink):
     def write_record(self, record: Record) -> None:
         self._create_user(record)
 
-    def _create_user(self, record: MetadataUser) -> None:
-        metadata_user = MetadataUser(
-            name=record.github_username[0],
-            display_name=record.name[0],
-            email=record.email[0],
+    def _create_user(self, record: User) -> None:
+        metadata_user = CreateUserEntityRequest(
+            name=record.name, displayName=record.displayName, email=record.email
         )
-        self.rest.post(self.api_users, data=metadata_user.to_json())
+        self.rest.post(self.api_users, data=metadata_user.json())
         self.status.records_written(record.name[0])
 
     def get_status(self):

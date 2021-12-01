@@ -37,6 +37,7 @@ import org.junit.jupiter.api.MethodOrderer;
 import java.time.Duration;
 import java.util.ArrayList;
 
+@Order(4)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class TableDetailsPageTest {
   static WebDriver webDriver;
@@ -158,16 +159,16 @@ public class TableDetailsPageTest {
     Events.sendKeys(webDriver, By.cssSelector("[data-testid='searchBox']"), tableName);
     Events.click(webDriver, By.cssSelector("[data-testid='data-name']"));
     Events.click(webDriver, By.xpath("(//button[@data-testid='tab'])[2]")); // Profiler
-    for (int i = 1; i <= 4; i++) {
-      Events.click(
-          webDriver, By.xpath("(//td[@data-testid='tableBody-cell']//span)" + "[" + i + "]")); // Profiler
-      actions.moveToElement(
-              webDriver.findElement(By.xpath("(//tr[@data-testid='tableBody-row']//td" + "[" + i + "]" + ")")))
-          .perform();
-      Events.click(
-          webDriver, By.xpath("(//td[@data-testid='tableBody-cell']//span)" + "[" + i + "]")); // Profiler
-      Thread.sleep(waitTime);
-    }
+//    for (int i = 1; i <= 4; i++) {
+//      Events.click(
+//          webDriver, By.xpath("(//td[@data-testid='tableBody-cell']//span)" + "[" + i + "]")); // Profiler
+//      actions.moveToElement(
+//              webDriver.findElement(By.xpath("(//tr[@data-testid='tableBody-row']//td" + "[" + i + "]" + ")")))
+//          .perform();
+//      Events.click(
+//          webDriver, By.xpath("(//td[@data-testid='tableBody-cell']//span)" + "[" + i + "]")); // Profiler
+//      Thread.sleep(waitTime);
+//    }
   }
 
   @Test
@@ -245,7 +246,7 @@ public class TableDetailsPageTest {
     openExplorePage();
     webDriver.findElement(By.cssSelector("[data-testid='searchBox']")).sendKeys("fact_sale");
     Events.click(webDriver, By.cssSelector("[data-testid='data-name']"));
-    Events.click(webDriver, By.xpath("(//div[@data-testid='related-tables-data']//a)"));
+    Events.click(webDriver, By.xpath("(//div[@data-testid='related-tables-data']/a)"));
 //    for (int i = 1; i <= 3; i++) {
 //      Events.click(webDriver, By.xpath("(//div[@data-testid='related-tables-data']//a)" + "[" + i + "]"));
 //      webDriver.navigate().back();
@@ -266,7 +267,7 @@ public class TableDetailsPageTest {
     webDriver.findElement(By.cssSelector("[data-testid='searchBox']")).sendKeys("fact_sale");
     Events.click(webDriver, By.cssSelector("[data-testid='data-name']"));
     Events.click(webDriver, By.xpath(
-        "(//div[@data-testid='frequently-joined-columns']//span//a)"));
+        "(//div[@data-testid='frequently-joined-columns']/span/a)"));
   }
 
   @AfterEach

@@ -35,6 +35,7 @@ import org.junit.jupiter.api.MethodOrderer;
 import java.time.Duration;
 import java.util.ArrayList;
 
+@Order(12)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class IngestionPageTest {
 
@@ -75,7 +76,7 @@ public class IngestionPageTest {
     openIngestionPage();
     Events.click(webDriver, By.cssSelector("[data-testid='add-new-ingestion-button']"));
     Events.sendKeys(webDriver, By.cssSelector("[id='name'][name='name']"), faker.name().firstName());
-    Events.click(webDriver, By.cssSelector("[value='BigQuery$$bigquery']"));
+    Events.click(webDriver, By.cssSelector("[value='BigQuery$$bigquery_gcp']"));
     Events.click(webDriver, By.cssSelector("[value='bigquery']"));
     Events.click(webDriver, By.cssSelector("[data-testid='next-button']"));
     Events.sendKeys(webDriver, By.cssSelector("[name='username']"), "openmetadata_user");

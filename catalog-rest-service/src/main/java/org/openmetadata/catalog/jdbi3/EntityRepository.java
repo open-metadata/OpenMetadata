@@ -63,7 +63,7 @@ import java.util.function.BiPredicate;
 
 /**
  * This is the base class used by Entity Resources to perform READ and WRITE operations to the backend database to
- * Create, * Retrieve, Update, and Delete entities.
+ * Create, Retrieve, Update, and Delete entities.
  *
  * An entity has two types of fields - `attributes` and `relationships`.
  * <ul>
