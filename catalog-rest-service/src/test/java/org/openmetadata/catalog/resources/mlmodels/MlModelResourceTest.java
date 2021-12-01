@@ -374,7 +374,6 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
 
   @Test
   public void get_MlModelWithDifferentFields_200_OK(TestInfo test) throws IOException {
-    // aqui no tenim HREF al dashboard
     CreateMlModel create = create(test).withDescription("description")
             .withOwner(USER_OWNER1).withDashboard(DASHBOARD_REFERENCE);
     MlModel model = createAndCheckEntity(create, adminAuthHeaders());
