@@ -30,6 +30,7 @@ const FacetFilter: FunctionComponent<FacetProp> = ({
   onSelectHandler,
   filters,
   onClearFilter,
+  onSelectAllFilter,
 }: FacetProp) => {
   const [showAllTags, setShowAllTags] = useState<boolean>(false);
   const [showAllServices, setShowAllServices] = useState<boolean>(false);
@@ -118,6 +119,17 @@ const FacetFilter: FunctionComponent<FacetProp> = ({
     return flag;
   };
 
+  const isSelectAllFilter = (aggregation: AggregationType) => {
+    const buckets = getBucketsByTitle(aggregation.title, aggregation.buckets);
+    const flag = buckets.every((bucket) =>
+      filters[lowerCase(aggregation.title) as keyof FilterObject].includes(
+        bucket.key
+      )
+    );
+
+    return !flag;
+  };
+
   return (
     <>
       {aggregations.map((aggregation: AggregationType, index: number) => {
@@ -138,11 +150,14 @@ const FacetFilter: FunctionComponent<FacetProp> = ({
                   <div className="tw-flex tw-mt-1.5">
                     <span
                       className="link-text tw-text-xs"
-                      onClick={() =>
-                        onClearFilter(
-                          lowerCase(aggregation.title) as keyof FilterObject
-                        )
-                      }>
+                      onClick={() => {
+                        if (isSelectAllFilter(aggregation)) {
+                          onSelectAllFilter(
+                            lowerCase(aggregation.title) as keyof FilterObject,
+                            aggregation.buckets.map((b) => b.key)
+                          );
+                        }
+                      }}>
                       Select All
                     </span>
                     <span className="tw-text-xs tw-px-2">|</span>

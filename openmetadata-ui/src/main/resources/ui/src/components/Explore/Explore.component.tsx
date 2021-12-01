@@ -131,6 +131,19 @@ const Explore: React.FC<ExploreProps> = ({
     }
   };
 
+  const onSelectAllFilterHandler = (
+    type: keyof FilterObject,
+    filters: Array<string>
+  ) => {
+    setFilters((prevFilters) => {
+      return {
+        ...prevFilters,
+        ...getQueryParam(location.search),
+        [type]: filters,
+      };
+    });
+  };
+
   const onClearFilterHandler = (type: keyof FilterObject) => {
     setFilters((prevFilters) => {
       return {
@@ -491,6 +504,7 @@ const Explore: React.FC<ExploreProps> = ({
             aggregations={getAggrWithDefaultValue(aggregations, visibleFilters)}
             filters={getFacetedFilter()}
             onClearFilter={(value) => onClearFilterHandler(value)}
+            onSelectAllFilter={onSelectAllFilterHandler}
             onSelectHandler={handleSelectedFilter}
           />
         )}
