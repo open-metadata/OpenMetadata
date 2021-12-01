@@ -64,16 +64,17 @@ const TableDataCard: FunctionComponent<Props> = ({
   const OtherDetails = [
     { key: 'Owner', value: owner },
     { key: 'Service', value: serviceType },
-    {
+    { key: 'Tier', value: getTier() },
+  ];
+  if (indexType !== SearchIndex.DASHBOARD && usage !== undefined) {
+    OtherDetails.push({
       key: 'Usage',
       value:
         indexType !== SearchIndex.DASHBOARD && usage !== undefined
           ? getUsagePercentile(usage)
           : undefined,
-    },
-    { key: 'Tier', value: getTier() },
-  ];
-
+    });
+  }
   const getAssetTags = () => {
     const assetTags = [...(tags as Array<TagLabel>)];
     if (tier && !isUndefined(tier)) {
@@ -103,7 +104,7 @@ const TableDataCard: FunctionComponent<Props> = ({
           </h6>
         </div>
       </div>
-      <div className="tw-pt-2">
+      <div className="tw-pt-3">
         <TableDataCardBody
           description={description || ''}
           extraInfo={OtherDetails}

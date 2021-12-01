@@ -13,7 +13,7 @@
 
 import classNames from 'classnames';
 import React, { FunctionComponent } from 'react';
-import { countBackground } from '../../../utils/styleconstant';
+import { getCountBadge } from '../../../utils/CommonUtils';
 import { FilterContainerProp } from './FacetTypes';
 const FilterContainer: FunctionComponent<FilterContainerProp> = ({
   name,
@@ -24,32 +24,41 @@ const FilterContainer: FunctionComponent<FilterContainerProp> = ({
   isDisabled = false,
 }: FilterContainerProp) => {
   return (
-    <div className="filter-group tw-mb-2" data-testid="filter-container">
-      <input
-        checked={isSelected}
-        className={classNames('tw-mr-1 custom-checkbox', {
-          'tw-cursor-not-allowed': isDisabled,
-        })}
-        data-testid="checkbox"
-        disabled={isDisabled}
-        id={name}
-        type="checkbox"
-        onChange={() => {
-          onSelect(!isSelected, name, type);
-        }}
-      />
-      <div
-        className={classNames(
-          'filters-title tw-w-40 tw-truncate custom-checkbox-label',
-          { 'tw-text-grey-muted': isDisabled }
-        )}>
-        {name.startsWith('Tier.Tier') ? name.split('.')[1] : name}
+    <div
+      className="filter-group tw-justify-between tw-mb-2"
+      data-testid="filter-container">
+      <div className="tw-flex">
+        <input
+          checked={isSelected}
+          className={classNames('tw-mr-1 custom-checkbox', {
+            'tw-cursor-not-allowed': isDisabled,
+          })}
+          data-testid="checkbox"
+          disabled={isDisabled}
+          id={name}
+          type="checkbox"
+          onChange={() => {
+            onSelect(!isSelected, name, type);
+          }}
+        />
+        <div
+          className={classNames(
+            'filters-title tw-w-40 tw-truncate custom-checkbox-label',
+            { 'tw-text-grey-muted': isDisabled }
+          )}>
+          {name.startsWith('Tier.Tier') ? name.split('.')[1] : name}
+        </div>
       </div>
-      <div
-        className="tw-ml-auto tw-py-1 tw-px-2 tw-border tw-rounded tw-text-xs"
-        style={{ background: countBackground }}>
-        <span data-testid="filter-count">{count}</span>
-      </div>
+      {getCountBadge(
+        count,
+        classNames(
+          'tw-text-center tw-py-0 tw-px-0',
+          { 'tw-bg-tag': !isSelected },
+          {
+            'tw-bg-primary tw-text-white tw-border-none': isSelected,
+          }
+        )
+      )}
     </div>
   );
 };

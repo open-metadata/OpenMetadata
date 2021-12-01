@@ -97,7 +97,7 @@
     @apply tw-text-grey-muted tw-font-normal tw-pt-4 tw-pb-2 tw-px-6 tw-border-b-2 tw-border-transparent hover:tw-border-main focus:tw-outline-none;
   }
   .tw-gh-tabs.active {
-    @apply tw-text-grey-body tw-border-b-2 tw-border-orange-400;
+    @apply tw-text-grey-body tw-border-b-2 tw-border-primary;
   }
   .tw-gh-tabs:disabled {
     @apply tw-opacity-50 tw-pointer-events-none hover:tw-border-none;
@@ -311,6 +311,9 @@
   .leaf-node.selected-node:hover {
     @apply tw-border-primary-active;
     box-shadow: 0 0 0 0.5px #7147e8;
+  }
+  .tw-filter-seperator {
+    @apply tw-border-b tw-border-separator tw-mb-4;
   }
 
   /* Cron editor css */
