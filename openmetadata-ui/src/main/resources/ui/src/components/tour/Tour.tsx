@@ -20,9 +20,7 @@ const getSteps = (value: string) => {
     {
       content: `OpenMetadata is a Centralized Metadata Store. Discover all your data assets in a single place, collaborate with your co-workers.
          Understand your data assets and contribute to make it richer.`,
-      actionType: 'wait',
-      position: [775, 240],
-      waitTimer: 8000,
+      position: [600, 235],
       selector: '#statesHeader',
     },
     {
@@ -40,54 +38,35 @@ const getSteps = (value: string) => {
       },
       content: 'Click on the assets title for more details.',
       actionType: 'click',
-      position: 'bottom',
+      // position: 'bottom',
       selector: '#tabledatacard0',
+      position: [700, 240],
+      beforeNext: () => {
+        AppState.currentTourPage = 'datasetPage';
+      },
     },
     {
+      beforePrev: () => {
+        AppState.currentTourPage = 'explorePage';
+      },
       content: 'Understand the schema of the table and add description.',
       position: 'bottom',
       selector: '#schema',
-      actionType: 'wait',
-      waitTimer: 8000,
     },
     {
-      content: 'Click on profiler.',
+      content: 'Click here to Understand the profiler tab.',
       position: 'bottom',
       selector: '#profiler',
-      actionType: 'click',
     },
     {
-      content: 'Understand the profiler tab.',
-      position: 'bottom',
-      selector: '#profiler',
-      actionType: 'wait',
-      waitTimer: 8000,
-    },
-    {
-      content: 'Click on lineage tab.',
+      content: 'Click here to understand lineage.',
       position: 'bottom',
       selector: '#lineage',
-      actionType: 'click',
     },
     {
-      content: 'understand lineage.',
-      position: 'bottom',
-      selector: '#lineage',
-      actionType: 'wait',
-      waitTimer: 8000,
-    },
-    {
-      content: 'Click on manage tab.',
+      content: 'Click here to claim ownership.',
       position: 'bottom',
       selector: '#manage',
-      actionType: 'click',
-    },
-    {
-      content: 'claim ownership.',
-      position: 'bottom',
-      selector: '#manage',
-      actionType: 'wait',
-      waitTimer: 8000,
     },
     {
       content: 'Click on explore to access all the assests.',
