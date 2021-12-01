@@ -55,7 +55,19 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public final class TestUtils {
   // Entity name length allowed is 64 characters. This is a 65 char length invalid entity name
-  public static final String LONG_ENTITY_NAME = "012345678901234567890123456789012345678901234567890123456789012345";
+  public static final int ENTITY_NAME_MAX_LEN = 128;
+  public static final String LONG_ENTITY_NAME;
+  static {
+    // Create an entity name with length longer than the
+    StringBuilder sb = new StringBuilder();
+    for (int i = 0; i <= ENTITY_NAME_MAX_LEN; i++) {
+      sb.append("1");
+    }
+    LONG_ENTITY_NAME = sb.toString();
+  }
+  public static final String ENTITY_NAME_LENGTH_ERROR = String.format("[name size must be between 1 and %d]",
+          ENTITY_NAME_MAX_LEN);
+
   public static final UUID NON_EXISTENT_ENTITY = UUID.randomUUID();
   public static JdbcInfo JDBC_INFO;
   public static URI DASHBOARD_URL;
@@ -278,7 +290,6 @@ public final class TestUtils {
   public static void checkUserFollowing(UUID userId, UUID entityId, boolean expectedFollowing,
                                          Map<String, String> authHeaders) throws HttpResponseException {
     // GET .../users/{userId} shows user as following table
-    boolean following = false;
     User user = UserResourceTest.getUser(userId, "follows", authHeaders);
     existsInEntityReferenceList(user.getFollows(), entityId, expectedFollowing);
   }

@@ -41,15 +41,15 @@ const statusRunning = '#276EF1';
 const statusQueued = '#777777';
 
 // Background colors
-const bodyBG = '#FCFBFE';
+const bodyBG = '#F8F9FA';
 const bodyHoverBG = '#F9F8FD';
 const tagBG = '#EEEAF8';
 const primaryBG = '#7147E840'; // 'rgba(113, 71, 232, 0.25)';
 const backdropBG = '#302E36';
 
 // Borders and Separators
-const mainBorder = '#E2DCE4';
-const mainSeparator = '#D9CEEE';
+const mainBorder = '#DCE3EC';
+const mainSeparator = '#DCE3EC';
 
 // Text color - Gray variants
 const textBody = '#37352f';

@@ -58,9 +58,10 @@ public class LineageResourceTest extends CatalogApplicationTest {
   public static void setup(TestInfo test) throws IOException, URISyntaxException {
     TableResourceTest.setup(test); // Initialize TableResourceTest for using helper methods
     // Create TABLE_COUNT number of tables
+    TableResourceTest tableResourceTest = new TableResourceTest();
     for (int i = 0; i < TABLE_COUNT; i++) {
-      CreateTable createTable = TableResourceTest.create(test, i);
-      TABLES.add(TableResourceTest.createTable(createTable, adminAuthHeaders()));
+      CreateTable createTable = tableResourceTest.create(test, i);
+      TABLES.add(tableResourceTest.createEntity(createTable, adminAuthHeaders()));
     }
   }
 

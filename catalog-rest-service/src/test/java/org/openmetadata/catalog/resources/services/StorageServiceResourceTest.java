@@ -42,24 +42,6 @@ public class StorageServiceResourceTest extends EntityResourceTest<StorageServic
   }
 
   @Test
-  public void post_ServiceWithLongName_400_badRequest(TestInfo test) {
-    // Create storage with mandatory name field empty
-    CreateStorageService create = create(test).withName(TestUtils.LONG_ENTITY_NAME);
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            createEntity(create, adminAuthHeaders()));
-    TestUtils.assertResponse(exception, BAD_REQUEST, "[name size must be between 1 and 64]");
-  }
-
-  @Test
-  public void post_ServiceWithoutName_400_badRequest(TestInfo test) {
-    // Create storage with mandatory name field empty
-    CreateStorageService create = create(test).withName("");
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            createEntity(create, adminAuthHeaders()));
-    TestUtils.assertResponse(exception, BAD_REQUEST, "[name size must be between 1 and 64]");
-  }
-
-  @Test
   public void post_ServiceAlreadyExists_409(TestInfo test) throws HttpResponseException {
     CreateStorageService create = create(test);
     createEntity(create, adminAuthHeaders());
@@ -149,21 +131,16 @@ public class StorageServiceResourceTest extends EntityResourceTest<StorageServic
             CatalogExceptionMessage.entityNotFound(Entity.STORAGE_SERVICE, TestUtils.NON_EXISTENT_ENTITY));
   }
 
-  public static CreateStorageService create(TestInfo test) {
-    return new CreateStorageService().withName(getName(test)).withServiceType(StorageServiceType.S3);
+  private CreateStorageService create(TestInfo test) {
+    return create(getEntityName(test));
   }
 
-  private static CreateStorageService create(TestInfo test, int index) {
-    return new CreateStorageService().withName(getName(test, index))
-            .withServiceType(StorageServiceType.S3);
+  private CreateStorageService create(TestInfo test, int index) {
+    return create(getEntityName(test, index));
   }
 
-  public static String getName(TestInfo test) {
-    return String.format("storageSvc_%s", test.getDisplayName());
-  }
-
-  public static String getName(TestInfo test, int index) {
-    return String.format("storageSvc_%d_%s", index, test.getDisplayName());
+  private CreateStorageService create(String entityName) {
+    return new CreateStorageService().withName(entityName).withServiceType(StorageServiceType.S3);
   }
 
   public static StorageService getServiceByName(String name, String fields, Map<String, String> authHeaders)
@@ -188,9 +165,9 @@ public class StorageServiceResourceTest extends EntityResourceTest<StorageServic
   }
 
   @Override
-  public Object createRequest(TestInfo test, int index, String description, String displayName,
+  public Object createRequest(String name, String description, String displayName,
                               EntityReference owner) throws URISyntaxException {
-    return create(test, index).withDescription(description);
+    return create(name).withDescription(description);
   }
 
   @Override

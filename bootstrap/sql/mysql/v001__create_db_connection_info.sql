@@ -408,10 +408,8 @@ CREATE TABLE IF NOT EXISTS change_event (
     entityType VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.entityType') NOT NULL,
     userName VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.userName') NOT NULL,
     dateTime TIMESTAMP GENERATED ALWAYS AS (TIMESTAMP(STR_TO_DATE(json ->> '$.dateTime', '%Y-%m-%dT%T.%fZ'))) NOT NULL,
---    dateTime DATE GENERATED ALWAYS AS (STR_TO_DATE(json ->> '$.dateTime', '%Y-%m-%dT%T.%fZ')) NOT NULL,
     json JSON NOT NULL,
     INDEX (dateTime),
     INDEX (eventType),
     INDEX (entityType)
-    -- TODO what are the other indexes required?
 );

@@ -19,9 +19,9 @@ from typing import Iterable
 from ldap3 import ALL, LEVEL, Connection, Server
 
 from metadata.config.common import ConfigModel
+from metadata.generated.schema.api.teams.createUser import CreateUserEntityRequest
 from metadata.ingestion.api.common import WorkflowContext
 from metadata.ingestion.api.source import Source, SourceStatus
-from metadata.ingestion.models.user import MetadataUser, User
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 
 logger = logging.getLogger(__name__)
@@ -84,19 +84,12 @@ class LdapUsersSource(Source):
         metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
         return cls(ctx, config, metadata_config)
 
-    def next_record(self) -> Iterable[MetadataUser]:
+    def next_record(self) -> Iterable[CreateUserEntityRequest]:
         for user in self.users:
-            user_metadata = User(
-                user["attributes"]["mail"],
-                user["attributes"]["givenName"],
-                user["attributes"]["sn"],
-                user["attributes"]["cn"],
-                user["attributes"]["uid"],
-                "",
-                "",
-                "",
-                True,
-                0,
+            user_metadata = CreateUserEntityRequest(
+                email=user["attributes"]["mail"],
+                displayName=user["attributes"]["cn"],
+                name=user["attributes"]["givenName"],
             )
             self.status.scanned(user_metadata.name)
             yield user_metadata
