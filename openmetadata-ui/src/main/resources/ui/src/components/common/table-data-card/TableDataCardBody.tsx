@@ -105,7 +105,12 @@ const TableDataCardBody: FunctionComponent<Props> = ({
             <SVGIcons alt="icon-tag" icon="icon-tag" />
             <div className="tw-ml-2">
               {tags?.map((tag, index) => (
-                <Tag key={index} tag={getTagValue(tag)} type="label" />
+                <Tag
+                  key={index}
+                  startWith="#"
+                  tag={getTagValue(tag)}
+                  type="label"
+                />
               ))}
             </div>
           </div>
