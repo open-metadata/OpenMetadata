@@ -55,7 +55,7 @@ const TableDataCard: FunctionComponent<Props> = ({
 }: Props) => {
   const getTier = () => {
     if (tier) {
-      return isString(tier) ? tier : tier.tagFQN;
+      return isString(tier) ? tier : tier.tagFQN.split('.')[1];
     }
 
     return 'No Tier';
