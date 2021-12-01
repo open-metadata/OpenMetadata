@@ -24,26 +24,30 @@ const FilterContainer: FunctionComponent<FilterContainerProp> = ({
   isDisabled = false,
 }: FilterContainerProp) => {
   return (
-    <div className="filter-group tw-mb-2" data-testid="filter-container">
-      <input
-        checked={isSelected}
-        className={classNames('tw-mr-1 custom-checkbox', {
-          'tw-cursor-not-allowed': isDisabled,
-        })}
-        data-testid="checkbox"
-        disabled={isDisabled}
-        id={name}
-        type="checkbox"
-        onChange={() => {
-          onSelect(!isSelected, name, type);
-        }}
-      />
-      <div
-        className={classNames(
-          'filters-title tw-w-40 tw-truncate custom-checkbox-label',
-          { 'tw-text-grey-muted': isDisabled }
-        )}>
-        {name.startsWith('Tier.Tier') ? name.split('.')[1] : name}
+    <div
+      className="filter-group tw-justify-between tw-mb-2"
+      data-testid="filter-container">
+      <div className="tw-flex">
+        <input
+          checked={isSelected}
+          className={classNames('tw-mr-1 custom-checkbox', {
+            'tw-cursor-not-allowed': isDisabled,
+          })}
+          data-testid="checkbox"
+          disabled={isDisabled}
+          id={name}
+          type="checkbox"
+          onChange={() => {
+            onSelect(!isSelected, name, type);
+          }}
+        />
+        <div
+          className={classNames(
+            'filters-title tw-w-40 tw-truncate custom-checkbox-label',
+            { 'tw-text-grey-muted': isDisabled }
+          )}>
+          {name.startsWith('Tier.Tier') ? name.split('.')[1] : name}
+        </div>
       </div>
       {getCountBadge(
         count,

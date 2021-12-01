@@ -61,7 +61,7 @@ const TableDataCardBody: FunctionComponent<Props> = ({
 
   return (
     <div data-testid="table-body">
-      <p className="tw-mb-3">
+      <div className="tw-mb-4">
         {extraInfo.map(({ key, value }, i) =>
           !isNil(value) ? (
             <span key={i}>
@@ -77,7 +77,7 @@ const TableDataCardBody: FunctionComponent<Props> = ({
             </span>
           ) : null
         )}
-      </p>
+      </div>
       <div className="description-text">
         {description.trim() ? (
           <RichTextEditorPreviewer markdown={description} />
@@ -86,18 +86,22 @@ const TableDataCardBody: FunctionComponent<Props> = ({
         )}
       </div>
       {Boolean(tags?.length) && (
-        <div className="tw-mt-3" data-testid="tags-container">
-          <hr className="tw--mx-3 tw-pt-1.5" />
-          <span>
-            <SVGIcons alt="icon-tag" className="tw-px-1" icon="icon-tag" />
-          </span>
-          {tags?.map((tag, index) => (
-            <Tag
-              key={index}
-              tag={`#${tag.startsWith('Tier.Tier') ? tag.split('.')[1] : tag}`}
-              type="label"
-            />
-          ))}
+        <div className="tw-mt-4" data-testid="tags-container">
+          <hr className="tw--mx-3 tw-pt-2" />
+          <div className="tw-flex">
+            <SVGIcons alt="icon-tag" icon="icon-tag" />
+            <div className="tw-ml-2">
+              {tags?.map((tag, index) => (
+                <Tag
+                  key={index}
+                  tag={`#${
+                    tag.startsWith('Tier.Tier') ? tag.split('.')[1] : tag
+                  }`}
+                  type="label"
+                />
+              ))}
+            </div>
+          </div>
         </div>
       )}
     </div>

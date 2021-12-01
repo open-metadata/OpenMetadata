@@ -18,10 +18,12 @@ const Avatar = ({
   name,
   width = '36',
   textClass = '',
+  className = '',
 }: {
   name: string;
   width?: string;
   textClass?: string;
+  className?: string;
 }) => {
   const getBgColorByCode = (code: number) => {
     if (code >= 65 && code <= 71) {
@@ -39,7 +41,10 @@ const Avatar = ({
 
   return (
     <div
-      className="tw-flex tw-justify-center tw-items-center tw-align-middle"
+      className={classNames(
+        'tw-flex tw-justify-center tw-items-center tw-align-middle',
+        className
+      )}
       style={{
         height: `${width}px`,
         width: `${width}px`,

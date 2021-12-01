@@ -314,7 +314,6 @@
   }
   .tw-filter-seperator {
     @apply tw-border-b tw-border-separator tw-mb-4;
-    width: 95%;
   }
 
   /* Cron editor css */
