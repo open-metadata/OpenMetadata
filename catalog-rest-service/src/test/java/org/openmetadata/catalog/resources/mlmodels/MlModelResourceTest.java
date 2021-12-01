@@ -319,6 +319,51 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
   }
 
   @Test
+  public void put_MlModelAddMlFeatures_200(TestInfo test) throws IOException {
+    CreateMlModel request = new CreateMlModel().withName(getModelName(test, 0)).withAlgorithm(ALGORITHM);
+    MlModel model = createAndCheckEntity(request, adminAuthHeaders());
+    ChangeDescription change = getChangeDescription(model.getVersion());
+    change.getFieldsAdded().add(new FieldChange().withName("mlFeatures").withNewValue(ML_FEATURES));
+
+    updateAndCheckEntity(
+            request.withMlFeatures(ML_FEATURES), Status.OK, adminAuthHeaders(), MINOR_UPDATE, change
+    );
+  }
+
+  @Test
+  public void put_MlModelUpdateMlFeatures_200(TestInfo test) throws IOException {
+    CreateMlModel request = create(test);
+    MlModel model = createAndCheckEntity(request, adminAuthHeaders());
+    ChangeDescription change = getChangeDescription(model.getVersion());
+
+    MlFeature newMlFeature = new MlFeature()
+            .withName("color")
+            .withDataType(MlFeatureDataType.Categorical);
+
+    List<MlFeature> newFeatures = Collections.singletonList(newMlFeature);
+
+    change.getFieldsUpdated().add(
+            new FieldChange().withName("mlFeatures").withNewValue(newFeatures).withOldValue(ML_FEATURES)
+    );
+
+    updateAndCheckEntity(
+            request.withMlFeatures(newFeatures), Status.OK, adminAuthHeaders(), MINOR_UPDATE, change
+    );
+  }
+
+  @Test
+  public void put_MlModelAddMlHyperParams_200(TestInfo test) throws IOException {
+    CreateMlModel request = new CreateMlModel().withName(getModelName(test, 0)).withAlgorithm(ALGORITHM);
+    MlModel model = createAndCheckEntity(request, adminAuthHeaders());
+    ChangeDescription change = getChangeDescription(model.getVersion());
+    change.getFieldsAdded().add(new FieldChange().withName("mlHyperParameters").withNewValue(ML_HYPERPARAMS));
+
+    updateAndCheckEntity(
+            request.withMlHyperParameters(ML_HYPERPARAMS), Status.OK, adminAuthHeaders(), MINOR_UPDATE, change
+    );
+  }
+
+  @Test
   public void get_nonExistentMlModel_404_notFound() {
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
             getModel(TestUtils.NON_EXISTENT_ENTITY, adminAuthHeaders()));
@@ -471,6 +516,7 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
   }
 
   BiConsumer<MlFeature, MlFeature> assertMlFeature = (MlFeature expected, MlFeature actual) -> {
+    // FQN gets created on-the-fly based on the test name. Just check that it is not null
     assertNotNull(actual.getFullyQualifiedName());
     assertEquals(actual.getName(), expected.getName());
     assertEquals(actual.getDescription(), expected.getDescription());
@@ -487,6 +533,7 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
 
   BiConsumer<MlFeatureSource, MlFeatureSource> assertMlFeatureSource =
           (MlFeatureSource expected, MlFeatureSource actual) -> {
+        // FQN gets created on-the-fly based on the test name. Just check that it is not null
         assertNotNull(actual.getFullyQualifiedName());
         assertEquals(actual.getName(), expected.getName());
         assertEquals(actual.getDescription(), expected.getDescription());
@@ -533,11 +580,11 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
     if (fieldName.contains("mlFeatures")) {
       List<MlFeature> expectedFeatures = (List<MlFeature>) expected;
       List<MlFeature> actualFeatures = JsonUtils.readObjects(actual.toString(), MlFeature.class);
-      assertEquals(expectedFeatures, actualFeatures);
+      assertListProperty(expectedFeatures, actualFeatures, assertMlFeature);
     } else if (fieldName.contains("mlHyperParameters")) {
       List<MlHyperParameter> expectedConstraints = (List<MlHyperParameter>) expected;
       List<MlHyperParameter> actualConstraints = JsonUtils.readObjects(actual.toString(), MlHyperParameter.class);
-      assertEquals(expectedConstraints, actualConstraints);
+      assertListProperty(expectedConstraints, actualConstraints, assertMlHyperParam);
     } else if (fieldName.contains("algorithm")) {
       String expectedAlgorithm = (String) expected;
       String actualAlgorithm = actual.toString();
