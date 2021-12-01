@@ -195,7 +195,7 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
   }
 
   @Test public void post_MlModelWithoutFeatures_200_ok(TestInfo test) throws IOException {
-    CreateMlModel create = new CreateMlModel().withName(getModelName(test, 0)).withAlgorithm(ALGORITHM);
+    CreateMlModel create = createEmpty(test, 0).withAlgorithm(ALGORITHM);
     createAndCheckEntity(create, adminAuthHeaders());
   }
 
@@ -320,7 +320,7 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
 
   @Test
   public void put_MlModelAddMlFeatures_200(TestInfo test) throws IOException {
-    CreateMlModel request = new CreateMlModel().withName(getModelName(test, 0)).withAlgorithm(ALGORITHM);
+    CreateMlModel request = createEmpty(test, 0).withAlgorithm(ALGORITHM);
     MlModel model = createAndCheckEntity(request, adminAuthHeaders());
     ChangeDescription change = getChangeDescription(model.getVersion());
     change.getFieldsAdded().add(new FieldChange().withName("mlFeatures").withNewValue(ML_FEATURES));
@@ -353,7 +353,7 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
 
   @Test
   public void put_MlModelAddMlHyperParams_200(TestInfo test) throws IOException {
-    CreateMlModel request = new CreateMlModel().withName(getModelName(test, 0)).withAlgorithm(ALGORITHM);
+    CreateMlModel request = createEmpty(test, 0);
     MlModel model = createAndCheckEntity(request, adminAuthHeaders());
     ChangeDescription change = getChangeDescription(model.getVersion());
     change.getFieldsAdded().add(new FieldChange().withName("mlHyperParameters").withNewValue(ML_HYPERPARAMS));
@@ -475,8 +475,11 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
   }
 
   public static CreateMlModel create(TestInfo test, int index) {
-    return new CreateMlModel().withName(getModelName(test, index)).withAlgorithm(ALGORITHM)
-            .withMlFeatures(ML_FEATURES).withMlHyperParameters(ML_HYPERPARAMS);
+    return createEmpty(test, index).withMlFeatures(ML_FEATURES).withMlHyperParameters(ML_HYPERPARAMS);
+  }
+
+  public static CreateMlModel createEmpty(TestInfo test, int index) {
+    return new CreateMlModel().withName(getModelName(test, index)).withAlgorithm(ALGORITHM);
   }
 
   @Override
