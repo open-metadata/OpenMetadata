@@ -27,32 +27,29 @@ from metadata.ingestion.api.workflow import Workflow
 
 default_args = {
     "owner": "user_name",
+    "email": ["username@org.com"],
+    "email_on_failure": False,
     "retries": 3,
-    "retry_delay": timedelta(minutes=2),
+    "retry_delay": timedelta(seconds=10),
     "execution_timeout": timedelta(minutes=60),
-    "schedule_interval": "0 */1 * * *",
 }
 
 config = """
 {
   "source": {
-    "type": "metadata",
+    "type": "dbt",
     "config": {
-      "include_tables": "true",
-      "include_topics": "true",
-      "include_dashboards": "true",
-      "limit_records": 10
+      "service_name": "bigquery_dbt",
+      "service_type": "BigQuery",
+      "catalog_file": "./examples/sample_data/dbt/catalog.json",
+      "manifest_file": "./examples/sample_data/dbt/manifest.json",
+      "run_results_file": "./examples/sample_data/dbt/run_results.json",
+      "database": "shopify"
     }
   },
   "sink": {
-    "type": "elasticsearch",
-    "config": {
-      "index_tables": "true",
-      "index_topics": "true",
-      "index_dashboards": "true",
-      "es_host": "localhost",
-      "es_port": 9200
-    }
+    "type": "metadata-rest",
+    "config": {}
   },
   "metadata_server": {
     "type": "metadata-server",
@@ -75,9 +72,10 @@ def metadata_ingestion_workflow():
 
 
 with DAG(
-    "index_metadata",
+    "sample_dbt",
     default_args=default_args,
     description="An example DAG which runs a OpenMetadata ingestion workflow",
+    schedule_interval=timedelta(days=1),
     start_date=days_ago(1),
     is_paused_upon_creation=False,
     catchup=False,

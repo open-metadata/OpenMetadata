@@ -388,14 +388,14 @@ class MetadataRestSink(Sink):
 
         metadata_user = CreateUserEntityRequest(
             name=record.name.__root__,
-            displayName=record.name.__root__,
+            displayName=record.displayName,
             email=record.email,
             teams=teams,
         )
         try:
             self.metadata.create_or_update(metadata_user)
-            self.status.records_written(record.name.__root__)
-            logger.info("Sink: {}".format(record.name.__root__))
+            self.status.records_written(record.displayName)
+            logger.info("Sink: {}".format(record.displayName))
         except Exception as err:
             logger.error(traceback.format_exc())
             logger.error(traceback.print_exc())
