@@ -54,7 +54,7 @@
       "description": "Local name (not fully qualified name) of a table.",
       "type": "string",
       "minLength": 1,
-      "maxLength": 256,
+      "maxLength": 128,
       "pattern": "^[^.]*$"
     },
     "fullyQualifiedColumnName": {

@@ -72,7 +72,6 @@ import static org.openmetadata.catalog.exception.CatalogExceptionMessage.deactiv
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.readOnlyAttribute;
 import static org.openmetadata.catalog.resources.teams.TeamResourceTest.createTeam;
-import static org.openmetadata.catalog.util.TestUtils.LONG_ENTITY_NAME;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
@@ -84,29 +83,6 @@ public class UserResourceTest extends EntityResourceTest<User> {
   public UserResourceTest() {
     super(Entity.USER, User.class, UserList.class, "users", UserResource.FIELDS,
             false, false, false);
-  }
-
-  @Test
-  public void post_userWithLongName_400_badRequest(TestInfo test) {
-    // Create team with mandatory name field empty
-    CreateUser create = create(test).withName(LONG_ENTITY_NAME);
-    HttpResponseException exception =
-            assertThrows(HttpResponseException.class, () -> createUser(create, adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, "[name size must be between 1 and 64]");
-  }
-
-  @Test
-  public void post_userWithoutName_400_badRequest(TestInfo test) {
-    // Create user with mandatory name field null
-    CreateUser create = create(test).withName(null);
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            createUser(create, adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, "[name must not be null]");
-
-    // Create user with mandatory name field empty
-    create.withName("");
-    exception = assertThrows(HttpResponseException.class, () -> createUser(create, adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, "[name size must be between 1 and 64]");
   }
 
   @Test
@@ -212,8 +188,9 @@ public class UserResourceTest extends EntityResourceTest<User> {
   @Test
   public void post_validUserWithTeams_200_ok(TestInfo test) throws IOException {
     // Create user with different optional fields
-    Team team1 = createTeam(TeamResourceTest.create(test, 1), adminAuthHeaders());
-    Team team2 = createTeam(TeamResourceTest.create(test, 2), adminAuthHeaders());
+    TeamResourceTest teamResourceTest = new TeamResourceTest();
+    Team team1 = createTeam(teamResourceTest.create(test, 1), adminAuthHeaders());
+    Team team2 = createTeam(teamResourceTest.create(test, 2), adminAuthHeaders());
     List<UUID> teams = Arrays.asList(team1.getId(), team2.getId());
     CreateUser create = create(test).withTeams(teams);
     User user = createAndCheckEntity(create, adminAuthHeaders());
@@ -235,7 +212,8 @@ public class UserResourceTest extends EntityResourceTest<User> {
   @Test
   public void get_userWithDifferentFields_200_OK(TestInfo test) throws HttpResponseException {
     // Create team and role for the user
-    Team team = createTeam(TeamResourceTest.create(test), adminAuthHeaders());
+    TeamResourceTest teamResourceTest = new TeamResourceTest();
+    Team team = createTeam(teamResourceTest.create(test), adminAuthHeaders());
     List<UUID> teamIds = Collections.singletonList(team.getId());
 
     CreateUser create = create(test).withDisplayName("displayName").withTeams(teamIds).withProfile(PROFILE);
@@ -246,7 +224,8 @@ public class UserResourceTest extends EntityResourceTest<User> {
   @Test
   public void get_userByNameWithDifferentFields_200_OK(TestInfo test) throws HttpResponseException {
     // Create team and role for the user
-    Team team = createTeam(TeamResourceTest.create(test), adminAuthHeaders());
+    TeamResourceTest teamResourceTest = new TeamResourceTest();
+    Team team = createTeam(teamResourceTest.create(test), adminAuthHeaders());
     List<UUID> teamIds = Collections.singletonList(team.getId());
 
     CreateUser create = create(test).withDisplayName("displayName").withTeams(teamIds).withProfile(PROFILE);
@@ -324,11 +303,12 @@ public class UserResourceTest extends EntityResourceTest<User> {
 //    assertNull(user.getDeactivated());
     assertNull(user.getTimezone());
 
-    EntityReference team1 = new TeamEntityInterface(createTeam(TeamResourceTest.create(test, 1),
+    TeamResourceTest teamResourceTest = new TeamResourceTest();
+    EntityReference team1 = new TeamEntityInterface(createTeam(teamResourceTest.create(test, 1),
             adminAuthHeaders())).getEntityReference().withHref(null);
-    EntityReference team2 = new TeamEntityInterface(createTeam(TeamResourceTest.create(test, 2),
+    EntityReference team2 = new TeamEntityInterface(createTeam(teamResourceTest.create(test, 2),
             adminAuthHeaders())).getEntityReference().withHref(null);
-    EntityReference team3 = new TeamEntityInterface(createTeam(TeamResourceTest.create(test, 3),
+    EntityReference team3 = new TeamEntityInterface(createTeam(teamResourceTest.create(test, 3),
             adminAuthHeaders())).getEntityReference().withHref(null);
     List<EntityReference> teams = Arrays.asList(team1, team2);
     Profile profile = new Profile().withImages(new ImageList().withImage(URI.create("http://image.com")));
@@ -402,16 +382,17 @@ public class UserResourceTest extends EntityResourceTest<User> {
 
   @Test
   public void delete_validUser_as_admin_200(TestInfo test) throws IOException {
-    Team team = createTeam(TeamResourceTest.create(test), adminAuthHeaders());
+    TeamResourceTest teamResourceTest = new TeamResourceTest();
+    Team team = createTeam(teamResourceTest.create(test), adminAuthHeaders());
     List<UUID> teamIds = Collections.singletonList(team.getId());
 
     CreateUser create = create(test).withProfile(PROFILE).withTeams(teamIds);
     User user = createUser(create, adminAuthHeaders());
 
     // Add user as follower to a table
-    Table table = TableResourceTest.createTable(test, 1);
-    TableResourceTest tableResource = new TableResourceTest();
-    tableResource.addAndCheckFollower(table.getId(), user.getId(), CREATED, 1, adminAuthHeaders());
+    TableResourceTest tableResourceTest = new TableResourceTest();
+    Table table = tableResourceTest.createEntity(test, 1);
+    tableResourceTest.addAndCheckFollower(table.getId(), user.getId(), CREATED, 1, adminAuthHeaders());
 
     deleteUser(user.getId(), adminAuthHeaders());
 
@@ -422,7 +403,7 @@ public class UserResourceTest extends EntityResourceTest<User> {
     // Make sure the user is no longer following the table
     team = TeamResourceTest.getTeam(team.getId(), "users", adminAuthHeaders());
     assertTrue(team.getUsers().isEmpty());
-    tableResource.checkFollowerDeleted(table.getId(), user.getId(), adminAuthHeaders());
+    tableResourceTest.checkFollowerDeleted(table.getId(), user.getId(), adminAuthHeaders());
 
     // Get deactivated user and ensure the name and display name has deactivated
     User deactivatedUser = getUser(user.getId(), adminAuthHeaders());
@@ -431,7 +412,7 @@ public class UserResourceTest extends EntityResourceTest<User> {
 
     // User can no longer follow other entities
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            tableResource.addAndCheckFollower(table.getId(), user.getId(), CREATED, 1, adminAuthHeaders()));
+            tableResourceTest.addAndCheckFollower(table.getId(), user.getId(), CREATED, 1, adminAuthHeaders()));
     assertResponse(exception, BAD_REQUEST, deactivatedUser(user.getId()));
 
     // TODO deactivated user can't be made owner
@@ -456,12 +437,19 @@ public class UserResourceTest extends EntityResourceTest<User> {
     return patchUser(updated.getId(), originalJson, updated, headers);
   }
 
-  public static CreateUser create(TestInfo test, int index) {
-    return new CreateUser().withName(getUserName(test) + index).withEmail(getUserName(test) + "@open-metadata.org");
+  public CreateUser create(TestInfo test) {
+    return create(getEntityName(test));
   }
 
-  public static CreateUser create(TestInfo test) {
-    return new CreateUser().withName(getUserName(test)).withEmail(getUserName(test)+"@open-metadata.org");
+  public CreateUser create(TestInfo test, int index) {
+    return create(getEntityName(test, index));
+  }
+
+  public CreateUser create(String entityName) {
+    // user part of the email should be less than 64 in length
+    String emailUser = entityName == null || entityName.isEmpty() ? UUID.randomUUID().toString() : entityName;
+    emailUser = emailUser.length() > 64 ? emailUser.substring(0, 64) : emailUser;
+    return new CreateUser().withName(entityName).withEmail(emailUser + "@open-metadata.org");
   }
 
   public static User createUser(CreateUser create, Map<String, String> authHeaders) throws HttpResponseException {
@@ -506,18 +494,9 @@ public class UserResourceTest extends EntityResourceTest<User> {
     TestUtils.delete(CatalogApplicationTest.getResource("users/" + id), headers);
   }
 
-  // TODO write following tests
-  // list users
-  // list users with various fields parameters
-  public static String getUserName(TestInfo testInfo) {
-    String testName = testInfo.getDisplayName();
-    // user name can't be longer than 64 characters
-    return String.format("user_%s", testName.substring(0, Math.min(testName.length(), 50)));
-  }
-
   @Override
-  public Object createRequest(TestInfo test, int index, String description, String displayName, EntityReference owner) {
-    return create(test, index).withDescription(description).withDisplayName(displayName);
+  public Object createRequest(String name, String description, String displayName, EntityReference owner) {
+    return create(name).withDescription(description).withDisplayName(displayName);
   }
 
   @Override

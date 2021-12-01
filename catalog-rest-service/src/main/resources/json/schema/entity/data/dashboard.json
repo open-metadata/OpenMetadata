@@ -14,7 +14,7 @@
       "description": "Name that identifies this dashboard.",
       "type": "string",
       "minLength": 1,
-      "maxLength": 64
+      "maxLength": 128
     },
     "displayName": {
       "description": "Display Name that identifies this Dashboard. It could be title or label from the source services.",
@@ -24,7 +24,7 @@
       "description": "A unique name that identifies a dashboard in the format 'ServiceName.DashboardName'.",
       "type": "string",
       "minLength": 1,
-      "maxLength": 64
+      "maxLength": 256
     },
     "description": {
       "description": "Description of the dashboard, what it is, and how to use it.",
