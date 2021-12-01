@@ -18,8 +18,10 @@ package org.openmetadata.catalog.selenium.pages.myData;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.catalog.selenium.events.Events;
 import org.openmetadata.catalog.selenium.properties.Property;
 import org.openqa.selenium.By;
@@ -33,6 +35,8 @@ import org.openqa.selenium.support.ui.WebDriverWait;
 import java.time.Duration;
 import java.util.ArrayList;
 
+@Order(1)
+@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class MyDataPageTest {
 
   static WebDriver webDriver;
@@ -145,8 +149,9 @@ public class MyDataPageTest {
     Events.click(webDriver, By.cssSelector("[data-testid='list-item']")); // Select User/Team
     Events.click(webDriver, By.cssSelector("[data-testid='saveManageTab']")); // Save
     Events.click(webDriver, By.cssSelector("[data-testid='image']"));
+    webDriver.navigate().refresh();
     Events.click(webDriver, By.cssSelector("[data-testid='tab'][id='myDataTab']")); // My Data
-    Events.click(webDriver, By.cssSelector("[data-testid='table-link']"));
+    Events.click(webDriver, By.xpath("//a[@data-testid='table-link']//button"));
   }
 
   @Test
@@ -157,8 +162,9 @@ public class MyDataPageTest {
     Events.click(webDriver, By.xpath("(//a[@data-testid='table-link'])[last()]"));
     Events.click(webDriver, By.cssSelector("[data-testid='follow-button']"));
     Events.click(webDriver, By.cssSelector("[data-testid='image']"));
+    webDriver.navigate().refresh();
     Events.click(webDriver, By.cssSelector("[data-testid='tab'][id='followingTab']")); // Following
-    Events.click(webDriver, By.cssSelector("[data-testid='table-link']"));
+    Events.click(webDriver, By.xpath("//a[@data-testid='table-link']//button"));
   }
 
   @Test

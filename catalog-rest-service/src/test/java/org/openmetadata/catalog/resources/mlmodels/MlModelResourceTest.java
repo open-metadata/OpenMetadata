@@ -130,7 +130,6 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
 
   @BeforeAll
   public static void setup(TestInfo test) throws IOException, URISyntaxException {
-
     EntityResourceTest.setup(test);
 
     CreateDashboardService createService = new CreateDashboardService().withName("superset")
@@ -139,8 +138,9 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
     DashboardService service = new DashboardServiceResourceTest().createEntity(createService, adminAuthHeaders());
     SUPERSET_REFERENCE = new DashboardServiceEntityInterface(service).getEntityReference();
 
-    DASHBOARD = DashboardResourceTest.createDashboard(
-            DashboardResourceTest.create(test).withService(SUPERSET_REFERENCE), adminAuthHeaders()
+    DashboardResourceTest dashboardResourceTest = new DashboardResourceTest();
+    DASHBOARD = dashboardResourceTest.createDashboard(
+            dashboardResourceTest.create(test).withService(SUPERSET_REFERENCE), adminAuthHeaders()
     );
     DASHBOARD_REFERENCE = new DashboardEntityInterface(DASHBOARD).getEntityReference();
   }
@@ -148,22 +148,6 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
   public static MlModel createMlModel(CreateMlModel create,
                                       Map<String, String> authHeaders) throws HttpResponseException {
     return new MlModelResourceTest().createEntity(create, authHeaders);
-  }
-
-  @Test
-  public void post_MlModelWithLongName_400_badRequest(TestInfo test) {
-    // Create model with mandatory name field empty
-    CreateMlModel create = create(test).withName(TestUtils.LONG_ENTITY_NAME);
-    assertResponse(() -> createMlModel(create, adminAuthHeaders()), BAD_REQUEST,
-            "[name size must be between 1 and 64]");
-  }
-
-  @Test
-  public void post_MlModelWithoutName_400_badRequest(TestInfo test) {
-    // Create Model with mandatory name field empty
-    CreateMlModel create = create(test).withName("");
-    assertResponse(() -> createMlModel(create, adminAuthHeaders()), BAD_REQUEST,
-            "[name size must be between 1 and 64]");
   }
 
   @Test
@@ -179,7 +163,7 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
     CreateMlModel create = create(test);
     createAndCheckEntity(create, adminAuthHeaders());
 
-    create.withName(getModelName(test, 1)).withDescription("description");
+    create.withName(getEntityName(test, 1)).withDescription("description");
     createAndCheckEntity(create, adminAuthHeaders());
   }
 
@@ -194,7 +178,7 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
   }
 
   @Test public void post_MlModelWithoutFeatures_200_ok(TestInfo test) throws IOException {
-    CreateMlModel create = new CreateMlModel().withName(getModelName(test, 0)).withAlgorithm(ALGORITHM);
+    CreateMlModel create = new CreateMlModel().withName(getEntityName(test, 0)).withAlgorithm(ALGORITHM);
     createAndCheckEntity(create, adminAuthHeaders());
   }
 
@@ -405,22 +389,18 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
     assertResponse(exception, NOT_FOUND, CatalogExceptionMessage.entityNotFound("mlModel", id));
   }
 
-  public static String getModelName(TestInfo test, int index) {
-    return String.format("mlmodel%d_%s", index, test.getDisplayName());
+  private CreateMlModel create(TestInfo test) {
+    return create(getEntityName(test));
   }
 
-  public static CreateMlModel create(TestInfo test) {
-    return create(test, 0);
-  }
-
-  public static CreateMlModel create(TestInfo test, int index) {
-    return new CreateMlModel().withName(getModelName(test, index)).withAlgorithm(ALGORITHM)
+  private CreateMlModel create(String entityName) {
+    return new CreateMlModel().withName(entityName).withAlgorithm(ALGORITHM)
             .withMlFeatures(ML_FEATURES).withMlHyperParameters(ML_HYPERPARAMS);
   }
 
   @Override
-  public Object createRequest(TestInfo test, int index, String description, String displayName, EntityReference owner) {
-    return create(test, index).withDescription(description).withDisplayName(displayName).withOwner(owner);
+  public Object createRequest(String name, String description, String displayName, EntityReference owner) {
+    return create(name).withDescription(description).withDisplayName(displayName).withOwner(owner);
   }
 
   @Override
@@ -476,8 +456,7 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
         assertEquals(actual.getDataType(), expected.getDataType());
       };
 
-  private void validateMlFeatureSources(List<MlFeature> expected, List<MlFeature> actual)
-          throws HttpResponseException {
+  private void validateMlFeatureSources(List<MlFeature> expected, List<MlFeature> actual) {
     if (expected == null && actual == null) {
       return;
     }
