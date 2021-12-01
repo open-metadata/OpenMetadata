@@ -15,6 +15,7 @@ package org.openmetadata.catalog.jdbi3;
 
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Metrics;
+import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.resources.metrics.MetricsResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
@@ -108,9 +109,9 @@ public class MetricsRepository extends EntityRepository<Metrics> {
   private EntityReference getService(EntityReference service) throws IOException { // Get service by service Id
     if (service.getType().equalsIgnoreCase(Entity.DASHBOARD_SERVICE)) {
       return dao.dbServiceDAO().findEntityReferenceById(service.getId());
-    } else {
-      throw new IllegalArgumentException(String.format("Invalid service type %s for the database", service.getType()));
     }
+    throw new IllegalArgumentException(CatalogExceptionMessage.invalidServiceEntity(service.getType(),
+            Entity.METRICS));
   }
 
   private EntityReference getOwner(Metrics metrics) throws IOException {

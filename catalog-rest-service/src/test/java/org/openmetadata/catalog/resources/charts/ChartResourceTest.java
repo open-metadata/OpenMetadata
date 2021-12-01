@@ -209,20 +209,7 @@ public class ChartResourceTest extends EntityResourceTest<Chart> {
             getChart(chart.getId(), fields, adminAuthHeaders());
     assertNotNull(chart.getOwner());
     assertNotNull(chart.getService()); // We always return the service
-
-    // .../charts?fields=owner,service
-    fields = "owner,service";
-    chart = byName ? getChartByName(chart.getFullyQualifiedName(), fields, adminAuthHeaders()) :
-            getChart(chart.getId(), fields, adminAuthHeaders());
-    assertNotNull(chart.getOwner());
-    assertNotNull(chart.getService());
-
-    // .../charts?fields=owner,service
-    fields = "owner,service";
-    chart = byName ? getChartByName(chart.getFullyQualifiedName(), fields, adminAuthHeaders()) :
-            getChart(chart.getId(), fields, adminAuthHeaders());
-    assertNotNull(chart.getOwner());
-    assertNotNull(chart.getService());
+    assertNotNull(chart.getServiceType()); // We always return the service
   }
 
   public static void getChart(UUID id, Map<String, String> authHeaders) throws HttpResponseException {
@@ -272,6 +259,7 @@ public class ChartResourceTest extends EntityResourceTest<Chart> {
     CreateChart createRequest = (CreateChart) request;
     validateCommonEntityFields(getEntityInterface(chart), createRequest.getDescription(),
             TestUtils.getPrincipal(authHeaders), createRequest.getOwner());
+    assertNotNull(chart.getServiceType());
     assertService(createRequest.getService(), chart.getService());
   }
 

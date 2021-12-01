@@ -18,7 +18,9 @@ import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Pipeline;
 import org.openmetadata.catalog.entity.services.PipelineService;
+import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
+import org.openmetadata.catalog.jdbi3.PipelineServiceRepository.PipelineServiceEntityInterface;
 import org.openmetadata.catalog.resources.pipelines.PipelineResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
@@ -36,7 +38,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -112,10 +113,9 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
   @Override
   public void prepare(Pipeline pipeline) throws IOException {
-    pipeline.setService(getService(pipeline.getService()));
+    populateService(pipeline);
     pipeline.setFullyQualifiedName(getFQN(pipeline));
     EntityUtil.populateOwner(dao.userDAO(), dao.teamDAO(), pipeline.getOwner()); // Validate owner
-    getService(pipeline.getService());
     pipeline.setTags(EntityUtil.addDerivedTags(dao.tagDAO(), pipeline.getTags()));
   }
 
@@ -160,18 +160,23 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   private EntityReference getService(Pipeline pipeline) throws IOException {
     EntityReference ref = EntityUtil.getService(dao.relationshipDAO(), pipeline.getId(),
             Entity.PIPELINE_SERVICE);
-    return getService(Objects.requireNonNull(ref));
+    PipelineService service = getService(ref.getId(), ref.getType());
+    ref.setName(service.getName());
+    ref.setDescription(service.getDescription());
+    return ref;
   }
 
-  private EntityReference getService(EntityReference service) throws IOException {
-    if (service.getType().equalsIgnoreCase(Entity.PIPELINE_SERVICE)) {
-      PipelineService serviceInstance = dao.pipelineServiceDAO().findEntityById(service.getId());
-      service.setDescription(serviceInstance.getDescription());
-      service.setName(serviceInstance.getName());
-    } else {
-      throw new IllegalArgumentException(String.format("Invalid service type %s for the pipeline", service.getType()));
+  private void populateService(Pipeline pipeline) throws IOException {
+    PipelineService service = getService(pipeline.getService().getId(), pipeline.getService().getType());
+    pipeline.setService(new PipelineServiceEntityInterface(service).getEntityReference());
+    pipeline.setServiceType(service.getServiceType());
+  }
+
+  private PipelineService getService(UUID serviceId, String entityType) throws IOException {
+    if (entityType.equalsIgnoreCase(Entity.PIPELINE_SERVICE)) {
+      return dao.pipelineServiceDAO().findEntityById(serviceId);
     }
-    return service;
+    throw new IllegalArgumentException(CatalogExceptionMessage.invalidServiceEntity(entityType, Entity.PIPELINE));
   }
 
   private EntityReference getOwner(Pipeline pipeline) throws IOException {

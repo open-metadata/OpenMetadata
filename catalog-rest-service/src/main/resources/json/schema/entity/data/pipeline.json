@@ -145,6 +145,10 @@
       "description": "Link to service where this pipeline is hosted in.",
       "$ref" : "../../type/entityReference.json"
     },
+    "serviceType" : {
+      "description": "Service type where this pipeline is hosted in.",
+      "$ref" : "../services/pipelineService.json#/definitions/pipelineServiceType"
+    },
     "changeDescription": {
       "description" : "Change that lead to this version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/changeDescription"

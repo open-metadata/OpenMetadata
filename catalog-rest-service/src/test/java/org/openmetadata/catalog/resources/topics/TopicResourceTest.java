@@ -193,20 +193,7 @@ public class TopicResourceTest extends EntityResourceTest<Topic> {
             getTopic(topic.getId(), fields, adminAuthHeaders());
     assertNotNull(topic.getOwner());
     assertNotNull(topic.getService()); // We always return the service
-
-    // .../topics?fields=owner,service
-    fields = "owner,service";
-    topic = byName ? getTopicByName(topic.getFullyQualifiedName(), fields, adminAuthHeaders()) :
-            getTopic(topic.getId(), fields, adminAuthHeaders());
-    assertNotNull(topic.getOwner());
-    assertNotNull(topic.getService());
-
-    // .../topics?fields=owner,service
-    fields = "owner,service";
-    topic = byName ? getTopicByName(topic.getFullyQualifiedName(), fields, adminAuthHeaders()) :
-            getTopic(topic.getId(), fields, adminAuthHeaders());
-    assertNotNull(topic.getOwner());
-    assertNotNull(topic.getService());
+    assertNotNull(topic.getServiceType());
   }
 
   public static void getTopic(UUID id, Map<String, String> authHeaders) throws HttpResponseException {
