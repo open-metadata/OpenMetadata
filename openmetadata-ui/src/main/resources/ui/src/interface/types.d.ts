@@ -415,4 +415,9 @@ declare module 'Models' {
     id: string | undefined;
     state: boolean;
   }
+
+  export type CurrentTourPageType =
+    | 'myDataPage'
+    | 'explorePage'
+    | 'datasetPage';
 }

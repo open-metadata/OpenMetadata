@@ -16,7 +16,7 @@
 */
 
 import { makeAutoObservable } from 'mobx';
-import { ClientAuth, NewUser } from 'Models';
+import { ClientAuth, CurrentTourPageType, NewUser } from 'Models';
 import { User } from './generated/entity/teams/user';
 import { UserTeam } from './interface/team.interface';
 
@@ -37,7 +37,7 @@ class AppState {
   explorePageTab = 'tables';
 
   isTourOpen = false;
-  currentTourPage = 'myDataPage';
+  currentTourPage: CurrentTourPageType = 'myDataPage';
 
   constructor() {
     makeAutoObservable(this);

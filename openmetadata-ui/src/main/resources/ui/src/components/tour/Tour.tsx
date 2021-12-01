@@ -1,6 +1,7 @@
 import { observer } from 'mobx-react';
 import React, { useState } from 'react';
 import ReactTutorial from 'react-tutorial';
+import AppState from '../../AppState';
 import { useTour } from '../../hooks/useTour';
 
 type Steps = {
@@ -29,8 +30,14 @@ const getSteps = (value: string) => {
       actionType: 'enter',
       position: 'bottom',
       selector: '#searchBox',
+      beforeNext: () => {
+        AppState.currentTourPage = 'explorePage';
+      },
     },
     {
+      beforePrev: () => {
+        AppState.currentTourPage = 'myDataPage';
+      },
       content: 'Click on the assets title for more details.',
       actionType: 'click',
       position: 'bottom',

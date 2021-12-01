@@ -1,5 +1,5 @@
 import { observer } from 'mobx-react';
-import { LeafNodes, SearchResponse } from 'Models';
+import { CurrentTourPageType, LeafNodes, SearchResponse } from 'Models';
 import React, { useEffect, useState } from 'react';
 import AppState from '../../AppState';
 import DatasetDetails from '../../components/DatasetDetails/DatasetDetails.component';
@@ -53,7 +53,7 @@ const TourPage = () => {
     setCurrentPage(AppState.currentTourPage);
   }, [AppState.currentTourPage]);
 
-  const getCurrentPage = (page: string) => {
+  const getCurrentPage = (page: CurrentTourPageType) => {
     switch (page) {
       case 'myDataPage':
         return (
