@@ -303,7 +303,6 @@ class SampleDataSource(Source):
         yield from self.ingest_dashboards()
         yield from self.ingest_pipelines()
         yield from self.ingest_lineage()
-        print("hello ingest users")
         yield from self.ingest_users()
         yield from self.ingest_mlmodels()
 
