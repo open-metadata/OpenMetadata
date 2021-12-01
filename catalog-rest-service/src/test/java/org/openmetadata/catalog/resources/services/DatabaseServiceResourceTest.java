@@ -1,11 +1,8 @@
 /*
- *  Licensed to the Apache Software Foundation (ASF) under one or more
- *  contributor license agreements. See the NOTICE file distributed with
- *  this work for additional information regarding copyright ownership.
- *  The ASF licenses this file to You under the Apache License, Version 2.0
- *  (the "License"); you may not use this file except in compliance with
- *  the License. You may obtain a copy of the License at
- *
+ *  Copyright 2021 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
  *  http://www.apache.org/licenses/LICENSE-2.0
  *  Unless required by applicable law or agreed to in writing, software
  *  distributed under the License is distributed on an "AS IS" BASIS,
@@ -60,24 +57,6 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
     super(Entity.DATABASE_SERVICE, DatabaseService.class, DatabaseServiceList.class, "services/databaseServices",
             "", false, false, false);
     this.supportsPatch = false;
-  }
-
-  @Test
-  public void post_databaseServiceWithLongName_400_badRequest(TestInfo test) {
-    // Create database with mandatory name field empty
-    CreateDatabaseService create = create(test).withName(TestUtils.LONG_ENTITY_NAME);
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            createEntity(create, adminAuthHeaders()));
-    TestUtils.assertResponse(exception, BAD_REQUEST, "[name size must be between 1 and 64]");
-  }
-
-  @Test
-  public void post_databaseServiceWithoutName_400_badRequest(TestInfo test) {
-    // Create database with mandatory name field empty
-    CreateDatabaseService create = create(test).withName("");
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            createEntity(create, adminAuthHeaders()));
-    TestUtils.assertResponse(exception, BAD_REQUEST, "[name size must be between 1 and 64]");
   }
 
   @Test
@@ -238,14 +217,6 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
     return TestUtils.get(target, DatabaseService.class, authHeaders);
   }
 
-  public static String getName(TestInfo test) {
-    return String.format("dbservice_%s", test.getDisplayName());
-  }
-
-  public static String getName(TestInfo test, int index) {
-    return String.format("dbservice_%d_%s", index, test.getDisplayName());
-  }
-
   @Test
   public void delete_ExistentDatabaseService_as_admin_200(TestInfo test) throws HttpResponseException {
     Map<String, String> authHeaders = adminAuthHeaders();
@@ -285,21 +256,24 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
             CatalogExceptionMessage.entityNotFound(Entity.DATABASE_SERVICE, name));
   }
 
-  public static CreateDatabaseService create(TestInfo test) {
-    return new CreateDatabaseService().withName(getName(test)).withServiceType(DatabaseServiceType.Snowflake)
-            .withJdbc(TestUtils.JDBC_INFO)
-            .withIngestionSchedule(new Schedule().withStartDate(new Date()).withRepeatFrequency("P1D"));
+  public CreateDatabaseService create(TestInfo test) {
+    return create(getEntityName(test)).withIngestionSchedule(new Schedule()
+            .withStartDate(new Date()).withRepeatFrequency("P1D"));
   }
 
-  private static CreateDatabaseService create(TestInfo test, int index) {
-    return new CreateDatabaseService().withName(getName(test, index)).withServiceType(DatabaseServiceType.Snowflake)
+  private CreateDatabaseService create(TestInfo test, int index) {
+    return create(getEntityName(test, index));
+  }
+
+  private CreateDatabaseService create(String entityName) {
+    return new CreateDatabaseService().withName(entityName).withServiceType(DatabaseServiceType.Snowflake)
             .withJdbc(TestUtils.JDBC_INFO);
   }
 
   @Override
-  public Object createRequest(TestInfo test, int index, String description, String displayName, EntityReference owner)
+  public Object createRequest(String name, String description, String displayName, EntityReference owner)
           throws URISyntaxException {
-    return create(test, index).withDescription(description);
+    return create(name).withDescription(description);
   }
 
   @Override

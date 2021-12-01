@@ -1,11 +1,8 @@
 /*
- *  Licensed to the Apache Software Foundation (ASF) under one or more
- *  contributor license agreements. See the NOTICE file distributed with
- *  this work for additional information regarding copyright ownership.
- *  The ASF licenses this file to You under the Apache License, Version 2.0
- *  (the "License"); you may not use this file except in compliance with
- *  the License. You may obtain a copy of the License at
- *
+ *  Copyright 2021 Collate 
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
  *  http://www.apache.org/licenses/LICENSE-2.0
  *  Unless required by applicable law or agreed to in writing, software
  *  distributed under the License is distributed on an "AS IS" BASIS,
@@ -72,9 +69,10 @@ public class UsageResourceTest extends CatalogApplicationTest {
   public static void setup(TestInfo test) throws IOException, URISyntaxException {
     TableResourceTest.setup(test); // Initialize TableResourceTest for using helper methods
     // Create TABLE_COUNT number of tables
+    TableResourceTest tableResourceTest = new TableResourceTest();
     for (int i = 0; i < TABLE_COUNT; i++) {
-      CreateTable createTable = TableResourceTest.create(test, i);
-      TABLES.add(TableResourceTest.createTable(createTable, adminAuthHeaders()));
+      CreateTable createTable = tableResourceTest.create(test, i);
+      TABLES.add(tableResourceTest.createEntity(createTable, adminAuthHeaders()));
     }
   }
 
@@ -111,7 +109,8 @@ public class UsageResourceTest extends CatalogApplicationTest {
 
   @Test
   public void post_validUsageByName_200_OK(TestInfo test) throws HttpResponseException {
-    Table table = TableResourceTest.createTable(TableResourceTest.create(test), adminAuthHeaders());
+    TableResourceTest tableResourceTest = new TableResourceTest();
+    Table table = tableResourceTest.createEntity(tableResourceTest.create(test), adminAuthHeaders());
     DailyCount usageReport = usageReport().withCount(100).withDate(RestUtil.DATE_FORMAT.format(new Date()));
     reportUsageByNameAndCheck(TABLE, table.getFullyQualifiedName(), usageReport, 100, 100,
             adminAuthHeaders());

@@ -1,11 +1,8 @@
 /*
- *  Licensed to the Apache Software Foundation (ASF) under one or more
- *  contributor license agreements. See the NOTICE file distributed with
- *  this work for additional information regarding copyright ownership.
- *  The ASF licenses this file to You under the Apache License, Version 2.0
- *  (the "License"); you may not use this file except in compliance with
- *  the License. You may obtain a copy of the License at
- *
+ *  Copyright 2021 Collate 
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
  *  http://www.apache.org/licenses/LICENSE-2.0
  *  Unless required by applicable law or agreed to in writing, software
  *  distributed under the License is distributed on an "AS IS" BASIS,
@@ -64,23 +61,6 @@ public class DatabaseResourceTest extends EntityResourceTest<Database> {
   }
 
   @Test
-  public void post_databaseWithLongName_400_badRequest(TestInfo test) {
-    // Create database with mandatory name field empty
-    CreateDatabase create = create(test).withName(TestUtils.LONG_ENTITY_NAME);
-    assertResponse(() -> createDatabase(create, adminAuthHeaders()), BAD_REQUEST,
-            "[name size must be between 1 and 64]");
-  }
-
-  @Test
-  public void post_databaseWithoutName_400_badRequest(TestInfo test) {
-    // Create database with mandatory name field empty
-    CreateDatabase create = create(test).withName("");
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            createDatabase(create, adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, "[name size must be between 1 and 64]");
-  }
-
-  @Test
   public void post_databaseAlreadyExists_409_conflict(TestInfo test) throws HttpResponseException {
     CreateDatabase create = create(test);
     createDatabase(create, adminAuthHeaders());
@@ -95,7 +75,7 @@ public class DatabaseResourceTest extends EntityResourceTest<Database> {
     CreateDatabase create = create(test);
     createAndCheckEntity(create, adminAuthHeaders());
 
-    create.withName(getDatabaseName(test, 1)).withDescription("description");
+    create.withName(getEntityName(test, 1)).withDescription("description");
     createAndCheckEntity(create, adminAuthHeaders());
   }
 
@@ -215,11 +195,6 @@ public class DatabaseResourceTest extends EntityResourceTest<Database> {
     assertResponse(exception, NOT_FOUND, entityNotFound(Entity.DATABASE, TestUtils.NON_EXISTENT_ENTITY));
   }
 
-  public static Database createAndCheckDatabase(CreateDatabase create,
-                                                Map<String, String> authHeaders) throws IOException {
-    return new DatabaseResourceTest().createAndCheckEntity(create, authHeaders);
-  }
-
   public static Database createDatabase(CreateDatabase create,
                                         Map<String, String> authHeaders) throws HttpResponseException {
     return TestUtils.post(getResource("databases"), create, Database.class, authHeaders);
@@ -281,25 +256,17 @@ public class DatabaseResourceTest extends EntityResourceTest<Database> {
     assertResponse(exception, NOT_FOUND, entityNotFound(Entity.DATABASE, id));
   }
 
-  public static String getDatabaseName(TestInfo test) {
-    return String.format("database_%s", test.getDisplayName());
+  public CreateDatabase create(TestInfo test) {
+    return create(getEntityName(test));
   }
 
-  public static String getDatabaseName(TestInfo test, int index) {
-    return String.format("database%d_%s", index, test.getDisplayName());
-  }
-
-  public static CreateDatabase create(TestInfo test) {
-    return new CreateDatabase().withName(getDatabaseName(test)).withService(SNOWFLAKE_REFERENCE);
-  }
-
-  public static CreateDatabase create(TestInfo test, int index) {
-    return new CreateDatabase().withName(getDatabaseName(test, index)).withService(SNOWFLAKE_REFERENCE);
+  private CreateDatabase create(String entityName) {
+    return new CreateDatabase().withName(entityName).withService(SNOWFLAKE_REFERENCE);
   }
 
   @Override
-  public Object createRequest(TestInfo test, int index, String description, String displayName, EntityReference owner) {
-    return create(test, index).withDescription(description).withOwner(owner);
+  public Object createRequest(String name, String description, String displayName, EntityReference owner) {
+    return create(name).withDescription(description).withOwner(owner);
   }
 
   @Override

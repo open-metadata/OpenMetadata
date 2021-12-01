@@ -1,11 +1,8 @@
 /*
- *  Licensed to the Apache Software Foundation (ASF) under one or more
- *  contributor license agreements. See the NOTICE file distributed with
- *  this work for additional information regarding copyright ownership.
- *  The ASF licenses this file to You under the Apache License, Version 2.0
- *  (the "License"); you may not use this file except in compliance with
- *  the License. You may obtain a copy of the License at
- *
+ *  Copyright 2021 Collate 
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
  *  http://www.apache.org/licenses/LICENSE-2.0
  *  Unless required by applicable law or agreed to in writing, software
  *  distributed under the License is distributed on an "AS IS" BASIS,
@@ -22,7 +19,6 @@ import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.catalog.CatalogApplicationTest;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.services.CreateDashboardService;
-import org.openmetadata.catalog.api.services.CreateDashboardService.DashboardServiceType;
 import org.openmetadata.catalog.entity.services.DashboardService;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.jdbi3.DashboardServiceRepository.DashboardServiceEntityInterface;
@@ -64,28 +60,9 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
   }
 
   @Test
-  public void post_serviceWithLongName_400_badRequest(TestInfo test) throws URISyntaxException {
-    // Create dashboard with mandatory name field empty
-    CreateDashboardService create = create(test).withName(TestUtils.LONG_ENTITY_NAME);
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            createEntity(create, adminAuthHeaders()));
-    TestUtils.assertResponse(exception, BAD_REQUEST, "[name size must be between 1 and 64]");
-  }
-
-  @Test
   public void post_withoutRequiredFields_400_badRequest(TestInfo test) {
-    // Create dashboard with mandatory name field null
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            createEntity(create(test).withName(null), adminAuthHeaders()));
-    TestUtils.assertResponse(exception, BAD_REQUEST, "[name must not be null]");
-
-    // Create dashboard with mandatory name field empty
-    exception = assertThrows(HttpResponseException.class, () ->
-            createEntity(create(test).withName(""), adminAuthHeaders()));
-    TestUtils.assertResponse(exception, BAD_REQUEST, "[name size must be between 1 and 64]");
-
     // Create dashboard with mandatory serviceType field empty
-    exception = assertThrows(HttpResponseException.class, () ->
+    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
             createEntity(create(test).withServiceType(null), adminAuthHeaders()));
     TestUtils.assertResponse(exception, BAD_REQUEST, "[serviceType must not be null]");
 
@@ -251,14 +228,6 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
     return TestUtils.get(target, DashboardService.class, authHeaders);
   }
 
-  public static String getName(TestInfo test) {
-    return String.format("dservice_%s", test.getDisplayName());
-  }
-
-  public static String getName(TestInfo test, int index) {
-    return String.format("dservice_%d_%s", index, test.getDisplayName());
-  }
-
   @Test
   public void delete_ExistentDashboardService_as_admin_200(TestInfo test)
           throws HttpResponseException, URISyntaxException {
@@ -300,23 +269,25 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
             CatalogExceptionMessage.entityNotFound(Entity.DASHBOARD_SERVICE, name));
   }
 
-  public static CreateDashboardService create(TestInfo test) throws URISyntaxException {
-    return new CreateDashboardService().withName(getName(test))
+  private CreateDashboardService create(TestInfo test) throws URISyntaxException {
+    return create(getEntityName(test));
+  }
+
+  private CreateDashboardService create(TestInfo test, int index) throws URISyntaxException {
+    return create(getEntityName(test, index));
+  }
+
+  private CreateDashboardService create(String entityName) throws URISyntaxException {
+    return new CreateDashboardService().withName(entityName)
             .withServiceType(CreateDashboardService.DashboardServiceType.Superset)
             .withDashboardUrl(new URI("http://192.1.1.1:0"))
             .withIngestionSchedule(new Schedule().withStartDate(new Date()).withRepeatFrequency("P1D"));
   }
 
-  private static CreateDashboardService create(TestInfo test, int index) throws URISyntaxException {
-    return new CreateDashboardService().withName(getName(test, index)).withServiceType(DashboardServiceType.Superset)
-            .withDashboardUrl(new URI("http://192.1.1.1:0"))
-            .withIngestionSchedule(new Schedule().withStartDate(new Date()).withRepeatFrequency("P1D"));
-  }
-
   @Override
-  public Object createRequest(TestInfo test, int index, String description, String displayName, EntityReference owner)
+  public Object createRequest(String name, String description, String displayName, EntityReference owner)
           throws URISyntaxException {
-    return create(test, index).withDescription(description).withIngestionSchedule(null);
+    return create(name).withDescription(description).withIngestionSchedule(null);
   }
 
   @Override

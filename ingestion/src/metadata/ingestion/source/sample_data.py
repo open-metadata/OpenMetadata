@@ -1,12 +1,8 @@
-#  Licensed to the Apache Software Foundation (ASF) under one or more
-#  contributor license agreements. See the NOTICE file distributed with
-#  this work for additional information regarding copyright ownership.
-#  The ASF licenses this file to You under the Apache License, Version 2.0
-#  (the "License"); you may not use this file except in compliance with
-#  the License. You may obtain a copy of the License at
-#
+#  Copyright 2021 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
 #  http://www.apache.org/licenses/LICENSE-2.0
-#
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -29,17 +25,19 @@ from pydantic import ValidationError
 from metadata.config.common import ConfigModel
 from metadata.generated.schema.api.data.createTopic import CreateTopicEntityRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineage
+from metadata.generated.schema.api.teams.createUser import CreateUserEntityRequest
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.mlmodel import MlModel
 from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.teams.user import User
+from metadata.generated.schema.type.basic import Href
 from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.common import Record
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.models.table_metadata import Chart, Dashboard
-from metadata.ingestion.models.user import User
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.utils.helpers import (
@@ -421,16 +419,16 @@ class SampleDataSource(Source):
     def ingest_users(self) -> Iterable[User]:
         try:
             for user in self.users["users"]:
+                teams = [
+                    EntityReference(id=uuid.uuid4(), name=user["teams"], type="team")
+                ]
                 user_metadata = User(
+                    id=uuid.uuid4(),
+                    name=user["email"],
+                    displayName=user["displayName"],
                     email=user["email"],
-                    first_name=user["displayName"].split(" ")[0],
-                    last_name=user["displayName"].split(" ")[1],
-                    name=user["displayName"],
-                    updated_at=user["updatedAt"],
-                    github_username=user["name"],
-                    team_name=user["teams"],
-                    is_active=True,
-                    do_not_update_empty_attribute=0,
+                    teams=teams,
+                    href=Href(__root__="http://localhost"),
                 )
                 yield user_metadata
         except Exception as err:

@@ -1,11 +1,8 @@
 /*
- *  Licensed to the Apache Software Foundation (ASF) under one or more
- *  contributor license agreements. See the NOTICE file distributed with
- *  this work for additional information regarding copyright ownership.
- *  The ASF licenses this file to You under the Apache License, Version 2.0
- *  (the "License"); you may not use this file except in compliance with
- *  the License. You may obtain a copy of the License at
- *
+ *  Copyright 2021 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
  *  http://www.apache.org/licenses/LICENSE-2.0
  *  Unless required by applicable law or agreed to in writing, software
  *  distributed under the License is distributed on an "AS IS" BASIS,
@@ -74,9 +71,8 @@ public class IngestionResourceTest extends EntityResourceTest<Ingestion> {
   }
 
   @Override
-  public Object createRequest(TestInfo test, int index, String description,
-                              String displayName, EntityReference owner) {
-    return create(test, index).withDescription(description).withDisplayName(displayName).withOwner(owner);
+  public Object createRequest(String name, String description, String displayName, EntityReference owner) {
+    return create(name).withDescription(description).withDisplayName(displayName).withOwner(owner);
   }
 
   @Override
@@ -121,16 +117,6 @@ public class IngestionResourceTest extends EntityResourceTest<Ingestion> {
     assertCommonFieldChange(fieldName, expected, actual);
   }
 
-
-  @Test
-  public void post_ingestionWithoutName_400_badRequest(TestInfo test) {
-    // Create ingestion with mandatory name field empty
-    CreateIngestion create = create(test).withName("");
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            createIngestion(create, adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, "[name size must be between 1 and 256]");
-  }
-
   @Test
   public void post_IngestionAlreadyExists_409_conflict(TestInfo test) throws HttpResponseException {
     CreateIngestion create = create(test);
@@ -146,7 +132,7 @@ public class IngestionResourceTest extends EntityResourceTest<Ingestion> {
     CreateIngestion create = create(test);
     createAndCheckEntity(create, adminAuthHeaders());
 
-    create.withName(getIngestionName(test, 1)).withDescription("description");
+    create.withName(getEntityName(test, 1)).withDescription("description");
     createAndCheckEntity(create, adminAuthHeaders());
   }
 
@@ -196,6 +182,7 @@ public class IngestionResourceTest extends EntityResourceTest<Ingestion> {
     CreateIngestion create = create(test).withService(BIGQUERY_REFERENCE).withForceDeploy(true);
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
             createIngestion(create, adminAuthHeaders()));
+    // TODO check for error
   }
 
   @Test
@@ -355,22 +342,13 @@ public class IngestionResourceTest extends EntityResourceTest<Ingestion> {
     assertResponse(exception, NOT_FOUND, entityNotFound(Entity.INGESTION, id));
   }
 
-  public static String getIngestionName(TestInfo test) {
-    return String.format("inge_%s", test.getDisplayName());
+  private CreateIngestion create(TestInfo test) {
+    return create(getEntityName(test));
   }
 
-  public static String getIngestionName(TestInfo test, int index) {
-    return String.format("inge%d_%s", index, test.getDisplayName());
-  }
-
-  public static CreateIngestion create(TestInfo test) {
-    return new CreateIngestion().withName(getIngestionName(test)).withService(BIGQUERY_REFERENCE)
+  private CreateIngestion create(String entityName) {
+    return new CreateIngestion().withName(entityName).withService(BIGQUERY_REFERENCE)
             .withConnectorConfig(INGESTION_CONFIG).withStartDate("2021-11-21").withOwner(TEAM_OWNER1);
-  }
-
-  public static CreateIngestion create(TestInfo test, int index) {
-    return new CreateIngestion().withName(getIngestionName(test, index)).withService(REDSHIFT_REFERENCE)
-            .withConnectorConfig(INGESTION_CONFIG).withStartDate("2021-11-21").withOwner(USER_OWNER1);
   }
 
   @Override

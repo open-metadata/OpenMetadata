@@ -1,11 +1,8 @@
 /*
- *  Licensed to the Apache Software Foundation (ASF) under one or more
- *  contributor license agreements. See the NOTICE file distributed with
- *  this work for additional information regarding copyright ownership.
- *  The ASF licenses this file to You under the Apache License, Version 2.0
- *  (the "License"); you may not use this file except in compliance with
- *  the License. You may obtain a copy of the License at
- *
+ *  Copyright 2021 Collate 
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
  *  http://www.apache.org/licenses/LICENSE-2.0
  *  Unless required by applicable law or agreed to in writing, software
  *  distributed under the License is distributed on an "AS IS" BASIS,
@@ -60,6 +57,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
+import static org.openmetadata.catalog.util.TestUtils.ENTITY_NAME_LENGTH_ERROR;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.NO_CHANGE;
 import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
@@ -77,10 +75,11 @@ public class PolicyResourceTest extends CatalogApplicationTest {
 
     @BeforeAll
     public static void setup(TestInfo test) throws HttpResponseException {
-        USER1 = UserResourceTest.createUser(UserResourceTest.create(test),
+        USER1 = UserResourceTest.createUser(new UserResourceTest().create(test),
                 authHeaders("test@open-metadata.org"));
         USER_OWNER1 = new EntityReference().withId(USER1.getId()).withType("user");
-        TEAM1 = TeamResourceTest.createTeam(TeamResourceTest.create(test), adminAuthHeaders());
+        TeamResourceTest teamResourceTest = new TeamResourceTest();
+        TEAM1 = TeamResourceTest.createTeam(teamResourceTest.create(test), adminAuthHeaders());
         TEAM_OWNER1 = new EntityReference().withId(TEAM1.getId()).withType("team");
     }
 
@@ -89,7 +88,7 @@ public class PolicyResourceTest extends CatalogApplicationTest {
         CreatePolicy create = create(test).withName(TestUtils.LONG_ENTITY_NAME);
         HttpResponseException exception = assertThrows(HttpResponseException.class, () -> createPolicy(create,
                 adminAuthHeaders()));
-        assertResponse(exception, BAD_REQUEST, "[name size must be between 1 and 64]");
+        assertResponse(exception, BAD_REQUEST, ENTITY_NAME_LENGTH_ERROR);
     }
 
     @Test
@@ -97,7 +96,7 @@ public class PolicyResourceTest extends CatalogApplicationTest {
         CreatePolicy create = create(test).withName("");
         HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
                 createPolicy(create, adminAuthHeaders()));
-        assertResponse(exception, BAD_REQUEST, "[name size must be between 1 and 64]");
+        assertResponse(exception, BAD_REQUEST, ENTITY_NAME_LENGTH_ERROR);
     }
 
     @Test
