@@ -350,7 +350,6 @@ class MetadataRestSink(Sink):
 
     def write_ml_model(self, model: MlModel):
         try:
-            logger.info(model)
             model_request = CreateMlModelEntityRequest(
                 name=model.name,
                 displayName=model.displayName,
@@ -377,7 +376,7 @@ class MetadataRestSink(Sink):
         )
         try:
             r = self.metadata.create_or_update(metadata_team)
-            instance_id = r.id.__root__
+            instance_id = str(r.id.__root__)
             self.team_entities[team.name] = instance_id
         except Exception as err:
             logger.error(traceback.format_exc())
@@ -386,9 +385,11 @@ class MetadataRestSink(Sink):
 
     def write_users(self, record: User):
         teams = []
-        for team in record.teams:
-            self._create_team(team)
-            teams.append([self.team_entities[team.name]])
+        for team in record.teams.__root__:
+            if team.name not in self.team_entities:
+                self._create_team(team)
+            teams.append(self.team_entities[team.name])
+
         metadata_user = CreateUserEntityRequest(
             name=record.name.__root__,
             displayName=record.name.__root__,
@@ -398,7 +399,7 @@ class MetadataRestSink(Sink):
         try:
             self.metadata.create_or_update(metadata_user)
             self.status.records_written(record.name.__root__)
-            logger.info("Sink: {}".format(record.name))
+            logger.info("Sink: {}".format(record.name.__root__))
         except Exception as err:
             logger.error(traceback.format_exc())
             logger.error(traceback.print_exc())
