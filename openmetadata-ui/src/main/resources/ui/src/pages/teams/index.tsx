@@ -168,7 +168,7 @@ const TeamsPage = () => {
               setCurrentTab(1);
             }}>
             Users
-            {getCountBadge(currentTeam?.users?.length)}
+            {getCountBadge(currentTeam?.users?.length, '', currentTab === 1)}
           </button>
           <button
             className={`tw-pb-2 tw-px-4 tw-gh-tabs ${getActiveTabClass(2)}`}
@@ -177,7 +177,7 @@ const TeamsPage = () => {
               setCurrentTab(2);
             }}>
             Assets
-            {getCountBadge(currentTeam?.owns?.length)}
+            {getCountBadge(currentTeam?.owns?.length, '', currentTab === 2)}
           </button>
         </nav>
       </div>
@@ -213,7 +213,7 @@ const TeamsPage = () => {
           data-testid="user-card-container">
           {currentTeam?.users?.map((user, index) => {
             const User = {
-              description: user.displayName || '',
+              description: user.displayName || user.name || '',
               name: user.name || '',
               id: user.id,
             };

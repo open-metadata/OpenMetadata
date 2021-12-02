@@ -42,7 +42,7 @@ const stepsData = [
     title: 'Install Service Connectors',
     description:
       'There are a lot of connectors available here to index data from your services. Please checkout our connectors',
-    link: 'https://docs.open-metadata.org/install/metadata-ingestion/connectors',
+    link: 'https://docs.open-metadata.org/connectors',
   },
   {
     step: 4,

@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import classNames from 'classnames';
 import React, { FC, ReactNode } from 'react';
 
 interface PageLayoutProp {
@@ -25,7 +26,23 @@ const PageLayout: FC<PageLayoutProp> = ({
   rightPanel,
 }: PageLayoutProp) => {
   return (
-    <div className="page-layout-container tw-gap-x-3 tw-px-4 tw-overflow-y-auto">
+    <div
+      className={classNames(
+        'page-layout-container tw-gap-x-3 tw-px-4 tw-overflow-y-auto',
+        {
+          'page-layout-container-left-center-right':
+            leftPanel && children && rightPanel,
+        },
+        {
+          'page-layout-container-left-center': !rightPanel,
+        },
+        {
+          'page-layout-container-center-right': !leftPanel,
+        },
+        {
+          'page-layout-container-center': !leftPanel && !rightPanel,
+        }
+      )}>
       {leftPanel && (
         <div
           className="tw-overflow-y-auto tw-pl-2 tw-pr-4 tw-py-1"
