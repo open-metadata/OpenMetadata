@@ -334,12 +334,13 @@ const EntityPageInfo = ({
                     html={
                       <>
                         {tags.slice(LIST_SIZE).map((tag, index) => (
-                          <Tags
-                            className="tw-bg-tag tw-px-2"
-                            key={index}
-                            startWith="#"
-                            tag={tag}
-                          />
+                          <p className="tw-text-left" key={index}>
+                            <Tags
+                              className="tw-bg-tag tw-px-2"
+                              startWith="#"
+                              tag={tag}
+                            />
+                          </p>
                         ))}
                       </>
                     }

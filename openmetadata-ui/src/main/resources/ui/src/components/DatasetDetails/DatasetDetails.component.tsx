@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { isEqual, isNil } from 'lodash';
+import { isEqual, isNil, isUndefined } from 'lodash';
 import { ColumnJoins, EntityTags } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { getTeamDetailsPath } from '../../constants/constants';
@@ -216,26 +216,27 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
     },
     {
       key: 'Rows',
-      value: tableProfile ? (
-        <TableProfilerGraph
-          className="tw--mt-5"
-          data={
-            tableProfile
-              ?.map((d) => ({
-                date: d.profileDate,
-                value: d.rowCount ?? 0,
-              }))
-              .reverse() as Array<{
-              date: Date;
-              value: number;
-            }>
-          }
-          height={38}
-          toolTipPos={{ x: 20, y: -30 }}
-        />
-      ) : (
-        '--'
-      ),
+      value:
+        !isUndefined(tableProfile) && tableProfile.length > 0 ? (
+          <TableProfilerGraph
+            className="tw--mt-5"
+            data={
+              tableProfile
+                ?.map((d) => ({
+                  date: d.profileDate,
+                  value: d.rowCount ?? 0,
+                }))
+                .reverse() as Array<{
+                date: Date;
+                value: number;
+              }>
+            }
+            height={38}
+            toolTipPos={{ x: 20, y: -30 }}
+          />
+        ) : (
+          '--'
+        ),
     },
   ];
 
