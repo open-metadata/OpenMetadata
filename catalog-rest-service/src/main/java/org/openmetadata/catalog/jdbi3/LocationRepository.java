@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate 
+ *  Copyright 2021 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -144,6 +144,8 @@ public class LocationRepository extends EntityRepository<Location> {
 
   @Override
   public void prepare(Location location) throws IOException {
+    EntityReference storageService = getService(location.getService());
+    location.setService(storageService);
     // Set data in location entity based on storage relationship
     location.setFullyQualifiedName(getFQN(location));
 
@@ -162,7 +164,7 @@ public class LocationRepository extends EntityRepository<Location> {
     List<TagLabel> tags = location.getTags();
 
     // Don't store owner, href and tags as JSON. Build it on the fly based on relationships
-    location.withOwner(null).withHref(null).withTags(null);
+    location.withOwner(null).withService(null).withHref(null).withTags(null);
 
     if (update) {
       dao.locationDAO().update(location.getId(), JsonUtils.pojoToJson(location));
