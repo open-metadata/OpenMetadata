@@ -18,7 +18,9 @@ import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Chart;
 import org.openmetadata.catalog.entity.services.DashboardService;
+import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
+import org.openmetadata.catalog.jdbi3.DashboardServiceRepository.DashboardServiceEntityInterface;
 import org.openmetadata.catalog.resources.charts.ChartResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
@@ -33,10 +35,10 @@ import java.net.URI;
 import java.text.ParseException;
 import java.util.Date;
 import java.util.List;
-import java.util.Objects;
 import java.util.UUID;
 
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
+
 
 public class ChartRepository extends EntityRepository<Chart> {
   private static final Fields CHART_UPDATE_FIELDS = new Fields(ChartResource.FIELD_LIST, "owner");
@@ -66,9 +68,9 @@ public class ChartRepository extends EntityRepository<Chart> {
 
   @Override
   public void prepare(Chart chart) throws IOException {
-    chart.setService(getService(chart.getService()));
+    populateService(chart);
     chart.setFullyQualifiedName(getFQN(chart));
-    EntityUtil.populateOwner(dao.userDAO(), dao.teamDAO(), chart.getOwner()); // Validate owner
+    EntityUtil.populateOwner(dao.userDAO(), dao.teamDAO(), chart.getOwner()); // Validate and populate owner
     chart.setTags(EntityUtil.addDerivedTags(dao.tagDAO(), chart.getTags()));
   }
 
@@ -149,18 +151,24 @@ public class ChartRepository extends EntityRepository<Chart> {
 
   private EntityReference getService(Chart chart) throws IOException {
     EntityReference ref = EntityUtil.getService(dao.relationshipDAO(), chart.getId(), Entity.DASHBOARD_SERVICE);
-    return getService(Objects.requireNonNull(ref));
+    DashboardService service = getService(ref.getId(), ref.getType());
+    ref.setName(service.getName());
+    ref.setDescription(service.getDescription());
+    return ref;
   }
 
-  private EntityReference getService(EntityReference service) throws IOException {
-    if (service.getType().equalsIgnoreCase(Entity.DASHBOARD_SERVICE)) {
-      DashboardService serviceInstance = dao.dashboardServiceDAO().findEntityById(service.getId());
-      service.setDescription(serviceInstance.getDescription());
-      service.setName(serviceInstance.getName());
-    } else {
-      throw new IllegalArgumentException(String.format("Invalid service type %s for the chart", service.getType()));
+  private void populateService(Chart chart) throws IOException {
+    DashboardService service = getService(chart.getService().getId(), chart.getService().getType());
+    chart.setService(new DashboardServiceEntityInterface(service).getEntityReference());
+    chart.setServiceType(service.getServiceType());
+  }
+
+  private DashboardService getService(UUID serviceId, String serviceType) throws IOException {
+    if (serviceType.equalsIgnoreCase(Entity.DASHBOARD_SERVICE)) {
+      return dao.dashboardServiceDAO().findEntityById(serviceId);
     }
-    return service;
+    throw new IllegalArgumentException(CatalogExceptionMessage.invalidServiceEntity(serviceType,
+            Entity.DASHBOARD_SERVICE));
   }
 
   public static class ChartEntityInterface implements EntityInterface<Chart> {

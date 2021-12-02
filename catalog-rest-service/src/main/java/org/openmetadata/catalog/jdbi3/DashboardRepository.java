@@ -17,7 +17,10 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Dashboard;
+import org.openmetadata.catalog.entity.services.DashboardService;
+import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
+import org.openmetadata.catalog.jdbi3.DashboardServiceRepository.DashboardServiceEntityInterface;
 import org.openmetadata.catalog.resources.dashboards.DashboardResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
@@ -34,7 +37,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -105,15 +107,23 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
 
   private EntityReference getService(Dashboard dashboard) throws IOException {
     EntityReference ref = EntityUtil.getService(dao.relationshipDAO(), dashboard.getId(), Entity.DASHBOARD_SERVICE);
-    return getService(Objects.requireNonNull(ref));
+    DashboardService service = getService(ref.getId(), ref.getType());
+    ref.setName(service.getName());
+    ref.setDescription(service.getDescription());
+    return ref;
   }
 
-  private EntityReference getService(EntityReference service) throws IOException {
-    if (service.getType().equalsIgnoreCase(Entity.DASHBOARD_SERVICE)) {
-      return dao.dashboardServiceDAO().findEntityReferenceById(service.getId());
-    } else {
-      throw new IllegalArgumentException(String.format("Invalid service type %s for the dashboard", service.getType()));
+  private void populateService(Dashboard dashboard) throws IOException {
+    DashboardService service = getService(dashboard.getService().getId(), dashboard.getService().getType());
+    dashboard.setService(new DashboardServiceEntityInterface(service).getEntityReference());
+    dashboard.setServiceType(service.getServiceType());
+  }
+
+  private DashboardService getService(UUID serviceId, String entityType) throws IOException {
+    if (entityType.equalsIgnoreCase(Entity.DASHBOARD_SERVICE)) {
+      return dao.dashboardServiceDAO().findEntityById(serviceId);
     }
+    throw new IllegalArgumentException(CatalogExceptionMessage.invalidServiceEntity(entityType, Entity.DASHBOARD));
   }
 
   public void setService(Dashboard dashboard, EntityReference service) throws IOException {
@@ -127,7 +137,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
 
   @Override
   public void prepare(Dashboard dashboard) throws IOException {
-    dashboard.setService(getService(dashboard.getService()));
+    populateService(dashboard);
     dashboard.setFullyQualifiedName(getFQN(dashboard));
     EntityUtil.populateOwner(dao.userDAO(), dao.teamDAO(), dashboard.getOwner()); // Validate owner
     dashboard.setTags(EntityUtil.addDerivedTags(dao.tagDAO(), dashboard.getTags()));
@@ -138,9 +148,10 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     // Relationships and fields such as href are derived and not stored as part of json
     EntityReference owner = dashboard.getOwner();
     List<TagLabel> tags = dashboard.getTags();
+    EntityReference service = dashboard.getService();
 
     // Don't store owner, database, href and tags as JSON. Build it on the fly based on relationships
-    dashboard.withOwner(null).withHref(null).withTags(null);
+    dashboard.withOwner(null).withHref(null).withTags(null).withService(null);
 
     if (update) {
       dao.dashboardDAO().update(dashboard.getId(), JsonUtils.pojoToJson(dashboard));
@@ -149,7 +160,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     }
 
     // Restore the relationships
-    dashboard.withOwner(owner).withTags(tags);
+    dashboard.withOwner(owner).withTags(tags).withService(service);
   }
 
   @Override

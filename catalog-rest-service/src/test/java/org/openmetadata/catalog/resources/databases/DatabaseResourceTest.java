@@ -208,22 +208,17 @@ public class DatabaseResourceTest extends EntityResourceTest<Database> {
             getDatabase(database.getId(), fields, adminAuthHeaders());
     assertNotNull(database.getOwner());
     assertNotNull(database.getService()); // We always return the service
+    assertNotNull(database.getServiceType());
     assertNull(database.getTables());
-
-    // .../databases?fields=owner,service
-    fields = "owner,service";
-    database = byName ? getDatabaseByName(database.getFullyQualifiedName(), fields, adminAuthHeaders()) :
-            getDatabase(database.getId(), fields, adminAuthHeaders());
-    assertNotNull(database.getOwner());
-    assertNotNull(database.getService());
-    assertNull(database.getTables());
+    assertNull(database.getUsageSummary());
 
     // .../databases?fields=owner,service,tables
     fields = "owner,service,tables,usageSummary";
     database = byName ? getDatabaseByName(database.getFullyQualifiedName(), fields, adminAuthHeaders()) :
             getDatabase(database.getId(), fields, adminAuthHeaders());
     assertNotNull(database.getOwner());
-    assertNotNull(database.getService());
+    assertNotNull(database.getService()); // We always return the service
+    assertNotNull(database.getServiceType());
     assertNotNull(database.getTables());
     TestUtils.validateEntityReference(database.getTables());
     assertNotNull(database.getUsageSummary());
@@ -270,13 +265,14 @@ public class DatabaseResourceTest extends EntityResourceTest<Database> {
   }
 
   @Override
-  public void validateCreatedEntity(Database createdEntity, Object request, Map<String, String> authHeaders) {
+  public void validateCreatedEntity(Database database, Object request, Map<String, String> authHeaders) {
     CreateDatabase createRequest = (CreateDatabase) request;
-    validateCommonEntityFields(getEntityInterface(createdEntity), createRequest.getDescription(),
+    validateCommonEntityFields(getEntityInterface(database), createRequest.getDescription(),
             TestUtils.getPrincipal(authHeaders), createRequest.getOwner());
 
     // Validate service
-    assertService(createRequest.getService(), createdEntity.getService());
+    assertNotNull(database.getServiceType());
+    assertService(createRequest.getService(), database.getService());
   }
 
   @Override

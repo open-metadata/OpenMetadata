@@ -56,4 +56,8 @@ public final class CatalogExceptionMessage {
   public static String entityVersionNotFound(String entity, String id, Double version) {
     return String.format("%s instance for %s and version %s not found", StringUtils.capitalize(entity), id, version);
   }
+
+  public static String invalidServiceEntity(String serviceEntity, String entity) {
+    return String.format("Invalid service entity type %s for %s", serviceEntity, entity);
+  }
 }
