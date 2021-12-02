@@ -42,7 +42,7 @@ import {
 } from '../../generated/api/tags/createTagCategory';
 import { TagCategory, TagClass } from '../../generated/entity/tags/tagCategory';
 import { useAuth } from '../../hooks/authHooks';
-import { isEven } from '../../utils/CommonUtils';
+import { getCountBadge, isEven } from '../../utils/CommonUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import { getTagCategories, getTaglist } from '../../utils/TagsUtils';
 import Form from './Form';
@@ -209,9 +209,11 @@ const TagsPage = () => {
                 {category.name}
               </p>
 
-              <p className="tw-bg-gray-200 tw-px-2 tw-py-1 tw-rounded tw-text-xs">
-                {category.usageCount}
-              </p>
+              {getCountBadge(
+                category.usageCount,
+                'tw-self-center',
+                currentCategory?.name === category.name
+              )}
             </div>
           ))}
       </>
