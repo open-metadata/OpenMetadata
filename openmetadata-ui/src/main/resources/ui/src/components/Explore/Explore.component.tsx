@@ -344,18 +344,18 @@ const Explore: React.FC<ExploreProps> = ({
     });
   };
 
-  const getTabCount = (index: string, className = '') => {
+  const getTabCount = (index: string, isActive: boolean, className = '') => {
     switch (index) {
       case SearchIndex.TABLE:
-        return getCountBadge(tabCounts.table, className);
+        return getCountBadge(tabCounts.table, className, isActive);
       case SearchIndex.TOPIC:
-        return getCountBadge(tabCounts.topic, className);
+        return getCountBadge(tabCounts.topic, className, isActive);
       case SearchIndex.DASHBOARD:
-        return getCountBadge(tabCounts.dashboard, className);
+        return getCountBadge(tabCounts.dashboard, className, isActive);
       case SearchIndex.PIPELINE:
-        return getCountBadge(tabCounts.pipeline, className);
+        return getCountBadge(tabCounts.pipeline, className, isActive);
       case SearchIndex.DBT_MODEL:
-        return getCountBadge(tabCounts.dbtModel, className);
+        return getCountBadge(tabCounts.dbtModel, className, isActive);
       default:
         return getCountBadge();
     }
@@ -394,16 +394,7 @@ const Explore: React.FC<ExploreProps> = ({
                   icon={tabDetail.icon}
                 />
                 {tabDetail.label}
-                {getTabCount(
-                  tabDetail.index,
-                  classNames(
-                    { 'tw-bg-tag': tabDetail.tab !== currentTab },
-                    {
-                      'tw-bg-primary tw-text-white tw-border-none':
-                        tabDetail.tab === currentTab,
-                    }
-                  )
-                )}
+                {getTabCount(tabDetail.index, tabDetail.tab === currentTab)}
               </button>
             ))}
           </div>
