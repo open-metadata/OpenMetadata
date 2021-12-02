@@ -49,16 +49,7 @@ const FilterContainer: FunctionComponent<FilterContainerProp> = ({
           {name.startsWith('Tier.Tier') ? name.split('.')[1] : name}
         </div>
       </div>
-      {getCountBadge(
-        count,
-        classNames(
-          'tw-text-center tw-py-0 tw-px-0',
-          { 'tw-bg-tag': !isSelected },
-          {
-            'tw-bg-primary tw-text-white tw-border-none': isSelected,
-          }
-        )
-      )}
+      {getCountBadge(count, classNames('tw-py-0 tw-px-0'), isSelected)}
     </div>
   );
 };

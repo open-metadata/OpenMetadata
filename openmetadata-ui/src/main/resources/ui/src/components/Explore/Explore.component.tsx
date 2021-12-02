@@ -19,7 +19,13 @@ import {
   FormatedTableData,
   SearchResponse,
 } from 'Models';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, {
+  Fragment,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import { useHistory, useLocation } from 'react-router-dom';
 import { Button } from '../../components/buttons/Button/Button';
 import ErrorPlaceHolderES from '../../components/common/error-with-placeholder/ErrorPlaceHolderES';
@@ -51,7 +57,6 @@ import { getCountBadge } from '../../utils/CommonUtils';
 import { getFilterString } from '../../utils/FilterUtils';
 import { dropdownIcon as DropDownIcon } from '../../utils/svgconstant';
 import SVGIcons from '../../utils/SvgUtils';
-import PageContainerV1 from '../containers/PageContainerV1';
 import PageLayout from '../containers/PageLayout';
 import { ExploreProps } from './explore.interface';
 
@@ -344,18 +349,18 @@ const Explore: React.FC<ExploreProps> = ({
     });
   };
 
-  const getTabCount = (index: string, className = '') => {
+  const getTabCount = (index: string, isActive: boolean, className = '') => {
     switch (index) {
       case SearchIndex.TABLE:
-        return getCountBadge(tabCounts.table, className);
+        return getCountBadge(tabCounts.table, className, isActive);
       case SearchIndex.TOPIC:
-        return getCountBadge(tabCounts.topic, className);
+        return getCountBadge(tabCounts.topic, className, isActive);
       case SearchIndex.DASHBOARD:
-        return getCountBadge(tabCounts.dashboard, className);
+        return getCountBadge(tabCounts.dashboard, className, isActive);
       case SearchIndex.PIPELINE:
-        return getCountBadge(tabCounts.pipeline, className);
+        return getCountBadge(tabCounts.pipeline, className, isActive);
       case SearchIndex.DBT_MODEL:
-        return getCountBadge(tabCounts.dbtModel, className);
+        return getCountBadge(tabCounts.dbtModel, className, isActive);
       default:
         return getCountBadge();
     }
@@ -394,16 +399,7 @@ const Explore: React.FC<ExploreProps> = ({
                   icon={tabDetail.icon}
                 />
                 {tabDetail.label}
-                {getTabCount(
-                  tabDetail.index,
-                  classNames(
-                    { 'tw-bg-tag': tabDetail.tab !== currentTab },
-                    {
-                      'tw-bg-primary tw-text-white tw-border-none':
-                        tabDetail.tab === currentTab,
-                    }
-                  )
-                )}
+                {getTabCount(tabDetail.index, tabDetail.tab === currentTab)}
               </button>
             ))}
           </div>
@@ -509,7 +505,7 @@ const Explore: React.FC<ExploreProps> = ({
   };
 
   return (
-    <PageContainerV1>
+    <Fragment>
       {!connectionError && getTabs()}
       <PageLayout
         leftPanel={Boolean(!error) && fetchLeftPanel()}
@@ -528,7 +524,7 @@ const Explore: React.FC<ExploreProps> = ({
           />
         )}
       </PageLayout>
-    </PageContainerV1>
+    </Fragment>
   );
 };
 

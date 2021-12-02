@@ -101,8 +101,12 @@ const TableDataCardBody: FunctionComponent<Props> = ({
       {Boolean(tags?.length) && (
         <div className="tw-mt-4" data-testid="tags-container">
           <hr className="tw--mx-3 tw-pt-2" />
-          <div className="tw-flex">
-            <SVGIcons alt="icon-tag" icon="icon-tag" />
+          <div className="tw-flex tw-relative">
+            <SVGIcons
+              alt="icon-tag"
+              className="tw-absolute tw-top-1.5"
+              icon="icon-tag"
+            />
             <div className="tw-ml-2">
               {tags?.map((tag, index) => (
                 <Tag
