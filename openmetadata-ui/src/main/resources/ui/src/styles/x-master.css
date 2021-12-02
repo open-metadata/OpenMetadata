@@ -781,5 +781,17 @@ body .profiler-graph .recharts-active-dot circle {
   display: grid;
   grid-template-columns: 256px auto 256px;
   grid-auto-flow: column;
+}
+
+.page-layout-container-left-center-right {
   grid-template-areas: 'leftsidebar centerarea rightsidebar';
+}
+.page-layout-container-left-center {
+  grid-template-areas: 'leftsidebar centerarea centerarea';
+}
+.page-layout-container-center-right {
+  grid-template-areas: 'centerarea centerarea rightsidebar';
+}
+.page-layout-container-center {
+  grid-template-areas: 'centerarea centerarea centerarea';
 }

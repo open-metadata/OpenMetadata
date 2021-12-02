@@ -473,7 +473,11 @@ const ServicesPage = () => {
                     key={index}
                     onClick={() => handleTabChange(tab.name)}>
                     {tab.displayName}
-                    {getCountBadge(servicesCount[tab.name])}
+                    {getCountBadge(
+                      servicesCount[tab.name],
+                      '',
+                      tab.name === serviceName
+                    )}
                   </button>
                 ))}
               </nav>
