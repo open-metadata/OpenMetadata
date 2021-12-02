@@ -1,12 +1,8 @@
-#  Licensed to the Apache Software Foundation (ASF) under one or more
-#  contributor license agreements. See the NOTICE file distributed with
-#  this work for additional information regarding copyright ownership.
-#  The ASF licenses this file to You under the Apache License, Version 2.0
-#  (the "License"); you may not use this file except in compliance with
-#  the License. You may obtain a copy of the License at
-#
+#  Copyright 2021 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
 #  http://www.apache.org/licenses/LICENSE-2.0
-#
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -392,14 +388,14 @@ class MetadataRestSink(Sink):
 
         metadata_user = CreateUserEntityRequest(
             name=record.name.__root__,
-            displayName=record.name.__root__,
+            displayName=record.displayName,
             email=record.email,
             teams=teams,
         )
         try:
             self.metadata.create_or_update(metadata_user)
-            self.status.records_written(record.name.__root__)
-            logger.info("Sink: {}".format(record.name.__root__))
+            self.status.records_written(record.displayName)
+            logger.info("Sink: {}".format(record.displayName))
         except Exception as err:
             logger.error(traceback.format_exc())
             logger.error(traceback.print_exc())

@@ -1,3 +1,16 @@
+/*
+ *  Copyright 2021 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
 import { AxiosResponse } from 'axios';
 import { compare } from 'fast-json-patch';
 import { observer } from 'mobx-react';
@@ -25,13 +38,14 @@ import { EntityType } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { Dbtmodel } from '../../generated/entity/data/dbtmodel';
 import { User } from '../../generated/entity/teams/user';
+import { TagLabel } from '../../generated/type/tagLabel';
 import { addToRecentViewed, getCurrentUserId } from '../../utils/CommonUtils';
 import {
   dbtModelTabs,
   getCurrentDBTModelTab,
 } from '../../utils/DBTModelDetailsUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
-import { getOwnerFromId, getTierFromTableTags } from '../../utils/TableUtils';
+import { getOwnerFromId, getTierTags } from '../../utils/TableUtils';
 import { getTableTags } from '../../utils/TagsUtils';
 
 const DBTModelDetailsPage: FunctionComponent = () => {
@@ -52,7 +66,7 @@ const DBTModelDetailsPage: FunctionComponent = () => {
   const [, setCurrentVersion] = useState<string>();
 
   const [dbtModelId, setDbtModelId] = useState('');
-  const [tier, setTier] = useState<string>();
+  const [tier, setTier] = useState<TagLabel>();
   const [name, setName] = useState('');
   const [followers, setFollowers] = useState<Array<User>>([]);
   const [slashedDBTModelName, setSlashedDBTModelName] = useState<
@@ -118,7 +132,7 @@ const DBTModelDetailsPage: FunctionComponent = () => {
           setCurrentVersion(version);
           setDbtModelDetails(res.data);
           setOwner(getOwnerFromId(owner?.id));
-          setTier(getTierFromTableTags(tags));
+          setTier(getTierTags(tags));
           resolve();
         })
         .catch(() => reject());
@@ -172,7 +186,7 @@ const DBTModelDetailsPage: FunctionComponent = () => {
         setDbtModelId(id);
         setCurrentVersion(version);
         setOwner(getOwnerFromId(owner?.id));
-        setTier(getTierFromTableTags(tags));
+        setTier(getTierTags(tags));
         setFollowers(followers);
         getDatabase(database.id, 'service').then((resDB: AxiosResponse) => {
           getServiceById('databaseServices', resDB.data.service?.id).then(
@@ -246,7 +260,7 @@ const DBTModelDetailsPage: FunctionComponent = () => {
           setActiveTabHandler={activeTabHandler}
           settingsUpdateHandler={settingsUpdateHandler}
           slashedDBTModelName={slashedDBTModelName}
-          tier={tier as string}
+          tier={tier as TagLabel}
           unfollowDBTModelHandler={unfollowDBTModel}
           users={AppState.users}
           viewDefinition={dbtViewDefinition}

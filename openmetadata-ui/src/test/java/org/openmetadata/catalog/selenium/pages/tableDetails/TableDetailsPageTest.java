@@ -1,11 +1,8 @@
 /*
- *  Licensed to the Apache Software Foundation (ASF) under one or more
- *  contributor license agreements. See the NOTICE file distributed with
- *  this work for additional information regarding copyright ownership.
- *  The ASF licenses this file to You under the Apache License, Version 2.0
- *  (the "License"); you may not use this file except in compliance with
- *  the License. You may obtain a copy of the License at
- *
+ *  Copyright 2021 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
  *  http://www.apache.org/licenses/LICENSE-2.0
  *  Unless required by applicable law or agreed to in writing, software
  *  distributed under the License is distributed on an "AS IS" BASIS,
@@ -17,6 +14,7 @@
 package org.openmetadata.catalog.selenium.pages.tableDetails;
 
 import com.github.javafaker.Faker;
+import io.github.artsok.RepeatedIfExceptionsTest;
 import org.openmetadata.catalog.selenium.events.Events;
 import org.openmetadata.catalog.selenium.properties.Property;
 import org.openqa.selenium.By;
@@ -27,7 +25,6 @@ import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.interactions.Actions;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Order;
@@ -62,7 +59,7 @@ public class TableDetailsPageTest {
     webDriver.get(url);
   }
 
-  @Test
+  @RepeatedIfExceptionsTest(repeats = 2)
   @Order(1)
   public void openExplorePage() throws InterruptedException {
     Events.click(webDriver, By.cssSelector("[data-testid='closeWhatsNew']")); // Close What's new
@@ -70,7 +67,7 @@ public class TableDetailsPageTest {
     Thread.sleep(waitTime);
   }
 
-  @Test
+  @RepeatedIfExceptionsTest(repeats = 2)
   @Order(2)
   public void checkTabs() throws InterruptedException {
     openExplorePage();
@@ -81,7 +78,7 @@ public class TableDetailsPageTest {
     Events.click(webDriver, By.xpath("(//button[@data-testid='tab'])[4]")); // Manage
   }
 
-  @Test
+  @RepeatedIfExceptionsTest(repeats = 2)
   @Order(3)
   public void editDescription() throws InterruptedException {
     openExplorePage();
@@ -92,7 +89,7 @@ public class TableDetailsPageTest {
     Events.click(webDriver, By.cssSelector("[data-testid='save']"));
   }
 
-  @Test
+  @RepeatedIfExceptionsTest(repeats = 2)
   @Order(4)
   public void searchColumnAndEditDescription() throws InterruptedException {
     openExplorePage();
@@ -107,7 +104,7 @@ public class TableDetailsPageTest {
     Events.click(webDriver, By.cssSelector("[data-testid='save']"));
   }
 
-  @Test
+  @RepeatedIfExceptionsTest(repeats = 2)
   @Order(5)
   public void addTagsToColumn() throws InterruptedException {
     openExplorePage();
@@ -124,7 +121,7 @@ public class TableDetailsPageTest {
     Events.click(webDriver, By.cssSelector("[data-testid='saveAssociatedTag']"));
   }
 
-  @Test
+  @RepeatedIfExceptionsTest(repeats = 2)
   @Order(6)
   public void removeTagsFromColumn() throws InterruptedException {
     openExplorePage();
@@ -138,7 +135,7 @@ public class TableDetailsPageTest {
     Events.click(webDriver, By.cssSelector("[data-testid='saveAssociatedTag']"));
   }
 
-//    @Test
+//    @RepeatedIfExceptionsTest(repeats = 2)
 //    @Order(7)
 //    public void basicChecks() throws InterruptedException {
 //        openExplorePage();
@@ -152,26 +149,26 @@ public class TableDetailsPageTest {
 //        Events.click(webDriver, By.cssSelector("[data-testid='sample-data-button']"));
 //    }
 
-  @Test
+  @RepeatedIfExceptionsTest(repeats = 2)
   @Order(8)
   public void checkProfiler() throws InterruptedException {
     openExplorePage();
     Events.sendKeys(webDriver, By.cssSelector("[data-testid='searchBox']"), tableName);
     Events.click(webDriver, By.cssSelector("[data-testid='data-name']"));
     Events.click(webDriver, By.xpath("(//button[@data-testid='tab'])[2]")); // Profiler
-//    for (int i = 1; i <= 4; i++) {
-//      Events.click(
-//          webDriver, By.xpath("(//td[@data-testid='tableBody-cell']//span)" + "[" + i + "]")); // Profiler
-//      actions.moveToElement(
-//              webDriver.findElement(By.xpath("(//tr[@data-testid='tableBody-row']//td" + "[" + i + "]" + ")")))
-//          .perform();
-//      Events.click(
-//          webDriver, By.xpath("(//td[@data-testid='tableBody-cell']//span)" + "[" + i + "]")); // Profiler
-//      Thread.sleep(waitTime);
-//    }
+    for (int i = 1; i <= 4; i++) {
+      Events.click(
+          webDriver, By.xpath("(//td[@data-testid='tableBody-cell']//span)" + "[" + i + "]")); // Profiler
+      actions.moveToElement(
+              webDriver.findElement(By.xpath("(//tr[@data-testid='tableBody-row']//td" + "[" + i + "]" + ")")))
+          .perform();
+      Events.click(
+          webDriver, By.xpath("(//td[@data-testid='tableBody-cell']//span)" + "[" + i + "]")); // Profiler
+      Thread.sleep(waitTime);
+    }
   }
 
-  @Test
+  @RepeatedIfExceptionsTest(repeats = 2)
   @Order(9)
   public void checkManage() throws InterruptedException {
     openExplorePage();
@@ -189,7 +186,7 @@ public class TableDetailsPageTest {
     webDriver.navigate().refresh();
   }
 
-  @Test
+  @RepeatedIfExceptionsTest(repeats = 2)
   @Order(10)
   public void checkLineage() throws InterruptedException {
     openExplorePage();
@@ -203,7 +200,7 @@ public class TableDetailsPageTest {
     }
   }
 
-  @Test
+  @RepeatedIfExceptionsTest(repeats = 2)
   @Order(11)
   public void checkBreadCrumb() throws InterruptedException {
     openExplorePage();
@@ -224,7 +221,7 @@ public class TableDetailsPageTest {
     }
   }
 
-  @Test
+  @RepeatedIfExceptionsTest(repeats = 2)
   @Order(12)
   public void checkVersion() throws InterruptedException {
     openExplorePage();
@@ -240,12 +237,13 @@ public class TableDetailsPageTest {
     Events.click(webDriver, By.cssSelector("[data-testid='closeDrawer']"));
   }
 
-  @Test
+  @RepeatedIfExceptionsTest(repeats = 2)
   @Order(13)
   public void checkFrequentlyJoinedTables() throws InterruptedException {
     openExplorePage();
     webDriver.findElement(By.cssSelector("[data-testid='searchBox']")).sendKeys("fact_sale");
     Events.click(webDriver, By.cssSelector("[data-testid='data-name']"));
+    Thread.sleep(2000);
     Events.click(webDriver, By.xpath("(//div[@data-testid='related-tables-data']/a)"));
 //    for (int i = 1; i <= 3; i++) {
 //      Events.click(webDriver, By.xpath("(//div[@data-testid='related-tables-data']//a)" + "[" + i + "]"));
@@ -260,12 +258,13 @@ public class TableDetailsPageTest {
 //    }
   }
 
-  @Test
+  @RepeatedIfExceptionsTest(repeats = 2)
   @Order(14)
   public void checkFrequentlyJoinedColumns() throws InterruptedException {
     openExplorePage();
     webDriver.findElement(By.cssSelector("[data-testid='searchBox']")).sendKeys("fact_sale");
     Events.click(webDriver, By.cssSelector("[data-testid='data-name']"));
+    Thread.sleep(2000);
     Events.click(webDriver, By.xpath(
         "(//div[@data-testid='frequently-joined-columns']/span/a)"));
   }

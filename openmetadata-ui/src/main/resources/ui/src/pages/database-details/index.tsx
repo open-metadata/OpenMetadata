@@ -1,19 +1,15 @@
 /*
-  * Licensed to the Apache Software Foundation (ASF) under one or more
-  * contributor license agreements. See the NOTICE file distributed with
-  * this work for additional information regarding copyright ownership.
-  * The ASF licenses this file to You under the Apache License, Version 2.0
-  * (the "License"); you may not use this file except in compliance with
-  * the License. You may obtain a copy of the License at
-
-  * http://www.apache.org/licenses/LICENSE-2.0
-
-  * Unless required by applicable law or agreed to in writing, software
-  * distributed under the License is distributed on an "AS IS" BASIS,
-  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-  * See the License for the specific language governing permissions and
-  * limitations under the License.
-*/
+ *  Copyright 2021 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
 
 import { AxiosResponse } from 'axios';
 import classNames from 'classnames';
@@ -34,7 +30,6 @@ import { getServiceById } from '../../axiosAPIs/serviceAPI';
 import { getDatabaseTables } from '../../axiosAPIs/tableAPI';
 import NextPrevious from '../../components/common/next-previous/NextPrevious';
 import NonAdminAction from '../../components/common/non-admin-action/NonAdminAction';
-import PopOver from '../../components/common/popover/PopOver';
 import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
 import TabsPane from '../../components/common/TabsPane/TabsPane';
 import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-breadcrumb.component';
@@ -464,35 +459,28 @@ const DatabaseDetails: FunctionComponent = () => {
                               </td>
                               <td className="tableBody-cell">
                                 {table.tags?.map((tag, tagIndex) => (
-                                  <PopOver
+                                  <Tags
+                                    className="tw-bg-gray-200"
                                     key={tagIndex}
-                                    position="top"
-                                    size="small"
-                                    title={tag.labelType}
-                                    trigger="mouseenter">
-                                    <Tags
-                                      className="tw-bg-gray-200"
-                                      tag={`#${
-                                        tag.tagFQN?.startsWith('Tier.Tier')
-                                          ? tag.tagFQN.split('.')[1]
-                                          : tag.tagFQN
-                                      }`}
-                                    />
-                                  </PopOver>
+                                    startWith="#"
+                                    tag={{
+                                      ...tag,
+                                      tagFQN: tag.tagFQN?.startsWith(
+                                        'Tier.Tier'
+                                      )
+                                        ? tag.tagFQN.split('.')[1]
+                                        : tag.tagFQN,
+                                    }}
+                                  />
                                 ))}
                                 {getTableTags(table.columns).map(
                                   (tag, tagIdx) => (
-                                    <PopOver
+                                    <Tags
+                                      className="tw-bg-gray-200"
                                       key={tagIdx}
-                                      position="top"
-                                      size="small"
-                                      title={tag.labelType}
-                                      trigger="mouseenter">
-                                      <Tags
-                                        className="tw-bg-gray-200"
-                                        tag={`#${tag.tagFQN}`}
-                                      />
-                                    </PopOver>
+                                      startWith="#"
+                                      tag={tag}
+                                    />
                                   )
                                 )}
                               </td>
@@ -589,35 +577,28 @@ const DatabaseDetails: FunctionComponent = () => {
                               </td>
                               <td className="tableBody-cell">
                                 {dbtModel.tags?.map((tag, tagIndex) => (
-                                  <PopOver
+                                  <Tags
+                                    className="tw-bg-gray-200"
                                     key={tagIndex}
-                                    position="top"
-                                    size="small"
-                                    title={tag.labelType}
-                                    trigger="mouseenter">
-                                    <Tags
-                                      className="tw-bg-gray-200"
-                                      tag={`#${
-                                        tag.tagFQN?.startsWith('Tier.Tier')
-                                          ? tag.tagFQN.split('.')[1]
-                                          : tag.tagFQN
-                                      }`}
-                                    />
-                                  </PopOver>
+                                    startWith="#"
+                                    tag={{
+                                      ...tag,
+                                      tagFQN: tag.tagFQN?.startsWith(
+                                        'Tier.Tier'
+                                      )
+                                        ? tag.tagFQN.split('.')[1]
+                                        : tag.tagFQN,
+                                    }}
+                                  />
                                 ))}
                                 {getTableTags(dbtModel.columns).map(
                                   (tag, tagIdx) => (
-                                    <PopOver
+                                    <Tags
+                                      className="tw-bg-gray-200"
                                       key={tagIdx}
-                                      position="top"
-                                      size="small"
-                                      title={tag.labelType}
-                                      trigger="mouseenter">
-                                      <Tags
-                                        className="tw-bg-gray-200"
-                                        tag={`#${tag.tagFQN}`}
-                                      />
-                                    </PopOver>
+                                      startWith="#"
+                                      tag={tag}
+                                    />
                                   )
                                 )}
                               </td>

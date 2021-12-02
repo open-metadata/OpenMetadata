@@ -1,19 +1,15 @@
 /*
-  * Licensed to the Apache Software Foundation (ASF) under one or more
-  * contributor license agreements. See the NOTICE file distributed with
-  * this work for additional information regarding copyright ownership.
-  * The ASF licenses this file to You under the Apache License, Version 2.0
-  * (the "License"); you may not use this file except in compliance with
-  * the License. You may obtain a copy of the License at
-
-  * http://www.apache.org/licenses/LICENSE-2.0
-
-  * Unless required by applicable law or agreed to in writing, software
-  * distributed under the License is distributed on an "AS IS" BASIS,
-  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-  * See the License for the specific language governing permissions and
-  * limitations under the License.
-*/
+ *  Copyright 2021 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
 
 import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
@@ -501,21 +497,19 @@ const ServicePage: FunctionComponent = () => {
           <td className="tableBody-cell">
             {topic.tags && topic.tags?.length > 0
               ? topic.tags.map((tag, tagIndex) => (
-                  <PopOver
+                  <Tags
+                    className="tw-bg-gray-200"
                     key={tagIndex}
-                    position="top"
-                    size="small"
-                    title={tag.labelType}
-                    trigger="mouseenter">
-                    <Tags
-                      className="tw-bg-gray-200"
-                      tag={`#${
+                    startWith="#"
+                    tag={{
+                      ...tag,
+                      tagFQN: `${
                         tag.tagFQN?.startsWith('Tier.Tier')
                           ? tag.tagFQN.split('.')[1]
                           : tag.tagFQN
-                      }`}
-                    />
-                  </PopOver>
+                      }`,
+                    }}
+                  />
                 ))
               : '--'}
           </td>
@@ -528,21 +522,19 @@ const ServicePage: FunctionComponent = () => {
           <td className="tableBody-cell">
             {dashboard.tags && dashboard.tags?.length > 0
               ? dashboard.tags.map((tag, tagIndex) => (
-                  <PopOver
+                  <Tags
+                    className="tw-bg-gray-200"
                     key={tagIndex}
-                    position="top"
-                    size="small"
-                    title={tag.labelType}
-                    trigger="mouseenter">
-                    <Tags
-                      className="tw-bg-gray-200"
-                      tag={`#${
+                    startWith="#"
+                    tag={{
+                      ...tag,
+                      tagFQN: `${
                         tag.tagFQN?.startsWith('Tier.Tier')
                           ? tag.tagFQN.split('.')[1]
                           : tag.tagFQN
-                      }`}
-                    />
-                  </PopOver>
+                      }`,
+                    }}
+                  />
                 ))
               : '--'}
           </td>
@@ -555,21 +547,19 @@ const ServicePage: FunctionComponent = () => {
           <td className="tableBody-cell">
             {pipeline.tags && pipeline.tags?.length > 0
               ? pipeline.tags.map((tag, tagIndex) => (
-                  <PopOver
+                  <Tags
+                    className="tw-bg-gray-200"
                     key={tagIndex}
-                    position="top"
-                    size="small"
-                    title={tag.labelType}
-                    trigger="mouseenter">
-                    <Tags
-                      className="tw-bg-gray-200"
-                      tag={`#${
+                    startWith="#"
+                    tag={{
+                      ...tag,
+                      tagFQN: `${
                         tag.tagFQN?.startsWith('Tier.Tier')
                           ? tag.tagFQN.split('.')[1]
                           : tag.tagFQN
-                      }`}
-                    />
-                  </PopOver>
+                      }`,
+                    }}
+                  />
                 ))
               : '--'}
           </td>

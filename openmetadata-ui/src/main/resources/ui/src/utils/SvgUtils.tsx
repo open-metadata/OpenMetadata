@@ -1,3 +1,16 @@
+/*
+ *  Copyright 2021 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
 import React, { FunctionComponent } from 'react';
 import IconAuth0 from '../assets/img/icon-auth0.png';
 import IconGithub from '../assets/img/icon-github.png';
@@ -68,7 +81,9 @@ import IconSlackGrey from '../assets/svg/slack-grey.svg';
 import IconSlack from '../assets/svg/slack.svg';
 import IconTableGrey from '../assets/svg/table-grey.svg';
 import IconTable from '../assets/svg/table.svg';
+import IconTag from '../assets/svg/tag.svg';
 import IconTerns from '../assets/svg/terms.svg';
+import IconTier from '../assets/svg/tier.svg';
 import IconTopicGrey from '../assets/svg/topic-grey.svg';
 import IconTopic from '../assets/svg/topic.svg';
 import IconUser from '../assets/svg/user.svg';
@@ -160,6 +175,8 @@ export const Icons = {
   TOUR: 'tour',
   ICON_PLUS: 'icon-plus',
   ICON_MINUS: 'icon-minus',
+  TAG: 'icon-tag',
+  TIER: 'icon-tier',
 };
 
 const SVGIcons: FunctionComponent<Props> = ({
@@ -476,6 +493,14 @@ const SVGIcons: FunctionComponent<Props> = ({
       break;
     case Icons.DBTMODEL:
       IconComponent = IconDBTModel;
+
+      break;
+    case Icons.TAG:
+      IconComponent = IconTag;
+
+      break;
+    case Icons.TIER:
+      IconComponent = IconTier;
 
       break;
 

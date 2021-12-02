@@ -1,11 +1,8 @@
 /*
- *  Licensed to the Apache Software Foundation (ASF) under one or more
- *  contributor license agreements. See the NOTICE file distributed with
- *  this work for additional information regarding copyright ownership.
- *  The ASF licenses this file to You under the Apache License, Version 2.0
- *  (the "License"); you may not use this file except in compliance with
- *  the License. You may obtain a copy of the License at
- *
+ *  Copyright 2021 Collate 
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
  *  http://www.apache.org/licenses/LICENSE-2.0
  *  Unless required by applicable law or agreed to in writing, software
  *  distributed under the License is distributed on an "AS IS" BASIS,
@@ -211,22 +208,17 @@ public class DatabaseResourceTest extends EntityResourceTest<Database> {
             getDatabase(database.getId(), fields, adminAuthHeaders());
     assertNotNull(database.getOwner());
     assertNotNull(database.getService()); // We always return the service
+    assertNotNull(database.getServiceType());
     assertNull(database.getTables());
-
-    // .../databases?fields=owner,service
-    fields = "owner,service";
-    database = byName ? getDatabaseByName(database.getFullyQualifiedName(), fields, adminAuthHeaders()) :
-            getDatabase(database.getId(), fields, adminAuthHeaders());
-    assertNotNull(database.getOwner());
-    assertNotNull(database.getService());
-    assertNull(database.getTables());
+    assertNull(database.getUsageSummary());
 
     // .../databases?fields=owner,service,tables
     fields = "owner,service,tables,usageSummary";
     database = byName ? getDatabaseByName(database.getFullyQualifiedName(), fields, adminAuthHeaders()) :
             getDatabase(database.getId(), fields, adminAuthHeaders());
     assertNotNull(database.getOwner());
-    assertNotNull(database.getService());
+    assertNotNull(database.getService()); // We always return the service
+    assertNotNull(database.getServiceType());
     assertNotNull(database.getTables());
     TestUtils.validateEntityReference(database.getTables());
     assertNotNull(database.getUsageSummary());
@@ -273,13 +265,14 @@ public class DatabaseResourceTest extends EntityResourceTest<Database> {
   }
 
   @Override
-  public void validateCreatedEntity(Database createdEntity, Object request, Map<String, String> authHeaders) {
+  public void validateCreatedEntity(Database database, Object request, Map<String, String> authHeaders) {
     CreateDatabase createRequest = (CreateDatabase) request;
-    validateCommonEntityFields(getEntityInterface(createdEntity), createRequest.getDescription(),
+    validateCommonEntityFields(getEntityInterface(database), createRequest.getDescription(),
             TestUtils.getPrincipal(authHeaders), createRequest.getOwner());
 
     // Validate service
-    assertService(createRequest.getService(), createdEntity.getService());
+    assertNotNull(database.getServiceType());
+    assertService(createRequest.getService(), database.getService());
   }
 
   @Override

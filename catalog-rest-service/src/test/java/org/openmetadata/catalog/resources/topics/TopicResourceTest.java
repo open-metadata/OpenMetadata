@@ -1,11 +1,8 @@
 /*
- *  Licensed to the Apache Software Foundation (ASF) under one or more
- *  contributor license agreements. See the NOTICE file distributed with
- *  this work for additional information regarding copyright ownership.
- *  The ASF licenses this file to You under the Apache License, Version 2.0
- *  (the "License"); you may not use this file except in compliance with
- *  the License. You may obtain a copy of the License at
- *
+ *  Copyright 2021 Collate 
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
  *  http://www.apache.org/licenses/LICENSE-2.0
  *  Unless required by applicable law or agreed to in writing, software
  *  distributed under the License is distributed on an "AS IS" BASIS,
@@ -196,20 +193,7 @@ public class TopicResourceTest extends EntityResourceTest<Topic> {
             getTopic(topic.getId(), fields, adminAuthHeaders());
     assertNotNull(topic.getOwner());
     assertNotNull(topic.getService()); // We always return the service
-
-    // .../topics?fields=owner,service
-    fields = "owner,service";
-    topic = byName ? getTopicByName(topic.getFullyQualifiedName(), fields, adminAuthHeaders()) :
-            getTopic(topic.getId(), fields, adminAuthHeaders());
-    assertNotNull(topic.getOwner());
-    assertNotNull(topic.getService());
-
-    // .../topics?fields=owner,service
-    fields = "owner,service";
-    topic = byName ? getTopicByName(topic.getFullyQualifiedName(), fields, adminAuthHeaders()) :
-            getTopic(topic.getId(), fields, adminAuthHeaders());
-    assertNotNull(topic.getOwner());
-    assertNotNull(topic.getService());
+    assertNotNull(topic.getServiceType());
   }
 
   public static void getTopic(UUID id, Map<String, String> authHeaders) throws HttpResponseException {

@@ -1,21 +1,18 @@
 /*
-  * Licensed to the Apache Software Foundation (ASF) under one or more
-  * contributor license agreements. See the NOTICE file distributed with
-  * this work for additional information regarding copyright ownership.
-  * The ASF licenses this file to You under the Apache License, Version 2.0
-  * (the "License"); you may not use this file except in compliance with
-  * the License. You may obtain a copy of the License at
+ *  Copyright 2021 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
 
-  * http://www.apache.org/licenses/LICENSE-2.0
-
-  * Unless required by applicable law or agreed to in writing, software
-  * distributed under the License is distributed on an "AS IS" BASIS,
-  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-  * See the License for the specific language governing permissions and
-  * limitations under the License.
-*/
-
-import { EntityTags, FormatedTableData } from 'Models';
+import { isString } from 'lodash';
+import { FormatedTableData } from 'Models';
 import React, { FunctionComponent, useEffect, useState } from 'react';
 import { getDashboardByFqn } from '../../axiosAPIs/dashboardAPI';
 import { getPipelineByFqn } from '../../axiosAPIs/pipelineAPI';
@@ -27,7 +24,7 @@ import {
   getRecentlyViewedData,
   setRecentlyViewedData,
 } from '../../utils/CommonUtils';
-import { getOwnerFromId, getTierFromTableTags } from '../../utils/TableUtils';
+import { getOwnerFromId, getTierTags } from '../../utils/TableUtils';
 import { getTableTags } from '../../utils/TagsUtils';
 import TableDataCard from '../common/table-data-card/TableDataCard';
 import Loader from '../Loader/Loader';
@@ -73,11 +70,8 @@ const RecentlyViewed: FunctionComponent = () => {
               name,
               owner: getOwnerFromId(owner?.id)?.name || '--',
               serviceType: oData.serviceType,
-              tags: [
-                getTierFromTableTags(tags),
-                ...tableTags.map((tag) => tag.tagFQN),
-              ].filter((tag) => tag),
-              tier: getTierFromTableTags(tags),
+              tags: [...tableTags].filter((tag) => tag),
+              tier: getTierTags(tags),
               weeklyPercentileRank:
                 usageSummary?.weeklyStats.percentileRank || 0,
             });
@@ -97,8 +91,8 @@ const RecentlyViewed: FunctionComponent = () => {
               name,
               owner: getOwnerFromId(owner?.id)?.name || '--',
               serviceType: oData.serviceType,
-              tags: (tags as Array<EntityTags>).map((tag) => tag.tagFQN),
-              tier: getTierFromTableTags(tags as Array<EntityTags>),
+              tags: tags,
+              tier: getTierTags(tags),
             });
 
             break;
@@ -125,8 +119,8 @@ const RecentlyViewed: FunctionComponent = () => {
               name: displayName,
               owner: getOwnerFromId(owner?.id)?.name || '--',
               serviceType: oData.serviceType,
-              tags: (tags as Array<EntityTags>).map((tag) => tag.tagFQN),
-              tier: getTierFromTableTags(tags as Array<EntityTags>),
+              tags: tags,
+              tier: getTierTags(tags),
             });
 
             break;
@@ -154,8 +148,8 @@ const RecentlyViewed: FunctionComponent = () => {
               name: displayName,
               owner: getOwnerFromId(owner?.id)?.name || '--',
               serviceType: oData.serviceType,
-              tags: (tags as Array<EntityTags>).map((tag) => tag.tagFQN),
-              tier: getTierFromTableTags(tags as Array<EntityTags>),
+              tags: tags,
+              tier: getTierTags(tags),
             });
 
             break;
@@ -204,7 +198,9 @@ const RecentlyViewed: FunctionComponent = () => {
                     serviceType={item.serviceType || '--'}
                     tableType={item.tableType}
                     tags={item.tags}
-                    tier={item.tier?.split('.')[1]}
+                    tier={
+                      isString(item.tier) ? item.tier?.split('.')[1] : item.tier
+                    }
                     usage={item.weeklyPercentileRank}
                   />
                 </div>

@@ -1,3 +1,16 @@
+/*
+ *  Copyright 2021 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
 import { AxiosError, AxiosResponse } from 'axios';
 import { compare } from 'fast-json-patch';
 import { observer } from 'mobx-react';
@@ -23,13 +36,14 @@ import { EntityType } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { Topic } from '../../generated/entity/data/topic';
 import { User } from '../../generated/entity/teams/user';
+import { TagLabel } from '../../generated/type/tagLabel';
 import useToastContext from '../../hooks/useToastContext';
 import { addToRecentViewed, getCurrentUserId } from '../../utils/CommonUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import {
   getOwnerFromId,
   getTagsWithoutTier,
-  getTierFromTableTags,
+  getTierTags,
 } from '../../utils/TableUtils';
 import { getTagCategories, getTaglist } from '../../utils/TagsUtils';
 import {
@@ -50,7 +64,7 @@ const TopicDetailsPage: FunctionComponent = () => {
   const [description, setDescription] = useState<string>('');
   const [followers, setFollowers] = useState<Array<User>>([]);
   const [owner, setOwner] = useState<TableDetail['owner']>();
-  const [tier, setTier] = useState<string>();
+  const [tier, setTier] = useState<TagLabel>();
   const [schemaType, setSchemaType] = useState<string>('');
   const [tags, setTags] = useState<Array<EntityTags>>([]);
   const [activeTab, setActiveTab] = useState<number>(getCurrentTopicTab(tab));
@@ -128,7 +142,7 @@ const TopicDetailsPage: FunctionComponent = () => {
         setSchemaType(schemaType);
         setFollowers(followers);
         setOwner(getOwnerFromId(owner?.id));
-        setTier(getTierFromTableTags(tags));
+        setTier(getTierTags(tags));
         setTags(getTagsWithoutTier(tags));
         setSchemaText(schemaText);
         setPartitions(partitions);
@@ -217,7 +231,7 @@ const TopicDetailsPage: FunctionComponent = () => {
         .then((res) => {
           setTopicDetails(res.data);
           setOwner(getOwnerFromId(res.data.owner?.id));
-          setTier(getTierFromTableTags(res.data.tags));
+          setTier(getTierTags(res.data.tags));
           resolve();
         })
         .catch(() => reject());
@@ -226,7 +240,7 @@ const TopicDetailsPage: FunctionComponent = () => {
 
   const onTagUpdate = (updatedTopic: Topic) => {
     saveUpdatedTopicData(updatedTopic).then((res: AxiosResponse) => {
-      setTier(getTierFromTableTags(res.data.tags));
+      setTier(getTierTags(res.data.tags));
       setTags(getTagsWithoutTier(res.data.tags));
     });
   };
@@ -264,7 +278,7 @@ const TopicDetailsPage: FunctionComponent = () => {
           slashedTopicName={slashedTopicName}
           tagList={tagList}
           tagUpdateHandler={onTagUpdate}
-          tier={tier as string}
+          tier={tier as TagLabel}
           topicDetails={topicDetails}
           topicTags={tags}
           unfollowTopicHandler={unfollowTopic}

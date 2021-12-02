@@ -1,3 +1,16 @@
+/*
+ *  Copyright 2021 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { EntityTags } from 'Models';
@@ -112,7 +125,7 @@ const DashboardDetails = ({
       isLink: owner?.type === 'team',
       openInNewTab: false,
     },
-    { key: 'Tier', value: tier ? tier.split('.')[1] : '' },
+    { key: 'Tier', value: tier?.tagFQN ? tier.tagFQN.split('.')[1] : '' },
     {
       key: `${serviceType} Url`,
       value: dashboardUrl,
@@ -428,7 +441,11 @@ const DashboardDetails = ({
                                     </button>
                                   ) : (
                                     <span className="tw-opacity-60 group-hover:tw-opacity-100 tw-text-grey-muted group-hover:tw-text-primary">
-                                      <Tags tag="+ Add tag" type="outlined" />
+                                      <Tags
+                                        startWith="+ "
+                                        tag="Add tag"
+                                        type="outlined"
+                                      />
                                     </span>
                                   )}
                                 </TagsContainer>
@@ -444,7 +461,7 @@ const DashboardDetails = ({
               {activeTab === 2 && (
                 <div className="tw-mt-4">
                   <ManageTabComponent
-                    currentTier={tier}
+                    currentTier={tier?.tagFQN}
                     currentUser={owner?.id}
                     hasEditAccess={hasEditAccess()}
                     onSave={onSettingsUpdate}

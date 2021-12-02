@@ -1,3 +1,16 @@
+/*
+ *  Copyright 2021 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
 import { EntityTags } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { getTeamDetailsPath } from '../../constants/constants';
@@ -124,7 +137,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       isLink: owner?.type === 'team',
       openInNewTab: false,
     },
-    { key: 'Tier', value: tier ? tier.split('.')[1] : '' },
+    { key: 'Tier', value: tier?.tagFQN ? tier.tagFQN.split('.')[1] : '' },
     ...getConfigDetails(),
   ];
 
@@ -297,7 +310,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
             {activeTab === 3 && (
               <div className="tw-mt-4">
                 <ManageTabComponent
-                  currentTier={tier}
+                  currentTier={tier?.tagFQN}
                   currentUser={owner?.id}
                   hasEditAccess={hasEditAccess()}
                   onSave={onSettingsUpdate}

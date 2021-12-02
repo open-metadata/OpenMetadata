@@ -1,19 +1,15 @@
 /*
-  * Licensed to the Apache Software Foundation (ASF) under one or more
-  * contributor license agreements. See the NOTICE file distributed with
-  * this work for additional information regarding copyright ownership.
-  * The ASF licenses this file to You under the Apache License, Version 2.0
-  * (the "License"); you may not use this file except in compliance with
-  * the License. You may obtain a copy of the License at
-
-  * http://www.apache.org/licenses/LICENSE-2.0
-
-  * Unless required by applicable law or agreed to in writing, software
-  * distributed under the License is distributed on an "AS IS" BASIS,
-  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-  * See the License for the specific language governing permissions and
-  * limitations under the License.
-*/
+ *  Copyright 2021 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
 
 import classNames from 'classnames';
 import { cloneDeep } from 'lodash';
@@ -28,7 +24,6 @@ import { useHistory, useLocation } from 'react-router-dom';
 import { Button } from '../../components/buttons/Button/Button';
 import ErrorPlaceHolderES from '../../components/common/error-with-placeholder/ErrorPlaceHolderES';
 import FacetFilter from '../../components/common/facetfilter/FacetFilter';
-import PageContainer from '../../components/containers/PageContainer';
 import DropDownList from '../../components/dropdown/DropDownList';
 import SearchedData from '../../components/searched-data/SearchedData';
 import {
@@ -57,6 +52,8 @@ import { getCountBadge } from '../../utils/CommonUtils';
 import { getFilterString } from '../../utils/FilterUtils';
 import { dropdownIcon as DropDownIcon } from '../../utils/svgconstant';
 import SVGIcons from '../../utils/SvgUtils';
+import PageContainerV1 from '../containers/PageContainerV1';
+import PageLayout from '../containers/PageLayout';
 import { ExploreProps } from './explore.interface';
 
 const Explore: React.FC<ExploreProps> = ({
@@ -129,6 +126,19 @@ const Explore: React.FC<ExploreProps> = ({
       filter.splice(index, 1);
       setFilters((prevState) => ({ ...prevState, [type]: filter }));
     }
+  };
+
+  const onSelectAllFilterHandler = (
+    type: keyof FilterObject,
+    filters: Array<string>
+  ) => {
+    setFilters((prevFilters) => {
+      return {
+        ...prevFilters,
+        ...getQueryParam(location.search),
+        [type]: filters,
+      };
+    });
   };
 
   const onClearFilterHandler = (type: keyof FilterObject) => {
@@ -335,18 +345,18 @@ const Explore: React.FC<ExploreProps> = ({
     });
   };
 
-  const getTabCount = (index: string) => {
+  const getTabCount = (index: string, className = '') => {
     switch (index) {
       case SearchIndex.TABLE:
-        return getCountBadge(tabCounts.table);
+        return getCountBadge(tabCounts.table, className);
       case SearchIndex.TOPIC:
-        return getCountBadge(tabCounts.topic);
+        return getCountBadge(tabCounts.topic, className);
       case SearchIndex.DASHBOARD:
-        return getCountBadge(tabCounts.dashboard);
+        return getCountBadge(tabCounts.dashboard, className);
       case SearchIndex.PIPELINE:
-        return getCountBadge(tabCounts.pipeline);
+        return getCountBadge(tabCounts.pipeline, className);
       case SearchIndex.DBT_MODEL:
-        return getCountBadge(tabCounts.dbtModel);
+        return getCountBadge(tabCounts.dbtModel, className);
       default:
         return getCountBadge();
     }
@@ -366,8 +376,8 @@ const Explore: React.FC<ExploreProps> = ({
   };
   const getTabs = () => {
     return (
-      <div className="tw-mb-3 tw--mt-4">
-        <nav className="tw-flex tw-flex-row tw-gh-tabs-container tw-px-4 tw-justify-between">
+      <div className="tw-mb-5">
+        <nav className="tw-flex tw-flex-row tw-gh-tabs-container tw-px-5 tw-pl-16 tw-mx-6 tw-justify-between">
           <div>
             {tabsInfo.map((tabDetail, index) => (
               <button
@@ -385,7 +395,16 @@ const Explore: React.FC<ExploreProps> = ({
                   icon={tabDetail.icon}
                 />
                 {tabDetail.label}
-                {getTabCount(tabDetail.index)}
+                {getTabCount(
+                  tabDetail.index,
+                  classNames(
+                    { 'tw-bg-tag': tabDetail.tab !== currentTab },
+                    {
+                      'tw-bg-primary tw-text-white tw-border-none':
+                        tabDetail.tab === currentTab,
+                    }
+                  )
+                )}
               </button>
             ))}
           </div>
@@ -482,6 +501,7 @@ const Explore: React.FC<ExploreProps> = ({
             aggregations={getAggrWithDefaultValue(aggregations, visibleFilters)}
             filters={getFacetedFilter()}
             onClearFilter={(value) => onClearFilterHandler(value)}
+            onSelectAllFilter={onSelectAllFilterHandler}
             onSelectHandler={handleSelectedFilter}
           />
         )}
@@ -490,9 +510,11 @@ const Explore: React.FC<ExploreProps> = ({
   };
 
   return (
-    <PageContainer leftPanelContent={Boolean(!error) && fetchLeftPanel()}>
-      <div className="container-fluid" data-testid="fluid-container">
-        {!connectionError && getTabs()}
+    <PageContainerV1>
+      {!connectionError && getTabs()}
+      <PageLayout
+        leftPanel={Boolean(!error) && fetchLeftPanel()}
+        rightPanel={Boolean(!error) && <></>}>
         {error ? (
           <ErrorPlaceHolderES errorMessage={error} type="error" />
         ) : (
@@ -508,8 +530,8 @@ const Explore: React.FC<ExploreProps> = ({
             totalValue={totalNumberOfValue}
           />
         )}
-      </div>
-    </PageContainer>
+      </PageLayout>
+    </PageContainerV1>
   );
 };
 

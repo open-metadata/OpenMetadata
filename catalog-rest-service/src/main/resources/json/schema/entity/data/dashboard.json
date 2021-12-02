@@ -79,6 +79,10 @@
       "description": "Link to service where this dashboard is hosted in.",
       "$ref" : "../../type/entityReference.json"
     },
+    "serviceType" : {
+      "description": "Service type where this dashboard is hosted in.",
+      "$ref" : "../services/dashboardService.json#/definitions/dashboardServiceType"
+    },
     "usageSummary" : {
       "description": "Latest usage information for this database.",
       "$ref": "../../type/usageDetails.json",

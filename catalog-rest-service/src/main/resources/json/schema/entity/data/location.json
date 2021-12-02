@@ -93,6 +93,10 @@
       "description": "Link to the database cluster/service where this database is hosted in.",
       "$ref" : "../../type/entityReference.json"
     },
+    "serviceType" : {
+      "description": "Service type where this storage location is hosted in.",
+      "$ref" : "../../type/storage.json#/definitions/storageServiceType"
+    },
     "changeDescription": {
       "description" : "Change that lead to this version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/changeDescription"

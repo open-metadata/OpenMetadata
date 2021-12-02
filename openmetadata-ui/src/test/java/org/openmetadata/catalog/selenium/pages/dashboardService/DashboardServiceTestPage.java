@@ -1,11 +1,8 @@
 /*
- *  Licensed to the Apache Software Foundation (ASF) under one or more
- *  contributor license agreements. See the NOTICE file distributed with
- *  this work for additional information regarding copyright ownership.
- *  The ASF licenses this file to You under the Apache License, Version 2.0
- *  (the "License"); you may not use this file except in compliance with
- *  the License. You may obtain a copy of the License at
- *
+ *  Copyright 2021 Collate 
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
  *  http://www.apache.org/licenses/LICENSE-2.0
  *  Unless required by applicable law or agreed to in writing, software
  *  distributed under the License is distributed on an "AS IS" BASIS,
@@ -17,6 +14,7 @@
 package org.openmetadata.catalog.selenium.pages.dashboardService;
 
 import com.github.javafaker.Faker;
+import io.github.artsok.RepeatedIfExceptionsTest;
 import org.openmetadata.catalog.selenium.events.Events;
 import org.openmetadata.catalog.selenium.properties.Property;
 import org.openqa.selenium.By;
@@ -27,7 +25,6 @@ import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.interactions.Actions;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Order;
@@ -62,7 +59,7 @@ public class DashboardServiceTestPage {
     webDriver.get(url);
   }
 
-  @Test
+  @RepeatedIfExceptionsTest(repeats = 2)
   @Order(1)
   public void openDashboardServicePage() throws InterruptedException {
     Events.click(webDriver, By.cssSelector("[data-testid='closeWhatsNew']")); // Close What's new
@@ -72,7 +69,7 @@ public class DashboardServiceTestPage {
     Thread.sleep(waitTime);
   }
 
-  @Test
+  @RepeatedIfExceptionsTest(repeats = 2)
   @Order(2)
   public void addDashboardService() throws InterruptedException {
     openDashboardServicePage();
@@ -102,7 +99,7 @@ public class DashboardServiceTestPage {
     Events.click(webDriver, By.cssSelector("[data-testid='save-button']"));
   }
 
-  @Test
+  @RepeatedIfExceptionsTest(repeats = 2)
   @Order(3)
   public void editDashboardService() throws InterruptedException {
     openDashboardServicePage();
@@ -117,7 +114,7 @@ public class DashboardServiceTestPage {
     Events.click(webDriver, By.cssSelector("[data-testid='save-button']"));
   }
 
-  @Test
+  @RepeatedIfExceptionsTest(repeats = 2)
   @Order(4)
   public void checkDashboardServiceDetails() throws InterruptedException {
     openDashboardServicePage();
@@ -134,7 +131,7 @@ public class DashboardServiceTestPage {
     Events.click(webDriver, By.cssSelector("[data-testid='save']"));
   }
 
-  @Test
+  @RepeatedIfExceptionsTest(repeats = 2)
   @Order(5)
   public void searchDashboardService() throws InterruptedException {
     openDashboardServicePage();
@@ -145,7 +142,7 @@ public class DashboardServiceTestPage {
     Events.click(webDriver, By.cssSelector("[data-testid='service-name']"));
   }
 
-  @Test
+  @RepeatedIfExceptionsTest(repeats = 2)
   @Order(6)
   public void deleteDashboardService() throws InterruptedException {
     openDashboardServicePage();

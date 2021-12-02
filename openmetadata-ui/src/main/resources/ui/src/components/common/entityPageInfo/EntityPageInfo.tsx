@@ -1,9 +1,23 @@
+/*
+ *  Copyright 2021 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
 import classNames from 'classnames';
 import { isNil, isUndefined } from 'lodash';
 import { EntityTags, TableDetail } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { FOLLOWERS_VIEW_CAP, LIST_SIZE } from '../../../constants/constants';
 import { User } from '../../../generated/entity/teams/user';
+import { TagLabel } from '../../../generated/type/tagLabel';
 import { getHtmlForNonAdminAction } from '../../../utils/CommonUtils';
 import SVGIcons from '../../../utils/SvgUtils';
 import { getFollowerDetail } from '../../../utils/TableUtils';
@@ -29,7 +43,7 @@ type Props = {
   isFollowing?: boolean;
   followers?: number;
   extraInfo: Array<ExtraInfo>;
-  tier: string;
+  tier: TagLabel;
   tags: Array<EntityTags>;
   isTagEditable?: boolean;
   tagList?: Array<string>;
@@ -73,13 +87,13 @@ const EntityPageInfo = ({
   };
 
   const getSelectedTags = () => {
-    return tier
+    return tier?.tagFQN
       ? [
           ...tags.map((tag) => ({
             tagFQN: tag.tagFQN,
             isRemovable: true,
           })),
-          { tagFQN: tier, isRemovable: false },
+          { tagFQN: tier.tagFQN, isRemovable: false },
         ]
       : [
           ...tags.map((tag) => ({
@@ -118,7 +132,7 @@ const EntityPageInfo = ({
             ))}
           </div>
         ) : (
-          <p>{entityName} dosen&#39;t have any followers yet</p>
+          <p>{entityName} doesn&#39;t have any followers yet</p>
         )}
         {list.length > FOLLOWERS_VIEW_CAP && (
           <p
@@ -297,8 +311,12 @@ const EntityPageInfo = ({
             {(tags.length > 0 || tier) && (
               <i className="fas fa-tags tw-px-1 tw-mt-2 tw-text-grey-muted" />
             )}
-            {tier && (
-              <Tags className="tw-bg-tag" tag={`#${tier.split('.')[1]}`} />
+            {tier?.tagFQN && (
+              <Tags
+                className="tw-bg-tag"
+                startWith="#"
+                tag={{ ...tier, tagFQN: tier.tagFQN.split('.')[1] }}
+              />
             )}
             {tags.length > 0 && (
               <>
@@ -306,7 +324,8 @@ const EntityPageInfo = ({
                   <Tags
                     className="tw-bg-tag"
                     key={index}
-                    tag={`#${tag.tagFQN}`}
+                    startWith="#"
+                    tag={tag}
                   />
                 ))}
 
@@ -318,7 +337,8 @@ const EntityPageInfo = ({
                           <Tags
                             className="tw-bg-tag tw-px-2"
                             key={index}
-                            tag={`#${tag.tagFQN}`}
+                            startWith="#"
+                            tag={tag}
                           />
                         ))}
                       </>
@@ -368,7 +388,8 @@ const EntityPageInfo = ({
                   <span className="">
                     <Tags
                       className="tw-border-main tw-text-primary"
-                      tag="+ Add tag"
+                      startWith="+ "
+                      tag="Add tag"
                       type="outlined"
                     />
                   </span>

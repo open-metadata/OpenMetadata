@@ -442,6 +442,14 @@
       "description": "Reference to Database that contains this table.",
       "$ref": "../../type/entityReference.json"
     },
+    "service": {
+      "description": "Link to Database service this table is hosted in.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "serviceType" : {
+      "description": "Service type this table is hosted in.",
+      "$ref" : "../services/databaseService.json#/definitions/databaseServiceType"
+    },
     "location": {
       "description": "Reference to the Location that contains this table.",
       "$ref": "../../type/entityReference.json"

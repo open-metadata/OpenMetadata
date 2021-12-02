@@ -83,6 +83,10 @@
       "description": "Link to the messaging cluster/service where this topic is hosted in.",
       "$ref": "../../type/entityReference.json"
     },
+    "serviceType" : {
+      "description": "Service type where this topic is hosted in.",
+      "$ref" : "../services/messagingService.json#/definitions/messagingServiceType"
+    },
     "partitions" : {
       "description" : "Number of partitions into which the topic is divided.",
       "type" : "integer",

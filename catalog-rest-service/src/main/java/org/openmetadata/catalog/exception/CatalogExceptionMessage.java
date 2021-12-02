@@ -1,11 +1,8 @@
 /*
- *  Licensed to the Apache Software Foundation (ASF) under one or more
- *  contributor license agreements. See the NOTICE file distributed with
- *  this work for additional information regarding copyright ownership.
- *  The ASF licenses this file to You under the Apache License, Version 2.0
- *  (the "License"); you may not use this file except in compliance with
- *  the License. You may obtain a copy of the License at
- *
+ *  Copyright 2021 Collate 
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
  *  http://www.apache.org/licenses/LICENSE-2.0
  *  Unless required by applicable law or agreed to in writing, software
  *  distributed under the License is distributed on an "AS IS" BASIS,
@@ -58,5 +55,9 @@ public final class CatalogExceptionMessage {
 
   public static String entityVersionNotFound(String entity, String id, Double version) {
     return String.format("%s instance for %s and version %s not found", StringUtils.capitalize(entity), id, version);
+  }
+
+  public static String invalidServiceEntity(String serviceEntity, String entity) {
+    return String.format("Invalid service entity type %s for %s", serviceEntity, entity);
   }
 }

@@ -1,11 +1,8 @@
 /*
- *  Licensed to the Apache Software Foundation (ASF) under one or more
- *  contributor license agreements. See the NOTICE file distributed with
- *  this work for additional information regarding copyright ownership.
- *  The ASF licenses this file to You under the Apache License, Version 2.0
- *  (the "License"); you may not use this file except in compliance with
- *  the License. You may obtain a copy of the License at
- *
+ *  Copyright 2021 Collate 
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
  *  http://www.apache.org/licenses/LICENSE-2.0
  *  Unless required by applicable law or agreed to in writing, software
  *  distributed under the License is distributed on an "AS IS" BASIS,
@@ -212,20 +209,7 @@ public class ChartResourceTest extends EntityResourceTest<Chart> {
             getChart(chart.getId(), fields, adminAuthHeaders());
     assertNotNull(chart.getOwner());
     assertNotNull(chart.getService()); // We always return the service
-
-    // .../charts?fields=owner,service
-    fields = "owner,service";
-    chart = byName ? getChartByName(chart.getFullyQualifiedName(), fields, adminAuthHeaders()) :
-            getChart(chart.getId(), fields, adminAuthHeaders());
-    assertNotNull(chart.getOwner());
-    assertNotNull(chart.getService());
-
-    // .../charts?fields=owner,service
-    fields = "owner,service";
-    chart = byName ? getChartByName(chart.getFullyQualifiedName(), fields, adminAuthHeaders()) :
-            getChart(chart.getId(), fields, adminAuthHeaders());
-    assertNotNull(chart.getOwner());
-    assertNotNull(chart.getService());
+    assertNotNull(chart.getServiceType()); // We always return the service
   }
 
   public static void getChart(UUID id, Map<String, String> authHeaders) throws HttpResponseException {
@@ -275,6 +259,7 @@ public class ChartResourceTest extends EntityResourceTest<Chart> {
     CreateChart createRequest = (CreateChart) request;
     validateCommonEntityFields(getEntityInterface(chart), createRequest.getDescription(),
             TestUtils.getPrincipal(authHeaders), createRequest.getOwner());
+    assertNotNull(chart.getServiceType());
     assertService(createRequest.getService(), chart.getService());
   }
 

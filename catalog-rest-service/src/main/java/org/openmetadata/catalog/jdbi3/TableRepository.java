@@ -1,11 +1,8 @@
 /*
- *  Licensed to the Apache Software Foundation (ASF) under one or more
- *  contributor license agreements. See the NOTICE file distributed with
- *  this work for additional information regarding copyright ownership.
- *  The ASF licenses this file to You under the Apache License, Version 2.0
- *  (the "License"); you may not use this file except in compliance with
- *  the License. You may obtain a copy of the License at
- *
+ *  Copyright 2021 Collate 
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
  *  http://www.apache.org/licenses/LICENSE-2.0
  *  Unless required by applicable law or agreed to in writing, software
  *  distributed under the License is distributed on an "AS IS" BASIS,
@@ -21,8 +18,10 @@ import org.apache.commons.codec.binary.Hex;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Table;
+import org.openmetadata.catalog.entity.services.DatabaseService;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
+import org.openmetadata.catalog.jdbi3.DatabaseServiceRepository.DatabaseServiceEntityInterface;
 import org.openmetadata.catalog.resources.databases.TableResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.Column;
@@ -89,12 +88,13 @@ public class TableRepository extends EntityRepository<Table> {
   @Override
   public Table setFields(Table table, Fields fields) throws IOException, ParseException {
     table.setColumns(table.getColumns());
+    table.setDatabase(getDatabase(table.getId()));
+    table.setService(getService(table));
     table.setTableConstraints(fields.contains("tableConstraints") ? table.getTableConstraints() : null);
     table.setOwner(fields.contains("owner") ? getOwner(table) : null);
     table.setFollowers(fields.contains("followers") ? getFollowers(table) : null);
     table.setUsageSummary(fields.contains("usageSummary") ? EntityUtil.getLatestUsage(dao.usageDAO(), table.getId()) :
             null);
-    table.setDatabase(fields.contains("database") ? getDatabase(table.getId()) : null);
     table.setTags(fields.contains("tags") ? getTags(table.getFullyQualifiedName()) : null);
     getColumnTags(fields.contains("tags"), table.getColumns());
     table.setJoins(fields.contains("joins") ? getJoins(table) : null);
@@ -262,6 +262,7 @@ public class TableRepository extends EntityRepository<Table> {
   @Override
   public void prepare(Table table) throws IOException {
     table.setDatabase(dao.databaseDAO().findEntityReferenceById(table.getDatabase().getId()));
+    populateService(table);
 
     // Set data in table entity based on database relationship
     table.setFullyQualifiedName(getFQN(table));
@@ -277,15 +278,41 @@ public class TableRepository extends EntityRepository<Table> {
     addDerivedTags(table.getColumns());
   }
 
+  private DatabaseService getService(UUID serviceId, String entityType) throws IOException {
+    if (entityType.equalsIgnoreCase(Entity.DATABASE_SERVICE)) {
+      return dao.dbServiceDAO().findEntityById(serviceId);
+    }
+    throw new IllegalArgumentException(CatalogExceptionMessage.invalidServiceEntity(entityType, Entity.TABLE));
+  }
+
+  private EntityReference getService(Table table) throws IOException {
+    EntityReference ref = EntityUtil.getService(dao.relationshipDAO(), table.getDatabase().getId(),
+            Entity.DATABASE_SERVICE);
+    DatabaseService service = getService(ref.getId(), ref.getType());
+    ref.setName(service.getName());
+    ref.setDescription(service.getDescription());
+    return ref;
+  }
+
+  private void populateService(Table table) throws IOException {
+    // Find database service from the database that table is contained in
+    String serviceId = dao.relationshipDAO().findFrom(table.getDatabase().getId().toString(),
+            Relationship.CONTAINS.ordinal(), Entity.DATABASE_SERVICE).get(0);
+    DatabaseService service = dao.dbServiceDAO().findEntityById(UUID.fromString(serviceId));
+    table.setService(new DatabaseServiceEntityInterface(service).getEntityReference());
+    table.setServiceType(service.getServiceType());
+  }
+
   @Override
   public void storeEntity(Table table, boolean update) throws IOException {
     // Relationships and fields such as href are derived and not stored as part of json
     EntityReference owner = table.getOwner();
     EntityReference database = table.getDatabase();
     List<TagLabel> tags = table.getTags();
+    EntityReference service = table.getService();
 
     // Don't store owner, database, href and tags as JSON. Build it on the fly based on relationships
-    table.withOwner(null).withDatabase(null).withHref(null).withTags(null);
+    table.withOwner(null).withDatabase(null).withHref(null).withTags(null).withService(null);
 
     // Don't store column tags as JSON but build it on the fly based on relationships
     List<Column> columnWithTags = table.getColumns();
@@ -299,8 +326,7 @@ public class TableRepository extends EntityRepository<Table> {
     }
 
     // Restore the relationships
-    table.withOwner(owner).withDatabase(database).withTags(tags);
-    table.setColumns(columnWithTags);
+    table.withOwner(owner).withDatabase(database).withTags(tags).withColumns(columnWithTags).withService(service);
   }
 
   @Override

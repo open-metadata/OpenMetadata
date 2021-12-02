@@ -1,26 +1,23 @@
 /*
-  * Licensed to the Apache Software Foundation (ASF) under one or more
-  * contributor license agreements. See the NOTICE file distributed with
-  * this work for additional information regarding copyright ownership.
-  * The ASF licenses this file to You under the Apache License, Version 2.0
-  * (the "License"); you may not use this file except in compliance with
-  * the License. You may obtain a copy of the License at
+ *  Copyright 2021 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
 
-  * http://www.apache.org/licenses/LICENSE-2.0
-
-  * Unless required by applicable law or agreed to in writing, software
-  * distributed under the License is distributed on an "AS IS" BASIS,
-  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-  * See the License for the specific language governing permissions and
-  * limitations under the License.
-*/
-
-import { startCase, uniqueId } from 'lodash';
+import { isString, isUndefined, startCase, uniqueId } from 'lodash';
 import React, { FunctionComponent } from 'react';
 import { useHistory, useLocation } from 'react-router-dom';
 import AppState from '../../../AppState';
 import { ROUTES } from '../../../constants/constants';
 import { SearchIndex } from '../../../enums/search.enum';
+import { TagLabel } from '../../../generated/type/tagLabel';
 import { stringToHTML } from '../../../utils/StringsUtils';
 import {
   getEntityIcon,
@@ -34,12 +31,12 @@ type Props = {
   owner?: string;
   description?: string;
   tableType?: string;
-  tier?: string;
   id?: string;
+  tier?: string | TagLabel;
   usage?: number;
   serviceType?: string;
   fullyQualifiedName: string;
-  tags?: string[];
+  tags?: string[] | TagLabel[];
   indexType: string;
   matches?: {
     key: string;
@@ -62,23 +59,34 @@ const TableDataCard: FunctionComponent<Props> = ({
 }: Props) => {
   const location = useLocation();
   const history = useHistory();
+  const getTier = () => {
+    if (tier) {
+      return isString(tier) ? tier : tier.tagFQN.split('.')[1];
+    }
+
+    return 'No Tier';
+  };
+
   const OtherDetails = [
     { key: 'Owner', value: owner },
     { key: 'Service', value: serviceType },
-    {
+    { key: 'Tier', value: getTier() },
+  ];
+  if (indexType !== SearchIndex.DASHBOARD && usage !== undefined) {
+    OtherDetails.push({
       key: 'Usage',
       value:
         indexType !== SearchIndex.DASHBOARD && usage !== undefined
           ? getUsagePercentile(usage)
           : undefined,
-    },
-    { key: 'Tier', value: tier ? tier : 'No Tier' },
-  ];
-
+    });
+  }
   const getAssetTags = () => {
-    const assetTags = [...(tags as Array<string>)];
-    if (tier) {
-      assetTags.filter((tag) => !tag.includes(tier)).unshift(tier);
+    const assetTags = [...(tags as Array<TagLabel>)];
+    if (tier && !isUndefined(tier)) {
+      assetTags
+        // .filter((tag) => !tag.tagFQN.includes((tier as TagLabel).tagFQN))
+        .unshift(tier as TagLabel);
     }
 
     return [...new Set(assetTags)];
@@ -117,7 +125,7 @@ const TableDataCard: FunctionComponent<Props> = ({
           </h6>
         </div>
       </div>
-      <div className="tw-pt-2">
+      <div className="tw-pt-3">
         <TableDataCardBody
           description={description || ''}
           extraInfo={OtherDetails}

@@ -1,19 +1,15 @@
 /*
-  * Licensed to the Apache Software Foundation (ASF) under one or more
-  * contributor license agreements. See the NOTICE file distributed with
-  * this work for additional information regarding copyright ownership.
-  * The ASF licenses this file to You under the Apache License, Version 2.0
-  * (the "License"); you may not use this file except in compliance with
-  * the License. You may obtain a copy of the License at
-
-  * http://www.apache.org/licenses/LICENSE-2.0
-
-  * Unless required by applicable law or agreed to in writing, software
-  * distributed under the License is distributed on an "AS IS" BASIS,
-  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-  * See the License for the specific language governing permissions and
-  * limitations under the License.
-*/
+ *  Copyright 2021 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
 
 import { AxiosResponse } from 'axios';
 import { compare } from 'fast-json-patch';
@@ -51,6 +47,7 @@ import {
 } from '../../generated/entity/data/table';
 import { User } from '../../generated/entity/teams/user';
 import { EntityLineage } from '../../generated/type/entityLineage';
+import { TagLabel } from '../../generated/type/tagLabel';
 import {
   addToRecentViewed,
   getCurrentUserId,
@@ -62,7 +59,7 @@ import {
 } from '../../utils/DatasetDetailsUtils';
 import { getEntityLineage } from '../../utils/EntityUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
-import { getOwnerFromId, getTierFromTableTags } from '../../utils/TableUtils';
+import { getOwnerFromId, getTierTags } from '../../utils/TableUtils';
 import { getTableTags } from '../../utils/TagsUtils';
 
 const DatasetDetailsPage: FunctionComponent = () => {
@@ -71,7 +68,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
   const [isLineageLoading, setIsLineageLoading] = useState<boolean>(true);
   const USERId = getCurrentUserId();
   const [tableId, setTableId] = useState('');
-  const [tier, setTier] = useState<string>();
+  const [tier, setTier] = useState<TagLabel>();
   const [name, setName] = useState('');
   const [followers, setFollowers] = useState<Array<User>>([]);
   const [slashedTableName, setSlashedTableName] = useState<
@@ -171,7 +168,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
           setPreviousVersion(changeDescription.previousVersion);
           setTableDetails(res.data);
           setOwner(getOwnerFromId(owner?.id));
-          setTier(getTierFromTableTags(tags));
+          setTier(getTierTags(tags));
           resolve();
         })
         .catch(() => reject());
@@ -253,7 +250,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
         setTableId(id);
         setCurrentVersion(version);
         setPreviousVersion(changeDescription?.previousVersion);
-        setTier(getTierFromTableTags(tags));
+        setTier(getTierTags(tags));
         setOwner(getOwnerFromId(owner?.id));
         setFollowers(followers);
         getDatabase(database.id, 'service').then((resDB: AxiosResponse) => {
@@ -345,7 +342,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
           tableDetails={tableDetails}
           tableProfile={tableProfile}
           tableTags={tableTags}
-          tier={tier as string}
+          tier={tier as TagLabel}
           unfollowTableHandler={unfollowTable}
           usageSummary={usageSummary}
           users={AppState.users}

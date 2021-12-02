@@ -1,3 +1,16 @@
+/*
+ *  Copyright 2021 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
 import { AxiosResponse } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
 import { observer } from 'mobx-react';
@@ -35,6 +48,7 @@ import {
 } from '../../generated/entity/data/pipeline';
 import { User } from '../../generated/entity/teams/user';
 import { EntityLineage } from '../../generated/type/entityLineage';
+import { TagLabel } from '../../generated/type/tagLabel';
 import { addToRecentViewed, getCurrentUserId } from '../../utils/CommonUtils';
 import { getEntityLineage } from '../../utils/EntityUtils';
 import {
@@ -45,7 +59,7 @@ import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import {
   getOwnerFromId,
   getTagsWithoutTier,
-  getTierFromTableTags,
+  getTierTags,
 } from '../../utils/TableUtils';
 import { getTagCategories, getTaglist } from '../../utils/TagsUtils';
 
@@ -64,7 +78,7 @@ const PipelineDetailsPage = () => {
   const [description, setDescription] = useState<string>('');
   const [followers, setFollowers] = useState<Array<User>>([]);
   const [owner, setOwner] = useState<TableDetail['owner']>();
-  const [tier, setTier] = useState<string>();
+  const [tier, setTier] = useState<TagLabel>();
   const [tags, setTags] = useState<Array<EntityTags>>([]);
   const [activeTab, setActiveTab] = useState<number>(
     getCurrentPipelineTab(tab)
@@ -153,7 +167,7 @@ const PipelineDetailsPage = () => {
         setDescription(description ?? '');
         setFollowers(followers);
         setOwner(getOwnerFromId(owner?.id));
-        setTier(getTierFromTableTags(tags));
+        setTier(getTierTags(tags));
         setTags(getTagsWithoutTier(tags));
         getServiceById('pipelineServices', service?.id).then(
           (serviceRes: AxiosResponse) => {
@@ -224,7 +238,7 @@ const PipelineDetailsPage = () => {
         .then((res) => {
           setPipelineDetails(res.data);
           setOwner(getOwnerFromId(res.data.owner?.id));
-          setTier(getTierFromTableTags(res.data.tags));
+          setTier(getTierTags(res.data.tags));
           resolve();
         })
         .catch(() => reject());
@@ -233,7 +247,7 @@ const PipelineDetailsPage = () => {
 
   const onTagUpdate = (updatedPipeline: Pipeline) => {
     saveUpdatedPipelineData(updatedPipeline).then((res: AxiosResponse) => {
-      setTier(getTierFromTableTags(res.data.tags));
+      setTier(getTierTags(res.data.tags));
       setTags(getTagsWithoutTier(res.data.tags));
     });
   };
@@ -314,7 +328,7 @@ const PipelineDetailsPage = () => {
           tagUpdateHandler={onTagUpdate}
           tasks={tasks}
           taskUpdateHandler={onTaskUpdate}
-          tier={tier as string}
+          tier={tier as TagLabel}
           unfollowPipelineHandler={unfollowPipeline}
           users={AppState.users}
         />
