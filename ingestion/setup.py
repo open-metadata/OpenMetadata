@@ -59,7 +59,6 @@ base_requirements = {
     "PyYAML",
 }
 pii_requirements = {
-    "en_core_web_sm@https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.0.0/en_core_web_sm-3.0.0.tar.gz#egg=en_core_web",
     "spacy==3.0.5",
 }
 
@@ -78,7 +77,7 @@ base_plugins = {
 }
 plugins: Dict[str, Set[str]] = {
     "athena": {"PyAthena[SQLAlchemy]"},
-    "bigquery": {"openmetadata-sqlalchemy-bigquery==0.2.0"},
+    "bigquery": {"openmetadata-sqlalchemy-bigquery==0.2.2"},
     "bigquery-usage": {"google-cloud-logging", "cachetools"},
     "docker": {"docker==5.0.3"},
     "dbt": {},
@@ -126,7 +125,7 @@ plugins: Dict[str, Set[str]] = {
 build_options = {"includes": ["_cffi_backend"]}
 setup(
     name="openmetadata-ingestion",
-    version="0.4.4",
+    version="0.4.8",
     url="https://open-metadata.org/",
     author="OpenMetadata Committers",
     license="Apache License 2.0",
