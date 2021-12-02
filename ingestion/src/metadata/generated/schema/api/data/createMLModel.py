@@ -12,7 +12,7 @@ from ...entity.data import mlmodel
 from ...type import entityReference, tagLabel
 
 
-class CreateMlModelEntityRequest(BaseModel):
+class CreateMLModelEntityRequest(BaseModel):
     name: constr(min_length=1, max_length=64) = Field(
         ..., description='Name that identifies this ML model.'
     )
