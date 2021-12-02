@@ -40,7 +40,7 @@ generate:
 
 run_ometa_integration_tests:
 	cd ingestion; \
-	pytest -c setup.cfg --override-ini=testpaths=tests/integration/ometa
+	pytest -c setup.cfg --override-ini=testpaths="tests/integration/ometa tests/unit/stage_test.py"
 
 publish:
 	make install_dev generate

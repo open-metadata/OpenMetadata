@@ -6,6 +6,7 @@ To be used by OpenMetadata class
 import logging
 from typing import List
 
+from metadata.generated.schema.entity.data.location import Location
 from metadata.generated.schema.entity.data.table import (
     Table,
     TableData,
@@ -26,6 +27,18 @@ class OMetaTableMixin:
     """
 
     client: REST
+
+    def add_location(self, table: Table, location: Location) -> None:
+        """
+        PUT location for a table
+
+        :param table: Table Entity to update
+        :param location: Location Entity to add
+        """
+        resp = self.client.put(
+            f"{self.get_suffix(Table)}/{table.id.__root__}/location",
+            data=str(location.id.__root__),
+        )
 
     def ingest_table_sample_data(
         self, table: Table, sample_data: TableData

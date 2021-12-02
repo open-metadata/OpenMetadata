@@ -24,10 +24,14 @@ from metadata.generated.schema.api.services.createMessagingService import (
 from metadata.generated.schema.api.services.createPipelineService import (
     CreatePipelineServiceEntityRequest,
 )
+from metadata.generated.schema.api.services.createStorageService import (
+    CreateStorageServiceEntityRequest,
+)
 from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.messagingService import MessagingService
 from metadata.generated.schema.entity.services.pipelineService import PipelineService
+from metadata.generated.schema.entity.services.storageService import StorageService
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 
@@ -130,6 +134,30 @@ def get_pipeline_service_or_create(service_json, metadata_config) -> PipelineSer
             CreatePipelineServiceEntityRequest(**service_json)
         )
         return created_service
+
+
+def get_storage_service_or_create(service_json, metadata_config) -> StorageService:
+    metadata = OpenMetadata(metadata_config)
+    service = metadata.get_by_name(entity=StorageService, fqdn=service_json["name"])
+    if service is not None:
+        return service
+    else:
+        created_service = metadata.create_or_update(
+            CreateStorageServiceEntityRequest(**service_json)
+        )
+        return created_service
+
+
+def get_database_service_or_create_v2(service_json, metadata_config) -> DatabaseService:
+    metadata = OpenMetadata(metadata_config)
+    service = metadata.get_by_name(entity=DatabaseService, fqdn=service_json["name"])
+    if service is not None:
+        return service
+    else:
+        created_service = metadata.create_or_update(
+            CreateDatabaseServiceEntityRequest(**service_json)
+        )
+    return created_service
 
 
 def convert_epoch_to_iso(seconds_since_epoch):

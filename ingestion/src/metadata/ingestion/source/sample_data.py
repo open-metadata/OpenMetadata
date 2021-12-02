@@ -13,7 +13,6 @@ import csv
 import json
 import logging
 import os
-import random
 import uuid
 from collections import namedtuple
 from dataclasses import dataclass, field
@@ -25,8 +24,8 @@ from pydantic import ValidationError
 from metadata.config.common import ConfigModel
 from metadata.generated.schema.api.data.createTopic import CreateTopicEntityRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineage
-from metadata.generated.schema.api.teams.createUser import CreateUserEntityRequest
 from metadata.generated.schema.entity.data.database import Database
+from metadata.generated.schema.entity.data.location import Location, LocationType
 from metadata.generated.schema.entity.data.mlmodel import MlModel
 from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.data.table import Table
@@ -36,7 +35,9 @@ from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.common import Record
 from metadata.ingestion.api.source import Source, SourceStatus
-from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
+from metadata.ingestion.models.ometa_table_db import (
+    OMetaDatabaseAndTable,
+)
 from metadata.ingestion.models.table_metadata import Chart, Dashboard
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
@@ -45,6 +46,8 @@ from metadata.utils.helpers import (
     get_database_service_or_create,
     get_messaging_service_or_create,
     get_pipeline_service_or_create,
+    get_storage_service_or_create,
+    get_database_service_or_create_v2,
 )
 
 logger: logging.Logger = logging.getLogger(__name__)
@@ -221,6 +224,36 @@ class SampleDataSource(Source):
         self.config = config
         self.metadata_config = metadata_config
         self.metadata = OpenMetadata(metadata_config)
+        self.storage_service_json = json.load(
+            open(self.config.sample_data_folder + "/locations/service.json", "r")
+        )
+        self.locations = json.load(
+            open(self.config.sample_data_folder + "/locations/locations.json", "r")
+        )
+        self.storage_service = get_storage_service_or_create(
+            self.storage_service_json,
+            metadata_config,
+        )
+        self.glue_storage_service_json = json.load(
+            open(self.config.sample_data_folder + "/glue/storage_service.json", "r")
+        )
+        self.glue_database_service_json = json.load(
+            open(self.config.sample_data_folder + "/glue/database_service.json", "r")
+        )
+        self.glue_database = json.load(
+            open(self.config.sample_data_folder + "/glue/database.json", "r")
+        )
+        self.glue_tables = json.load(
+            open(self.config.sample_data_folder + "/glue/tables.json", "r")
+        )
+        self.glue_database_service = get_database_service_or_create_v2(
+            self.glue_database_service_json,
+            metadata_config,
+        )
+        self.glue_storage_service = get_storage_service_or_create(
+            self.glue_storage_service_json,
+            metadata_config,
+        )
         self.database_service_json = json.load(
             open(self.config.sample_data_folder + "/datasets/service.json", "r")
         )
@@ -293,6 +326,8 @@ class SampleDataSource(Source):
         pass
 
     def next_record(self) -> Iterable[Record]:
+        yield from self.ingest_locations()
+        yield from self.ingest_glue()
         yield from self.ingest_tables()
         yield from self.ingest_topics()
         yield from self.ingest_charts()
@@ -301,6 +336,52 @@ class SampleDataSource(Source):
         yield from self.ingest_lineage()
         yield from self.ingest_users()
         yield from self.ingest_mlmodels()
+
+    def ingest_locations(self) -> Iterable[Location]:
+        for location in self.locations["locations"]:
+            location_ev = Location(
+                id=uuid.uuid4(),
+                name=location["name"],
+                displayName=location["displayName"],
+                description=location["description"],
+                locationType=location["locationType"],
+                service=EntityReference(
+                    id=self.storage_service.id, type="storageService"
+                ),
+            )
+            yield location_ev
+
+    def ingest_glue(self) -> Iterable[OMetaDatabaseAndTable]:
+        db = Database(
+            id=uuid.uuid4(),
+            name=self.glue_database["name"],
+            description=self.glue_database["description"],
+            service=EntityReference(
+                id=self.glue_database_service.id,
+                type=self.glue_database_service.serviceType.value,
+            ),
+        )
+        for table in self.glue_tables["tables"]:
+            if not table.get("sampleData"):
+                table["sampleData"] = GenerateFakeSampleData.check_columns(
+                    table["columns"]
+                )
+                table["id"] = uuid.uuid4()
+            table_metadata = Table(**table)
+            location_metadata = Location(
+                id=uuid.uuid4(),
+                name="s3://glue_bucket/dwh/schema/" + table["name"],
+                description=table["description"],
+                locationType=LocationType.Table,
+                service=EntityReference(
+                    id=self.glue_storage_service.id, type="storageService"
+                ),
+            )
+            db_table_location = OMetaDatabaseAndTable(
+                database=db, table=table_metadata, location=location_metadata
+            )
+            self.status.scanned("table", table_metadata.name.__root__)
+            yield db_table_location
 
     def ingest_tables(self) -> Iterable[OMetaDatabaseAndTable]:
         db = Database(
