@@ -45,6 +45,7 @@ logs
 .idea/tasks.xml
 .idea/libraries/
 .idea/modules.xml
+.idea/dataSources.xml
 
 # Package Files
 *.jar
