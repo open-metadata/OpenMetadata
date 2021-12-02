@@ -15,6 +15,7 @@ package org.openmetadata.catalog.jdbi3;
 
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
+import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.operations.workflows.Ingestion;
 import org.openmetadata.catalog.resources.operations.IngestionResource;
@@ -165,9 +166,9 @@ public class IngestionRepository extends EntityRepository<Ingestion> {
       return dao.dbServiceDAO().findEntityReferenceById(service.getId());
     } else if (service.getType().equalsIgnoreCase(Entity.DASHBOARD_SERVICE)) {
       return dao.dashboardServiceDAO().findEntityReferenceById(service.getId());
-    } else {
-      throw new IllegalArgumentException(String.format("Invalid service type %s for the ingestion", service.getType()));
     }
+    throw new IllegalArgumentException(CatalogExceptionMessage.invalidServiceEntity(service.getType(),
+            Entity.INGESTION));
   }
 
   public static class IngestionEntityInterface implements EntityInterface<Ingestion> {

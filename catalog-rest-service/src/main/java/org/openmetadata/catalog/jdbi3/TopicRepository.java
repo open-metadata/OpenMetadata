@@ -17,7 +17,9 @@ import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Topic;
 import org.openmetadata.catalog.entity.services.MessagingService;
+import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
+import org.openmetadata.catalog.jdbi3.MessagingServiceRepository.MessagingServiceEntityInterface;
 import org.openmetadata.catalog.resources.topics.TopicResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
@@ -32,7 +34,6 @@ import java.net.URI;
 import java.text.ParseException;
 import java.util.Date;
 import java.util.List;
-import java.util.Objects;
 import java.util.UUID;
 
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
@@ -70,8 +71,9 @@ public class TopicRepository extends EntityRepository<Topic> {
 
   @Override
   public void prepare(Topic topic) throws IOException {
-    EntityReference messagingService = getService(topic.getService());
-    topic.setService(messagingService);
+    MessagingService messagingService = getService(topic.getService().getId(), topic.getService().getType());
+    topic.setService(new MessagingServiceEntityInterface(messagingService).getEntityReference());
+    topic.setServiceType(messagingService.getServiceType());
     topic.setFullyQualifiedName(getFQN(topic));
     EntityUtil.populateOwner(dao.userDAO(), dao.teamDAO(), topic.getOwner()); // Validate owner
     topic.setTags(EntityUtil.addDerivedTags(dao.tagDAO(), topic.getTags()));
@@ -117,7 +119,6 @@ public class TopicRepository extends EntityRepository<Topic> {
 
   private void setOwner(Topic topic, EntityReference owner) {
     EntityUtil.setOwner(dao.relationshipDAO(), topic.getId(), Entity.TOPIC, owner);
-    topic.setOwner(owner);
   }
 
   @Override
@@ -148,24 +149,23 @@ public class TopicRepository extends EntityRepository<Topic> {
   }
 
   private EntityReference getService(Topic topic) throws IOException {
-    return topic == null ? null : getService(Objects.requireNonNull(EntityUtil.getService(dao.relationshipDAO(),
-            topic.getId())));
+    if (topic == null) {
+      return null;
+    }
+    // Find service by topic Id
+    EntityReference service = EntityUtil.getService(dao.relationshipDAO(), topic.getId());
+    return new MessagingServiceEntityInterface(getService(service.getId(), service.getType())).getEntityReference();
   }
 
-  private EntityReference getService(EntityReference service) throws IOException {
-    if (service.getType().equalsIgnoreCase(Entity.MESSAGING_SERVICE)) {
-      MessagingService serviceInstance = dao.messagingServiceDAO().findEntityById(service.getId());
-      service.setDescription(serviceInstance.getDescription());
-      service.setName(serviceInstance.getName());
-    } else {
-      throw new IllegalArgumentException(String.format("Invalid service type %s for the topic", service.getType()));
+  private MessagingService getService(UUID serviceId, String entityType) throws IOException {
+    if (entityType.equalsIgnoreCase(Entity.MESSAGING_SERVICE)) {
+      return dao.messagingServiceDAO().findEntityById(serviceId);
     }
-    return service;
+    throw new IllegalArgumentException(CatalogExceptionMessage.invalidServiceEntity(entityType, Entity.TOPIC));
   }
 
   public void setService(Topic topic, EntityReference service) throws IOException {
     if (service != null && topic != null) {
-      getService(service); // Populate service details
       dao.relationshipDAO().insert(service.getId().toString(), topic.getId().toString(), service.getType(),
               Entity.TOPIC, Relationship.CONTAINS.ordinal());
       topic.setService(service);

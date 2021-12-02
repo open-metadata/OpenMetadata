@@ -17,6 +17,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Location;
+import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.resources.locations.LocationResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
@@ -207,10 +208,9 @@ public class LocationRepository extends EntityRepository<Location> {
   private EntityReference getService(EntityReference service) throws IOException {
     if (service.getType().equalsIgnoreCase(Entity.STORAGE_SERVICE)) {
       return dao.storageServiceDAO().findEntityReferenceById(service.getId());
-    } else {
-      throw new IllegalArgumentException(String.format("Invalid service type %s for the location",
-              service.getType()));
     }
+    throw new IllegalArgumentException(CatalogExceptionMessage.invalidServiceEntity(service.getType(),
+            Entity.LOCATION));
   }
 
   public void setService(Location location, EntityReference service) throws IOException {

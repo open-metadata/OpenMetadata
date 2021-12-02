@@ -93,6 +93,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline> {
     validateCommonEntityFields(getEntityInterface(pipeline), createRequest.getDescription(),
             TestUtils.getPrincipal(authHeaders), createRequest.getOwner());
     assertEquals(createRequest.getDisplayName(), pipeline.getDisplayName());
+    assertNotNull(pipeline.getServiceType());
     assertService(createRequest.getService(), pipeline.getService());
     assertEquals(createRequest.getTasks(), pipeline.getTasks());
     TestUtils.validateTags(createRequest.getTags(), pipeline.getTags());
@@ -339,14 +340,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline> {
             getPipeline(pipeline.getId(), fields, adminAuthHeaders());
     assertNotNull(pipeline.getOwner());
     assertNotNull(pipeline.getService()); // We always return the service
-    assertNull(pipeline.getTasks());
-
-    // .../Pipelines?fields=owner,service
-    fields = "owner,service";
-    pipeline = byName ? getPipelineByName(pipeline.getFullyQualifiedName(), fields, adminAuthHeaders()) :
-            getPipeline(pipeline.getId(), fields, adminAuthHeaders());
-    assertNotNull(pipeline.getOwner());
-    assertNotNull(pipeline.getService());
+    assertNotNull(pipeline.getServiceType());
     assertNull(pipeline.getTasks());
 
     // .../Pipelines?fields=owner,service,tables
@@ -354,7 +348,8 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline> {
     pipeline = byName ? getPipelineByName(pipeline.getFullyQualifiedName(), fields, adminAuthHeaders()) :
             getPipeline(pipeline.getId(), fields, adminAuthHeaders());
     assertNotNull(pipeline.getOwner());
-    assertNotNull(pipeline.getService());
+    assertNotNull(pipeline.getService()); // We always return the service
+    assertNotNull(pipeline.getServiceType());
     assertNotNull(pipeline.getTasks());
   }
 

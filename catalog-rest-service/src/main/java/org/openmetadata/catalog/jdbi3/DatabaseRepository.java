@@ -16,7 +16,10 @@ package org.openmetadata.catalog.jdbi3;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Database;
+import org.openmetadata.catalog.entity.services.DatabaseService;
+import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
+import org.openmetadata.catalog.jdbi3.DatabaseServiceRepository.DatabaseServiceEntityInterface;
 import org.openmetadata.catalog.resources.databases.DatabaseResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
@@ -33,7 +36,6 @@ import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
-import java.util.Objects;
 import java.util.UUID;
 
 import static javax.ws.rs.core.Response.Status.CREATED;
@@ -73,7 +75,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
 
   @Override
   public void prepare(Database database) throws IOException {
-    database.setService(getService(database.getService()));
+    populateService(database);
     database.setFullyQualifiedName(getFQN(database));
     database.setOwner(EntityUtil.populateOwner(dao.userDAO(), dao.teamDAO(), database.getOwner())); // Validate owner
   }
@@ -160,15 +162,23 @@ public class DatabaseRepository extends EntityRepository<Database> {
 
   private EntityReference getService(Database database) throws IOException {
     EntityReference ref =  EntityUtil.getService(dao.relationshipDAO(), database.getId(), Entity.DATABASE_SERVICE);
-    return getService(Objects.requireNonNull(ref));
+    DatabaseService service = getService(ref.getId(), ref.getType());
+    ref.setName(service.getName());
+    ref.setDescription(service.getDescription());
+    return ref;
   }
 
-  private EntityReference getService(EntityReference service) throws IOException {
-    if (service.getType().equalsIgnoreCase(Entity.DATABASE_SERVICE)) {
-      return dao.dbServiceDAO().findEntityReferenceById(service.getId());
-    } else {
-      throw new IllegalArgumentException(String.format("Invalid service type %s for the database", service.getType()));
+  private void populateService(Database database) throws IOException {
+    DatabaseService service = getService(database.getService().getId(), database.getService().getType());
+    database.setService(new DatabaseServiceEntityInterface(service).getEntityReference());
+    database.setServiceType(service.getServiceType());
+  }
+
+  private DatabaseService getService(UUID serviceId, String entityType) throws IOException {
+    if (entityType.equalsIgnoreCase(Entity.DATABASE_SERVICE)) {
+      return dao.dbServiceDAO().findEntityById(serviceId);
     }
+    throw new IllegalArgumentException(CatalogExceptionMessage.invalidServiceEntity(entityType, Entity.DATABASE));
   }
 
   @Transaction

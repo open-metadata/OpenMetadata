@@ -1084,16 +1084,15 @@ public class TableResourceTest extends EntityResourceTest<Table> {
     } else {
       assertNull(table.getTableConstraints());
     }
-    if (fields.contains("database")) {
-      assertNotNull(table.getDatabase());
-    } else {
-      assertNull(table.getDatabase());
-    }
     if (fields.contains("tags")) {
       assertNotNull(table.getTags());
     } else {
       assertNull(table.getTags());
     }
+    // Default fields that are always returned
+    assertNotNull(table.getDatabase());
+    assertNotNull(table.getService());
+    assertNotNull(table.getServiceType());
   }
 
   /** Validate returned fields GET .../tables/{id}?fields="..." or GET .../tables/name/{fqn}?fields="..." */
@@ -1273,6 +1272,8 @@ public class TableResourceTest extends EntityResourceTest<Table> {
     assertEquals(createRequest.getTableConstraints(), createdEntity.getTableConstraints());
     TestUtils.validateTags(createRequest.getTags(), createdEntity.getTags());
     TestUtils.validateEntityReference(createdEntity.getFollowers());
+    assertNotNull(createdEntity.getService());
+    assertNotNull(createdEntity.getServiceType());
   }
 
   @Override

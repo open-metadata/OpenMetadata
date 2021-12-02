@@ -59,6 +59,10 @@
       "description": "Link to the database cluster/service where this database is hosted in.",
       "$ref" : "../../type/entityReference.json"
     },
+    "serviceType" : {
+      "description": "Service type where this database is hosted in.",
+      "$ref" : "../services/databaseService.json#/definitions/databaseServiceType"
+    },
     "location": {
       "description": "Reference to the Location that contains this database.",
       "$ref": "../../type/entityReference.json"
