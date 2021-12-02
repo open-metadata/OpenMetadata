@@ -13,6 +13,7 @@ import {
   TableJoins,
   TypeUsedToReturnUsageDetailsOfAnEntity,
 } from '../../generated/entity/data/table';
+import { TagLabel } from '../../generated/type/tagLabel';
 import { useTour } from '../../hooks/useTour';
 import { datasetData } from './datasetDetailsData';
 import data from './mockData.json';
@@ -136,7 +137,7 @@ const TourPage = () => {
               datasetData.tableProfile as unknown as Table['tableProfile']
             }
             tableTags={datasetData.tableTags}
-            tier=""
+            tier={'' as unknown as TagLabel}
             unfollowTableHandler={handleCountChange}
             usageSummary={
               datasetData.usageSummary as unknown as TypeUsedToReturnUsageDetailsOfAnEntity

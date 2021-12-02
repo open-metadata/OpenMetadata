@@ -52,7 +52,7 @@ const getSteps = (value: string) => {
       content: 'Click on the assets title for more details.',
       actionType: 'click',
       selector: '#tabledatacard0',
-      position: [700, 270],
+      position: [600, 300],
       beforeNext: () => {
         AppState.currentTourPage = 'datasetPage';
       },
@@ -65,7 +65,7 @@ const getSteps = (value: string) => {
         AppState.activeTabforTourDatasetPage = 2;
       },
       content: 'Understand the schema of the table and add description.',
-      position: [5, 230],
+      position: [5, 235],
       selector: '#schema',
     },
     {
@@ -76,7 +76,7 @@ const getSteps = (value: string) => {
         AppState.activeTabforTourDatasetPage = 3;
       },
       content: 'Understand the profiler tab.',
-      position: [75, 230],
+      position: [75, 235],
       selector: '#profiler',
     },
     {
@@ -87,7 +87,7 @@ const getSteps = (value: string) => {
         AppState.activeTabforTourDatasetPage = 4;
       },
       content: 'Understand lineage.',
-      position: [200, 230],
+      position: [200, 235],
       selector: '#lineage',
     },
     {
@@ -95,7 +95,7 @@ const getSteps = (value: string) => {
         AppState.activeTabforTourDatasetPage = 3;
       },
       content: 'You can claim ownership from here.',
-      position: [300, 230],
+      position: [300, 235],
       selector: '#manage',
     },
     {
