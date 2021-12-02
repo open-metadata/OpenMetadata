@@ -17,6 +17,7 @@ import React, { FunctionComponent, useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import AppState from '../../AppState';
 import { searchData } from '../../axiosAPIs/miscAPI';
+import PageContainerV1 from '../../components/containers/PageContainerV1';
 import Explore from '../../components/Explore/Explore.component';
 import {
   ExploreSearchData,
@@ -253,30 +254,32 @@ const ExplorePage: FunctionComponent = () => {
       {isLoading || isLoadingForData ? (
         <Loader />
       ) : (
-        <Explore
-          error={error}
-          fetchCount={fetchCounts}
-          fetchData={fetchData}
-          handlePathChange={handlePathChange}
-          handleSearchText={handleSearchText}
-          searchQuery={searchQuery}
-          searchResult={searchResult}
-          searchText={searchText}
-          sortValue={initialSortField}
-          tab={tab}
-          tabCounts={{
-            table: tableCount,
-            topic: topicCount,
-            dashboard: dashboardCount,
-            pipeline: pipelineCount,
-            dbtModel: dbtModelCount,
-          }}
-          updateDashboardCount={handleDashboardCount}
-          updateDbtModelCount={handleDbtModelCount}
-          updatePipelineCount={handlePipelineCount}
-          updateTableCount={handleTableCount}
-          updateTopicCount={handleTopicCount}
-        />
+        <PageContainerV1>
+          <Explore
+            error={error}
+            fetchCount={fetchCounts}
+            fetchData={fetchData}
+            handlePathChange={handlePathChange}
+            handleSearchText={handleSearchText}
+            searchQuery={searchQuery}
+            searchResult={searchResult}
+            searchText={searchText}
+            sortValue={initialSortField}
+            tab={tab}
+            tabCounts={{
+              table: tableCount,
+              topic: topicCount,
+              dashboard: dashboardCount,
+              pipeline: pipelineCount,
+              dbtModel: dbtModelCount,
+            }}
+            updateDashboardCount={handleDashboardCount}
+            updateDbtModelCount={handleDbtModelCount}
+            updatePipelineCount={handlePipelineCount}
+            updateTableCount={handleTableCount}
+            updateTopicCount={handleTopicCount}
+          />
+        </PageContainerV1>
       )}
     </>
   );

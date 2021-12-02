@@ -40,6 +40,7 @@ const statusQueued = '#777777';
 const bodyBG = '#F8F9FA';
 const bodyHoverBG = '#F9F8FD';
 const tagBG = '#EEEAF8';
+const badgeBG = '#D5D8DC';
 const primaryBG = '#7147E840'; // 'rgba(113, 71, 232, 0.25)';
 const backdropBG = '#302E36';
 
@@ -93,6 +94,7 @@ module.exports = {
         'body-main': bodyBG,
         'body-hover': bodyHoverBG,
         tag: tagBG,
+        badge: badgeBG,
         success: success,
         error: error,
         warning: warning,

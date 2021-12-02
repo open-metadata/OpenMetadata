@@ -12,7 +12,7 @@
  */
 
 import classNames from 'classnames';
-import { isEmpty } from 'lodash';
+import { isEmpty, isUndefined } from 'lodash';
 import {
   RecentlySearchData,
   RecentlyViewed,
@@ -129,11 +129,22 @@ export const getTabClasses = (
   return 'tw-gh-tabs' + (activeTab === tab ? ' active' : '');
 };
 
-export const getCountBadge = (count = 0, className = '') => {
+export const getCountBadge = (
+  count = 0,
+  className = '',
+  isActive?: boolean
+) => {
+  const clsBG = isUndefined(isActive)
+    ? ''
+    : isActive
+    ? 'tw-bg-primary tw-text-white tw-border-none'
+    : 'tw-bg-badge';
+
   return (
     <span
       className={classNames(
-        'tw-py-0.5 tw-px-1 tw-ml-1 tw-border tw-rounded tw-text-xs tw-min-w-badgeCount',
+        'tw-py-px tw-px-1 tw-ml-1 tw-border tw-rounded tw-text-xs tw-min-w-badgeCount tw-text-center',
+        clsBG,
         className
       )}>
       <span data-testid="filter-count">{count}</span>
