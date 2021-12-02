@@ -20,13 +20,13 @@ const getSteps = (value: string) => {
     {
       content: `OpenMetadata is a Centralized Metadata Store. Discover all your data assets in a single place, collaborate with your co-workers.
          Understand your data assets and contribute to make it richer.`,
-      position: [600, 235],
+      position: [600, 233],
       selector: '#statesHeader',
     },
     {
       content: `This is a search box where you can type "name", "description", "column name", etc. to find any matching data asset. For example, type "${modifiedValue}". Hit Enter.`,
       actionType: 'enter',
-      position: 'bottom',
+      position: [25, 78],
       selector: '#searchBox',
       beforeNext: () => {
         AppState.currentTourPage = 'explorePage';
@@ -38,9 +38,8 @@ const getSteps = (value: string) => {
       },
       content: 'Click on the assets title for more details.',
       actionType: 'click',
-      // position: 'bottom',
       selector: '#tabledatacard0',
-      position: [700, 240],
+      position: [700, 270],
       beforeNext: () => {
         AppState.currentTourPage = 'datasetPage';
       },
@@ -49,29 +48,47 @@ const getSteps = (value: string) => {
       beforePrev: () => {
         AppState.currentTourPage = 'explorePage';
       },
+      beforeNext: () => {
+        AppState.activeTabforTourDatasetPage = 2;
+      },
       content: 'Understand the schema of the table and add description.',
-      position: 'bottom',
+      position: [5, 230],
       selector: '#schema',
     },
     {
-      content: 'Click here to Understand the profiler tab.',
-      position: 'bottom',
+      beforePrev: () => {
+        AppState.activeTabforTourDatasetPage = 1;
+      },
+      beforeNext: () => {
+        AppState.activeTabforTourDatasetPage = 3;
+      },
+      content: 'Understand the profiler tab.',
+      position: [75, 230],
       selector: '#profiler',
     },
     {
-      content: 'Click here to understand lineage.',
-      position: 'bottom',
+      beforePrev: () => {
+        AppState.activeTabforTourDatasetPage = 2;
+      },
+      beforeNext: () => {
+        AppState.activeTabforTourDatasetPage = 4;
+      },
+      content: 'Understand lineage.',
+      position: [200, 230],
       selector: '#lineage',
     },
     {
-      content: 'Click here to claim ownership.',
-      position: 'bottom',
+      beforePrev: () => {
+        AppState.activeTabforTourDatasetPage = 3;
+      },
+      content: 'You can claim ownership from here.',
+      position: [300, 230],
       selector: '#manage',
     },
     {
       content: 'Click on explore to access all the assests.',
       actionType: 'click',
-      position: 'bottom',
+      position: [220, 70],
       selector: '#explore',
     },
   ];
@@ -88,6 +105,7 @@ const Tour = () => {
           disableKeyboardNavigation
           showNumber
           accentColor="#7147E8"
+          inViewThreshold={200}
           maskColor="#302E36"
           playTour={isTourOpen}
           steps={steps}

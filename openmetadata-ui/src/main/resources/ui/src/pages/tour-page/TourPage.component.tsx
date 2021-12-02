@@ -33,11 +33,15 @@ const exploreCount = {
 
 const TourPage = () => {
   const { handleIsTourOpen } = useTour();
-  const [currentPage, setCurrentPage] = useState(AppState.currentTourPage);
+  const [currentPage, setCurrentPage] = useState<CurrentTourPageType>(
+    AppState.currentTourPage
+  );
   const [myDataSearchResult, setMyDataSearchResult] = useState(mockData);
   const [exploreSearchResult, setExploreSearchResult] =
     useState(exploreSearchData);
-  const [datasetActiveTab, setdatasetActiveTab] = useState(1);
+  const [datasetActiveTab, setdatasetActiveTab] = useState(
+    AppState.activeTabforTourDatasetPage
+  );
   const [explorePageCounts, setExplorePageCounts] = useState(exploreCount);
 
   const handleCountChange = () => {
@@ -47,11 +51,16 @@ const TourPage = () => {
   useEffect(() => {
     handleIsTourOpen(true);
     AppState.currentTourPage = 'myDataPage';
+    AppState.activeTabforTourDatasetPage = 1;
   }, []);
 
   useEffect(() => {
     setCurrentPage(AppState.currentTourPage);
   }, [AppState.currentTourPage]);
+
+  useEffect(() => {
+    setdatasetActiveTab(AppState.activeTabforTourDatasetPage);
+  }, [AppState.activeTabforTourDatasetPage]);
 
   const getCurrentPage = (page: CurrentTourPageType) => {
     switch (page) {

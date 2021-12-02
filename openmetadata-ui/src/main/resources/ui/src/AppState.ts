@@ -38,6 +38,7 @@ class AppState {
 
   isTourOpen = false;
   currentTourPage: CurrentTourPageType = 'myDataPage';
+  activeTabforTourDatasetPage = 1;
 
   constructor() {
     makeAutoObservable(this);
