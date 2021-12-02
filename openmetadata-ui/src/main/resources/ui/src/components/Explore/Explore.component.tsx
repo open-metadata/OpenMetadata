@@ -19,7 +19,13 @@ import {
   FormatedTableData,
   SearchResponse,
 } from 'Models';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, {
+  Fragment,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import { useHistory, useLocation } from 'react-router-dom';
 import { Button } from '../../components/buttons/Button/Button';
 import ErrorPlaceHolderES from '../../components/common/error-with-placeholder/ErrorPlaceHolderES';
@@ -51,7 +57,6 @@ import { getCountBadge } from '../../utils/CommonUtils';
 import { getFilterString } from '../../utils/FilterUtils';
 import { dropdownIcon as DropDownIcon } from '../../utils/svgconstant';
 import SVGIcons from '../../utils/SvgUtils';
-import PageContainerV1 from '../containers/PageContainerV1';
 import PageLayout from '../containers/PageLayout';
 import { ExploreProps } from './explore.interface';
 
@@ -500,7 +505,7 @@ const Explore: React.FC<ExploreProps> = ({
   };
 
   return (
-    <PageContainerV1>
+    <Fragment>
       {!connectionError && getTabs()}
       <PageLayout
         leftPanel={Boolean(!error) && fetchLeftPanel()}
@@ -519,7 +524,7 @@ const Explore: React.FC<ExploreProps> = ({
           />
         )}
       </PageLayout>
-    </PageContainerV1>
+    </Fragment>
   );
 };
 
