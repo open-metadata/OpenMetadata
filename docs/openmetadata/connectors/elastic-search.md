@@ -34,11 +34,15 @@ metadata ingest -c ./examples/workflows/metadata_to_es.json
 
 {% code title="metadata_to_es.json" %}
 ```javascript
-{
-  "source": {
-    "type": "metadata_es",
-    "config": {}
-  },
+ "sink": {
+    "type": "elasticsearch",
+    "config": {
+      "index_tables": "true",
+      "index_topics": "true",
+      "index_dashboards": "true",
+      "es_host": "localhost",
+      "es_port": 9200
+    }
 ...
 ```
 {% endcode %}
@@ -46,8 +50,6 @@ metadata ingest -c ./examples/workflows/metadata_to_es.json
 ### Publish to OpenMetadata
 
 Below is the configuration to publish Elastic Search data into the OpenMetadata service.
-
-Add Optionally `file` stage and `elasticsearch` bulk\_sink along with `metadata-server` config
 
 {% code title="metadata_to_es.json" %}
 ```javascript
