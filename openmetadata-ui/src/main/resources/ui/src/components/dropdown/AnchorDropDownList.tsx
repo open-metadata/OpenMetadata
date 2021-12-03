@@ -34,7 +34,7 @@ const AnchorDropDownList = ({ dropDownList, setIsOpen }: DropDownListProp) => {
         <div className="py-1" role="none">
           {dropDownList.map((item: DropDownListItem, index: number) => (
             <div key={index}>
-              {item.isVersion ? (
+              {item.isText ? (
                 <div className="tw-px-2 tw-py-2 tw-font-normal">
                   {item.name}
                 </div>

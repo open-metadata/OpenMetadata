@@ -131,7 +131,8 @@ const Appbar: React.FC = (): JSX.Element => {
 
     return (
       <span data-testid="greeting-text">
-        Welcome, <span className="tw-font-medium">{name?.split(' ')[0]}</span>
+        <span className="tw-font-medium">{name}</span>
+        <hr className="tw--mr-12 tw--ml-2 tw-mt-1.5" />
       </span>
     );
   };
@@ -296,6 +297,18 @@ const Appbar: React.FC = (): JSX.Element => {
                 dropDownList={[
                   {
                     name: (
+                      <p className="tw-flex tw-flex-col">
+                        <span>Signed in as</span>
+                        {getUserDisplayName()}
+                      </p>
+                    ),
+                    to: '',
+                    disabled: false,
+                    icon: <></>,
+                    isText: true,
+                  },
+                  {
+                    name: (
                       <span className="tw-text-grey-muted tw-cursor-text tw-text-xs">
                         {`Version ${(version ? version : '?').split('-')[0]}`}
                         <hr className="tw--mr-12 tw--ml-2 tw-mt-1.5" />
@@ -304,7 +317,7 @@ const Appbar: React.FC = (): JSX.Element => {
                     to: '',
                     disabled: false,
                     icon: <></>,
-                    isVersion: true,
+                    isText: true,
                   },
                   {
                     name: 'Logout',
@@ -334,7 +347,6 @@ const Appbar: React.FC = (): JSX.Element => {
                     )}
                   </>
                 }
-                label={getUserDisplayName()}
                 type="link"
               />
             </div>
