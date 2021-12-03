@@ -16,9 +16,9 @@ A workflow consists of [Source](source.md) and [Sink](sink.md). It also provides
 
 Workflow execution happens in a serial fashion.
 
-1. The **Workflow** runs the **source** component first.  The **source** retrieves a record from external sources and emits the record downstream.
+1. The **Workflow** runs the **source** component first. The **source** retrieves a record from external sources and emits the record downstream.
 2. If the **processor** component is configured, the **workflow** sends the record to the **processor** next.
-3. There can be multiple **processor** components attached to the **workflow**.  The **workflow** passes a record to each **processor** in the order they are configured.
+3. There can be multiple **processor** components attached to the **workflow**. The **workflow** passes a record to each **processor** in the order they are configured.
 4. Once a **processor** is finished, it sends the modified record to the **sink**.
 5. The above steps are repeated for each record emitted from the **source**.
 
