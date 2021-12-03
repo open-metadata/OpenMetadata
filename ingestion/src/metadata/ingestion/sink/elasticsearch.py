@@ -14,10 +14,12 @@
 #  limitations under the License.
 import json
 import logging
+import ssl
 import time
 from typing import List, Optional
 
 from elasticsearch import Elasticsearch
+from elasticsearch.connection import create_ssl_context
 
 from metadata.config.common import ConfigModel
 from metadata.generated.schema.entity.data.chart import Chart
@@ -98,6 +100,13 @@ class ElasticsearchSink(Sink):
         http_auth = None
         if self.config.es_username:
             http_auth = (self.config.es_username, self.config.es_password)
+
+        ssl_context = None
+        if self.config.scheme == "https" and not self.config.verify_certs:
+            ssl_context = create_ssl_context()
+            ssl_context.check_hostname = False
+            ssl_context.verify_mode = ssl.CERT_NONE
+
         self.elasticsearch_client = Elasticsearch(
             [
                 {"host": self.config.es_host, "port": self.config.es_port},
@@ -106,6 +115,7 @@ class ElasticsearchSink(Sink):
             scheme=self.config.scheme,
             use_ssl=self.config.use_ssl,
             verify_certs=self.config.verify_certs,
+            ssl_context=ssl_context,
         )
         if self.config.index_tables:
             self._check_or_create_index(
