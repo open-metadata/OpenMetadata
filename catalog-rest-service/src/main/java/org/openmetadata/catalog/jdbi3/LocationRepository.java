@@ -17,6 +17,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Location;
+import org.openmetadata.catalog.entity.services.StorageService;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.resources.locations.LocationResource;
 import org.openmetadata.catalog.type.ChangeDescription;
@@ -57,8 +58,8 @@ public class LocationRepository extends EntityRepository<Location> {
 
   @Override
   public Location setFields(Location location, Fields fields) throws IOException {
+    location.setService(getService(location));
     location.setOwner(fields.contains("owner") ? getOwner(location) : null);
-    location.setService(fields.contains("service") ? getService(location) : null);
     location.setFollowers(fields.contains("followers") ? getFollowers(location) : null);
     location.setTags(fields.contains("tags") ? getTags(location.getFullyQualifiedName()) : null);
     return location;
@@ -141,18 +142,22 @@ public class LocationRepository extends EntityRepository<Location> {
   public EntityReference getOwnerReference(Location location) throws IOException {
     return EntityUtil.populateOwner(dao.userDAO(), dao.teamDAO(), location.getOwner());
   }
+  
+  private StorageService getService(UUID serviceId, String entityType) throws IOException {
+    if (entityType.equalsIgnoreCase(Entity.STORAGE_SERVICE)) {
+      return dao.storageServiceDAO().findEntityById(serviceId);
+    }
+    throw new IllegalArgumentException(CatalogExceptionMessage.invalidServiceEntity(entityType, Entity.LOCATION));
+  }
 
   @Override
   public void prepare(Location location) throws IOException {
-    EntityReference storageService = getService(location.getService());
-    location.setService(storageService);
-    // Set data in location entity based on storage relationship
+    StorageService storageService = getService(location.getService().getId(), location.getService().getType());
+    location.setService(new StorageServiceRepository.StorageServiceEntityInterface(storageService)
+            .getEntityReference());
+    location.setServiceType(storageService.getServiceType());
     location.setFullyQualifiedName(getFQN(location));
-
-    // Check if owner is valid and set the relationship
-    location.setOwner(EntityUtil.populateOwner(dao.userDAO(), dao.teamDAO(), location.getOwner()));
-
-    // Validate location tags and add derived tags to the list
+    EntityUtil.populateOwner(dao.userDAO(), dao.teamDAO(), location.getOwner()); // Validate owner
     location.setTags(EntityUtil.addDerivedTags(dao.tagDAO(), location.getTags()));
   }
 

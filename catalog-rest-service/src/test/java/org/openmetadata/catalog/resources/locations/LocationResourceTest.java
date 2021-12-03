@@ -674,7 +674,8 @@ public class LocationResourceTest extends CatalogApplicationTest {
     location = byName ? getLocationByName(location.getFullyQualifiedName(), fields, adminAuthHeaders()) :
             getLocation(location.getId(), fields, adminAuthHeaders());
     assertNotNull(location.getOwner());
-    assertNull(location.getService());
+    assertNotNull(location.getService()); // We always return the service
+    assertNotNull(location.getServiceType()); // We always return the service
 
     // .../locations?fields=owner,service
     fields = "owner,service";
