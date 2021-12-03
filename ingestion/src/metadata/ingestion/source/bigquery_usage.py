@@ -61,11 +61,12 @@ class BigqueryUsageSource(Source):
 
     def next_record(self) -> Iterable[TableQuery]:
         logging_client = logging.Client()
-        logger = logging_client.logger(self.logger_name)
-        print("Listing entries for logger {}:".format(logger.name))
+        usage_logger = logging_client.logger(self.logger_name)
+        logger.debug("Listing entries for logger {}:".format(usage_logger.name))
         start, end = get_start_and_end(self.config.duration)
         try:
-            for entry in logger.list_entries():
+            entries = usage_logger.list_entries()
+            for entry in entries:
                 timestamp = entry.timestamp.isoformat()
                 timestamp = datetime.strptime(timestamp[0:10], "%Y-%m-%d")
                 if timestamp >= start and timestamp <= end:
@@ -74,7 +75,7 @@ class BigqueryUsageSource(Source):
                     ) == collections.OrderedDict:
                         payload = list(entry.payload.items())[-1][1]
                         if "jobChange" in payload:
-                            print(f"\nEntries: {payload}")
+                            logger.debug(f"\nEntries: {payload}")
                             if (
                                 "queryConfig"
                                 in payload["jobChange"]["job"]["jobConfig"]
