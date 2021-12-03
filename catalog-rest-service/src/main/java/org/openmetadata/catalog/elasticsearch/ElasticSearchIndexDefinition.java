@@ -16,6 +16,7 @@ import org.elasticsearch.client.indices.CreateIndexRequest;
 import org.elasticsearch.client.indices.CreateIndexResponse;
 import org.elasticsearch.client.indices.GetIndexRequest;
 import org.elasticsearch.common.xcontent.XContentType;
+import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Dashboard;
 import org.openmetadata.catalog.entity.data.DbtModel;
 import org.openmetadata.catalog.entity.data.Pipeline;
@@ -128,6 +129,21 @@ public class ElasticSearchIndexDefinition {
         .getClassLoader().getResource(elasticSearchIndexType.indexMappingFile);
     Path path = Paths.get(resource.toURI());
     return new String(Files.readAllBytes(path));
+  }
+
+  public ElasticSearchIndexType getIndexMappingByEntityType(String type) {
+    if (type.equalsIgnoreCase(Entity.TABLE)) {
+      return ElasticSearchIndexType.TABLE_SEARCH_INDEX;
+    } else if (type.equalsIgnoreCase(Entity.DASHBOARD)) {
+      return ElasticSearchIndexType.DASHBOARD_SEARCH_INDEX;
+    } else if (type.equalsIgnoreCase(Entity.PIPELINE)) {
+      return ElasticSearchIndexType.PIPELINE_SEARCH_INDEX;
+    } else if (type.equalsIgnoreCase(Entity.TOPIC)) {
+      return ElasticSearchIndexType.TOPIC_SEARCH_INDEX;
+    } else if (type.equalsIgnoreCase(Entity.DBTMODEL)) {
+      return ElasticSearchIndexType.DBT_MODEL_SEARCH_INDEX;
+    }
+    throw new RuntimeException("Failed to find index doc for type {}".format(type));
   }
 
 }

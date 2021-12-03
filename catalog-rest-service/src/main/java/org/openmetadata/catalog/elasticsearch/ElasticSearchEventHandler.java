@@ -156,7 +156,7 @@ public class ElasticSearchEventHandler implements EventHandler {
 
   private UpdateRequest applyChangeEvent(ChangeEvent event) {
     String entityType = event.getEntityType();
-    String esIndex = getESIndex(entityType);
+    ElasticSearchIndexType esIndexType = esIndexDefinition.getIndexMappingByEntityType(entityType);
     UUID entityId = event.getEntityId();
     ChangeDescription changeDescription = event.getChangeDescription();
     List<FieldChange> fieldsAdded = changeDescription.getFieldsAdded();
@@ -189,7 +189,7 @@ public class ElasticSearchEventHandler implements EventHandler {
       Script script = new Script(ScriptType.INLINE, "painless",
           scriptTxt.toString(),
           fieldAddParams);
-      UpdateRequest updateRequest = new UpdateRequest(esIndex, entityId.toString());
+      UpdateRequest updateRequest = new UpdateRequest(esIndexType.indexName, entityId.toString());
       updateRequest.script(script);
       return updateRequest;
     } else {
@@ -286,22 +286,6 @@ public class ElasticSearchEventHandler implements EventHandler {
     updateRequest.script(script);
     updateRequest.scriptedUpsert(true);
   }
-
-  private String getESIndex(String type) {
-    if (type.equalsIgnoreCase("table")) {
-      return "table_search_index";
-    } else if (type.equalsIgnoreCase("dashboard")) {
-      return "dashboard_search_index";
-    } else if (type.equalsIgnoreCase("pipeline")) {
-      return "pipeline_search_index";
-    } else if (type.equalsIgnoreCase("topic")) {
-      return "topic_search_index";
-    } else if (type.equalsIgnoreCase("dbtmodel")) {
-      return "dbt_model_search_index";
-    }
-    throw new RuntimeException("Failed to find index doc for type {}".format(type));
-  }
-
 
   public void close() {
     try {
