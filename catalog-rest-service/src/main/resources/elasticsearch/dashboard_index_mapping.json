@@ -66,6 +66,9 @@
       },
       "daily_stats": {
         "type": "long"
+      },
+      "change_descriptions": {
+        "type": "nested"
       }
     }
 }

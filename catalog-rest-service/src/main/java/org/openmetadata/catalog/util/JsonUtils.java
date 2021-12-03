@@ -140,6 +140,10 @@ public final class JsonUtils {
     return OBJECT_MAPPER.convertValue(o, JsonStructure.class);
   }
 
+  public static Map<String, Object> getMap(Object o) {
+    return OBJECT_MAPPER.convertValue(o, Map.class);
+  }
+
   public static <T> T readValue(String json, Class<T> clz) throws IOException {
     if (json == null) {
       return null;

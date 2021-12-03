@@ -53,6 +53,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.container.ContainerResponseContext;
+import javax.ws.rs.core.Response;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -114,7 +115,7 @@ public class ElasticSearchEventHandler implements EventHandler {
         } else if (entityClass.toLowerCase().endsWith(Entity.DASHBOARD.toLowerCase())) {
           boolean exists =
               esIndexDefinition.checkIndexExistsOrCreate(ElasticSearchIndexType.DASHBOARD_SEARCH_INDEX);
-           if (exists) {
+          if (exists) {
             Dashboard instance = (Dashboard) entity;
             updateRequest = updateDashboard(instance, responseContext);
           }
@@ -199,60 +200,92 @@ public class ElasticSearchEventHandler implements EventHandler {
   private UpdateRequest updateTable(Table instance, ContainerResponseContext responseContext)
       throws JsonProcessingException {
     int responseCode = responseContext.getStatus();
-    TableESIndex tableESIndex = TableESIndex.builder(instance).build();
-    UpdateRequest updateRequest = new UpdateRequest(ElasticSearchIndexType.TABLE_SEARCH_INDEX.indexName
-        , instance.getId().toString());
-    String json = JsonUtils.pojoToJson(tableESIndex);
-    updateRequest.doc(json, XContentType.JSON);
-    //only upsert if its a new entity
-    updateRequest.docAsUpsert(true);
+    TableESIndex tableESIndex = TableESIndex.builder(instance, responseCode).build();
+    UpdateRequest updateRequest = new UpdateRequest(ElasticSearchIndexType.TABLE_SEARCH_INDEX.indexName,
+        instance.getId().toString());
+    if (responseCode != Response.Status.CREATED.getStatusCode()) {
+      scriptedUpsert(tableESIndex, updateRequest);
+    } else {
+      String json = JsonUtils.pojoToJson(tableESIndex);
+      updateRequest.doc(json, XContentType.JSON);
+      updateRequest.docAsUpsert(true);
+    }
     return updateRequest;
   }
 
   private UpdateRequest updateTopic(Topic instance, ContainerResponseContext responseContext)
       throws JsonProcessingException {
     int responseCode = responseContext.getStatus();
-    TopicESIndex topicESIndex = TopicESIndex.builder(instance).build();
+    TopicESIndex topicESIndex = TopicESIndex.builder(instance, responseCode).build();
     UpdateRequest updateRequest = new UpdateRequest(ElasticSearchIndexType.TOPIC_SEARCH_INDEX.indexName,
         instance.getId().toString());
-    updateRequest.doc(JsonUtils.pojoToJson(topicESIndex), XContentType.JSON);
-    updateRequest.docAsUpsert(true);
+    if (responseCode != Response.Status.CREATED.getStatusCode()) {
+      scriptedUpsert(topicESIndex, updateRequest);
+    } else {
+      //only upsert if its a new entity
+      updateRequest.doc(JsonUtils.pojoToJson(topicESIndex), XContentType.JSON);
+      updateRequest.docAsUpsert(true);
+    }
     return updateRequest;
   }
 
   private UpdateRequest updateDashboard(Dashboard instance, ContainerResponseContext responseContext)
       throws JsonProcessingException {
     int responseCode = responseContext.getStatus();
-    DashboardESIndex dashboardESIndex = DashboardESIndex.builder(instance).build();
+    DashboardESIndex dashboardESIndex = DashboardESIndex.builder(instance, responseCode).build();
     UpdateRequest updateRequest = new UpdateRequest(ElasticSearchIndexType.DASHBOARD_SEARCH_INDEX.indexName,
         instance.getId().toString());
-    updateRequest.doc(JsonUtils.pojoToJson(dashboardESIndex), XContentType.JSON);
-    updateRequest.docAsUpsert(true);
+    if (responseCode != Response.Status.CREATED.getStatusCode()) {
+      scriptedUpsert(dashboardESIndex, updateRequest);
+    } else {
+      updateRequest.doc(JsonUtils.pojoToJson(dashboardESIndex), XContentType.JSON);
+      updateRequest.docAsUpsert(true);
+    }
     return updateRequest;
   }
 
   private UpdateRequest updatePipeline(Pipeline instance, ContainerResponseContext responseContext)
       throws JsonProcessingException {
     int responseCode = responseContext.getStatus();
-    PipelineESIndex pipelineESIndex = PipelineESIndex.builder(instance).build();
+    PipelineESIndex pipelineESIndex = PipelineESIndex.builder(instance, responseCode).build();
     UpdateRequest updateRequest = new UpdateRequest(ElasticSearchIndexType.PIPELINE_SEARCH_INDEX.indexName,
         instance.getId().toString());
-    updateRequest.doc(JsonUtils.pojoToJson(pipelineESIndex), XContentType.JSON);
-    updateRequest.docAsUpsert(true);
+    if (responseCode != Response.Status.CREATED.getStatusCode()) {
+      scriptedUpsert(pipelineESIndex, updateRequest);
+    } else {
+      //only upsert if it's a new entity
+      updateRequest.doc(JsonUtils.pojoToJson(pipelineESIndex), XContentType.JSON);
+      updateRequest.docAsUpsert(true);
+    }
     return updateRequest;
   }
 
   private UpdateRequest updateDbtModel(DbtModel instance, ContainerResponseContext responseContext)
       throws JsonProcessingException {
     int responseCode = responseContext.getStatus();
-    DbtModelESIndex dbtModelESIndex = DbtModelESIndex.builder(instance).build();
+    DbtModelESIndex dbtModelESIndex = DbtModelESIndex.builder(instance, responseCode).build();
     UpdateRequest updateRequest = new UpdateRequest(ElasticSearchIndexType.DBT_MODEL_SEARCH_INDEX.indexName,
         instance.getId().toString());
-    updateRequest.doc(JsonUtils.pojoToJson(dbtModelESIndex), XContentType.JSON);
-    updateRequest.docAsUpsert(true);
+    //only append to changeDescriptions on updates
+    if  (responseCode != Response.Status.CREATED.getStatusCode()) {
+      scriptedUpsert(dbtModelESIndex, updateRequest);
+    } else {
+      updateRequest.doc(JsonUtils.pojoToJson(dbtModelESIndex), XContentType.JSON);
+      updateRequest.docAsUpsert(true);
+    }
     return updateRequest;
   }
 
+  private void scriptedUpsert(Object index, UpdateRequest updateRequest) {
+    String scriptTxt= "for (k in params.keySet()) {if (k == 'change_descriptions') " +
+        "{ ctx._source.change_descriptions.addAll(params.change_descriptions) } " +
+        "else { ctx._source.put(k, params.get(k)) }}";
+    Map<String, Object> doc = JsonUtils.getMap(index);
+    Script script = new Script(ScriptType.INLINE, "painless", scriptTxt,
+        doc);
+    updateRequest.script(script);
+    updateRequest.scriptedUpsert(true);
+  }
 
   private String getESIndex(String type) {
     if (type.equalsIgnoreCase("table")) {
