@@ -130,65 +130,76 @@ class MetadataRestSink(Sink):
                 f"Ignoring the record due to unknown Record type {type(record)}"
             )
 
-    def write_tables(self, table_and_db: OMetaDatabaseAndTable):
+    def write_tables(self, db_and_table: OMetaDatabaseAndTable):
         try:
             db_request = CreateDatabaseEntityRequest(
-                name=table_and_db.database.name,
-                description=table_and_db.database.description,
+                name=db_and_table.database.name,
+                description=db_and_table.database.description,
                 service=EntityReference(
-                    id=table_and_db.database.service.id, type="databaseService"
+                    id=db_and_table.database.service.id,
+                    type="databaseService",
                 ),
             )
             db = self.metadata.create_or_update(db_request)
             table_request = CreateTableEntityRequest(
-                name=table_and_db.table.name,
-                tableType=table_and_db.table.tableType,
-                columns=table_and_db.table.columns,
-                description=table_and_db.table.description,
+                name=db_and_table.table.name,
+                tableType=db_and_table.table.tableType,
+                columns=db_and_table.table.columns,
+                description=db_and_table.table.description,
                 database=db.id,
             )
 
-            if (
-                table_and_db.table.viewDefinition is not None
-                and table_and_db.table.viewDefinition != ""
-            ):
+            if db_and_table.table.viewDefinition:
                 table_request.viewDefinition = (
-                    table_and_db.table.viewDefinition.__root__
+                    db_and_table.table.viewDefinition.__root__
                 )
 
             created_table = self.metadata.create_or_update(table_request)
-            if table_and_db.table.sampleData is not None:
-                self.metadata.ingest_table_sample_data(
-                    table=created_table, sample_data=table_and_db.table.sampleData
+            if db_and_table.location is not None:
+                location_request = CreateLocationEntityRequest(
+                    name=db_and_table.location.name,
+                    description=db_and_table.location.description,
+                    service=EntityReference(
+                        id=db_and_table.location.service.id,
+                        type="storageService",
+                    ),
                 )
-            if table_and_db.table.tableProfile is not None:
-                for tp in table_and_db.table.tableProfile:
+                location = self.metadata.create_or_update(location_request)
+                self.metadata.add_location(table=created_table, location=location)
+            if db_and_table.table.sampleData is not None:
+                self.metadata.ingest_table_sample_data(
+                    table=created_table,
+                    sample_data=db_and_table.table.sampleData,
+                )
+            if db_and_table.table.tableProfile is not None:
+                for tp in db_and_table.table.tableProfile:
                     for pd in tp:
                         if pd[0] == "columnProfile":
                             for col in pd[1]:
                                 col.name = col.name.replace(".", "_DOT_")
                 self.metadata.ingest_table_profile_data(
                     table=created_table,
-                    table_profile=table_and_db.table.tableProfile,
+                    table_profile=db_and_table.table.tableProfile,
                 )
 
             logger.info(
                 "Successfully ingested table {}.{}".format(
-                    table_and_db.database.name.__root__, created_table.name.__root__
+                    db_and_table.database.name.__root__,
+                    created_table.name.__root__,
                 )
             )
             self.status.records_written(
-                f"Table: {table_and_db.database.name.__root__}.{created_table.name.__root__}"
+                f"Table: {db_and_table.database.name.__root__}.{created_table.name.__root__}"
             )
         except (APIError, ValidationError) as err:
             logger.error(
                 "Failed to ingest table {} in database {} ".format(
-                    table_and_db.table.name.__root__,
-                    table_and_db.database.name.__root__,
+                    db_and_table.table.name.__root__,
+                    db_and_table.database.name.__root__,
                 )
             )
             logger.error(err)
-            self.status.failure(f"Table: {table_and_db.table.name.__root__}")
+            self.status.failure(f"Table: {db_and_table.table.name.__root__}")
 
     def write_dbt_models(self, model_and_db: OMetaDatabaseAndModel):
         try:
