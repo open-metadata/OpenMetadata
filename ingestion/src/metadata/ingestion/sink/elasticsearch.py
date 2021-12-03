@@ -64,6 +64,7 @@ class ElasticSearchConfig(ConfigModel):
     topic_index_name: str = "topic_search_index"
     dashboard_index_name: str = "dashboard_search_index"
     pipeline_index_name: str = "pipeline_search_index"
+    scheme: str = "http"
 
 
 class ElasticsearchSink(Sink):
@@ -100,6 +101,7 @@ class ElasticsearchSink(Sink):
                 {"host": self.config.es_host, "port": self.config.es_port},
             ],
             http_auth=http_auth,
+            scheme=self.config.scheme,
         )
         if self.config.index_tables:
             self._check_or_create_index(
