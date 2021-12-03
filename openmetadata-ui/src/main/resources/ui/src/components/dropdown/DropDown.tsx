@@ -26,6 +26,7 @@ const DropDown: React.FC<DropDownProp> = ({
   dropDownList,
   onSelect,
   selectedItems,
+  isDropDownIconVisible = true,
 }: DropDownProp) => {
   const [isOpen, setIsOpen] = useState<boolean>(false);
 
@@ -63,7 +64,7 @@ const DropDown: React.FC<DropDownProp> = ({
           <button
             aria-expanded="true"
             aria-haspopup="true"
-            className={`tw-inline-flex tw-px-4 tw-py-2 focus:tw-outline-none ${
+            className={`tw-inline-flex tw-px-2 tw-py-2 focus:tw-outline-none ${
               type === DropDownType.CHECKBOX
                 ? `tw-rounded tw-text-body tw-text-gray-400 tw-border tw-border-main focus:tw-border-gray-500 tw-w-full`
                 : `tw-justify-center tw-nav`
@@ -107,7 +108,11 @@ const DropDown: React.FC<DropDownProp> = ({
                   </p>
                 )}
 
-                <DropdownIcon style={{ marginTop: '1px', color: normalLink }} />
+                {isDropDownIconVisible ? (
+                  <DropdownIcon
+                    style={{ marginTop: '1px', color: normalLink }}
+                  />
+                ) : null}
               </>
             )}
           </button>

@@ -164,8 +164,7 @@ a:focus {
   box-shadow: none;
 }
 .search-grey {
-  width: calc(300px - 60px);
-  min-width: 150px;
+  width: 600px;
 }
 
 .search-grey.has-search {
@@ -755,27 +754,19 @@ body .profiler-graph .recharts-active-dot circle {
 }
 
 /* Hide scrollbar for Chrome, Safari and Opera */
-/* #center::-webkit-scrollbar,
+#center::-webkit-scrollbar,
 #left-panel::-webkit-scrollbar,
 #right-panel::-webkit-scrollbar {
   display: none;
-  width: 4px;
-} */
-/* #center::-webkit-scrollbar-track {
-  background: #f8f9fa;
 }
-#center::-webkit-scrollbar-thumb {
-  background: #aaa;
-  border-radius: 12px;
-} */
 
 /* Hide scrollbar for IE, Edge and Firefox */
-/* #center,
+#center,
 #left-panel,
 #right-panel {
   -ms-overflow-style: none;
-  scrollbar-width: 4px;
-} */
+  scrollbar-width: none;
+}
 
 .page-layout-container {
   display: grid;
