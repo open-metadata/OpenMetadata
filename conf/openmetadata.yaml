@@ -118,6 +118,7 @@ database:
 elasticsearch:
   host: localhost
   port: 9200
+  scheme: "http"
 
 eventHandlerConfiguration:
   eventHandlerClassNames:
