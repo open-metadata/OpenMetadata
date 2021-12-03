@@ -16,7 +16,6 @@ package org.openmetadata.catalog.jdbi3;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
-import org.openmetadata.catalog.entity.data.Chart;
 import org.openmetadata.catalog.entity.data.Dashboard;
 import org.openmetadata.catalog.entity.services.DashboardService;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
@@ -241,7 +240,8 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     return chartRefs.isEmpty() ? null : chartRefs;
   }
 
-  public void updateCharts(Dashboard original, Dashboard updated, EntityUpdater updater) throws JsonProcessingException {
+  public void updateCharts(Dashboard original, Dashboard updated, EntityUpdater updater)
+      throws JsonProcessingException {
     String dashboardId = updated.getId().toString();
 
     // Remove all charts associated with this dashboard
@@ -322,7 +322,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     public Dashboard getEntity() { return entity; }
 
     @Override
-    public void setId(UUID id) { entity.setId(id);}
+    public void setId(UUID id) { entity.setId(id); }
 
     @Override
     public void setDescription(String description) {
