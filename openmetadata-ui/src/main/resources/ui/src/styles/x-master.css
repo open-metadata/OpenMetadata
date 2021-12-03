@@ -164,8 +164,7 @@ a:focus {
   box-shadow: none;
 }
 .search-grey {
-  width: calc(300px - 60px);
-  min-width: 150px;
+  width: 600px;
 }
 
 .search-grey.has-search {
