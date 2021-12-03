@@ -125,6 +125,7 @@
   * [Coding Style](open-source-community/developer/coding-style.md)
   * [Build the code & run tests](open-source-community/developer/build-code-run-tests.md)
   * [Build a Connector](open-source-community/developer/build-a-connector/README.md)
+    * [Setup](open-source-community/developer/build-a-connector/setup.md)
     * [Source](open-source-community/developer/build-a-connector/source.md)
     * [Sink](open-source-community/developer/build-a-connector/sink.md)
     * [Stage](open-source-community/developer/build-a-connector/stage.md)
