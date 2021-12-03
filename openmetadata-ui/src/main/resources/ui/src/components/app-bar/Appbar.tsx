@@ -131,7 +131,8 @@ const Appbar: React.FC = (): JSX.Element => {
 
     return (
       <span data-testid="greeting-text">
-        Welcome, <span className="tw-font-medium">{name?.split(' ')[0]}</span>
+        <span className="tw-font-medium">{name}</span>
+        <hr className="tw--mr-2 tw--ml-2 tw-mt-1.5" />
       </span>
     );
   };
@@ -165,7 +166,7 @@ const Appbar: React.FC = (): JSX.Element => {
       {isAuthenticatedRoute && isSignedIn ? (
         <div className="tw-h-14 tw-py-2 tw-px-5 tw-border-b-2 tw-border-separator">
           <div className="tw-flex tw-items-center tw-flex-row tw-justify-between tw-flex-nowrap">
-            <div className="tw-flex tw-items-center tw-flex-row tw-justify-between tw-flex-nowrap tw-mr-auto">
+            <div className="tw-flex tw-items-center tw-flex-row tw-justify-between tw-flex-nowrap">
               <NavLink id="openmetadata_logo" to="/">
                 <SVGIcons
                   alt="OpenMetadata Logo"
@@ -173,57 +174,7 @@ const Appbar: React.FC = (): JSX.Element => {
                   width="30"
                 />
               </NavLink>
-              <div
-                className="tw-flex-none tw-relative tw-pl-5 "
-                data-testid="appbar-item">
-                <span className="fa fa-search tw-absolute tw-block tw-z-10 tw-w-9 tw-h-8 tw-leading-8 tw-text-center tw-pointer-events-none tw-text-gray-400" />
-                <input
-                  autoComplete="off"
-                  className="tw-relative search-grey tw-rounded tw-border tw-border-main tw-bg-body-main focus:tw-outline-none tw-pl-8 tw-py-1 tw-form-inputs"
-                  data-testid="searchBox"
-                  id="searchBox"
-                  type="text"
-                  value={searchValue || ''}
-                  onChange={(e) => {
-                    setSearchValue(e.target.value);
-                  }}
-                  onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
-                    const target = e.target as HTMLInputElement;
-                    if (e.key === 'Enter') {
-                      setIsOpen(false);
-                      addToRecentSearch(target.value);
-                      history.push(
-                        getExplorePathWithSearch(
-                          target.value,
-                          // this is for if user is searching from another page
-                          location.pathname.startsWith(ROUTES.EXPLORE)
-                            ? appState.explorePageTab
-                            : 'tables'
-                        )
-                      );
-                    }
-                  }}
-                />
-                {searchValue &&
-                  (isInPageSearchAllowed(location.pathname) ? (
-                    <SearchOptions
-                      isOpen={isOpen}
-                      options={inPageSearchOptions(location.pathname)}
-                      searchText={searchValue}
-                      selectOption={(text) => {
-                        appState.inPageSearchText = text;
-                      }}
-                      setIsOpen={setIsOpen}
-                    />
-                  ) : (
-                    <Suggestions
-                      isOpen={isOpen}
-                      searchText={searchValue}
-                      setIsOpen={setIsOpen}
-                    />
-                  ))}
-              </div>
-              <div className="tw-ml-9">
+              <div className="tw-ml-7">
                 <NavLink
                   className="tw-nav focus:tw-no-underline"
                   data-testid="appbar-item"
@@ -241,19 +192,75 @@ const Appbar: React.FC = (): JSX.Element => {
                 />
               </div>
             </div>
-            <button
-              className="tw-nav focus:tw-no-underline hover:tw-underline"
-              data-testid="whatsnew-modal"
-              onClick={openModal}>
+            <div
+              className="tw-flex-none tw-relative tw-justify-items-center tw-ml-auto"
+              data-testid="appbar-item">
               <SVGIcons
-                alt="Doc icon"
-                className="tw-align-middle tw--mt-0.5 tw-mr-1"
-                icon={Icons.WHATS_NEW}
-                width="16"
+                alt="icon-search"
+                className="tw-absolute tw-block tw-z-10 tw-w-4 tw-h-4 tw-right-2.5 tw-top-2 tw-leading-8 tw-text-center tw-pointer-events-none"
+                icon="icon-searchv1"
               />
-              <span>What&#39;s new</span>
-            </button>
-            {/* <NavLink
+              <input
+                autoComplete="off"
+                className="tw-relative search-grey tw-rounded tw-border tw-border-main focus:tw-outline-none tw-pl-2 tw-py-1 tw-form-inputs"
+                data-testid="searchBox"
+                id="searchBox"
+                placeholder="Search for Table, Topics, Dashboards and Pipeline"
+                type="text"
+                value={searchValue || ''}
+                onChange={(e) => {
+                  setSearchValue(e.target.value);
+                }}
+                onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
+                  const target = e.target as HTMLInputElement;
+                  if (e.key === 'Enter') {
+                    setIsOpen(false);
+                    addToRecentSearch(target.value);
+                    history.push(
+                      getExplorePathWithSearch(
+                        target.value,
+                        // this is for if user is searching from another page
+                        location.pathname.startsWith(ROUTES.EXPLORE)
+                          ? appState.explorePageTab
+                          : 'tables'
+                      )
+                    );
+                  }
+                }}
+              />
+              {searchValue &&
+                (isInPageSearchAllowed(location.pathname) ? (
+                  <SearchOptions
+                    isOpen={isOpen}
+                    options={inPageSearchOptions(location.pathname)}
+                    searchText={searchValue}
+                    selectOption={(text) => {
+                      appState.inPageSearchText = text;
+                    }}
+                    setIsOpen={setIsOpen}
+                  />
+                ) : (
+                  <Suggestions
+                    isOpen={isOpen}
+                    searchText={searchValue}
+                    setIsOpen={setIsOpen}
+                  />
+                ))}
+            </div>
+            <div className="tw-flex tw-ml-auto">
+              <button
+                className="tw-nav focus:tw-no-underline hover:tw-underline"
+                data-testid="whatsnew-modal"
+                onClick={openModal}>
+                <SVGIcons
+                  alt="Doc icon"
+                  className="tw-align-middle tw--mt-0.5 tw-mr-1"
+                  icon={Icons.WHATS_NEW}
+                  width="16"
+                />
+                {/* <span>What&#39;s new</span> */}
+              </button>
+              {/* <NavLink
               className="tw-nav focus:tw-no-underline hover:tw-underline"
               data-testid="tour"
               style={navStyle(location.pathname.startsWith('/explore'))}
@@ -268,35 +275,49 @@ const Appbar: React.FC = (): JSX.Element => {
               />
               <span>Tour</span>
             </NavLink> */}
-            <div>
-              <DropDown
-                dropDownList={supportLinks}
-                icon={
-                  <SVGIcons
-                    alt="Doc icon"
-                    className="tw-align-middle tw-mt-0.5 tw-mr-1"
-                    icon={Icons.HELP_CIRCLE}
-                    width="16"
-                  />
-                }
-                label="Need Help"
-                type="link"
-              />
+              <div>
+                <DropDown
+                  dropDownList={supportLinks}
+                  icon={
+                    <SVGIcons
+                      alt="Doc icon"
+                      className="tw-align-middle tw-mt-0.5 tw-mr-1"
+                      icon={Icons.HELP_CIRCLE}
+                      width="16"
+                    />
+                  }
+                  isDropDownIconVisible={false}
+                  // label="Need Help"
+                  type="link"
+                />
+              </div>
             </div>
             <div data-testid="dropdown-profile">
               <DropDown
                 dropDownList={[
                   {
                     name: (
+                      <p className="tw-flex tw-flex-col">
+                        <span>Signed in as</span>
+                        {getUserDisplayName()}
+                      </p>
+                    ),
+                    to: '',
+                    disabled: false,
+                    icon: <></>,
+                    isText: true,
+                  },
+                  {
+                    name: (
                       <span className="tw-text-grey-muted tw-cursor-text tw-text-xs">
                         {`Version ${(version ? version : '?').split('-')[0]}`}
-                        <hr className="tw--mr-12 tw--ml-2 tw-mt-1.5" />
+                        <hr className="tw--mr-2 tw--ml-2 tw-mt-2" />
                       </span>
                     ),
                     to: '',
                     disabled: false,
                     icon: <></>,
-                    isVersion: true,
+                    isText: true,
                   },
                   {
                     name: 'Logout',
@@ -326,7 +347,6 @@ const Appbar: React.FC = (): JSX.Element => {
                     )}
                   </>
                 }
-                label={getUserDisplayName()}
                 type="link"
               />
             </div>
