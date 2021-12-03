@@ -12,7 +12,7 @@ OpenMetadata takes the schema-first approach to model metadata. The schema defin
 The JSON Schemas are converted into [Java POJO's](https://www.jsonschema2pojo.org/) using `jsonschema2pojo-maven-plugin` plugin as defined in [`pom.xml`](https://github.com/open-metadata/OpenMetadata/blob/16d8ba548d968c09e6634eefbd32c87c66996b90/catalog-rest-service/pom.xml#L395). The generated `POJO's` are located under `OpenMetadata/catalog-rest-service/target/generated-sources/jsonschema2pojo`.
 
 ### Entities  
-The entities are located at [`OpenMetadata/catalog-rest-service/src/main/resources/json/schema/entity`](https://github.com/open-metadata/OpenMetadata/tree/main/catalog-rest-service/src/main/resources/json/schema/entity) directory, and the following are few examples of the entities supported by OpenMetadata.
+The entities are located at [`OpenMetadata/catalog-rest-service/src/main/resources/json/schema/entity`](https://github.com/open-metadata/OpenMetadata/tree/main/catalog-rest-service/src/main/resources/json/schema/entity), and the following are few examples of the entities supported by OpenMetadata.
 - data
 - feed
 - policies
@@ -38,22 +38,22 @@ The API request objects are defined under [`OpenMetadata/catalog-rest-service/sr
 ### Events  
 Changes to the entities are captured as `events` and are stored in the database and elastic search.
 
-The event handlers are defined under `OpenMetadata/catalog-rest-service/src/main/java/org/openmetadata/catalog/events` directory and are applied globally to any outgoing response using the `ContainerResponseFilter`
+The event handlers are defined under [`OpenMetadata/catalog-rest-service/src/main/java/org/openmetadata/catalog/events`](https://github.com/open-metadata/OpenMetadata/tree/main/catalog-rest-service/src/main/java/org/openmetadata/catalog/events) and are applied globally to any outgoing response using the `ContainerResponseFilter`
 
 ### Database  
-MySql is used to persist the entities and the repository code to interact with MySql is located under `OpenMetadata/catalog-rest-service/src/main/java/org/openmetadata/catalog/jdbi3` directory.
+MySql is used to persist the entities and the repository code to interact with MySql is located under [`OpenMetadata/catalog-rest-service/src/main/java/org/openmetadata/catalog/jdbi3`](https://github.com/open-metadata/OpenMetadata/tree/main/catalog-rest-service/src/main/java/org/openmetadata/catalog/jdbi3).
 
-The database entity tables are created using the command `OpenMetadata/bootstrap/bootstrap_storage.sh`. [Flyway](https://flywaydb.org/) is used for managing the database table versions.
+The database entity tables are created using the command [`OpenMetadata/bootstrap/bootstrap_storage.sh`](https://github.com/open-metadata/OpenMetadata/blob/main/bootstrap/bootstrap_storage.sh). [Flyway](https://flywaydb.org/) is used for managing the database table versions.
 
 ### Elastic Search  
-Entity change events are stored in elastic search. The `OpenMetadata/catalog-rest-service/src/main/java/org/openmetadata/catalog/events/ElasticSearchEventHandler.java` is responsible for capturing the change events and updating es.
+Entity change events are stored in elastic search. The [`OpenMetadata/catalog-rest-service/src/main/java/org/openmetadata/catalog/events/ElasticSearchEventHandler.java`](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/java/org/openmetadata/catalog/events/ElasticSearchEventHandler.java) is responsible for capturing the change events and updating es.
 
-The es indices are created when the `OpenMetadata/ingestion/pipelines/metadata_to_es.json` ingestion connector is run.
+The es indices are created when the [`OpenMetadata/ingestion/pipelines/metadata_to_es.json`](https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/pipelines/metadata_to_es.json) ingestion connector is run.
 
 ### Authentication/Authorization  
-Authentication is provided by google oauth provider. All incoming requests are filtered by validating the JWT token using the google oauth provider. Access control is provided by `CatalogAuthorizer`
+Authentication is provided by google oauth provider. All incoming requests are filtered by validating the JWT token using the google oauth provider. Access control is provided by [`CatalogAuthorizer`](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/java/org/openmetadata/catalog/security/CatalogAuthorizer.java).
 
-Auth/Authz details are configured at `OpenMetadata/conf/openmetadata-security.yaml`
+Auth/Authz details are configured at [`OpenMetadata/conf/openmetadata-security.yaml`](https://github.com/open-metadata/OpenMetadata/blob/main/conf/openmetadata-security.yaml)
 
 ### Ingestion  
 Ingestion is a simple python framework to ingest the metadata from various external sources into OpenMetadata platform.
