@@ -409,6 +409,13 @@ const Explore: React.FC<ExploreProps> = ({
     );
   };
 
+  const getData = () => {
+    if (!isMounting.current && previsouIndex === getCurrentIndex(tab)) {
+      forceSetAgg.current = false;
+      fetchTableData();
+    }
+  };
+
   useEffect(() => {
     handleSearchText(searchQuery || emptyValue);
     setCurrentPage(1);
@@ -477,11 +484,16 @@ const Explore: React.FC<ExploreProps> = ({
   }, [searchResult]);
 
   useEffect(() => {
-    if (!isMounting.current && previsouIndex === getCurrentIndex(tab)) {
-      forceSetAgg.current = false;
-      fetchTableData();
+    getData();
+  }, [currentPage, sortField, sortOrder]);
+
+  useEffect(() => {
+    if (currentPage === 1) {
+      getData();
+    } else {
+      setCurrentPage(1);
     }
-  }, [currentPage, filters, sortField, sortOrder]);
+  }, [filters]);
 
   // alwyas Keep this useEffect at the end...
   useEffect(() => {
