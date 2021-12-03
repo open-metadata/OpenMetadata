@@ -12,18 +12,11 @@
 import json
 import logging
 import random
-import subprocess
-import sys
 import uuid
 from dataclasses import dataclass, field
 from typing import Iterable, List
 
-try:
-    from faker import Faker
-except (ImportError, ModuleNotFoundError):
-    subprocess.check_call([sys.executable, "-m", "pip", "install", "faker~=8.1.1"])
-finally:
-    from faker import Faker
+from faker import Faker
 
 from metadata.generated.schema.api.data.createTopic import CreateTopicEntityRequest
 from metadata.generated.schema.api.services.createDashboardService import (
