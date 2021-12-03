@@ -132,7 +132,7 @@ const Appbar: React.FC = (): JSX.Element => {
     return (
       <span data-testid="greeting-text">
         <span className="tw-font-medium">{name}</span>
-        <hr className="tw--mr-12 tw--ml-2 tw-mt-1.5" />
+        <hr className="tw--mr-2 tw--ml-2 tw-mt-1.5" />
       </span>
     );
   };
@@ -311,7 +311,7 @@ const Appbar: React.FC = (): JSX.Element => {
                     name: (
                       <span className="tw-text-grey-muted tw-cursor-text tw-text-xs">
                         {`Version ${(version ? version : '?').split('-')[0]}`}
-                        <hr className="tw--mr-12 tw--ml-2 tw-mt-1.5" />
+                        <hr className="tw--mr-2 tw--ml-2 tw-mt-2" />
                       </span>
                     ),
                     to: '',

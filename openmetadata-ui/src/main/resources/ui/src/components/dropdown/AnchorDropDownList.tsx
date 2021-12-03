@@ -35,7 +35,7 @@ const AnchorDropDownList = ({ dropDownList, setIsOpen }: DropDownListProp) => {
           {dropDownList.map((item: DropDownListItem, index: number) => (
             <div key={index}>
               {item.isText ? (
-                <div className="tw-px-2 tw-py-2 tw-font-normal">
+                <div className="tw-px-2 tw-py-1 tw-font-normal">
                   {item.name}
                 </div>
               ) : (
