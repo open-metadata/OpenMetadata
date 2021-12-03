@@ -123,4 +123,4 @@
     * [BulkSink](open-source-community/developer/build-a-connector/bulksink.md)
   * [Run Integration Tests](open-source-community/developer/run-integration-tests.md)
   * [UX Style Guide](open-source-community/developer/ux-style-guide.md)
-  * [Generate typescript types from JSON schema](open-source-community/developer/generate-typescript-types-from-json-schema.md)
+  * [Generate Typescript Types From JSON Schema](open-source-community/developer/generate-typescript-types-from-json-schema.md)
