@@ -33,10 +33,13 @@ import org.openqa.selenium.support.ui.WebDriverWait;
 
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.logging.Logger;
 
 @Order(14)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class PaginationAndFilterTest {
+
+  private static final Logger LOG = Logger.getLogger(PaginationAndFilterTest.class.getName());
 
   static WebDriver webDriver;
   static String url = Property.getInstance().getURL();
@@ -74,7 +77,8 @@ public class PaginationAndFilterTest {
       if (noDataFound.isDisplayed()) {
         throw new Exception("Flakiness exists");
       }
-    } catch (TimeoutException ignored) {
+    } catch (TimeoutException exception) {
+      LOG.info("Success");
     }
   }
 
