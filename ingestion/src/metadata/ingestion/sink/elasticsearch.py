@@ -65,6 +65,8 @@ class ElasticSearchConfig(ConfigModel):
     dashboard_index_name: str = "dashboard_search_index"
     pipeline_index_name: str = "pipeline_search_index"
     scheme: str = "http"
+    use_ssl: bool = False
+    verify_certs: bool = False
 
 
 class ElasticsearchSink(Sink):
@@ -102,6 +104,8 @@ class ElasticsearchSink(Sink):
             ],
             http_auth=http_auth,
             scheme=self.config.scheme,
+            use_ssl=self.config.use_ssl,
+            verify_certs=self.config.verify_certs,
         )
         if self.config.index_tables:
             self._check_or_create_index(
