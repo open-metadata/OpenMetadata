@@ -95,6 +95,7 @@ _column_string_mapping = {
     "DOUBLE PRECISION": "DOUBLE",
     "NCHAR": "CHAR",
     "NVARCHAR": "VARCHAR",
+    "TIMESTAMPTZ": "TIMESTAMP",
 }
 
 _known_unknown_column_types: Set[Type[types.TypeEngine]] = {

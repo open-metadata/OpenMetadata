@@ -5,7 +5,7 @@ from metadata.ingestion.api.source import SourceStatus
 from metadata.ingestion.source.sql_source import SQLSourceStatus
 from metadata.utils.column_helpers import get_column_type
 
-sqltypes = [
+SQLTYPES = [
     "INT",
     "INT2",
     "INT4",
@@ -59,14 +59,33 @@ sqltypes = [
     "CHARACTER",
     "NCHAR",
     "NVARCHAR",
+    "LONG",
+    "NUMBER",
+    "DATE",
+    "DATETIME",
+    "BFILE",
+    "ROWID",
+    "MEDIUMINT",
+    "TIMETZ",
+    "BIT",
+    "YEAR",
+    "ENUM",
+    "SET",
+    "NTEXT",
+    "BIGNUMERIC",
+    "INTERVAL",
+    "BYTEA",
+    "LONG VARCHAR",
+    "INTERVAL DAY TO SECOND",
+    "INTERVAL YEAR TO MONTH",
 ]
 
 
 class DataTypeTest(TestCase):
     def test_check_datatype_support(self):
         status = SQLSourceStatus()
-        for types in sqltypes:
+        for types in SQLTYPES:
             with self.subTest(line=types):
                 col_type = get_column_type(status, "Unit Test", types)
                 col_type = True if col_type != "NULL" else False
-                self.assertTrue(col_type, msg=f"{types}")
+                self.assertTrue(col_type, msg=types)
