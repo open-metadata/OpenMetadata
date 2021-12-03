@@ -125,7 +125,7 @@ module.exports = {
         120: '30rem',
       },
       minWidth: {
-        badgeCount: '24px',
+        badgeCount: '30px',
       },
       maxHeight: {
         32: '8rem',

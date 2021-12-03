@@ -11,16 +11,16 @@
  *  limitations under the License.
  */
 
-import { isEmpty } from 'lodash';
 import { FormatedTableData } from 'Models';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Ownership } from '../../enums/mydata.enum';
 import { formatDataResponse } from '../../utils/APIUtils';
-import { getCurrentUserId } from '../../utils/CommonUtils';
 import ErrorPlaceHolderES from '../common/error-with-placeholder/ErrorPlaceHolderES';
-import PageContainer from '../containers/PageContainer';
-import MyDataHeader from '../MyDataHeader/MyDataHeader.component';
+import PageLayout from '../containers/PageLayout';
+import EntityList from '../EntityList/EntityList';
+import MyAssetStats from '../MyAssetStats/MyAssetStats.component';
 import RecentlyViewed from '../recently-viewed/RecentlyViewed';
+import RecentSearchedTerms from '../RecentSearchedTerms/RecentSearchedTerms';
 import SearchedData from '../searched-data/SearchedData';
 import { MyDataProps } from './MyData.interface';
 
@@ -28,9 +28,9 @@ const MyData: React.FC<MyDataProps> = ({
   error,
   countServices,
   ingestionCount,
-  userDetails,
   searchResult,
-  fetchData,
+  ownedData,
+  followedData,
   entityCounts,
 }: MyDataProps): React.ReactElement => {
   const [data, setData] = useState<Array<FormatedTableData>>([]);
@@ -46,19 +46,6 @@ const MyData: React.FC<MyDataProps> = ({
     return tab === currentTab ? 'active' : '';
   };
 
-  const getFilters = (): string => {
-    if (filter === 'owner' && userDetails.teams) {
-      const userTeams = !isEmpty(userDetails)
-        ? userDetails.teams.map((team) => `${filter}:${team.id}`)
-        : [];
-      const ownerIds = [...userTeams, `${filter}:${getCurrentUserId()}`];
-
-      return `(${ownerIds.join(' OR ')})`;
-    }
-
-    return `${filter}:${getCurrentUserId()}`;
-  };
-
   const handleTabChange = (tab: number, filter: string) => {
     if (currentTab !== tab) {
       setIsEntityLoading(true);
@@ -70,7 +57,7 @@ const MyData: React.FC<MyDataProps> = ({
 
   const getTabs = () => {
     return (
-      <div className="tw-mb-3 tw--mt-4" data-testid="tabs">
+      <div className="tw-mb-3" data-testid="tabs">
         <nav className="tw-flex tw-flex-row tw-gh-tabs-container tw-px-4">
           <button
             className={`tw-pb-2 tw-px-4 tw-gh-tabs ${getActiveTabClass(1)}`}
@@ -98,22 +85,63 @@ const MyData: React.FC<MyDataProps> = ({
     );
   };
 
+  const getLeftPanel = () => {
+    return (
+      <div className="tw-mt-5">
+        <MyAssetStats
+          countServices={countServices}
+          entityCounts={entityCounts}
+          ingestionCount={ingestionCount}
+        />
+        <div className="tw-filter-seperator" />
+        <RecentlyViewed />
+        <div className="tw-filter-seperator tw-mt-3" />
+        <RecentSearchedTerms />
+        <div className="tw-filter-seperator tw-mt-3" />
+      </div>
+    );
+  };
+
+  const getRightPanel = useCallback(() => {
+    return (
+      <div className="tw-mt-5">
+        <EntityList
+          entityList={ownedData}
+          headerText={
+            <div className="tw-flex tw-justify-between">
+              My Data
+              {ownedData.length ? (
+                <span className="link-text tw-font-light tw-text-xs">
+                  View All
+                </span>
+              ) : null}
+            </div>
+          }
+          noDataPlaceholder={<>You have not owned anything yet!</>}
+        />
+        <div className="tw-filter-seperator tw-mt-3" />
+        <EntityList
+          entityList={followedData}
+          headerText={
+            <div className="tw-flex tw-justify-between">
+              Following
+              {followedData.length ? (
+                <span className="link-text tw-font-light tw-text-xs">
+                  View All
+                </span>
+              ) : null}
+            </div>
+          }
+          noDataPlaceholder={<>You have not followed anything yet!</>}
+        />
+        <div className="tw-filter-seperator tw-mt-3" />
+      </div>
+    );
+  }, [ownedData, followedData]);
+
   const paginate = (pageNumber: number) => {
     setCurrentPage(pageNumber);
   };
-
-  useEffect(() => {
-    if (isMounted.current && Boolean(currentTab === 2 || currentTab === 3)) {
-      setIsEntityLoading(true);
-      fetchData({
-        queryString: '',
-        from: currentPage,
-        filters: filter ? getFilters() : '',
-        sortField: '',
-        sortOrder: '',
-      });
-    }
-  }, [currentPage, filter]);
 
   useEffect(() => {
     if (searchResult) {
@@ -135,32 +163,24 @@ const MyData: React.FC<MyDataProps> = ({
   }, []);
 
   return (
-    <PageContainer>
-      <div className="container-fluid" data-testid="fluid-container">
-        <MyDataHeader
-          countServices={countServices}
-          entityCounts={entityCounts}
-          ingestionCount={ingestionCount}
+    <PageLayout leftPanel={getLeftPanel()} rightPanel={getRightPanel()}>
+      {getTabs()}
+      {error && Boolean(currentTab === 2 || currentTab === 3) ? (
+        <ErrorPlaceHolderES errorMessage={error} type="error" />
+      ) : (
+        <SearchedData
+          showOnboardingTemplate
+          currentPage={currentPage}
+          data={data}
+          isLoading={currentTab === 1 ? false : isEntityLoading}
+          paginate={paginate}
+          searchText="*"
+          showOnlyChildren={currentTab === 1}
+          showResultCount={filter && data.length > 0 ? true : false}
+          totalValue={totalNumberOfValue}
         />
-        {getTabs()}
-        {error && Boolean(currentTab === 2 || currentTab === 3) ? (
-          <ErrorPlaceHolderES errorMessage={error} type="error" />
-        ) : (
-          <SearchedData
-            showOnboardingTemplate
-            currentPage={currentPage}
-            data={data}
-            isLoading={currentTab === 1 ? false : isEntityLoading}
-            paginate={paginate}
-            searchText="*"
-            showOnlyChildren={currentTab === 1}
-            showResultCount={filter && data.length > 0 ? true : false}
-            totalValue={totalNumberOfValue}>
-            {currentTab === 1 ? <RecentlyViewed /> : null}
-          </SearchedData>
-        )}
-      </div>
-    </PageContainer>
+      )}
+    </PageLayout>
   );
 };
 

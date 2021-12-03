@@ -12,24 +12,31 @@
  */
 
 import { AxiosError } from 'axios';
-import { isUndefined } from 'lodash';
+import { isEmpty, isNil, isUndefined } from 'lodash';
 import { observer } from 'mobx-react';
-import { EntityCounts, SearchDataFunctionType, SearchResponse } from 'Models';
+import { EntityCounts, FormatedTableData, SearchResponse } from 'Models';
 import React, { useEffect, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import AppState from '../../AppState';
 import { getIngestionWorkflows } from '../../axiosAPIs/ingestionWorkflowAPI';
 import { searchData } from '../../axiosAPIs/miscAPI';
+import PageContainerV1 from '../../components/containers/PageContainerV1';
 import Loader from '../../components/Loader/Loader';
 import MyData from '../../components/MyData/MyData.component';
-import { PAGE_SIZE } from '../../constants/constants';
 import {
   myDataEntityCounts,
   myDataSearchIndex,
 } from '../../constants/Mydata.constants';
+import { Ownership } from '../../enums/mydata.enum';
+import { useAuth } from '../../hooks/authHooks';
+import { formatDataResponse } from '../../utils/APIUtils';
 import { getEntityCountByType } from '../../utils/EntityUtils';
+import { getMyDataFilters } from '../../utils/MyDataUtils';
 import { getAllServices } from '../../utils/ServiceUtils';
 
 const MyDataPage = () => {
+  const location = useLocation();
+  const { isAuthDisabled } = useAuth(location.pathname);
   const [error, setError] = useState<string>('');
   const [countServices, setCountServices] = useState<number>();
   const [ingestionCount, setIngestionCount] = useState<number>();
@@ -37,18 +44,13 @@ const MyDataPage = () => {
   const [searchResult, setSearchResult] = useState<SearchResponse>();
   const [entityCounts, setEntityCounts] = useState<EntityCounts>();
 
-  const fetchData = (value: SearchDataFunctionType, fetchService = false) => {
+  const [ownedData, setOwnedData] = useState<Array<FormatedTableData>>();
+  const [followedData, setFollowedData] = useState<Array<FormatedTableData>>();
+
+  const fetchData = (fetchService = false) => {
     setError('');
 
-    searchData(
-      value.queryString,
-      value.from,
-      value.size ?? PAGE_SIZE,
-      value.filters,
-      value.sortField,
-      value.sortOrder,
-      myDataSearchIndex
-    )
+    searchData('', 1, 0, '', '', '', myDataSearchIndex)
       .then((res: SearchResponse) => {
         setSearchResult(res);
         if (isUndefined(entityCounts)) {
@@ -75,22 +77,57 @@ const MyDataPage = () => {
     setIsLoading(false);
   };
 
-  useEffect(() => {
-    fetchData(
-      {
-        queryString: '',
-        from: 1,
-        filters: '',
-        size: 0,
-        sortField: '',
-        sortOrder: '',
-      },
-      isUndefined(countServices)
+  const fetchMyData = () => {
+    const ownedEntity = searchData(
+      '',
+      1,
+      5,
+      getMyDataFilters(Ownership.OWNER, AppState.userDetails),
+      '',
+      '',
+      myDataSearchIndex
     );
+
+    const followedEntity = searchData(
+      '',
+      1,
+      5,
+      getMyDataFilters(Ownership.FOLLOWERS, AppState.userDetails),
+      '',
+      '',
+      myDataSearchIndex
+    );
+
+    Promise.allSettled([ownedEntity, followedEntity]).then(
+      ([resOwnedEntity, resFollowedEntity]) => {
+        if (resOwnedEntity.status === 'fulfilled') {
+          setOwnedData(formatDataResponse(resOwnedEntity.value.data.hits.hits));
+        }
+        if (resFollowedEntity.status === 'fulfilled') {
+          setFollowedData(
+            formatDataResponse(resFollowedEntity.value.data.hits.hits)
+          );
+        }
+      }
+    );
+  };
+
+  useEffect(() => {
+    fetchData(true);
   }, []);
 
+  useEffect(() => {
+    if (
+      ((isAuthDisabled && AppState.users.length) ||
+        !isEmpty(AppState.userDetails)) &&
+      (isNil(ownedData) || isNil(followedData))
+    ) {
+      fetchMyData();
+    }
+  }, [AppState.userDetails, AppState.users, isAuthDisabled]);
+
   return (
-    <>
+    <PageContainerV1>
       {!isUndefined(countServices) &&
       !isUndefined(entityCounts) &&
       !isUndefined(ingestionCount) &&
@@ -99,15 +136,15 @@ const MyDataPage = () => {
           countServices={countServices}
           entityCounts={entityCounts}
           error={error}
-          fetchData={fetchData}
+          followedData={followedData || []}
           ingestionCount={ingestionCount}
+          ownedData={ownedData || []}
           searchResult={searchResult}
-          userDetails={AppState.userDetails}
         />
       ) : (
         <Loader />
       )}
-    </>
+    </PageContainerV1>
   );
 };
 

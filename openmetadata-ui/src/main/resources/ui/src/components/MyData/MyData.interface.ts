@@ -11,15 +11,22 @@
  *  limitations under the License.
  */
 
-import { EntityCounts, SearchDataFunctionType, SearchResponse } from 'Models';
+import {
+  EntityCounts,
+  FormatedTableData,
+  SearchDataFunctionType,
+  SearchResponse,
+} from 'Models';
 import { User } from '../../generated/entity/teams/user';
 
 export interface MyDataProps {
   error: string;
   ingestionCount: number;
   countServices: number;
-  userDetails: User;
+  userDetails?: User;
   searchResult: SearchResponse | undefined;
-  fetchData: (value: SearchDataFunctionType) => void;
+  ownedData: Array<FormatedTableData>;
+  followedData: Array<FormatedTableData>;
+  fetchData?: (value: SearchDataFunctionType) => void;
   entityCounts: EntityCounts;
 }

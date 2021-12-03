@@ -23,6 +23,7 @@ import { SearchResponse } from 'Models';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { User } from '../../generated/entity/teams/user';
+import { formatDataResponse } from '../../utils/APIUtils';
 import MyDataPage from './MyData.component';
 
 const mockData = {
@@ -262,7 +263,9 @@ describe('Test MyData page', () => {
         }}
         error=""
         fetchData={fetchData}
+        followedData={formatDataResponse(mockData.data.hits.hits)}
         ingestionCount={0}
+        ownedData={formatDataResponse(mockData.data.hits.hits)}
         searchResult={mockData as unknown as SearchResponse}
         userDetails={mockUserDetails as unknown as User}
       />,

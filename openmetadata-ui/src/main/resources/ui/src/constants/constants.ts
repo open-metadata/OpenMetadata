@@ -19,7 +19,7 @@ export const LIST_SIZE = 5;
 export const SIDEBAR_WIDTH_COLLAPSED = 290;
 export const SIDEBAR_WIDTH_EXPANDED = 290;
 export const LOCALSTORAGE_RECENTLY_VIEWED = 'recentlyViewedData';
-export const LOCALSTORAGE_RECENTLY_SEARCH = 'recentlySearchData';
+export const LOCALSTORAGE_RECENTLY_SEARCHED = 'recentlySearchedData';
 export const oidcTokenKey = 'oidcIdToken';
 export const imageTypes = {
   image: 's96-c',
