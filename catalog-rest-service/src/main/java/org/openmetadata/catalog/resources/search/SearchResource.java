@@ -72,7 +72,8 @@ public class SearchResource {
   private static final Logger LOG = LoggerFactory.getLogger(SearchResource.class);
 
   public SearchResource(ElasticSearchConfiguration esConfig) {
-    RestClientBuilder restClientBuilder = RestClient.builder(new HttpHost(esConfig.getHost(), esConfig.getPort(), "http"));
+    RestClientBuilder restClientBuilder = RestClient.builder(new HttpHost(esConfig.getHost(), esConfig.getPort(),
+        esConfig.getScheme()));
     if(StringUtils.isNotEmpty(esConfig.getUsername())){
       CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
       credentialsProvider.setCredentials(AuthScope.ANY, new UsernamePasswordCredentials(esConfig.getUsername(), esConfig.getPassword()));

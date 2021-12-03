@@ -30,6 +30,8 @@ public class ElasticSearchConfiguration {
 
     private String password;
 
+    private String scheme;
+
     public String getHost() {
         return host;
     }
@@ -60,6 +62,14 @@ public class ElasticSearchConfiguration {
 
     public void setPassword(String password) {
         this.password = password;
+    }
+
+    public String getScheme() {
+        return scheme;
+    }
+
+    public void setScheme(String scheme) {
+        this.scheme = scheme;
     }
 
     @Override

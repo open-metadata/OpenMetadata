@@ -81,7 +81,8 @@ public class ElasticSearchEventHandler implements EventHandler {
 
   public void init(CatalogApplicationConfig config, Jdbi jdbi) {
     ElasticSearchConfiguration esConfig = config.getElasticSearchConfiguration();
-    RestClientBuilder restClientBuilder = RestClient.builder(new HttpHost(esConfig.getHost(), esConfig.getPort(), "http"));
+    RestClientBuilder restClientBuilder = RestClient.builder(new HttpHost(esConfig.getHost(), esConfig.getPort(),
+        esConfig.getScheme()));
     if(StringUtils.isNotEmpty(esConfig.getUsername())){
       CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
       credentialsProvider.setCredentials(AuthScope.ANY, new UsernamePasswordCredentials(esConfig.getUsername(), esConfig.getPassword()));
