@@ -43,7 +43,7 @@ import java.util.UUID;
 public class LocationRepository extends EntityRepository<Location> {
   // Location fields that can be patched in a PATCH request
   private static final Fields LOCATION_PATCH_FIELDS = new Fields(LocationResource.FIELD_LIST,
-          "owner,service,tags");
+          "owner,tags");
   // Location fields that can be updated in a PUT request
   private static final Fields LOCATION_UPDATE_FIELDS = new Fields(LocationResource.FIELD_LIST,
           "owner,tags");

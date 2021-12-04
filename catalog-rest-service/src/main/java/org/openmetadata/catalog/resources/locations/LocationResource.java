@@ -103,7 +103,7 @@ public class LocationResource {
     }
   }
 
-  static final String FIELDS = "owner,service,followers,tags";
+  static final String FIELDS = "owner,followers,tags";
   public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replaceAll(" ", "")
           .split(","));
 

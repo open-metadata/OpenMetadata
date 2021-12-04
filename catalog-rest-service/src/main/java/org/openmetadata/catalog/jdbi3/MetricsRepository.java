@@ -34,7 +34,7 @@ import java.util.Objects;
 import java.util.UUID;
 
 public class MetricsRepository extends EntityRepository<Metrics> {
-  private static final Fields METRICS_UPDATE_FIELDS = new Fields(MetricsResource.FIELD_LIST, "owner,service");
+  private static final Fields METRICS_UPDATE_FIELDS = new Fields(MetricsResource.FIELD_LIST, "owner");
   private final CollectionDAO dao;
 
   public MetricsRepository(CollectionDAO dao) {
@@ -49,8 +49,8 @@ public class MetricsRepository extends EntityRepository<Metrics> {
 
   @Override
   public Metrics setFields(Metrics metrics, Fields fields) throws IOException {
+    metrics.setService(getService(metrics)); // service is a default field
     metrics.setOwner(fields.contains("owner") ? getOwner(metrics) : null);
-    metrics.setService(fields.contains("service") ? getService(metrics) : null);
     metrics.setUsageSummary(fields.contains("usageSummary") ? EntityUtil.getLatestUsage(dao.usageDAO(),
             metrics.getId()) : null);
     return metrics;

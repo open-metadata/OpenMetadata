@@ -874,8 +874,8 @@ public class TableResourceTest extends EntityResourceTest<Table> {
     assertEquals(tableList.getData().size(), tableList1.getData().size());
     assertFields(tableList1.getData(), fields);
 
-    // GET .../tables?fields=usageSummary,owner,service
-    final String fields1 = "usageSummary,owner,database";
+    // GET .../tables?fields=usageSummary,owner
+    final String fields1 = "usageSummary,owner";
     queryParams = new HashMap<>() {{
       put("fields", fields1);
     }};
@@ -1106,7 +1106,7 @@ public class TableResourceTest extends EntityResourceTest<Table> {
     assertFields(table, fields);
 
     // GET .../tables/{id}?fields=columns,usageSummary,owner,database,tags
-    fields = "columns,usageSummary,owner,database,tags";
+    fields = "columns,usageSummary,owner,tags";
     table = byName ? getTableByName(table.getFullyQualifiedName(), fields, adminAuthHeaders()) :
             getTable(table.getId(), fields, adminAuthHeaders());
     assertEquals(table.getOwner().getId(), USER_OWNER1.getId());

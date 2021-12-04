@@ -212,8 +212,8 @@ public class DatabaseResourceTest extends EntityResourceTest<Database> {
     assertNull(database.getTables());
     assertNull(database.getUsageSummary());
 
-    // .../databases?fields=owner,service,tables
-    fields = "owner,service,tables,usageSummary";
+    // .../databases?fields=owner,tables,usageSummary
+    fields = "owner,tables,usageSummary";
     database = byName ? getDatabaseByName(database.getFullyQualifiedName(), fields, adminAuthHeaders()) :
             getDatabase(database.getId(), fields, adminAuthHeaders());
     assertNotNull(database.getOwner());
