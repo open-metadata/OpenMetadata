@@ -80,9 +80,15 @@ class BigqueryUsageSource(Source):
                         payload = list(entry.payload.items())[-1][1]
                         if "jobChange" in payload:
                             print(f"\nEntries: {payload}")
-                            queryConfig = payload["jobChange"]["job"]["jobConfig"][
+                            if (
                                 "queryConfig"
-                            ]
+                                in payload["jobChange"]["job"]["jobConfig"]
+                            ):
+                                queryConfig = payload["jobChange"]["job"]["jobConfig"][
+                                    "queryConfig"
+                                ]
+                            else:
+                                continue
                             jobStats = payload["jobChange"]["job"]["jobStats"]
                             statementType = ""
                             if hasattr(queryConfig, "statementType"):
