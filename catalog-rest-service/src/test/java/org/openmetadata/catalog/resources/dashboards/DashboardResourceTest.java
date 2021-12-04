@@ -288,7 +288,7 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard> {
     assertNull(dashboard.getUsageSummary());
 
     // .../Dashboards?fields=owner,service,tables
-    fields = "owner,service,charts,usageSummary";
+    fields = "owner,charts,usageSummary";
     dashboard = byName ? getDashboardByName(dashboard.getFullyQualifiedName(), fields, adminAuthHeaders()) :
             getDashboard(dashboard.getId(), fields, adminAuthHeaders());
     assertNotNull(dashboard.getOwner());

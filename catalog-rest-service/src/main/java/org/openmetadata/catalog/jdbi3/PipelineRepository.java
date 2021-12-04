@@ -47,9 +47,9 @@ import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityN
 
 public class PipelineRepository extends EntityRepository<Pipeline> {
   private static final Fields PIPELINE_UPDATE_FIELDS = new Fields(PipelineResource.FIELD_LIST,
-          "owner,service,tags,tasks");
+          "owner,tags,tasks");
   private static final Fields PIPELINE_PATCH_FIELDS = new Fields(PipelineResource.FIELD_LIST,
-          "owner,service,tags,tasks");
+          "owner,tags,tasks");
   private final CollectionDAO dao;
 
   public PipelineRepository(CollectionDAO dao) {
