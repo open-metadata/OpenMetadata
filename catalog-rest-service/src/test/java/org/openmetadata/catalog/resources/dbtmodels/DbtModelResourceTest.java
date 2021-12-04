@@ -24,8 +24,8 @@ import org.openmetadata.catalog.CatalogApplicationTest;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.data.CreateDatabase;
 import org.openmetadata.catalog.api.data.CreateDbtModel;
-import org.openmetadata.catalog.entity.data.DbtModel;
 import org.openmetadata.catalog.entity.data.Database;
+import org.openmetadata.catalog.entity.data.DbtModel;
 import org.openmetadata.catalog.entity.services.DatabaseService;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.jdbi3.DbtModelRepository.DbtModelEntityInterface;
@@ -45,8 +45,6 @@ import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.TestUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response.Status;
@@ -91,7 +89,6 @@ import static org.openmetadata.catalog.util.TestUtils.userAuthHeaders;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class DbtModelResourceTest extends EntityResourceTest<DbtModel> {
-  private static final Logger LOG = LoggerFactory.getLogger(DbtModelResourceTest.class);
   public static Database DATABASE;
 
   public static final List<Column> COLUMNS = Arrays.asList(
