@@ -40,8 +40,6 @@ import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
 import org.openmetadata.common.utils.JsonSchemaUtil;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.json.JsonPatch;
 import javax.ws.rs.client.WebTarget;
@@ -75,7 +73,6 @@ import static org.openmetadata.catalog.util.TestUtils.existsInEntityReferenceLis
 import static org.openmetadata.catalog.util.TestUtils.userAuthHeaders;
 
 public class LocationResourceTest extends CatalogApplicationTest {
-  private static final Logger LOG = LoggerFactory.getLogger(LocationResourceTest.class);
   public static User USER1;
   public static EntityReference USER_OWNER1;
   public static Team TEAM1;
