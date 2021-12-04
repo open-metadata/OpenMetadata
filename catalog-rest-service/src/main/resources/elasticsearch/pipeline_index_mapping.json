@@ -1,0 +1,56 @@
+{
+    "properties": {
+      "pipeline_name": {
+        "type":"text"
+      },
+      "display_name": {
+        "type": "text"
+      },
+      "owner": {
+        "type": "keyword"
+      },
+      "followers": {
+        "type": "keyword"
+      },
+      "last_updated_timestamp": {
+        "type": "date",
+        "format": "epoch_second"
+      },
+      "description": {
+        "type": "text"
+      },
+      "fqdn": {
+        "type": "keyword"
+      },
+      "task_names": {
+        "type":"text"
+      },
+      "task_descriptions": {
+        "type": "text"
+      },
+      "tier": {
+        "type": "keyword"
+      },
+      "tags": {
+        "type": "keyword"
+      },
+      "service": {
+        "type": "keyword"
+      },
+      "service_type": {
+        "type": "keyword"
+      },
+      "service_category": {
+        "type": "keyword"
+      },
+      "entity_type": {
+        "type": "keyword"
+      },
+      "suggest": {
+        "type": "completion"
+      },
+      "change_descriptions": {
+        "type": "nested"
+      }
+    }
+}

@@ -207,8 +207,8 @@ public class TableRepository extends EntityRepository<Table> {
   public void addQuery(UUID tableId, SQLQuery query) throws IOException {
     // Validate the request content
     try {
-       byte[] checksum = MessageDigest.getInstance("MD5").digest(query.getQuery().getBytes());
-       query.setChecksum(Hex.encodeHexString(checksum));
+      byte[] checksum = MessageDigest.getInstance("MD5").digest(query.getQuery().getBytes());
+      query.setChecksum(Hex.encodeHexString(checksum));
     } catch(NoSuchAlgorithmException e) {
       throw new RuntimeException(e);
     }
@@ -395,6 +395,14 @@ public class TableRepository extends EntityRepository<Table> {
       throw EntityNotFoundException.byMessage(String.format("Database for table %s Not found", tableId));
     }
     return dao.databaseDAO().findEntityReferenceById(UUID.fromString(result.get(0)));
+  }
+
+  private EntityReference getDatabaseService(UUID databaseId) throws IOException {
+    // Find database for the table
+    EntityReference serviceRef =  EntityUtil.getService(dao.relationshipDAO(), databaseId,
+        Entity.DATABASE_SERVICE);
+    serviceRef = dao.dbServiceDAO().findEntityReferenceById(serviceRef.getId());
+    return serviceRef;
   }
 
   private EntityReference getLocation(UUID tableId) throws IOException {
@@ -773,7 +781,8 @@ public class TableRepository extends EntityRepository<Table> {
       // Carry forward the user generated metadata from existing columns to new columns
       for (Column updated : updatedColumns) {
         // Find stored column matching name, data type and ordinal position
-        Column stored = origColumns.stream().filter(c -> EntityUtil.columnMatch.test(c, updated)).findAny().orElse(null);
+        Column stored = origColumns.stream().filter(c ->
+            EntityUtil.columnMatch.test(c, updated)).findAny().orElse(null);
         if (stored == null) { // New column added
           continue;
         }

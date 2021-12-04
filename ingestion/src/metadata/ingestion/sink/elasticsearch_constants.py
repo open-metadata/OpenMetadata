@@ -13,20 +13,11 @@ import textwrap
 
 TABLE_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
     """
-    {
+     {
     "mappings":{
           "properties": {
             "table_name": {
               "type":"text"
-            },
-            "schema": {
-              "type":"text",
-              "analyzer": "simple",
-              "fields": {
-                "raw": {
-                  "type": "keyword"
-                }
-              }
             },
             "display_name": {
               "type": "text"
@@ -35,6 +26,9 @@ TABLE_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
               "type": "text"
             },
             "followers": {
+              "type": "keyword"
+            },
+            "fqdn": {
               "type": "keyword"
             },
             "last_updated_timestamp": {
@@ -55,9 +49,6 @@ TABLE_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
             },
             "tags": {
               "type": "keyword"
-            },
-            "badges": {
-              "type": "text"
             },
             "service": {
               "type": "keyword"
@@ -96,7 +87,7 @@ TABLE_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
               "type": "long"
             }
           }
-        }
+      }
     }
     """
 )
@@ -109,15 +100,6 @@ TOPIC_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
             "topic_name": {
               "type":"text"
             },
-            "schema": {
-              "type":"text",
-              "analyzer": "simple",
-              "fields": {
-                "raw": {
-                  "type": "keyword"
-                }
-              }
-            },
             "display_name": {
               "type": "text"
             },
@@ -125,6 +107,9 @@ TOPIC_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
               "type": "text"
             },
             "followers": {
+              "type": "keyword"
+            },
+            "fqdn": {
               "type": "keyword"
             },
             "last_updated_timestamp": {
@@ -173,6 +158,9 @@ DASHBOARD_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
               "type": "text"
             },
             "owner": {
+              "type": "keyword"
+            },
+            "fqdn": {
               "type": "keyword"
             },
             "followers": {
@@ -247,6 +235,9 @@ PIPELINE_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
             "display_name": {
               "type": "text"
             },
+            "fqdn": {
+              "type": "keyword"
+            },
             "owner": {
               "type": "keyword"
             },
@@ -302,15 +293,6 @@ DBT_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
             "dbt_model_name": {
               "type":"text"
             },
-            "schema": {
-              "type":"text",
-              "analyzer": "simple",
-              "fields": {
-                "raw": {
-                  "type": "keyword"
-                }
-              }
-            },
             "display_name": {
               "type": "text"
             },
@@ -318,6 +300,9 @@ DBT_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
               "type": "text"
             },
             "followers": {
+              "type": "keyword"
+            },
+            "fqdn": {
               "type": "keyword"
             },
             "last_updated_timestamp": {
