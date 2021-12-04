@@ -47,6 +47,9 @@
       "javaEnums": [
         {
           "name": "BaseTable"
+        },
+        {
+          "name": "Seed"
         }
       ]
     },

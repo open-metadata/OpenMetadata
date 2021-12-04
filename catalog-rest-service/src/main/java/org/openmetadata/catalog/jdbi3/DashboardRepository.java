@@ -44,9 +44,9 @@ import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityN
 
 public class DashboardRepository extends EntityRepository<Dashboard> {
   private static final Fields DASHBOARD_UPDATE_FIELDS = new Fields(DashboardResource.FIELD_LIST,
-          "owner,service,tags,charts");
+          "owner,tags,charts");
   private static final Fields DASHBOARD_PATCH_FIELDS = new Fields(DashboardResource.FIELD_LIST,
-          "owner,service,tags,charts");
+          "owner,tags,charts");
   private final CollectionDAO dao;
 
   public DashboardRepository(CollectionDAO dao) {

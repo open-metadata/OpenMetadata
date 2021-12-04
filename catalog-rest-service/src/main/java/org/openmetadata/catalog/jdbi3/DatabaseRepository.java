@@ -43,8 +43,7 @@ import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityN
 
 public class DatabaseRepository extends EntityRepository<Database> {
   private static final Fields DATABASE_UPDATE_FIELDS = new Fields(DatabaseResource.FIELD_LIST, "owner");
-  private static final Fields DATABASE_PATCH_FIELDS = new Fields(DatabaseResource.FIELD_LIST,
-          "owner,service, usageSummary");
+  private static final Fields DATABASE_PATCH_FIELDS = new Fields(DatabaseResource.FIELD_LIST,"owner,usageSummary");
   private final CollectionDAO dao;
 
   public DatabaseRepository(CollectionDAO dao) {

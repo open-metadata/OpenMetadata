@@ -344,7 +344,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline> {
     assertNull(pipeline.getTasks());
 
     // .../Pipelines?fields=owner,service,tables
-    fields = "owner,service,tasks";
+    fields = "owner,tasks";
     pipeline = byName ? getPipelineByName(pipeline.getFullyQualifiedName(), fields, adminAuthHeaders()) :
             getPipeline(pipeline.getId(), fields, adminAuthHeaders());
     assertNotNull(pipeline.getOwner());

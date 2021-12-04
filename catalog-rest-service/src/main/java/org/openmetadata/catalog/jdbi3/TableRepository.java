@@ -72,10 +72,10 @@ public class TableRepository extends EntityRepository<Table> {
   static final Logger LOG = LoggerFactory.getLogger(TableRepository.class);
   // Table fields that can be patched in a PATCH request
   static final Fields TABLE_PATCH_FIELDS = new Fields(TableResource.FIELD_LIST,
-          "owner,columns,database,tags,tableConstraints");
+          "owner,columns,tags,tableConstraints");
   // Table fields that can be updated in a PUT request
   static final Fields TABLE_UPDATE_FIELDS = new Fields(TableResource.FIELD_LIST,
-          "owner,columns,database,tags,tableConstraints");
+          "owner,columns,tags,tableConstraints");
 
   private final CollectionDAO dao;
 

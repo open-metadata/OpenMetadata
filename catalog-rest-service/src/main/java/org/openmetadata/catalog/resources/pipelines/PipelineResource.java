@@ -112,7 +112,7 @@ public class PipelineResource {
     }
   }
 
-  static final String FIELDS = "owner,service,tasks,followers,tags,usageSummary";
+  static final String FIELDS = "owner,tasks,followers,tags,usageSummary";
   public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replaceAll(" ", "")
           .split(","));
 

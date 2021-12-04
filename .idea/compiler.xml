@@ -12,8 +12,5 @@
         <module name="openmetadata-ui" />
       </profile>
     </annotationProcessing>
-    <bytecodeTargetLevel>
-      <module name="catalog-bin" target="1.5" />
-    </bytecodeTargetLevel>
   </component>
 </project>

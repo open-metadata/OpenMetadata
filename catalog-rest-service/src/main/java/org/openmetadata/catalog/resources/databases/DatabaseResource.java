@@ -119,7 +119,7 @@ public class DatabaseResource {
     }
   }
 
-  static final String FIELDS ="owner,service,tables,usageSummary,location";
+  static final String FIELDS ="owner,tables,usageSummary,location";
   public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replaceAll(" ", "")
           .split(","));
   @GET
