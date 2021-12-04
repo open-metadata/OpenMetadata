@@ -46,6 +46,7 @@ import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.search.aggregations.AggregationBuilders;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.elasticsearch.search.sort.SortOrder;
+import org.openmetadata.catalog.util.ElasticSearchClientUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -72,16 +73,7 @@ public class SearchResource {
   private static final Logger LOG = LoggerFactory.getLogger(SearchResource.class);
 
   public SearchResource(ElasticSearchConfiguration esConfig) {
-    RestClientBuilder restClientBuilder = RestClient.builder(new HttpHost(esConfig.getHost(), esConfig.getPort(), "http"));
-    if(StringUtils.isNotEmpty(esConfig.getUsername())){
-      CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
-      credentialsProvider.setCredentials(AuthScope.ANY, new UsernamePasswordCredentials(esConfig.getUsername(), esConfig.getPassword()));
-      restClientBuilder.setHttpClientConfigCallback(httpAsyncClientBuilder -> {
-        httpAsyncClientBuilder.setDefaultCredentialsProvider(credentialsProvider);
-        return  httpAsyncClientBuilder;
-      });
-    }
-    this.client = new RestHighLevelClient(restClientBuilder);
+    this.client = ElasticSearchClientUtils.createElasticSearchClient(esConfig);
   }
 
   @GET
