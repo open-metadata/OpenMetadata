@@ -29,6 +29,7 @@ type SuggestionProp = {
 type CommonSource = {
   fqdn: string;
   service_type: string;
+  name: string;
 };
 
 type TableSource = {
@@ -185,7 +186,7 @@ const Suggestions = ({ searchText, isOpen, setIsOpen }: SuggestionProp) => {
 
             {tableSuggestions.map((suggestion: TableSource) => {
               const fqdn = suggestion.fqdn;
-              const name = suggestion.table_name;
+              const name = suggestion.name;
               const serviceType = suggestion.service_type;
 
               return getSuggestionElement(
@@ -203,7 +204,7 @@ const Suggestions = ({ searchText, isOpen, setIsOpen }: SuggestionProp) => {
 
             {topicSuggestions.map((suggestion: TopicSource) => {
               const fqdn = suggestion.fqdn;
-              const name = suggestion.topic_name;
+              const name = suggestion.name;
               const serviceType = suggestion.service_type;
 
               return getSuggestionElement(
@@ -221,7 +222,7 @@ const Suggestions = ({ searchText, isOpen, setIsOpen }: SuggestionProp) => {
 
             {dashboardSuggestions.map((suggestion: DashboardSource) => {
               const fqdn = suggestion.fqdn;
-              const name = suggestion.dashboard_name;
+              const name = suggestion.name;
               const serviceType = suggestion.service_type;
 
               return getSuggestionElement(
@@ -239,7 +240,7 @@ const Suggestions = ({ searchText, isOpen, setIsOpen }: SuggestionProp) => {
 
             {pipelineSuggestions.map((suggestion: PipelineSource) => {
               const fqdn = suggestion.fqdn;
-              const name = suggestion.pipeline_name;
+              const name = suggestion.name;
               const serviceType = suggestion.service_type;
 
               return getSuggestionElement(
@@ -257,7 +258,7 @@ const Suggestions = ({ searchText, isOpen, setIsOpen }: SuggestionProp) => {
 
             {DBTModelSuggestions.map((suggestion: DBTModelSource) => {
               const fqdn = suggestion.fqdn;
-              const name = suggestion.dbt_model_name;
+              const name = suggestion.name;
               const serviceType = suggestion.service_type;
 
               return getSuggestionElement(

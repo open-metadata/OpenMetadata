@@ -32,7 +32,7 @@ class TableESDocument(BaseModel):
     service_type: str
     service_category: str
     entity_type: str = "table"
-    table_name: str
+    name: str
     suggest: List[dict]
     description: Optional[str] = None
     table_type: Optional[str] = None
@@ -48,7 +48,6 @@ class TableESDocument(BaseModel):
     tags: List[str]
     fqdn: str
     tier: Optional[str] = None
-    schema_description: Optional[str] = None
     owner: str
     followers: List[str]
 
@@ -61,14 +60,13 @@ class TopicESDocument(BaseModel):
     service_type: str
     service_category: str
     entity_type: str = "topic"
-    topic_name: str
+    name: str
     suggest: List[dict]
     description: Optional[str] = None
     last_updated_timestamp: Optional[int]
     tags: List[str]
     fqdn: str
     tier: Optional[str] = None
-    schema_description: Optional[str] = None
     owner: str
     followers: List[str]
 
@@ -81,7 +79,7 @@ class DashboardESDocument(BaseModel):
     service_type: str
     service_category: str
     entity_type: str = "dashboard"
-    dashboard_name: str
+    name: str
     suggest: List[dict]
     description: Optional[str] = None
     last_updated_timestamp: Optional[int]
@@ -108,7 +106,7 @@ class PipelineESDocument(BaseModel):
     service_type: str
     service_category: str
     entity_type: str = "pipeline"
-    pipeline_name: str
+    name: str
     suggest: List[dict]
     description: Optional[str] = None
     last_updated_timestamp: Optional[int]
@@ -130,7 +128,7 @@ class DbtModelESDocument(BaseModel):
     service_type: str
     service_category: str
     entity_type: str = "dbtmodel"
-    dbt_model_name: str
+    name: str
     suggest: List[dict]
     description: Optional[str] = None
     dbt_type: Optional[str] = None
@@ -140,7 +138,6 @@ class DbtModelESDocument(BaseModel):
     tags: List[str]
     fqdn: str
     tier: Optional[str] = None
-    schema_description: Optional[str] = None
     owner: str
     followers: List[str]
 

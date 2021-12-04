@@ -25,12 +25,7 @@ export const formatDataResponse = (hits) => {
       hit._source.topic_id ||
       hit._source.dashboard_id ||
       hit._source.pipeline_id;
-    newData.name =
-      hit._source.table_name ||
-      hit._source.topic_name ||
-      hit._source.dashboard_name ||
-      hit._source.pipeline_name ||
-      hit._source.dbt_model_name;
+    newData.name = hit._source.name;
     newData.description = hit._source.description;
     newData.fullyQualifiedName = hit._source.fqdn;
     newData.tableType = hit._source.table_type;
