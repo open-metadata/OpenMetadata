@@ -11,16 +11,11 @@
   "sink": {
     "type": "elasticsearch",
     "config": {
-      "es_host": "136.243.150.188",
-      "es_port": 9100,
-      "es_username": "elastic",
-      "es_password": "welcome123!",
-      "scheme": "https",
-      "ca_certs": "/Users/harsha/Code/es_ssl/ca.crt",
       "index_tables": "true",
       "index_topics": "true",
       "index_dashboards": "true",
-      "timeout": 10
+      "es_host": "localhost",
+      "es_port": 9200
     }
   },
   "metadata_server": {
