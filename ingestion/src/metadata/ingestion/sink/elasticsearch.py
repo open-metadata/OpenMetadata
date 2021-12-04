@@ -14,10 +14,12 @@
 #  limitations under the License.
 import json
 import logging
+import ssl
 import time
 from typing import List, Optional
 
 from elasticsearch import Elasticsearch
+from elasticsearch.connection import create_ssl_context
 
 from metadata.config.common import ConfigModel
 from metadata.generated.schema.entity.data.chart import Chart
@@ -64,6 +66,11 @@ class ElasticSearchConfig(ConfigModel):
     topic_index_name: str = "topic_search_index"
     dashboard_index_name: str = "dashboard_search_index"
     pipeline_index_name: str = "pipeline_search_index"
+    scheme: str = "http"
+    use_ssl: bool = False
+    verify_certs: bool = False
+    timeout: int = 30
+    ca_certs: Optional[str] = None
 
 
 class ElasticsearchSink(Sink):
@@ -95,12 +102,25 @@ class ElasticsearchSink(Sink):
         http_auth = None
         if self.config.es_username:
             http_auth = (self.config.es_username, self.config.es_password)
+
+        ssl_context = None
+        if self.config.scheme == "https" and not self.config.verify_certs:
+            ssl_context = create_ssl_context()
+            ssl_context.check_hostname = False
+            ssl_context.verify_mode = ssl.CERT_NONE
+
         self.elasticsearch_client = Elasticsearch(
             [
                 {"host": self.config.es_host, "port": self.config.es_port},
             ],
             http_auth=http_auth,
+            scheme=self.config.scheme,
+            use_ssl=self.config.use_ssl,
+            verify_certs=self.config.verify_certs,
+            ssl_context=ssl_context,
+            ca_certs=self.config.ca_certs,
         )
+
         if self.config.index_tables:
             self._check_or_create_index(
                 self.config.table_index_name, TABLE_ELASTICSEARCH_INDEX_MAPPING
@@ -134,7 +154,9 @@ class ElasticsearchSink(Sink):
                     "properties": es_mapping_dict["mappings"]["properties"]
                 }
                 self.elasticsearch_client.indices.put_mapping(
-                    index=index_name, body=json.dumps(es_mapping_update_dict)
+                    index=index_name,
+                    body=json.dumps(es_mapping_update_dict),
+                    request_timeout=self.config.timeout,
                 )
         else:
             logger.warning(
@@ -142,7 +164,9 @@ class ElasticsearchSink(Sink):
                 + "The index doesn't exist for a newly created ES. It's OK on first run."
             )
             # create new index with mapping
-            self.elasticsearch_client.indices.create(index=index_name, body=es_mapping)
+            self.elasticsearch_client.indices.create(
+                index=index_name, body=es_mapping, request_timeout=self.config.timeout
+            )
 
     def write_record(self, record: Record) -> None:
         if isinstance(record, Table):
@@ -151,6 +175,7 @@ class ElasticsearchSink(Sink):
                 index=self.config.table_index_name,
                 id=str(table_doc.table_id),
                 body=table_doc.json(),
+                request_timeout=self.config.timeout,
             )
         if isinstance(record, Topic):
             topic_doc = self._create_topic_es_doc(record)
@@ -158,6 +183,7 @@ class ElasticsearchSink(Sink):
                 index=self.config.topic_index_name,
                 id=str(topic_doc.topic_id),
                 body=topic_doc.json(),
+                request_timeout=self.config.timeout,
             )
         if isinstance(record, Dashboard):
             dashboard_doc = self._create_dashboard_es_doc(record)
@@ -165,6 +191,7 @@ class ElasticsearchSink(Sink):
                 index=self.config.dashboard_index_name,
                 id=str(dashboard_doc.dashboard_id),
                 body=dashboard_doc.json(),
+                request_timeout=self.config.timeout,
             )
         if isinstance(record, Pipeline):
             pipeline_doc = self._create_pipeline_es_doc(record)
@@ -172,6 +199,7 @@ class ElasticsearchSink(Sink):
                 index=self.config.pipeline_index_name,
                 id=str(pipeline_doc.pipeline_id),
                 body=pipeline_doc.json(),
+                request_timeout=self.config.timeout,
             )
 
         if hasattr(record.name, "__root__"):

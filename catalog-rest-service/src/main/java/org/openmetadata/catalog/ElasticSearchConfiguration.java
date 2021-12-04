@@ -16,6 +16,8 @@
 
 package org.openmetadata.catalog;
 
+import lombok.Builder;
+
 import javax.validation.constraints.NotEmpty;
 
 public class ElasticSearchConfiguration {
@@ -29,6 +31,16 @@ public class ElasticSearchConfiguration {
     private String username;
 
     private String password;
+
+    private String scheme;
+
+    private String truststorePath;
+
+    private String truststorePassword;
+
+    private Integer connectionTimeoutSecs = 5;
+
+    private Integer socketTimeoutSecs = 60;
 
     public String getHost() {
         return host;
@@ -62,13 +74,44 @@ public class ElasticSearchConfiguration {
         this.password = password;
     }
 
+    public String getScheme() {
+        return scheme;
+    }
+
+    public void setScheme(String scheme) {
+        this.scheme = scheme;
+    }
+
+    public String getTruststorePath() { return truststorePath; }
+
+    public void setTruststorePath(String truststorePath) {
+        this.truststorePath = truststorePath;
+    }
+
+    public String getTruststorePassword() { return truststorePassword; }
+
+    public void setTruststorePassword(String truststorePassword) {
+        this.truststorePassword = truststorePassword;
+    }
+
+    public Integer getConnectionTimeoutSecs() { return connectionTimeoutSecs; }
+
+    public void setConnectionTimeoutSecs(Integer connectionTimeoutSecs) {
+        this.connectionTimeoutSecs = connectionTimeoutSecs;
+    }
+
+    public Integer getSocketTimeoutSecs() { return socketTimeoutSecs; }
+
+    public void setSocketTimeoutSecs(Integer socketTimeoutSecs) {
+        this.socketTimeoutSecs = socketTimeoutSecs;
+    }
+
     @Override
     public String toString() {
         return "ElasticSearchConfiguration{" +
                 "host='" + host + '\'' +
                 ", port=" + port +
                 ", username='" + username + '\'' +
-                ", password='" + password + '\'' +
                 '}';
     }
 }
