@@ -33,3 +33,7 @@ This document summarizes information relevant to OpenMetadata committers and con
 {% content-ref url="solution-design.md" %}
 [solution-design.md](solution-design.md)
 {% endcontent-ref %}
+
+{% content-ref url="python-api.md" %}
+[python-api.md](python-api.md)
+{% endcontent-ref %}
