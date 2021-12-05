@@ -55,6 +55,9 @@ USAGE: $0 [create|migrate|info|validate|drop|drop-create|repair|check-connection
    validate         : Checks if the all the migrations haven been applied on the target database
    drop             : Drops all the tables in the target database
    drop-create      : Drops and recreates all the tables in the target database.
+   es-drop          : Drops the indexes in ElasticSearch
+   es-create        : Creates the indexes in ElasticSearch
+   drop-create-all  : Drops and recreates all the tables in the database. Drops and creates all the indexes in ElasticSearch.
    repair           : Repairs the DATABASE_CHANGE_LOG table which is used to track all the migrations on the target database.
                       This involves removing entries for the failed migrations and update the checksum of migrations already applied on the target databsase.
    check-connection : Checks if a connection can be sucessfully obtained for the target database
@@ -71,11 +74,14 @@ fi
 opt="$1"
 
 case "${opt}" in
-create | drop | migrate | info | validate | repair | check-connection )
+create | drop | migrate | info | validate | repair | check-connection | es-drop | es-create )
     execute "${opt}"
     ;;
 drop-create )
     execute "drop" && execute "create"
+    ;;
+drop-create-all )
+    execute "drop" && execute "create" && execute "es-drop" && execute "es-create"
     ;;
 *)
     printUsage
