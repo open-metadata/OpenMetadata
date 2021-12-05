@@ -110,7 +110,6 @@ class MetadataSource(Source):
                         "tableConstraints",
                         "usageSummary",
                         "owner",
-                        "database",
                         "tags",
                         "followers",
                     ],
@@ -130,7 +129,7 @@ class MetadataSource(Source):
             while True:
                 topic_entities = self.metadata.list_entities(
                     entity=Topic,
-                    fields=["owner", "service", "tags", "followers"],
+                    fields=["owner", "tags", "followers"],
                     after=after,
                     limit=self.config.limit_records,
                 )
@@ -149,7 +148,6 @@ class MetadataSource(Source):
                     entity=Dashboard,
                     fields=[
                         "owner",
-                        "service",
                         "tags",
                         "followers",
                         "charts",
@@ -171,7 +169,7 @@ class MetadataSource(Source):
             while True:
                 pipeline_entities = self.metadata.list_entities(
                     entity=Pipeline,
-                    fields=["owner", "service", "tags", "followers", "tasks"],
+                    fields=["owner", "tags", "followers", "tasks"],
                     after=after,
                     limit=self.config.limit_records,
                 )
