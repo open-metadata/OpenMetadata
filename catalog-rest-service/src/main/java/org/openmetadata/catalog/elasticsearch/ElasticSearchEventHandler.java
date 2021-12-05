@@ -16,18 +16,10 @@
 package org.openmetadata.catalog.elasticsearch;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import org.apache.commons.lang3.StringUtils;
-import org.apache.http.HttpHost;
-import org.apache.http.auth.AuthScope;
-import org.apache.http.auth.UsernamePasswordCredentials;
-import org.apache.http.client.CredentialsProvider;
-import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.elasticsearch.action.ActionListener;
 import org.elasticsearch.action.update.UpdateRequest;
 import org.elasticsearch.action.update.UpdateResponse;
 import org.elasticsearch.client.RequestOptions;
-import org.elasticsearch.client.RestClient;
-import org.elasticsearch.client.RestClientBuilder;
 import org.elasticsearch.client.RestHighLevelClient;
 import org.elasticsearch.common.xcontent.XContentType;
 import org.elasticsearch.script.Script;
@@ -47,6 +39,7 @@ import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.ChangeEvent;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.FieldChange;
+import org.openmetadata.catalog.util.ElasticSearchClientUtils;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -80,18 +73,7 @@ public class ElasticSearchEventHandler implements EventHandler {
 
   public void init(CatalogApplicationConfig config, Jdbi jdbi) {
     ElasticSearchConfiguration esConfig = config.getElasticSearchConfiguration();
-    RestClientBuilder restClientBuilder = RestClient.builder(new HttpHost(esConfig.getHost(), esConfig.getPort(),
-        "http"));
-    if(StringUtils.isNotEmpty(esConfig.getUsername())){
-      CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
-      credentialsProvider.setCredentials(AuthScope.ANY, new UsernamePasswordCredentials(esConfig.getUsername(),
-          esConfig.getPassword()));
-      restClientBuilder.setHttpClientConfigCallback(httpAsyncClientBuilder -> {
-        httpAsyncClientBuilder.setDefaultCredentialsProvider(credentialsProvider);
-        return  httpAsyncClientBuilder;
-      });
-    }
-    client = new RestHighLevelClient(restClientBuilder);
+    this.client = ElasticSearchClientUtils.createElasticSearchClient(esConfig);
     esIndexDefinition = new ElasticSearchIndexDefinition(client);
     esIndexDefinition.createIndexes();
   }

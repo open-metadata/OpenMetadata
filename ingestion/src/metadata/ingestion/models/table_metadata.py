@@ -23,6 +23,20 @@ class Table(BaseModel):
     fullyQualifiedName: str
 
 
+class FieldChange(BaseModel):
+    name: str
+    newValue: Optional[str]
+    oldValue: Optional[str]
+
+
+class ChangeDescription(BaseModel):
+    updatedBy: str
+    updatedAt: int
+    fieldsAdded: Optional[str]
+    fieldsDeleted: Optional[str]
+    fieldsUpdated: Optional[str]
+
+
 class TableESDocument(BaseModel):
     """Elastic Search Mapping doc"""
 
@@ -50,6 +64,8 @@ class TableESDocument(BaseModel):
     tier: Optional[str] = None
     owner: str
     followers: List[str]
+    change_descriptions: Optional[List[ChangeDescription]] = None
+    doc_as_upsert: bool = True
 
 
 class TopicESDocument(BaseModel):
@@ -69,6 +85,8 @@ class TopicESDocument(BaseModel):
     tier: Optional[str] = None
     owner: str
     followers: List[str]
+    change_descriptions: Optional[List[ChangeDescription]] = None
+    doc_as_upsert: bool = True
 
 
 class DashboardESDocument(BaseModel):
@@ -96,6 +114,8 @@ class DashboardESDocument(BaseModel):
     weekly_percentile_rank: int
     daily_stats: int
     daily_percentile_rank: int
+    change_descriptions: Optional[List[ChangeDescription]] = None
+    doc_as_upsert: bool = True
 
 
 class PipelineESDocument(BaseModel):
@@ -117,6 +137,8 @@ class PipelineESDocument(BaseModel):
     tier: Optional[str] = None
     owner: str
     followers: List[str]
+    change_descriptions: Optional[List[ChangeDescription]] = None
+    doc_as_upsert: bool = True
 
 
 class DbtModelESDocument(BaseModel):
@@ -140,6 +162,8 @@ class DbtModelESDocument(BaseModel):
     tier: Optional[str] = None
     owner: str
     followers: List[str]
+    change_descriptions: Optional[List[ChangeDescription]] = None
+    doc_as_upsert: bool = True
 
 
 class DashboardOwner(BaseModel):

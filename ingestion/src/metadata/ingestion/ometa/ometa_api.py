@@ -34,6 +34,7 @@ from metadata.generated.schema.entity.services.storageService import StorageServ
 from metadata.generated.schema.entity.tags.tagCategory import Tag
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
+from metadata.generated.schema.type.entityHistory import EntityVersionHistory
 from metadata.ingestion.ometa.auth_provider import AuthenticationProvider
 from metadata.ingestion.ometa.client import REST, APIError, ClientConfig
 from metadata.ingestion.ometa.mixins.lineageMixin import OMetaLineageMixin
@@ -397,6 +398,20 @@ class OpenMetadata(OMetaLineageMixin, OMetaTableMixin, Generic[T, C]):
             total = resp["paging"]["total"]
             after = resp["paging"]["after"] if "after" in resp["paging"] else None
             return EntityList(entities=entities, total=total, after=after)
+
+    def list_versions(self, entity_id: str, entity: Type[T]) -> EntityVersionHistory:
+        """
+        Helps us paginate over the collection
+        """
+
+        suffix = self.get_suffix(entity)
+        path = f"/{entity_id}/versions"
+        resp = self.client.get(f"{suffix}{path}")
+
+        if self._use_raw_data:
+            return resp
+        else:
+            return EntityVersionHistory(**resp)
 
     def list_services(self, entity: Type[T]) -> List[EntityList[T]]:
         """

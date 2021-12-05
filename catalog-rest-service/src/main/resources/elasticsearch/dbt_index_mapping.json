@@ -1,6 +1,6 @@
 {
     "properties": {
-      "dbt_model_name": {
+      "name": {
         "type":"text"
       },
       "display_name": {

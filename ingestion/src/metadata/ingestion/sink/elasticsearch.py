@@ -15,6 +15,7 @@ import ssl
 import time
 from typing import List, Optional
 
+from dateutil import parser
 from elasticsearch import Elasticsearch
 from elasticsearch.connection import create_ssl_context
 
@@ -34,6 +35,7 @@ from metadata.generated.schema.type import entityReference
 from metadata.ingestion.api.common import Record, WorkflowContext
 from metadata.ingestion.api.sink import Sink, SinkStatus
 from metadata.ingestion.models.table_metadata import (
+    ChangeDescription,
     DashboardESDocument,
     DbtModelESDocument,
     PipelineESDocument,
@@ -258,6 +260,8 @@ class ElasticsearchSink(Sink):
         table_type = None
         if hasattr(table.tableType, "name"):
             table_type = table.tableType.name
+
+        change_descriptions = self._get_change_descriptions(Table, table.id.__root__)
         table_doc = TableESDocument(
             table_id=str(table.id.__root__),
             database=str(database_entity.name.__root__),
@@ -282,6 +286,7 @@ class ElasticsearchSink(Sink):
             fqdn=fqdn,
             owner=table_owner,
             followers=table_followers,
+            change_descriptions=change_descriptions,
         )
         return table_doc
 
@@ -308,6 +313,7 @@ class ElasticsearchSink(Sink):
                 tier = topic_tag.tagFQN
             else:
                 tags.add(topic_tag.tagFQN)
+        change_descriptions = self._get_change_descriptions(Topic, topic.id.__root__)
         topic_doc = TopicESDocument(
             topic_id=str(topic.id.__root__),
             service=service_entity.name,
@@ -322,8 +328,9 @@ class ElasticsearchSink(Sink):
             fqdn=fqdn,
             owner=topic_owner,
             followers=topic_followers,
+            change_descriptions=change_descriptions,
         )
-
+        print(topic_doc.json())
         return topic_doc
 
     def _create_dashboard_es_doc(self, dashboard: Dashboard):
@@ -358,6 +365,9 @@ class ElasticsearchSink(Sink):
             if len(chart.tags) > 0:
                 for col_tag in chart.tags:
                     tags.add(col_tag.tagFQN)
+        change_descriptions = self._get_change_descriptions(
+            Dashboard, dashboard.id.__root__
+        )
         dashboard_doc = DashboardESDocument(
             dashboard_id=str(dashboard.id.__root__),
             service=service_entity.name,
@@ -380,6 +390,7 @@ class ElasticsearchSink(Sink):
             weekly_percentile_rank=dashboard.usageSummary.weeklyStats.percentileRank,
             daily_stats=dashboard.usageSummary.dailyStats.count,
             daily_percentile_rank=dashboard.usageSummary.dailyStats.percentileRank,
+            change_descriptions=change_descriptions,
         )
 
         return dashboard_doc
@@ -415,7 +426,9 @@ class ElasticsearchSink(Sink):
             if tags in task and len(task.tags) > 0:
                 for col_tag in task.tags:
                     tags.add(col_tag.tagFQN)
-
+        change_descriptions = self._get_change_descriptions(
+            Pipeline, pipeline.id.__root__
+        )
         pipeline_doc = PipelineESDocument(
             pipeline_id=str(pipeline.id.__root__),
             service=service_entity.name,
@@ -432,6 +445,7 @@ class ElasticsearchSink(Sink):
             fqdn=fqdn,
             owner=pipeline_owner,
             followers=pipeline_followers,
+            change_descriptions=change_descriptions,
         )
 
         return pipeline_doc
@@ -475,6 +489,9 @@ class ElasticsearchSink(Sink):
         dbt_node_type = None
         if hasattr(dbt_model.dbtNodeType, "name"):
             dbt_node_type = dbt_model.dbtNodeType.name
+        change_descriptions = self._get_change_descriptions(
+            Dashboard, dbt_model.id.__root__
+        )
         dbt_model_doc = DbtModelESDocument(
             dbt_model_id=str(dbt_model.id.__root__),
             database=str(database_entity.name.__root__),
@@ -494,6 +511,7 @@ class ElasticsearchSink(Sink):
             schema_description=None,
             owner=dbt_model_owner,
             followers=dbt_model_followers,
+            change_descriptions=change_descriptions,
         )
         return dbt_model_doc
 
@@ -535,6 +553,28 @@ class ElasticsearchSink(Sink):
                     column_descriptions,
                     tags,
                 )
+
+    def _get_change_descriptions(self, entity_type, entity_id):
+        entity_versions = self.metadata.list_versions(entity_id, entity_type)
+        change_descriptions = []
+        for version in entity_versions.versions:
+            version_json = json.loads(version)
+            updatedAt = parser.parse(version_json["updatedAt"])
+            change_description = ChangeDescription(
+                updatedBy=version_json["updatedBy"], updatedAt=updatedAt.timestamp()
+            )
+            if "changeDescription" in version_json:
+                change_description.fieldsAdded = version_json["changeDescription"][
+                    "fieldsAdded"
+                ]
+                change_description.fieldsDeleted = version_json["changeDescription"][
+                    "fieldsDeleted"
+                ]
+                change_description.fieldsUpdated = version_json["changeDescription"][
+                    "fieldsUpdated"
+                ]
+            change_descriptions.append(change_description)
+        return change_descriptions
 
     def get_status(self):
         return self.status
