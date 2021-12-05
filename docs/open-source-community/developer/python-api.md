@@ -341,5 +341,5 @@ my_table = metadata.get_by_name(entity=Table, fqdn="test-service-table.test_db.t
 Finally, we can clean up by running the `delete` method:
 
 ```python
-metadata.delete(entity=Table, entity_id=str(my_table.id.__root__))
+metadata.delete(entity=Table, entity_id=my_table.id)
 ```
