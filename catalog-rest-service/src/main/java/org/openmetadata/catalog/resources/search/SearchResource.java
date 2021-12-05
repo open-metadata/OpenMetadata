@@ -43,6 +43,7 @@ import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.search.aggregations.AggregationBuilders;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.elasticsearch.search.sort.SortOrder;
+import org.openmetadata.catalog.util.ElasticSearchClientUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -69,16 +70,7 @@ public class SearchResource {
   private static final Logger LOG = LoggerFactory.getLogger(SearchResource.class);
 
   public SearchResource(ElasticSearchConfiguration esConfig) {
-    RestClientBuilder restClientBuilder = RestClient.builder(new HttpHost(esConfig.getHost(), esConfig.getPort(), "http"));
-    if(StringUtils.isNotEmpty(esConfig.getUsername())){
-      CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
-      credentialsProvider.setCredentials(AuthScope.ANY, new UsernamePasswordCredentials(esConfig.getUsername(), esConfig.getPassword()));
-      restClientBuilder.setHttpClientConfigCallback(httpAsyncClientBuilder -> {
-        httpAsyncClientBuilder.setDefaultCredentialsProvider(credentialsProvider);
-        return  httpAsyncClientBuilder;
-      });
-    }
-    this.client = new RestHighLevelClient(restClientBuilder);
+    this.client = ElasticSearchClientUtils.createElasticSearchClient(esConfig);
   }
 
   @GET
@@ -204,7 +196,7 @@ public class SearchResource {
   private SearchSourceBuilder buildTableSearchBuilder(String query, int from, int size) {
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
     HighlightBuilder.Field highlightTableName =
-            new HighlightBuilder.Field("table_name");
+            new HighlightBuilder.Field("name");
     highlightTableName.highlighterType("unified");
     HighlightBuilder.Field highlightDescription =
             new HighlightBuilder.Field("description");
@@ -223,7 +215,7 @@ public class SearchResource {
     hb.preTags("<span class=\"text-highlighter\">");
     hb.postTags("</span>");
     searchSourceBuilder.query(QueryBuilders.queryStringQuery(query)
-        .field("table_name", 5.0f)
+        .field("name", 5.0f)
         .field("description")
         .field("column_names")
         .field("column_descriptions")
@@ -253,7 +245,7 @@ public class SearchResource {
     hb.preTags("<span class=\"text-highlighter\">");
     hb.postTags("</span>");
     searchSourceBuilder.query(QueryBuilders.queryStringQuery(query)
-        .field("topic_name", 5.0f)
+        .field("name", 5.0f)
         .field("description")
         .lenient(true))
         .aggregation(AggregationBuilders.terms("Service").field("service_type"))
@@ -290,7 +282,7 @@ public class SearchResource {
     hb.preTags("<span class=\"text-highlighter\">");
     hb.postTags("</span>");
     searchSourceBuilder.query(QueryBuilders.queryStringQuery(query)
-        .field("dashboard_name", 5.0f)
+        .field("name", 5.0f)
         .field("description")
         .field("chart_names")
         .field("chart_descriptions")
@@ -309,7 +301,7 @@ public class SearchResource {
   private SearchSourceBuilder buildPipelineSearchBuilder(String query, int from, int size) {
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
     HighlightBuilder.Field highlightPipelineName =
-            new HighlightBuilder.Field("pipeline_name");
+            new HighlightBuilder.Field("name");
     highlightPipelineName.highlighterType("unified");
     HighlightBuilder.Field highlightDescription =
             new HighlightBuilder.Field("description");
@@ -347,7 +339,7 @@ public class SearchResource {
   private SearchSourceBuilder buildDbtModelSearchBuilder(String query, int from, int size) {
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
     HighlightBuilder.Field highlightTableName =
-        new HighlightBuilder.Field("dbt_model_name");
+        new HighlightBuilder.Field("name");
     highlightTableName.highlighterType("unified");
     HighlightBuilder.Field highlightDescription =
         new HighlightBuilder.Field("description");
@@ -366,7 +358,7 @@ public class SearchResource {
     hb.preTags("<span class=\"text-highlighter\">");
     hb.postTags("</span>");
     searchSourceBuilder.query(QueryBuilders.queryStringQuery(query)
-            .field("dbt_model_name", 5.0f)
+            .field("name", 5.0f)
             .field("description")
             .field("column_names")
             .field("column_descriptions")

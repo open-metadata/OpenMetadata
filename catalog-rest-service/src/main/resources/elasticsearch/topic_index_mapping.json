@@ -1,6 +1,6 @@
 {
     "properties": {
-      "topic_name": {
+      "name": {
         "type":"text"
       },
       "display_name": {

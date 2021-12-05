@@ -10,6 +10,8 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.Value;
 import lombok.experimental.SuperBuilder;
+import org.elasticsearch.action.admin.indices.delete.DeleteIndexRequest;
+import org.elasticsearch.action.support.master.AcknowledgedResponse;
 import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.client.RestHighLevelClient;
 import org.elasticsearch.client.indices.CreateIndexRequest;
@@ -32,11 +34,8 @@ import org.slf4j.LoggerFactory;
 
 import javax.ws.rs.core.Response;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.URISyntaxException;
-import java.net.URL;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -65,11 +64,11 @@ public class ElasticSearchIndexDefinition {
   }
 
   public enum ElasticSearchIndexType {
-    TABLE_SEARCH_INDEX("table_search_index", "elasticsearch/table_index_mapping.json"),
-    TOPIC_SEARCH_INDEX("topic_search_index", "elasticsearch/topic_index_mapping.json"),
-    DASHBOARD_SEARCH_INDEX("dashboard_search_index", "elasticsearch/dashboard_index_mapping.json"),
-    PIPELINE_SEARCH_INDEX("pipeline_search_index", "elasticsearch/pipeline_index_mapping.json"),
-    DBT_MODEL_SEARCH_INDEX("dbt_model_search_index", "elasticsearch/dbt_index_mapping.json");
+    TABLE_SEARCH_INDEX("table_search_index", "/elasticsearch/table_index_mapping.json"),
+    TOPIC_SEARCH_INDEX("topic_search_index", "/elasticsearch/topic_index_mapping.json"),
+    DASHBOARD_SEARCH_INDEX("dashboard_search_index", "/elasticsearch/dashboard_index_mapping.json"),
+    PIPELINE_SEARCH_INDEX("pipeline_search_index", "/elasticsearch/pipeline_index_mapping.json"),
+    DBT_MODEL_SEARCH_INDEX("dbt_model_search_index", "/elasticsearch/dbt_index_mapping.json");
 
     public final String indexName;
     public final String indexMappingFile;
@@ -87,6 +86,16 @@ public class ElasticSearchIndexDefinition {
       }
     } catch(Exception e) {
       LOG.error("Failed to created Elastic Search indexes due to", e);
+    }
+  }
+
+  public void dropIndexes() {
+    try {
+      for (ElasticSearchIndexType elasticSearchIndexType : ElasticSearchIndexType.values()) {
+        deleteIndex(elasticSearchIndexType);
+      }
+    } catch(Exception e) {
+      LOG.error("Failed to delete Elastic Search indexes due to", e);
     }
   }
 
@@ -119,16 +128,26 @@ public class ElasticSearchIndexDefinition {
     return true;
   }
 
+  private boolean deleteIndex(ElasticSearchIndexType elasticSearchIndexType) {
+    try {
+      DeleteIndexRequest request = new DeleteIndexRequest(elasticSearchIndexType.indexName);
+      AcknowledgedResponse deleteIndexResponse = client.indices().delete(request, RequestOptions.DEFAULT);
+      LOG.info(elasticSearchIndexType.indexName + " Deleted " + deleteIndexResponse.isAcknowledged());
+    } catch (IOException e) {
+      LOG.error("Failed to delete Elastic Search indexes due to", e);
+      return false;
+    }
+    return true;
+  }
+
   private void setIndexStatus(ElasticSearchIndexType indexType, ElasticSearchIndexStatus elasticSearchIndexStatus) {
     elasticSearchIndexes.put(indexType, elasticSearchIndexStatus);
   }
 
   public  String getIndexMapping(ElasticSearchIndexType elasticSearchIndexType)
       throws URISyntaxException, IOException {
-    URL resource = ElasticSearchIndexDefinition.class
-        .getClassLoader().getResource(elasticSearchIndexType.indexMappingFile);
-    Path path = Paths.get(resource.toURI());
-    return new String(Files.readAllBytes(path));
+    InputStream in = ElasticSearchIndexDefinition.class.getResourceAsStream(elasticSearchIndexType.indexMappingFile);
+    return new String(in.readAllBytes());
   }
 
   public ElasticSearchIndexType getIndexMappingByEntityType(String type) {
@@ -151,6 +170,7 @@ public class ElasticSearchIndexDefinition {
 @SuperBuilder
 @Data
 class ElasticSearchIndex {
+  String name;
   @JsonProperty("display_name")
   String displayName;
   String fqdn;
@@ -227,8 +247,6 @@ class ESChangeDescription {
 @Value
 @JsonInclude(JsonInclude.Include.NON_NULL)
 class TableESIndex extends ElasticSearchIndex {
-  @JsonProperty("table_name")
-  String tableName;
   @JsonProperty("table_id")
   String tableId;
   String database;
@@ -280,7 +298,7 @@ class TableESIndex extends ElasticSearchIndex {
       }
     }
     TableESIndexBuilder tableESIndexBuilder =  internalBuilder().tableId(tableId)
-        .tableName(tableName)
+        .name(tableName)
         .displayName(tableName)
         .description(description)
         .fqdn(table.getFullyQualifiedName())
@@ -373,8 +391,6 @@ class TableESIndex extends ElasticSearchIndex {
 @Value
 @JsonInclude(JsonInclude.Include.NON_NULL)
 class TopicESIndex extends ElasticSearchIndex {
-  @JsonProperty("topic_name")
-  String topicName;
   @JsonProperty("topic_id")
   String topicId;
 
@@ -389,7 +405,7 @@ class TopicESIndex extends ElasticSearchIndex {
     }
 
     TopicESIndexBuilder topicESIndexBuilder =  internalBuilder().topicId(topic.getId().toString())
-        .topicName(topic.getName())
+        .name(topic.getName())
         .displayName(topic.getDisplayName())
         .description(topic.getDescription())
         .fqdn(topic.getFullyQualifiedName())
@@ -437,8 +453,6 @@ class TopicESIndex extends ElasticSearchIndex {
 @Value
 @JsonInclude(JsonInclude.Include.NON_NULL)
 class DashboardESIndex extends ElasticSearchIndex {
-  @JsonProperty("dashboard_name")
-  String dashboardName;
   @JsonProperty("dashboard_id")
   String dashboardId;
   @JsonProperty("chart_names")
@@ -476,7 +490,7 @@ class DashboardESIndex extends ElasticSearchIndex {
     }
 
     DashboardESIndexBuilder dashboardESIndexBuilder =  internalBuilder().dashboardId(dashboard.getId().toString())
-        .dashboardName(dashboard.getDisplayName())
+        .name(dashboard.getDisplayName())
         .displayName(dashboard.getDisplayName())
         .description(dashboard.getDescription())
         .fqdn(dashboard.getFullyQualifiedName())
@@ -532,8 +546,6 @@ class DashboardESIndex extends ElasticSearchIndex {
 @Value
 @JsonInclude(JsonInclude.Include.NON_NULL)
 class PipelineESIndex extends ElasticSearchIndex {
-  @JsonProperty("pipeline_name")
-  String pipelineName;
   @JsonProperty("pipeine_id")
   String pipelineId;
   @JsonProperty("task_names")
@@ -559,7 +571,7 @@ class PipelineESIndex extends ElasticSearchIndex {
     }
 
     PipelineESIndexBuilder pipelineESIndexBuilder = internalBuilder().pipelineId(pipeline.getId().toString())
-        .pipelineName(pipeline.getDisplayName())
+        .name(pipeline.getDisplayName())
         .displayName(pipeline.getDisplayName())
         .description(pipeline.getDescription())
         .fqdn(pipeline.getFullyQualifiedName())
@@ -607,8 +619,6 @@ class PipelineESIndex extends ElasticSearchIndex {
 @Value
 @JsonInclude(JsonInclude.Include.NON_NULL)
 class DbtModelESIndex extends ElasticSearchIndex {
-  @JsonProperty("dbt_model_name")
-  String dbtModelName;
   @JsonProperty("dbt_model_id")
   String dbtModelId;
   @JsonProperty("column_names")
@@ -637,7 +647,7 @@ class DbtModelESIndex extends ElasticSearchIndex {
     }
 
     DbtModelESIndexBuilder dbtModelESIndexBuilder =  internalBuilder().dbtModelId(dbtModel.getId().toString())
-        .dbtModelName(dbtModel.getName())
+        .name(dbtModel.getName())
         .displayName(dbtModel.getName())
         .description(dbtModel.getDescription())
         .fqdn(dbtModel.getFullyQualifiedName())

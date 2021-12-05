@@ -133,6 +133,7 @@ authenticationConfiguration:
 elasticsearch:
   host: localhost
   port: 9200
+  scheme: "http"
 
 airflowConfiguration:
   apiEndpoint: "http://localhost:8080"

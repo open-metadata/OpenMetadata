@@ -20,9 +20,11 @@ import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Options;
+import org.elasticsearch.client.RestHighLevelClient;
 import org.flywaydb.core.Flyway;
 import org.flywaydb.core.api.MigrationVersion;
-
+import org.openmetadata.catalog.ElasticSearchConfiguration;
+import org.openmetadata.catalog.elasticsearch.ElasticSearchIndexDefinition;
 import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
@@ -65,6 +67,11 @@ public final class TablesInitializer {
     OPTIONS.addOption(null, DISABLE_VALIDATE_ON_MIGRATE, false,
             "Disable flyway validation checks while running " +
             "migrate");
+    OPTIONS.addOption(null, SchemaMigrationOption.ES_CREATE.toString(), false,
+        "Creates all the indexes in the elastic search");
+    OPTIONS.addOption(null, SchemaMigrationOption.ES_DROP.toString(), false,
+        "Drop all the indexes in the elastic search");
+
   }
 
   private TablesInitializer() {
@@ -103,6 +110,7 @@ public final class TablesInitializer {
     ObjectMapper objectMapper = new YAMLMapper();
     Map<String, Object> conf = objectMapper.readValue(new File(confFilePath), Map.class);
     Map<String, Object> dbConf = (Map<String, Object>) conf.get("database");
+    Map<String, Object> esConf = (Map<String, Object>) conf.get("elasticsearch");
     if (dbConf == null) {
       throw new RuntimeException("No database in config file");
     }
@@ -115,14 +123,18 @@ public final class TablesInitializer {
     }
     String scriptRootPath = commandLine.getOptionValue(OPTION_SCRIPT_ROOT_PATH);
     Flyway flyway = get(jdbcUrl, user, password, scriptRootPath, !disableValidateOnMigrate);
+    ObjectMapper oMapper = new ObjectMapper();
+    ElasticSearchConfiguration esConfig = oMapper.convertValue(esConf, ElasticSearchConfiguration.class);
+    RestHighLevelClient client = ElasticSearchClientUtils.createElasticSearchClient(
+        esConfig);
     try {
-      execute(flyway, schemaMigrationOptionSpecified);
+      execute(flyway, client, schemaMigrationOptionSpecified);
       System.out.printf("\"%s\" option successful%n", schemaMigrationOptionSpecified.toString());
     } catch (Exception e) {
       System.err.printf("\"%s\" option failed : %s%n", schemaMigrationOptionSpecified.toString(), e);
       System.exit(1);
     }
-
+    System.exit(0);
   }
 
   static Flyway get(String url, String user, String password, String scriptRootPath, boolean validateOnMigrate) {
@@ -143,49 +155,60 @@ public final class TablesInitializer {
             .load();
   }
 
-  private static void execute(Flyway flyway, SchemaMigrationOption schemaMigrationOption) throws SQLException {
+  private static void execute(Flyway flyway, RestHighLevelClient client,
+                              SchemaMigrationOption schemaMigrationOption) throws SQLException {
+    ElasticSearchIndexDefinition esIndexDefinition;
     switch (schemaMigrationOption) {
-      case CREATE:
-        try (Connection connection = flyway.getConfiguration().getDataSource().getConnection()) {
-          DatabaseMetaData databaseMetaData = connection.getMetaData();
-          try (ResultSet resultSet = databaseMetaData.getTables(connection.getCatalog(), connection.getSchema(),
+        case CREATE:
+          try (Connection connection = flyway.getConfiguration().getDataSource().getConnection()) {
+            DatabaseMetaData databaseMetaData = connection.getMetaData();
+            try (ResultSet resultSet = databaseMetaData.getTables(connection.getCatalog(), connection.getSchema(),
                   "",
                   null)) {
-            // If the database has any entity like views, tables etc, resultSet.next() would return true here
-            if (resultSet.next()) {
-              throw new SQLException("Please use an empty database or use \"migrate\" if you are already running a " +
+              // If the database has any entity like views, tables etc, resultSet.next() would return true here
+              if (resultSet.next()) {
+                throw new SQLException("Please use an empty database or use \"migrate\" if you are already running a " +
                       "previous version.");
+              }
+            } catch (SQLException e) {
+              throw new SQLException("Unable the obtain the state of the target database", e);
             }
-          } catch (SQLException e) {
-            throw new SQLException("Unable the obtain the state of the target database", e);
           }
-        }
-        flyway.migrate();
-        break;
-      case MIGRATE:
-        flyway.migrate();
-        break;
-      case INFO:
-        System.out.println(dumpToAsciiTable(flyway.info().all()));
-        break;
-      case VALIDATE:
-        flyway.validate();
-        break;
-      case DROP:
-        flyway.clean();
-        break;
-      case CHECK_CONNECTION:
-        try {
-          flyway.getConfiguration().getDataSource().getConnection();
-        } catch (Exception e) {
-          throw new SQLException(e);
-        }
-        break;
-      case REPAIR:
-        flyway.repair();
-        break;
-      default:
-        throw new SQLException("SchemaMigrationHelper unable to execute the option : " +
+          flyway.migrate();
+          break;
+        case MIGRATE:
+          flyway.migrate();
+          break;
+        case INFO:
+          System.out.println(dumpToAsciiTable(flyway.info().all()));
+          break;
+        case VALIDATE:
+          flyway.validate();
+          break;
+        case DROP:
+          flyway.clean();
+          System.out.println("DONE");
+          break;
+        case CHECK_CONNECTION:
+          try {
+            flyway.getConfiguration().getDataSource().getConnection();
+          } catch (Exception e) {
+            throw new SQLException(e);
+          }
+          break;
+        case REPAIR:
+          flyway.repair();
+          break;
+        case ES_CREATE:
+          esIndexDefinition = new ElasticSearchIndexDefinition(client);
+          esIndexDefinition.createIndexes();
+          break;
+        case ES_DROP:
+          esIndexDefinition = new ElasticSearchIndexDefinition(client);
+          esIndexDefinition.dropIndexes();
+          break;
+        default:
+          throw new SQLException("SchemaMigrationHelper unable to execute the option : " +
                 schemaMigrationOption.toString());
     }
   }
@@ -202,7 +225,9 @@ public final class TablesInitializer {
     VALIDATE("validate"),
     INFO("info"),
     DROP("drop"),
-    REPAIR("repair");
+    REPAIR("repair"),
+    ES_DROP("es-drop"),
+    ES_CREATE("es-create");
 
     private final String value;
 
