@@ -5,7 +5,6 @@ import org.apache.http.HttpHost;
 import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.CredentialsProvider;
-import org.apache.http.client.config.RequestConfig;
 import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.apache.http.ssl.SSLContextBuilder;
 import org.apache.http.ssl.SSLContexts;
@@ -30,6 +29,10 @@ import java.security.cert.CertificateException;
 
 public final class ElasticSearchClientUtils {
   private static final Logger LOG = LoggerFactory.getLogger(ElasticSearchClientUtils.class);
+
+  private ElasticSearchClientUtils() {
+
+  }
 
   public static RestHighLevelClient createElasticSearchClient(ElasticSearchConfiguration esConfig) {
     try {
@@ -62,6 +65,7 @@ public final class ElasticSearchClientUtils {
 
   private static SSLContext createSSLContext(ElasticSearchConfiguration elasticSearchConfiguration)
       throws KeyStoreException {
+
     if (elasticSearchConfiguration.getScheme().equals("https")) {
       if (elasticSearchConfiguration.getTruststorePath() != null) {
         Path trustStorePath = Paths.get(elasticSearchConfiguration.getTruststorePath());

@@ -13,102 +13,108 @@
 
 package org.openmetadata.catalog;
 
-import lombok.Builder;
 
 import javax.validation.constraints.NotEmpty;
 
 public class ElasticSearchConfiguration {
+  @NotEmpty
+  private String host;
 
-    @NotEmpty
-    private String host;
+  @NotEmpty
+  private Integer port;
 
-    @NotEmpty
-    private Integer port;
+  private String username;
 
-    private String username;
+  private String password;
 
-    private String password;
+  private String scheme;
 
-    private String scheme;
+  private String truststorePath;
 
-    private String truststorePath;
+  private String truststorePassword;
 
-    private String truststorePassword;
+  private Integer connectionTimeoutSecs = 5;
 
-    private Integer connectionTimeoutSecs = 5;
+  private Integer socketTimeoutSecs = 60;
 
-    private Integer socketTimeoutSecs = 60;
+  public String getHost() {
+    return host;
+  }
 
-    public String getHost() {
-        return host;
-    }
+  public void setHost(String host) {
+    this.host = host;
+  }
 
-    public void setHost(String host) {
-        this.host = host;
-    }
+  public Integer getPort() {
+    return port;
+  }
 
-    public Integer getPort() {
-        return port;
-    }
+  public void setPort(Integer port) {
+    this.port = port;
+  }
 
-    public void setPort(Integer port) {
-        this.port = port;
-    }
+  public String getUsername() {
+    return username;
+  }
 
-    public String getUsername() {
-        return username;
-    }
+  public void setUsername(String username) {
+    this.username = username;
+  }
 
-    public void setUsername(String username) {
-        this.username = username;
-    }
+  public String getPassword() {
+    return password;
+  }
 
-    public String getPassword() {
-        return password;
-    }
+  public void setPassword(String password) {
+    this.password = password;
+  }
 
-    public void setPassword(String password) {
-        this.password = password;
-    }
+  public String getScheme() {
+    return scheme;
+  }
 
-    public String getScheme() {
-        return scheme;
-    }
+  public void setScheme(String scheme) {
+    this.scheme = scheme;
+  }
 
-    public void setScheme(String scheme) {
-        this.scheme = scheme;
-    }
+  public String getTruststorePath() {
+    return truststorePath;
+  }
 
-    public String getTruststorePath() { return truststorePath; }
+  public void setTruststorePath(String truststorePath) {
+    this.truststorePath = truststorePath;
+  }
 
-    public void setTruststorePath(String truststorePath) {
-        this.truststorePath = truststorePath;
-    }
+  public String getTruststorePassword() {
+    return truststorePassword;
+  }
 
-    public String getTruststorePassword() { return truststorePassword; }
+  public void setTruststorePassword(String truststorePassword) {
+    this.truststorePassword = truststorePassword;
+  }
 
-    public void setTruststorePassword(String truststorePassword) {
-        this.truststorePassword = truststorePassword;
-    }
+  public Integer getConnectionTimeoutSecs() {
+    return connectionTimeoutSecs;
+  }
 
-    public Integer getConnectionTimeoutSecs() { return connectionTimeoutSecs; }
+  public void setConnectionTimeoutSecs(Integer connectionTimeoutSecs) {
+    this.connectionTimeoutSecs = connectionTimeoutSecs;
+  }
 
-    public void setConnectionTimeoutSecs(Integer connectionTimeoutSecs) {
-        this.connectionTimeoutSecs = connectionTimeoutSecs;
-    }
+  public Integer getSocketTimeoutSecs() {
+    return socketTimeoutSecs;
+  }
 
-    public Integer getSocketTimeoutSecs() { return socketTimeoutSecs; }
+  public void setSocketTimeoutSecs(Integer socketTimeoutSecs) {
+    this.socketTimeoutSecs = socketTimeoutSecs;
+  }
 
-    public void setSocketTimeoutSecs(Integer socketTimeoutSecs) {
-        this.socketTimeoutSecs = socketTimeoutSecs;
-    }
-
-    @Override
-    public String toString() {
-        return "ElasticSearchConfiguration{" +
-                "host='" + host + '\'' +
-                ", port=" + port +
-                ", username='" + username + '\'' +
-                '}';
-    }
+  @Override
+  public String toString() {
+    return "ElasticSearchConfiguration{" +
+        "host='" + host + '\'' +
+        ", port=" + port +
+        ", username='" + username + '\'' +
+        '}';
+  }
 }
