@@ -56,7 +56,7 @@ OpenMetadata uses Google OAuth for authentication. All incoming requests are fil
 See the configuration file [`OpenMetadata/conf/openmetadata-security.yaml`](https://github.com/open-metadata/OpenMetadata/blob/main/conf/openmetadata-security.yaml) for the authentication and authorization configurations.
 
 ### Ingestion  
-Ingestion is a simple python framework to ingest the metadata from various external sources into OpenMetadata platform.
+Ingestion is a simple Python framework to ingest metadata from external sources into OpenMetadata.
 
 **Connectors**
 
