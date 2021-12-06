@@ -2,20 +2,18 @@
 
 ## Update conf/openmetadata-security.yaml
 
-*   Once the `Client Id` and `Client secret` is generated.
-
-    Add the `Client Id` in openmetadata-security.yaml file in `client_id` field.
+Once the c`lient id` and `client secret` are generated, add `client id` as the value of the `clientId` field in the openmetadata-security.yaml file. See the snippet below for an example of where to place the `client id` value.
 
 ```
 authenticationConfiguration:
   provider: "google"
   publicKey: "https://www.googleapis.com/oauth2/v3/certs"
   authority: "https://accounts.google.com"
-  clientId: "{Client Secret}"
+  clientId: "{client id}"
   callbackUrl: "http://localhost:8585/callback"
 ```
 
-* Update authorizerConfiguration to add adminPrincipals
+Then, update authorizerConfiguration to add adminPrincipals.
 
 ```
 authorizerConfiguration:
@@ -26,5 +24,5 @@ authorizerConfiguration:
     - "suresh"
   botPrincipals:
     - "ingestion-bot"
-  prinicipalDomain: "open-metadata.org"
+  principalDomain: "open-metadata.org"
 ```
