@@ -23,8 +23,6 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
 public class CollectionRegistryTest {
-  private static final Logger LOG = LoggerFactory.getLogger(CollectionRegistryTest.class);
-
   @Test
   public void testCollections() {
     CollectionRegistry.getInstance();

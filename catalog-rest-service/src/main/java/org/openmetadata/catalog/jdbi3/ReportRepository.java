@@ -31,7 +31,7 @@ import java.util.List;
 import java.util.UUID;
 
 public class ReportRepository extends EntityRepository<Report> {
-  private static final Fields REPORT_UPDATE_FIELDS = new Fields(ReportResource.FIELD_LIST, "owner,service");
+  private static final Fields REPORT_UPDATE_FIELDS = new Fields(ReportResource.FIELD_LIST, "owner");
   private final CollectionDAO dao;
 
   public ReportRepository(CollectionDAO dao) {
@@ -42,8 +42,8 @@ public class ReportRepository extends EntityRepository<Report> {
 
   @Override
   public Report setFields(Report report, Fields fields) throws IOException {
+    report.setService(getService(report)); // service is a default field
     report.setOwner(fields.contains("owner") ? getOwner(report) : null);
-    report.setService(fields.contains("service") ? getService(report) : null);
     report.setUsageSummary(fields.contains("usageSummary") ? EntityUtil.getLatestUsage(dao.usageDAO(),
             report.getId()) : null);
     return report;

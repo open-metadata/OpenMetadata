@@ -29,6 +29,7 @@ type SuggestionProp = {
 type CommonSource = {
   fqdn: string;
   service_type: string;
+  name: string;
 };
 
 type TableSource = {
@@ -185,7 +186,7 @@ const Suggestions = ({ searchText, isOpen, setIsOpen }: SuggestionProp) => {
 
             {tableSuggestions.map((suggestion: TableSource) => {
               const fqdn = suggestion.fqdn;
-              const name = suggestion.table_name;
+              const name = suggestion.name;
               const serviceType = suggestion.service_type;
 
               return getSuggestionElement(
@@ -203,7 +204,7 @@ const Suggestions = ({ searchText, isOpen, setIsOpen }: SuggestionProp) => {
 
             {topicSuggestions.map((suggestion: TopicSource) => {
               const fqdn = suggestion.fqdn;
-              const name = suggestion.topic_name;
+              const name = suggestion.name;
               const serviceType = suggestion.service_type;
 
               return getSuggestionElement(
@@ -221,7 +222,7 @@ const Suggestions = ({ searchText, isOpen, setIsOpen }: SuggestionProp) => {
 
             {dashboardSuggestions.map((suggestion: DashboardSource) => {
               const fqdn = suggestion.fqdn;
-              const name = suggestion.dashboard_name;
+              const name = suggestion.name;
               const serviceType = suggestion.service_type;
 
               return getSuggestionElement(
@@ -239,7 +240,7 @@ const Suggestions = ({ searchText, isOpen, setIsOpen }: SuggestionProp) => {
 
             {pipelineSuggestions.map((suggestion: PipelineSource) => {
               const fqdn = suggestion.fqdn;
-              const name = suggestion.pipeline_name;
+              const name = suggestion.name;
               const serviceType = suggestion.service_type;
 
               return getSuggestionElement(
@@ -257,7 +258,7 @@ const Suggestions = ({ searchText, isOpen, setIsOpen }: SuggestionProp) => {
 
             {DBTModelSuggestions.map((suggestion: DBTModelSource) => {
               const fqdn = suggestion.fqdn;
-              const name = suggestion.dbt_model_name;
+              const name = suggestion.name;
               const serviceType = suggestion.service_type;
 
               return getSuggestionElement(
@@ -302,7 +303,7 @@ const Suggestions = ({ searchText, isOpen, setIsOpen }: SuggestionProp) => {
             aria-labelledby="menu-button"
             aria-orientation="vertical"
             className="tw-origin-top-right tw-absolute tw-z-10
-          tw-w-60 tw-mt-1 tw-rounded-md tw-shadow-lg
+          tw-w-full tw-mt-1 tw-rounded-md tw-shadow-lg
         tw-bg-white tw-ring-1 tw-ring-black tw-ring-opacity-5 focus:tw-outline-none"
             role="menu">
             {getEntitiesSuggestions()}

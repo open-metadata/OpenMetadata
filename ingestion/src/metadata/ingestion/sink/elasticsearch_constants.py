@@ -13,20 +13,11 @@ import textwrap
 
 TABLE_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
     """
-    {
+     {
     "mappings":{
           "properties": {
-            "table_name": {
+            "name": {
               "type":"text"
-            },
-            "schema": {
-              "type":"text",
-              "analyzer": "simple",
-              "fields": {
-                "raw": {
-                  "type": "keyword"
-                }
-              }
             },
             "display_name": {
               "type": "text"
@@ -35,6 +26,9 @@ TABLE_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
               "type": "text"
             },
             "followers": {
+              "type": "keyword"
+            },
+            "fqdn": {
               "type": "keyword"
             },
             "last_updated_timestamp": {
@@ -55,9 +49,6 @@ TABLE_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
             },
             "tags": {
               "type": "keyword"
-            },
-            "badges": {
-              "type": "text"
             },
             "service": {
               "type": "keyword"
@@ -94,9 +85,12 @@ TABLE_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
             },
             "daily_stats": {
               "type": "long"
+            },
+            "change_descriptions": {
+              "type": "nested"
             }
           }
-        }
+      }
     }
     """
 )
@@ -106,17 +100,8 @@ TOPIC_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
     {
     "mappings":{
           "properties": {
-            "topic_name": {
+            "name": {
               "type":"text"
-            },
-            "schema": {
-              "type":"text",
-              "analyzer": "simple",
-              "fields": {
-                "raw": {
-                  "type": "keyword"
-                }
-              }
             },
             "display_name": {
               "type": "text"
@@ -125,6 +110,9 @@ TOPIC_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
               "type": "text"
             },
             "followers": {
+              "type": "keyword"
+            },
+            "fqdn": {
               "type": "keyword"
             },
             "last_updated_timestamp": {
@@ -154,6 +142,9 @@ TOPIC_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
             },
             "suggest": {
               "type": "completion"
+            },
+            "change_descriptions": {
+              "type": "nested"
             }
           }
         }
@@ -166,13 +157,16 @@ DASHBOARD_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
     {
     "mappings":{
           "properties": {
-            "dashboard_name": {
+            "name": {
               "type":"text"
             },
             "display_name": {
               "type": "text"
             },
             "owner": {
+              "type": "keyword"
+            },
+            "fqdn": {
               "type": "keyword"
             },
             "followers": {
@@ -229,6 +223,9 @@ DASHBOARD_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
             },
             "daily_stats": {
               "type": "long"
+            },
+            "change_descriptions": {
+              "type": "nested"
             }
           }
         }
@@ -241,11 +238,14 @@ PIPELINE_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
     {
     "mappings":{
           "properties": {
-            "pipeline_name": {
+            "name": {
               "type":"text"
             },
             "display_name": {
               "type": "text"
+            },
+            "fqdn": {
+              "type": "keyword"
             },
             "owner": {
               "type": "keyword"
@@ -286,6 +286,9 @@ PIPELINE_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
             },
             "suggest": {
               "type": "completion"
+            },
+            "change_descriptions": {
+              "type": "nested"
             }
           }
         }
@@ -299,17 +302,8 @@ DBT_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
     {
     "mappings":{
           "properties": {
-            "dbt_model_name": {
+            "name": {
               "type":"text"
-            },
-            "schema": {
-              "type":"text",
-              "analyzer": "simple",
-              "fields": {
-                "raw": {
-                  "type": "keyword"
-                }
-              }
             },
             "display_name": {
               "type": "text"
@@ -318,6 +312,9 @@ DBT_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
               "type": "text"
             },
             "followers": {
+              "type": "keyword"
+            },
+            "fqdn": {
               "type": "keyword"
             },
             "last_updated_timestamp": {
@@ -356,6 +353,9 @@ DBT_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
             },
             "suggest": {
               "type": "completion"
+            },
+            "change_descriptions": {
+              "type": "nested"
             }
           }
         }

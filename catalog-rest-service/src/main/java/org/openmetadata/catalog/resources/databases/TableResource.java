@@ -110,7 +110,7 @@ public class TableResource {
   }
 
   static final String FIELDS = "columns,tableConstraints,usageSummary,owner," +
-          "database,tags,followers,joins,sampleData,viewDefinition,tableProfile,location,tableQueries";
+          "tags,followers,joins,sampleData,viewDefinition,tableProfile,location,tableQueries";
   public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replaceAll(" ", "")
           .split(","));
 

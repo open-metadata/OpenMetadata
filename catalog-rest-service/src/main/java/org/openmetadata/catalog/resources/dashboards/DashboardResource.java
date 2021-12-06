@@ -112,7 +112,7 @@ public class DashboardResource {
     }
   }
 
-  static final String FIELDS = "owner,service,charts,followers,tags,usageSummary";
+  static final String FIELDS = "owner,charts,followers,tags,usageSummary";
   public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replaceAll(" ", "")
           .split(","));
 

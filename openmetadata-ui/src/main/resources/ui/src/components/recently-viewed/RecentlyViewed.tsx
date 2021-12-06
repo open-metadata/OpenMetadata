@@ -46,7 +46,7 @@ const RecentlyViewed: FunctionComponent = () => {
           case EntityType.DATASET: {
             const res = await getTableDetailsByFQN(
               oData.fqn,
-              'database, usageSummary, tags, owner,columns'
+              'usageSummary, tags, owner,columns'
             );
 
             const {
@@ -77,7 +77,7 @@ const RecentlyViewed: FunctionComponent = () => {
             break;
           }
           case EntityType.TOPIC: {
-            const res = await getTopicByFqn(oData.fqn, 'owner, service, tags');
+            const res = await getTopicByFqn(oData.fqn, 'owner, tags');
 
             const { description, id, name, tags, owner, fullyQualifiedName } =
               res.data;
@@ -98,7 +98,7 @@ const RecentlyViewed: FunctionComponent = () => {
           case EntityType.DASHBOARD: {
             const res = await getDashboardByFqn(
               oData.fqn,
-              'owner, service, tags, usageSummary'
+              'owner, tags, usageSummary'
             );
 
             const {
@@ -127,7 +127,7 @@ const RecentlyViewed: FunctionComponent = () => {
           case EntityType.PIPELINE: {
             const res = await getPipelineByFqn(
               oData.fqn,
-              'owner, service, tags, usageSummary'
+              'owner, tags, usageSummary'
             );
 
             const {

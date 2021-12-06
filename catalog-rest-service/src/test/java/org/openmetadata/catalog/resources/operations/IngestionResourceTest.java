@@ -223,7 +223,7 @@ public class IngestionResourceTest extends EntityResourceTest<Ingestion> {
     assertEquals(pipelineConcurrency, ingestion.getConcurrency());
     assertEquals(expectedFQN, ingestion.getFullyQualifiedName());
     assertEquals(expectedScheduleInterval, ingestion.getScheduleInterval());
-    ingestion = getIngestion(ingestion.getId(), "owner,service", adminAuthHeaders());
+    ingestion = getIngestion(ingestion.getId(), "owner", adminAuthHeaders());
     assertEquals(expectedScheduleInterval, ingestion.getScheduleInterval());
   }
 
@@ -305,14 +305,6 @@ public class IngestionResourceTest extends EntityResourceTest<Ingestion> {
             getIngestion(ingestion.getId(), fields, adminAuthHeaders());
     assertNotNull(ingestion.getOwner());
     assertNotNull(ingestion.getService()); // We always return the service
-
-    // .../ingestion?fields=owner,service
-    fields = "owner,service";
-    ingestion = byName ? getIngestionByName(ingestion.getFullyQualifiedName(), fields, adminAuthHeaders()) :
-            getIngestion(ingestion.getId(), fields, adminAuthHeaders());
-    assertNotNull(ingestion.getOwner());
-    assertNotNull(ingestion.getService());
-
   }
 
   public static void getIngestion(UUID id, Map<String, String> authHeaders) throws HttpResponseException {

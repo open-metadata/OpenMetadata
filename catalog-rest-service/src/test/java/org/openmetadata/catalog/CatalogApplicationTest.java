@@ -31,7 +31,7 @@ import javax.ws.rs.client.WebTarget;
 @ExtendWith(EmbeddedMySqlSupport.class)
 @ExtendWith(DropwizardExtensionsSupport.class)
 public abstract class CatalogApplicationTest {
-  private static final Logger LOG = LoggerFactory.getLogger(CatalogApplicationTest.class);
+  public static final Logger LOG = LoggerFactory.getLogger(CatalogApplicationTest.class);
 
   private static final String CONFIG_PATH;
   public static final DropwizardAppExtension<CatalogApplicationConfig> APP;

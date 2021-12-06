@@ -43,6 +43,7 @@ import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.search.aggregations.AggregationBuilders;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.elasticsearch.search.sort.SortOrder;
+import org.openmetadata.catalog.util.ElasticSearchClientUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -69,16 +70,7 @@ public class SearchResource {
   private static final Logger LOG = LoggerFactory.getLogger(SearchResource.class);
 
   public SearchResource(ElasticSearchConfiguration esConfig) {
-    RestClientBuilder restClientBuilder = RestClient.builder(new HttpHost(esConfig.getHost(), esConfig.getPort(), "http"));
-    if(StringUtils.isNotEmpty(esConfig.getUsername())){
-      CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
-      credentialsProvider.setCredentials(AuthScope.ANY, new UsernamePasswordCredentials(esConfig.getUsername(), esConfig.getPassword()));
-      restClientBuilder.setHttpClientConfigCallback(httpAsyncClientBuilder -> {
-        httpAsyncClientBuilder.setDefaultCredentialsProvider(credentialsProvider);
-        return  httpAsyncClientBuilder;
-      });
-    }
-    this.client = new RestHighLevelClient(restClientBuilder);
+    this.client = ElasticSearchClientUtils.createElasticSearchClient(esConfig);
   }
 
   @GET
@@ -126,6 +118,7 @@ public class SearchResource {
     if (sortOrderParam.equals("asc")) {
       sortOrder = SortOrder.ASC;
     }
+
     if (index.equals("topic_search_index")) {
       searchSourceBuilder = buildTopicSearchBuilder(query, from, size);
     } else if (index.equals("dashboard_search_index")) {
@@ -134,8 +127,10 @@ public class SearchResource {
       searchSourceBuilder = buildPipelineSearchBuilder(query, from, size);
     } else if (index.equals("dbt_model_search_index")) {
       searchSourceBuilder = buildDbtModelSearchBuilder(query, from, size);
-    } else {
+    } else if (index.equals("table_search_index")) {
       searchSourceBuilder = buildTableSearchBuilder(query, from, size);
+    } else {
+      searchSourceBuilder = buildAggregateSearchBuilder(query, from, size);
     }
 
     if (sortFieldParam != null && !sortFieldParam.isEmpty()) {
@@ -184,10 +179,24 @@ public class SearchResource {
             .build();
   }
 
+  private SearchSourceBuilder buildAggregateSearchBuilder(String query, int from, int size) {
+    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+    searchSourceBuilder.query(QueryBuilders.queryStringQuery(query)
+            .lenient(true))
+        .aggregation(AggregationBuilders.terms("Service").field("service_type"))
+        .aggregation(AggregationBuilders.terms("ServiceCategory").field("service_category"))
+        .aggregation(AggregationBuilders.terms("EntityType").field("entity_type"))
+        .aggregation(AggregationBuilders.terms("Tier").field("tier"))
+        .aggregation(AggregationBuilders.terms("Tags").field("tags"))
+        .from(from).size(size);
+
+    return searchSourceBuilder;
+  }
+
   private SearchSourceBuilder buildTableSearchBuilder(String query, int from, int size) {
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
     HighlightBuilder.Field highlightTableName =
-            new HighlightBuilder.Field("table_name");
+            new HighlightBuilder.Field("name");
     highlightTableName.highlighterType("unified");
     HighlightBuilder.Field highlightDescription =
             new HighlightBuilder.Field("description");
@@ -206,7 +215,7 @@ public class SearchResource {
     hb.preTags("<span class=\"text-highlighter\">");
     hb.postTags("</span>");
     searchSourceBuilder.query(QueryBuilders.queryStringQuery(query)
-        .field("table_name", 5.0f)
+        .field("name", 5.0f)
         .field("description")
         .field("column_names")
         .field("column_descriptions")
@@ -236,7 +245,7 @@ public class SearchResource {
     hb.preTags("<span class=\"text-highlighter\">");
     hb.postTags("</span>");
     searchSourceBuilder.query(QueryBuilders.queryStringQuery(query)
-        .field("topic_name", 5.0f)
+        .field("name", 5.0f)
         .field("description")
         .lenient(true))
         .aggregation(AggregationBuilders.terms("Service").field("service_type"))
@@ -273,7 +282,7 @@ public class SearchResource {
     hb.preTags("<span class=\"text-highlighter\">");
     hb.postTags("</span>");
     searchSourceBuilder.query(QueryBuilders.queryStringQuery(query)
-        .field("dashboard_name", 5.0f)
+        .field("name", 5.0f)
         .field("description")
         .field("chart_names")
         .field("chart_descriptions")
@@ -292,7 +301,7 @@ public class SearchResource {
   private SearchSourceBuilder buildPipelineSearchBuilder(String query, int from, int size) {
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
     HighlightBuilder.Field highlightPipelineName =
-            new HighlightBuilder.Field("pipeline_name");
+            new HighlightBuilder.Field("name");
     highlightPipelineName.highlighterType("unified");
     HighlightBuilder.Field highlightDescription =
             new HighlightBuilder.Field("description");
@@ -330,7 +339,7 @@ public class SearchResource {
   private SearchSourceBuilder buildDbtModelSearchBuilder(String query, int from, int size) {
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
     HighlightBuilder.Field highlightTableName =
-        new HighlightBuilder.Field("dbt_model_name");
+        new HighlightBuilder.Field("name");
     highlightTableName.highlighterType("unified");
     HighlightBuilder.Field highlightDescription =
         new HighlightBuilder.Field("description");
@@ -349,7 +358,7 @@ public class SearchResource {
     hb.preTags("<span class=\"text-highlighter\">");
     hb.postTags("</span>");
     searchSourceBuilder.query(QueryBuilders.queryStringQuery(query)
-            .field("dbt_model_name", 5.0f)
+            .field("name", 5.0f)
             .field("description")
             .field("column_names")
             .field("column_descriptions")

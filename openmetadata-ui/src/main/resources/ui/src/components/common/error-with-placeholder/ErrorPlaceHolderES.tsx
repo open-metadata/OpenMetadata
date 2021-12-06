@@ -64,7 +64,7 @@ const ErrorPlaceHolderES = ({ type, errorMessage, query = '' }: Props) => {
   };
   const noRecordForES = () => {
     return (
-      <p className="tw-text-center">
+      <p className="tw-text-center" data-testid="no-search-results">
         No matching data assets found
         {query ? (
           <>

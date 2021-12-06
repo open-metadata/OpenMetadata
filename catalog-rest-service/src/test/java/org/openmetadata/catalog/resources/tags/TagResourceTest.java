@@ -30,8 +30,6 @@ import org.openmetadata.catalog.type.Tag;
 import org.openmetadata.catalog.type.TagCategory;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response.Status;
@@ -58,7 +56,6 @@ import static org.openmetadata.catalog.util.TestUtils.authHeaders;
  */
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class TagResourceTest extends CatalogApplicationTest {
-  public static final Logger LOG = LoggerFactory.getLogger(TagResourceTest.class);
   public static String BASE_URL;
 
   @BeforeAll

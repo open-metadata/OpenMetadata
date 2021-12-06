@@ -76,6 +76,14 @@ export interface Table {
    */
   sampleData?: TableData;
   /**
+   * Link to Database service this table is hosted in.
+   */
+  service?: EntityReference;
+  /**
+   * Service type this table is hosted in.
+   */
+  serviceType?: DatabaseServiceType;
+  /**
    * Table constraints.
    */
   tableConstraints?: TableConstraint[];
@@ -328,6 +336,8 @@ export enum State {
  *
  * Owner of this table.
  *
+ * Link to Database service this table is hosted in.
+ *
  * User who ran this query.
  */
 export interface EntityReference {
@@ -353,8 +363,8 @@ export interface EntityReference {
    */
   name?: string;
   /**
-   * Entity type/class name - Examples: `database`, `table`, `metrics`, `redshift`, `mysql`,
-   * `bigquery`, `snowflake`...
+   * Entity type/class name - Examples: `database`, `table`, `metrics`, `databaseService`,
+   * `dashboardService`...
    */
   type: string;
 }
@@ -405,6 +415,29 @@ export interface TableData {
    * Data for multiple rows of the table.
    */
   rows?: Array<any[]>;
+}
+
+/**
+ * Service type this table is hosted in.
+ *
+ * Type of database service such as MySQL, BigQuery, Snowflake, Redshift, Postgres...
+ */
+export enum DatabaseServiceType {
+  Athena = 'Athena',
+  BigQuery = 'BigQuery',
+  Druid = 'Druid',
+  Glue = 'Glue',
+  Hive = 'Hive',
+  MariaDB = 'MariaDB',
+  Mssql = 'MSSQL',
+  MySQL = 'MySQL',
+  Oracle = 'Oracle',
+  Postgres = 'Postgres',
+  Presto = 'Presto',
+  Redshift = 'Redshift',
+  Snowflake = 'Snowflake',
+  Trino = 'Trino',
+  Vertica = 'Vertica',
 }
 
 /**

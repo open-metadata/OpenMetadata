@@ -34,8 +34,6 @@ import org.openmetadata.catalog.type.EntityUsage;
 import org.openmetadata.catalog.type.UsageDetails;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.TestUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.ws.rs.client.WebTarget;
 import java.io.IOException;
@@ -60,7 +58,6 @@ import static org.openmetadata.common.utils.CommonUtil.getDateStringByOffset;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class UsageResourceTest extends CatalogApplicationTest {
-  private static final Logger LOG = LoggerFactory.getLogger(UsageResourceTest.class);
   public static final List<Table> TABLES = new ArrayList<>();
   public static final int TABLE_COUNT = 10;
   public static final int DAYS_OF_USAGE = 32;

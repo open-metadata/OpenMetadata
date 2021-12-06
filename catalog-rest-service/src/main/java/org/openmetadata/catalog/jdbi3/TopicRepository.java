@@ -40,7 +40,7 @@ import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityN
 
 public class TopicRepository extends EntityRepository<Topic> {
   private static final Fields TOPIC_UPDATE_FIELDS = new Fields(TopicResource.FIELD_LIST, "owner,tags");
-  private static final Fields TOPIC_PATCH_FIELDS = new Fields(TopicResource.FIELD_LIST, "owner,service,tags");
+  private static final Fields TOPIC_PATCH_FIELDS = new Fields(TopicResource.FIELD_LIST, "owner,tags");
   private final CollectionDAO dao;
 
   public static String getFQN(Topic topic) {

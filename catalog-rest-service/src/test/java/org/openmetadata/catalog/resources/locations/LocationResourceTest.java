@@ -40,8 +40,6 @@ import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
 import org.openmetadata.common.utils.JsonSchemaUtil;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.json.JsonPatch;
 import javax.ws.rs.client.WebTarget;
@@ -75,7 +73,6 @@ import static org.openmetadata.catalog.util.TestUtils.existsInEntityReferenceLis
 import static org.openmetadata.catalog.util.TestUtils.userAuthHeaders;
 
 public class LocationResourceTest extends CatalogApplicationTest {
-  private static final Logger LOG = LoggerFactory.getLogger(LocationResourceTest.class);
   public static User USER1;
   public static EntityReference USER_OWNER1;
   public static Team TEAM1;
@@ -225,10 +222,10 @@ public class LocationResourceTest extends CatalogApplicationTest {
       createAndCheckLocation(create(test).withService(service), adminAuthHeaders());
 
       // List locations by filtering on service name and ensure right locations are returned in the response
-      LocationList list = listLocations("service", service.getName(), adminAuthHeaders());
-      for (Location location : list.getData()) {
-        assertEquals(service.getName(), location.getService().getName());
-      }
+//      LocationList list = listLocations("service", service.getName(), adminAuthHeaders());
+//      for (Location location : list.getData()) {
+//        assertEquals(service.getName(), location.getService().getName());
+//      }
     }
   }
 
@@ -499,7 +496,7 @@ public class LocationResourceTest extends CatalogApplicationTest {
     assertNotNull(location.getService());
     List<TagLabel> locationTags = List.of(TIER1_TAG_LABEL);
 
-    location = getLocation(location.getId(), "service,owner,tags", adminAuthHeaders());
+    location = getLocation(location.getId(), "owner,tags", adminAuthHeaders());
     location.getService().setHref(null); // href is readonly and not patchable
 
     // Add description, owner when previously they were null
@@ -644,12 +641,12 @@ public class LocationResourceTest extends CatalogApplicationTest {
                                         CreateLocation create,
                                         Map<String, String> authHeaders) throws HttpResponseException {
     // GET the newly created location by ID and validate
-    Location location = getLocation(locationId, "service,owner", authHeaders);
+    Location location = getLocation(locationId, "owner", authHeaders);
     validateLocation(location, create.getDescription(), create.getOwner(), create.getService(), create.getTags());
 
     // GET the newly created location by name and validate
     String fqn = location.getFullyQualifiedName();
-    location = getLocationByName(fqn, "service,owner", authHeaders);
+    location = getLocationByName(fqn, "owner", authHeaders);
     return validateLocation(location, create.getDescription(), create.getOwner(), create.getService(),
             create.getTags());
   }
@@ -677,19 +674,7 @@ public class LocationResourceTest extends CatalogApplicationTest {
     assertNotNull(location.getService()); // We always return the service
     assertNotNull(location.getServiceType()); // We always return the service
 
-    // .../locations?fields=owner,service
-    fields = "owner,service";
-    location = byName ? getLocationByName(location.getFullyQualifiedName(), fields, adminAuthHeaders()) :
-            getLocation(location.getId(), fields, adminAuthHeaders());
-    assertNotNull(location.getOwner());
-    assertNotNull(location.getService());
-
-    // .../locations?fields=owner,service
-    fields = "owner,service";
-    location = byName ? getLocationByName(location.getFullyQualifiedName(), fields, adminAuthHeaders()) :
-            getLocation(location.getId(), fields, adminAuthHeaders());
-    assertNotNull(location.getOwner());
-    assertNotNull(location.getService());
+    // TODO add other fields
   }
 
   private static Location validateLocation(Location location, String expectedDescription,
@@ -735,7 +720,7 @@ public class LocationResourceTest extends CatalogApplicationTest {
     validateLocation(updateLocation, location.getDescription(), newOwner, null, tags);
 
     // GET the location and Validate information returned
-    Location getLocation = getLocation(location.getId(), "service,owner,tags", authHeaders);
+    Location getLocation = getLocation(location.getId(), "owner,tags", authHeaders);
     validateLocation(getLocation, location.getDescription(), newOwner, null, tags);
     return updateLocation;
   }

@@ -38,11 +38,8 @@ import org.openmetadata.catalog.resources.databases.TableResource.TableList;
 import org.openmetadata.catalog.resources.services.DatabaseServiceResourceTest;
 import org.openmetadata.catalog.resources.services.StorageServiceResourceTest;
 import org.openmetadata.catalog.resources.tags.TagResourceTest;
-import org.openmetadata.catalog.type.StorageServiceType;
-import org.openmetadata.catalog.type.Column;
-import org.openmetadata.catalog.type.SQLQuery;
-import org.openmetadata.catalog.type.TableConstraint.ConstraintType;
 import org.openmetadata.catalog.type.ChangeDescription;
+import org.openmetadata.catalog.type.Column;
 import org.openmetadata.catalog.type.ColumnConstraint;
 import org.openmetadata.catalog.type.ColumnDataType;
 import org.openmetadata.catalog.type.ColumnJoin;
@@ -50,7 +47,10 @@ import org.openmetadata.catalog.type.ColumnProfile;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.type.JoinedWith;
+import org.openmetadata.catalog.type.SQLQuery;
+import org.openmetadata.catalog.type.StorageServiceType;
 import org.openmetadata.catalog.type.TableConstraint;
+import org.openmetadata.catalog.type.TableConstraint.ConstraintType;
 import org.openmetadata.catalog.type.TableData;
 import org.openmetadata.catalog.type.TableJoins;
 import org.openmetadata.catalog.type.TableProfile;
@@ -61,8 +61,6 @@ import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.TestUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response.Status;
@@ -112,7 +110,6 @@ import static org.openmetadata.common.utils.CommonUtil.getDateStringByOffset;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class TableResourceTest extends EntityResourceTest<Table> {
-  private static final Logger LOG = LoggerFactory.getLogger(TableResourceTest.class);
   public static Database DATABASE;
 
   public static List<Column> COLUMNS;
@@ -877,8 +874,8 @@ public class TableResourceTest extends EntityResourceTest<Table> {
     assertEquals(tableList.getData().size(), tableList1.getData().size());
     assertFields(tableList1.getData(), fields);
 
-    // GET .../tables?fields=usageSummary,owner,service
-    final String fields1 = "usageSummary,owner,database";
+    // GET .../tables?fields=usageSummary,owner
+    final String fields1 = "usageSummary,owner";
     queryParams = new HashMap<>() {{
       put("fields", fields1);
     }};
@@ -1109,7 +1106,7 @@ public class TableResourceTest extends EntityResourceTest<Table> {
     assertFields(table, fields);
 
     // GET .../tables/{id}?fields=columns,usageSummary,owner,database,tags
-    fields = "columns,usageSummary,owner,database,tags";
+    fields = "columns,usageSummary,owner,tags";
     table = byName ? getTableByName(table.getFullyQualifiedName(), fields, adminAuthHeaders()) :
             getTable(table.getId(), fields, adminAuthHeaders());
     assertEquals(table.getOwner().getId(), USER_OWNER1.getId());

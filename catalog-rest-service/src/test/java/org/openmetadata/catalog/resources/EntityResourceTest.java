@@ -57,8 +57,6 @@ import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.TestUtils;
 import org.openmetadata.common.utils.JsonSchemaUtil;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.json.JsonPatch;
 import javax.ws.rs.client.WebTarget;
@@ -99,7 +97,6 @@ import static org.openmetadata.catalog.util.TestUtils.checkUserFollowing;
 import static org.openmetadata.catalog.util.TestUtils.userAuthHeaders;
 
 public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
-  private static final Logger LOG = LoggerFactory.getLogger(EntityResourceTest.class);
   private final String entityName;
   private final Class<T> entityClass;
   private final Class<? extends ResultList<T>> entityListClass;

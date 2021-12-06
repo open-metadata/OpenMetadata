@@ -75,6 +75,7 @@ import IconPipeline from '../assets/svg/pipeline.svg';
 import IconPlus from '../assets/svg/plus.svg';
 import IconProfiler from '../assets/svg/profiler.svg';
 import IconHelpCircle from '../assets/svg/question-circle.svg';
+import IconSearchV1 from '../assets/svg/search.svg';
 import IconSetting from '../assets/svg/service.svg';
 import IconSlackGrey from '../assets/svg/slack-grey.svg';
 import IconSlack from '../assets/svg/slack.svg';
@@ -175,6 +176,7 @@ export const Icons = {
   ICON_MINUS: 'icon-minus',
   TAG: 'icon-tag',
   TIER: 'icon-tier',
+  SEARCHV1: 'icon-searchv1',
 };
 
 const SVGIcons: FunctionComponent<Props> = ({
@@ -495,6 +497,10 @@ const SVGIcons: FunctionComponent<Props> = ({
       break;
     case Icons.TIER:
       IconComponent = IconTier;
+
+      break;
+    case Icons.SEARCHV1:
+      IconComponent = IconSearchV1;
 
       break;
 

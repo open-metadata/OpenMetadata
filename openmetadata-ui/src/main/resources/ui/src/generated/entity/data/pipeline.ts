@@ -72,6 +72,10 @@ export interface Pipeline {
    */
   service: EntityReference;
   /**
+   * Service type where this pipeline is hosted in.
+   */
+  serviceType?: PipelineServiceType;
+  /**
    * Start date of the workflow.
    */
   startDate?: Date;
@@ -173,10 +177,21 @@ export interface EntityReference {
    */
   name?: string;
   /**
-   * Entity type/class name - Examples: `database`, `table`, `metrics`, `redshift`, `mysql`,
-   * `bigquery`, `snowflake`...
+   * Entity type/class name - Examples: `database`, `table`, `metrics`, `databaseService`,
+   * `dashboardService`...
    */
   type: string;
+}
+
+/**
+ * Service type where this pipeline is hosted in.
+ *
+ * Type of pipeline service - Airflow or Prefect.
+ */
+export enum PipelineServiceType {
+  Airflow = 'Airflow',
+  Glue = 'Glue',
+  Prefect = 'Prefect',
 }
 
 /**

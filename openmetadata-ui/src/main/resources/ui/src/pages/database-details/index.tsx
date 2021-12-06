@@ -168,41 +168,39 @@ const DatabaseDetails: FunctionComponent = () => {
   };
 
   const getDetailsByFQN = () => {
-    getDatabaseDetailsByFQN(databaseFQN, 'service').then(
-      (res: AxiosResponse) => {
-        const { description, id, name, service } = res.data;
-        setDatabase(res.data);
-        setDescription(description);
-        setDatabaseId(id);
-        setDatabaseName(name);
+    getDatabaseDetailsByFQN(databaseFQN).then((res: AxiosResponse) => {
+      const { description, id, name, service } = res.data;
+      setDatabase(res.data);
+      setDescription(description);
+      setDatabaseId(id);
+      setDatabaseName(name);
 
-        getServiceById('databaseServices', service?.id).then(
-          (resService: AxiosResponse) => {
-            setServiceName(resService.data.name);
-            setSlashedTableName([
-              {
-                name: resService.data.name,
-                url: resService.data.name
-                  ? getServiceDetailsPath(
-                      resService.data.name,
-                      resService.data.serviceType,
-                      ServiceCategory.DATABASE_SERVICES
-                    )
-                  : '',
-                imgSrc: resService.data.serviceType
-                  ? serviceTypeLogo(resService.data.serviceType)
-                  : undefined,
-              },
-              {
-                name: name,
-                url: '',
-                activeTitle: true,
-              },
-            ]);
-          }
-        );
-      }
-    );
+      getServiceById('databaseServices', service?.id).then(
+        (resService: AxiosResponse) => {
+          setServiceName(resService.data.name);
+          setSlashedTableName([
+            {
+              name: resService.data.name,
+              url: resService.data.name
+                ? getServiceDetailsPath(
+                    resService.data.name,
+                    resService.data.serviceType,
+                    ServiceCategory.DATABASE_SERVICES
+                  )
+                : '',
+              imgSrc: resService.data.serviceType
+                ? serviceTypeLogo(resService.data.serviceType)
+                : undefined,
+            },
+            {
+              name: name,
+              url: '',
+              activeTitle: true,
+            },
+          ]);
+        }
+      );
+    });
     fetchDatabaseTablesAndDBTModels();
   };
 
