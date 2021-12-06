@@ -9,7 +9,7 @@ Use this document as a quick start guide to begin developing in OpenMetdata. Bel
 ## Schema (Metadata Models)
 OpenMetadata takes a schema-first approach to model metadata. We define entities, types, API requests, and relationships between entities. We define the OpenMetadata schema using the [JSON Schema](https://json-schema.org/) vocabulary.
 
-The JSON Schemas are converted into [Java POJO's](https://www.jsonschema2pojo.org/) using `jsonschema2pojo-maven-plugin` plugin as defined in [`pom.xml`](https://github.com/open-metadata/OpenMetadata/blob/16d8ba548d968c09e6634eefbd32c87c66996b90/catalog-rest-service/pom.xml#L395). The generated `POJO's` are located under `OpenMetadata/catalog-rest-service/target/generated-sources/jsonschema2pojo`.
+We convert models defined using JSON Schema to [Plain Old Java Objects (POJOs)](https://www.jsonschema2pojo.org/) using the `jsonschema2pojo-maven-plugin` plugin as defined in [`pom.xml`](https://github.com/open-metadata/OpenMetadata/blob/16d8ba548d968c09e6634eefbd32c87c66996b90/catalog-rest-service/pom.xml#L395). You can find the generated POJOs under `OpenMetadata/catalog-rest-service/target/generated-sources/jsonschema2pojo`.
 
 ### Entities  
 The entities are located at [`OpenMetadata/catalog-rest-service/src/main/resources/json/schema/entity`](https://github.com/open-metadata/OpenMetadata/tree/main/catalog-rest-service/src/main/resources/json/schema/entity), and the following are few examples of the entities supported by OpenMetadata.
