@@ -58,6 +58,10 @@ export interface Database {
    */
   service: EntityReference;
   /**
+   * Service type where this database is hosted in.
+   */
+  serviceType?: DatabaseServiceType;
+  /**
    * References to tables in the database.
    */
   tables?: EntityReference[];
@@ -157,10 +161,33 @@ export interface EntityReference {
    */
   name?: string;
   /**
-   * Entity type/class name - Examples: `database`, `table`, `metrics`, `redshift`, `mysql`,
-   * `bigquery`, `snowflake`...
+   * Entity type/class name - Examples: `database`, `table`, `metrics`, `databaseService`,
+   * `dashboardService`...
    */
   type: string;
+}
+
+/**
+ * Service type where this database is hosted in.
+ *
+ * Type of database service such as MySQL, BigQuery, Snowflake, Redshift, Postgres...
+ */
+export enum DatabaseServiceType {
+  Athena = 'Athena',
+  BigQuery = 'BigQuery',
+  Druid = 'Druid',
+  Glue = 'Glue',
+  Hive = 'Hive',
+  MariaDB = 'MariaDB',
+  Mssql = 'MSSQL',
+  MySQL = 'MySQL',
+  Oracle = 'Oracle',
+  Postgres = 'Postgres',
+  Presto = 'Presto',
+  Redshift = 'Redshift',
+  Snowflake = 'Snowflake',
+  Trino = 'Trino',
+  Vertica = 'Vertica',
 }
 
 /**
