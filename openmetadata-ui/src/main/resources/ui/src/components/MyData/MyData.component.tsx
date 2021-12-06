@@ -12,17 +12,31 @@
  */
 
 import { FormatedTableData } from 'Models';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Ownership } from '../../enums/mydata.enum';
+import React, {
+  Fragment,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import { formatDataResponse } from '../../utils/APIUtils';
+import { dropdownIcon as DropDownIcon } from '../../utils/svgconstant';
+import { Button } from '../buttons/Button/Button';
 import ErrorPlaceHolderES from '../common/error-with-placeholder/ErrorPlaceHolderES';
 import PageLayout from '../containers/PageLayout';
+import DropDownList from '../dropdown/DropDownList';
 import EntityList from '../EntityList/EntityList';
 import MyAssetStats from '../MyAssetStats/MyAssetStats.component';
 import RecentlyViewed from '../recently-viewed/RecentlyViewed';
 import RecentSearchedTerms from '../RecentSearchedTerms/RecentSearchedTerms';
 import SearchedData from '../searched-data/SearchedData';
 import { MyDataProps } from './MyData.interface';
+
+const filterList = [
+  { name: 'All Activity Feeds', value: 'all' },
+  { name: 'My Data Feeds', value: 'mydata' },
+  { name: 'Following Data Feeds', value: 'following' },
+];
 
 const MyData: React.FC<MyDataProps> = ({
   error,
@@ -37,51 +51,42 @@ const MyData: React.FC<MyDataProps> = ({
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [totalNumberOfValue, setTotalNumberOfValues] = useState<number>(0);
   const [isEntityLoading, setIsEntityLoading] = useState<boolean>(true);
-  const [currentTab, setCurrentTab] = useState<number>(1);
-  const [filter, setFilter] = useState<string>('');
+  const [filter, setFilter] = useState<string>('all');
+  const [fieldListVisible, setFieldListVisible] = useState<boolean>(false);
 
   const isMounted = useRef(false);
 
-  const getActiveTabClass = (tab: number) => {
-    return tab === currentTab ? 'active' : '';
+  const handleDropDown = (
+    _e: React.MouseEvent<HTMLElement, MouseEvent>,
+    value?: string
+  ) => {
+    setFilter(value || 'all');
+    setFieldListVisible(false);
   };
-
-  const handleTabChange = (tab: number, filter: string) => {
-    if (currentTab !== tab) {
-      setIsEntityLoading(true);
-      setCurrentTab(tab);
-      setFilter(filter);
-      setCurrentPage(1);
-    }
-  };
-
-  const getTabs = () => {
+  const getFilterDropDown = () => {
     return (
-      <div className="tw-mb-3" data-testid="tabs">
-        <nav className="tw-flex tw-flex-row tw-gh-tabs-container tw-px-4">
-          <button
-            className={`tw-pb-2 tw-px-4 tw-gh-tabs ${getActiveTabClass(1)}`}
-            data-testid="tab"
-            id="recentlyViewedTab"
-            onClick={() => handleTabChange(1, '')}>
-            Recently Viewed
-          </button>
-          <button
-            className={`tw-pb-2 tw-px-4 tw-gh-tabs ${getActiveTabClass(2)}`}
-            data-testid="tab"
-            id="myDataTab"
-            onClick={() => handleTabChange(2, Ownership.OWNER)}>
-            My Data
-          </button>
-          <button
-            className={`tw-pb-2 tw-px-4 tw-gh-tabs ${getActiveTabClass(3)}`}
-            data-testid="tab"
-            id="followingTab"
-            onClick={() => handleTabChange(3, Ownership.FOLLOWERS)}>
-            Following
-          </button>
-        </nav>
-      </div>
+      <Fragment>
+        <div className="tw-relative tw-mt-5">
+          <Button
+            data-testid="feeds"
+            size="custom"
+            theme="default"
+            variant="text"
+            onClick={() => setFieldListVisible((visible) => !visible)}>
+            <span className="tw-text-grey-body">
+              {filterList.find((f) => f.value === filter)?.name}
+            </span>
+            <DropDownIcon />
+          </Button>
+          {fieldListVisible && (
+            <DropDownList
+              dropDownList={filterList}
+              value={filter}
+              onSelect={handleDropDown}
+            />
+          )}
+        </div>
+      </Fragment>
     );
   };
 
@@ -164,18 +169,18 @@ const MyData: React.FC<MyDataProps> = ({
 
   return (
     <PageLayout leftPanel={getLeftPanel()} rightPanel={getRightPanel()}>
-      {getTabs()}
-      {error && Boolean(currentTab === 2 || currentTab === 3) ? (
+      {getFilterDropDown()}
+      {error ? (
         <ErrorPlaceHolderES errorMessage={error} type="error" />
       ) : (
         <SearchedData
           showOnboardingTemplate
+          showOnlyChildren
           currentPage={currentPage}
           data={data}
-          isLoading={currentTab === 1 ? false : isEntityLoading}
+          isLoading={isEntityLoading}
           paginate={paginate}
           searchText="*"
-          showOnlyChildren={currentTab === 1}
           showResultCount={filter && data.length > 0 ? true : false}
           totalValue={totalNumberOfValue}
         />
