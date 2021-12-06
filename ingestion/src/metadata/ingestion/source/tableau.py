@@ -14,6 +14,7 @@ import uuid
 from typing import Iterable, Optional
 
 import dateutil.parser as dateparser
+from pydantic import SecretStr
 from tableau_api_lib import TableauServerConnection
 from tableau_api_lib.utils.querying import get_views_dataframe, get_workbooks_dataframe
 
@@ -37,7 +38,7 @@ logger = logging.getLogger(__name__)
 
 class TableauSourceConfig(ConfigModel):
     username: str
-    password: str
+    password: SecretStr
     server: str
     api_version: str
     env: Optional[str] = "tableau_prod"
@@ -68,7 +69,7 @@ class TableauSource(Source):
             config.service_name,
             DashboardServiceType.Tableau.name,
             config.username,
-            config.password,
+            config.password.get_secret_value(),
             config.server,
             metadata_config,
         )
@@ -82,7 +83,7 @@ class TableauSource(Source):
                 "server": self.config.server,
                 "api_version": self.config.api_version,
                 "username": self.config.username,
-                "password": self.config.password,
+                "password": self.config.password.get_secret_value(),
                 "site_name": self.config.site_name,
                 "site_url": self.config.site_url,
             }
@@ -93,7 +94,7 @@ class TableauSource(Source):
             )
             conn.sign_in().json()
         except Exception as err:
-            print(f"{repr(err)}: {err}")
+            logger.error(f"{repr(err)}: {err}")
         return conn
 
     @classmethod

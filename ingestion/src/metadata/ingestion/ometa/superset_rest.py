@@ -13,6 +13,8 @@ import json
 import logging
 from typing import Optional
 
+from pydantic import SecretStr
+
 from metadata.config.common import ConfigModel
 from metadata.ingestion.ometa.auth_provider import AuthenticationProvider
 from metadata.ingestion.ometa.client import REST, ClientConfig
@@ -23,7 +25,7 @@ logger = logging.getLogger(__name__)
 class SupersetConfig(ConfigModel):
     url: str = "localhost:8088"
     username: Optional[str] = None
-    password: Optional[str] = None
+    password: Optional[SecretStr] = None
     service_name: str
     service_type: str = "Superset"
     provider: str = "db"
@@ -48,7 +50,7 @@ class SupersetAuthenticationProvider(AuthenticationProvider):
     def _login_request(self) -> str:
         auth_request = {
             "username": self.config.username,
-            "password": self.config.password,
+            "password": self.config.password.get_secret_value(),
             "refresh": True,
             "provider": self.config.provider,
         }
