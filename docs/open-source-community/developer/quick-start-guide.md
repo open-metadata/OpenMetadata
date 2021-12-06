@@ -51,7 +51,7 @@ Entity change events are stored in elastic search. The [`OpenMetadata/catalog-re
 The es indices are created when the [`OpenMetadata/ingestion/pipelines/metadata_to_es.json`](https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/pipelines/metadata_to_es.json) ingestion connector is run.
 
 ### Authentication/Authorization  
-Authentication is provided by google oauth provider. All incoming requests are filtered by validating the JWT token using the google oauth provider. Access control is provided by [`CatalogAuthorizer`](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/java/org/openmetadata/catalog/security/CatalogAuthorizer.java).
+OpenMetadata uses Google OAuth for authentication. All incoming requests are filtered by validating the JWT token using the Google OAuth provider. Access control is provided by [`CatalogAuthorizer`](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/java/org/openmetadata/catalog/security/CatalogAuthorizer.java).
 
 Auth/Authz details are configured at [`OpenMetadata/conf/openmetadata-security.yaml`](https://github.com/open-metadata/OpenMetadata/blob/main/conf/openmetadata-security.yaml)
 
