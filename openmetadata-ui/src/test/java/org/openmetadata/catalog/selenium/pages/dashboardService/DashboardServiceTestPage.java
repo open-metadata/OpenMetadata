@@ -130,7 +130,7 @@ public class DashboardServiceTestPage {
   public void searchDashboardService() throws InterruptedException {
     openDashboardServicePage();
     Thread.sleep(2000);
-    Events.click(webDriver, By.cssSelector("[data-testid='service-name-'"+ serviceName + "]"));
+    Events.click(webDriver, By.cssSelector("[data-testid='service-name-"+ serviceName + "']"));
   }
 
   @RepeatedIfExceptionsTest(repeats = 2)

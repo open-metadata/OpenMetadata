@@ -287,7 +287,8 @@ const Appbar: React.FC = (): JSX.Element => {
                     />
                   }
                   isDropDownIconVisible={false}
-                  // label="Need Help"
+                  isLableVisible={false}
+                  label="Need Help"
                   type="link"
                 />
               </div>
