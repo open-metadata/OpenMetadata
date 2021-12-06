@@ -34,19 +34,17 @@ from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.common import Record
 from metadata.ingestion.api.source import Source, SourceStatus
-from metadata.ingestion.models.ometa_table_db import (
-    OMetaDatabaseAndTable,
-)
+from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.models.table_metadata import Chart, Dashboard
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.utils.helpers import (
     get_dashboard_service_or_create,
     get_database_service_or_create,
+    get_database_service_or_create_v2,
     get_messaging_service_or_create,
     get_pipeline_service_or_create,
     get_storage_service_or_create,
-    get_database_service_or_create_v2,
 )
 
 logger: logging.Logger = logging.getLogger(__name__)
@@ -309,11 +307,7 @@ class SampleDataSource(Source):
             ),
         )
         for table in self.glue_tables["tables"]:
-            if not table.get("sampleData"):
-                table["sampleData"] = GenerateFakeSampleData.check_columns(
-                    table["columns"]
-                )
-                table["id"] = uuid.uuid4()
+            table["id"] = uuid.uuid4()
             table_metadata = Table(**table)
             location_metadata = Location(
                 id=uuid.uuid4(),
