@@ -7,7 +7,7 @@
   "properties" : {
     "name": {
       "description": "Name that identifies this Location.",
-      "type": "string"
+      "$ref": "../../entity/data/location.json#/definitions/locationName"
     },
     "description": {
       "description": "Description of the location instance.",
