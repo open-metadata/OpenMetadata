@@ -6,13 +6,17 @@
   "type": "object",
   "javaType": "org.openmetadata.catalog.entity.policies.accessControl.Rule",
   "properties": {
+    "name": {
+      "description": "Name that identifies this Rule.",
+      "type": "string"
+    },
     "filters": {
       "$ref": "../filters.json#/definitions/filters"
     },
     "actions": {
       "description": "A set of access control enforcements to take on the entities.",
       "type": "array",
-      "minLength": 1,
+      "minItems": 1,
       "items": {
         "anyOf": [
           {
@@ -20,6 +24,11 @@
           }
         ]
       }
+    },
+    "enabled": {
+      "description": "Is the rule enabled.",
+      "type": "boolean",
+      "default": true
     }
   },
   "required": [
