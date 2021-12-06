@@ -71,14 +71,14 @@ const EntityVersionPage: FunctionComponent = () => {
     setIsloading(true);
     getTableDetailsByFQN(
       getPartialNameFromFQN(datasetFQN, ['service', 'database', 'table'], '.'),
-      ['owner', 'tags', 'database']
+      ['owner', 'tags']
     )
       .then((res: AxiosResponse) => {
         const { id, owner, tags, name, database } = res.data;
         setTier(getTierTags(tags));
         setOwner(getOwnerFromId(owner?.id));
         setCurrentVersionData(res.data);
-        getDatabase(database.id, 'service').then((resDB: AxiosResponse) => {
+        getDatabase(database.id).then((resDB: AxiosResponse) => {
           getServiceById('databaseServices', resDB.data.service?.id).then(
             (resService: AxiosResponse) => {
               setSlashedTableName([
@@ -133,12 +133,11 @@ const EntityVersionPage: FunctionComponent = () => {
   const fetchCurrentVersion = () => {
     setIsVersionLoading(true);
     getTableDetailsByFQN(
-      getPartialNameFromFQN(datasetFQN, ['service', 'database', 'table'], '.'),
-      'database'
+      getPartialNameFromFQN(datasetFQN, ['service', 'database', 'table'], '.')
     )
       .then((res: AxiosResponse) => {
         const { id, database, name } = res.data;
-        getDatabase(database.id, 'service').then((resDB: AxiosResponse) => {
+        getDatabase(database.id).then((resDB: AxiosResponse) => {
           getServiceById('databaseServices', resDB.data.service?.id).then(
             (resService: AxiosResponse) => {
               setSlashedTableName([
