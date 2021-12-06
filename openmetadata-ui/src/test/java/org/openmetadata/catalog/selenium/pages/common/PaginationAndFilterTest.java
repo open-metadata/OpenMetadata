@@ -18,7 +18,6 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.catalog.selenium.events.Events;
 import org.openmetadata.catalog.selenium.properties.Property;
@@ -83,8 +82,7 @@ public class PaginationAndFilterTest {
     }
   }
 
-//  @RepeatedIfExceptionsTest(repeats = 2)
-  @Test
+  @RepeatedIfExceptionsTest(repeats = 2)
   @Order(2)
   public void noDataPresentWithFilter() throws Exception {
     Thread.sleep(waitTime);
@@ -105,7 +103,7 @@ public class PaginationAndFilterTest {
 
   @RepeatedIfExceptionsTest(repeats = 2)
   @Order(3)
-  public void DataPresentWithFilter() throws Exception {
+  public void dataPresentWithFilter() throws Exception {
     Thread.sleep(waitTime);
     Events.click(webDriver, By.cssSelector("[data-testid='closeWhatsNew']")); // Close What's new
     Thread.sleep(waitTime);
