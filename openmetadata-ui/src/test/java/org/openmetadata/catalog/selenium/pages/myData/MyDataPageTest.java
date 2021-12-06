@@ -121,15 +121,15 @@ public class MyDataPageTest {
     Events.click(webDriver, By.cssSelector("[data-testid='menu-item-Services']")); // Setting/Services
     Events.click(webDriver, By.cssSelector("[data-testid='whatsnew-modal']")); // What's New
     checkWhatsNew();
-    Events.click(webDriver, By.cssSelector("[data-testid='menu-button'][id='menu-button-Need Help']"));
+    Events.click(webDriver, By.cssSelector("[data-testid='menu-button'][id='menu-button-undefined']"));
     Events.click(webDriver, By.cssSelector("[data-testid='menu-item-Docs']"));
     webDriver.switchTo().window(tabs.get(0));
 
-    Events.click(webDriver, By.cssSelector("[data-testid='menu-button'][id='menu-button-Need Help']"));
+    Events.click(webDriver, By.cssSelector("[data-testid='menu-button'][id='menu-button-undefined']"));
     Events.click(webDriver, By.cssSelector("[data-testid='menu-item-API']"));
     webDriver.navigate().back();
 
-    Events.click(webDriver, By.cssSelector("[data-testid='menu-button'][id='menu-button-Need Help']"));
+    Events.click(webDriver, By.cssSelector("[data-testid='menu-button'][id='menu-button-undefined']"));
     Events.click(webDriver, By.cssSelector("[data-testid='menu-item-Slack']"));
     webDriver.switchTo().window(tabs.get(0));
   }
@@ -168,6 +168,7 @@ public class MyDataPageTest {
   @Order(8)
   public void checkLogout() {
     checkWhatsNew();
+    Events.click(webDriver, By.cssSelector("[data-testid='dropdown-profile']"));
     Events.click(webDriver, By.cssSelector("[data-testid='greeting-text']"));
     Events.click(webDriver, By.cssSelector("[data-testid='menu-item-Logout']"));
   }

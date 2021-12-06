@@ -18,6 +18,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.catalog.selenium.events.Events;
 import org.openmetadata.catalog.selenium.properties.Property;
@@ -78,6 +79,46 @@ public class PaginationAndFilterTest {
         throw new Exception("Flakiness exists");
       }
     } catch (TimeoutException exception) {
+      LOG.info("Success");
+    }
+  }
+
+//  @RepeatedIfExceptionsTest(repeats = 2)
+  @Test
+  @Order(2)
+  public void noDataPresentWithFilter() throws Exception {
+    Thread.sleep(waitTime);
+    Events.click(webDriver, By.cssSelector("[data-testid='closeWhatsNew']")); // Close What's new
+    Thread.sleep(waitTime);
+    Events.click(webDriver, By.cssSelector("[data-testid='tables']")); // Tables
+    Events.click(webDriver, By.cssSelector("[data-testid='checkbox'][id='BigQuery']")); // Select Filter
+    try {
+      WebElement noDataFound = wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath(
+          "//*[contains(text(), 'No matching data assets found')]")));
+      if (noDataFound.isDisplayed()) {
+        throw new Exception("Data not found with filter count more than 0");
+      }
+    } catch (TimeoutException exception) {
+      LOG.info("Success");
+    }
+  }
+
+  @RepeatedIfExceptionsTest(repeats = 2)
+  @Order(3)
+  public void DataPresentWithFilter() throws Exception {
+    Thread.sleep(waitTime);
+    Events.click(webDriver, By.cssSelector("[data-testid='closeWhatsNew']")); // Close What's new
+    Thread.sleep(waitTime);
+    Events.click(webDriver, By.cssSelector("[data-testid='tables']")); // Tables
+    Events.click(webDriver, By.cssSelector("[data-testid='checkbox'][id='Tier.Tier3']")); // Select Filter
+    try {
+
+      WebElement dataFound = wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector(
+          "[data-testid='search-results']")));
+      if (dataFound.isDisplayed()) {
+        throw new Exception("Data found with filter count 0");
+      }
+    } catch(TimeoutException exception) {
       LOG.info("Success");
     }
   }
