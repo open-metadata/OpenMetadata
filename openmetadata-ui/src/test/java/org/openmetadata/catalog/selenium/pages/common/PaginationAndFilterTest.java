@@ -53,7 +53,7 @@ public class PaginationAndFilterTest {
     ChromeOptions options = new ChromeOptions();
     options.addArguments("--headless");
     options.addArguments("--window-size=1280,800");
-    webDriver = new ChromeDriver();
+    webDriver = new ChromeDriver(options);
     actions = new Actions(webDriver);
     wait = new WebDriverWait(webDriver, Duration.ofSeconds(30));
     webDriver.manage().window().maximize();
@@ -63,7 +63,6 @@ public class PaginationAndFilterTest {
   @RepeatedIfExceptionsTest(repeats = 2)
   @Order(1)
   public void checkFlikerInFilter() throws Exception {
-    Thread.sleep(waitTime);
     Events.click(webDriver, By.cssSelector("[data-testid='closeWhatsNew']")); // Close What's new
     Thread.sleep(waitTime);
     Events.click(webDriver, By.cssSelector("[data-testid='tables']")); // Tables
@@ -78,6 +77,43 @@ public class PaginationAndFilterTest {
         throw new Exception("Flakiness exists");
       }
     } catch (TimeoutException exception) {
+      LOG.info("Success");
+    }
+  }
+
+  @RepeatedIfExceptionsTest(repeats = 2)
+  @Order(2)
+  public void noDataPresentWithFilter() throws Exception {
+    Events.click(webDriver, By.cssSelector("[data-testid='closeWhatsNew']")); // Close What's new
+    Thread.sleep(waitTime);
+    Events.click(webDriver, By.cssSelector("[data-testid='tables']")); // Tables
+    Events.click(webDriver, By.cssSelector("[data-testid='checkbox'][id='BigQuery']")); // Select Filter
+    try {
+      WebElement noDataFound = wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath(
+          "//*[contains(text(), 'No matching data assets found')]")));
+      if (noDataFound.isDisplayed()) {
+        throw new Exception("Data not found with filter count more than 0");
+      }
+    } catch (TimeoutException exception) {
+      LOG.info("Success");
+    }
+  }
+
+  @RepeatedIfExceptionsTest(repeats = 2)
+  @Order(3)
+  public void dataPresentWithFilter() throws Exception {
+    Events.click(webDriver, By.cssSelector("[data-testid='closeWhatsNew']")); // Close What's new
+    Thread.sleep(waitTime);
+    Events.click(webDriver, By.cssSelector("[data-testid='tables']")); // Tables
+    Events.click(webDriver, By.cssSelector("[data-testid='checkbox'][id='Tier.Tier3']")); // Select Filter
+    try {
+
+      WebElement dataFound = wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector(
+          "[data-testid='search-results']")));
+      if (dataFound.isDisplayed()) {
+        throw new Exception("Data found with filter count 0");
+      }
+    } catch(TimeoutException exception) {
       LOG.info("Success");
     }
   }

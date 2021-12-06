@@ -58,5 +58,6 @@ export type DropDownProp = {
   label?: string | React.ReactElement;
   type: string;
   icon?: React.ReactElement | string;
+  isLableVisible?: boolean;
   isDropDownIconVisible?: boolean;
 } & DropDownListProp;
