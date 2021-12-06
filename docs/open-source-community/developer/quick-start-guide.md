@@ -87,4 +87,4 @@ Example Airflow dags are found under [`OpenMetadata/ingestion/examples/airflow/d
 
 **JsonSchema python typings**
 
-The python typings for OpenMetadata JsonSchema is generated from the [`Makefile`](https://github.com/open-metadata/OpenMetadata/blob/main/Makefile) using the command `make generate`. The generated files are located at `OpenMetadata/ingestion/src/metadata/generated`
+You can generate Python types for OpenMetadata models defined using Json Schema using the `make generate` command of the [`Makefile`](https://github.com/open-metadata/OpenMetadata/blob/main/Makefile). Generated files are located in the directory `OpenMetadata/ingestion/src/metadata/generated`
