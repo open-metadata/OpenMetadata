@@ -48,7 +48,7 @@ The database entity tables are created using the command [`OpenMetadata/bootstra
 ### Elasticsearch  
 Entity change events are stored in elastic search. The [`OpenMetadata/catalog-rest-service/src/main/java/org/openmetadata/catalog/events/ElasticSearchEventHandler.java`](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/java/org/openmetadata/catalog/events/ElasticSearchEventHandler.java) is responsible for capturing the change events and updating es.
 
-The es indices are created when the [`OpenMetadata/ingestion/pipelines/metadata_to_es.json`](https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/pipelines/metadata_to_es.json) ingestion connector is run.
+Elasticsearch indices are created when the [`OpenMetadata/ingestion/pipelines/metadata_to_es.json`](https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/pipelines/metadata_to_es.json) ingestion connector is run.
 
 ### Authentication/Authorization  
 OpenMetadata uses Google OAuth for authentication. All incoming requests are filtered by validating the JWT token using the Google OAuth provider. Access control is provided by [`CatalogAuthorizer`](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/java/org/openmetadata/catalog/security/CatalogAuthorizer.java).
