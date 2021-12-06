@@ -63,7 +63,7 @@ TABLE_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
               "type": "keyword"
             },
             "database": {
-              "type": "text"
+              "type": "keyword"
             },
             "suggest": {
               "type": "completion"
