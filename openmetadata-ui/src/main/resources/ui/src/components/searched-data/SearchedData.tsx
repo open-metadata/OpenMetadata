@@ -148,7 +148,9 @@ const SearchedData: React.FC<SearchedDataProp> = ({
                     </div>
                   ) : null}
                   {data.length > 0 ? (
-                    <div className="tw-grid tw-grid-rows-1 tw-grid-cols-1">
+                    <div
+                      className="tw-grid tw-grid-rows-1 tw-grid-cols-1"
+                      data-testid="search-results">
                       {highlightSearchResult()}
                       {totalValue > PAGE_SIZE && data.length > 0 && (
                         <Pagination
