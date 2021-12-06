@@ -6,7 +6,7 @@ Use this document as a quick start guide to begin developing in OpenMetdata. Bel
 2. API's 
 3. System and Components
 
-## Schema (aka, models)
+## Schema (Metadata Models)
 OpenMetadata takes a schema-first approach to model metadata. We define entities, types, API requests, and relationships between entities. We define the OpenMetadata schema using the [JSON Schema](https://json-schema.org/) vocabulary.
 
 The JSON Schemas are converted into [Java POJO's](https://www.jsonschema2pojo.org/) using `jsonschema2pojo-maven-plugin` plugin as defined in [`pom.xml`](https://github.com/open-metadata/OpenMetadata/blob/16d8ba548d968c09e6634eefbd32c87c66996b90/catalog-rest-service/pom.xml#L395). The generated `POJO's` are located under `OpenMetadata/catalog-rest-service/target/generated-sources/jsonschema2pojo`.
