@@ -68,7 +68,7 @@ const MyDataPage = () => {
       getAllServices()
         .then((res) => setCountServices(res.length))
         .catch(() => setCountServices(0));
-      getIngestionWorkflows(['owner, service, tags, status'])
+      getIngestionWorkflows(['owner,tags, status'])
         .then((res) => setIngestionCount(res.data.data.length))
         .catch(() => setIngestionCount(0));
     }
