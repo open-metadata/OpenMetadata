@@ -2,7 +2,7 @@
 
 Use this document as a quick start guide to begin developing in OpenMetdata. Below, we address the following topics:
 
-1. Schema, aka models 
+1. Schema (Metadata Models)
 2. API's 
 3. System and Components
 
