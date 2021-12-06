@@ -63,7 +63,6 @@ public class PaginationAndFilterTest {
   @RepeatedIfExceptionsTest(repeats = 2)
   @Order(1)
   public void checkFlikerInFilter() throws Exception {
-//    Thread.sleep(waitTime);
     Events.click(webDriver, By.cssSelector("[data-testid='closeWhatsNew']")); // Close What's new
     Thread.sleep(waitTime);
     Events.click(webDriver, By.cssSelector("[data-testid='tables']")); // Tables
@@ -85,7 +84,6 @@ public class PaginationAndFilterTest {
   @RepeatedIfExceptionsTest(repeats = 2)
   @Order(2)
   public void noDataPresentWithFilter() throws Exception {
-//    Thread.sleep(waitTime);
     Events.click(webDriver, By.cssSelector("[data-testid='closeWhatsNew']")); // Close What's new
     Thread.sleep(waitTime);
     Events.click(webDriver, By.cssSelector("[data-testid='tables']")); // Tables
@@ -104,7 +102,6 @@ public class PaginationAndFilterTest {
   @RepeatedIfExceptionsTest(repeats = 2)
   @Order(3)
   public void dataPresentWithFilter() throws Exception {
-//    Thread.sleep(waitTime);
     Events.click(webDriver, By.cssSelector("[data-testid='closeWhatsNew']")); // Close What's new
     Thread.sleep(waitTime);
     Events.click(webDriver, By.cssSelector("[data-testid='tables']")); // Tables
