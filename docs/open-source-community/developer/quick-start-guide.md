@@ -20,7 +20,7 @@ You can locate defined entities in the directory [`OpenMetadata/catalog-rest-ser
 - tags
 - teams
 
-### Common Types    
+### Types    
 All OpenMetadata supported types are defined under [`OpenMetadata/catalog-rest-service/src/main/resources/json/schema/type`](https://github.com/open-metadata/OpenMetadata/tree/main/catalog-rest-service/src/main/resources/json/schema/type)
 
 ### API request objects  
@@ -46,7 +46,7 @@ OpenMetadata uses MySQL for the metadata catalog. The catalog code is located in
 The database entity tables are created using the command [`OpenMetadata/bootstrap/bootstrap_storage.sh`](https://github.com/open-metadata/OpenMetadata/blob/main/bootstrap/bootstrap_storage.sh). [Flyway](https://flywaydb.org/) is used for managing the database table versions.
 
 ### Elasticsearch  
-Entity change events are stored in elastic search. The [`OpenMetadata/catalog-rest-service/src/main/java/org/openmetadata/catalog/events/ElasticSearchEventHandler.java`](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/java/org/openmetadata/catalog/events/ElasticSearchEventHandler.java) is responsible for capturing the change events and updating es.
+OpenMetadata uses Elasticsearch to store the Entity change events and makes it searchable by search index. The [`OpenMetadata/catalog-rest-service/src/main/java/org/openmetadata/catalog/elasticsearch/ElasticSearchEventHandler.java`](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/java/org/openmetadata/catalog/elasticsearch/ElasticSearchEventHandler.java) is responsible for capturing the change events and updating Elasticsearch.
 
 Elasticsearch indices are created when the [`OpenMetadata/ingestion/pipelines/metadata_to_es.json`](https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/pipelines/metadata_to_es.json) ingestion connector is run.
 
