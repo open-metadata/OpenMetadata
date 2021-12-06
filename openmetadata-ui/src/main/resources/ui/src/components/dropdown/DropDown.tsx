@@ -27,6 +27,7 @@ const DropDown: React.FC<DropDownProp> = ({
   onSelect,
   selectedItems,
   isDropDownIconVisible = true,
+  isLableVisible = true,
 }: DropDownProp) => {
   const [isOpen, setIsOpen] = useState<boolean>(false);
 
@@ -100,7 +101,7 @@ const DropDown: React.FC<DropDownProp> = ({
             ) : (
               <>
                 {Icon && Icon}
-                {label && (
+                {label && isLableVisible && (
                   <p
                     className="hover:tw-underline"
                     style={{ color: `${isOpen ? activeLink : normalLink}` }}>
