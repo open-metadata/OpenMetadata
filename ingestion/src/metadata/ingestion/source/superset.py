@@ -10,12 +10,10 @@
 #  limitations under the License.
 
 import json
-from typing import Iterable, Tuple
+from typing import Iterable
 
 import dateutil.parser as dateparser
 
-from metadata.generated.schema.api.data.createChart import CreateChartEntityRequest
-from metadata.generated.schema.entity.data.chart import ChartType
 from metadata.generated.schema.entity.services.dashboardService import (
     DashboardServiceType,
 )
@@ -114,7 +112,7 @@ class SupersetSource(Source):
             config.service_name,
             DashboardServiceType.Superset.name,
             config.username,
-            config.password,
+            config.password.get_secret_value(),
             config.url,
             metadata_config,
         )

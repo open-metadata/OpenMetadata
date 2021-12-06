@@ -17,6 +17,8 @@ import uuid
 from dataclasses import dataclass, field
 from typing import Iterable, List, Optional
 
+from pydantic import SecretStr
+
 from metadata.config.common import ConfigModel
 from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceEntityRequest,
@@ -44,7 +46,7 @@ logger: logging.Logger = logging.getLogger(__name__)
 
 class AmundsenConfig(ConfigModel):
     neo4j_username: Optional[str] = None
-    neo4j_password: Optional[str] = None
+    neo4j_password: Optional[SecretStr] = None
     neo4j_url: str
     neo4j_max_connection_life_time: int = 50
     neo4j_encrypted: bool = True
@@ -177,7 +179,7 @@ class AmundsenSource(Source):
         self.ctx = ctx
         neo4j_config = Neo4JConfig(
             username=self.config.neo4j_username,
-            password=self.config.neo4j_password,
+            password=self.config.neo4j_password.get_secret_value(),
             neo4j_url=self.config.neo4j_url,
             max_connection_life_time=self.config.neo4j_max_connection_life_time,
             neo4j_encrypted=self.config.neo4j_encrypted,

@@ -71,7 +71,7 @@ def ingest(config: str) -> None:
     workflow_config = load_config_file(config_file)
 
     try:
-        logger.info(f"Using config: {workflow_config}")
+        logger.debug(f"Using config: {workflow_config}")
         workflow = Workflow.create(workflow_config)
     except ValidationError as e:
         click.echo(e, err=True)
