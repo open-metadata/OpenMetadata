@@ -45,7 +45,7 @@ OpenMetadata uses MySQL for the metadata catalog. The catalog code is located in
 
 The database entity tables are created using the command [`OpenMetadata/bootstrap/bootstrap_storage.sh`](https://github.com/open-metadata/OpenMetadata/blob/main/bootstrap/bootstrap_storage.sh). [Flyway](https://flywaydb.org/) is used for managing the database table versions.
 
-### Elastic Search  
+### Elasticsearch  
 Entity change events are stored in elastic search. The [`OpenMetadata/catalog-rest-service/src/main/java/org/openmetadata/catalog/events/ElasticSearchEventHandler.java`](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/java/org/openmetadata/catalog/events/ElasticSearchEventHandler.java) is responsible for capturing the change events and updating es.
 
 The es indices are created when the [`OpenMetadata/ingestion/pipelines/metadata_to_es.json`](https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/pipelines/metadata_to_es.json) ingestion connector is run.
