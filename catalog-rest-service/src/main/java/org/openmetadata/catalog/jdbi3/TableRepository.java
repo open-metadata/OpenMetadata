@@ -199,7 +199,8 @@ public class TableRepository extends EntityRepository<Table> {
     dao.locationDAO().findEntityById(locationId);
     // A table has only one location.
     dao.relationshipDAO().deleteFrom(tableId.toString(), Relationship.HAS.ordinal(), Entity.LOCATION);
-    dao.relationshipDAO().insert(tableId.toString(), locationId.toString(), Entity.DATABASE, Entity.LOCATION, Relationship.HAS.ordinal());
+    dao.relationshipDAO().insert(tableId.toString(), locationId.toString(), Entity.TABLE, Entity.LOCATION,
+            Relationship.HAS.ordinal());
     return OK;
   }
 
