@@ -1,6 +1,6 @@
 # Quick start guide
 
-Use this document as a quick start guide to begin developing in OpenMetdata. The document answers `what's` and `where's` of the following topic,
+Use this document as a quick start guide to begin developing in OpenMetdata. Below, we address the following topics:
 
 1. Schema, aka models 
 2. API's 
