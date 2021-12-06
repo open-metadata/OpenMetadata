@@ -6,6 +6,12 @@
   "type": "object",
   "javaType": "org.openmetadata.catalog.entity.data.Location",
   "definitions": {
+    "locationName": {
+      "description": "Local name (not fully qualified name) of a location.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
     "locationType": {
       "javaType": "org.openmetadata.catalog.type.LocationType",
       "description": "This schema defines the type used for describing different types of Location.",
@@ -39,7 +45,7 @@
     },
     "name": {
       "description": "Name of a location without the service. For example s3://bucket/path1/path2.",
-      "type": "string"
+      "$ref": "#/definitions/locationName"
     },
     "displayName": {
       "description": "Display Name that identifies this table. It could be title or label from the source services.",
