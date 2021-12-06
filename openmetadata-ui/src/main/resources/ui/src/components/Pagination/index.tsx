@@ -23,7 +23,7 @@ const Pagination: React.FC<PaginationProps> = ({
   paginate,
 }): JSX.Element => {
   return (
-    <div>
+    <div data-testid="pagination-button">
       <Paginations
         hideFirstLastPages
         activePage={currentPage}
