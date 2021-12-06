@@ -14,12 +14,6 @@
 package org.openmetadata.catalog.resources.search;
 
 
-import org.apache.commons.lang3.StringUtils;
-import org.apache.http.auth.AuthScope;
-import org.apache.http.auth.UsernamePasswordCredentials;
-import org.apache.http.client.CredentialsProvider;
-import org.apache.http.impl.client.BasicCredentialsProvider;
-import org.elasticsearch.client.RestClientBuilder;
 import org.elasticsearch.search.fetch.subphase.highlight.HighlightBuilder;
 import org.elasticsearch.search.suggest.Suggest;
 import org.elasticsearch.search.suggest.SuggestBuilder;
@@ -32,11 +26,9 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import org.apache.http.HttpHost;
 import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.client.RequestOptions;
-import org.elasticsearch.client.RestClient;
 import org.elasticsearch.client.RestHighLevelClient;
 import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.index.query.QueryBuilders;
@@ -79,7 +71,7 @@ public class SearchResource {
           description = "Search entities using query test. Use query params `from` and `size` for pagination. Use " +
                   "`sort_field` to sort the results in `sort_order`.",
           responses = {
-                  @ApiResponse(responseCode = "200", description = "search response",
+              @ApiResponse(responseCode = "200", description = "search response",
                           content = @Content(mediaType = "application/json",
                           schema = @Schema(implementation = SearchResponse.class)))
           })
@@ -148,7 +140,7 @@ public class SearchResource {
   @Operation(summary = "Suggest entities", tags = "search",
           description = "Get suggested entities used for auto-completion.",
           responses = {
-                  @ApiResponse(responseCode = "200",
+              @ApiResponse(responseCode = "200",
                           description = "Table Suggestion API",
                           content = @Content(mediaType = "application/json",
                           schema = @Schema(implementation = SearchResponse.class)))
@@ -225,10 +217,11 @@ public class SearchResource {
         .aggregation(AggregationBuilders.terms("EntityType").field("entity_type"))
         .aggregation(AggregationBuilders.terms("Tier").field("tier"))
         .aggregation(AggregationBuilders.terms("Tags").field("tags"))
+        .aggregation(AggregationBuilders.terms("Database").field("database"))
         .highlighter(hb)
         .from(from).size(size);
 
-   return searchSourceBuilder;
+    return searchSourceBuilder;
   }
 
   private SearchSourceBuilder buildTopicSearchBuilder(String query, int from, int size) {

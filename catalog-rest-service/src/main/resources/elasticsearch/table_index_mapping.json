@@ -47,7 +47,7 @@
         "type": "keyword"
       },
       "database": {
-        "type": "text"
+        "type": "keyword"
       },
       "suggest": {
         "type": "completion"
