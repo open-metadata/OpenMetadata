@@ -58,8 +58,6 @@ Auth/Authz details are configured at [`OpenMetadata/conf/openmetadata-security.y
 ### Ingestion  
 Ingestion is a simple python framework to ingest the metadata from various external sources into OpenMetadata platform.
 
-Ingestion is a simple python framework to ingest the metadata from various external sources into OpenMetadata platform.
-
 **Connectors**
 
 The ingestion is carried out using a set of components called `Connectors` as described [here](https://docs.open-metadata.org/open-source-community/developer/build-a-connector#workflow) and it consists of
