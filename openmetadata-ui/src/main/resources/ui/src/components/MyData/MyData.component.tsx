@@ -23,6 +23,7 @@ import { formatDataResponse } from '../../utils/APIUtils';
 import { dropdownIcon as DropDownIcon } from '../../utils/svgconstant';
 import { Button } from '../buttons/Button/Button';
 import ErrorPlaceHolderES from '../common/error-with-placeholder/ErrorPlaceHolderES';
+import FeedCards from '../common/FeedCard/FeedCards.component';
 import PageLayout from '../containers/PageLayout';
 import DropDownList from '../dropdown/DropDownList';
 import EntityList from '../EntityList/EntityList';
@@ -170,6 +171,7 @@ const MyData: React.FC<MyDataProps> = ({
   return (
     <PageLayout leftPanel={getLeftPanel()} rightPanel={getRightPanel()}>
       {getFilterDropDown()}
+      <FeedCards />
       {error ? (
         <ErrorPlaceHolderES errorMessage={error} type="error" />
       ) : (
