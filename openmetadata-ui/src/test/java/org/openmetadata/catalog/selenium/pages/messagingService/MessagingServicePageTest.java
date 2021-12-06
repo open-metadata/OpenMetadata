@@ -103,9 +103,6 @@ public class MessagingServicePageTest {
   public void editMessagingService() throws InterruptedException {
     openMessagingServicePage();
     Thread.sleep(2000);
-//    wait.until(ExpectedConditions.elementToBeClickable(By.cssSelector("[data-testid='searchbar']")));
-//    Events.sendKeys(webDriver, By.cssSelector("[data-testid='searchbar']"), serviceName);
-//    Thread.sleep(2000);
     Events.click(webDriver, By.cssSelector("[data-testid='edit-service-"+ serviceName + "']"));
     Events.click(webDriver, By.xpath(enterDescription));
     Events.sendEnter(webDriver, By.xpath(enterDescription));
@@ -118,9 +115,6 @@ public class MessagingServicePageTest {
   public void checkMessagingServiceDetails() throws InterruptedException {
     openMessagingServicePage();
     Thread.sleep(2000);
-//    wait.until(ExpectedConditions.elementToBeClickable(By.cssSelector("[data-testid='searchbar']")));
-//    Events.sendKeys(webDriver, By.cssSelector("[data-testid='searchbar']"), serviceName);
-//    Thread.sleep(2000);
     Events.click(webDriver, By.cssSelector("[data-testid='service-name-" + serviceName + "']"));
     Thread.sleep(waitTime);
     Events.click(webDriver, By.cssSelector("[data-testid='description-edit']"));
@@ -135,9 +129,6 @@ public class MessagingServicePageTest {
   public void searchMessagingService() throws InterruptedException {
     openMessagingServicePage();
     Thread.sleep(2000);
-//    wait.until(ExpectedConditions.elementToBeClickable(By.cssSelector("[data-testid='searchbar']")));
-//    Events.sendKeys(webDriver, By.cssSelector("[data-testid='searchbar']"), serviceName);
-//    Thread.sleep(2000);
     Events.click(webDriver, By.cssSelector("[data-testid='service-name-" + serviceName + "']"));
   }
 
@@ -146,9 +137,6 @@ public class MessagingServicePageTest {
   public void deleteMessagingService() throws InterruptedException {
     openMessagingServicePage();
     Thread.sleep(2000);
-//    wait.until(ExpectedConditions.elementToBeClickable(By.cssSelector("[data-testid='searchbar']")));
-//    Events.sendKeys(webDriver, By.cssSelector("[data-testid='searchbar']"), serviceName);
-//    Thread.sleep(2000);
     Events.click(webDriver, By.cssSelector("[data-testid='delete-service-"+ serviceName + "']"));
     Events.click(webDriver, By.cssSelector("[data-testid='save-button']"));
   }
