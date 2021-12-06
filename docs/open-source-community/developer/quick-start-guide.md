@@ -29,7 +29,7 @@ The API request objects are defined under [`OpenMetadata/catalog-rest-service/sr
 
 ## API
 OpenMetadata uses the [Dropwizard](https://www.dropwizard.io/) Java framework to build REST APIs. You can locate defined APIs in the directory [`OpenMetadata/catalog-rest-service/src/main/java/org/openmetadata/catalog/resources`](https://github.com/open-metadata/OpenMetadata/tree/main/catalog-rest-service/src/main/java/org/openmetadata/catalog/resources). 
-[Swagger](https://swagger.io/) is used for API documentation following the OpenAPI standards.
+OpenMetdata uses [Swagger](https://swagger.io/) to generate API documentation following OpenAPI standards.
 
 
 ## System and Components
