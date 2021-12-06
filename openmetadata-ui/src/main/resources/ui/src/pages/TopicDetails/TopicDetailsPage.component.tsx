@@ -18,7 +18,6 @@ import { EntityTags, TableDetail } from 'Models';
 import React, { FunctionComponent, useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import AppState from '../../AppState';
-import { getServiceById } from '../../axiosAPIs/serviceAPI';
 import {
   addFollower,
   getTopicByFqn,
@@ -116,7 +115,7 @@ const TopicDetailsPage: FunctionComponent = () => {
 
   const fetchTopicDetail = (topicFQN: string) => {
     setLoading(true);
-    getTopicByFqn(topicFQN, ['owner', 'service', 'followers', 'tags'])
+    getTopicByFqn(topicFQN, ['owner', 'followers', 'tags'])
       .then((res: AxiosResponse) => {
         const {
           id,
@@ -134,6 +133,7 @@ const TopicDetailsPage: FunctionComponent = () => {
           maximumMessageSize,
           replicationFactor,
           retentionSize,
+          serviceType,
         } = res.data;
         setName(name);
         setTopicDetails(res.data);
@@ -150,45 +150,32 @@ const TopicDetailsPage: FunctionComponent = () => {
         setMaximumMessageSize(maximumMessageSize);
         setReplicationFactor(replicationFactor);
         setRetentionSize(retentionSize);
-        getServiceById('messagingServices', service?.id)
-          .then((serviceRes: AxiosResponse) => {
-            setSlashedTopicName([
-              {
-                name: serviceRes.data.name,
-                url: serviceRes.data.name
-                  ? getServiceDetailsPath(
-                      serviceRes.data.name,
-                      serviceRes.data.serviceType,
-                      ServiceCategory.MESSAGING_SERVICES
-                    )
-                  : '',
-                imgSrc: serviceRes.data.serviceType
-                  ? serviceTypeLogo(serviceRes.data.serviceType)
-                  : undefined,
-              },
-              {
-                name: name,
-                url: '',
-                activeTitle: true,
-              },
-            ]);
+        setSlashedTopicName([
+          {
+            name: service.name,
+            url: service.name
+              ? getServiceDetailsPath(
+                  service.name,
+                  serviceType,
+                  ServiceCategory.MESSAGING_SERVICES
+                )
+              : '',
+            imgSrc: serviceType ? serviceTypeLogo(serviceType) : undefined,
+          },
+          {
+            name: name,
+            url: '',
+            activeTitle: true,
+          },
+        ]);
 
-            addToRecentViewed({
-              entityType: EntityType.TOPIC,
-              fqn: fullyQualifiedName,
-              serviceType: serviceRes.data.serviceType,
-              timestamp: 0,
-            });
-          })
-          .catch((err: AxiosError) => {
-            const errMsg =
-              err.message || `Error while fetching service for ${name}`;
-            showToast({
-              variant: 'error',
-              body: errMsg,
-            });
-          })
-          .finally(() => setLoading(false));
+        addToRecentViewed({
+          entityType: EntityType.TOPIC,
+          fqn: fullyQualifiedName,
+          serviceType: serviceType,
+          timestamp: 0,
+        });
+        setLoading(false);
       })
       .catch((err: AxiosError) => {
         const errMsg = err.message || 'Error while fetching topic details';

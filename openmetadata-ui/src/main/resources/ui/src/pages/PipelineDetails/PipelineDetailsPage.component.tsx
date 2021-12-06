@@ -31,7 +31,6 @@ import {
   patchPipelineDetails,
   removeFollower,
 } from '../../axiosAPIs/pipelineAPI';
-import { getServiceById } from '../../axiosAPIs/serviceAPI';
 import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
 import Loader from '../../components/Loader/Loader';
 import PipelineDetails from '../../components/PipelineDetails/PipelineDetails.component';
@@ -141,13 +140,7 @@ const PipelineDetailsPage = () => {
 
   const fetchPipelineDetail = (pipelineFQN: string) => {
     setLoading(true);
-    getPipelineByFqn(pipelineFQN, [
-      'owner',
-      'service',
-      'followers',
-      'tags',
-      'tasks',
-    ])
+    getPipelineByFqn(pipelineFQN, ['owner', 'followers', 'tags', 'tasks'])
       .then((res: AxiosResponse) => {
         const {
           id,
@@ -155,6 +148,7 @@ const PipelineDetailsPage = () => {
           followers,
           fullyQualifiedName,
           service,
+          serviceType,
           tags,
           owner,
           displayName,
@@ -169,38 +163,32 @@ const PipelineDetailsPage = () => {
         setOwner(getOwnerFromId(owner?.id));
         setTier(getTierTags(tags));
         setTags(getTagsWithoutTier(tags));
-        getServiceById('pipelineServices', service?.id).then(
-          (serviceRes: AxiosResponse) => {
-            setServiceType(serviceRes.data.serviceType);
-            setSlashedPipelineName([
-              {
-                name: serviceRes.data.name,
-                url: serviceRes.data.name
-                  ? getServiceDetailsPath(
-                      serviceRes.data.name,
-                      serviceRes.data.serviceType,
-                      ServiceCategory.PIPELINE_SERVICES
-                    )
-                  : '',
-                imgSrc: serviceRes.data.serviceType
-                  ? serviceTypeLogo(serviceRes.data.serviceType)
-                  : undefined,
-              },
-              {
-                name: displayName,
-                url: '',
-                activeTitle: true,
-              },
-            ]);
+        setServiceType(serviceType);
+        setSlashedPipelineName([
+          {
+            name: service.name,
+            url: service.name
+              ? getServiceDetailsPath(
+                  service.name,
+                  serviceType,
+                  ServiceCategory.PIPELINE_SERVICES
+                )
+              : '',
+            imgSrc: serviceType ? serviceTypeLogo(serviceType) : undefined,
+          },
+          {
+            name: displayName,
+            url: '',
+            activeTitle: true,
+          },
+        ]);
 
-            addToRecentViewed({
-              entityType: EntityType.PIPELINE,
-              fqn: fullyQualifiedName,
-              serviceType: serviceRes.data.serviceType,
-              timestamp: 0,
-            });
-          }
-        );
+        addToRecentViewed({
+          entityType: EntityType.PIPELINE,
+          fqn: fullyQualifiedName,
+          serviceType: serviceType,
+          timestamp: 0,
+        });
         setPipelineUrl(pipelineUrl);
         setTasks(tasks);
       })

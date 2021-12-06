@@ -188,7 +188,7 @@ const DBTModelDetailsPage: FunctionComponent = () => {
         setOwner(getOwnerFromId(owner?.id));
         setTier(getTierTags(tags));
         setFollowers(followers);
-        getDatabase(database.id, 'service').then((resDB: AxiosResponse) => {
+        getDatabase(database.id).then((resDB: AxiosResponse) => {
           getServiceById('databaseServices', resDB.data.service?.id).then(
             (resService: AxiosResponse) => {
               setSlashedDBTModelName([
