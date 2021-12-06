@@ -68,6 +68,10 @@ export interface Dashboard {
    */
   service: EntityReference;
   /**
+   * Service type where this dashboard is hosted in.
+   */
+  serviceType?: DashboardServiceType;
+  /**
    * Tags for this dashboard.
    */
   tags?: TagLabel[];
@@ -165,10 +169,22 @@ export interface EntityReference {
    */
   name?: string;
   /**
-   * Entity type/class name - Examples: `database`, `table`, `metrics`, `redshift`, `mysql`,
-   * `bigquery`, `snowflake`...
+   * Entity type/class name - Examples: `database`, `table`, `metrics`, `databaseService`,
+   * `dashboardService`...
    */
   type: string;
+}
+
+/**
+ * Service type where this dashboard is hosted in.
+ *
+ * Type of Dashboard service - Superset, Looker, Redash or Tableau.
+ */
+export enum DashboardServiceType {
+  Looker = 'Looker',
+  Redash = 'Redash',
+  Superset = 'Superset',
+  Tableau = 'Tableau',
 }
 
 /**

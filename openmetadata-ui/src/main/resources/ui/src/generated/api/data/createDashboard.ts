@@ -84,8 +84,8 @@ export interface EntityReference {
    */
   name?: string;
   /**
-   * Entity type/class name - Examples: `database`, `table`, `metrics`, `redshift`, `mysql`,
-   * `bigquery`, `snowflake`...
+   * Entity type/class name - Examples: `database`, `table`, `metrics`, `databaseService`,
+   * `dashboardService`...
    */
   type: string;
 }
