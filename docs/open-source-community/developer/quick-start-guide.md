@@ -36,7 +36,7 @@ The API request objects are defined under [`OpenMetadata/catalog-rest-service/sr
 ![system](https://user-images.githubusercontent.com/3944743/144579545-e51aa37e-93ed-4080-9f32-ce617029571f.png)
 
 ### Events  
-Changes to the entities are captured as `events` and are stored in the database and elastic search.
+OpenMetadata captures changes to entities as `events` and stores them in the OpenMetadata server database. OpenMetadata also indexes change events in Elasticsearch to make them searchable.
 
 The event handlers are defined under [`OpenMetadata/catalog-rest-service/src/main/java/org/openmetadata/catalog/events`](https://github.com/open-metadata/OpenMetadata/tree/main/catalog-rest-service/src/main/java/org/openmetadata/catalog/events) and are applied globally to any outgoing response using the `ContainerResponseFilter`
 
