@@ -41,7 +41,7 @@ OpenMetadata captures changes to entities as `events` and stores them in the Ope
 The event handlers are defined under [`OpenMetadata/catalog-rest-service/src/main/java/org/openmetadata/catalog/events`](https://github.com/open-metadata/OpenMetadata/tree/main/catalog-rest-service/src/main/java/org/openmetadata/catalog/events) and are applied globally to any outgoing response using the `ContainerResponseFilter`
 
 ### Database  
-MySql is used to persist the entities and the repository code to interact with MySql is located under [`OpenMetadata/catalog-rest-service/src/main/java/org/openmetadata/catalog/jdbi3`](https://github.com/open-metadata/OpenMetadata/tree/main/catalog-rest-service/src/main/java/org/openmetadata/catalog/jdbi3).
+OpenMetadata uses MySQL for the metadata catalog. The catalog code is located in the directory [`OpenMetadata/catalog-rest-service/src/main/java/org/openmetadata/catalog/jdbi3`](https://github.com/open-metadata/OpenMetadata/tree/main/catalog-rest-service/src/main/java/org/openmetadata/catalog/jdbi3).
 
 The database entity tables are created using the command [`OpenMetadata/bootstrap/bootstrap_storage.sh`](https://github.com/open-metadata/OpenMetadata/blob/main/bootstrap/bootstrap_storage.sh). [Flyway](https://flywaydb.org/) is used for managing the database table versions.
 
