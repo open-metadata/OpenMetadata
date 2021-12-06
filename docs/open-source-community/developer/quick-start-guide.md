@@ -83,7 +83,7 @@ There are some popular connectors already developed and can be found under
 
 For simplicity, the metadata from external sources are ingested in a pull-based model, and Apache Airflow is used as an orchestration framework to perform ingestion.
 
-Example Airflow dags are found under [`OpenMetadata/ingestion/examples/airflow/dags`](https://github.com/open-metadata/OpenMetadata/tree/main/ingestion/examples/airflow/dags) for reference.
+See the directory [`OpenMetadata/ingestion/examples/airflow/dags`](https://github.com/open-metadata/OpenMetadata/tree/main/ingestion/examples/airflow/dags) for reference DAG definitions.
 
 **JsonSchema python typings**
 
