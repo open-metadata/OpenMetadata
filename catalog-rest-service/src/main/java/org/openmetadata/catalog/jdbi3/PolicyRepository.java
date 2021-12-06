@@ -139,10 +139,10 @@ public class PolicyRepository extends EntityRepository<Policy> {
     policy.setOwner(owner);
   }
 
-  static class PolicyEntityInterface implements EntityInterface<Policy> {
+  public static class PolicyEntityInterface implements EntityInterface<Policy> {
     private final Policy entity;
 
-    PolicyEntityInterface(Policy entity) {
+    public PolicyEntityInterface(Policy entity) {
       this.entity = entity;
     }
 
@@ -248,7 +248,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
 
     @Override
     public void setOwner(EntityReference owner) {
-      // Policy does not have owner
+      entity.setOwner(owner);
     }
 
     @Override
@@ -270,11 +270,8 @@ public class PolicyRepository extends EntityRepository<Policy> {
 
     @Override
     public void entitySpecificUpdate() throws IOException {
-      updatePolicyUrl(original.getEntity(), updated.getEntity());
-    }
-
-    private void updatePolicyUrl(Policy original, Policy updated) throws JsonProcessingException {
-      recordChange("policyUrl", original.getPolicyUrl(), updated.getPolicyUrl());
+      recordChange("policyUrl", original.getEntity().getPolicyUrl(), updated.getEntity().getPolicyUrl());
+      recordChange("enabled", original.getEntity().getEnabled(), updated.getEntity().getEnabled());
     }
   }
 }
