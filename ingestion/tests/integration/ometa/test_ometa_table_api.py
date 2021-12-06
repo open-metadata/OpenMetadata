@@ -212,9 +212,7 @@ class OMetaTableTest(TestCase):
             entity=Table, fqdn=self.entity.fullyQualifiedName
         )
         # Then fetch by ID
-        res_id = self.metadata.get_by_id(
-            entity=Table, entity_id=str(res_name.id.__root__)
-        )
+        res_id = self.metadata.get_by_id(entity=Table, entity_id=res_name.id)
 
         # Delete
         self.metadata.delete(entity=Table, entity_id=str(res_id.id.__root__))

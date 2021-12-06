@@ -34,6 +34,7 @@ from metadata.generated.schema.entity.services.storageService import StorageServ
 from metadata.generated.schema.entity.tags.tagCategory import Tag
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
+from metadata.generated.schema.type import basic
 from metadata.generated.schema.type.entityHistory import EntityVersionHistory
 from metadata.ingestion.ometa.auth_provider import AuthenticationProvider
 from metadata.ingestion.ometa.client import REST, APIError, ClientConfig
@@ -336,6 +337,20 @@ class OpenMetadata(OMetaLineageMixin, OMetaTableMixin, Generic[T, C]):
         resp = method(self.get_suffix(entity), data=data.json())
         return entity_class(**resp)
 
+    @staticmethod
+    def uuid_to_str(entity_id: Union[str, basic.Uuid]) -> str:
+        """
+        Given an entity_id, that can be a str or our pydantic
+        definition of Uuid, return a proper str to build
+        the endpoint path
+        :param entity_id: Entity ID to onvert to string
+        :return: str for the ID
+        """
+        if isinstance(entity_id, basic.Uuid):
+            return str(entity_id.__root__)
+
+        return entity_id
+
     def get_by_name(
         self, entity: Type[T], fqdn: str, fields: Optional[List[str]] = None
     ) -> Optional[T]:
@@ -346,13 +361,16 @@ class OpenMetadata(OMetaLineageMixin, OMetaTableMixin, Generic[T, C]):
         return self._get(entity=entity, path=f"name/{fqdn}", fields=fields)
 
     def get_by_id(
-        self, entity: Type[T], entity_id: str, fields: Optional[List[str]] = None
+        self,
+        entity: Type[T],
+        entity_id: Union[str, basic.Uuid],
+        fields: Optional[List[str]] = None,
     ) -> Optional[T]:
         """
         Return entity by ID or None
         """
 
-        return self._get(entity=entity, path=entity_id, fields=fields)
+        return self._get(entity=entity, path=self.uuid_to_str(entity_id), fields=fields)
 
     def _get(
         self, entity: Type[T], path: str, fields: Optional[List[str]] = None
@@ -399,13 +417,15 @@ class OpenMetadata(OMetaLineageMixin, OMetaTableMixin, Generic[T, C]):
             after = resp["paging"]["after"] if "after" in resp["paging"] else None
             return EntityList(entities=entities, total=total, after=after)
 
-    def list_versions(self, entity_id: str, entity: Type[T]) -> EntityVersionHistory:
+    def list_versions(
+        self, entity_id: Union[str, basic.Uuid], entity: Type[T]
+    ) -> EntityVersionHistory:
         """
         Helps us paginate over the collection
         """
 
         suffix = self.get_suffix(entity)
-        path = f"/{entity_id}/versions"
+        path = f"/{self.uuid_to_str(entity_id)}/versions"
         resp = self.client.get(f"{suffix}{path}")
 
         if self._use_raw_data:
@@ -424,8 +444,8 @@ class OpenMetadata(OMetaLineageMixin, OMetaTableMixin, Generic[T, C]):
         else:
             return [entity(**p) for p in resp["data"]]
 
-    def delete(self, entity: Type[T], entity_id: str) -> None:
-        self.client.delete(f"{self.get_suffix(entity)}/{entity_id}")
+    def delete(self, entity: Type[T], entity_id: Union[str, basic.Uuid]) -> None:
+        self.client.delete(f"{self.get_suffix(entity)}/{self.uuid_to_str(entity_id)}")
 
     def compute_percentile(self, entity: Union[Type[T], str], date: str) -> None:
         """

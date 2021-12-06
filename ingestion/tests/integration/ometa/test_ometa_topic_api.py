@@ -149,7 +149,7 @@ class OMetaTopicTest(TestCase):
             entity=Topic, fqdn=self.entity.fullyQualifiedName
         )
         # Then fetch by ID
-        res = self.metadata.get_by_id(entity=Topic, entity_id=str(res_name.id.__root__))
+        res = self.metadata.get_by_id(entity=Topic, entity_id=res_name.id)
 
         self.assertEqual(res_name.id, res.id)
 
