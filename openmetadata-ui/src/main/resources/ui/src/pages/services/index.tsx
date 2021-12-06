@@ -529,7 +529,7 @@ const ServicesPage = () => {
                         <button>
                           <h6
                             className="tw-text-base tw-text-grey-body tw-font-medium"
-                            data-testid="service-name">
+                            data-testid={`service-name-${service.name}`}>
                             {service.name}
                           </h6>
                         </button>
@@ -572,7 +572,7 @@ const ServicesPage = () => {
                           title={TITLE_FOR_NON_ADMIN_ACTION}>
                           <button
                             className="tw-pr-3 focus:tw-outline-none"
-                            data-testid="edit-service"
+                            data-testid={`edit-service-${service.name}`}
                             onClick={() => handleEdit(service)}>
                             <SVGIcons
                               alt="edit"
@@ -587,7 +587,7 @@ const ServicesPage = () => {
                           title={TITLE_FOR_NON_ADMIN_ACTION}>
                           <button
                             className="focus:tw-outline-none"
-                            data-testid="delete-service"
+                            data-testid={`delete-service-${service.name}`}
                             onClick={() =>
                               ConfirmDelete(service.id || '', service.name)
                             }>
