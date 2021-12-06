@@ -64,6 +64,10 @@ export interface Chart {
    */
   service: EntityReference;
   /**
+   * Service type where this chart is hosted in.
+   */
+  serviceType?: DashboardServiceType;
+  /**
    * Link to table used in this chart.
    */
   tables?: EntityReference[];
@@ -181,10 +185,22 @@ export interface EntityReference {
    */
   name?: string;
   /**
-   * Entity type/class name - Examples: `database`, `table`, `metrics`, `redshift`, `mysql`,
-   * `bigquery`, `snowflake`...
+   * Entity type/class name - Examples: `database`, `table`, `metrics`, `databaseService`,
+   * `dashboardService`...
    */
   type: string;
+}
+
+/**
+ * Service type where this chart is hosted in.
+ *
+ * Type of Dashboard service - Superset, Looker, Redash or Tableau.
+ */
+export enum DashboardServiceType {
+  Looker = 'Looker',
+  Redash = 'Redash',
+  Superset = 'Superset',
+  Tableau = 'Tableau',
 }
 
 /**

@@ -98,6 +98,10 @@ export interface Topic {
    */
   service: EntityReference;
   /**
+   * Service type where this topic is hosted in.
+   */
+  serviceType?: MessagingServiceType;
+  /**
    * Tags for this table.
    */
   tags?: TagLabel[];
@@ -199,8 +203,8 @@ export interface EntityReference {
    */
   name?: string;
   /**
-   * Entity type/class name - Examples: `database`, `table`, `metrics`, `redshift`, `mysql`,
-   * `bigquery`, `snowflake`...
+   * Entity type/class name - Examples: `database`, `table`, `metrics`, `databaseService`,
+   * `dashboardService`...
    */
   type: string;
 }
@@ -215,6 +219,16 @@ export enum SchemaType {
   JSON = 'JSON',
   Other = 'Other',
   Protobuf = 'Protobuf',
+}
+
+/**
+ * Service type where this topic is hosted in.
+ *
+ * Type of messaging service - Kafka or Pulsar.
+ */
+export enum MessagingServiceType {
+  Kafka = 'Kafka',
+  Pulsar = 'Pulsar',
 }
 
 /**

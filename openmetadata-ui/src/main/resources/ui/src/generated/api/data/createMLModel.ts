@@ -42,6 +42,10 @@ export interface CreateMlModel {
    */
   mlHyperParameters?: MlHyperParameter[];
   /**
+   * Location containing the ML Model. It can be a storage layer and/or a container repository.
+   */
+  mlStore?: MlStore;
+  /**
    * Name that identifies this ML model.
    */
   name: string;
@@ -49,6 +53,11 @@ export interface CreateMlModel {
    * Owner of this database
    */
   owner?: EntityReference;
+  /**
+   * Endpoint that makes the ML Model available, e.g,. a REST API serving the data or
+   * computing predictions.
+   */
+  server?: string;
   /**
    * Tags for this ML Model
    */
@@ -88,8 +97,8 @@ export interface EntityReference {
    */
   name?: string;
   /**
-   * Entity type/class name - Examples: `database`, `table`, `metrics`, `redshift`, `mysql`,
-   * `bigquery`, `snowflake`...
+   * Entity type/class name - Examples: `database`, `table`, `metrics`, `databaseService`,
+   * `dashboardService`...
    */
   type: string;
 }
@@ -235,4 +244,18 @@ export interface MlHyperParameter {
    * Hyper parameter value.
    */
   value?: string;
+}
+
+/**
+ * Location containing the ML Model. It can be a storage layer and/or a container repository.
+ */
+export interface MlStore {
+  /**
+   * Container Repository with the ML Model image.
+   */
+  imageRepository?: string;
+  /**
+   * Storage Layer containing the ML Model data.
+   */
+  storage?: string;
 }

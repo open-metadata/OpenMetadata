@@ -59,7 +59,7 @@ import {
 import SVGIcons from '../../utils/SvgUtils';
 import { getEntityLink, getUsagePercentile } from '../../utils/TableUtils';
 
-type Data = Database | Topic | Dashboard;
+type Data = Database & Topic & Dashboard;
 type ServiceDataObj = { name: string } & Partial<DatabaseService> &
   Partial<MessagingService> &
   Partial<DashboardService> &

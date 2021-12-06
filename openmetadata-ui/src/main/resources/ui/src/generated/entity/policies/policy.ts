@@ -148,8 +148,8 @@ export interface PolicyOwner {
    */
   name?: string;
   /**
-   * Entity type/class name - Examples: `database`, `table`, `metrics`, `redshift`, `mysql`,
-   * `bigquery`, `snowflake`...
+   * Entity type/class name - Examples: `database`, `table`, `metrics`, `databaseService`,
+   * `dashboardService`...
    */
   type: string;
 }
@@ -387,8 +387,8 @@ export interface OwnerElement {
    */
   name?: string;
   /**
-   * Entity type/class name - Examples: `database`, `table`, `metrics`, `redshift`, `mysql`,
-   * `bigquery`, `snowflake`...
+   * Entity type/class name - Examples: `database`, `table`, `metrics`, `databaseService`,
+   * `dashboardService`...
    */
   type: string;
 }
@@ -424,7 +424,7 @@ export interface Destination {
   /**
    * The location where to move this entity to.
    */
-  location?: Table;
+  location?: Location;
   /**
    * The storage class to move this entity to.
    */
@@ -441,7 +441,7 @@ export interface Destination {
  * This schema defines the Location entity. A Location can contain the data of a table or
  * group other sublocation together.
  */
-export interface Table {
+export interface Location {
   /**
    * Change that lead to this version of the entity.
    */
@@ -485,6 +485,10 @@ export interface Table {
    */
   service: OwnerElement;
   /**
+   * Service type where this storage location is hosted in.
+   */
+  serviceType?: StorageServiceType;
+  /**
    * Tags for this location.
    */
   tags?: TagElement[];
@@ -510,6 +514,18 @@ export enum LocationType {
   Database = 'Database',
   Prefix = 'Prefix',
   Table = 'Table',
+}
+
+/**
+ * Service type where this storage location is hosted in.
+ *
+ * Type of storage service such as S3, GCS, HDFS...
+ */
+export enum StorageServiceType {
+  Abfs = 'ABFS',
+  Gcs = 'GCS',
+  Hdfs = 'HDFS',
+  S3 = 'S3',
 }
 
 /**
@@ -669,16 +685,6 @@ export interface StorageService {
    * Metadata version of the entity.
    */
   version?: number;
-}
-
-/**
- * Type of storage service such as S3, GCS, HDFS...
- */
-export enum StorageServiceType {
-  Abfs = 'ABFS',
-  Gcs = 'GCS',
-  Hdfs = 'HDFS',
-  S3 = 'S3',
 }
 
 /**
