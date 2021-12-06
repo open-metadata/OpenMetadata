@@ -18,9 +18,7 @@ import { EntityTags, LeafNodes, LineagePos, LoadingNodeState } from 'Models';
 import React, { FunctionComponent, useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import AppState from '../../AppState';
-import { getDatabase } from '../../axiosAPIs/databaseAPI';
 import { getLineageByFQN } from '../../axiosAPIs/lineageAPI';
-import { getServiceById } from '../../axiosAPIs/serviceAPI';
 import {
   addFollower,
   getTableDetailsByFQN,
@@ -226,7 +224,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
     setIsLoading(true);
     getTableDetailsByFQN(
       getPartialNameFromFQN(tableFQN, ['service', 'database', 'table'], '.'),
-      'columns, database, usageSummary, followers, joins, tags, owner, sampleData, tableProfile'
+      'columns, usageSummary, followers, joins, tags, owner, sampleData, tableProfile'
     )
       .then((res: AxiosResponse) => {
         const {
@@ -245,6 +243,8 @@ const DatasetDetailsPage: FunctionComponent = () => {
           tableProfile,
           version,
           changeDescription,
+          service,
+          serviceType,
         } = res.data;
         setTableDetails(res.data);
         setTableId(id);
@@ -253,42 +253,34 @@ const DatasetDetailsPage: FunctionComponent = () => {
         setTier(getTierTags(tags));
         setOwner(getOwnerFromId(owner?.id));
         setFollowers(followers);
-        getDatabase(database.id, 'service').then((resDB: AxiosResponse) => {
-          getServiceById('databaseServices', resDB.data.service?.id).then(
-            (resService: AxiosResponse) => {
-              setSlashedTableName([
-                {
-                  name: resService.data.name,
-                  url: resService.data.name
-                    ? getServiceDetailsPath(
-                        resService.data.name,
-                        resService.data.serviceType,
-                        ServiceCategory.DATABASE_SERVICES
-                      )
-                    : '',
-                  imgSrc: resService.data.serviceType
-                    ? serviceTypeLogo(resService.data.serviceType)
-                    : undefined,
-                },
-                {
-                  name: resDB.data.name,
-                  url: getDatabaseDetailsPath(resDB.data.fullyQualifiedName),
-                },
-                {
-                  name: name,
-                  url: '',
-                  activeTitle: true,
-                },
-              ]);
+        setSlashedTableName([
+          {
+            name: service.name,
+            url: service.name
+              ? getServiceDetailsPath(
+                  service.name,
+                  serviceType,
+                  ServiceCategory.DATABASE_SERVICES
+                )
+              : '',
+            imgSrc: serviceType ? serviceTypeLogo(serviceType) : undefined,
+          },
+          {
+            name: getPartialNameFromFQN(database.name, ['database']),
+            url: getDatabaseDetailsPath(database.name),
+          },
+          {
+            name: name,
+            url: '',
+            activeTitle: true,
+          },
+        ]);
 
-              addToRecentViewed({
-                entityType: EntityType.DATASET,
-                fqn: fullyQualifiedName,
-                serviceType: resService.data.serviceType,
-                timestamp: 0,
-              });
-            }
-          );
+        addToRecentViewed({
+          entityType: EntityType.DATASET,
+          fqn: fullyQualifiedName,
+          serviceType: serviceType,
+          timestamp: 0,
         });
         setName(name);
 
