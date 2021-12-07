@@ -78,7 +78,6 @@ import java.util.UUID;
 
 import static java.util.Collections.singletonList;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
-import static javax.ws.rs.core.Response.Status.CONFLICT;
 import static javax.ws.rs.core.Response.Status.CREATED;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
@@ -103,6 +102,7 @@ import static org.openmetadata.catalog.util.TestUtils.UpdateType.MAJOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.NO_CHANGE;
 import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
+import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 import static org.openmetadata.catalog.util.TestUtils.authHeaders;
 import static org.openmetadata.catalog.util.TestUtils.userAuthHeaders;
@@ -780,20 +780,6 @@ public class TableResourceTest extends EntityResourceTest<Table> {
   }
 
   @Test
-  public void get_tableWithDifferentFields_200_OK(TestInfo test) throws IOException {
-    CreateTable create = create(test).withDescription("description").withOwner(USER_OWNER1);
-    Table table = createAndCheckEntity(create, adminAuthHeaders());
-    validateGetWithDifferentFields(table, false);
-  }
-
-  @Test
-  public void get_tableByNameWithDifferentFields_200_OK(TestInfo test) throws IOException {
-    CreateTable create = create(test).withDescription("description").withOwner(USER_OWNER1);
-    Table table = createAndCheckEntity(create, adminAuthHeaders());
-    validateGetWithDifferentFields(table, true);
-  }
-
-  @Test
   @Order(1) // Run this test first as other tables created in other tests will interfere with listing
   public void get_tableListWithDifferentFields_200_OK(TestInfo test) throws IOException {
     CreateTable create = create(test, 1).withDescription("description").withOwner(USER_OWNER1)
@@ -1046,13 +1032,12 @@ public class TableResourceTest extends EntityResourceTest<Table> {
       assertNull(table.getTags());
     }
     // Default fields that are always returned
-    assertNotNull(table.getDatabase());
-    assertNotNull(table.getService());
-    assertNotNull(table.getServiceType());
+    assertListNotNull(table.getDatabase(), table.getService(), table.getServiceType());
   }
 
   /** Validate returned fields GET .../tables/{id}?fields="..." or GET .../tables/name/{fqn}?fields="..." */
-  private void validateGetWithDifferentFields(Table table, boolean byName) throws HttpResponseException {
+  @Override
+  public void validateGetWithDifferentFields(Table table, boolean byName) throws HttpResponseException {
     // GET .../tables/{id}
     table = byName ? getEntityByName(table.getFullyQualifiedName(), null, adminAuthHeaders()) :
             getEntity(table.getId(), null, adminAuthHeaders());
@@ -1203,8 +1188,7 @@ public class TableResourceTest extends EntityResourceTest<Table> {
     assertEquals(createRequest.getTableConstraints(), createdEntity.getTableConstraints());
     TestUtils.validateTags(createRequest.getTags(), createdEntity.getTags());
     TestUtils.validateEntityReference(createdEntity.getFollowers());
-    assertNotNull(createdEntity.getService());
-    assertNotNull(createdEntity.getServiceType());
+    assertListNotNull(createdEntity.getService(), createdEntity.getServiceType());
   }
 
   @Override

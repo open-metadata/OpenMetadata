@@ -58,7 +58,6 @@ import java.util.UUID;
 
 import static java.util.Collections.singletonList;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
-import static javax.ws.rs.core.Response.Status.CONFLICT;
 import static javax.ws.rs.core.Response.Status.CREATED;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
@@ -419,20 +418,6 @@ public class DbtModelResourceTest extends EntityResourceTest<DbtModel> {
   }
 
   @Test
-  public void get_DbtModelWithDifferentFields_200_OK(TestInfo test) throws IOException {
-    CreateDbtModel create = create(test).withDescription("description").withOwner(USER_OWNER1);
-    DbtModel dbtModel = createAndCheckEntity(create, adminAuthHeaders());
-    validateGetWithDifferentFields(dbtModel, false);
-  }
-
-  @Test
-  public void get_DbtModelByNameWithDifferentFields_200_OK(TestInfo test) throws IOException {
-    CreateDbtModel create = create(test).withDescription("description").withOwner(USER_OWNER1);
-    DbtModel dbtModel = createAndCheckEntity(create, adminAuthHeaders());
-    validateGetWithDifferentFields(dbtModel, true);
-  }
-
-  @Test
   @Order(1) // Run this test first as other DbtModels created in other tests will interfere with listing
   public void get_DbtModelListWithDifferentFields_200_OK(TestInfo test) throws IOException {
     CreateDbtModel create = create(test, 1).withDescription("description").withOwner(USER_OWNER1)
@@ -616,7 +601,8 @@ public class DbtModelResourceTest extends EntityResourceTest<DbtModel> {
   }
 
   /** Validate returned fields GET .../DbtModels/{id}?fields="..." or GET .../DbtModels/name/{fqn}?fields="..." */
-  private void validateGetWithDifferentFields(DbtModel dbtModel, boolean byName) throws HttpResponseException {
+  @Override
+  public void validateGetWithDifferentFields(DbtModel dbtModel, boolean byName) throws HttpResponseException {
     // GET .../DbtModels/{id}
     dbtModel = byName ? getEntityByName(dbtModel.getFullyQualifiedName(), null, adminAuthHeaders()) :
             getEntity(dbtModel.getId(), null, adminAuthHeaders());

@@ -21,7 +21,6 @@ import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.data.CreatePipeline;
 import org.openmetadata.catalog.entity.data.Pipeline;
-import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.jdbi3.PipelineRepository.PipelineEntityInterface;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.pipelines.PipelineResource.PipelineList;
@@ -47,7 +46,6 @@ import java.util.Map;
 import java.util.UUID;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
-import static javax.ws.rs.core.Response.Status.CONFLICT;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -56,6 +54,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
+import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 import static org.openmetadata.catalog.util.TestUtils.authHeaders;
 
@@ -81,7 +80,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline> {
 
   @Override
   public Object createRequest(String name, String description, String displayName, EntityReference owner) {
-    return create(name).withDescription(description).withDisplayName(displayName).withOwner(owner);
+    return create(name).withDescription(description).withDisplayName(displayName).withOwner(owner).withTasks(TASKS);
   }
 
   @Override
@@ -249,22 +248,6 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline> {
   }
 
   @Test
-  public void get_PipelineWithDifferentFields_200_OK(TestInfo test) throws IOException {
-    CreatePipeline create = create(test).withDescription("description").withOwner(USER_OWNER1)
-            .withService(AIRFLOW_REFERENCE).withTasks(TASKS);
-    Pipeline pipeline = createAndCheckEntity(create, adminAuthHeaders());
-    validateGetWithDifferentFields(pipeline, false);
-  }
-
-  @Test
-  public void get_PipelineByNameWithDifferentFields_200_OK(TestInfo test) throws IOException {
-    CreatePipeline create = create(test).withDescription("description").withOwner(USER_OWNER1)
-            .withService(AIRFLOW_REFERENCE).withTasks(TASKS);
-    Pipeline pipeline = createAndCheckEntity(create, adminAuthHeaders());
-    validateGetWithDifferentFields(pipeline, true);
-  }
-
-  @Test
   public void delete_emptyPipeline_200_ok(TestInfo test) throws HttpResponseException {
     Pipeline pipeline = createPipeline(create(test), adminAuthHeaders());
     deleteEntity(pipeline.getId(), adminAuthHeaders());
@@ -288,24 +271,20 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline> {
   }
 
   /** Validate returned fields GET .../pipelines/{id}?fields="..." or GET .../pipelines/name/{fqn}?fields="..." */
-  private void validateGetWithDifferentFields(Pipeline pipeline, boolean byName) throws HttpResponseException {
+  @Override
+  public void validateGetWithDifferentFields(Pipeline pipeline, boolean byName) throws HttpResponseException {
     // .../Pipelines?fields=owner
     String fields = "owner";
     pipeline = byName ? getPipelineByName(pipeline.getFullyQualifiedName(), fields, adminAuthHeaders()) :
             getPipeline(pipeline.getId(), fields, adminAuthHeaders());
-    assertNotNull(pipeline.getOwner());
-    assertNotNull(pipeline.getService()); // We always return the service
-    assertNotNull(pipeline.getServiceType());
+    assertListNotNull(pipeline.getOwner(), pipeline.getService(), pipeline.getServiceType());
     assertNull(pipeline.getTasks());
 
     // .../Pipelines?fields=owner,service,tables
     fields = "owner,tasks";
     pipeline = byName ? getPipelineByName(pipeline.getFullyQualifiedName(), fields, adminAuthHeaders()) :
             getPipeline(pipeline.getId(), fields, adminAuthHeaders());
-    assertNotNull(pipeline.getOwner());
-    assertNotNull(pipeline.getService()); // We always return the service
-    assertNotNull(pipeline.getServiceType());
-    assertNotNull(pipeline.getTasks());
+    assertListNotNull(pipeline.getOwner(), pipeline.getService(), pipeline.getServiceType(), pipeline.getTasks());
   }
 
   public static Pipeline getPipeline(UUID id, String fields, Map<String, String> authHeaders)

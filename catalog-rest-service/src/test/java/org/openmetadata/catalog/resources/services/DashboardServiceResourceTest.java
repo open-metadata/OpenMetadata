@@ -39,7 +39,6 @@ import java.util.Date;
 import java.util.Map;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
-import static javax.ws.rs.core.Response.Status.CONFLICT;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.OK;
@@ -270,6 +269,16 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
   @Override
   public EntityInterface<DashboardService> getEntityInterface(DashboardService entity) {
     return new DashboardServiceEntityInterface(entity);
+  }
+
+  @Override
+  public void validateGetWithDifferentFields(DashboardService service, boolean byName) throws HttpResponseException {
+    // No fields support
+    String fields = "";
+    service = byName ? getEntityByName(service.getName(), fields, adminAuthHeaders()) :
+            getEntity(service.getId(), fields, adminAuthHeaders());
+    TestUtils.assertListNotNull(service.getHref(), service.getVersion(), service.getUpdatedBy(),
+            service.getServiceType(), service.getUpdatedAt());
   }
 
   @Override

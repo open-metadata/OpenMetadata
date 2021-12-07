@@ -454,8 +454,7 @@ public class TagResourceTest extends CatalogApplicationTest {
 
   /** Ensure the href returned in the children tags is correct */
   private void validateHRef(String parentURI, Tag actual) {
-    assertNotNull(actual.getName());
-    assertNotNull(actual.getFullyQualifiedName());
+    assertNotNull(actual.getName(), actual.getFullyQualifiedName());
     String href = parentURI + "/" + actual.getName();
     assertEquals(URI.create(href), actual.getHref());
     for (Tag child : Optional.ofNullable(actual.getChildren()).orElse(Collections.emptyList())) {
