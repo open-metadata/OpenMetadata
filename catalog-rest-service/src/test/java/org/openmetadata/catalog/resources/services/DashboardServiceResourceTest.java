@@ -16,7 +16,6 @@ package org.openmetadata.catalog.resources.services;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
-import org.openmetadata.catalog.CatalogApplicationTest;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.services.CreateDashboardService;
 import org.openmetadata.catalog.entity.services.DashboardService;
@@ -33,13 +32,11 @@ import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
 import org.openmetadata.catalog.util.TestUtils.UpdateType;
 
-import javax.ws.rs.client.WebTarget;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Date;
 import java.util.Map;
-import java.util.UUID;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.CONFLICT;
@@ -70,15 +67,6 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
     exception = assertThrows(HttpResponseException.class, () ->
             createEntity(create(test).withDashboardUrl(null), adminAuthHeaders()));
     TestUtils.assertResponse(exception, BAD_REQUEST, "[dashboardUrl must not be null]");
-  }
-
-  @Test
-  public void post_serviceAlreadyExists_409(TestInfo test) throws HttpResponseException, URISyntaxException {
-    CreateDashboardService create = create(test);
-    createEntity(create, adminAuthHeaders());
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            createEntity(create, adminAuthHeaders()));
-    TestUtils.assertResponse(exception, CONFLICT, CatalogExceptionMessage.ENTITY_ALREADY_EXISTS);
   }
 
   @Test
@@ -206,34 +194,11 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
   }
 
   @Test
-  public void get_nonExistentService_404_notFound() {
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            getEntity(TestUtils.NON_EXISTENT_ENTITY, adminAuthHeaders()));
-    TestUtils.assertResponse(exception, NOT_FOUND, CatalogExceptionMessage.entityNotFound(Entity.DASHBOARD_SERVICE,
-            TestUtils.NON_EXISTENT_ENTITY));
-  }
-
-  @Test
-  public void get_nonExistentServiceByName_404_notFound() {
-    HttpResponseException exception = assertThrows(HttpResponseException.class, ()
-            -> getServiceByName("invalidName", null, adminAuthHeaders()));
-    TestUtils.assertResponse(exception, NOT_FOUND, CatalogExceptionMessage.entityNotFound(Entity.DASHBOARD_SERVICE,
-            "invalidName"));
-  }
-
-  public static DashboardService getServiceByName(String name, String fields, Map<String, String> authHeaders)
-          throws HttpResponseException {
-    WebTarget target = CatalogApplicationTest.getResource("services/dashboardServices/name/" + name);
-    target = fields != null ? target.queryParam("fields", fields) : target;
-    return TestUtils.get(target, DashboardService.class, authHeaders);
-  }
-
-  @Test
   public void delete_ExistentDashboardService_as_admin_200(TestInfo test)
           throws HttpResponseException, URISyntaxException {
     Map<String, String> authHeaders = adminAuthHeaders();
     DashboardService dashboardService = createEntity(create(test), authHeaders);
-    deleteService(dashboardService.getId(), dashboardService.getName(), authHeaders);
+    deleteEntity(dashboardService.getId(), authHeaders);
   }
 
   @Test
@@ -241,8 +206,7 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
     Map<String, String> authHeaders = adminAuthHeaders();
     DashboardService dashboardService = createEntity(create(test), authHeaders);
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            deleteService(dashboardService.getId(), dashboardService.getName(),
-                    authHeaders("test@open-metadata.org")));
+            deleteEntity(dashboardService.getId(), authHeaders("test@open-metadata.org")));
     TestUtils.assertResponse(exception, FORBIDDEN,
             "Principal: CatalogPrincipal{name='test'} is not admin");
   }
@@ -253,20 +217,6 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
             getEntity(TestUtils.NON_EXISTENT_ENTITY, adminAuthHeaders()));
     TestUtils.assertResponse(exception, NOT_FOUND,
             CatalogExceptionMessage.entityNotFound(Entity.DASHBOARD_SERVICE, TestUtils.NON_EXISTENT_ENTITY));
-  }
-
-  private void deleteService(UUID id, String name, Map<String, String> authHeaders) throws HttpResponseException {
-    TestUtils.delete(CatalogApplicationTest.getResource("services/dashboardServices/" + id), authHeaders);
-
-    // Ensure deleted service does not exist
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () -> getEntity(id, authHeaders));
-    TestUtils.assertResponse(exception, NOT_FOUND,
-            CatalogExceptionMessage.entityNotFound(Entity.DASHBOARD_SERVICE, id));
-
-    // Ensure deleted service does not exist when getting by name
-    exception = assertThrows(HttpResponseException.class, () -> getServiceByName(name, null, authHeaders));
-    TestUtils.assertResponse(exception, NOT_FOUND,
-            CatalogExceptionMessage.entityNotFound(Entity.DASHBOARD_SERVICE, name));
   }
 
   private CreateDashboardService create(TestInfo test) throws URISyntaxException {

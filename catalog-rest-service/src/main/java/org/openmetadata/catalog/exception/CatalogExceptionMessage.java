@@ -26,7 +26,7 @@ public final class CatalogExceptionMessage {
   }
 
   public static String entityNotFound(String entity, String id) {
-    return String.format("%s instance for %s not found", StringUtils.capitalize(entity), id);
+    return String.format("%s instance for %s not found", entity, id);
   }
 
   public static String entityNotFound(String entity, UUID id) {
@@ -34,7 +34,7 @@ public final class CatalogExceptionMessage {
   }
 
   public static String readOnlyAttribute(String entity, String attribute) {
-    return String.format("%s attribute %s can't be modified", StringUtils.capitalize(entity), attribute);
+    return String.format("%s attribute %s can't be modified", entity, attribute);
   }
 
   public static String invalidField(String field) {
@@ -42,7 +42,7 @@ public final class CatalogExceptionMessage {
   }
 
   public static String entityTypeNotFound(String entity) {
-    return String.format("Entity type %s not found", StringUtils.capitalize(entity));
+    return String.format("Entity type %s not found", entity);
   }
 
   public static String deactivatedUser(UUID id) {
@@ -54,7 +54,7 @@ public final class CatalogExceptionMessage {
   }
 
   public static String entityVersionNotFound(String entity, String id, Double version) {
-    return String.format("%s instance for %s and version %s not found", StringUtils.capitalize(entity), id, version);
+    return String.format("%s instance for %s and version %s not found", entity, id, version);
   }
 
   public static String invalidServiceEntity(String serviceEntity, String entity) {

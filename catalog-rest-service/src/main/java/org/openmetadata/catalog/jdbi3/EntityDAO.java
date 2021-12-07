@@ -18,6 +18,7 @@ import org.jdbi.v3.sqlobject.customizer.Bind;
 import org.jdbi.v3.sqlobject.customizer.Define;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
+import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.type.EntityReference;
@@ -108,7 +109,8 @@ public interface EntityDAO<T> {
       entity = JsonUtils.readValue(json, clz);
     }
     if (entity == null) {
-      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(clz.getSimpleName(), id));
+      String entityName = Entity.getEntityNameFromClass(clz);
+      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(entityName, id));
     }
     return entity;
   }
@@ -121,7 +123,8 @@ public interface EntityDAO<T> {
       entity = JsonUtils.readValue(json, clz);
     }
     if (entity == null) {
-      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(clz.getSimpleName(), fqn));
+      String entityName = Entity.getEntityNameFromClass(clz);
+      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(entityName, fqn));
     }
     return entity;
   }
@@ -161,7 +164,8 @@ public interface EntityDAO<T> {
   default int delete(UUID id) {
     int rowsDeleted = delete(getTableName(), id.toString());
     if (rowsDeleted <= 0) {
-      throw EntityNotFoundException.byMessage(entityNotFound(getEntityClass().getSimpleName(), id));
+      String entityName = Entity.getEntityNameFromClass(getEntityClass());
+      throw EntityNotFoundException.byMessage(entityNotFound(entityName, id));
     }
     return rowsDeleted;
   }

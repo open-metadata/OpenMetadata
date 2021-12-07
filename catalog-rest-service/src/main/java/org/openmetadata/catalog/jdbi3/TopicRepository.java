@@ -58,9 +58,7 @@ public class TopicRepository extends EntityRepository<Topic> {
     if (dao.relationshipDAO().findToCount(id.toString(), Relationship.CONTAINS.ordinal(), Entity.TOPIC) > 0) {
       throw new IllegalArgumentException("Topic is not empty");
     }
-    if (dao.topicDAO().delete(id) <= 0) {
-      throw EntityNotFoundException.byMessage(entityNotFound(Entity.TOPIC, id));
-    }
+    dao.topicDAO().delete(id);
     dao.relationshipDAO().deleteAll(id.toString());
   }
 

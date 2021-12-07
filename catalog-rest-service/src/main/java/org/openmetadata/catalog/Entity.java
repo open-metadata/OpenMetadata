@@ -73,7 +73,9 @@ public final class Entity {
   public static final String USER = "user";
   public static final String TEAM = "team";
 
+  //
   // Operations
+  //
   public static final String INGESTION = "ingestion";
 
   private Entity() {
@@ -139,6 +141,10 @@ public final class Entity {
       throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entityName));
     }
     return entityRepository.getEntityInterface(entity);
+  }
+
+  public static String getEntityNameFromClass(Class clz) {
+    return CANONICAL_ENTITY_NAME_MAP.get(clz.getSimpleName().toLowerCase(Locale.ROOT));
   }
 
   public static String getEntityNameFromObject(Object object) {

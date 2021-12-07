@@ -18,7 +18,6 @@ import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
-import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.resources.teams.TeamResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
@@ -53,9 +52,7 @@ public class TeamRepository extends EntityRepository<Team> {
   @Transaction
   public void delete(UUID id) {
     // Query 1 - delete team
-    if (dao.teamDAO().delete(id) <= 0) {
-      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound("Team", id));
-    }
+    dao.teamDAO().delete(id);
 
     // Query 2 - Remove all relationship from and to this team
     // TODO make this UUID based

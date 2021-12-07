@@ -16,7 +16,6 @@ package org.openmetadata.catalog.jdbi3;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
-import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.operations.workflows.Ingestion;
 import org.openmetadata.catalog.resources.operations.IngestionResource;
 import org.openmetadata.catalog.type.ChangeDescription;
@@ -34,8 +33,6 @@ import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
-
-import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 
 public class IngestionRepository extends EntityRepository<Ingestion> {
   private static final Fields INGESTION_UPDATE_FIELDS = new Fields(IngestionResource.FIELD_LIST,
@@ -60,9 +57,7 @@ public class IngestionRepository extends EntityRepository<Ingestion> {
     if (dao.relationshipDAO().findToCount(id.toString(), Relationship.CONTAINS.ordinal(), Entity.INGESTION) > 0) {
       throw new IllegalArgumentException("Ingestion is not empty");
     }
-    if (dao.ingestionDAO().delete(id) <= 0) {
-      throw EntityNotFoundException.byMessage(entityNotFound(Entity.INGESTION, id));
-    }
+    dao.ingestionDAO().delete(id);
     dao.relationshipDAO().deleteAll(id.toString());
   }
 
@@ -293,6 +288,5 @@ public class IngestionRepository extends EntityRepository<Ingestion> {
       recordChange("startDate", origIngestion.getStartDate(), updatedIngestion.getStartDate());
       recordChange("endDate", origIngestion.getEndDate(), updatedIngestion.getEndDate());
     }
-
   }
 }
