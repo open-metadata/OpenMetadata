@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { FormatedTableData } from 'Models';
 import React, {
   Fragment,
   useCallback,
@@ -19,7 +18,6 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { formatDataResponse } from '../../utils/APIUtils';
 import { dropdownIcon as DropDownIcon } from '../../utils/svgconstant';
 import { Button } from '../buttons/Button/Button';
 import ErrorPlaceHolderES from '../common/error-with-placeholder/ErrorPlaceHolderES';
@@ -30,7 +28,6 @@ import EntityList from '../EntityList/EntityList';
 import MyAssetStats from '../MyAssetStats/MyAssetStats.component';
 import RecentlyViewed from '../recently-viewed/RecentlyViewed';
 import RecentSearchedTerms from '../RecentSearchedTerms/RecentSearchedTerms';
-import SearchedData from '../searched-data/SearchedData';
 import { MyDataProps } from './MyData.interface';
 
 const filterList = [
@@ -43,15 +40,10 @@ const MyData: React.FC<MyDataProps> = ({
   error,
   countServices,
   ingestionCount,
-  searchResult,
   ownedData,
   followedData,
   entityCounts,
 }: MyDataProps): React.ReactElement => {
-  const [data, setData] = useState<Array<FormatedTableData>>([]);
-  const [currentPage, setCurrentPage] = useState<number>(1);
-  const [totalNumberOfValue, setTotalNumberOfValues] = useState<number>(0);
-  const [isEntityLoading, setIsEntityLoading] = useState<boolean>(true);
   const [filter, setFilter] = useState<string>('all');
   const [fieldListVisible, setFieldListVisible] = useState<boolean>(false);
 
@@ -145,25 +137,6 @@ const MyData: React.FC<MyDataProps> = ({
     );
   }, [ownedData, followedData]);
 
-  const paginate = (pageNumber: number) => {
-    setCurrentPage(pageNumber);
-  };
-
-  useEffect(() => {
-    if (searchResult) {
-      const hits = searchResult.data.hits.hits;
-      if (hits.length > 0) {
-        setTotalNumberOfValues(searchResult.data.hits.total.value);
-        setData(formatDataResponse(hits));
-      } else {
-        setData([]);
-        setTotalNumberOfValues(0);
-      }
-    }
-
-    setIsEntityLoading(false);
-  }, [searchResult]);
-
   useEffect(() => {
     isMounted.current = true;
   }, []);
@@ -171,21 +144,11 @@ const MyData: React.FC<MyDataProps> = ({
   return (
     <PageLayout leftPanel={getLeftPanel()} rightPanel={getRightPanel()}>
       {getFilterDropDown()}
-      <FeedCards />
+
       {error ? (
         <ErrorPlaceHolderES errorMessage={error} type="error" />
       ) : (
-        <SearchedData
-          showOnboardingTemplate
-          showOnlyChildren
-          currentPage={currentPage}
-          data={data}
-          isLoading={isEntityLoading}
-          paginate={paginate}
-          searchText="*"
-          showResultCount={filter && data.length > 0 ? true : false}
-          totalValue={totalNumberOfValue}
-        />
+        <FeedCards />
       )}
     </PageLayout>
   );
