@@ -238,7 +238,7 @@ def docker(start, stop, clean, type, path) -> None:
                 """\nHead to http://localhost:8585 to play around with OpenMetadata UI.
                 \nTo checkout Ingestion via Airflow, go to http://localhost:8080 \n(username: admin, password: admin)
                 """,
-                fg="bright_white",
+                fg="bright_blue",
             )
             click.secho(
                 "Need support? Get in touch on Slack: https://slack.open-metadata.org/",
