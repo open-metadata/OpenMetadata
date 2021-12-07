@@ -168,6 +168,7 @@ public class MyDataPageTest {
   @Order(8)
   public void checkLogout() {
     checkWhatsNew();
+    Events.click(webDriver, By.cssSelector("[data-testid='dropdown-profile']"));
     Events.click(webDriver, By.cssSelector("[data-testid='greeting-text']"));
     Events.click(webDriver, By.cssSelector("[data-testid='menu-item-Logout']"));
   }

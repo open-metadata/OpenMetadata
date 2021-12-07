@@ -69,7 +69,7 @@ public class LocationRepository extends EntityRepository<Location> {
   public void restorePatchAttributes(Location original, Location updated) throws IOException, ParseException {
     // Patch can't make changes to following fields. Ignore the changes
     updated.withFullyQualifiedName(original.getFullyQualifiedName()).withName(original.getName())
-            .withId(original.getId());
+            .withService(original.getService()).withId(original.getId());
   }
 
   @Transaction
@@ -194,7 +194,7 @@ public class LocationRepository extends EntityRepository<Location> {
 
   @Override
   public EntityUpdater getUpdater(Location original, Location updated, boolean patchOperation) throws IOException {
-    return new LocationRepository.LocationUpdater(original, updated, patchOperation);
+    return new LocationUpdater(original, updated, patchOperation);
   }
 
   public EntityReference getOwner(Location location) throws IOException {

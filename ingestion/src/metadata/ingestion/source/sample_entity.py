@@ -40,7 +40,6 @@ from metadata.ingestion.models.table_metadata import Chart, Dashboard
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
-from metadata.ingestion.processor.pii import ColumnNameScanner
 from metadata.ingestion.source.sql_source import SQLConnectionConfig
 from metadata.utils.helpers import snake_to_camel
 
@@ -91,7 +90,6 @@ class SampleEntitySource(Source):
         self.config = config
         self.metadata_config = metadata_config
         self.metadata = OpenMetadata(metadata_config)
-        self.column_scanner = ColumnNameScanner()
         self.service_name = lambda: self.faker.word()
         self.service_type = lambda: random.choice(
             ["BigQuery", "Hive", "MSSQL", "MySQL", "Postgres", "Redshift", "Snowflake"]

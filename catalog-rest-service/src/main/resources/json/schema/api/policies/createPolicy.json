@@ -7,9 +7,7 @@
   "properties": {
     "name": {
       "description": "Name that identifies this Policy.",
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 128
+      "$ref": "../../entity/policies/policy.json#/definitions/policyName"
     },
     "displayName": {
       "description": "Title for this Policy.",
@@ -34,8 +32,7 @@
   },
   "required": [
     "name",
-    "description",
-    "owner",
     "policyType"
-  ]
+  ],
+  "additionalProperties": false
 }

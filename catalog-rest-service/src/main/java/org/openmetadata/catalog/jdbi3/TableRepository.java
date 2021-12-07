@@ -110,7 +110,7 @@ public class TableRepository extends EntityRepository<Table> {
   public void restorePatchAttributes(Table original, Table updated) throws IOException, ParseException {
     // Patch can't make changes to following fields. Ignore the changes.
     updated.withFullyQualifiedName(original.getFullyQualifiedName()).withName(original.getName())
-            .withDatabase(original.getDatabase()).withId(original.getId());
+            .withDatabase(original.getDatabase()).withService(original.getService()).withId(original.getId());
   }
 
   @Override
@@ -199,7 +199,8 @@ public class TableRepository extends EntityRepository<Table> {
     dao.locationDAO().findEntityById(locationId);
     // A table has only one location.
     dao.relationshipDAO().deleteFrom(tableId.toString(), Relationship.HAS.ordinal(), Entity.LOCATION);
-    dao.relationshipDAO().insert(tableId.toString(), locationId.toString(), Entity.DATABASE, Entity.LOCATION, Relationship.HAS.ordinal());
+    dao.relationshipDAO().insert(tableId.toString(), locationId.toString(), Entity.TABLE, Entity.LOCATION,
+            Relationship.HAS.ordinal());
     return OK;
   }
 
@@ -395,14 +396,6 @@ public class TableRepository extends EntityRepository<Table> {
       throw EntityNotFoundException.byMessage(String.format("Database for table %s Not found", tableId));
     }
     return dao.databaseDAO().findEntityReferenceById(UUID.fromString(result.get(0)));
-  }
-
-  private EntityReference getDatabaseService(UUID databaseId) throws IOException {
-    // Find database for the table
-    EntityReference serviceRef =  EntityUtil.getService(dao.relationshipDAO(), databaseId,
-        Entity.DATABASE_SERVICE);
-    serviceRef = dao.dbServiceDAO().findEntityReferenceById(serviceRef.getId());
-    return serviceRef;
   }
 
   private EntityReference getLocation(UUID tableId) throws IOException {

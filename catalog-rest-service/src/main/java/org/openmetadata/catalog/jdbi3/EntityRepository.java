@@ -98,8 +98,8 @@ public abstract class EntityRepository<T> {
   private final String collectionPath;
   private final Class<T> entityClass;
   private final String entityName;
-  private final EntityDAO<T> dao;
-  private final CollectionDAO daoCollection;
+  protected final EntityDAO<T> dao;
+  protected final CollectionDAO daoCollection;
 
   /** Fields that can be updated during PATCH operation */
   private final Fields patchFields;

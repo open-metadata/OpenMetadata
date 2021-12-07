@@ -35,11 +35,15 @@ else
 fi
 
 TABLE_INITIALIZER_MAIN_CLASS=org.openmetadata.catalog.util.TablesInitializer
-for file in "${BOOTSTRAP_DIR}"/../libs/*.jar;
-do
-    CLASSPATH="$CLASSPATH":"$file"
-done
-
+LIBS_DIR="${BOOTSTRAP_DIR}"/../libs/
+if [ -d "${LIBS_DIR}" ]; then
+  for file in "${LIB_DIR}"*.jar;
+  do
+      CLASSPATH="$CLASSPATH":"$file"
+  done
+else
+  CLASSPATH=`mvn -pl catalog-rest-service -q exec:exec -Dexec.executable=echo -Dexec.args="%classpath"`
+fi
 
 execute() {
     echo "Using Configuration file: ${CONFIG_FILE_PATH}"

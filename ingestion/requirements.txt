@@ -4,7 +4,6 @@ expandvars~=0.6.5
 requests~=2.25.1
 python-dateutil~=2.8.1
 SQLAlchemy~=1.4.5
-Faker~=8.1.1
 commonregex~=1.5.4
 setuptools~=57.0.0
 PyHive~=0.6.4

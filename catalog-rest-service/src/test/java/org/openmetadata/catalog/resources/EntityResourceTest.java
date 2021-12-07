@@ -125,6 +125,7 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
   public static TagLabel USER_ADDRESS_TAG_LABEL;
   public static TagLabel USER_BANK_ACCOUNT_TAG_LABEL;
   public static TagLabel TIER1_TAG_LABEL;
+  public static TagLabel TIER2_TAG_LABEL;
 
   public EntityResourceTest(String entityName, Class<T> entityClass, Class<? extends ResultList<T>> entityListClass,
                             String collectionName,
@@ -206,6 +207,8 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
             .withDescription(tag.getDescription());
     tag = TagResourceTest.getTag("Tier.Tier1", adminAuthHeaders());
     TIER1_TAG_LABEL = new TagLabel().withTagFQN(tag.getFullyQualifiedName()).withDescription(tag.getDescription());
+    tag = TagResourceTest.getTag("Tier.Tier2", adminAuthHeaders());
+    TIER2_TAG_LABEL = new TagLabel().withTagFQN(tag.getFullyQualifiedName()).withDescription(tag.getDescription());
   }
 
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
