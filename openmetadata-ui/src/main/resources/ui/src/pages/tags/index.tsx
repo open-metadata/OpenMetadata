@@ -210,7 +210,7 @@ const TagsPage = () => {
               </p>
 
               {getCountBadge(
-                category.usageCount,
+                category.children?.length || 0,
                 'tw-self-center',
                 currentCategory?.name === category.name
               )}
