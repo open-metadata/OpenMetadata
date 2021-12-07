@@ -18,7 +18,7 @@
 
     ```
     cd open-metadata-<version>/bootstrap
-    sh bootstrap_storage.sh drop-create
+    sh bootstrap_storage.sh drop-create-all
     ```
 *   Bootstrap ES with indexes and load sample data into MySQL
 
@@ -52,16 +52,13 @@ You can create a _distribution_ as follows.
 
 ```
 $ mvn clean install
-
-# Create the binary distribution.
-$ cd dist && mvn package
 ```
 
 The binaries will be created at:
 
 ```
-dist/target/open-metadata-<version>.pom
-dist/target/open-metadata-<version>.tar.gz
+openmetadata-dist/target/open-metadata-<version>.pom
+openmetadata-dist/target/open-metadata-<version>.tar.gz
 ```
 
 ## Run instance through IntelliJ IDEA
