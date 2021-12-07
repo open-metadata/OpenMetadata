@@ -23,7 +23,7 @@ from metadata.generated.schema.entity.data.location import Location, LocationTyp
 from metadata.generated.schema.entity.services.storageService import StorageService
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.storage import StorageServiceType
-from metadata.ingestion.api.common import ConfigModel, Entity, Record, WorkflowContext
+from metadata.ingestion.api.common import ConfigModel, Entity, WorkflowContext
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig

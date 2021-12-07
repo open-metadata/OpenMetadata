@@ -25,11 +25,6 @@ Entity = TypeVar("Entity", bound=BaseModel)
 
 
 @dataclass
-class Record(Generic[T]):
-    metadata: Dict[str, Any]
-
-
-@dataclass
 class WorkflowContext:
     workflow_id: str
 
