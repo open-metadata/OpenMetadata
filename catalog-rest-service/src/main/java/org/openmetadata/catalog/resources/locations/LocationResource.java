@@ -109,7 +109,7 @@ public class LocationResource {
 
   @GET
   @Operation(summary = "List locations", tags = "locations",
-          description = "Get a list of locations, optionally filtered by `fqnPrefix`. Use `fields` " +
+          description = "Get a list of locations, optionally filtered by `service` it belongs to. Use `fields` " +
                   "parameter to get only necessary fields. Use cursor-based pagination to limit the number " +
                   "entries in the list using `limit` and `before` or `after` query params.",
           responses = {@ApiResponse(responseCode = "200", description = "List of locations",
@@ -122,7 +122,7 @@ public class LocationResource {
                                    @QueryParam("fields") String fieldsParam,
                                    @Parameter(description = "Filter locations by prefix of the FQN",
                                            schema = @Schema(type = "string", example = "s3://bucket/folder1"))
-                                   @QueryParam("fqnPrefix") String fqnPrefixParam,
+                                   @QueryParam("service") String serviceParam,
                                    @Parameter(description = "Limit the number locations returned. " +
                                            "(1 to 1000000, default = 10)")
                                    @DefaultValue("10")
@@ -141,9 +141,9 @@ public class LocationResource {
 
     ResultList<Location> locations;
     if (before != null) { // Reverse paging
-      locations = dao.listBefore(uriInfo, fields, fqnPrefixParam, limitParam, before); // Ask for one extra entry
+      locations = dao.listBefore(uriInfo, fields, serviceParam, limitParam, before); // Ask for one extra entry
     } else { // Forward paging or first page
-      locations = dao.listAfter(uriInfo, fields, fqnPrefixParam, limitParam, after);
+      locations = dao.listAfter(uriInfo, fields, serviceParam, limitParam, after);
     }
     locations.getData().forEach(l -> addHref(uriInfo, l));
     return locations;
