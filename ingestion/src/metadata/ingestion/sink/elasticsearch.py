@@ -13,11 +13,12 @@ import json
 import logging
 import ssl
 import time
-from typing import List, Optional
+from typing import Generic, List, Optional, TypeVar
 
 from dateutil import parser
 from elasticsearch import Elasticsearch
 from elasticsearch.connection import create_ssl_context
+from pydantic import BaseModel
 
 from metadata.config.common import ConfigModel
 from metadata.generated.schema.entity.data.chart import Chart
@@ -55,6 +56,10 @@ from metadata.ingestion.sink.elasticsearch_constants import (
 logger = logging.getLogger(__name__)
 
 
+# Allow types from the generated pydantic models
+T = TypeVar("T", bound=BaseModel)
+
+
 class ElasticSearchConfig(ConfigModel):
     es_host: str
     es_port: int = 9200
@@ -77,7 +82,7 @@ class ElasticSearchConfig(ConfigModel):
     ca_certs: Optional[str] = None
 
 
-class ElasticsearchSink(Sink):
+class ElasticsearchSink(Sink[T]):
     """ """
 
     DEFAULT_ELASTICSEARCH_INDEX_MAPPING = TABLE_ELASTICSEARCH_INDEX_MAPPING
