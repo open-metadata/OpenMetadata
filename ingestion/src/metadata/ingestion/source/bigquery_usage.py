@@ -15,7 +15,7 @@ import collections
 import logging as log
 import os
 from datetime import datetime
-from typing import Any, Dict, Iterable
+from typing import Iterable
 
 from google.cloud import logging
 
@@ -29,7 +29,7 @@ from metadata.utils.helpers import get_start_and_end
 logger = log.getLogger(__name__)
 
 
-class BigqueryUsageSource(Source):
+class BigqueryUsageSource(Source[TableQuery]):
     SERVICE_TYPE = "Bigquery"
     scheme = "bigquery"
 

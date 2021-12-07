@@ -30,7 +30,7 @@ from metadata.generated.schema.entity.services.dashboardService import (
 )
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.api.common import Record
+from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.models.table_metadata import Chart, Dashboard
@@ -170,7 +170,7 @@ class AmundsenStatus(SourceStatus):
         self.failures.append({key: reason})
 
 
-class AmundsenSource(Source):
+class AmundsenSource(Source[Entity]):
     def __init__(
         self, config: AmundsenConfig, metadata_config: MetadataServerConfig, ctx
     ):
@@ -197,7 +197,7 @@ class AmundsenSource(Source):
     def prepare(self):
         pass
 
-    def next_record(self) -> Iterable[Record]:
+    def next_record(self) -> Iterable[Entity]:
         user_entities = self.neo4j_helper.execute_query(NEO4J_AMUNDSEN_USER_QUERY)
         for user in user_entities:
             yield from self.create_user_entity(user)

@@ -14,10 +14,9 @@ from typing import Optional
 from pyhive import hive  # noqa: F401
 from pyhive.sqlalchemy_hive import HiveDate, HiveDecimal, HiveTimestamp
 
+from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
+from metadata.ingestion.source.sql_source import SQLConnectionConfig, SQLSource
 from metadata.utils.column_helpers import register_custom_type
-
-from ..ometa.openmetadata_rest import MetadataServerConfig
-from .sql_source import SQLConnectionConfig, SQLSource
 
 register_custom_type(HiveDate, "DATE")
 register_custom_type(HiveTimestamp, "TIME")

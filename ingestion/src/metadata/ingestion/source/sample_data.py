@@ -32,7 +32,7 @@ from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.type.basic import Href
 from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.api.common import Record
+from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.models.table_metadata import Chart, Dashboard
@@ -160,7 +160,7 @@ class SampleTableMetadataGenerator:
         return data
 
 
-class SampleDataSource(Source):
+class SampleDataSource(Source[Entity]):
     def __init__(
         self, config: SampleDataSourceConfig, metadata_config: MetadataServerConfig, ctx
     ):
@@ -270,7 +270,7 @@ class SampleDataSource(Source):
     def prepare(self):
         pass
 
-    def next_record(self) -> Iterable[Record]:
+    def next_record(self) -> Iterable[Entity]:
         yield from self.ingest_locations()
         yield from self.ingest_glue()
         yield from self.ingest_tables()

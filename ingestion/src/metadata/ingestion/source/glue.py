@@ -24,7 +24,7 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.api.common import ConfigModel, IncludeFilterPattern, Record
+from metadata.ingestion.api.common import ConfigModel, Entity, IncludeFilterPattern
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -87,7 +87,7 @@ class GlueSourceConfig(ConfigModel):
             return session.client(service_name="glue")
 
 
-class GlueSource(Source):
+class GlueSource(Source[Entity]):
     def __init__(
         self, config: GlueSourceConfig, metadata_config: MetadataServerConfig, ctx
     ):
@@ -133,7 +133,7 @@ class GlueSource(Source):
         else:
             self.next_db_token = "break"
 
-    def next_record(self) -> Iterable[Record]:
+    def next_record(self) -> Iterable[Entity]:
         while True:
             if self.next_db_token == "break":
                 break

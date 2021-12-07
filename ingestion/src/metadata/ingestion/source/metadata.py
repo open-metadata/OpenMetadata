@@ -15,7 +15,7 @@ from typing import Iterable, List, Optional
 
 from metadata.config.common import ConfigModel
 from metadata.generated.schema.entity.data.pipeline import Pipeline
-from metadata.ingestion.api.common import Record, WorkflowContext
+from metadata.ingestion.api.common import Entity, WorkflowContext
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
@@ -62,7 +62,7 @@ class MetadataSourceStatus(SourceStatus):
         logger.warning("Dropped Entity {} due to {}".format(table_name, err))
 
 
-class MetadataSource(Source):
+class MetadataSource(Source[Entity]):
     config: MetadataTablesRestSourceConfig
     report: SourceStatus
 
@@ -92,7 +92,7 @@ class MetadataSource(Source):
         metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
         return cls(config, metadata_config, ctx)
 
-    def next_record(self) -> Iterable[Record]:
+    def next_record(self) -> Iterable[Entity]:
         yield from self.fetch_table()
         yield from self.fetch_topic()
         yield from self.fetch_dashboard()

@@ -24,8 +24,8 @@ from metadata.generated.schema.entity.services.dashboardService import (
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.common import (
     ConfigModel,
+    Entity,
     IncludeFilterPattern,
-    Record,
     WorkflowContext,
 )
 from metadata.ingestion.api.source import Source, SourceStatus
@@ -50,7 +50,7 @@ class TableauSourceConfig(ConfigModel):
     chart_pattern: IncludeFilterPattern = IncludeFilterPattern.allow_all()
 
 
-class TableauSource(Source):
+class TableauSource(Source[Entity]):
     config: TableauSourceConfig
     metadata_config: MetadataServerConfig
     status: SourceStatus
@@ -108,7 +108,7 @@ class TableauSource(Source):
     def prepare(self):
         pass
 
-    def next_record(self) -> Iterable[Record]:
+    def next_record(self) -> Iterable[Entity]:
         yield from self._get_tableau_charts()
         yield from self._get_tableau_dashboard()
 
