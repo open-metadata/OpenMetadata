@@ -10,14 +10,14 @@
 #  limitations under the License.
 
 import logging
-import os
 import traceback
 import uuid
-from typing import Iterable
+from typing import Iterable, Optional
 
-import boto3
+from boto3 import Session
 
 from metadata.generated.schema.entity.data.database import Database
+from metadata.generated.schema.entity.data.location import Location, LocationType
 from metadata.generated.schema.entity.data.pipeline import Pipeline, Task
 from metadata.generated.schema.entity.data.table import Column, Table
 from metadata.generated.schema.entity.services.databaseService import (
@@ -34,6 +34,7 @@ from metadata.utils.column_helpers import check_column_complex_type
 from metadata.utils.helpers import (
     get_database_service_or_create,
     get_pipeline_service_or_create,
+    get_storage_service_or_create,
 )
 
 logger: logging.Logger = logging.getLogger(__name__)
@@ -41,18 +42,49 @@ logger: logging.Logger = logging.getLogger(__name__)
 
 class GlueSourceConfig(ConfigModel):
     service_type = "Glue"
-    aws_access_key_id: str
-    aws_secret_access_key: str
-    endpoint_url: str
+    aws_access_key_id: Optional[str]
+    aws_secret_access_key: Optional[str]
+    aws_session_token: Optional[str]
+    endpoint_url: Optional[str]
     region_name: str
-    service_name: str = ""
-    host_port: str = ""
-    db_service_name: str
+    service_name: str
+    storage_service_name: str = "S3"
     pipeline_service_name: str
+    # Glue doesn't have an host_port but the service definition requires it
+    host_port: str = ""
     filter_pattern: IncludeFilterPattern = IncludeFilterPattern.allow_all()
 
     def get_service_type(self) -> DatabaseServiceType:
         return DatabaseServiceType[self.service_type]
+
+    @property
+    def glue(self):
+        return self.get_glue_client()
+
+    def get_glue_client(self):
+        if (
+            self.aws_access_key_id
+            and self.aws_secret_access_key
+            and self.aws_session_token
+        ):
+            session = Session(
+                aws_access_key_id=self.aws_access_key_id,
+                aws_secret_access_key=self.aws_secret_access_key,
+                aws_session_token=self.aws_session_token,
+                region_name=self.region_name,
+            )
+        elif self.aws_access_key_id and self.aws_secret_access_key:
+            session = Session(
+                aws_access_key_id=self.aws_access_key_id,
+                aws_secret_access_key=self.aws_secret_access_key,
+                region_name=self.region_name,
+            )
+        else:
+            session = Session(region_name=self.region_name)
+        if self.endpoint_url is not None:
+            return session.client(service_name="glue", endpoint_url=self.endpoint_url)
+        else:
+            return session.client(service_name="glue")
 
 
 class GlueSource(Source):
@@ -65,24 +97,24 @@ class GlueSource(Source):
         self.metadata_config = metadata_config
         self.metadata = OpenMetadata(metadata_config)
         self.service = get_database_service_or_create(
-            config, metadata_config, self.config.db_service_name
+            config, metadata_config, self.config.service_name
+        )
+        self.storage_service = get_storage_service_or_create(
+            {"name": self.config.storage_service_name, "serviceType": "S3"},
+            metadata_config,
         )
         self.task_id_mapping = {}
         self.pipeline_service = get_pipeline_service_or_create(
             {
                 "name": self.config.pipeline_service_name,
                 "serviceType": "Glue",
-                "pipelineUrl": self.config.endpoint_url,
+                "pipelineUrl": self.config.endpoint_url
+                if self.config.endpoint_url is not None
+                else f"https://glue.{ self.config.region_name }.amazonaws.com",
             },
             metadata_config,
         )
-        os.environ["AWS_ACCESS_KEY_ID"] = self.config.aws_access_key_id
-        os.environ["AWS_SECRET_ACCESS_KEY"] = self.config.aws_secret_access_key
-        self.glue = boto3.client(
-            service_name="glue",
-            region_name=self.config.region_name,
-            endpoint_url=self.config.endpoint_url,
-        )
+        self.glue = config.glue
         self.database_name = None
         self.next_db_token = None
 
@@ -132,7 +164,7 @@ class GlueSource(Source):
                 self.status, self.dataset_name, column["Type"].lower(), column["Name"]
             )
             yield Column(
-                name=column["Name"][:63],
+                name=column["Name"].replace(".", "_DOT_")[:128],
                 description="",
                 dataType=col_type,
                 dataTypeDisplay="{}({})".format(col_type, 1)
@@ -153,33 +185,40 @@ class GlueSource(Source):
                 )
             else:
                 glue_resp = self.glue.get_tables(DatabaseName=self.database_name)
-            for tables in glue_resp["TableList"]:
-                if not self.config.filter_pattern.included(tables["Name"]):
+            for table in glue_resp["TableList"]:
+                if not self.config.filter_pattern.included(table["Name"]):
                     self.status.filter(
-                        "{}.{}".format(self.config.get_service_name(), tables["Name"]),
+                        "{}.{}".format(self.config.get_service_name(), table["Name"]),
                         "Table pattern not allowed",
                     )
                     continue
                 database_entity = Database(
-                    name=tables["DatabaseName"],
+                    name=table["DatabaseName"],
                     service=EntityReference(id=self.service.id, type="databaseService"),
                 )
-                fqn = (
-                    f"{self.config.service_name}.{self.database_name}.{tables['Name']}"
-                )
+                fqn = f"{self.config.service_name}.{self.database_name}.{table['Name']}"
                 self.dataset_name = fqn
-                table_columns = self.get_columns(tables["StorageDescriptor"])
+                table_columns = self.get_columns(table["StorageDescriptor"])
+                location_entity = Location(
+                    name=table["StorageDescriptor"]["Location"],
+                    locationType=LocationType.Table,
+                    service=EntityReference(
+                        id=self.storage_service.id, type="storageService"
+                    ),
+                )
                 table_entity = Table(
                     id=uuid.uuid4(),
-                    name=tables["Name"][:64],
-                    description=tables["Description"]
-                    if hasattr(tables, "Description")
+                    name=table["Name"][:128],
+                    description=table["Description"]
+                    if hasattr(table, "Description")
                     else "",
                     fullyQualifiedName=fqn,
                     columns=table_columns,
                 )
                 table_and_db = OMetaDatabaseAndTable(
-                    table=table_entity, database=database_entity
+                    table=table_entity,
+                    database=database_entity,
+                    location=location_entity,
                 )
                 yield table_and_db
             if "NextToken" in glue_resp:
@@ -199,14 +238,14 @@ class GlueSource(Source):
                             list(self.task_id_mapping.values()).index(
                                 edges["DestinationId"]
                             )
-                        ][:63]
+                        ][:128]
                     )
         return downstreamTasks
 
     def get_tasks(self, tasks):
         taskList = []
         for task in tasks["Graph"]["Nodes"]:
-            task_name = task["Name"][:63]
+            task_name = task["Name"][:128]
             self.task_id_mapping[task_name] = task["UniqueId"]
         for task in tasks["Graph"]["Nodes"]:
             taskList.append(
