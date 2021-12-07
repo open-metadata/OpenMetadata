@@ -29,7 +29,7 @@ class LDAPSourceConfig(ConfigModel):
     api_end_point: str
 
 
-class LdapRestUsersSink(Sink[Entity]):
+class LdapRestUsersSink(Sink[User]):
     config: LDAPSourceConfig
     status: SinkStatus
 
