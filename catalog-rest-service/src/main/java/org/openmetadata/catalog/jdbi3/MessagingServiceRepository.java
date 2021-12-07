@@ -17,7 +17,6 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.services.MessagingService;
-import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.resources.services.messaging.MessagingServiceResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
@@ -36,8 +35,6 @@ import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 
-import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
-
 public class MessagingServiceRepository extends EntityRepository<MessagingService> {
   private final CollectionDAO dao;
 
@@ -49,9 +46,7 @@ public class MessagingServiceRepository extends EntityRepository<MessagingServic
 
   @Transaction
   public void delete(UUID id) {
-    if (dao.messagingServiceDAO().delete(id) <= 0) {
-      throw EntityNotFoundException.byMessage(entityNotFound(Entity.MESSAGING_SERVICE, id));
-    }
+    dao.messagingServiceDAO().delete(id);
     dao.relationshipDAO().deleteAll(id.toString());
   }
 

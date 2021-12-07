@@ -40,7 +40,6 @@ import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.TestUtils;
 
-import javax.ws.rs.client.WebTarget;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
@@ -54,7 +53,6 @@ import static java.util.Collections.singletonList;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.CONFLICT;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
-import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -62,7 +60,6 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.ENTITY_ALREADY_EXISTS;
-import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.invalidServiceEntity;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
@@ -104,13 +101,6 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard> {
       Chart chart = chartResourceTest.createEntity(createChart, adminAuthHeaders());
       CHART_REFERENCES.add(new ChartEntityInterface(chart).getEntityReference());
     }
-  }
-
-  @Test
-  public void post_DashboardAlreadyExists_409_conflict(TestInfo test) throws HttpResponseException {
-    CreateDashboard create = create(test);
-    createDashboard(create, adminAuthHeaders());
-    assertResponse(() -> createDashboard(create, adminAuthHeaders()), CONFLICT, ENTITY_ALREADY_EXISTS);
   }
 
   @Test
@@ -159,24 +149,6 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard> {
             createDashboard(create, adminAuthHeaders()));
     TestUtils.assertResponseContains(exception, BAD_REQUEST,
             invalidServiceEntity(SUPERSET_INVALID_SERVICE_REFERENCE.getType(), Entity.DASHBOARD));
-  }
-
-  @Test
-  public void post_DashboardWithInvalidOwnerType_4xx(TestInfo test) {
-    EntityReference owner = new EntityReference().withId(TEAM1.getId()); /* No owner type is set */
-
-    CreateDashboard create = create(test).withOwner(owner);
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            createDashboard(create, adminAuthHeaders()));
-    TestUtils.assertResponseContains(exception, BAD_REQUEST, "type must not be null");
-  }
-
-  @Test
-  public void post_DashboardWithNonExistentOwner_4xx(TestInfo test) {
-    EntityReference owner = new EntityReference().withId(TestUtils.NON_EXISTENT_ENTITY).withType("user");
-    CreateDashboard create = create(test).withOwner(owner);
-    assertResponse(() -> createDashboard(create, adminAuthHeaders()), NOT_FOUND,
-            entityNotFound("User", TestUtils.NON_EXISTENT_ENTITY));
   }
 
   @Test
@@ -232,12 +204,6 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard> {
   }
 
   @Test
-  public void get_nonExistentDashboard_404_notFound() {
-    assertResponse(() -> getDashboard(TestUtils.NON_EXISTENT_ENTITY, adminAuthHeaders()), NOT_FOUND,
-            entityNotFound(Entity.DASHBOARD, TestUtils.NON_EXISTENT_ENTITY));
-  }
-
-  @Test
   public void get_DashboardWithDifferentFields_200_OK(TestInfo test) throws IOException {
     CreateDashboard create = create(test).withDescription("description").withOwner(USER_OWNER1)
             .withService(SUPERSET_REFERENCE).withCharts(CHART_REFERENCES);
@@ -256,18 +222,12 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard> {
   @Test
   public void delete_emptyDashboard_200_ok(TestInfo test) throws HttpResponseException {
     Dashboard dashboard = createDashboard(create(test), adminAuthHeaders());
-    deleteDashboard(dashboard.getId(), adminAuthHeaders());
+    deleteEntity(dashboard.getId(), adminAuthHeaders());
   }
 
   @Test
   public void delete_nonEmptyDashboard_4xx() {
     // TODO
-  }
-
-  @Test
-  public void delete_nonExistentDashboard_404() {
-    assertResponse(() -> deleteDashboard(TestUtils.NON_EXISTENT_ENTITY, adminAuthHeaders()), NOT_FOUND,
-            entityNotFound(Entity.DASHBOARD, TestUtils.NON_EXISTENT_ENTITY));
   }
 
   public Dashboard createDashboard(CreateDashboard create,
@@ -279,8 +239,8 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard> {
   private void validateGetWithDifferentFields(Dashboard dashboard, boolean byName) throws HttpResponseException {
     // .../Dashboards?fields=owner
     String fields = "owner";
-    dashboard = byName ? getDashboardByName(dashboard.getFullyQualifiedName(), fields, adminAuthHeaders()) :
-            getDashboard(dashboard.getId(), fields, adminAuthHeaders());
+    dashboard = byName ? getEntityByName(dashboard.getFullyQualifiedName(), fields, adminAuthHeaders()) :
+            getEntity(dashboard.getId(), fields, adminAuthHeaders());
     assertNotNull(dashboard.getOwner());
     assertNotNull(dashboard.getService()); // We always return the service
     assertNotNull(dashboard.getServiceType());
@@ -289,8 +249,8 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard> {
 
     // .../Dashboards?fields=owner,service,tables
     fields = "owner,charts,usageSummary";
-    dashboard = byName ? getDashboardByName(dashboard.getFullyQualifiedName(), fields, adminAuthHeaders()) :
-            getDashboard(dashboard.getId(), fields, adminAuthHeaders());
+    dashboard = byName ? getEntityByName(dashboard.getFullyQualifiedName(), fields, adminAuthHeaders()) :
+            getEntity(dashboard.getId(), fields, adminAuthHeaders());
     assertNotNull(dashboard.getOwner());
     assertNotNull(dashboard.getService());  // We always return the service
     assertNotNull(dashboard.getServiceType());
@@ -311,31 +271,6 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard> {
       assertEquals(expectedChartReferences.size(), actualChartReferences.size());
       assertTrue(actualChartReferences.containsAll(expectedChartReferences));
     }
-  }
-
-  public static void getDashboard(UUID id, Map<String, String> authHeaders) throws HttpResponseException {
-    getDashboard(id, null, authHeaders);
-  }
-
-  public static Dashboard getDashboard(UUID id, String fields, Map<String, String> authHeaders)
-          throws HttpResponseException {
-    WebTarget target = getResource("dashboards/" + id);
-    target = fields != null ? target.queryParam("fields", fields): target;
-    return TestUtils.get(target, Dashboard.class, authHeaders);
-  }
-
-  public static Dashboard getDashboardByName(String fqn, String fields, Map<String, String> authHeaders)
-          throws HttpResponseException {
-    WebTarget target = getResource("dashboards/name/" + fqn);
-    target = fields != null ? target.queryParam("fields", fields): target;
-    return TestUtils.get(target, Dashboard.class, authHeaders);
-  }
-
-  private void deleteDashboard(UUID id, Map<String, String> authHeaders) throws HttpResponseException {
-    TestUtils.delete(getResource("dashboards/" + id), authHeaders);
-
-    // Ensure deleted Dashboard does not exist
-    assertResponse(() -> getDashboard(id, authHeaders), NOT_FOUND, entityNotFound(Entity.DASHBOARD, id));
   }
 
   public CreateDashboard create(TestInfo test) {

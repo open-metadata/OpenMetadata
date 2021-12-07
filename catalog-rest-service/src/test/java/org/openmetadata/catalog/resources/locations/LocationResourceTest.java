@@ -43,18 +43,14 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.CONFLICT;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
-import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
-import static org.openmetadata.catalog.util.TestUtils.NON_EXISTENT_ENTITY;
 import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 import static org.openmetadata.catalog.util.TestUtils.authHeaders;
@@ -159,15 +155,6 @@ public class LocationResourceTest extends EntityResourceTest<Location> {
   }
 
   @Test
-  public void post_locationAlreadyExists_409_conflict(TestInfo test) throws HttpResponseException {
-    CreateLocation create = create(test);
-    createLocation(create, adminAuthHeaders());
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            createLocation(create, adminAuthHeaders()));
-    assertResponse(exception, CONFLICT, CatalogExceptionMessage.ENTITY_ALREADY_EXISTS);
-  }
-
-  @Test
   public void post_validLocations_as_admin_200_OK(TestInfo test) throws IOException {
     // Create team with different optional fields
     CreateLocation create = create(test);
@@ -198,14 +185,14 @@ public class LocationResourceTest extends EntityResourceTest<Location> {
   @Test
   public void delete_location_200_ok(TestInfo test) throws HttpResponseException {
     Location location = createLocation(create(test), adminAuthHeaders());
-    deleteLocation(location.getId(), adminAuthHeaders());
+    deleteEntity(location.getId(), adminAuthHeaders());
   }
 
   @Test
   public void delete_location_as_non_admin_401(TestInfo test) throws HttpResponseException {
     Location location = createLocation(create(test), adminAuthHeaders());
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            deleteLocation(location.getId(), authHeaders("test@open-metadata.org")));
+            deleteEntity(location.getId(), authHeaders("test@open-metadata.org")));
     assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
   }
 
@@ -219,25 +206,6 @@ public class LocationResourceTest extends EntityResourceTest<Location> {
     exception = assertThrows(HttpResponseException.class, () ->
             createLocation(create(test).withService(null), adminAuthHeaders()));
     assertResponse(exception, BAD_REQUEST, "[service must not be null]");
-  }
-
-  @Test
-  public void post_locationWithInvalidOwnerType_4xx(TestInfo test) {
-    EntityReference owner = new EntityReference().withId(TEAM1.getId()); /* No owner type is set */
-
-    CreateLocation create = create(test).withOwner(owner);
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            createLocation(create, adminAuthHeaders()));
-    TestUtils.assertResponseContains(exception, BAD_REQUEST, "type must not be null");
-  }
-
-  @Test
-  public void post_locationWithNonExistentOwner_4xx(TestInfo test) {
-    EntityReference owner = new EntityReference().withId(NON_EXISTENT_ENTITY).withType("user");
-    CreateLocation create = create(test).withOwner(owner);
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            createLocation(create, adminAuthHeaders()));
-    assertResponse(exception, NOT_FOUND, entityNotFound("User", NON_EXISTENT_ENTITY));
   }
 
   @Test
@@ -268,14 +236,6 @@ public class LocationResourceTest extends EntityResourceTest<Location> {
   }
 
   @Test
-  public void get_nonExistentLocation_404_notFound() {
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            getLocation(NON_EXISTENT_ENTITY, adminAuthHeaders()));
-    assertResponse(exception, NOT_FOUND,
-            entityNotFound(Entity.LOCATION, NON_EXISTENT_ENTITY));
-  }
-
-  @Test
   public void get_locationWithDifferentFields_200_OK(TestInfo test) throws IOException {
     CreateLocation create = create(test).withDescription("description").withOwner(USER_OWNER1)
             .withService(AWS_REFERENCE);
@@ -289,13 +249,6 @@ public class LocationResourceTest extends EntityResourceTest<Location> {
             .withService(AWS_REFERENCE);
     Location location = createAndCheckEntity(create, adminAuthHeaders());
     validateGetWithDifferentFields(location, true);
-  }
-
-  @Test
-  public void delete_nonExistentLocation_404() {
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            deleteLocation(NON_EXISTENT_ENTITY, adminAuthHeaders()));
-    assertResponse(exception, NOT_FOUND, entityNotFound(Entity.LOCATION, NON_EXISTENT_ENTITY));
   }
 
   public static Location updateLocation(CreateLocation create,
@@ -315,32 +268,13 @@ public class LocationResourceTest extends EntityResourceTest<Location> {
   private void validateGetWithDifferentFields(Location location, boolean byName) throws HttpResponseException {
     // .../locations?fields=owner
     String fields = "owner";
-    location = byName ? getLocationByName(location.getFullyQualifiedName(), fields, adminAuthHeaders()) :
-            getLocation(location.getId(), fields, adminAuthHeaders());
+    location = byName ? getEntityByName(location.getFullyQualifiedName(), fields, adminAuthHeaders()) :
+            getEntity(location.getId(), fields, adminAuthHeaders());
     assertNotNull(location.getOwner());
     assertNotNull(location.getService()); // We always return the service
     assertNotNull(location.getServiceType()); // We always return the service
 
     // TODO add other fields
-  }
-
-  public static void getLocation(UUID id, Map<String, String> authHeaders) throws HttpResponseException {
-    getLocation(id, null, authHeaders);
-  }
-
-  public static Location getLocation(UUID id, String fields, Map<String, String> authHeaders)
-          throws HttpResponseException {
-    WebTarget target = getResource("locations/" + id);
-    target = fields != null ? target.queryParam("fields", fields) : target;
-    return TestUtils.get(target, Location.class, authHeaders);
-  }
-
-  public static Location getLocationByName(String fqn, String fields, Map<String, String> authHeaders)
-          throws HttpResponseException {
-    String encodedFqn = URLEncoder.encode(fqn, StandardCharsets.UTF_8);
-    WebTarget target = getResource("locations/name/" + encodedFqn);
-    target = fields != null ? target.queryParam("fields", fields) : target;
-    return TestUtils.get(target, Location.class, authHeaders);
   }
 
   public static LocationList listPrefixes(String fields, String fqn, Integer limitParam,
@@ -353,14 +287,6 @@ public class LocationResourceTest extends EntityResourceTest<Location> {
     target = before != null ? target.queryParam("before", before) : target;
     target = after != null ? target.queryParam("after", after) : target;
     return TestUtils.get(target, LocationList.class, authHeaders);
-  }
-
-  private static void deleteLocation(UUID id, Map<String, String> authHeaders) throws HttpResponseException {
-    TestUtils.delete(getResource("locations/" + id), authHeaders);
-
-    // Ensure deleted location does not exist
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () -> getLocation(id, authHeaders));
-    assertResponse(exception, NOT_FOUND, entityNotFound(Entity.LOCATION, id));
   }
 
   public static String getLocationName(TestInfo test) {

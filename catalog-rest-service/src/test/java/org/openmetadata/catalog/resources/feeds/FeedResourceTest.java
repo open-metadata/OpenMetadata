@@ -136,7 +136,7 @@ public class FeedResourceTest extends CatalogApplicationTest {
     CreateThread create = create().withFrom(TestUtils.NON_EXISTENT_ENTITY);
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
             createThread(create, authHeaders(USER.getEmail())));
-    TestUtils.assertResponse(exception, NOT_FOUND, entityNotFound("User", TestUtils.NON_EXISTENT_ENTITY));
+    TestUtils.assertResponse(exception, NOT_FOUND, entityNotFound(Entity.USER, TestUtils.NON_EXISTENT_ENTITY));
   }
 
   @Test
@@ -145,8 +145,7 @@ public class FeedResourceTest extends CatalogApplicationTest {
     CreateThread create = create().withAbout("<#E/table/invalidTableName>");
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
             createThread(create, authHeaders(USER.getEmail())));
-    TestUtils.assertResponse(exception, NOT_FOUND, entityNotFound(Entity.TABLE,
-            "invalidTableName"));
+    TestUtils.assertResponse(exception, NOT_FOUND, entityNotFound(Entity.TABLE, "invalidTableName"));
   }
 
   @Test
@@ -195,7 +194,7 @@ public class FeedResourceTest extends CatalogApplicationTest {
     Post post = createPost().withFrom(TestUtils.NON_EXISTENT_ENTITY);
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
             addPost(THREAD.getId(), post, authHeaders(USER.getEmail())));
-    TestUtils.assertResponse(exception, NOT_FOUND, entityNotFound("User", TestUtils.NON_EXISTENT_ENTITY));
+    TestUtils.assertResponse(exception, NOT_FOUND, entityNotFound(Entity.USER, TestUtils.NON_EXISTENT_ENTITY));
   }
 
   @Test
