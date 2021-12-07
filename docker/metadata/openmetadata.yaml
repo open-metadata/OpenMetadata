@@ -114,11 +114,20 @@ database:
 elasticsearch:
   host: elasticsearch
   port: 9200
+  scheme: "http"
 
 eventHandlerConfiguration:
   eventHandlerClassNames:
     - "org.openmetadata.catalog.events.AuditEventHandler"
-    - "org.openmetadata.catalog.events.ElasticSearchEventHandler"
+    - "org.openmetadata.catalog.elasticsearch.ElasticSearchEventHandler"
+    - "org.openmetadata.catalog.events.ChangeEventHandler"
+
+airflowConfiguration:
+  apiEndpoint: "http://ingestion:8080"
+  username: "admin"
+  password: "admin"
+  metadataApiEndpoint: "http://openmetadata-server:8585/api"
+  authProvider: "no-auth"
 
 health:
   delayedShutdownHandlerEnabled: true
