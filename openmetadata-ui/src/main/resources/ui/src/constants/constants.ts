@@ -63,7 +63,7 @@ export const versionTypes = [
   { name: 'Minor', value: 'minor' },
 ];
 
-export const visibleFilters = ['service', 'tier', 'tags'];
+export const visibleFilters = ['service', 'tier', 'tags', 'database'];
 
 export const tableSortingFields = [
   {
@@ -99,6 +99,10 @@ export const facetFilterPlaceholder = [
   {
     name: 'Tags',
     value: 'Tags',
+  },
+  {
+    name: 'Database',
+    value: 'Database',
   },
 ];
 
