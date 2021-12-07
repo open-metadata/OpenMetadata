@@ -49,13 +49,11 @@ import java.util.UUID;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.CONFLICT;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
-import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
@@ -136,15 +134,6 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline> {
   }
 
   @Test
-  public void post_PipelineAlreadyExists_409_conflict(TestInfo test) throws HttpResponseException {
-    CreatePipeline create = create(test);
-    createPipeline(create, adminAuthHeaders());
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            createPipeline(create, adminAuthHeaders()));
-    assertResponse(exception, CONFLICT, CatalogExceptionMessage.ENTITY_ALREADY_EXISTS);
-  }
-
-  @Test
   public void post_validPipelines_as_admin_200_OK(TestInfo test) throws IOException {
     // Create team with different optional fields
     CreatePipeline create = create(test);
@@ -183,25 +172,6 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline> {
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
             createPipeline(create, adminAuthHeaders()));
     TestUtils.assertResponseContains(exception, BAD_REQUEST, "service must not be null");
-  }
-
-  @Test
-  public void post_PipelineWithInvalidOwnerType_4xx(TestInfo test) {
-    EntityReference owner = new EntityReference().withId(TEAM1.getId()); /* No owner type is set */
-
-    CreatePipeline create = create(test).withOwner(owner);
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            createPipeline(create, adminAuthHeaders()));
-    TestUtils.assertResponseContains(exception, BAD_REQUEST, "type must not be null");
-  }
-
-  @Test
-  public void post_PipelineWithNonExistentOwner_4xx(TestInfo test) {
-    EntityReference owner = new EntityReference().withId(TestUtils.NON_EXISTENT_ENTITY).withType("user");
-    CreatePipeline create = create(test).withOwner(owner);
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            createPipeline(create, adminAuthHeaders()));
-    assertResponse(exception, NOT_FOUND, entityNotFound("User", TestUtils.NON_EXISTENT_ENTITY));
   }
 
   @Test
@@ -279,14 +249,6 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline> {
   }
 
   @Test
-  public void get_nonExistentPipeline_404_notFound() {
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            getPipeline(TestUtils.NON_EXISTENT_ENTITY, adminAuthHeaders()));
-    assertResponse(exception, NOT_FOUND,
-            entityNotFound(Entity.PIPELINE, TestUtils.NON_EXISTENT_ENTITY));
-  }
-
-  @Test
   public void get_PipelineWithDifferentFields_200_OK(TestInfo test) throws IOException {
     CreatePipeline create = create(test).withDescription("description").withOwner(USER_OWNER1)
             .withService(AIRFLOW_REFERENCE).withTasks(TASKS);
@@ -305,19 +267,12 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline> {
   @Test
   public void delete_emptyPipeline_200_ok(TestInfo test) throws HttpResponseException {
     Pipeline pipeline = createPipeline(create(test), adminAuthHeaders());
-    deletePipeline(pipeline.getId(), adminAuthHeaders());
+    deleteEntity(pipeline.getId(), adminAuthHeaders());
   }
 
   @Test
   public void delete_nonEmptyPipeline_4xx() {
     // TODO
-  }
-
-  @Test
-  public void delete_nonExistentPipeline_404() {
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            deletePipeline(TestUtils.NON_EXISTENT_ENTITY, adminAuthHeaders()));
-    assertResponse(exception, NOT_FOUND, entityNotFound(Entity.PIPELINE, TestUtils.NON_EXISTENT_ENTITY));
   }
 
   public static Pipeline updatePipeline(CreatePipeline create,
@@ -353,10 +308,6 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline> {
     assertNotNull(pipeline.getTasks());
   }
 
-  public static void getPipeline(UUID id, Map<String, String> authHeaders) throws HttpResponseException {
-    getPipeline(id, null, authHeaders);
-  }
-
   public static Pipeline getPipeline(UUID id, String fields, Map<String, String> authHeaders)
           throws HttpResponseException {
     WebTarget target = getResource("pipelines/" + id);
@@ -369,14 +320,6 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline> {
     WebTarget target = getResource("pipelines/name/" + fqn);
     target = fields != null ? target.queryParam("fields", fields): target;
     return TestUtils.get(target, Pipeline.class, authHeaders);
-  }
-
-  private void deletePipeline(UUID id, Map<String, String> authHeaders) throws HttpResponseException {
-    TestUtils.delete(getResource("pipelines/" + id), authHeaders);
-
-    // Ensure deleted Pipeline does not exist
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () -> getPipeline(id, authHeaders));
-    assertResponse(exception, NOT_FOUND, entityNotFound(Entity.PIPELINE, id));
   }
 
   private CreatePipeline create(TestInfo test) {

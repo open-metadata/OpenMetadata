@@ -20,7 +20,6 @@ import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestMethodOrder;
-import org.openmetadata.catalog.CatalogApplicationTest;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.data.CreateDatabase;
 import org.openmetadata.catalog.api.data.CreateDbtModel;
@@ -46,7 +45,6 @@ import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.TestUtils;
 
-import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response.Status;
 import java.io.IOException;
 import java.net.URISyntaxException;
@@ -140,15 +138,6 @@ public class DbtModelResourceTest extends EntityResourceTest<DbtModel> {
   }
 
   @Test
-  public void post_DbtModelAlreadyExists_409_conflict(TestInfo test) throws HttpResponseException {
-    CreateDbtModel create = create(test);
-    createEntity(create, adminAuthHeaders());
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            createEntity(create, adminAuthHeaders()));
-    assertResponse(exception, CONFLICT, CatalogExceptionMessage.ENTITY_ALREADY_EXISTS);
-  }
-
-  @Test
   public void post_validDbtModels_200_OK(TestInfo test) throws IOException {
     // Create DbtModel with different optional fields
     // Optional field description
@@ -160,7 +149,7 @@ public class DbtModelResourceTest extends EntityResourceTest<DbtModel> {
     DbtModel dbtModel = createAndCheckEntity(create, adminAuthHeaders());
 
     // check the FQN
-    Database db = DatabaseResourceTest.getDatabase(dbtModel.getDatabase().getId(), null, adminAuthHeaders());
+    Database db = new DatabaseResourceTest().getEntity(dbtModel.getDatabase().getId(), null, adminAuthHeaders());
     String expectedFQN = db.getFullyQualifiedName()+"."+dbtModel.getName();
     assertEquals(expectedFQN, expectedFQN);
   }
@@ -291,29 +280,11 @@ public class DbtModelResourceTest extends EntityResourceTest<DbtModel> {
   }
 
   @Test
-  public void post_DbtModelWithInvalidOwnerType_4xx(TestInfo test) {
-    EntityReference owner = new EntityReference().withId(TEAM1.getId()); /* No owner type is set */
-    CreateDbtModel create = create(test).withOwner(owner);
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            createEntity(create, adminAuthHeaders()));
-    TestUtils.assertResponseContains(exception, BAD_REQUEST, "type must not be null");
-  }
-
-  @Test
   public void post_DbtModelWithInvalidDatabase_404(TestInfo test) {
     CreateDbtModel create = create(test).withDatabase(NON_EXISTENT_ENTITY);
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
             createEntity(create, adminAuthHeaders()));
     assertResponse(exception, NOT_FOUND, CatalogExceptionMessage.entityNotFound(Entity.DATABASE, NON_EXISTENT_ENTITY));
-  }
-
-  @Test
-  public void post_DbtModelWithNonExistentOwner_4xx(TestInfo test) {
-    EntityReference owner = new EntityReference().withId(NON_EXISTENT_ENTITY).withType("user");
-    CreateDbtModel create = create(test).withOwner(owner);
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            createEntity(create, adminAuthHeaders()));
-    assertResponse(exception, NOT_FOUND, CatalogExceptionMessage.entityNotFound("User", NON_EXISTENT_ENTITY));
   }
 
   @Test
@@ -442,16 +413,9 @@ public class DbtModelResourceTest extends EntityResourceTest<DbtModel> {
             "with no schema binding;\n";
     createDbtModel.setViewDefinition(query);
     DbtModel dbtModel = createAndCheckEntity(createDbtModel, adminAuthHeaders());
-    dbtModel = getDbtModel(dbtModel.getId(), "viewDefinition", adminAuthHeaders());
+    dbtModel = getEntity(dbtModel.getId(), "viewDefinition", adminAuthHeaders());
     LOG.info("dbtModel view definition {}", dbtModel.getViewDefinition());
     assertEquals(dbtModel.getViewDefinition(), query);
-  }
-
-  @Test
-  public void get_nonExistentDbtModel_404_notFound() {
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            getDbtModel(NON_EXISTENT_ENTITY, adminAuthHeaders()));
-    assertResponse(exception, NOT_FOUND, CatalogExceptionMessage.entityNotFound("dbtModel", NON_EXISTENT_ENTITY));
   }
 
   @Test
@@ -535,22 +499,15 @@ public class DbtModelResourceTest extends EntityResourceTest<DbtModel> {
   @Test
   public void delete_DbtModel_200_ok(TestInfo test) throws HttpResponseException {
     DbtModel dbtModel = createEntity(create(test), adminAuthHeaders());
-    deleteDbtModel(dbtModel.getId(), adminAuthHeaders());
+    deleteEntity(dbtModel.getId(), adminAuthHeaders());
   }
 
   @Test
   public void delete_DbtModel_as_non_admin_401(TestInfo test) throws HttpResponseException {
     DbtModel dbtModel = createEntity(create(test), adminAuthHeaders());
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            deleteDbtModel(dbtModel.getId(), authHeaders("test@open-metadata.org")));
+            deleteEntity(dbtModel.getId(), authHeaders("test@open-metadata.org")));
     assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
-  }
-
-  @Test
-  public void delete_nonExistentDbtModel_404() {
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            getDbtModel(NON_EXISTENT_ENTITY, adminAuthHeaders()));
-    assertResponse(exception, NOT_FOUND, CatalogExceptionMessage.entityNotFound("dbtModel", NON_EXISTENT_ENTITY));
   }
 
   /**
@@ -661,20 +618,20 @@ public class DbtModelResourceTest extends EntityResourceTest<DbtModel> {
   /** Validate returned fields GET .../DbtModels/{id}?fields="..." or GET .../DbtModels/name/{fqn}?fields="..." */
   private void validateGetWithDifferentFields(DbtModel dbtModel, boolean byName) throws HttpResponseException {
     // GET .../DbtModels/{id}
-    dbtModel = byName ? getDbtModelByName(dbtModel.getFullyQualifiedName(), null, adminAuthHeaders()) :
-            getDbtModel(dbtModel.getId(), adminAuthHeaders());
+    dbtModel = byName ? getEntityByName(dbtModel.getFullyQualifiedName(), null, adminAuthHeaders()) :
+            getEntity(dbtModel.getId(), null, adminAuthHeaders());
     assertFields(dbtModel, null);
 
     // GET .../DbtModels/{id}?fields=columns
     String fields = "columns";
-    dbtModel = byName ? getDbtModelByName(dbtModel.getFullyQualifiedName(), fields, adminAuthHeaders()) :
-            getDbtModel(dbtModel.getId(), fields, adminAuthHeaders());
+    dbtModel = byName ? getEntityByName(dbtModel.getFullyQualifiedName(), fields, adminAuthHeaders()) :
+            getEntity(dbtModel.getId(), fields, adminAuthHeaders());
     assertFields(dbtModel, fields);
 
     // GET .../DbtModels/{id}?fields=columns,usageSummary,owner,database,tags
     fields = "columns,owner,database,tags";
-    dbtModel = byName ? getDbtModelByName(dbtModel.getFullyQualifiedName(), fields, adminAuthHeaders()) :
-            getDbtModel(dbtModel.getId(), fields, adminAuthHeaders());
+    dbtModel = byName ? getEntityByName(dbtModel.getFullyQualifiedName(), fields, adminAuthHeaders()) :
+            getEntity(dbtModel.getId(), fields, adminAuthHeaders());
     assertEquals(dbtModel.getOwner().getId(), USER_OWNER1.getId());
     assertEquals(dbtModel.getOwner().getType(), USER_OWNER1.getType());
     assertEquals(dbtModel.getDatabase().getId(), DATABASE.getId());
@@ -711,24 +668,6 @@ public class DbtModelResourceTest extends EntityResourceTest<DbtModel> {
     }
   }
 
-  public static DbtModel getDbtModel(UUID id, Map<String, String> authHeaders) throws HttpResponseException {
-    return getDbtModel(id, null, authHeaders);
-  }
-
-  public static DbtModel getDbtModel(UUID id, String fields, Map<String, String> authHeaders)
-      throws HttpResponseException {
-    WebTarget target = CatalogApplicationTest.getResource("dbtmodels/" + id);
-    target = fields != null ? target.queryParam("fields", fields) : target;
-    return TestUtils.get(target, DbtModel.class, authHeaders);
-  }
-
-  public static DbtModel getDbtModelByName(String fqn, String fields, Map<String, String> authHeaders)
-          throws HttpResponseException {
-    WebTarget target = CatalogApplicationTest.getResource("dbtmodels/name/" + fqn);
-    target = fields != null ? target.queryParam("fields", fields) : target;
-    return TestUtils.get(target, DbtModel.class, authHeaders);
-  }
-
   private CreateDbtModel create(TestInfo test) {
     return create(getEntityName(test));
   }
@@ -757,15 +696,6 @@ public class DbtModelResourceTest extends EntityResourceTest<DbtModel> {
     CreateDbtModel create = new CreateDbtModel().withName(getEntityName(test, index))
             .withDatabase(database.getId()).withColumns(COLUMNS);
     return createEntity(create, adminAuthHeaders());
-  }
-
-
-  private void deleteDbtModel(UUID id, Map<String, String> authHeaders) throws HttpResponseException {
-    TestUtils.delete(CatalogApplicationTest.getResource("dbtmodels/" + id), authHeaders);
-
-    // Check to make sure database does not exist
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () -> getDbtModel(id, authHeaders));
-    assertResponse(exception, NOT_FOUND, CatalogExceptionMessage.entityNotFound("dbtModel", id));
   }
 
   @Override

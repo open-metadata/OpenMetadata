@@ -35,12 +35,9 @@ import java.util.UUID;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
-import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
-import static org.openmetadata.catalog.util.TestUtils.NON_EXISTENT_ENTITY;
 import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 import static org.openmetadata.catalog.util.TestUtils.authHeaders;
@@ -101,25 +98,6 @@ public class TopicResourceTest extends EntityResourceTest<Topic> {
   }
 
   @Test
-  public void post_topicWithInvalidOwnerType_4xx(TestInfo test) {
-    EntityReference owner = new EntityReference().withId(TEAM1.getId()); /* No owner type is set */
-
-    CreateTopic create = create(test).withOwner(owner);
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            createTopic(create, adminAuthHeaders()));
-    TestUtils.assertResponseContains(exception, BAD_REQUEST, "type must not be null");
-  }
-
-  @Test
-  public void post_topicWithNonExistentOwner_4xx(TestInfo test) {
-    EntityReference owner = new EntityReference().withId(NON_EXISTENT_ENTITY).withType("user");
-    CreateTopic create = create(test).withOwner(owner);
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            createTopic(create, adminAuthHeaders()));
-    assertResponse(exception, NOT_FOUND, entityNotFound("User", NON_EXISTENT_ENTITY));
-  }
-
-  @Test
   public void post_topicWithDifferentService_200_ok(TestInfo test) throws IOException {
     EntityReference[] differentServices = {PULSAR_REFERENCE, KAFKA_REFERENCE};
 
@@ -137,22 +115,6 @@ public class TopicResourceTest extends EntityResourceTest<Topic> {
   }
 
   @Test
-  public void get_nonExistentTopic_404_notFound() {
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            getTopic(NON_EXISTENT_ENTITY, adminAuthHeaders()));
-    assertResponse(exception, NOT_FOUND,
-            entityNotFound(Entity.TOPIC, NON_EXISTENT_ENTITY));
-  }
-
-  @Test
-  public void get_topicWithDifferentFields_200_OK(TestInfo test) throws IOException {
-    CreateTopic create = create(test).withDescription("description").withOwner(USER_OWNER1)
-            .withService(KAFKA_REFERENCE);
-    Topic topic = createAndCheckEntity(create, adminAuthHeaders());
-    validateGetWithDifferentFields(topic, false);
-  }
-
-  @Test
   public void get_topicByNameWithDifferentFields_200_OK(TestInfo test) throws IOException {
     CreateTopic create = create(test).withDescription("description").withOwner(USER_OWNER1)
             .withService(KAFKA_REFERENCE);
@@ -163,19 +125,12 @@ public class TopicResourceTest extends EntityResourceTest<Topic> {
   @Test
   public void delete_emptyTopic_200_ok(TestInfo test) throws HttpResponseException {
     Topic topic = createTopic(create(test), adminAuthHeaders());
-    deleteTopic(topic.getId(), adminAuthHeaders());
+    deleteEntity(topic.getId(), adminAuthHeaders());
   }
 
   @Test
   public void delete_nonEmptyTopic_4xx() {
     // TODO
-  }
-
-  @Test
-  public void delete_nonExistentTopic_404() {
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            deleteTopic(NON_EXISTENT_ENTITY, adminAuthHeaders()));
-    assertResponse(exception, NOT_FOUND, entityNotFound(Entity.TOPIC, NON_EXISTENT_ENTITY));
   }
 
   public static Topic createTopic(CreateTopic create,
@@ -196,10 +151,6 @@ public class TopicResourceTest extends EntityResourceTest<Topic> {
     assertNotNull(topic.getServiceType());
   }
 
-  public static void getTopic(UUID id, Map<String, String> authHeaders) throws HttpResponseException {
-    getTopic(id, null, authHeaders);
-  }
-
   public static Topic getTopic(UUID id, String fields, Map<String, String> authHeaders)
           throws HttpResponseException {
     WebTarget target = getResource("topics/" + id);
@@ -212,14 +163,6 @@ public class TopicResourceTest extends EntityResourceTest<Topic> {
     WebTarget target = getResource("topics/name/" + fqn);
     target = fields != null ? target.queryParam("fields", fields) : target;
     return TestUtils.get(target, Topic.class, authHeaders);
-  }
-
-  private void deleteTopic(UUID id, Map<String, String> authHeaders) throws HttpResponseException {
-    TestUtils.delete(getResource("topics/" + id), authHeaders);
-
-    // Ensure deleted topic does not exist
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () -> getTopic(id, authHeaders));
-    assertResponse(exception, NOT_FOUND, entityNotFound(Entity.TOPIC, id));
   }
 
   private CreateTopic create(TestInfo test) {
