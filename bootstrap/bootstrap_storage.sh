@@ -36,8 +36,9 @@ fi
 
 TABLE_INITIALIZER_MAIN_CLASS=org.openmetadata.catalog.util.TablesInitializer
 LIBS_DIR="${BOOTSTRAP_DIR}"/../libs/
+echo $LIBS_DIR
 if [ -d "${LIBS_DIR}" ]; then
-  for file in "${LIB_DIR}"*.jar;
+  for file in "${LIBS_DIR}"*.jar;
   do
       CLASSPATH="$CLASSPATH":"$file"
   done
