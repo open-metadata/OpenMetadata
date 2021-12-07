@@ -17,7 +17,7 @@ import {
   SearchDataFunctionType,
   SearchResponse,
 } from 'Models';
-import { User } from '../../generated/entity/teams/user';
+import { ChangeDescription, User } from '../../generated/entity/teams/user';
 
 export interface MyDataProps {
   error: string;
@@ -27,7 +27,14 @@ export interface MyDataProps {
   searchResult: SearchResponse | undefined;
   ownedData: Array<FormatedTableData>;
   followedData: Array<FormatedTableData>;
-  feedData: Array<FormatedTableData>;
+  feedData: Array<
+    FormatedTableData & {
+      entityType: string;
+      changeDescriptions: Array<
+        ChangeDescription & { updatedAt: number; updatedBy: string }
+      >;
+    }
+  >;
   fetchData?: (value: SearchDataFunctionType) => void;
   entityCounts: EntityCounts;
 }

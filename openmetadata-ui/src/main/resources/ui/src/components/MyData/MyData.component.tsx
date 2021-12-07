@@ -148,11 +148,11 @@ const MyData: React.FC<MyDataProps> = ({
       }))
       .map((d) => {
         return (
-          d?.changeDescriptions?.map((change) => ({
+          d.changeDescriptions.map((change) => ({
             updatedBy: change.updatedBy,
             entityName: d.name,
             description: <div>{getSummary(change, true)}</div>,
-            entityType: d.entityType as string,
+            entityType: d.entityType,
           })) || []
         );
       })

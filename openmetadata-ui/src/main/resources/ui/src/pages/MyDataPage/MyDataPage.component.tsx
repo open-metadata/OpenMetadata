@@ -28,6 +28,7 @@ import {
   myDataSearchIndex,
 } from '../../constants/Mydata.constants';
 import { Ownership } from '../../enums/mydata.enum';
+import { ChangeDescription } from '../../generated/entity/teams/user';
 import { useAuth } from '../../hooks/authHooks';
 import { formatDataResponse } from '../../utils/APIUtils';
 import { getEntityCountByType } from '../../utils/EntityUtils';
@@ -46,7 +47,16 @@ const MyDataPage = () => {
 
   const [ownedData, setOwnedData] = useState<Array<FormatedTableData>>();
   const [followedData, setFollowedData] = useState<Array<FormatedTableData>>();
-  const [feedData, setFeedData] = useState<Array<FormatedTableData>>();
+  const [feedData, setFeedData] = useState<
+    Array<
+      FormatedTableData & {
+        entityType: string;
+        changeDescriptions: Array<
+          ChangeDescription & { updatedAt: number; updatedBy: string }
+        >;
+      }
+    >
+  >();
 
   const fetchData = (fetchService = false) => {
     setError('');
