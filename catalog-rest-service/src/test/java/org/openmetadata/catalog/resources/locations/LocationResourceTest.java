@@ -30,6 +30,7 @@ import org.openmetadata.catalog.resources.services.StorageServiceResourceTest;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.StorageServiceType;
 import org.openmetadata.catalog.util.EntityInterface;
+import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.TestUtils;
 
 import javax.ws.rs.client.WebTarget;
@@ -39,6 +40,7 @@ import java.net.URISyntaxException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -82,12 +84,14 @@ public class LocationResourceTest extends EntityResourceTest<Location> {
   }
 
   @Override
-  public Object createRequest(String name, String description, String displayName, EntityReference owner) throws URISyntaxException {
+  public Object createRequest(String name, String description, String displayName, EntityReference owner)
+          throws URISyntaxException {
     return create(name).withDescription(description).withOwner(owner);
   }
 
   @Override
-  public void validateCreatedEntity(Location location, Object request, Map<String, String> authHeaders) throws HttpResponseException {
+  public void validateCreatedEntity(Location location, Object request, Map<String, String> authHeaders)
+          throws HttpResponseException {
     CreateLocation createRequest = (CreateLocation) request;
     validateCommonEntityFields(getEntityInterface(location), createRequest.getDescription(),
             TestUtils.getPrincipal(authHeaders), createRequest.getOwner());
@@ -103,12 +107,14 @@ public class LocationResourceTest extends EntityResourceTest<Location> {
   }
 
   @Override
-  public void validateUpdatedEntity(Location location, Object request, Map<String, String> authHeaders) throws HttpResponseException {
+  public void validateUpdatedEntity(Location location, Object request, Map<String, String> authHeaders)
+          throws HttpResponseException {
     validateCreatedEntity(location, request, authHeaders);
   }
 
   @Override
-  public void compareEntities(Location expected, Location patched, Map<String, String> authHeaders) throws HttpResponseException {
+  public void compareEntities(Location expected, Location patched, Map<String, String> authHeaders)
+          throws HttpResponseException {
     validateCommonEntityFields(getEntityInterface(patched), expected.getDescription(),
             TestUtils.getPrincipal(authHeaders), expected.getOwner());
     // Entity specific validation
@@ -242,11 +248,12 @@ public class LocationResourceTest extends EntityResourceTest<Location> {
     for (EntityReference service : differentServices) {
       createAndCheckEntity(create(test).withService(service), adminAuthHeaders());
 
-      // List locations by filtering on service name and ensure right locations are returned in the response
-//      LocationList list = listLocations("service", service.getName(), adminAuthHeaders());
-//      for (Location location : list.getData()) {
-//        assertEquals(service.getName(), location.getService().getName());
-//      }
+      // List locations by filtering on service name and ensure right locations are returned
+      Map<String, String> queryParams = new HashMap<>(){{put("service", service.getName());}};
+      ResultList<Location> list = listEntities(queryParams, adminAuthHeaders());
+      for (Location location : list.getData()) {
+        assertEquals(service.getName(), location.getService().getName());
+      }
     }
   }
 
