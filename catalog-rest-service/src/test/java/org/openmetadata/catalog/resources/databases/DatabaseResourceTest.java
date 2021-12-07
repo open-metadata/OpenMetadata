@@ -29,22 +29,18 @@ import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.TestUtils;
 
-import javax.ws.rs.client.WebTarget;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.UUID;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.CONFLICT;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
-import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 import static org.openmetadata.catalog.util.TestUtils.authHeaders;
@@ -58,15 +54,6 @@ public class DatabaseResourceTest extends EntityResourceTest<Database> {
   @BeforeAll
   public static void setup(TestInfo test) throws IOException, URISyntaxException {
     EntityResourceTest.setup(test);
-  }
-
-  @Test
-  public void post_databaseAlreadyExists_409_conflict(TestInfo test) throws HttpResponseException {
-    CreateDatabase create = create(test);
-    createDatabase(create, adminAuthHeaders());
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            createDatabase(create, adminAuthHeaders()));
-    assertResponse(exception, CONFLICT, CatalogExceptionMessage.ENTITY_ALREADY_EXISTS);
   }
 
   @Test
@@ -117,25 +104,6 @@ public class DatabaseResourceTest extends EntityResourceTest<Database> {
   }
 
   @Test
-  public void post_databaseWithInvalidOwnerType_4xx(TestInfo test) {
-    EntityReference owner = new EntityReference().withId(TEAM1.getId()); /* No owner type is set */
-
-    CreateDatabase create = create(test).withOwner(owner);
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            createDatabase(create, adminAuthHeaders()));
-    TestUtils.assertResponseContains(exception, BAD_REQUEST, "type must not be null");
-  }
-
-  @Test
-  public void post_databaseWithNonExistentOwner_4xx(TestInfo test) {
-    EntityReference owner = new EntityReference().withId(TestUtils.NON_EXISTENT_ENTITY).withType("user");
-    CreateDatabase create = create(test).withOwner(owner);
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            createDatabase(create, adminAuthHeaders()));
-    assertResponse(exception, NOT_FOUND, entityNotFound("User", TestUtils.NON_EXISTENT_ENTITY));
-  }
-
-  @Test
   public void post_databaseWithDifferentService_200_ok(TestInfo test) throws IOException {
     EntityReference[] differentServices = {MYSQL_REFERENCE, REDSHIFT_REFERENCE, BIGQUERY_REFERENCE,
             SNOWFLAKE_REFERENCE};
@@ -151,14 +119,6 @@ public class DatabaseResourceTest extends EntityResourceTest<Database> {
         assertEquals(service.getName(), db.getService().getName());
       }
     }
-  }
-
-  @Test
-  public void get_nonExistentDatabase_404_notFound() {
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            getDatabase(TestUtils.NON_EXISTENT_ENTITY, adminAuthHeaders()));
-    assertResponse(exception, NOT_FOUND,
-            entityNotFound(Entity.DATABASE, TestUtils.NON_EXISTENT_ENTITY));
   }
 
   @Test
@@ -180,19 +140,12 @@ public class DatabaseResourceTest extends EntityResourceTest<Database> {
   @Test
   public void delete_emptyDatabase_200_ok(TestInfo test) throws HttpResponseException {
     Database database = createDatabase(create(test), adminAuthHeaders());
-    deleteDatabase(database.getId(), adminAuthHeaders());
+    deleteEntity(database.getId(), adminAuthHeaders());
   }
 
   @Test
   public void delete_nonEmptyDatabase_4xx() {
     // TODO
-  }
-
-  @Test
-  public void delete_nonExistentDatabase_404() {
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            deleteDatabase(TestUtils.NON_EXISTENT_ENTITY, adminAuthHeaders()));
-    assertResponse(exception, NOT_FOUND, entityNotFound(Entity.DATABASE, TestUtils.NON_EXISTENT_ENTITY));
   }
 
   public static Database createDatabase(CreateDatabase create,
@@ -204,8 +157,8 @@ public class DatabaseResourceTest extends EntityResourceTest<Database> {
   private void validateGetWithDifferentFields(Database database, boolean byName) throws HttpResponseException {
     // .../databases?fields=owner
     String fields = "owner";
-    database = byName ? getDatabaseByName(database.getFullyQualifiedName(), fields, adminAuthHeaders()) :
-            getDatabase(database.getId(), fields, adminAuthHeaders());
+    database = byName ? getEntityByName(database.getFullyQualifiedName(), fields, adminAuthHeaders()) :
+            getEntity(database.getId(), fields, adminAuthHeaders());
     assertNotNull(database.getOwner());
     assertNotNull(database.getService()); // We always return the service
     assertNotNull(database.getServiceType());
@@ -214,8 +167,8 @@ public class DatabaseResourceTest extends EntityResourceTest<Database> {
 
     // .../databases?fields=owner,tables,usageSummary
     fields = "owner,tables,usageSummary";
-    database = byName ? getDatabaseByName(database.getFullyQualifiedName(), fields, adminAuthHeaders()) :
-            getDatabase(database.getId(), fields, adminAuthHeaders());
+    database = byName ? getEntityByName(database.getFullyQualifiedName(), fields, adminAuthHeaders()) :
+            getEntity(database.getId(), fields, adminAuthHeaders());
     assertNotNull(database.getOwner());
     assertNotNull(database.getService()); // We always return the service
     assertNotNull(database.getServiceType());
@@ -223,32 +176,6 @@ public class DatabaseResourceTest extends EntityResourceTest<Database> {
     TestUtils.validateEntityReference(database.getTables());
     assertNotNull(database.getUsageSummary());
 
-  }
-
-  public static void getDatabase(UUID id, Map<String, String> authHeaders) throws HttpResponseException {
-    getDatabase(id, null, authHeaders);
-  }
-
-  public static Database getDatabase(UUID id, String fields, Map<String, String> authHeaders)
-          throws HttpResponseException {
-    WebTarget target = getResource("databases/" + id);
-    target = fields != null ? target.queryParam("fields", fields): target;
-    return TestUtils.get(target, Database.class, authHeaders);
-  }
-
-  public static Database getDatabaseByName(String fqn, String fields, Map<String, String> authHeaders)
-          throws HttpResponseException {
-    WebTarget target = getResource("databases/name/" + fqn);
-    target = fields != null ? target.queryParam("fields", fields): target;
-    return TestUtils.get(target, Database.class, authHeaders);
-  }
-
-  private void deleteDatabase(UUID id, Map<String, String> authHeaders) throws HttpResponseException {
-    TestUtils.delete(getResource("databases/" + id), authHeaders);
-
-    // Ensure deleted database does not exist
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () -> getDatabase(id, authHeaders));
-    assertResponse(exception, NOT_FOUND, entityNotFound(Entity.DATABASE, id));
   }
 
   public CreateDatabase create(TestInfo test) {

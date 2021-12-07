@@ -34,24 +34,18 @@ import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.TestUtils;
 
-import javax.ws.rs.client.WebTarget;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.UUID;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.CONFLICT;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
-import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.ENTITY_ALREADY_EXISTS;
-import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
-import static org.openmetadata.catalog.util.TestUtils.NON_EXISTENT_ENTITY;
 import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 import static org.openmetadata.catalog.util.TestUtils.authHeaders;
@@ -78,13 +72,6 @@ public class ChartResourceTest extends EntityResourceTest<Chart> {
             .withDashboardUrl(new URI("http://localhost:0"));
     service = new DashboardServiceResourceTest().createEntity(createService, adminAuthHeaders());
     LOOKER_REFERENCE = new DashboardServiceEntityInterface(service).getEntityReference();
-  }
-
-  @Test
-  public void post_chartAlreadyExists_409_conflict(TestInfo test) throws HttpResponseException {
-    CreateChart create = create(test);
-    createEntity(create, adminAuthHeaders());
-    assertResponse(() -> createEntity(create, adminAuthHeaders()), CONFLICT, ENTITY_ALREADY_EXISTS);
   }
 
   @Test
@@ -125,24 +112,6 @@ public class ChartResourceTest extends EntityResourceTest<Chart> {
   }
 
   @Test
-  public void post_chartWithInvalidOwnerType_4xx(TestInfo test) {
-    EntityReference owner = new EntityReference().withId(TEAM1.getId()); /* No owner type is set */
-
-    CreateChart create = create(test).withOwner(owner);
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            createEntity(create, adminAuthHeaders()));
-    TestUtils.assertResponseContains(exception, BAD_REQUEST, "type must not be null");
-  }
-
-  @Test
-  public void post_chartWithNonExistentOwner_4xx(TestInfo test) {
-    EntityReference owner = new EntityReference().withId(NON_EXISTENT_ENTITY).withType("user");
-    CreateChart create = create(test).withOwner(owner);
-    assertResponse(() -> createEntity(create, adminAuthHeaders()), NOT_FOUND,
-            entityNotFound("User", NON_EXISTENT_ENTITY));
-  }
-
-  @Test
   public void post_chartWithDifferentService_200_ok(TestInfo test) throws IOException {
     EntityReference[] differentServices = {SUPERSET_REFERENCE, LOOKER_REFERENCE};
 
@@ -157,13 +126,6 @@ public class ChartResourceTest extends EntityResourceTest<Chart> {
         assertEquals(service.getName(), chart.getService().getName());
       }
     }
-  }
-
-
-  @Test
-  public void get_nonExistentChart_404_notFound() {
-    assertResponse(() -> getChart(NON_EXISTENT_ENTITY, adminAuthHeaders()), NOT_FOUND,
-            entityNotFound(Entity.CHART, NON_EXISTENT_ENTITY));
   }
 
   @Test
@@ -185,18 +147,12 @@ public class ChartResourceTest extends EntityResourceTest<Chart> {
   @Test
   public void delete_emptyChart_200_ok(TestInfo test) throws HttpResponseException {
     Chart chart = createEntity(create(test), adminAuthHeaders());
-    deleteChart(chart.getId(), adminAuthHeaders());
+    deleteEntity(chart.getId(), adminAuthHeaders());
   }
 
   @Test
   public void delete_nonEmptyChart_4xx() {
     // TODO
-  }
-
-  @Test
-  public void delete_nonExistentChart_404() {
-    assertResponse(() -> deleteChart(NON_EXISTENT_ENTITY, adminAuthHeaders()), NOT_FOUND,
-            entityNotFound(Entity.CHART, NON_EXISTENT_ENTITY));
   }
 
   /**
@@ -205,36 +161,11 @@ public class ChartResourceTest extends EntityResourceTest<Chart> {
   private void validateGetWithDifferentFields(Chart chart, boolean byName) throws HttpResponseException {
     // .../charts?fields=owner
     String fields = "owner";
-    chart = byName ? getChartByName(chart.getFullyQualifiedName(), fields, adminAuthHeaders()) :
-            getChart(chart.getId(), fields, adminAuthHeaders());
+    chart = byName ? getEntityByName(chart.getFullyQualifiedName(), fields, adminAuthHeaders()) :
+            getEntity(chart.getId(), fields, adminAuthHeaders());
     assertNotNull(chart.getOwner());
     assertNotNull(chart.getService()); // We always return the service
     assertNotNull(chart.getServiceType()); // We always return the service
-  }
-
-  public static void getChart(UUID id, Map<String, String> authHeaders) throws HttpResponseException {
-    getChart(id, null, authHeaders);
-  }
-
-  public static Chart getChart(UUID id, String fields, Map<String, String> authHeaders)
-          throws HttpResponseException {
-    WebTarget target = getResource("charts/" + id);
-    target = fields != null ? target.queryParam("fields", fields) : target;
-    return TestUtils.get(target, Chart.class, authHeaders);
-  }
-
-  public static Chart getChartByName(String fqn, String fields, Map<String, String> authHeaders)
-          throws HttpResponseException {
-    WebTarget target = getResource("charts/name/" + fqn);
-    target = fields != null ? target.queryParam("fields", fields) : target;
-    return TestUtils.get(target, Chart.class, authHeaders);
-  }
-
-  private void deleteChart(UUID id, Map<String, String> authHeaders) throws HttpResponseException {
-    TestUtils.delete(getResource("charts/" + id), authHeaders);
-
-    // Ensure deleted chart does not exist
-    assertResponse(() -> getChart(id, authHeaders), NOT_FOUND, entityNotFound(Entity.CHART, id));
   }
 
   private CreateChart create(TestInfo test) {

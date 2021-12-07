@@ -45,7 +45,6 @@ import java.util.UUID;
 import java.util.function.BiPredicate;
 
 public class DbtModelRepository extends EntityRepository<DbtModel> {
-  static final Logger LOG = LoggerFactory.getLogger(DbtModelRepository.class);
   // Model fields that can be patched in a PATCH request
   static final Fields DBT_MODEL_PATCH_FIELDS = new Fields(DbtModelResource.FIELD_LIST,
            "owner,columns,database,tags,viewDefinition");

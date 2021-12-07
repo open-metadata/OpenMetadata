@@ -43,13 +43,11 @@ import java.util.UUID;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.CONFLICT;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
-import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.fail;
-import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
 import static org.openmetadata.catalog.util.TestUtils.assertEntityPagination;
@@ -126,15 +124,6 @@ public class PolicyResourceTest extends EntityResourceTest<Policy> {
   }
 
   @Test
-  public void post_PolicyAlreadyExists_409_conflict(TestInfo test) throws HttpResponseException {
-    CreatePolicy create = create(test);
-    createPolicy(create, adminAuthHeaders());
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            createPolicy(create, adminAuthHeaders()));
-    assertResponse(exception, CONFLICT, CatalogExceptionMessage.ENTITY_ALREADY_EXISTS);
-  }
-
-  @Test
   public void post_validPolicies_as_admin_200_OK(TestInfo test) throws IOException {
     // Create valid policy
     CreatePolicy create = create(test);
@@ -161,25 +150,6 @@ public class PolicyResourceTest extends EntityResourceTest<Policy> {
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
             createPolicy(create, authHeaders("test@open-metadata.org")));
     assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
-  }
-
-  @Test
-  public void post_PolicyWithInvalidOwnerType_4xx(TestInfo test) {
-    EntityReference owner = new EntityReference().withId(TEAM1.getId()); /* No owner type is set */
-
-    CreatePolicy create = create(test).withOwner(owner);
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            createPolicy(create, adminAuthHeaders()));
-    TestUtils.assertResponseContains(exception, BAD_REQUEST, "type must not be null");
-  }
-
-  @Test
-  public void post_PolicyWithNonExistentOwner_4xx(TestInfo test) {
-    EntityReference owner = new EntityReference().withId(TestUtils.NON_EXISTENT_ENTITY).withType("user");
-    CreatePolicy create = create(test).withOwner(owner);
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            createPolicy(create, adminAuthHeaders()));
-    assertResponse(exception, NOT_FOUND, entityNotFound("User", TestUtils.NON_EXISTENT_ENTITY));
   }
 
   @Test
@@ -269,13 +239,6 @@ public class PolicyResourceTest extends EntityResourceTest<Policy> {
   }
 
   @Test
-  public void get_nonExistentPolicy_404_notFound() {
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            getPolicy(TestUtils.NON_EXISTENT_ENTITY, adminAuthHeaders()));
-    assertResponse(exception, NOT_FOUND, entityNotFound(Entity.POLICY, TestUtils.NON_EXISTENT_ENTITY));
-  }
-
-  @Test
   public void get_PolicyWithDifferentFields_200_OK(TestInfo test) throws IOException {
     CreatePolicy create = create(test);
     Policy policy = createAndCheckEntity(create, adminAuthHeaders());
@@ -320,19 +283,12 @@ public class PolicyResourceTest extends EntityResourceTest<Policy> {
   @Test
   public void delete_emptyPolicy_200_ok(TestInfo test) throws HttpResponseException {
     Policy policy = createPolicy(create(test), adminAuthHeaders());
-    deletePolicy(policy.getId(), adminAuthHeaders());
+    deleteEntity(policy.getId(), adminAuthHeaders());
   }
 
   @Test
   public void delete_nonEmptyPolicy_4xx() {
     // TODO
-  }
-
-  @Test
-  public void delete_nonExistentPolicy_404() {
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            deletePolicy(TestUtils.NON_EXISTENT_ENTITY, adminAuthHeaders()));
-    assertResponse(exception, NOT_FOUND, entityNotFound(Entity.POLICY, TestUtils.NON_EXISTENT_ENTITY));
   }
 
   public static Policy createPolicy(CreatePolicy create, Map<String, String> authHeaders) throws
@@ -363,10 +319,6 @@ public class PolicyResourceTest extends EntityResourceTest<Policy> {
     assertNotNull(policy.getOwner());
   }
 
-  public static void getPolicy(UUID id, Map<String, String> authHeaders) throws HttpResponseException {
-    getPolicy(id, null, authHeaders);
-  }
-
   public static Policy getPolicy(UUID id, String fields, Map<String, String> authHeaders)
           throws HttpResponseException {
     WebTarget target = getResource("policies/" + id);
@@ -390,14 +342,6 @@ public class PolicyResourceTest extends EntityResourceTest<Policy> {
     target = before != null ? target.queryParam("before", before) : target;
     target = after != null ? target.queryParam("after", after) : target;
     return TestUtils.get(target, PolicyList.class, authHeaders);
-  }
-
-  private void deletePolicy(UUID id, Map<String, String> authHeaders) throws HttpResponseException {
-    TestUtils.delete(getResource("policies/" + id), authHeaders);
-
-    // Ensure deleted Policy does not exist
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () -> getPolicy(id, authHeaders));
-    assertResponse(exception, NOT_FOUND, entityNotFound(Entity.POLICY, id));
   }
 
   private CreatePolicy create(TestInfo test) {

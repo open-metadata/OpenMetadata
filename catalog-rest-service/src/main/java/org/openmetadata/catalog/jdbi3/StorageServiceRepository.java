@@ -16,7 +16,6 @@ package org.openmetadata.catalog.jdbi3;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.services.StorageService;
-import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.resources.services.storage.StorageServiceResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
@@ -31,7 +30,6 @@ import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 
-import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.catalog.util.EntityUtil.Fields;
 
 public class StorageServiceRepository extends EntityRepository<StorageService> {
@@ -45,9 +43,7 @@ public class StorageServiceRepository extends EntityRepository<StorageService> {
 
   @Transaction
   public void delete(UUID id) {
-    if (dao.storageServiceDAO().delete(id) <= 0) {
-      throw EntityNotFoundException.byMessage(entityNotFound(Entity.STORAGE_SERVICE, id));
-    }
+    dao.storageServiceDAO().delete(id);
     dao.relationshipDAO().deleteAll(id.toString());
   }
 

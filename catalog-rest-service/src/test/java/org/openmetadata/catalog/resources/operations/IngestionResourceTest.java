@@ -20,41 +20,35 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.operations.workflows.CreateIngestion;
-import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.jdbi3.IngestionRepository;
 import org.openmetadata.catalog.operations.workflows.ConnectorConfig;
 import org.openmetadata.catalog.operations.workflows.Ingestion;
+import org.openmetadata.catalog.resources.EntityOperationsResourceTest;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.type.ChangeDescription;
-import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.TestUtils;
 
-import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response.Status;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.Date;
 import java.util.Map;
-import java.util.UUID;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
-import static javax.ws.rs.core.Response.Status.CONFLICT;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
-import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 import static org.openmetadata.catalog.util.TestUtils.authHeaders;
 
-public class IngestionResourceTest extends EntityResourceTest<Ingestion> {
+public class IngestionResourceTest extends EntityOperationsResourceTest<Ingestion> {
   public static ConnectorConfig INGESTION_CONFIG;
 
   public IngestionResourceTest() {
@@ -118,15 +112,6 @@ public class IngestionResourceTest extends EntityResourceTest<Ingestion> {
   }
 
   @Test
-  public void post_IngestionAlreadyExists_409_conflict(TestInfo test) throws HttpResponseException {
-    CreateIngestion create = create(test);
-    createIngestion(create, adminAuthHeaders());
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            createIngestion(create, adminAuthHeaders()));
-    assertResponse(exception, CONFLICT, CatalogExceptionMessage.ENTITY_ALREADY_EXISTS);
-  }
-
-  @Test
   public void post_validIngestion_as_admin_200_OK(TestInfo test) throws IOException {
     // Create team with different optional fields
     CreateIngestion create = create(test);
@@ -155,7 +140,7 @@ public class IngestionResourceTest extends EntityResourceTest<Ingestion> {
   public void post_Ingestion_as_non_admin_401(TestInfo test) {
     CreateIngestion create = create(test);
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            createIngestion(create, authHeaders("test@open-metadata.org")));
+            createEntity(create, authHeaders("test@open-metadata.org")));
     assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
   }
 
@@ -163,35 +148,16 @@ public class IngestionResourceTest extends EntityResourceTest<Ingestion> {
   public void post_IngestionWithoutRequiredService_4xx(TestInfo test) {
     CreateIngestion create = create(test).withService(null);
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            createIngestion(create, adminAuthHeaders()));
+            createEntity(create, adminAuthHeaders()));
     TestUtils.assertResponseContains(exception, BAD_REQUEST, "service must not be null");
-  }
-
-  @Test
-  public void post_IngestionWithInvalidOwnerType_4xx(TestInfo test) {
-    EntityReference owner = new EntityReference().withId(TEAM1.getId()); /* No owner type is set */
-
-    CreateIngestion create = create(test).withOwner(owner);
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            createIngestion(create, adminAuthHeaders()));
-    TestUtils.assertResponseContains(exception, BAD_REQUEST, "type must not be null");
   }
 
   @Test
   public void post_IngestionWithDeploy_4xx(TestInfo test) {
     CreateIngestion create = create(test).withService(BIGQUERY_REFERENCE).withForceDeploy(true);
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            createIngestion(create, adminAuthHeaders()));
+            createEntity(create, adminAuthHeaders()));
     // TODO check for error
-  }
-
-  @Test
-  public void post_IngestionWithNonExistentOwner_4xx(TestInfo test) {
-    EntityReference owner = new EntityReference().withId(TestUtils.NON_EXISTENT_ENTITY).withType("user");
-    CreateIngestion create = create(test).withOwner(owner);
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            createIngestion(create, adminAuthHeaders()));
-    assertResponse(exception, NOT_FOUND, entityNotFound("User", TestUtils.NON_EXISTENT_ENTITY));
   }
 
   @Test
@@ -223,7 +189,7 @@ public class IngestionResourceTest extends EntityResourceTest<Ingestion> {
     assertEquals(pipelineConcurrency, ingestion.getConcurrency());
     assertEquals(expectedFQN, ingestion.getFullyQualifiedName());
     assertEquals(expectedScheduleInterval, ingestion.getScheduleInterval());
-    ingestion = getIngestion(ingestion.getId(), "owner", adminAuthHeaders());
+    ingestion = getEntity(ingestion.getId(), "owner", adminAuthHeaders());
     assertEquals(expectedScheduleInterval, ingestion.getScheduleInterval());
   }
 
@@ -238,14 +204,6 @@ public class IngestionResourceTest extends EntityResourceTest<Ingestion> {
     change.getFieldsAdded().add(new FieldChange().withName("owner").withNewValue(USER_OWNER1));
     updateAndCheckEntity(request.withDescription("newDescription").withOwner(USER_OWNER1),
             OK, adminAuthHeaders(), MINOR_UPDATE, change);
-  }
-
-  @Test
-  public void get_nonExistentPipeline_404_notFound() {
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            getIngestion(TestUtils.NON_EXISTENT_ENTITY, adminAuthHeaders()));
-    assertResponse(exception, NOT_FOUND,
-            entityNotFound(Entity.INGESTION, TestUtils.NON_EXISTENT_ENTITY));
   }
 
   @Test
@@ -266,8 +224,8 @@ public class IngestionResourceTest extends EntityResourceTest<Ingestion> {
 
   @Test
   public void delete_ingestion_200_ok(TestInfo test) throws HttpResponseException {
-    Ingestion ingestion = createIngestion(create(test), adminAuthHeaders());
-    deleteIngestion(ingestion.getId(), adminAuthHeaders());
+    Ingestion ingestion = createEntity(create(test), adminAuthHeaders());
+    deleteEntity(ingestion.getId(), adminAuthHeaders());
   }
 
   @Test
@@ -275,23 +233,9 @@ public class IngestionResourceTest extends EntityResourceTest<Ingestion> {
     // TODO
   }
 
-  @Test
-  public void delete_nonExistentPipeline_404() {
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            deleteIngestion(TestUtils.NON_EXISTENT_ENTITY, adminAuthHeaders()));
-    assertResponse(exception, NOT_FOUND, entityNotFound(Entity.INGESTION, TestUtils.NON_EXISTENT_ENTITY));
-  }
-
-  public static Ingestion updateIngestion(CreateIngestion create,
-                                          Status status,
+  private Ingestion updateIngestion(CreateIngestion create, Status status,
                                           Map<String, String> authHeaders) throws HttpResponseException {
-    return TestUtils.put(getOperationsResource("ingestion"),
-            create, Ingestion.class, status, authHeaders);
-  }
-
-  public static Ingestion createIngestion(CreateIngestion create,
-                                          Map<String, String> authHeaders) throws HttpResponseException {
-    return TestUtils.post(getOperationsResource("ingestion"), create, Ingestion.class, authHeaders);
+    return TestUtils.put(getCollection(), create, Ingestion.class, status, authHeaders);
   }
 
   /**
@@ -301,37 +245,10 @@ public class IngestionResourceTest extends EntityResourceTest<Ingestion> {
   private void validateGetWithDifferentFields(Ingestion ingestion, boolean byName) throws HttpResponseException {
     // .../Pipelines?fields=owner
     String fields = "owner";
-    ingestion = byName ? getIngestionByName(ingestion.getFullyQualifiedName(), fields, adminAuthHeaders()) :
-            getIngestion(ingestion.getId(), fields, adminAuthHeaders());
+    ingestion = byName ? getEntityByName(ingestion.getFullyQualifiedName(), fields, adminAuthHeaders()) :
+            getEntity(ingestion.getId(), fields, adminAuthHeaders());
     assertNotNull(ingestion.getOwner());
     assertNotNull(ingestion.getService()); // We always return the service
-  }
-
-  public static void getIngestion(UUID id, Map<String, String> authHeaders) throws HttpResponseException {
-    getIngestion(id, null, authHeaders);
-  }
-
-  public static Ingestion getIngestion(UUID id, String fields, Map<String, String> authHeaders)
-          throws HttpResponseException {
-    WebTarget target = getOperationsResource("ingestion/" + id);
-    target = fields != null ? target.queryParam("fields", fields) : target;
-    return TestUtils.get(target, Ingestion.class, authHeaders);
-  }
-
-  public static Ingestion getIngestionByName(String fqn, String fields, Map<String, String> authHeaders)
-          throws HttpResponseException {
-    WebTarget target = getOperationsResource("ingestion/name/" + fqn);
-    target = fields != null ? target.queryParam("fields", fields) : target;
-    return TestUtils.get(target, Ingestion.class, authHeaders);
-  }
-
-  private void deleteIngestion(UUID id, Map<String, String> authHeaders) throws HttpResponseException {
-    TestUtils.delete(getOperationsResource("ingestion/" + id), authHeaders);
-
-    // Ensure deleted ingestion does not exist
-    HttpResponseException exception = assertThrows(HttpResponseException.class,
-            () -> getIngestion(id, authHeaders));
-    assertResponse(exception, NOT_FOUND, entityNotFound(Entity.INGESTION, id));
   }
 
   private CreateIngestion create(TestInfo test) {
@@ -341,29 +258,6 @@ public class IngestionResourceTest extends EntityResourceTest<Ingestion> {
   private CreateIngestion create(String entityName) {
     return new CreateIngestion().withName(entityName).withService(BIGQUERY_REFERENCE)
             .withConnectorConfig(INGESTION_CONFIG).withStartDate("2021-11-21").withOwner(TEAM_OWNER1);
-  }
-
-  @Override
-  protected final WebTarget getCollection() {
-    return getOperationsResource("ingestion");
-  }
-
-  @Override
-  protected final WebTarget getResource(UUID id) {
-    return getOperationsResource("ingestion" + "/" + id);
-  }
-
-  @Override
-  protected EntityHistory getVersionList(UUID id, Map<String, String> authHeaders) throws HttpResponseException {
-    WebTarget target = getOperationsResource("ingestion/" + id + "/versions");
-    return TestUtils.get(target, EntityHistory.class, authHeaders);
-  }
-
-  @Override
-  protected Ingestion getVersion(UUID id, Double version, Map<String, String> authHeaders)
-          throws HttpResponseException {
-    WebTarget target = getOperationsResource("ingestion/" + id + "/versions/" + version.toString());
-    return TestUtils.get(target, Ingestion.class, authHeaders);
   }
 }
 

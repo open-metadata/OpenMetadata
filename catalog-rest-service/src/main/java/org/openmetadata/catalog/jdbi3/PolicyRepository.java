@@ -13,12 +13,10 @@
 
 package org.openmetadata.catalog.jdbi3;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.policies.Policy;
-import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.resources.policies.PolicyResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
@@ -34,8 +32,6 @@ import java.text.ParseException;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
-
-import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 
 @Slf4j
 public class PolicyRepository extends EntityRepository<Policy> {
@@ -60,9 +56,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
     if (dao.relationshipDAO().findToCount(id.toString(), Relationship.CONTAINS.ordinal(), Entity.POLICY) > 0) {
       throw new IllegalArgumentException("Policy is not empty");
     }
-    if (dao.policyDAO().delete(id) <= 0) {
-      throw EntityNotFoundException.byMessage(entityNotFound(Entity.POLICY, id));
-    }
+    dao.policyDAO().delete(id);
     dao.relationshipDAO().deleteAll(id.toString());
   }
 

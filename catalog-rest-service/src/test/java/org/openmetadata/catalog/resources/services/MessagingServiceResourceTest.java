@@ -17,7 +17,6 @@ import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
-import org.openmetadata.catalog.CatalogApplicationTest;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.services.CreateMessagingService;
 import org.openmetadata.catalog.api.services.CreateMessagingService.MessagingServiceType;
@@ -35,14 +34,12 @@ import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
 import org.openmetadata.catalog.util.TestUtils.UpdateType;
 
-import javax.ws.rs.client.WebTarget;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.CONFLICT;
@@ -83,15 +80,6 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
     exception = assertThrows(HttpResponseException.class, () ->
             createEntity(create(test).withBrokers(null), adminAuthHeaders()));
     TestUtils.assertResponse(exception, BAD_REQUEST, "[brokers must not be null]");
-  }
-
-  @Test
-  public void post_serviceAlreadyExists_409(TestInfo test) throws HttpResponseException {
-    CreateMessagingService create = create(test);
-    createEntity(create, adminAuthHeaders());
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            createEntity(create, adminAuthHeaders()));
-    TestUtils.assertResponse(exception, CONFLICT, CatalogExceptionMessage.ENTITY_ALREADY_EXISTS);
   }
 
   @Test
@@ -230,33 +218,10 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
   }
 
   @Test
-  public void get_nonExistentService_404_notFound() {
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            getEntity(TestUtils.NON_EXISTENT_ENTITY, adminAuthHeaders()));
-    TestUtils.assertResponse(exception, NOT_FOUND, CatalogExceptionMessage.entityNotFound(Entity.MESSAGING_SERVICE,
-            TestUtils.NON_EXISTENT_ENTITY));
-  }
-
-  @Test
-  public void get_nonExistentServiceByName_404_notFound() {
-    HttpResponseException exception = assertThrows(HttpResponseException.class, ()
-            -> getServiceByName("invalidName", null, adminAuthHeaders()));
-    TestUtils.assertResponse(exception, NOT_FOUND, CatalogExceptionMessage.entityNotFound(Entity.MESSAGING_SERVICE,
-            "invalidName"));
-  }
-
-  public static MessagingService getServiceByName(String name, String fields, Map<String, String> authHeaders)
-          throws HttpResponseException {
-    WebTarget target = CatalogApplicationTest.getResource("services/messagingServices/name/" + name);
-    target = fields != null ? target.queryParam("fields", fields) : target;
-    return TestUtils.get(target, MessagingService.class, authHeaders);
-  }
-
-  @Test
   public void delete_ExistentMessagingService_as_admin_200(TestInfo test) throws HttpResponseException {
     Map<String, String> authHeaders = adminAuthHeaders();
     MessagingService messagingService = createEntity(create(test), authHeaders);
-    deleteService(messagingService.getId(), messagingService.getName(), authHeaders);
+    deleteEntity(messagingService.getId(), authHeaders);
   }
 
   @Test
@@ -264,8 +229,7 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
     Map<String, String> authHeaders = adminAuthHeaders();
     MessagingService messagingService = createEntity(create(test), authHeaders);
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            deleteService(messagingService.getId(), messagingService.getName(),
-                    authHeaders("test@open-metadata.org")));
+            deleteEntity(messagingService.getId(), authHeaders("test@open-metadata.org")));
     TestUtils.assertResponse(exception, FORBIDDEN,
             "Principal: CatalogPrincipal{name='test'} is not admin");
   }
@@ -276,20 +240,6 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
             getEntity(TestUtils.NON_EXISTENT_ENTITY, adminAuthHeaders()));
     TestUtils.assertResponse(exception, NOT_FOUND,
             CatalogExceptionMessage.entityNotFound(Entity.MESSAGING_SERVICE, TestUtils.NON_EXISTENT_ENTITY));
-  }
-
-  private void deleteService(UUID id, String name, Map<String, String> authHeaders) throws HttpResponseException {
-    TestUtils.delete(CatalogApplicationTest.getResource("services/messagingServices/" + id), authHeaders);
-
-    // Ensure deleted service does not exist
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () -> getEntity(id, authHeaders));
-    TestUtils.assertResponse(exception, NOT_FOUND,
-            CatalogExceptionMessage.entityNotFound(Entity.MESSAGING_SERVICE, id));
-
-    // Ensure deleted service does not exist when getting by name
-    exception = assertThrows(HttpResponseException.class, () -> getServiceByName(name, null, authHeaders));
-    TestUtils.assertResponse(exception, NOT_FOUND,
-            CatalogExceptionMessage.entityNotFound(Entity.MESSAGING_SERVICE, name));
   }
 
   private CreateMessagingService create(TestInfo test) {

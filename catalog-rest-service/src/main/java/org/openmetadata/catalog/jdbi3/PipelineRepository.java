@@ -19,7 +19,6 @@ import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Pipeline;
 import org.openmetadata.catalog.entity.services.PipelineService;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
-import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.jdbi3.PipelineServiceRepository.PipelineServiceEntityInterface;
 import org.openmetadata.catalog.resources.pipelines.PipelineResource;
 import org.openmetadata.catalog.type.ChangeDescription;
@@ -43,8 +42,6 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
-
 public class PipelineRepository extends EntityRepository<Pipeline> {
   private static final Fields PIPELINE_UPDATE_FIELDS = new Fields(PipelineResource.FIELD_LIST,
           "owner,tags,tasks");
@@ -67,9 +64,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     if (dao.relationshipDAO().findToCount(id.toString(), Relationship.CONTAINS.ordinal(), Entity.PIPELINE) > 0) {
       throw new IllegalArgumentException("Pipeline is not empty");
     }
-    if (dao.pipelineDAO().delete(id) <= 0) {
-      throw EntityNotFoundException.byMessage(entityNotFound(Entity.PIPELINE, id));
-    }
+    dao.pipelineDAO().delete(id);
     dao.relationshipDAO().deleteAll(id.toString());
   }
 
