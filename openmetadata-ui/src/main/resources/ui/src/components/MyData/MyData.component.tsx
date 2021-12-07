@@ -18,6 +18,10 @@ import React, {
   useRef,
   useState,
 } from 'react';
+import { Link } from 'react-router-dom';
+import { getExplorePathWithSearch } from '../../constants/constants';
+import { Ownership } from '../../enums/mydata.enum';
+import { getCurrentUserId } from '../../utils/CommonUtils';
 import { getSummary } from '../../utils/EntityVersionUtils';
 import { dropdownIcon as DropDownIcon } from '../../utils/svgconstant';
 import { Button } from '../buttons/Button/Button';
@@ -84,6 +88,10 @@ const MyData: React.FC<MyDataProps> = ({
     );
   };
 
+  const getLinkByFilter = (filter: Ownership) => {
+    return `${getExplorePathWithSearch()}?${filter}=${getCurrentUserId()}`;
+  };
+
   const getLeftPanel = () => {
     return (
       <div className="tw-mt-5">
@@ -110,9 +118,11 @@ const MyData: React.FC<MyDataProps> = ({
             <div className="tw-flex tw-justify-between">
               My Data
               {ownedData.length ? (
-                <span className="link-text tw-font-light tw-text-xs">
-                  View All
-                </span>
+                <Link to={getLinkByFilter(Ownership.OWNER)}>
+                  <span className="link-text tw-font-light tw-text-xs">
+                    View All
+                  </span>
+                </Link>
               ) : null}
             </div>
           }
@@ -125,9 +135,11 @@ const MyData: React.FC<MyDataProps> = ({
             <div className="tw-flex tw-justify-between">
               Following
               {followedData.length ? (
-                <span className="link-text tw-font-light tw-text-xs">
-                  View All
-                </span>
+                <Link to={getLinkByFilter(Ownership.FOLLOWERS)}>
+                  <span className="link-text tw-font-light tw-text-xs">
+                    View All
+                  </span>
+                </Link>
               ) : null}
             </div>
           }
@@ -148,12 +160,16 @@ const MyData: React.FC<MyDataProps> = ({
       }))
       .map((d) => {
         return (
-          d.changeDescriptions.map((change) => ({
-            updatedBy: change.updatedBy,
-            entityName: d.name,
-            description: <div>{getSummary(change, true)}</div>,
-            entityType: d.entityType,
-          })) || []
+          d.changeDescriptions
+            .filter((c) => c.fieldsAdded || c.fieldsDeleted || c.fieldsUpdated)
+            .map((change) => ({
+              updatedAt: change.updatedAt,
+              updatedBy: change.updatedBy,
+              entityName: d.name,
+              description: <div>{getSummary(change, true)}</div>,
+              entityType: d.entityType,
+              fqn: d.fqn,
+            })) || []
         );
       })
       .flat(1);

@@ -208,7 +208,7 @@ export const getSummary = (
       ) : null}
       {fieldsUpdated?.length ? (
         <p className="tw-mb-2">
-          {`${isPrefix ? 'Updated' : ''} ${fieldsUpdated
+          {`${isPrefix ? 'Edited' : ''} ${fieldsUpdated
             ?.map(summaryFormatter)
             .join(', ')} ${!isPrefix ? `has been updated` : ''}`}{' '}
         </p>
