@@ -355,15 +355,15 @@ const TeamsPage = () => {
   };
 
   useEffect(() => {
-    fetchTeams();
-  }, []);
-
-  useEffect(() => {
     setUserList(AppState.users);
   }, [AppState.users]);
 
   useEffect(() => {
-    fetchCurrentTeam(team);
+    if (team) {
+      fetchCurrentTeam(team);
+    } else {
+      fetchTeams();
+    }
     setCurrentTab(1);
   }, [team]);
 
