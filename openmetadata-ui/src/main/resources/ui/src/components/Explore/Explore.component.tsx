@@ -81,7 +81,7 @@ const Explore: React.FC<ExploreProps> = ({
   const location = useLocation();
   const history = useHistory();
   const filterObject: FilterObject = {
-    ...{ tags: [], service: [], tier: [] },
+    ...{ tags: [], service: [], tier: [], database: [] },
     ...getQueryParam(location.search),
   };
   const [data, setData] = useState<Array<FormatedTableData>>([]);
@@ -258,6 +258,15 @@ const Explore: React.FC<ExploreProps> = ({
         from: currentPage,
         size: ZERO_SIZE,
         filters: getFilterString(filters, ['tags']),
+        sortField: sortField,
+        sortOrder: sortOrder,
+        searchIndex: searchIndex,
+      },
+      {
+        queryString: searchText,
+        from: currentPage,
+        size: ZERO_SIZE,
+        filters: getFilterString(filters, ['database']),
         sortField: sortField,
         sortOrder: sortOrder,
         searchIndex: searchIndex,
@@ -476,8 +485,17 @@ const Explore: React.FC<ExploreProps> = ({
           searchResult.resAggTag.data.aggregations,
           'tags'
         );
+        const aggDatabase = getAggregationList(
+          searchResult.resAggTag.data.aggregations,
+          'database'
+        );
 
-        updateAggregationCount([...aggServiceType, ...aggTier, ...aggTag]);
+        updateAggregationCount([
+          ...aggServiceType,
+          ...aggTier,
+          ...aggTag,
+          ...aggDatabase,
+        ]);
       }
       setIsEntityLoading(false);
     }

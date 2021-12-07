@@ -43,6 +43,7 @@ const mockSearchResult = {
   resAggServiceType: mockResponse as unknown as SearchResponse,
   resAggTier: mockResponse as unknown as SearchResponse,
   resAggTag: mockResponse as unknown as SearchResponse,
+  resAggDatabase: mockResponse as unknown as SearchResponse,
 };
 
 describe('Test Explore component', () => {

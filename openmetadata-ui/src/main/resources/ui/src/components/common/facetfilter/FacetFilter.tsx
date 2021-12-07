@@ -31,6 +31,7 @@ const FacetFilter: FunctionComponent<FacetProp> = ({
   const [showAllTags, setShowAllTags] = useState<boolean>(false);
   const [showAllServices, setShowAllServices] = useState<boolean>(false);
   const [showAllTier, setShowAllTier] = useState<boolean>(false);
+  const [showAllDatabase, setShowAllDatabase] = useState<boolean>(false);
   const getLinkText = (
     length: number,
     state: boolean,
@@ -44,8 +45,8 @@ const FacetFilter: FunctionComponent<FacetProp> = ({
       )
     );
   };
-  const getSeparator = (length: number, index: number) => {
-    return length !== 1 && index < length - 1 ? (
+  const getSeparator = (length: number, index: number, flag: boolean) => {
+    return length !== 1 && index < length - 1 && flag ? (
       <div className="tw-filter-seperator" />
     ) : null;
   };
@@ -64,6 +65,8 @@ const FacetFilter: FunctionComponent<FacetProp> = ({
         return getLinkText(bucketLength, showAllTags, setShowAllTags);
       case 'Tier':
         return getLinkText(bucketLength, showAllTier, setShowAllTier);
+      case 'Database':
+        return getLinkText(bucketLength, showAllDatabase, setShowAllDatabase);
       default:
         return null;
     }
@@ -77,6 +80,8 @@ const FacetFilter: FunctionComponent<FacetProp> = ({
         return getBuckets(buckets, showAllTags);
       case 'Tier':
         return getBuckets(buckets, showAllTier);
+      case 'Database':
+        return getBuckets(buckets, showAllDatabase);
       default:
         return [];
     }
@@ -172,7 +177,11 @@ const FacetFilter: FunctionComponent<FacetProp> = ({
                 <div className="sidebar-my-data-holder mt-2 mb-3">
                   {getFilterItems(aggregation)}
                 </div>
-                {getSeparator(aggregations.length, index)}
+                {getSeparator(
+                  aggregations.length,
+                  index,
+                  aggregations[index + 1]?.buckets?.length > 0
+                )}
               </>
             ) : null}
           </Fragment>
