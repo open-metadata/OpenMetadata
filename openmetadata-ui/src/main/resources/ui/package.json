@@ -13,7 +13,7 @@
   },
   "dependencies": {
     "@craco/craco": "^5.8.0",
-    "@deuex-solutions/redoc": "2.0.0-rc.29",
+    "@deuex-solutions/redoc": "2.0.0-rc.30",
     "@fortawesome/fontawesome-free": "^5.15.1",
     "@testing-library/react": "^9.3.2",
     "@testing-library/user-event": "^7.1.2",
