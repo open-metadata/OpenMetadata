@@ -27,6 +27,7 @@ export interface MyDataProps {
   searchResult: SearchResponse | undefined;
   ownedData: Array<FormatedTableData>;
   followedData: Array<FormatedTableData>;
+  feedData: Array<FormatedTableData>;
   fetchData?: (value: SearchDataFunctionType) => void;
   entityCounts: EntityCounts;
 }

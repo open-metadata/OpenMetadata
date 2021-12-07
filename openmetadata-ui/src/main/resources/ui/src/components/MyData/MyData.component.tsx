@@ -18,6 +18,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
+import { getSummary } from '../../utils/EntityVersionUtils';
 import { dropdownIcon as DropDownIcon } from '../../utils/svgconstant';
 import { Button } from '../buttons/Button/Button';
 import ErrorPlaceHolderES from '../common/error-with-placeholder/ErrorPlaceHolderES';
@@ -43,10 +44,10 @@ const MyData: React.FC<MyDataProps> = ({
   ownedData,
   followedData,
   entityCounts,
+  feedData,
 }: MyDataProps): React.ReactElement => {
   const [filter, setFilter] = useState<string>('all');
   const [fieldListVisible, setFieldListVisible] = useState<boolean>(false);
-
   const isMounted = useRef(false);
 
   const handleDropDown = (
@@ -137,6 +138,29 @@ const MyData: React.FC<MyDataProps> = ({
     );
   }, [ownedData, followedData]);
 
+  const getFeedsData = useCallback(() => {
+    const data = feedData
+      .map((f) => ({
+        name: f.name,
+        fqn: f.fullyQualifiedName,
+        entityType: f.entityType,
+        changeDescriptions: f.changeDescriptions,
+      }))
+      .map((d) => {
+        return (
+          d?.changeDescriptions?.map((change) => ({
+            updatedBy: change.updatedBy,
+            entityName: d.name,
+            description: <div>{getSummary(change, true)}</div>,
+            entityType: d.entityType as string,
+          })) || []
+        );
+      })
+      .flat(1);
+
+    return data;
+  }, [feedData]);
+
   useEffect(() => {
     isMounted.current = true;
   }, []);
@@ -148,7 +172,7 @@ const MyData: React.FC<MyDataProps> = ({
       {error ? (
         <ErrorPlaceHolderES errorMessage={error} type="error" />
       ) : (
-        <FeedCards />
+        <FeedCards feeds={getFeedsData()} />
       )}
     </PageLayout>
   );

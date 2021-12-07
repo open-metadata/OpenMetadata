@@ -262,6 +262,7 @@ describe('Test MyData page', () => {
           pipelineCount: 1,
         }}
         error=""
+        feedData={formatDataResponse(mockData.data.hits.hits)}
         fetchData={fetchData}
         followedData={formatDataResponse(mockData.data.hits.hits)}
         ingestionCount={0}

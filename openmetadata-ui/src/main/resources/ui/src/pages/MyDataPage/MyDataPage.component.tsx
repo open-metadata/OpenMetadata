@@ -46,6 +46,7 @@ const MyDataPage = () => {
 
   const [ownedData, setOwnedData] = useState<Array<FormatedTableData>>();
   const [followedData, setFollowedData] = useState<Array<FormatedTableData>>();
+  const [feedData, setFeedData] = useState<Array<FormatedTableData>>();
 
   const fetchData = (fetchService = false) => {
     setError('');
@@ -98,8 +99,18 @@ const MyDataPage = () => {
       myDataSearchIndex
     );
 
-    Promise.allSettled([ownedEntity, followedEntity]).then(
-      ([resOwnedEntity, resFollowedEntity]) => {
+    const feedEntity = searchData(
+      '',
+      1,
+      20,
+      '',
+      'last_updated_timestamp',
+      '',
+      myDataSearchIndex
+    );
+
+    Promise.allSettled([ownedEntity, followedEntity, feedEntity]).then(
+      ([resOwnedEntity, resFollowedEntity, resFeedEntity]) => {
         if (resOwnedEntity.status === 'fulfilled') {
           setOwnedData(formatDataResponse(resOwnedEntity.value.data.hits.hits));
         }
@@ -107,6 +118,9 @@ const MyDataPage = () => {
           setFollowedData(
             formatDataResponse(resFollowedEntity.value.data.hits.hits)
           );
+        }
+        if (resFeedEntity.status === 'fulfilled') {
+          setFeedData(formatDataResponse(resFeedEntity.value.data.hits.hits));
         }
       }
     );
@@ -136,6 +150,7 @@ const MyDataPage = () => {
           countServices={countServices}
           entityCounts={entityCounts}
           error={error}
+          feedData={feedData || []}
           followedData={followedData || []}
           ingestionCount={ingestionCount}
           ownedData={ownedData || []}
