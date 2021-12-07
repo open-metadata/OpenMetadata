@@ -1,11 +1,8 @@
 /*
- *  Licensed to the Apache Software Foundation (ASF) under one or more
- *  contributor license agreements. See the NOTICE file distributed with
- *  this work for additional information regarding copyright ownership.
- *  The ASF licenses this file to You under the Apache License, Version 2.0
- *  (the "License"); you may not use this file except in compliance with
- *  the License. You may obtain a copy of the License at
- *
+ *  Copyright 2021 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
  *  http://www.apache.org/licenses/LICENSE-2.0
  *  Unless required by applicable law or agreed to in writing, software
  *  distributed under the License is distributed on an "AS IS" BASIS,
@@ -21,6 +18,7 @@ import org.jdbi.v3.sqlobject.customizer.Bind;
 import org.jdbi.v3.sqlobject.customizer.Define;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
+import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.type.EntityReference;
@@ -111,7 +109,8 @@ public interface EntityDAO<T> {
       entity = JsonUtils.readValue(json, clz);
     }
     if (entity == null) {
-      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(clz.getSimpleName(), id));
+      String entityName = Entity.getEntityNameFromClass(clz);
+      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(entityName, id));
     }
     return entity;
   }
@@ -124,7 +123,8 @@ public interface EntityDAO<T> {
       entity = JsonUtils.readValue(json, clz);
     }
     if (entity == null) {
-      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(clz.getSimpleName(), fqn));
+      String entityName = Entity.getEntityNameFromClass(clz);
+      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(entityName, fqn));
     }
     return entity;
   }
@@ -164,7 +164,8 @@ public interface EntityDAO<T> {
   default int delete(UUID id) {
     int rowsDeleted = delete(getTableName(), id.toString());
     if (rowsDeleted <= 0) {
-      throw EntityNotFoundException.byMessage(entityNotFound(getEntityClass().getSimpleName(), id));
+      String entityName = Entity.getEntityNameFromClass(getEntityClass());
+      throw EntityNotFoundException.byMessage(entityNotFound(entityName, id));
     }
     return rowsDeleted;
   }

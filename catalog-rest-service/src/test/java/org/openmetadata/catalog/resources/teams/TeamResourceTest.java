@@ -1,11 +1,8 @@
 /*
- *  Licensed to the Apache Software Foundation (ASF) under one or more
- *  contributor license agreements. See the NOTICE file distributed with
- *  this work for additional information regarding copyright ownership.
- *  The ASF licenses this file to You under the Apache License, Version 2.0
- *  (the "License"); you may not use this file except in compliance with
- *  the License. You may obtain a copy of the License at
- *
+ *  Copyright 2021 Collate 
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
  *  http://www.apache.org/licenses/LICENSE-2.0
  *  Unless required by applicable law or agreed to in writing, software
  *  distributed under the License is distributed on an "AS IS" BASIS,
@@ -53,13 +50,11 @@ import java.util.UUID;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.CONFLICT;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
-import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.catalog.resources.teams.UserResourceTest.createUser;
 import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
@@ -72,31 +67,6 @@ public class TeamResourceTest extends EntityResourceTest<Team> {
   public TeamResourceTest() {
     super(Entity.TEAM, Team.class, TeamList.class, "teams", TeamResource.FIELDS,
             false, false, false);
-  }
-
-  @Test
-  public void post_teamWithLongName_400_badRequest(TestInfo test) {
-    // Create team with mandatory name field empty
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-                    createTeam(create(test).withName(TestUtils.LONG_ENTITY_NAME), adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, "[name size must be between 1 and 64]");
-  }
-
-  @Test
-  public void post_teamWithoutName_400_badRequest(TestInfo test) {
-    // Create team with mandatory name field empty
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            createTeam(create(test).withName(""), adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, "[name size must be between 1 and 64]");
-  }
-
-  @Test
-  public void post_teamAlreadyExists_409_conflict(TestInfo test) throws HttpResponseException {
-    CreateTeam create = create(test);
-    createTeam(create, adminAuthHeaders());
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            createTeam(create, adminAuthHeaders()));
-    assertResponse(exception, CONFLICT, CatalogExceptionMessage.ENTITY_ALREADY_EXISTS);
   }
 
   @Test
@@ -131,9 +101,10 @@ public class TeamResourceTest extends EntityResourceTest<Team> {
   @Test
   public void post_teamWithUsers_200_OK(TestInfo test) throws IOException {
     // Add team to user relationships while creating a team
-    User user1 = createUser(UserResourceTest.create(test, 1),
+    UserResourceTest userResourceTest = new UserResourceTest();
+    User user1 = createUser(userResourceTest.create(test, 1),
             authHeaders("test@open-metadata.org"));
-    User user2 = createUser(UserResourceTest.create(test, 2),
+    User user2 = createUser(userResourceTest.create(test, 2),
             authHeaders("test@open-metadata.org"));
     List<UUID> users = Arrays.asList(user1.getId(), user2.getId());
     CreateTeam create = create(test).withDisplayName("displayName").withDescription("description")
@@ -148,27 +119,9 @@ public class TeamResourceTest extends EntityResourceTest<Team> {
   }
 
   @Test
-  public void get_nonExistentTeam_404_notFound() {
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            getTeam(TestUtils.NON_EXISTENT_ENTITY, adminAuthHeaders()));
-    assertResponse(exception, NOT_FOUND, entityNotFound("Team", TestUtils.NON_EXISTENT_ENTITY));
-  }
-
-  @Test
-  public void get_teamWithDifferentFields_200_OK(TestInfo test) throws HttpResponseException {
-    User user1 = createUser(UserResourceTest.create(test, 1),
-            authHeaders("test@open-metadata.org"));
-    List<UUID> users = Collections.singletonList(user1.getId());
-
-    CreateTeam create = create(test).withDisplayName("displayName").withDescription("description")
-            .withProfile(PROFILE).withUsers(users);
-    Team team = createTeam(create, adminAuthHeaders());
-    validateGetWithDifferentFields(team, false, adminAuthHeaders());
-  }
-
-  @Test
   public void get_teamByNameWithDifferentFields_200_OK(TestInfo test) throws HttpResponseException {
-    User user1 = createUser(UserResourceTest.create(test), adminAuthHeaders());
+    UserResourceTest userResourceTest = new UserResourceTest();
+    User user1 = createUser(userResourceTest.create(test), adminAuthHeaders());
     List<UUID> users = Collections.singletonList(user1.getId());
 
     CreateTeam create = create(test).withDisplayName("displayName").withDescription("description")
@@ -200,16 +153,12 @@ public class TeamResourceTest extends EntityResourceTest<Team> {
 
   @Test
   public void delete_validTeam_200_OK(TestInfo test) throws IOException {
-    User user1 = createUser(UserResourceTest.create(test, 1), adminAuthHeaders());
+    UserResourceTest userResourceTest = new UserResourceTest();
+    User user1 = createUser(userResourceTest.create(test, 1), adminAuthHeaders());
     List<UUID> users = Collections.singletonList(user1.getId());
     CreateTeam create = create(test).withUsers(users);
     Team team = createAndCheckEntity(create, adminAuthHeaders());
-    deleteTeam(team.getId(), adminAuthHeaders());
-
-    // Make sure team is no longer there
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            getTeam(team.getId(), adminAuthHeaders()));
-    assertResponse(exception, NOT_FOUND, entityNotFound("Team", team.getId()));
+    deleteEntity(team.getId(), adminAuthHeaders());
 
     // Make sure user does not have relationship to this team
     User user = UserResourceTest.getUser(user1.getId(), "teams", adminAuthHeaders());
@@ -218,22 +167,15 @@ public class TeamResourceTest extends EntityResourceTest<Team> {
 
   @Test
   public void delete_validTeam_as_non_admin_401(TestInfo test) throws IOException {
-    User user1 = createUser(UserResourceTest.create(test, 1),
+    UserResourceTest userResourceTest = new UserResourceTest();
+    User user1 = createUser(userResourceTest.create(test, 1),
             authHeaders("test@open-metadata.org"));
     List<UUID> users = Collections.singletonList(user1.getId());
     CreateTeam create = create(test).withUsers(users);
     Team team = createAndCheckEntity(create, adminAuthHeaders());
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            deleteTeam(team.getId(), authHeaders("test@open-metadata.org")));
+            deleteEntity(team.getId(), authHeaders("test@open-metadata.org")));
     assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
-  }
-
-
-  @Test
-  public void delete_nonExistentTeam_404_notFound() {
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            deleteTeam(TestUtils.NON_EXISTENT_ENTITY, adminAuthHeaders()));
-    assertResponse(exception, NOT_FOUND, entityNotFound("Team", TestUtils.NON_EXISTENT_ENTITY));
   }
 
   @Test
@@ -317,10 +259,6 @@ public class TeamResourceTest extends EntityResourceTest<Team> {
     return TestUtils.post(CatalogApplicationTest.getResource("teams"), create, Team.class, authHeaders);
   }
 
-  public static Team getTeam(UUID id, Map<String, String> authHeaders) throws HttpResponseException {
-    return getTeam(id, null, authHeaders);
-  }
-
   public static Team getTeam(UUID id, String fields, Map<String, String> authHeaders) throws HttpResponseException {
     WebTarget target = CatalogApplicationTest.getResource("teams/" + id);
     target = fields != null ? target.queryParam("fields", fields) : target;
@@ -386,25 +324,21 @@ public class TeamResourceTest extends EntityResourceTest<Team> {
     return patchTeam(updated.getId(), originalJson, updated, authHeaders);
   }
 
-  public void deleteTeam(UUID id, Map<String, String> authHeaders) throws HttpResponseException {
-    TestUtils.delete(CatalogApplicationTest.getResource("teams/" + id), authHeaders);
+  CreateTeam create(TestInfo test, int index) {
+    return new CreateTeam().withName(getEntityName(test) + index);
   }
 
-  public static CreateTeam create(TestInfo test, int index) {
-    return new CreateTeam().withName(getTeamName(test) + index);
+  public CreateTeam create(TestInfo test) {
+    return create(getEntityName(test));
   }
 
-  public static CreateTeam create(TestInfo test) {
-    return new CreateTeam().withName(getTeamName(test));
-  }
-
-  public static String getTeamName(TestInfo test) {
-    return String.format("team_%s", test.getDisplayName());
+  public CreateTeam create(String entityName) {
+    return new CreateTeam().withName(entityName);
   }
 
   @Override
-  public Object createRequest(TestInfo test, int index, String description, String displayName, EntityReference owner) {
-    return create(test, index).withDescription(description).withDisplayName(displayName);
+  public Object createRequest(String name, String description, String displayName, EntityReference owner) {
+    return create(name).withDescription(description).withDisplayName(displayName);
   }
 
   @Override

@@ -1,12 +1,8 @@
-#  Licensed to the Apache Software Foundation (ASF) under one or more
-#  contributor license agreements. See the NOTICE file distributed with
-#  this work for additional information regarding copyright ownership.
-#  The ASF licenses this file to You under the Apache License, Version 2.0
-#  (the "License"); you may not use this file except in compliance with
-#  the License. You may obtain a copy of the License at
-#
+#  Copyright 2021 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
 #  http://www.apache.org/licenses/LICENSE-2.0
-#
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -17,48 +13,39 @@ import csv
 import json
 import logging
 import os
-import random
 import uuid
 from collections import namedtuple
 from dataclasses import dataclass, field
 from typing import Any, Dict, Iterable, List, Union
 
-from faker import Faker
 from pydantic import ValidationError
 
 from metadata.config.common import ConfigModel
 from metadata.generated.schema.api.data.createTopic import CreateTopicEntityRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineage
-from metadata.generated.schema.api.services.createDashboardService import (
-    CreateDashboardServiceEntityRequest,
-)
-from metadata.generated.schema.api.services.createDatabaseService import (
-    CreateDatabaseServiceEntityRequest,
-)
-from metadata.generated.schema.api.services.createMessagingService import (
-    CreateMessagingServiceEntityRequest,
-)
-from metadata.generated.schema.api.services.createPipelineService import (
-    CreatePipelineServiceEntityRequest,
-)
 from metadata.generated.schema.entity.data.database import Database
-from metadata.generated.schema.entity.data.mlmodel import MLModel
+from metadata.generated.schema.entity.data.location import Location, LocationType
+from metadata.generated.schema.entity.data.mlmodel import MlModel
 from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.data.table import Table
-from metadata.generated.schema.entity.services.dashboardService import DashboardService
-from metadata.generated.schema.entity.services.databaseService import DatabaseService
-from metadata.generated.schema.entity.services.messagingService import MessagingService
-from metadata.generated.schema.entity.services.pipelineService import PipelineService
+from metadata.generated.schema.entity.teams.user import User
+from metadata.generated.schema.type.basic import Href
 from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.common import Record
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.models.table_metadata import Chart, Dashboard
-from metadata.ingestion.models.user import User
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
-from metadata.utils.helpers import get_database_service_or_create
+from metadata.utils.helpers import (
+    get_dashboard_service_or_create,
+    get_database_service_or_create,
+    get_database_service_or_create_v2,
+    get_messaging_service_or_create,
+    get_pipeline_service_or_create,
+    get_storage_service_or_create,
+)
 
 logger: logging.Logger = logging.getLogger(__name__)
 
@@ -73,54 +60,6 @@ class InvalidSampleDataException(Exception):
     """
     Sample data is not valid to be ingested
     """
-
-
-def get_database_service_or_create(service_json, metadata_config) -> DatabaseService:
-    metadata = OpenMetadata(metadata_config)
-    service = metadata.get_by_name(entity=DatabaseService, fqdn=service_json["name"])
-    if service is not None:
-        return service
-    else:
-        created_service = metadata.create_or_update(
-            CreateDatabaseServiceEntityRequest(**service_json)
-        )
-        return created_service
-
-
-def get_messaging_service_or_create(service_json, metadata_config) -> MessagingService:
-    metadata = OpenMetadata(metadata_config)
-    service = metadata.get_by_name(entity=MessagingService, fqdn=service_json["name"])
-    if service is not None:
-        return service
-    else:
-        created_service = metadata.create_or_update(
-            CreateMessagingServiceEntityRequest(**service_json)
-        )
-        return created_service
-
-
-def get_dashboard_service_or_create(service_json, metadata_config) -> DashboardService:
-    metadata = OpenMetadata(metadata_config)
-    service = metadata.get_by_name(entity=DashboardService, fqdn=service_json["name"])
-    if service is not None:
-        return service
-    else:
-        created_service = metadata.create_or_update(
-            CreateDashboardServiceEntityRequest(**service_json)
-        )
-        return created_service
-
-
-def get_pipeline_service_or_create(service_json, metadata_config) -> PipelineService:
-    metadata = OpenMetadata(metadata_config)
-    service = metadata.get_by_name(entity=PipelineService, fqdn=service_json["name"])
-    if service is not None:
-        return service
-    else:
-        created_service = metadata.create_or_update(
-            CreatePipelineServiceEntityRequest(**service_json)
-        )
-        return created_service
 
 
 def get_lineage_entity_ref(edge, metadata_config) -> EntityReference:
@@ -151,10 +90,14 @@ class SampleDataSourceConfig(ConfigModel):
     service_name: str = "bigquery_gcp"
     database: str = "warehouse"
     service_type: str = "BigQuery"
-    scheme = "bigquery+pymysql"
+    scheme: str = "bigquery+pymysql"
+    host_port: str = "9999"
 
     def get_sample_data_folder(self):
         return self.sample_data_folder
+
+    def get_service_type(self):
+        return self.service_type
 
 
 @dataclass
@@ -217,58 +160,6 @@ class SampleTableMetadataGenerator:
         return data
 
 
-class GenerateFakeSampleData:
-    def __init__(self) -> None:
-        pass
-
-    @classmethod
-    def check_columns(self, columns):
-        fake = Faker()
-        colData = []
-        colList = [column["name"] for column in columns]
-        for i in range(25):
-            row = []
-            for column in columns:
-                col_name = column["name"]
-                value = None
-                if "id" in col_name:
-                    value = uuid.uuid4()
-                elif "price" in col_name or "currency" in col_name:
-                    value = fake.pricetag()
-                elif "barcode" in col_name:
-                    value = fake.ean(length=13)
-                elif "phone" in col_name:
-                    value = fake.phone_number()
-                elif "zip" in col_name:
-                    value = fake.postcode()
-                elif "address" in col_name:
-                    value = fake.street_address()
-                elif "company" in col_name:
-                    value = fake.company()
-                elif "region" in col_name:
-                    value = fake.street_address()
-                elif "name" in col_name:
-                    value = fake.first_name()
-                elif "city" in col_name:
-                    value = fake.city()
-                elif "country" in col_name:
-                    value = fake.country()
-                if value is None:
-                    if "TIMESTAMP" in column["dataType"] or "date" in col_name:
-                        value = fake.unix_time()
-                    elif "BOOLEAN" in column["dataType"]:
-                        value = fake.pybool()
-                    elif "NUMERIC" in column["dataType"]:
-                        value = fake.pyint()
-                    elif "VARCHAR" in column["dataType"]:
-                        value = fake.text(max_nb_chars=20)
-                    else:
-                        value = None
-                row.append(value)
-            colData.append(row)
-        return {"columns": colList, "rows": colData}
-
-
 class SampleDataSource(Source):
     def __init__(
         self, config: SampleDataSourceConfig, metadata_config: MetadataServerConfig, ctx
@@ -278,6 +169,36 @@ class SampleDataSource(Source):
         self.config = config
         self.metadata_config = metadata_config
         self.metadata = OpenMetadata(metadata_config)
+        self.storage_service_json = json.load(
+            open(self.config.sample_data_folder + "/locations/service.json", "r")
+        )
+        self.locations = json.load(
+            open(self.config.sample_data_folder + "/locations/locations.json", "r")
+        )
+        self.storage_service = get_storage_service_or_create(
+            self.storage_service_json,
+            metadata_config,
+        )
+        self.glue_storage_service_json = json.load(
+            open(self.config.sample_data_folder + "/glue/storage_service.json", "r")
+        )
+        self.glue_database_service_json = json.load(
+            open(self.config.sample_data_folder + "/glue/database_service.json", "r")
+        )
+        self.glue_database = json.load(
+            open(self.config.sample_data_folder + "/glue/database.json", "r")
+        )
+        self.glue_tables = json.load(
+            open(self.config.sample_data_folder + "/glue/tables.json", "r")
+        )
+        self.glue_database_service = get_database_service_or_create_v2(
+            self.glue_database_service_json,
+            metadata_config,
+        )
+        self.glue_storage_service = get_storage_service_or_create(
+            self.glue_storage_service_json,
+            metadata_config,
+        )
         self.database_service_json = json.load(
             open(self.config.sample_data_folder + "/datasets/service.json", "r")
         )
@@ -288,7 +209,7 @@ class SampleDataSource(Source):
             open(self.config.sample_data_folder + "/datasets/tables.json", "r")
         )
         self.database_service = get_database_service_or_create(
-            self.database_service_json, self.metadata_config
+            config, self.metadata_config
         )
         self.kafka_service_json = json.load(
             open(self.config.sample_data_folder + "/topics/service.json", "r")
@@ -297,7 +218,11 @@ class SampleDataSource(Source):
             open(self.config.sample_data_folder + "/topics/topics.json", "r")
         )
         self.kafka_service = get_messaging_service_or_create(
-            self.kafka_service_json, self.metadata_config
+            self.kafka_service_json.get("name"),
+            self.kafka_service_json.get("serviceType"),
+            self.kafka_service_json.get("schemaRegistry"),
+            self.kafka_service_json.get("brokers"),
+            self.metadata_config,
         )
         self.dashboard_service_json = json.load(
             open(self.config.sample_data_folder + "/dashboards/service.json", "r")
@@ -309,7 +234,12 @@ class SampleDataSource(Source):
             open(self.config.sample_data_folder + "/dashboards/dashboards.json", "r")
         )
         self.dashboard_service = get_dashboard_service_or_create(
-            self.dashboard_service_json, metadata_config
+            self.dashboard_service_json.get("name"),
+            self.dashboard_service_json.get("serviceType"),
+            self.dashboard_service_json.get("username"),
+            self.dashboard_service_json.get("password"),
+            self.dashboard_service_json.get("dashboardUrl"),
+            metadata_config,
         )
         self.pipeline_service_json = json.load(
             open(self.config.sample_data_folder + "/pipelines/service.json", "r")
@@ -318,7 +248,8 @@ class SampleDataSource(Source):
             open(self.config.sample_data_folder + "/pipelines/pipelines.json", "r")
         )
         self.pipeline_service = get_pipeline_service_or_create(
-            self.pipeline_service_json, metadata_config
+            self.pipeline_service_json,
+            metadata_config,
         )
         self.lineage = json.load(
             open(self.config.sample_data_folder + "/lineage/lineage.json", "r")
@@ -340,6 +271,8 @@ class SampleDataSource(Source):
         pass
 
     def next_record(self) -> Iterable[Record]:
+        yield from self.ingest_locations()
+        yield from self.ingest_glue()
         yield from self.ingest_tables()
         yield from self.ingest_topics()
         yield from self.ingest_charts()
@@ -348,6 +281,48 @@ class SampleDataSource(Source):
         yield from self.ingest_lineage()
         yield from self.ingest_users()
         yield from self.ingest_mlmodels()
+
+    def ingest_locations(self) -> Iterable[Location]:
+        for location in self.locations["locations"]:
+            location_ev = Location(
+                id=uuid.uuid4(),
+                name=location["name"],
+                displayName=location["displayName"],
+                description=location["description"],
+                locationType=location["locationType"],
+                service=EntityReference(
+                    id=self.storage_service.id, type="storageService"
+                ),
+            )
+            yield location_ev
+
+    def ingest_glue(self) -> Iterable[OMetaDatabaseAndTable]:
+        db = Database(
+            id=uuid.uuid4(),
+            name=self.glue_database["name"],
+            description=self.glue_database["description"],
+            service=EntityReference(
+                id=self.glue_database_service.id,
+                type=self.glue_database_service.serviceType.value,
+            ),
+        )
+        for table in self.glue_tables["tables"]:
+            table["id"] = uuid.uuid4()
+            table_metadata = Table(**table)
+            location_metadata = Location(
+                id=uuid.uuid4(),
+                name="s3://glue_bucket/dwh/schema/" + table["name"],
+                description=table["description"],
+                locationType=LocationType.Table,
+                service=EntityReference(
+                    id=self.glue_storage_service.id, type="storageService"
+                ),
+            )
+            db_table_location = OMetaDatabaseAndTable(
+                database=db, table=table_metadata, location=location_metadata
+            )
+            self.status.scanned("table", table_metadata.name.__root__)
+            yield db_table_location
 
     def ingest_tables(self) -> Iterable[OMetaDatabaseAndTable]:
         db = Database(
@@ -359,10 +334,6 @@ class SampleDataSource(Source):
             ),
         )
         for table in self.tables["tables"]:
-            if not table.get("sampleData"):
-                table["sampleData"] = GenerateFakeSampleData.check_columns(
-                    table["columns"]
-                )
             table_metadata = Table(**table)
             table_and_db = OMetaDatabaseAndTable(table=table_metadata, database=db)
             self.status.scanned("table", table_metadata.name.__root__)
@@ -434,7 +405,7 @@ class SampleDataSource(Source):
             )
             yield lineage
 
-    def ingest_mlmodels(self) -> Iterable[MLModel]:
+    def ingest_mlmodels(self) -> Iterable[MlModel]:
         """
         Convert sample model data into a Model Entity
         to feed the metastore
@@ -453,7 +424,7 @@ class SampleDataSource(Source):
 
             dashboard_id = str(dashboard.id.__root__)
 
-            model_ev = MLModel(
+            model_ev = MlModel(
                 id=uuid.uuid4(),
                 name=model["name"],
                 displayName=model["displayName"],
@@ -466,16 +437,16 @@ class SampleDataSource(Source):
     def ingest_users(self) -> Iterable[User]:
         try:
             for user in self.users["users"]:
+                teams = [
+                    EntityReference(id=uuid.uuid4(), name=user["teams"], type="team")
+                ]
                 user_metadata = User(
+                    id=uuid.uuid4(),
+                    name=user["email"],
+                    displayName=user["displayName"],
                     email=user["email"],
-                    first_name=user["displayName"].split(" ")[0],
-                    last_name=user["displayName"].split(" ")[1],
-                    name=user["displayName"],
-                    updated_at=user["updatedAt"],
-                    github_username=user["name"],
-                    team_name=user["teams"],
-                    is_active=True,
-                    do_not_update_empty_attribute=0,
+                    teams=teams,
+                    href=Href(__root__="http://localhost"),
                 )
                 yield user_metadata
         except Exception as err:

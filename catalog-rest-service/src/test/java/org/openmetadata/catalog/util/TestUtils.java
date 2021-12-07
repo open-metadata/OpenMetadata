@@ -1,11 +1,8 @@
 /*
- *  Licensed to the Apache Software Foundation (ASF) under one or more
- *  contributor license agreements. See the NOTICE file distributed with
- *  this work for additional information regarding copyright ownership.
- *  The ASF licenses this file to You under the Apache License, Version 2.0
- *  (the "License"); you may not use this file except in compliance with
- *  the License. You may obtain a copy of the License at
- *
+ *  Copyright 2021 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
  *  http://www.apache.org/licenses/LICENSE-2.0
  *  Unless required by applicable law or agreed to in writing, software
  *  distributed under the License is distributed on an "AS IS" BASIS,
@@ -25,6 +22,7 @@ import org.openmetadata.catalog.resources.teams.UserResourceTest;
 import org.openmetadata.catalog.security.CatalogOpenIdAuthorizationRequestFilter;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.JdbcInfo;
+import org.openmetadata.catalog.type.Tag;
 import org.openmetadata.catalog.type.TagLabel;
 
 import javax.json.JsonObject;
@@ -54,7 +52,19 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public final class TestUtils {
   // Entity name length allowed is 64 characters. This is a 65 char length invalid entity name
-  public static final String LONG_ENTITY_NAME = "012345678901234567890123456789012345678901234567890123456789012345";
+  public static final int ENTITY_NAME_MAX_LEN = 128;
+  public static final String LONG_ENTITY_NAME;
+  static {
+    // Create an entity name with length longer than the
+    StringBuilder sb = new StringBuilder();
+    for (int i = 0; i <= ENTITY_NAME_MAX_LEN; i++) {
+      sb.append("1");
+    }
+    LONG_ENTITY_NAME = sb.toString();
+  }
+  public static final String ENTITY_NAME_LENGTH_ERROR = String.format("[name size must be between 1 and %d]",
+          ENTITY_NAME_MAX_LEN);
+
   public static final UUID NON_EXISTENT_ENTITY = UUID.randomUUID();
   public static JdbcInfo JDBC_INFO;
   public static URI DASHBOARD_URL;
@@ -222,13 +232,10 @@ public final class TestUtils {
     assertNotNull(ref.getName());
     assertNotNull(ref.getType());
     // Ensure data entities use fully qualified name
-    if (List.of("table", "database", "metrics", "dashboard", "pipeline", "report", "topic", "chart")
+    if (List.of("table", "database", "metrics", "dashboard", "pipeline", "report", "topic", "chart", "location")
             .contains(ref.getType())) {
       // FullyQualifiedName has "." as separator
       assertTrue(ref.getName().contains("."), "entity name is not fully qualified - " + ref.getName());
-    }
-    if (List.of("location").contains(ref.getName())) {
-      ref.getName().contains(":/"); // FullyQualifiedName has ":/" as separator
     }
   }
 
@@ -254,8 +261,13 @@ public final class TestUtils {
     // So add to the expectedList, the derived tags before validating the tags
     List<TagLabel> updatedExpectedList = new ArrayList<>(expectedList);
     for (TagLabel expected : expectedList) {
-      List<TagLabel> derived = EntityUtil.getDerivedTags(expected, TagResourceTest.getTag(expected.getTagFQN(),
-              adminAuthHeaders()));
+      Tag tag = TagResourceTest.getTag(expected.getTagFQN(), adminAuthHeaders());
+      List<TagLabel> derived = new ArrayList<>();
+      for (String fqn : Optional.ofNullable(tag.getAssociatedTags()).orElse(Collections.emptyList())) {
+        Tag associatedTag = TagResourceTest.getTag(fqn, adminAuthHeaders());
+        derived.add(new TagLabel().withTagFQN(fqn).withState(expected.getState())
+                .withDescription(associatedTag.getDescription()).withLabelType(TagLabel.LabelType.DERIVED));
+      }
       updatedExpectedList.addAll(derived);
     }
     updatedExpectedList = updatedExpectedList.stream().distinct().collect(Collectors.toList());
@@ -275,7 +287,6 @@ public final class TestUtils {
   public static void checkUserFollowing(UUID userId, UUID entityId, boolean expectedFollowing,
                                          Map<String, String> authHeaders) throws HttpResponseException {
     // GET .../users/{userId} shows user as following table
-    boolean following = false;
     User user = UserResourceTest.getUser(userId, "follows", authHeaders);
     existsInEntityReferenceList(user.getFollows(), entityId, expectedFollowing);
   }

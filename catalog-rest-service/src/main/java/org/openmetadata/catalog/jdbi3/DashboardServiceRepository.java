@@ -1,11 +1,8 @@
 /*
- *  Licensed to the Apache Software Foundation (ASF) under one or more
- *  contributor license agreements. See the NOTICE file distributed with
- *  this work for additional information regarding copyright ownership.
- *  The ASF licenses this file to You under the Apache License, Version 2.0
- *  (the "License"); you may not use this file except in compliance with
- *  the License. You may obtain a copy of the License at
- *
+ *  Copyright 2021 Collate 
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
  *  http://www.apache.org/licenses/LICENSE-2.0
  *  Unless required by applicable law or agreed to in writing, software
  *  distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,10 +13,10 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.services.DashboardService;
-import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.resources.services.dashboard.DashboardServiceResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
@@ -38,15 +35,13 @@ import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 
-import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
-
 
 public class DashboardServiceRepository extends EntityRepository<DashboardService> {
   private final CollectionDAO dao;
 
   public DashboardServiceRepository(CollectionDAO dao) {
-    super(DashboardServiceResource.COLLECTION_PATH, DashboardService.class, dao.dashboardServiceDAO(), dao,
-            Fields.EMPTY_FIELDS, Fields.EMPTY_FIELDS);
+    super(DashboardServiceResource.COLLECTION_PATH, Entity.DASHBOARD_SERVICE, DashboardService.class,
+            dao.dashboardServiceDAO(), dao, Fields.EMPTY_FIELDS, Fields.EMPTY_FIELDS);
     this.dao = dao;
   }
 
@@ -64,9 +59,7 @@ public class DashboardServiceRepository extends EntityRepository<DashboardServic
 
   @Transaction
   public void delete(UUID id) {
-    if (dao.dashboardServiceDAO().delete(id) <= 0) {
-      throw EntityNotFoundException.byMessage(entityNotFound(Entity.CHART, id));
-    }
+    dao.dashboardServiceDAO().delete(id);
     dao.relationshipDAO().deleteAll(id.toString());
   }
 
@@ -86,17 +79,27 @@ public class DashboardServiceRepository extends EntityRepository<DashboardServic
   }
 
   @Override
-  public void validate(DashboardService entity) throws IOException {
+  public void prepare(DashboardService entity) throws IOException {
     EntityUtil.validateIngestionSchedule(entity.getIngestionSchedule());
   }
 
   @Override
-  public void store(DashboardService entity, boolean update) throws IOException {
-    dao.dashboardServiceDAO().insert(entity);
+  public void storeEntity(DashboardService service, boolean update) throws IOException {
+    if (update) {
+      dao.dashboardServiceDAO().update(service.getId(), JsonUtils.pojoToJson(service));
+    } else {
+      dao.dashboardServiceDAO().insert(service);
+    }
   }
 
   @Override
   public void storeRelationships(DashboardService entity) throws IOException {
+  }
+
+  @Override
+  public EntityUpdater getUpdater(DashboardService original, DashboardService updated, boolean patchOperation)
+          throws IOException {
+    return new DashboardServiceUpdater(original, updated, patchOperation);
   }
 
   public static class DashboardServiceEntityInterface implements EntityInterface<DashboardService> {
@@ -192,5 +195,30 @@ public class DashboardServiceRepository extends EntityRepository<DashboardServic
 
     @Override
     public void setTags(List<TagLabel> tags) { }
+  }
+
+  public class DashboardServiceUpdater extends EntityUpdater {
+    public DashboardServiceUpdater(DashboardService original, DashboardService updated, boolean patchOperation) {
+      super(original, updated, patchOperation);
+    }
+
+    @Override
+    public void entitySpecificUpdate() throws IOException {
+      updateDashboardUrl();
+      updateIngestionSchedule();
+      recordChange("userName", original.getEntity().getUsername(), updated.getEntity().getUsername());
+      // TODO change recorded for password
+//      recordChange("password", original.getEntity().getPassword(), updated.getEntity().getPassword());
+    }
+
+    private void updateDashboardUrl() throws JsonProcessingException {
+      recordChange("dashboardUrl", original.getEntity().getDashboardUrl(), updated.getEntity().getDashboardUrl());
+    }
+
+    private void updateIngestionSchedule() throws JsonProcessingException {
+      Schedule origSchedule = original.getEntity().getIngestionSchedule();
+      Schedule updatedSchedule = updated.getEntity().getIngestionSchedule();
+      recordChange("ingestionSchedule", origSchedule, updatedSchedule, true);
+    }
   }
 }

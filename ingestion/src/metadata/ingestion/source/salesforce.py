@@ -1,12 +1,8 @@
-#  Licensed to the Apache Software Foundation (ASF) under one or more
-#  contributor license agreements. See the NOTICE file distributed with
-#  this work for additional information regarding copyright ownership.
-#  The ASF licenses this file to You under the Apache License, Version 2.0
-#  (the "License"); you may not use this file except in compliance with
-#  the License. You may obtain a copy of the License at
-#
+#  Copyright 2021 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
 #  http://www.apache.org/licenses/LICENSE-2.0
-#
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -18,7 +14,7 @@ import uuid
 from dataclasses import dataclass, field
 from typing import Iterable, List, Optional
 
-from pydantic import ValidationError
+from pydantic import SecretStr, ValidationError
 from simple_salesforce import Salesforce
 
 from metadata.ingestion.api.common import WorkflowContext
@@ -27,12 +23,7 @@ from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.utils.helpers import get_database_service_or_create
 
 from ...generated.schema.entity.data.database import Database
-from ...generated.schema.entity.data.table import (
-    Column,
-    ColumnConstraint,
-    Table,
-    TableData,
-)
+from ...generated.schema.entity.data.table import Column, Constraint, Table, TableData
 from ...generated.schema.type.entityReference import EntityReference
 from ..ometa.openmetadata_rest import MetadataServerConfig
 from .sql_source import SQLConnectionConfig
@@ -60,7 +51,7 @@ class SalesforceSourceStatus(SourceStatus):
 
 class SalesforceConfig(SQLConnectionConfig):
     username: str
-    password: str
+    password: SecretStr
     security_token: str
     host_port: Optional[str]
     scheme: str
@@ -81,7 +72,7 @@ class SalesforceSource(Source):
         self.status = SalesforceSourceStatus()
         self.sf = Salesforce(
             username=self.config.username,
-            password=self.config.password,
+            password=self.config.password.get_secret_value(),
             security_token=self.config.security_token,
         )
 
@@ -133,11 +124,11 @@ class SalesforceSource(Source):
             for column in md["fields"]:
                 col_constraint = None
                 if column["nillable"]:
-                    col_constraint = ColumnConstraint.NULL
+                    col_constraint = Constraint.NULL
                 elif not column["nillable"]:
-                    col_constraint = ColumnConstraint.NOT_NULL
+                    col_constraint = Constraint.NOT_NULL
                 if column["unique"]:
-                    col_constraint = ColumnConstraint.UNIQUE
+                    col_constraint = Constraint.UNIQUE
 
                 table_columns.append(
                     Column(

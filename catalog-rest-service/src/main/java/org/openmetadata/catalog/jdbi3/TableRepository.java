@@ -1,11 +1,8 @@
 /*
- *  Licensed to the Apache Software Foundation (ASF) under one or more
- *  contributor license agreements. See the NOTICE file distributed with
- *  this work for additional information regarding copyright ownership.
- *  The ASF licenses this file to You under the Apache License, Version 2.0
- *  (the "License"); you may not use this file except in compliance with
- *  the License. You may obtain a copy of the License at
- *
+ *  Copyright 2021 Collate 
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
  *  http://www.apache.org/licenses/LICENSE-2.0
  *  Unless required by applicable law or agreed to in writing, software
  *  distributed under the License is distributed on an "AS IS" BASIS,
@@ -20,10 +17,11 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import org.apache.commons.codec.binary.Hex;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
-import org.openmetadata.catalog.entity.data.Location;
 import org.openmetadata.catalog.entity.data.Table;
+import org.openmetadata.catalog.entity.services.DatabaseService;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
+import org.openmetadata.catalog.jdbi3.DatabaseServiceRepository.DatabaseServiceEntityInterface;
 import org.openmetadata.catalog.resources.databases.TableResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.Column;
@@ -32,11 +30,11 @@ import org.openmetadata.catalog.type.ColumnProfile;
 import org.openmetadata.catalog.type.DailyCount;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.JoinedWith;
+import org.openmetadata.catalog.type.SQLQuery;
 import org.openmetadata.catalog.type.TableConstraint;
 import org.openmetadata.catalog.type.TableData;
 import org.openmetadata.catalog.type.TableJoins;
 import org.openmetadata.catalog.type.TableProfile;
-import org.openmetadata.catalog.type.SQLQuery;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
@@ -46,7 +44,6 @@ import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.common.utils.CommonUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 
 import javax.ws.rs.core.Response.Status;
 import java.io.IOException;
@@ -75,43 +72,45 @@ public class TableRepository extends EntityRepository<Table> {
   static final Logger LOG = LoggerFactory.getLogger(TableRepository.class);
   // Table fields that can be patched in a PATCH request
   static final Fields TABLE_PATCH_FIELDS = new Fields(TableResource.FIELD_LIST,
-          "owner,columns,database,tags,tableConstraints");
+          "owner,columns,tags,tableConstraints");
   // Table fields that can be updated in a PUT request
   static final Fields TABLE_UPDATE_FIELDS = new Fields(TableResource.FIELD_LIST,
-          "owner,columns,database,tags,tableConstraints");
+          "owner,columns,tags,tableConstraints");
 
   private final CollectionDAO dao;
 
   public TableRepository(CollectionDAO dao) {
-    super(TableResource.COLLECTION_PATH, Table.class, dao.tableDAO(), dao, TABLE_PATCH_FIELDS, TABLE_UPDATE_FIELDS);
+    super(TableResource.COLLECTION_PATH, Entity.TABLE, Table.class, dao.tableDAO(), dao, TABLE_PATCH_FIELDS,
+            TABLE_UPDATE_FIELDS);
     this.dao = dao;
   }
 
   @Override
   public Table setFields(Table table, Fields fields) throws IOException, ParseException {
     table.setColumns(table.getColumns());
+    table.setDatabase(getDatabase(table.getId()));
+    table.setService(getService(table));
     table.setTableConstraints(fields.contains("tableConstraints") ? table.getTableConstraints() : null);
     table.setOwner(fields.contains("owner") ? getOwner(table) : null);
     table.setFollowers(fields.contains("followers") ? getFollowers(table) : null);
     table.setUsageSummary(fields.contains("usageSummary") ? EntityUtil.getLatestUsage(dao.usageDAO(), table.getId()) :
             null);
-    table.setDatabase(fields.contains("database") ? getDatabase(table.getId()) : null);
     table.setTags(fields.contains("tags") ? getTags(table.getFullyQualifiedName()) : null);
     getColumnTags(fields.contains("tags"), table.getColumns());
     table.setJoins(fields.contains("joins") ? getJoins(table) : null);
     table.setSampleData(fields.contains("sampleData") ? getSampleData(table) : null);
     table.setViewDefinition(fields.contains("viewDefinition") ? table.getViewDefinition() : null);
     table.setTableProfile(fields.contains("tableProfile") ? getTableProfile(table) : null);
-    table.setLocation(fields.contains("location") ? getLocation(table): null);
+    table.setLocation(fields.contains("location") ? getLocation(table.getId()): null);
     table.setTableQueries(fields.contains("tableQueries") ? getQueries(table): null);
     return table;
   }
 
   @Override
   public void restorePatchAttributes(Table original, Table updated) throws IOException, ParseException {
-    // Patch can't make changes to following fields. Ignore the changes
+    // Patch can't make changes to following fields. Ignore the changes.
     updated.withFullyQualifiedName(original.getFullyQualifiedName()).withName(original.getName())
-            .withDatabase(original.getDatabase()).withId(original.getId());
+            .withDatabase(original.getDatabase()).withService(original.getService()).withId(original.getId());
   }
 
   @Override
@@ -200,7 +199,8 @@ public class TableRepository extends EntityRepository<Table> {
     dao.locationDAO().findEntityById(locationId);
     // A table has only one location.
     dao.relationshipDAO().deleteFrom(tableId.toString(), Relationship.HAS.ordinal(), Entity.LOCATION);
-    dao.relationshipDAO().insert(tableId.toString(), locationId.toString(), Entity.DATABASE, Entity.LOCATION, Relationship.HAS.ordinal());
+    dao.relationshipDAO().insert(tableId.toString(), locationId.toString(), Entity.TABLE, Entity.LOCATION,
+            Relationship.HAS.ordinal());
     return OK;
   }
 
@@ -208,8 +208,8 @@ public class TableRepository extends EntityRepository<Table> {
   public void addQuery(UUID tableId, SQLQuery query) throws IOException {
     // Validate the request content
     try {
-       byte[] checksum = MessageDigest.getInstance("MD5").digest(query.getQuery().getBytes());
-       query.setChecksum(Hex.encodeHexString(checksum));
+      byte[] checksum = MessageDigest.getInstance("MD5").digest(query.getQuery().getBytes());
+      query.setChecksum(Hex.encodeHexString(checksum));
     } catch(NoSuchAlgorithmException e) {
       throw new RuntimeException(e);
     }
@@ -261,8 +261,9 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   @Override
-  public void validate(Table table) throws IOException {
+  public void prepare(Table table) throws IOException {
     table.setDatabase(dao.databaseDAO().findEntityReferenceById(table.getDatabase().getId()));
+    populateService(table);
 
     // Set data in table entity based on database relationship
     table.setFullyQualifiedName(getFQN(table));
@@ -278,15 +279,41 @@ public class TableRepository extends EntityRepository<Table> {
     addDerivedTags(table.getColumns());
   }
 
+  private DatabaseService getService(UUID serviceId, String entityType) throws IOException {
+    if (entityType.equalsIgnoreCase(Entity.DATABASE_SERVICE)) {
+      return dao.dbServiceDAO().findEntityById(serviceId);
+    }
+    throw new IllegalArgumentException(CatalogExceptionMessage.invalidServiceEntity(entityType, Entity.TABLE));
+  }
+
+  private EntityReference getService(Table table) throws IOException {
+    EntityReference ref = EntityUtil.getService(dao.relationshipDAO(), table.getDatabase().getId(),
+            Entity.DATABASE_SERVICE);
+    DatabaseService service = getService(ref.getId(), ref.getType());
+    ref.setName(service.getName());
+    ref.setDescription(service.getDescription());
+    return ref;
+  }
+
+  private void populateService(Table table) throws IOException {
+    // Find database service from the database that table is contained in
+    String serviceId = dao.relationshipDAO().findFrom(table.getDatabase().getId().toString(),
+            Relationship.CONTAINS.ordinal(), Entity.DATABASE_SERVICE).get(0);
+    DatabaseService service = dao.dbServiceDAO().findEntityById(UUID.fromString(serviceId));
+    table.setService(new DatabaseServiceEntityInterface(service).getEntityReference());
+    table.setServiceType(service.getServiceType());
+  }
+
   @Override
-  public void store(Table table, boolean update) throws IOException {
+  public void storeEntity(Table table, boolean update) throws IOException {
     // Relationships and fields such as href are derived and not stored as part of json
     EntityReference owner = table.getOwner();
     EntityReference database = table.getDatabase();
     List<TagLabel> tags = table.getTags();
+    EntityReference service = table.getService();
 
     // Don't store owner, database, href and tags as JSON. Build it on the fly based on relationships
-    table.withOwner(null).withDatabase(null).withHref(null).withTags(null);
+    table.withOwner(null).withDatabase(null).withHref(null).withTags(null).withService(null);
 
     // Don't store column tags as JSON but build it on the fly based on relationships
     List<Column> columnWithTags = table.getColumns();
@@ -300,8 +327,7 @@ public class TableRepository extends EntityRepository<Table> {
     }
 
     // Restore the relationships
-    table.withOwner(owner).withDatabase(database).withTags(tags);
-    table.setColumns(columnWithTags);
+    table.withOwner(owner).withDatabase(database).withTags(tags).withColumns(columnWithTags).withService(service);
   }
 
   @Override
@@ -350,7 +376,6 @@ public class TableRepository extends EntityRepository<Table> {
     // Add column level tags by adding tag to column relationship
     for (Column column : columns) {
       EntityUtil.applyTags(dao.tagDAO(), column.getTags(), column.getFullyQualifiedName());
-      column.setTags(getTags(column.getFullyQualifiedName())); // Update tag list to handle derived tags
       if (column.getChildren() != null) {
         applyTags(column.getChildren());
       }
@@ -360,7 +385,6 @@ public class TableRepository extends EntityRepository<Table> {
   private void applyTags(Table table) throws IOException {
     // Add table level tags by adding tag to table relationship
     EntityUtil.applyTags(dao.tagDAO(), table.getTags(), table.getFullyQualifiedName());
-    table.setTags(getTags(table.getFullyQualifiedName())); // Update tag to handle additional derived tags
     applyTags(table.getColumns());
   }
 
@@ -374,13 +398,11 @@ public class TableRepository extends EntityRepository<Table> {
     return dao.databaseDAO().findEntityReferenceById(UUID.fromString(result.get(0)));
   }
 
-  private EntityReference getLocation(Table table) throws IOException {
-    // Find database for the table
-    String id = table.getId().toString();
-    List<String> result = dao.relationshipDAO().findTo(id, Relationship.HAS.ordinal(), Entity.LOCATION);
+  private EntityReference getLocation(UUID tableId) throws IOException {
+    // Find the location of the table
+    List<String> result = dao.relationshipDAO().findTo(tableId.toString(), Relationship.HAS.ordinal(), Entity.LOCATION);
     if (result.size() == 1) {
-      Location location = dao.locationDAO().findEntityById(UUID.fromString(result.get(0)));
-      return new EntityReference().withName(location.getName()).withId(location.getId()).withType("location");
+      return dao.locationDAO().findEntityReferenceById(UUID.fromString(result.get(0)));
     } else {
       return null;
     }
@@ -744,7 +766,7 @@ public class TableRepository extends EntityRepository<Table> {
       // Delete tags related to deleted columns
       deletedColumns.forEach(deleted -> EntityUtil.removeTags(dao.tagDAO(), deleted.getFullyQualifiedName()));
 
-      // Add tags related to deleted columns
+      // Add tags related to newly added columns
       for (Column added : addedColumns) {
         EntityUtil.applyTags(dao.tagDAO(), added.getTags(), added.getFullyQualifiedName());
       }
@@ -752,14 +774,15 @@ public class TableRepository extends EntityRepository<Table> {
       // Carry forward the user generated metadata from existing columns to new columns
       for (Column updated : updatedColumns) {
         // Find stored column matching name, data type and ordinal position
-        Column stored = origColumns.stream().filter(c -> EntityUtil.columnMatch.test(c, updated)).findAny().orElse(null);
+        Column stored = origColumns.stream().filter(c ->
+            EntityUtil.columnMatch.test(c, updated)).findAny().orElse(null);
         if (stored == null) { // New column added
           continue;
         }
 
         updateColumnDescription(stored, updated);
-        updateTags(stored.getFullyQualifiedName(), fieldName + "." + updated.getName() + ".tags", stored.getTags(),
-                updated.getTags());
+        updateTags(stored.getFullyQualifiedName(), fieldName + "." + updated.getName() + ".tags",
+                stored.getTags(), updated.getTags());
         updateColumnConstraint(stored, updated);
 
         if (updated.getChildren() != null && stored.getChildren() != null) {
@@ -768,9 +791,7 @@ public class TableRepository extends EntityRepository<Table> {
         }
       }
 
-      if (!deletedColumns.isEmpty()) {
-        majorVersionChange = true;
-      }
+      majorVersionChange = !deletedColumns.isEmpty();
     }
 
     private void updateColumnDescription(Column origColumn, Column updatedColumn) throws JsonProcessingException {

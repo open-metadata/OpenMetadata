@@ -1,17 +1,14 @@
-#  Licensed to the Apache Software Foundation (ASF) under one or more
-#  contributor license agreements. See the NOTICE file distributed with
-#  this work for additional information regarding copyright ownership.
-#  The ASF licenses this file to You under the Apache License, Version 2.0
-#  (the "License"); you may not use this file except in compliance with
-#  the License. You may obtain a copy of the License at
-#
+#  Copyright 2021 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
 #  http://www.apache.org/licenses/LICENSE-2.0
-#
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+
 import logging
 import re
 import traceback
@@ -22,6 +19,7 @@ from datetime import datetime
 from typing import Any, Dict, Iterable, List, Optional, Set, Tuple, Type
 from urllib.parse import quote_plus
 
+from pydantic import SecretStr
 from sqlalchemy import create_engine
 from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.inspection import inspect
@@ -74,7 +72,7 @@ class SQLSourceStatus(SourceStatus):
 
 class SQLConnectionConfig(ConfigModel):
     username: Optional[str] = None
-    password: Optional[str] = None
+    password: Optional[SecretStr] = None
     host_port: str
     database: Optional[str] = None
     scheme: str
@@ -97,12 +95,11 @@ class SQLConnectionConfig(ConfigModel):
         if self.username is not None:
             url += f"{quote_plus(self.username)}"
             if self.password is not None:
-                url += f":{quote_plus(self.password)}"
+                url += f":{quote_plus(self.password.get_secret_value())}"
             url += "@"
         url += f"{self.host_port}"
         if self.database:
             url += f"/{self.database}"
-        logger.info(url)
         return url
 
     def get_service_type(self) -> DatabaseServiceType:

@@ -1,3 +1,14 @@
+#  Copyright 2021 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
 """
 OpenMetadata Airflow Lineage Backend example. Airflow provides a pluggable lineage backend that can
 read a DAG's configured inlets and outlets to compose a lineage. With OpenMetadata we have a airflow lineage backend
@@ -34,16 +45,19 @@ def openmetadata_airflow_lineage_example():
     @task(
         inlets={
             "tables": [
-                Table(fullyQualifiedName="bigquery.shopify.raw_order"),
-                Table(fullyQualifiedName="bigquery.shopify.raw_customer")
+                Table(fullyQualifiedName="bigquery_gcp.shopify.raw_order"),
+                Table(fullyQualifiedName="bigquery_gcp.shopify.raw_customer"),
             ],
         },
-        outlets={"tables": [Table(fullyQualifiedName="bigquery.shopify.fact_order")]},
+        outlets={
+            "tables": [Table(fullyQualifiedName="bigquery_gcp.shopify.fact_order")]
+        },
     )
     def generate_data():
-        """ write your query to generate ETL"""
+        """write your query to generate ETL"""
         pass
 
     generate_data()
+
 
 openmetadata_airflow_lineage_example_dag = openmetadata_airflow_lineage_example()

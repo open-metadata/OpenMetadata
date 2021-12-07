@@ -2,3 +2,4 @@ black
 isort
 pre-commit
 pylint
+faker

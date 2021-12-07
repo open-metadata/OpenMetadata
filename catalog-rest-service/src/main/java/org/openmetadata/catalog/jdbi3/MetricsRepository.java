@@ -1,11 +1,8 @@
 /*
- *  Licensed to the Apache Software Foundation (ASF) under one or more
- *  contributor license agreements. See the NOTICE file distributed with
- *  this work for additional information regarding copyright ownership.
- *  The ASF licenses this file to You under the Apache License, Version 2.0
- *  (the "License"); you may not use this file except in compliance with
- *  the License. You may obtain a copy of the License at
- *
+ *  Copyright 2021 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
  *  http://www.apache.org/licenses/LICENSE-2.0
  *  Unless required by applicable law or agreed to in writing, software
  *  distributed under the License is distributed on an "AS IS" BASIS,
@@ -18,6 +15,7 @@ package org.openmetadata.catalog.jdbi3;
 
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Metrics;
+import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.resources.metrics.MetricsResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
@@ -36,11 +34,11 @@ import java.util.Objects;
 import java.util.UUID;
 
 public class MetricsRepository extends EntityRepository<Metrics> {
-  private static final Fields METRICS_UPDATE_FIELDS = new Fields(MetricsResource.FIELD_LIST, "owner,service");
+  private static final Fields METRICS_UPDATE_FIELDS = new Fields(MetricsResource.FIELD_LIST, "owner");
   private final CollectionDAO dao;
 
   public MetricsRepository(CollectionDAO dao) {
-    super(MetricsResource.COLLECTION_PATH, Metrics.class, dao.metricsDAO(), dao, Fields.EMPTY_FIELDS,
+    super(MetricsResource.COLLECTION_PATH, Entity.METRICS, Metrics.class, dao.metricsDAO(), dao, Fields.EMPTY_FIELDS,
             METRICS_UPDATE_FIELDS);
     this.dao = dao;
   }
@@ -51,8 +49,8 @@ public class MetricsRepository extends EntityRepository<Metrics> {
 
   @Override
   public Metrics setFields(Metrics metrics, Fields fields) throws IOException {
+    metrics.setService(getService(metrics)); // service is a default field
     metrics.setOwner(fields.contains("owner") ? getOwner(metrics) : null);
-    metrics.setService(fields.contains("service") ? getService(metrics) : null);
     metrics.setUsageSummary(fields.contains("usageSummary") ? EntityUtil.getLatestUsage(dao.usageDAO(),
             metrics.getId()) : null);
     return metrics;
@@ -68,7 +66,7 @@ public class MetricsRepository extends EntityRepository<Metrics> {
   }
 
   @Override
-  public void validate(Metrics metrics) throws IOException {
+  public void prepare(Metrics metrics) throws IOException {
     metrics.setFullyQualifiedName(getFQN(metrics));
     EntityUtil.populateOwner(dao.userDAO(), dao.teamDAO(), metrics.getOwner()); // Validate owner
     metrics.setService(getService(metrics.getService()));
@@ -76,7 +74,7 @@ public class MetricsRepository extends EntityRepository<Metrics> {
   }
 
   @Override
-  public void store(Metrics metrics, boolean update) throws IOException {
+  public void storeEntity(Metrics metrics, boolean update) throws IOException {
     // Relationships and fields such as href are derived and not stored as part of json
     EntityReference owner = metrics.getOwner();
     List<TagLabel> tags = metrics.getTags();
@@ -111,9 +109,9 @@ public class MetricsRepository extends EntityRepository<Metrics> {
   private EntityReference getService(EntityReference service) throws IOException { // Get service by service Id
     if (service.getType().equalsIgnoreCase(Entity.DASHBOARD_SERVICE)) {
       return dao.dbServiceDAO().findEntityReferenceById(service.getId());
-    } else {
-      throw new IllegalArgumentException(String.format("Invalid service type %s for the database", service.getType()));
     }
+    throw new IllegalArgumentException(CatalogExceptionMessage.invalidServiceEntity(service.getType(),
+            Entity.METRICS));
   }
 
   private EntityReference getOwner(Metrics metrics) throws IOException {

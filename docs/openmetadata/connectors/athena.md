@@ -50,7 +50,7 @@ pip install 'openmetadata-ingestion[athena]'
 
 Below is the configuration to publish Athena data into the OpenMetadata service.
 
-Add optionally `pii` processor and `metadata-rest` sink along with `metadata-server` config
+Add `metadata-rest` sink along with `metadata-server` config
 
 {% code title="athena.json" %}
 ```javascript

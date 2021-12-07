@@ -1,3 +1,14 @@
+#  Copyright 2021 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
 import logging
 from typing import Generic, List, Optional, Type, TypeVar, Union, get_args
 
@@ -7,8 +18,10 @@ from metadata.generated.schema.api.lineage.addLineage import AddLineage
 from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.database import Database
+from metadata.generated.schema.entity.data.dbtmodel import DbtModel
+from metadata.generated.schema.entity.data.location import Location
 from metadata.generated.schema.entity.data.metrics import Metrics
-from metadata.generated.schema.entity.data.mlmodel import MLModel
+from metadata.generated.schema.entity.data.mlmodel import MlModel
 from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.data.report import Report
 from metadata.generated.schema.entity.data.table import Table
@@ -17,9 +30,12 @@ from metadata.generated.schema.entity.services.dashboardService import Dashboard
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.messagingService import MessagingService
 from metadata.generated.schema.entity.services.pipelineService import PipelineService
+from metadata.generated.schema.entity.services.storageService import StorageService
 from metadata.generated.schema.entity.tags.tagCategory import Tag
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
+from metadata.generated.schema.type import basic
+from metadata.generated.schema.type.entityHistory import EntityVersionHistory
 from metadata.ingestion.ometa.auth_provider import AuthenticationProvider
 from metadata.ingestion.ometa.client import REST, APIError, ClientConfig
 from metadata.ingestion.ometa.mixins.lineageMixin import OMetaLineageMixin
@@ -116,7 +132,7 @@ class OpenMetadata(OMetaLineageMixin, OMetaTableMixin, Generic[T, C]):
 
         # Entity Schemas
         if issubclass(
-            entity, get_args(Union[MLModel, self.get_create_entity_type(MLModel)])
+            entity, get_args(Union[MlModel, self.get_create_entity_type(MlModel)])
         ):
             return "/mlmodels"
 
@@ -141,6 +157,11 @@ class OpenMetadata(OMetaLineageMixin, OMetaTableMixin, Generic[T, C]):
             return "/pipelines"
 
         if issubclass(
+            entity, get_args(Union[Location, self.get_create_entity_type(Location)])
+        ):
+            return "/locations"
+
+        if issubclass(
             entity, get_args(Union[Table, self.get_create_entity_type(Table)])
         ):
             return "/tables"
@@ -149,6 +170,11 @@ class OpenMetadata(OMetaLineageMixin, OMetaTableMixin, Generic[T, C]):
             entity, get_args(Union[Topic, self.get_create_entity_type(Topic)])
         ):
             return "/topics"
+
+        if issubclass(
+            entity, get_args(Union[DbtModel, self.get_create_entity_type(DbtModel)])
+        ):
+            return "/dbtmodels"
 
         if issubclass(entity, Metrics):
             return "/metrics"
@@ -201,6 +227,14 @@ class OpenMetadata(OMetaLineageMixin, OMetaTableMixin, Generic[T, C]):
         ):
             return "/services/pipelineServices"
 
+        if issubclass(
+            entity,
+            get_args(
+                Union[StorageService, self.get_create_entity_type(StorageService)]
+            ),
+        ):
+            return "/services/storageServices"
+
         raise MissingEntityTypeException(
             f"Missing {entity} type when generating suffixes"
         )
@@ -245,7 +279,6 @@ class OpenMetadata(OMetaLineageMixin, OMetaTableMixin, Generic[T, C]):
         )
 
         class_name = f"Create{entity.__name__}EntityRequest"
-
         create_class = getattr(
             __import__(class_path, globals(), locals(), [class_name]), class_name
         )
@@ -304,6 +337,20 @@ class OpenMetadata(OMetaLineageMixin, OMetaTableMixin, Generic[T, C]):
         resp = method(self.get_suffix(entity), data=data.json())
         return entity_class(**resp)
 
+    @staticmethod
+    def uuid_to_str(entity_id: Union[str, basic.Uuid]) -> str:
+        """
+        Given an entity_id, that can be a str or our pydantic
+        definition of Uuid, return a proper str to build
+        the endpoint path
+        :param entity_id: Entity ID to onvert to string
+        :return: str for the ID
+        """
+        if isinstance(entity_id, basic.Uuid):
+            return str(entity_id.__root__)
+
+        return entity_id
+
     def get_by_name(
         self, entity: Type[T], fqdn: str, fields: Optional[List[str]] = None
     ) -> Optional[T]:
@@ -314,13 +361,16 @@ class OpenMetadata(OMetaLineageMixin, OMetaTableMixin, Generic[T, C]):
         return self._get(entity=entity, path=f"name/{fqdn}", fields=fields)
 
     def get_by_id(
-        self, entity: Type[T], entity_id: str, fields: Optional[List[str]] = None
+        self,
+        entity: Type[T],
+        entity_id: Union[str, basic.Uuid],
+        fields: Optional[List[str]] = None,
     ) -> Optional[T]:
         """
         Return entity by ID or None
         """
 
-        return self._get(entity=entity, path=entity_id, fields=fields)
+        return self._get(entity=entity, path=self.uuid_to_str(entity_id), fields=fields)
 
     def _get(
         self, entity: Type[T], path: str, fields: Optional[List[str]] = None
@@ -337,7 +387,7 @@ class OpenMetadata(OMetaLineageMixin, OMetaTableMixin, Generic[T, C]):
             return entity(**resp)
         except APIError as err:
             logger.error(
-                f"Error {err.status_code} trying to GET {entity.__class__.__name__} for {path}"
+                f"Creating new {entity.__class__.__name__} for {path}. Error {err.status_code}"
             )
             return None
 
@@ -367,6 +417,22 @@ class OpenMetadata(OMetaLineageMixin, OMetaTableMixin, Generic[T, C]):
             after = resp["paging"]["after"] if "after" in resp["paging"] else None
             return EntityList(entities=entities, total=total, after=after)
 
+    def list_versions(
+        self, entity_id: Union[str, basic.Uuid], entity: Type[T]
+    ) -> EntityVersionHistory:
+        """
+        Helps us paginate over the collection
+        """
+
+        suffix = self.get_suffix(entity)
+        path = f"/{self.uuid_to_str(entity_id)}/versions"
+        resp = self.client.get(f"{suffix}{path}")
+
+        if self._use_raw_data:
+            return resp
+        else:
+            return EntityVersionHistory(**resp)
+
     def list_services(self, entity: Type[T]) -> List[EntityList[T]]:
         """
         Service listing does not implement paging
@@ -378,8 +444,8 @@ class OpenMetadata(OMetaLineageMixin, OMetaTableMixin, Generic[T, C]):
         else:
             return [entity(**p) for p in resp["data"]]
 
-    def delete(self, entity: Type[T], entity_id: str) -> None:
-        self.client.delete(f"{self.get_suffix(entity)}/{entity_id}")
+    def delete(self, entity: Type[T], entity_id: Union[str, basic.Uuid]) -> None:
+        self.client.delete(f"{self.get_suffix(entity)}/{self.uuid_to_str(entity_id)}")
 
     def compute_percentile(self, entity: Union[Type[T], str], date: str) -> None:
         """

@@ -1,11 +1,8 @@
 /*
- *  Licensed to the Apache Software Foundation (ASF) under one or more
- *  contributor license agreements. See the NOTICE file distributed with
- *  this work for additional information regarding copyright ownership.
- *  The ASF licenses this file to You under the Apache License, Version 2.0
- *  (the "License"); you may not use this file except in compliance with
- *  the License. You may obtain a copy of the License at
- *
+ *  Copyright 2021 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
  *  http://www.apache.org/licenses/LICENSE-2.0
  *  Unless required by applicable law or agreed to in writing, software
  *  distributed under the License is distributed on an "AS IS" BASIS,
@@ -19,7 +16,9 @@ package org.openmetadata.catalog.jdbi3;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Database;
-import org.openmetadata.catalog.exception.EntityNotFoundException;
+import org.openmetadata.catalog.entity.services.DatabaseService;
+import org.openmetadata.catalog.exception.CatalogExceptionMessage;
+import org.openmetadata.catalog.jdbi3.DatabaseServiceRepository.DatabaseServiceEntityInterface;
 import org.openmetadata.catalog.resources.databases.DatabaseResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
@@ -36,21 +35,18 @@ import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
-import java.util.Objects;
 import java.util.UUID;
 
 import static javax.ws.rs.core.Response.Status.CREATED;
-import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 
 public class DatabaseRepository extends EntityRepository<Database> {
   private static final Fields DATABASE_UPDATE_FIELDS = new Fields(DatabaseResource.FIELD_LIST, "owner");
-  private static final Fields DATABASE_PATCH_FIELDS = new Fields(DatabaseResource.FIELD_LIST,
-          "owner,service, usageSummary");
+  private static final Fields DATABASE_PATCH_FIELDS = new Fields(DatabaseResource.FIELD_LIST,"owner,usageSummary");
   private final CollectionDAO dao;
 
   public DatabaseRepository(CollectionDAO dao) {
-    super(DatabaseResource.COLLECTION_PATH, Database.class, dao.databaseDAO(), dao, DATABASE_PATCH_FIELDS,
-            DATABASE_UPDATE_FIELDS);
+    super(DatabaseResource.COLLECTION_PATH, Entity.DATABASE, Database.class, dao.databaseDAO(), dao,
+            DATABASE_PATCH_FIELDS, DATABASE_UPDATE_FIELDS);
     this.dao = dao;
   }
 
@@ -63,9 +59,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
     if (dao.relationshipDAO().findToCount(id.toString(), Relationship.CONTAINS.ordinal(), Entity.TABLE) > 0) {
       throw new IllegalArgumentException("Database is not empty");
     }
-    if (dao.databaseDAO().delete(id) <= 0) {
-      throw EntityNotFoundException.byMessage(entityNotFound(Entity.DATABASE, id));
-    }
+    dao.databaseDAO().delete(id);
     dao.relationshipDAO().deleteAll(id.toString());
   }
 
@@ -75,14 +69,14 @@ public class DatabaseRepository extends EntityRepository<Database> {
   }
 
   @Override
-  public void validate(Database database) throws IOException {
-    database.setService(getService(database.getService()));
+  public void prepare(Database database) throws IOException {
+    populateService(database);
     database.setFullyQualifiedName(getFQN(database));
     database.setOwner(EntityUtil.populateOwner(dao.userDAO(), dao.teamDAO(), database.getOwner())); // Validate owner
   }
 
   @Override
-  public void store(Database database, boolean update) throws IOException {
+  public void storeEntity(Database database, boolean update) throws IOException {
     // Relationships and fields such as href are derived and not stored as part of json
     EntityReference owner = database.getOwner();
     EntityReference service = database.getService();
@@ -163,15 +157,23 @@ public class DatabaseRepository extends EntityRepository<Database> {
 
   private EntityReference getService(Database database) throws IOException {
     EntityReference ref =  EntityUtil.getService(dao.relationshipDAO(), database.getId(), Entity.DATABASE_SERVICE);
-    return getService(Objects.requireNonNull(ref));
+    DatabaseService service = getService(ref.getId(), ref.getType());
+    ref.setName(service.getName());
+    ref.setDescription(service.getDescription());
+    return ref;
   }
 
-  private EntityReference getService(EntityReference service) throws IOException {
-    if (service.getType().equalsIgnoreCase(Entity.DATABASE_SERVICE)) {
-      return dao.dbServiceDAO().findEntityReferenceById(service.getId());
-    } else {
-      throw new IllegalArgumentException(String.format("Invalid service type %s for the database", service.getType()));
+  private void populateService(Database database) throws IOException {
+    DatabaseService service = getService(database.getService().getId(), database.getService().getType());
+    database.setService(new DatabaseServiceEntityInterface(service).getEntityReference());
+    database.setServiceType(service.getServiceType());
+  }
+
+  private DatabaseService getService(UUID serviceId, String entityType) throws IOException {
+    if (entityType.equalsIgnoreCase(Entity.DATABASE_SERVICE)) {
+      return dao.dbServiceDAO().findEntityById(serviceId);
     }
+    throw new IllegalArgumentException(CatalogExceptionMessage.invalidServiceEntity(entityType, Entity.DATABASE));
   }
 
   @Transaction

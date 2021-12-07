@@ -1,28 +1,29 @@
-#  Licensed to the Apache Software Foundation (ASF) under one or more
-#  contributor license agreements. See the NOTICE file distributed with
-#  this work for additional information regarding copyright ownership.
-#  The ASF licenses this file to You under the Apache License, Version 2.0
-#  (the "License"); you may not use this file except in compliance with
-#  the License. You may obtain a copy of the License at
-#
+#  Copyright 2021 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
 #  http://www.apache.org/licenses/LICENSE-2.0
-#
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+
 import json
 import logging
+import ssl
 import time
 from typing import List, Optional
 
+from dateutil import parser
 from elasticsearch import Elasticsearch
+from elasticsearch.connection import create_ssl_context
 
 from metadata.config.common import ConfigModel
 from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.database import Database
+from metadata.generated.schema.entity.data.dbtmodel import DbtModel
 from metadata.generated.schema.entity.data.pipeline import Pipeline, Task
 from metadata.generated.schema.entity.data.table import Column, Table
 from metadata.generated.schema.entity.data.topic import Topic
@@ -34,7 +35,9 @@ from metadata.generated.schema.type import entityReference
 from metadata.ingestion.api.common import Record, WorkflowContext
 from metadata.ingestion.api.sink import Sink, SinkStatus
 from metadata.ingestion.models.table_metadata import (
+    ChangeDescription,
     DashboardESDocument,
+    DbtModelESDocument,
     PipelineESDocument,
     TableESDocument,
     TopicESDocument,
@@ -43,6 +46,7 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.sink.elasticsearch_constants import (
     DASHBOARD_ELASTICSEARCH_INDEX_MAPPING,
+    DBT_ELASTICSEARCH_INDEX_MAPPING,
     PIPELINE_ELASTICSEARCH_INDEX_MAPPING,
     TABLE_ELASTICSEARCH_INDEX_MAPPING,
     TOPIC_ELASTICSEARCH_INDEX_MAPPING,
@@ -60,10 +64,17 @@ class ElasticSearchConfig(ConfigModel):
     index_topics: Optional[bool] = True
     index_dashboards: Optional[bool] = True
     index_pipelines: Optional[bool] = True
+    index_dbt_models: Optional[bool] = True
     table_index_name: str = "table_search_index"
     topic_index_name: str = "topic_search_index"
     dashboard_index_name: str = "dashboard_search_index"
     pipeline_index_name: str = "pipeline_search_index"
+    dbt_index_name: str = "dbt_model_search_index"
+    scheme: str = "http"
+    use_ssl: bool = False
+    verify_certs: bool = False
+    timeout: int = 30
+    ca_certs: Optional[str] = None
 
 
 class ElasticsearchSink(Sink):
@@ -95,12 +106,25 @@ class ElasticsearchSink(Sink):
         http_auth = None
         if self.config.es_username:
             http_auth = (self.config.es_username, self.config.es_password)
+
+        ssl_context = None
+        if self.config.scheme == "https" and not self.config.verify_certs:
+            ssl_context = create_ssl_context()
+            ssl_context.check_hostname = False
+            ssl_context.verify_mode = ssl.CERT_NONE
+
         self.elasticsearch_client = Elasticsearch(
             [
                 {"host": self.config.es_host, "port": self.config.es_port},
             ],
             http_auth=http_auth,
+            scheme=self.config.scheme,
+            use_ssl=self.config.use_ssl,
+            verify_certs=self.config.verify_certs,
+            ssl_context=ssl_context,
+            ca_certs=self.config.ca_certs,
         )
+
         if self.config.index_tables:
             self._check_or_create_index(
                 self.config.table_index_name, TABLE_ELASTICSEARCH_INDEX_MAPPING
@@ -116,6 +140,10 @@ class ElasticsearchSink(Sink):
         if self.config.index_pipelines:
             self._check_or_create_index(
                 self.config.pipeline_index_name, PIPELINE_ELASTICSEARCH_INDEX_MAPPING
+            )
+        if self.config.index_dbt_models:
+            self._check_or_create_index(
+                self.config.dbt_index_name, DBT_ELASTICSEARCH_INDEX_MAPPING
             )
 
     def _check_or_create_index(self, index_name: str, es_mapping: str):
@@ -134,7 +162,9 @@ class ElasticsearchSink(Sink):
                     "properties": es_mapping_dict["mappings"]["properties"]
                 }
                 self.elasticsearch_client.indices.put_mapping(
-                    index=index_name, body=json.dumps(es_mapping_update_dict)
+                    index=index_name,
+                    body=json.dumps(es_mapping_update_dict),
+                    request_timeout=self.config.timeout,
                 )
         else:
             logger.warning(
@@ -142,7 +172,9 @@ class ElasticsearchSink(Sink):
                 + "The index doesn't exist for a newly created ES. It's OK on first run."
             )
             # create new index with mapping
-            self.elasticsearch_client.indices.create(index=index_name, body=es_mapping)
+            self.elasticsearch_client.indices.create(
+                index=index_name, body=es_mapping, request_timeout=self.config.timeout
+            )
 
     def write_record(self, record: Record) -> None:
         if isinstance(record, Table):
@@ -151,6 +183,7 @@ class ElasticsearchSink(Sink):
                 index=self.config.table_index_name,
                 id=str(table_doc.table_id),
                 body=table_doc.json(),
+                request_timeout=self.config.timeout,
             )
         if isinstance(record, Topic):
             topic_doc = self._create_topic_es_doc(record)
@@ -158,6 +191,7 @@ class ElasticsearchSink(Sink):
                 index=self.config.topic_index_name,
                 id=str(topic_doc.topic_id),
                 body=topic_doc.json(),
+                request_timeout=self.config.timeout,
             )
         if isinstance(record, Dashboard):
             dashboard_doc = self._create_dashboard_es_doc(record)
@@ -165,6 +199,7 @@ class ElasticsearchSink(Sink):
                 index=self.config.dashboard_index_name,
                 id=str(dashboard_doc.dashboard_id),
                 body=dashboard_doc.json(),
+                request_timeout=self.config.timeout,
             )
         if isinstance(record, Pipeline):
             pipeline_doc = self._create_pipeline_es_doc(record)
@@ -172,6 +207,15 @@ class ElasticsearchSink(Sink):
                 index=self.config.pipeline_index_name,
                 id=str(pipeline_doc.pipeline_id),
                 body=pipeline_doc.json(),
+                request_timeout=self.config.timeout,
+            )
+        if isinstance(record, DbtModel):
+            dbt_model_doc = self._create_dbt_model_es_doc(record)
+            self.elasticsearch_client.index(
+                index=self.config.dbt_index_name,
+                id=str(dbt_model_doc.dbt_model_id),
+                body=dbt_model_doc.json(),
+                request_timeout=self.config.timeout,
             )
 
         if hasattr(record.name, "__root__"):
@@ -213,15 +257,21 @@ class ElasticsearchSink(Sink):
         if table.followers:
             for follower in table.followers.__root__:
                 table_followers.append(str(follower.id.__root__))
+        table_type = None
+        if hasattr(table.tableType, "name"):
+            table_type = table.tableType.name
+
+        change_descriptions = self._get_change_descriptions(Table, table.id.__root__)
         table_doc = TableESDocument(
             table_id=str(table.id.__root__),
             database=str(database_entity.name.__root__),
             service=service_entity.name,
             service_type=service_entity.serviceType.name,
-            table_name=table.name.__root__,
+            service_category="databaseService",
+            name=table.name.__root__,
             suggest=suggest,
             description=table.description,
-            table_type=table.tableType.name,
+            table_type=table_type,
             last_updated_timestamp=timestamp,
             column_names=column_names,
             column_descriptions=column_descriptions,
@@ -234,9 +284,9 @@ class ElasticsearchSink(Sink):
             tier=tier,
             tags=list(tags),
             fqdn=fqdn,
-            schema_description=None,
             owner=table_owner,
             followers=table_followers,
+            change_descriptions=change_descriptions,
         )
         return table_doc
 
@@ -263,11 +313,13 @@ class ElasticsearchSink(Sink):
                 tier = topic_tag.tagFQN
             else:
                 tags.add(topic_tag.tagFQN)
+        change_descriptions = self._get_change_descriptions(Topic, topic.id.__root__)
         topic_doc = TopicESDocument(
             topic_id=str(topic.id.__root__),
             service=service_entity.name,
             service_type=service_entity.serviceType.name,
-            topic_name=topic.name.__root__,
+            service_category="messagingService",
+            name=topic.name.__root__,
             suggest=suggest,
             description=topic.description,
             last_updated_timestamp=timestamp,
@@ -276,8 +328,9 @@ class ElasticsearchSink(Sink):
             fqdn=fqdn,
             owner=topic_owner,
             followers=topic_followers,
+            change_descriptions=change_descriptions,
         )
-
+        print(topic_doc.json())
         return topic_doc
 
     def _create_dashboard_es_doc(self, dashboard: Dashboard):
@@ -312,11 +365,15 @@ class ElasticsearchSink(Sink):
             if len(chart.tags) > 0:
                 for col_tag in chart.tags:
                     tags.add(col_tag.tagFQN)
+        change_descriptions = self._get_change_descriptions(
+            Dashboard, dashboard.id.__root__
+        )
         dashboard_doc = DashboardESDocument(
             dashboard_id=str(dashboard.id.__root__),
             service=service_entity.name,
             service_type=service_entity.serviceType.name,
-            dashboard_name=dashboard.displayName,
+            service_category="dashboardService",
+            name=dashboard.displayName,
             chart_names=chart_names,
             chart_descriptions=chart_descriptions,
             suggest=suggest,
@@ -333,6 +390,7 @@ class ElasticsearchSink(Sink):
             weekly_percentile_rank=dashboard.usageSummary.weeklyStats.percentileRank,
             daily_stats=dashboard.usageSummary.dailyStats.count,
             daily_percentile_rank=dashboard.usageSummary.dailyStats.percentileRank,
+            change_descriptions=change_descriptions,
         )
 
         return dashboard_doc
@@ -368,12 +426,15 @@ class ElasticsearchSink(Sink):
             if tags in task and len(task.tags) > 0:
                 for col_tag in task.tags:
                     tags.add(col_tag.tagFQN)
-
+        change_descriptions = self._get_change_descriptions(
+            Pipeline, pipeline.id.__root__
+        )
         pipeline_doc = PipelineESDocument(
             pipeline_id=str(pipeline.id.__root__),
             service=service_entity.name,
             service_type=service_entity.serviceType.name,
-            pipeline_name=pipeline.displayName,
+            service_category="pipelineService",
+            name=pipeline.displayName,
             task_names=task_names,
             task_descriptions=task_descriptions,
             suggest=suggest,
@@ -384,9 +445,75 @@ class ElasticsearchSink(Sink):
             fqdn=fqdn,
             owner=pipeline_owner,
             followers=pipeline_followers,
+            change_descriptions=change_descriptions,
         )
 
         return pipeline_doc
+
+    def _create_dbt_model_es_doc(self, dbt_model: DbtModel):
+        fqdn = dbt_model.fullyQualifiedName
+        database = dbt_model.database.name
+        dbt_model_name = dbt_model.name
+        suggest = [
+            {"input": [fqdn], "weight": 5},
+            {"input": [dbt_model_name], "weight": 10},
+        ]
+        column_names = []
+        column_descriptions = []
+        tags = set()
+
+        timestamp = time.time()
+        tier = None
+        for dbt_model_tag in dbt_model.tags:
+            if "Tier" in dbt_model_tag.tagFQN:
+                tier = dbt_model_tag.tagFQN
+            else:
+                tags.add(dbt_model_tag.tagFQN)
+        self._parse_columns(
+            dbt_model.columns, None, column_names, column_descriptions, tags
+        )
+
+        database_entity = self.metadata.get_by_id(
+            entity=Database, entity_id=str(dbt_model.database.id.__root__)
+        )
+        service_entity = self.metadata.get_by_id(
+            entity=DatabaseService, entity_id=str(database_entity.service.id.__root__)
+        )
+        dbt_model_owner = (
+            str(dbt_model.owner.id.__root__) if dbt_model.owner is not None else ""
+        )
+        dbt_model_followers = []
+        if dbt_model.followers:
+            for follower in dbt_model.followers.__root__:
+                dbt_model_followers.append(str(follower.id.__root__))
+        dbt_node_type = None
+        if hasattr(dbt_model.dbtNodeType, "name"):
+            dbt_node_type = dbt_model.dbtNodeType.name
+        change_descriptions = self._get_change_descriptions(
+            DbtModel, dbt_model.id.__root__
+        )
+        dbt_model_doc = DbtModelESDocument(
+            dbt_model_id=str(dbt_model.id.__root__),
+            database=str(database_entity.name.__root__),
+            service=service_entity.name,
+            service_type=service_entity.serviceType.name,
+            service_category="databaseService",
+            name=dbt_model.name.__root__,
+            suggest=suggest,
+            description=dbt_model.description,
+            dbt_model_type=dbt_node_type,
+            last_updated_timestamp=timestamp,
+            column_names=column_names,
+            column_descriptions=column_descriptions,
+            tier=tier,
+            tags=list(tags),
+            fqdn=fqdn,
+            schema_description=None,
+            owner=dbt_model_owner,
+            followers=dbt_model_followers,
+            change_descriptions=change_descriptions,
+        )
+        return dbt_model_doc
 
     def _get_charts(self, chart_refs: Optional[List[entityReference.EntityReference]]):
         charts = []
@@ -426,6 +553,31 @@ class ElasticsearchSink(Sink):
                     column_descriptions,
                     tags,
                 )
+
+    def _get_change_descriptions(self, entity_type, entity_id):
+        try:
+            entity_versions = self.metadata.list_versions(entity_id, entity_type)
+            change_descriptions = []
+            for version in entity_versions.versions:
+                version_json = json.loads(version)
+                updatedAt = parser.parse(version_json["updatedAt"])
+                change_description = ChangeDescription(
+                    updatedBy=version_json["updatedBy"], updatedAt=updatedAt.timestamp()
+                )
+                if "changeDescription" in version_json:
+                    change_description.fieldsAdded = version_json["changeDescription"][
+                        "fieldsAdded"
+                    ]
+                    change_description.fieldsDeleted = version_json[
+                        "changeDescription"
+                    ]["fieldsDeleted"]
+                    change_description.fieldsUpdated = version_json[
+                        "changeDescription"
+                    ]["fieldsUpdated"]
+                change_descriptions.append(change_description)
+            return change_descriptions
+        except Exception as err:
+            logger.error(repr(err))
 
     def get_status(self):
         return self.status

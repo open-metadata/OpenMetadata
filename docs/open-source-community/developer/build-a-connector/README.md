@@ -12,11 +12,11 @@ Please look at our framework [APIs](https://github.com/open-metadata/OpenMetadat
 
 [workflow](https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/src/metadata/ingestion/api/workflow.py) is a simple orchestration job that runs the components in an Order.
 
-A workflow consists of [Source](source.md), [Processor](processor.md) and [Sink](sink.md). It also provides support for [Stage](stage.md) and [BulkSink](bulksink.md).
+A workflow consists of [Source](source.md) and [Sink](sink.md). It also provides support for [Stage](stage.md) and [BulkSink](bulksink.md).
 
 Workflow execution happens in a serial fashion.
 
-1. The** Workflow** runs the **source** component first.  The **source** retrieves a record from external sources and emits the record downstream.
+1. The **Workflow** runs the **source** component first.  The **source** retrieves a record from external sources and emits the record downstream.
 2. If the **processor** component is configured, the **workflow** sends the record to the **processor** next.
 3. There can be multiple **processor** components attached to the **workflow**.  The **workflow** passes a record to each **processor** in the order they are configured.
 4. Once a **processor** is finished, it sends the modified record to the **sink**.
@@ -24,12 +24,12 @@ Workflow execution happens in a serial fashion.
 
 In the cases where we need aggregation over the records, we can use the **stage** to write to a file or other store. Use the file written to in **stage** and pass it to **bulk sink** to publish to external services such as **openmetadata** or **elasticsearch**.
 
-{% content-ref url="source.md" %}
-[source.md](source.md)
+{% content-ref url="setup.md" %}
+[setup.md](setup.md)
 {% endcontent-ref %}
 
-{% content-ref url="processor.md" %}
-[processor.md](processor.md)
+{% content-ref url="source.md" %}
+[source.md](source.md)
 {% endcontent-ref %}
 
 {% content-ref url="sink.md" %}

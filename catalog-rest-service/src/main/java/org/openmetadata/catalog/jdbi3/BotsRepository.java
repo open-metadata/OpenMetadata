@@ -1,11 +1,8 @@
 /*
- *  Licensed to the Apache Software Foundation (ASF) under one or more
- *  contributor license agreements. See the NOTICE file distributed with
- *  this work for additional information regarding copyright ownership.
- *  The ASF licenses this file to You under the Apache License, Version 2.0
- *  (the "License"); you may not use this file except in compliance with
- *  the License. You may obtain a copy of the License at
- *
+ *  Copyright 2021 Collate 
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
  *  http://www.apache.org/licenses/LICENSE-2.0
  *  Unless required by applicable law or agreed to in writing, software
  *  distributed under the License is distributed on an "AS IS" BASIS,
@@ -37,7 +34,8 @@ public class BotsRepository extends EntityRepository<Bots>{
   private final CollectionDAO dao;
 
   public BotsRepository(CollectionDAO dao) {
-    super(BotsResource.COLLECTION_PATH, Bots.class, dao.botsDAO(), dao, Fields.EMPTY_FIELDS, Fields.EMPTY_FIELDS);
+    super(BotsResource.COLLECTION_PATH, Entity.BOTS, Bots.class, dao.botsDAO(), dao, Fields.EMPTY_FIELDS,
+            Fields.EMPTY_FIELDS);
     this.dao = dao; }
 
   public Bots insert(Bots bots) throws JsonProcessingException {
@@ -60,10 +58,10 @@ public class BotsRepository extends EntityRepository<Bots>{
   }
 
   @Override
-  public void validate(Bots entity) throws IOException { }
+  public void prepare(Bots entity) throws IOException { }
 
   @Override
-  public void store(Bots entity, boolean update) throws IOException {
+  public void storeEntity(Bots entity, boolean update) throws IOException {
     dao.botsDAO().insert(entity);
   }
 

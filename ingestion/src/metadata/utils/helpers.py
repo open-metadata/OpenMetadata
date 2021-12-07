@@ -1,17 +1,14 @@
-#  Licensed to the Apache Software Foundation (ASF) under one or more
-#  contributor license agreements. See the NOTICE file distributed with
-#  this work for additional information regarding copyright ownership.
-#  The ASF licenses this file to You under the Apache License, Version 2.0
-#  (the "License"); you may not use this file except in compliance with
-#  the License. You may obtain a copy of the License at
-#
+#  Copyright 2021 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
 #  http://www.apache.org/licenses/LICENSE-2.0
-#
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+
 from datetime import datetime, timedelta
 from typing import List
 
@@ -24,9 +21,17 @@ from metadata.generated.schema.api.services.createDatabaseService import (
 from metadata.generated.schema.api.services.createMessagingService import (
     CreateMessagingServiceEntityRequest,
 )
+from metadata.generated.schema.api.services.createPipelineService import (
+    CreatePipelineServiceEntityRequest,
+)
+from metadata.generated.schema.api.services.createStorageService import (
+    CreateStorageServiceEntityRequest,
+)
 from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.messagingService import MessagingService
+from metadata.generated.schema.entity.services.pipelineService import PipelineService
+from metadata.generated.schema.entity.services.storageService import StorageService
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 
@@ -47,10 +52,13 @@ def snake_to_camel(s):
     return "".join(a)
 
 
-def get_database_service_or_create(config, metadata_config) -> DatabaseService:
+def get_database_service_or_create(
+    config, metadata_config, service_name=None
+) -> DatabaseService:
     metadata = OpenMetadata(metadata_config)
+    config.service_name = service_name if service_name else config.service_name
     service = metadata.get_by_name(entity=DatabaseService, fqdn=config.service_name)
-    if service is not None:
+    if service:
         return service
     else:
         service = {
@@ -114,6 +122,42 @@ def get_dashboard_service_or_create(
             )
         )
         return created_service
+
+
+def get_pipeline_service_or_create(service_json, metadata_config) -> PipelineService:
+    metadata = OpenMetadata(metadata_config)
+    service = metadata.get_by_name(entity=PipelineService, fqdn=service_json["name"])
+    if service is not None:
+        return service
+    else:
+        created_service = metadata.create_or_update(
+            CreatePipelineServiceEntityRequest(**service_json)
+        )
+        return created_service
+
+
+def get_storage_service_or_create(service_json, metadata_config) -> StorageService:
+    metadata = OpenMetadata(metadata_config)
+    service = metadata.get_by_name(entity=StorageService, fqdn=service_json["name"])
+    if service is not None:
+        return service
+    else:
+        created_service = metadata.create_or_update(
+            CreateStorageServiceEntityRequest(**service_json)
+        )
+        return created_service
+
+
+def get_database_service_or_create_v2(service_json, metadata_config) -> DatabaseService:
+    metadata = OpenMetadata(metadata_config)
+    service = metadata.get_by_name(entity=DatabaseService, fqdn=service_json["name"])
+    if service is not None:
+        return service
+    else:
+        created_service = metadata.create_or_update(
+            CreateDatabaseServiceEntityRequest(**service_json)
+        )
+    return created_service
 
 
 def convert_epoch_to_iso(seconds_since_epoch):

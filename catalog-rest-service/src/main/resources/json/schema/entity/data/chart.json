@@ -64,7 +64,7 @@
       "description": "Name that identifies this Chart.",
       "type": "string",
       "minLength": 1,
-      "maxLength": 64
+      "maxLength": 128
     },
     "displayName": {
       "description": "Display Name that identifies this Chart. It could be title or label from the source services.",
@@ -74,7 +74,7 @@
       "description": "A unique name that identifies a dashboard in the format 'ServiceName.ChartName'.",
       "type": "string",
       "minLength": 1,
-      "maxLength": 64
+      "maxLength": 256
     },
     "description": {
       "description": "Description of the dashboard, what it is, and how to use it.",
@@ -128,6 +128,10 @@
       "description": "Link to service where this dashboard is hosted in.",
       "$ref" : "../../type/entityReference.json"
     },
+    "serviceType" : {
+      "description": "Service type where this chart is hosted in.",
+      "$ref" : "../services/dashboardService.json#/definitions/dashboardServiceType"
+    },
     "usageSummary" : {
       "description": "Latest usage information for this database.",
       "$ref": "../../type/usageDetails.json",
@@ -138,5 +142,6 @@
       "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
     }
   },
-  "required": ["id", "name", "service"]
+  "required": ["id", "name", "service"],
+  "additionalProperties": false
 }

@@ -1,11 +1,8 @@
 /*
- *  Licensed to the Apache Software Foundation (ASF) under one or more
- *  contributor license agreements. See the NOTICE file distributed with
- *  this work for additional information regarding copyright ownership.
- *  The ASF licenses this file to You under the Apache License, Version 2.0
- *  (the "License"); you may not use this file except in compliance with
- *  the License. You may obtain a copy of the License at
- *
+ *  Copyright 2021 Collate 
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
  *  http://www.apache.org/licenses/LICENSE-2.0
  *  Unless required by applicable law or agreed to in writing, software
  *  distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,10 +13,10 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.services.DatabaseService;
-import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.resources.services.database.DatabaseServiceResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
@@ -31,7 +28,6 @@ import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
 
-import javax.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.net.URI;
 import java.text.ParseException;
@@ -39,34 +35,20 @@ import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 
-import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
-
 
 public class DatabaseServiceRepository extends EntityRepository<DatabaseService> {
   public static final String COLLECTION_PATH = "v1/services/databaseServices";
   private final CollectionDAO dao;
 
   public DatabaseServiceRepository(CollectionDAO dao) {
-    super(DatabaseServiceResource.COLLECTION_PATH, DatabaseService.class, dao.dbServiceDAO(), dao, Fields.EMPTY_FIELDS,
-            Fields.EMPTY_FIELDS);
+    super(DatabaseServiceResource.COLLECTION_PATH, Entity.DATABASE_SERVICE, DatabaseService.class,
+            dao.dbServiceDAO(), dao, Fields.EMPTY_FIELDS, Fields.EMPTY_FIELDS);
     this.dao = dao;
-  }
-
-  public DatabaseService update(UriInfo uriInfo, UUID id, String description, JdbcInfo jdbc, Schedule ingestionSchedule)
-          throws IOException {
-    EntityUtil.validateIngestionSchedule(ingestionSchedule);
-    DatabaseService dbService = dao.dbServiceDAO().findEntityById(id);
-    // Update fields
-    dbService.withDescription(description).withJdbc((jdbc)).withIngestionSchedule(ingestionSchedule);
-    dao.dbServiceDAO().update(id, JsonUtils.pojoToJson(dbService));
-    return withHref(uriInfo, dbService);
   }
 
   @Transaction
   public void delete(UUID id) {
-    if (dao.dbServiceDAO().delete(id) <= 0) {
-      throw EntityNotFoundException.byMessage(entityNotFound(Entity.DATABASE_SERVICE, id));
-    }
+    dao.dbServiceDAO().delete(id);
     dao.relationshipDAO().deleteAll(id.toString());
   }
 
@@ -87,18 +69,26 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
   }
 
   @Override
-  public void validate(DatabaseService entity) throws IOException {
+  public void prepare(DatabaseService entity) throws IOException {
     EntityUtil.validateIngestionSchedule(entity.getIngestionSchedule());
   }
 
   @Override
-  public void store(DatabaseService entity, boolean update) throws IOException {
-    dao.dbServiceDAO().insert(entity);
-    // TODO other cleanup
+  public void storeEntity(DatabaseService service, boolean update) throws IOException {
+    if (update) {
+      dao.dbServiceDAO().update(service.getId(), JsonUtils.pojoToJson(service));
+    } else {
+      dao.dbServiceDAO().insert(service);
+    }
   }
 
   @Override
   public void storeRelationships(DatabaseService entity) throws IOException {
+  }
+
+  @Override
+  public EntityUpdater getUpdater(DatabaseService original, DatabaseService updated, boolean patchOperation) throws IOException {
+    return new DatabaseServiceUpdater(original, updated, patchOperation);
   }
 
   public static class DatabaseServiceEntityInterface implements EntityInterface<DatabaseService> {
@@ -192,5 +182,29 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
 
     @Override
     public void setTags(List<TagLabel> tags) { }
+  }
+
+  public class DatabaseServiceUpdater extends EntityUpdater {
+    public DatabaseServiceUpdater(DatabaseService original, DatabaseService updated, boolean patchOperation) {
+      super(original, updated, patchOperation);
+    }
+
+    @Override
+    public void entitySpecificUpdate() throws IOException {
+      updateJdbc();
+      updateIngestionSchedule();
+    }
+
+    private void updateJdbc() throws JsonProcessingException {
+      JdbcInfo origJdbc = original.getEntity().getJdbc();
+      JdbcInfo updatedJdbc = updated.getEntity().getJdbc();
+      recordChange("jdbc", origJdbc, updatedJdbc);
+    }
+
+    private void updateIngestionSchedule() throws JsonProcessingException {
+      Schedule origSchedule = original.getEntity().getIngestionSchedule();
+      Schedule updatedSchedule = updated.getEntity().getIngestionSchedule();
+      recordChange("ingestionSchedule", origSchedule, updatedSchedule, true);
+    }
   }
 }

@@ -1,11 +1,8 @@
 /*
- *  Licensed to the Apache Software Foundation (ASF) under one or more
- *  contributor license agreements. See the NOTICE file distributed with
- *  this work for additional information regarding copyright ownership.
- *  The ASF licenses this file to You under the Apache License, Version 2.0
- *  (the "License"); you may not use this file except in compliance with
- *  the License. You may obtain a copy of the License at
- *
+ *  Copyright 2021 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
  *  http://www.apache.org/licenses/LICENSE-2.0
  *  Unless required by applicable law or agreed to in writing, software
  *  distributed under the License is distributed on an "AS IS" BASIS,
@@ -52,13 +49,11 @@ import java.util.UUID;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.CONFLICT;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
-import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
@@ -85,8 +80,8 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline> {
   }
 
   @Override
-  public Object createRequest(TestInfo test, int index, String description, String displayName, EntityReference owner) {
-    return create(test, index).withDescription(description).withDisplayName(displayName).withOwner(owner);
+  public Object createRequest(String name, String description, String displayName, EntityReference owner) {
+    return create(name).withDescription(description).withDisplayName(displayName).withOwner(owner);
   }
 
   @Override
@@ -96,6 +91,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline> {
     validateCommonEntityFields(getEntityInterface(pipeline), createRequest.getDescription(),
             TestUtils.getPrincipal(authHeaders), createRequest.getOwner());
     assertEquals(createRequest.getDisplayName(), pipeline.getDisplayName());
+    assertNotNull(pipeline.getServiceType());
     assertService(createRequest.getService(), pipeline.getService());
     assertEquals(createRequest.getTasks(), pipeline.getTasks());
     TestUtils.validateTags(createRequest.getTags(), pipeline.getTags());
@@ -138,39 +134,12 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline> {
   }
 
   @Test
-  public void post_pipelineWithLongName_400_badRequest(TestInfo test) {
-    // Create pipeline with mandatory name field empty
-    CreatePipeline create = create(test).withName(TestUtils.LONG_ENTITY_NAME);
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            createPipeline(create, adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, "[name size must be between 1 and 64]");
-  }
-
-  @Test
-  public void post_pipelineWithoutName_400_badRequest(TestInfo test) {
-    // Create Pipeline with mandatory name field empty
-    CreatePipeline create = create(test).withName("");
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            createPipeline(create, adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, "[name size must be between 1 and 64]");
-  }
-
-  @Test
-  public void post_PipelineAlreadyExists_409_conflict(TestInfo test) throws HttpResponseException {
-    CreatePipeline create = create(test);
-    createPipeline(create, adminAuthHeaders());
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            createPipeline(create, adminAuthHeaders()));
-    assertResponse(exception, CONFLICT, CatalogExceptionMessage.ENTITY_ALREADY_EXISTS);
-  }
-
-  @Test
   public void post_validPipelines_as_admin_200_OK(TestInfo test) throws IOException {
     // Create team with different optional fields
     CreatePipeline create = create(test);
     createAndCheckEntity(create, adminAuthHeaders());
 
-    create.withName(getPipelineName(test, 1)).withDescription("description");
+    create.withName(getEntityName(test, 1)).withDescription("description");
     createAndCheckEntity(create, adminAuthHeaders());
   }
 
@@ -203,25 +172,6 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline> {
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
             createPipeline(create, adminAuthHeaders()));
     TestUtils.assertResponseContains(exception, BAD_REQUEST, "service must not be null");
-  }
-
-  @Test
-  public void post_PipelineWithInvalidOwnerType_4xx(TestInfo test) {
-    EntityReference owner = new EntityReference().withId(TEAM1.getId()); /* No owner type is set */
-
-    CreatePipeline create = create(test).withOwner(owner);
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            createPipeline(create, adminAuthHeaders()));
-    TestUtils.assertResponseContains(exception, BAD_REQUEST, "type must not be null");
-  }
-
-  @Test
-  public void post_PipelineWithNonExistentOwner_4xx(TestInfo test) {
-    EntityReference owner = new EntityReference().withId(TestUtils.NON_EXISTENT_ENTITY).withType("user");
-    CreatePipeline create = create(test).withOwner(owner);
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            createPipeline(create, adminAuthHeaders()));
-    assertResponse(exception, NOT_FOUND, entityNotFound("User", TestUtils.NON_EXISTENT_ENTITY));
   }
 
   @Test
@@ -275,30 +225,27 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline> {
   }
 
   @Test
-  public void put_AddRemovePipelineTasksUpdate_200(TestInfo test) throws IOException {
-    CreatePipeline request = create(test).withService(AIRFLOW_REFERENCE).withDescription(null).withTasks(null);
+  public void put_AddRemovePipelineTasksUpdate_200(TestInfo test) throws IOException, URISyntaxException {
+    CreatePipeline request = create(test).withService(AIRFLOW_REFERENCE).withDescription(null)
+        .withTasks(null).withConcurrency(null).withPipelineUrl(new URI("http://localhost:8080"));
     Pipeline pipeline = createAndCheckEntity(request, adminAuthHeaders());
 
     // Add tasks and description
     ChangeDescription change = getChangeDescription(pipeline.getVersion());
     change.getFieldsAdded().add(new FieldChange().withName("description").withNewValue("newDescription"));
     change.getFieldsAdded().add(new FieldChange().withName("tasks").withNewValue(TASKS));
-    pipeline = updateAndCheckEntity(request.withDescription("newDescription").withTasks(TASKS),
-            OK, adminAuthHeaders(), MINOR_UPDATE, change);
-
+    change.getFieldsAdded().add(new FieldChange().withName("concurrency")
+        .withNewValue(5));
+    change.getFieldsUpdated().add(new FieldChange().withName("pipelineUrl")
+        .withNewValue("https://airflow.open-metadata.org").withOldValue("http://localhost:8080"));
+    pipeline = updateAndCheckEntity(request.withDescription("newDescription").withTasks(TASKS)
+            .withConcurrency(5).withPipelineUrl(new URI("https://airflow.open-metadata.org")),
+        OK, adminAuthHeaders(), MINOR_UPDATE, change);
     // TODO update this once task removal is figured out
     // remove a task
     // TASKS.remove(0);
     // change = getChangeDescription(pipeline.getVersion()).withFieldsUpdated(singletonList("tasks"));
     //updateAndCheckEntity(request.withTasks(TASKS), OK, adminAuthHeaders(), MINOR_UPDATE, change);
-  }
-
-  @Test
-  public void get_nonExistentPipeline_404_notFound() {
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            getPipeline(TestUtils.NON_EXISTENT_ENTITY, adminAuthHeaders()));
-    assertResponse(exception, NOT_FOUND,
-            entityNotFound(Entity.PIPELINE, TestUtils.NON_EXISTENT_ENTITY));
   }
 
   @Test
@@ -320,19 +267,12 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline> {
   @Test
   public void delete_emptyPipeline_200_ok(TestInfo test) throws HttpResponseException {
     Pipeline pipeline = createPipeline(create(test), adminAuthHeaders());
-    deletePipeline(pipeline.getId(), adminAuthHeaders());
+    deleteEntity(pipeline.getId(), adminAuthHeaders());
   }
 
   @Test
   public void delete_nonEmptyPipeline_4xx() {
     // TODO
-  }
-
-  @Test
-  public void delete_nonExistentPipeline_404() {
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            deletePipeline(TestUtils.NON_EXISTENT_ENTITY, adminAuthHeaders()));
-    assertResponse(exception, NOT_FOUND, entityNotFound(Entity.PIPELINE, TestUtils.NON_EXISTENT_ENTITY));
   }
 
   public static Pipeline updatePipeline(CreatePipeline create,
@@ -355,27 +295,17 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline> {
             getPipeline(pipeline.getId(), fields, adminAuthHeaders());
     assertNotNull(pipeline.getOwner());
     assertNotNull(pipeline.getService()); // We always return the service
-    assertNull(pipeline.getTasks());
-
-    // .../Pipelines?fields=owner,service
-    fields = "owner,service";
-    pipeline = byName ? getPipelineByName(pipeline.getFullyQualifiedName(), fields, adminAuthHeaders()) :
-            getPipeline(pipeline.getId(), fields, adminAuthHeaders());
-    assertNotNull(pipeline.getOwner());
-    assertNotNull(pipeline.getService());
+    assertNotNull(pipeline.getServiceType());
     assertNull(pipeline.getTasks());
 
     // .../Pipelines?fields=owner,service,tables
-    fields = "owner,service,tasks";
+    fields = "owner,tasks";
     pipeline = byName ? getPipelineByName(pipeline.getFullyQualifiedName(), fields, adminAuthHeaders()) :
             getPipeline(pipeline.getId(), fields, adminAuthHeaders());
     assertNotNull(pipeline.getOwner());
-    assertNotNull(pipeline.getService());
+    assertNotNull(pipeline.getService()); // We always return the service
+    assertNotNull(pipeline.getServiceType());
     assertNotNull(pipeline.getTasks());
-  }
-
-  public static void getPipeline(UUID id, Map<String, String> authHeaders) throws HttpResponseException {
-    getPipeline(id, null, authHeaders);
   }
 
   public static Pipeline getPipeline(UUID id, String fields, Map<String, String> authHeaders)
@@ -392,27 +322,11 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline> {
     return TestUtils.get(target, Pipeline.class, authHeaders);
   }
 
-  private void deletePipeline(UUID id, Map<String, String> authHeaders) throws HttpResponseException {
-    TestUtils.delete(getResource("pipelines/" + id), authHeaders);
-
-    // Ensure deleted Pipeline does not exist
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () -> getPipeline(id, authHeaders));
-    assertResponse(exception, NOT_FOUND, entityNotFound(Entity.PIPELINE, id));
+  private CreatePipeline create(TestInfo test) {
+    return create(getEntityName(test));
   }
 
-  public static String getPipelineName(TestInfo test) {
-    return String.format("pipe_%s", test.getDisplayName());
-  }
-
-  public static String getPipelineName(TestInfo test, int index) {
-    return String.format("pipe%d_%s", index, test.getDisplayName());
-  }
-
-  public static CreatePipeline create(TestInfo test) {
-    return new CreatePipeline().withName(getPipelineName(test)).withService(AIRFLOW_REFERENCE);
-  }
-
-  public static CreatePipeline create(TestInfo test, int index) {
-    return new CreatePipeline().withName(getPipelineName(test, index)).withService(AIRFLOW_REFERENCE);
+  private CreatePipeline create(String entityName) {
+    return new CreatePipeline().withName(entityName).withService(AIRFLOW_REFERENCE);
   }
 }

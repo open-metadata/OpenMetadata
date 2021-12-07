@@ -3,7 +3,7 @@
 ## Build
 
 * Run mvn -DskipTests clean package
-* cd dist/target
+* cd openmetadata-dist/target
 * unzip catalog-command-center-1.0.0-SNAPSHOT.zip
 * cd catalog-command-center-1.0.0-SNAPSHOT
 * make sure you have mysql running with following creds

@@ -1,3 +1,14 @@
+#  Copyright 2021 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
 import json
 import logging
 import random
@@ -29,8 +40,6 @@ from metadata.ingestion.models.table_metadata import Chart, Dashboard
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
-from metadata.ingestion.processor.pii import ColumnNameScanner
-from metadata.ingestion.source.sample_data import get_database_service_or_create
 from metadata.ingestion.source.sql_source import SQLConnectionConfig
 from metadata.utils.helpers import snake_to_camel
 
@@ -81,7 +90,6 @@ class SampleEntitySource(Source):
         self.config = config
         self.metadata_config = metadata_config
         self.metadata = OpenMetadata(metadata_config)
-        self.column_scanner = ColumnNameScanner()
         self.service_name = lambda: self.faker.word()
         self.service_type = lambda: random.choice(
             ["BigQuery", "Hive", "MSSQL", "MySQL", "Postgres", "Redshift", "Snowflake"]

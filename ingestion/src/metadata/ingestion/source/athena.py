@@ -1,12 +1,8 @@
-#  Licensed to the Apache Software Foundation (ASF) under one or more
-#  contributor license agreements. See the NOTICE file distributed with
-#  this work for additional information regarding copyright ownership.
-#  The ASF licenses this file to You under the Apache License, Version 2.0
-#  (the "License"); you may not use this file except in compliance with
-#  the License. You may obtain a copy of the License at
-#
+#  Copyright 2021 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
 #  http://www.apache.org/licenses/LICENSE-2.0
-#
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -16,6 +12,8 @@
 from typing import Optional
 from urllib.parse import quote_plus
 
+from pydantic import SecretStr
+
 from ..ometa.openmetadata_rest import MetadataServerConfig
 from .sql_source import SQLConnectionConfig, SQLSource
 
@@ -23,7 +21,7 @@ from .sql_source import SQLConnectionConfig, SQLSource
 class AthenaConfig(SQLConnectionConfig):
     scheme: str = "awsathena+rest"
     username: Optional[str] = None
-    password: Optional[str] = None
+    password: Optional[SecretStr] = None
     database: Optional[str] = None
     aws_region: str
     s3_staging_dir: str
@@ -34,7 +32,7 @@ class AthenaConfig(SQLConnectionConfig):
         if self.username:
             url += f"{quote_plus(self.username)}"
             if self.password:
-                url += f":{quote_plus(self.password)}"
+                url += f":{quote_plus(self.password.get_secret_value())}"
         else:
             url += ":"
         url += f"@athena.{self.aws_region}.amazonaws.com:443/"

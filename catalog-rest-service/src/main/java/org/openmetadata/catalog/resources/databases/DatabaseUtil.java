@@ -1,11 +1,8 @@
 /*
- *  Licensed to the Apache Software Foundation (ASF) under one or more
- *  contributor license agreements. See the NOTICE file distributed with
- *  this work for additional information regarding copyright ownership.
- *  The ASF licenses this file to You under the Apache License, Version 2.0
- *  (the "License"); you may not use this file except in compliance with
- *  the License. You may obtain a copy of the License at
- *
+ *  Copyright 2021 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
  *  http://www.apache.org/licenses/LICENSE-2.0
  *  Unless required by applicable law or agreed to in writing, software
  *  distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,6 +13,7 @@
 
 package org.openmetadata.catalog.resources.databases;
 
+import org.openmetadata.catalog.entity.data.DbtModel;
 import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.type.Column;
 import org.openmetadata.catalog.type.ColumnConstraint;
@@ -81,6 +79,16 @@ public final class DatabaseUtil {
   public static void validateColumns(Table table) {
     validateColumnNames(table.getColumns());
     for (Column c : table.getColumns()) {
+      validateColumnDataTypeDisplay(c);
+      validateColumnDataLength(c);
+      validateArrayColumn(c);
+      validateStructColumn(c);
+    }
+  }
+
+  public static void validateColumns(DbtModel dbtModel) {
+    validateColumnNames(dbtModel.getColumns());
+    for (Column c : dbtModel.getColumns()) {
       validateColumnDataTypeDisplay(c);
       validateColumnDataLength(c);
       validateArrayColumn(c);

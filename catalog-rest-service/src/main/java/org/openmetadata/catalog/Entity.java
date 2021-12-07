@@ -1,11 +1,8 @@
 /*
- *  Licensed to the Apache Software Foundation (ASF) under one or more
- *  contributor license agreements. See the NOTICE file distributed with
- *  this work for additional information regarding copyright ownership.
- *  The ASF licenses this file to You under the Apache License, Version 2.0
- *  (the "License"); you may not use this file except in compliance with
- *  the License. You may obtain a copy of the License at
- *
+ *  Copyright 2021 Collate 
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
  *  http://www.apache.org/licenses/LICENSE-2.0
  *  Unless required by applicable law or agreed to in writing, software
  *  distributed under the License is distributed on an "AS IS" BASIS,
@@ -38,6 +35,7 @@ import java.util.UUID;
 public final class Entity {
   private static final Map<String, EntityDAO<?>> DAO_MAP = new HashMap<>();
   private static final Map<String, EntityRepository> ENTITY_REPOSITORY_MAP = new HashMap<>();
+  private static final Map<String, String> CANONICAL_ENTITY_NAME_MAP = new HashMap<>();
 
   //
   // Services
@@ -59,7 +57,8 @@ public final class Entity {
   public static final String CHART = "chart";
   public static final String REPORT = "report";
   public static final String TOPIC = "topic";
-  public static final String MLMODEL = "mLModel";
+  public static final String MLMODEL = "mlmodel";
+  public static final String DBTMODEL = "dbtmodel";
   public static final String BOTS = "bots";
   public static final String LOCATION = "location";
 
@@ -74,7 +73,9 @@ public final class Entity {
   public static final String USER = "user";
   public static final String TEAM = "team";
 
+  //
   // Operations
+  //
   public static final String INGESTION = "ingestion";
 
   private Entity() {
@@ -82,8 +83,10 @@ public final class Entity {
 
   public static void registerEntity(String entity, EntityDAO<?> dao,
                                     EntityRepository<?> entityRepository) {
-    DAO_MAP.put(entity.toLowerCase(Locale.ROOT), dao);
+    DAO_MAP.put(entity, dao);
     ENTITY_REPOSITORY_MAP.put(entity, entityRepository);
+    CANONICAL_ENTITY_NAME_MAP.put(entity.toLowerCase(Locale.ROOT), entity);
+    System.out.println("Registering entity " + entity);
   }
 
   public static EntityReference getEntityReference(String entity, UUID id) throws IOException {
@@ -103,7 +106,7 @@ public final class Entity {
   }
 
   public static EntityReference getEntityReference(Object entity) {
-    String entityName = entity.getClass().getSimpleName().toLowerCase(Locale.ROOT);
+    String entityName = getEntityNameFromObject(entity);
     EntityRepository entityRepository = ENTITY_REPOSITORY_MAP.get(entityName);
     if (entityRepository == null) {
       throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entityName));
@@ -119,7 +122,7 @@ public final class Entity {
     if (ref == null) {
       return null;
     }
-    String entityName = ref.getType().toLowerCase(Locale.ROOT);
+    String entityName = ref.getType();
     EntityRepository<?> entityRepository = ENTITY_REPOSITORY_MAP.get(entityName);
     if (entityRepository == null) {
       throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entityName));
@@ -132,7 +135,7 @@ public final class Entity {
     if (entity == null) {
       return null;
     }
-    String entityName = entity.getClass().getSimpleName().toLowerCase(Locale.ROOT);
+    String entityName = getEntityNameFromObject(entity);
     EntityRepository entityRepository = ENTITY_REPOSITORY_MAP.get(entityName);
     if (entityRepository == null) {
       throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entityName));
@@ -140,21 +143,31 @@ public final class Entity {
     return entityRepository.getEntityInterface(entity);
   }
 
-  public static class EntityList {
-    public static final EntityList EMPTY_LIST = new EntityList(null);
-    private final List<String> list;
+  public static String getEntityNameFromClass(Class clz) {
+    return CANONICAL_ENTITY_NAME_MAP.get(clz.getSimpleName().toLowerCase(Locale.ROOT));
+  }
 
-    public EntityList(String entitiesParam) {
+  public static String getEntityNameFromObject(Object object) {
+    return CANONICAL_ENTITY_NAME_MAP.get(object.getClass().getSimpleName().toLowerCase(Locale.ROOT));
+  }
+
+  public static class EntityList {
+
+    public static List<String> getEntityList(String name, String entitiesParam) {
       if (entitiesParam == null) {
-        list = Collections.emptyList();
-        return;
+        return null;
       }
-      list = Arrays.asList(entitiesParam.replaceAll("\\s", "").split(","));
-      // TODO validate entity
+      List<String> list = Arrays.asList(entitiesParam.replaceAll("\\s", "").split(","));
+      validateEntities(name, list);
+      return list;
     }
 
-    public List<String> getList() {
-      return list;
+    private static void validateEntities(String name, List<String> list) {
+      for (String entity : list) {
+        if (ENTITY_REPOSITORY_MAP.get(entity) == null) {
+          throw new IllegalArgumentException(String.format("Invalid entity %s in query param %s", entity, name));
+        }
+      }
     }
   }
 }

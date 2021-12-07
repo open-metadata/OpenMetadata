@@ -1,11 +1,8 @@
 /*
- *  Licensed to the Apache Software Foundation (ASF) under one or more
- *  contributor license agreements. See the NOTICE file distributed with
- *  this work for additional information regarding copyright ownership.
- *  The ASF licenses this file to You under the Apache License, Version 2.0
- *  (the "License"); you may not use this file except in compliance with
- *  the License. You may obtain a copy of the License at
- *
+ *  Copyright 2021 Collate 
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
  *  http://www.apache.org/licenses/LICENSE-2.0
  *  Unless required by applicable law or agreed to in writing, software
  *  distributed under the License is distributed on an "AS IS" BASIS,
@@ -29,7 +26,7 @@ public final class CatalogExceptionMessage {
   }
 
   public static String entityNotFound(String entity, String id) {
-    return String.format("%s instance for %s not found", StringUtils.capitalize(entity), id);
+    return String.format("%s instance for %s not found", entity, id);
   }
 
   public static String entityNotFound(String entity, UUID id) {
@@ -37,7 +34,7 @@ public final class CatalogExceptionMessage {
   }
 
   public static String readOnlyAttribute(String entity, String attribute) {
-    return String.format("%s attribute %s can't be modified", StringUtils.capitalize(entity), attribute);
+    return String.format("%s attribute %s can't be modified", entity, attribute);
   }
 
   public static String invalidField(String field) {
@@ -45,7 +42,7 @@ public final class CatalogExceptionMessage {
   }
 
   public static String entityTypeNotFound(String entity) {
-    return String.format("Entity type %s not found", StringUtils.capitalize(entity));
+    return String.format("Entity type %s not found", entity);
   }
 
   public static String deactivatedUser(UUID id) {
@@ -57,6 +54,10 @@ public final class CatalogExceptionMessage {
   }
 
   public static String entityVersionNotFound(String entity, String id, Double version) {
-    return String.format("%s instance for %s and version %s not found", StringUtils.capitalize(entity), id, version);
+    return String.format("%s instance for %s and version %s not found", entity, id, version);
+  }
+
+  public static String invalidServiceEntity(String serviceEntity, String entity) {
+    return String.format("Invalid service entity type %s for %s", serviceEntity, entity);
   }
 }

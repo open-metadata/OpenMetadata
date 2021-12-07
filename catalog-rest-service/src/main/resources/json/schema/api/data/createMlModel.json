@@ -1,0 +1,68 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/createMlModel.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Create Ml Model entity request",
+  "description": "Create Ml Model entity request",
+  "type": "object",
+  "properties" : {
+    "name": {
+      "description": "Name that identifies this ML model.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "displayName": {
+      "description": "Display Name that identifies this ML model. It could be title or label from the source services",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of the ML model instance. How it was trained and for what it is used.",
+      "type": "string"
+    },
+    "algorithm": {
+      "description": "Algorithm used to train the ML Model",
+      "type": "string"
+    },
+    "mlFeatures": {
+      "description": "Features used to train the ML Model.",
+      "type": "array",
+      "items": {
+        "$ref": "../../entity/data/mlmodel.json#/definitions/mlFeature"
+      },
+      "default" : null
+    },
+    "mlHyperParameters": {
+      "description": "Hyper Parameters used to train the ML Model.",
+      "type": "array",
+      "items": {
+        "$ref": "../../entity/data/mlmodel.json#/definitions/mlHyperParameter"
+      },
+      "default" : null
+    },
+    "dashboard" : {
+      "description": "Performance Dashboard URL to track metric evolution",
+      "$ref" : "../../type/entityReference.json"
+    },
+    "mlStore": {
+      "description": "Location containing the ML Model. It can be a storage layer and/or a container repository.",
+      "$ref": "../../entity/data/mlmodel.json#/definitions/mlStore"
+    },
+    "server": {
+      "description": "Endpoint that makes the ML Model available, e.g,. a REST API serving the data or computing predictions.",
+      "$ref": "../../type/basic.json#/definitions/href"
+    },
+    "tags": {
+      "description": "Tags for this ML Model",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      },
+      "default": null
+    },
+    "owner": {
+      "description": "Owner of this database",
+      "$ref": "../../type/entityReference.json"
+    }
+  },
+  "required": ["name", "algorithm"]
+}

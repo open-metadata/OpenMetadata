@@ -1,11 +1,8 @@
 /*
- *  Licensed to the Apache Software Foundation (ASF) under one or more
- *  contributor license agreements. See the NOTICE file distributed with
- *  this work for additional information regarding copyright ownership.
- *  The ASF licenses this file to You under the Apache License, Version 2.0
- *  (the "License"); you may not use this file except in compliance with
- *  the License. You may obtain a copy of the License at
- *
+ *  Copyright 2021 Collate 
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
  *  http://www.apache.org/licenses/LICENSE-2.0
  *  Unless required by applicable law or agreed to in writing, software
  *  distributed under the License is distributed on an "AS IS" BASIS,
@@ -32,53 +29,53 @@ public enum Relationship {
   // Organization --- contains --> Team
   // Team --- contains --> User
   // Service --- contains --> Database
-  CONTAINS("contains"),
+  CONTAINS("contains"), // 0
 
   // User/Bot --- created ---> Thread
-  CREATED("createdBy"),
+  CREATED("createdBy"), // 1
 
   // User/Bot --- repliedTo ---> Thread
-  REPLIED_TO("repliedTo"),
+  REPLIED_TO("repliedTo"), // 2
 
   // Thread --- isAbout ---> Entity
-  IS_ABOUT("isAbout"),
+  IS_ABOUT("isAbout"), // 3
 
   // Thread --- addressedTo ---> User/Team
-  ADDRESSED_TO("addressedTo"),
+  ADDRESSED_TO("addressedTo"), // 4
 
   // User, Team, Data assets --- mentionedIn ---> Thread
-  MENTIONED_IN("mentionedIn"),
+  MENTIONED_IN("mentionedIn"), // 5
 
   // Entity --- testedBy ---> Test
-  TESTED_BY("testedBy"),
+  TESTED_BY("testedBy"), // 6
 
   // {Dashboard|Pipeline|Query} --- uses ---> Table
   // {User} --- uses ---> {Table|Dashboard|Query}
-  // {Model} --- uses ---> {Dashboard}
-  USES("uses"),
+  // {MlModel} --- uses ---> {Dashboard}
+  USES("uses"), // 7
 
   // {User|Team|Org} --- owns ---> {Table|Dashboard|Query}
-  OWNS("owns"),
+  OWNS("owns"), // 8
 
   // {Role} --- parentOf ---> {Role}
-  PARENT_OF("parentOf"),
+  PARENT_OF("parentOf"), // 9
 
   // {User} --- has ---> {Role}
   // {Table} --- has ---> {Location}
   // {Database} --- has ---> {Location}
-  HAS("has"),
+  HAS("has"), // 10
 
   // {User} --- follows ----> {Table, Database, Metrics...}
-  FOLLOWS("follows"),
+  FOLLOWS("follows"), // 11
 
   // {Table.Column...} --- joinedWith ---> {Table.Column}
-  JOINED_WITH("joinedWith"),
+  JOINED_WITH("joinedWith"), // 12
 
   // Lineage relationship
   // {Table1} --- upstream ---> {Table2} (Table1 is used for creating Table2}
   // {Pipeline} --- upstream ---> {Table2} (Pipeline creates Table2)
   // {Table} --- upstream ---> {Dashboard} (Table was used to  create Dashboard)
-  UPSTREAM("upstream");
+  UPSTREAM("upstream"); // 13
   /*** Add new enums to the end of the list **/
 
   private final String value;

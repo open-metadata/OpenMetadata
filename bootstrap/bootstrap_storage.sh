@@ -1,20 +1,14 @@
 #!/usr/bin/env bash
-#
-# Licensed to the Apache Software Foundation (ASF) under one or more
-# contributor license agreements. See the NOTICE file distributed with
-# this work for additional information regarding copyright ownership.
-# The ASF licenses this file to You under the Apache License, Version 2.0
-# (the "License"); you may not use this file except in compliance with
-# the License. You may obtain a copy of the License at
-#
-# http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-#
+#  Copyright 2021 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
 
 # Resolve links - $0 may be a softlink
 PRG="${0}"
@@ -41,11 +35,16 @@ else
 fi
 
 TABLE_INITIALIZER_MAIN_CLASS=org.openmetadata.catalog.util.TablesInitializer
-for file in "${BOOTSTRAP_DIR}"/../libs/*.jar;
-do
-    CLASSPATH="$CLASSPATH":"$file"
-done
-
+LIBS_DIR="${BOOTSTRAP_DIR}"/../libs/
+echo $LIBS_DIR
+if [ -d "${LIBS_DIR}" ]; then
+  for file in "${LIBS_DIR}"*.jar;
+  do
+      CLASSPATH="$CLASSPATH":"$file"
+  done
+else
+  CLASSPATH=`mvn -pl catalog-rest-service -q exec:exec -Dexec.executable=echo -Dexec.args="%classpath"`
+fi
 
 execute() {
     echo "Using Configuration file: ${CONFIG_FILE_PATH}"
@@ -61,6 +60,9 @@ USAGE: $0 [create|migrate|info|validate|drop|drop-create|repair|check-connection
    validate         : Checks if the all the migrations haven been applied on the target database
    drop             : Drops all the tables in the target database
    drop-create      : Drops and recreates all the tables in the target database.
+   es-drop          : Drops the indexes in ElasticSearch
+   es-create        : Creates the indexes in ElasticSearch
+   drop-create-all  : Drops and recreates all the tables in the database. Drops and creates all the indexes in ElasticSearch.
    repair           : Repairs the DATABASE_CHANGE_LOG table which is used to track all the migrations on the target database.
                       This involves removing entries for the failed migrations and update the checksum of migrations already applied on the target databsase.
    check-connection : Checks if a connection can be sucessfully obtained for the target database
@@ -77,11 +79,14 @@ fi
 opt="$1"
 
 case "${opt}" in
-create | drop | migrate | info | validate | repair | check-connection )
+create | drop | migrate | info | validate | repair | check-connection | es-drop | es-create )
     execute "${opt}"
     ;;
 drop-create )
     execute "drop" && execute "create"
+    ;;
+drop-create-all )
+    execute "drop" && execute "create" && execute "es-drop" && execute "es-create"
     ;;
 *)
     printUsage

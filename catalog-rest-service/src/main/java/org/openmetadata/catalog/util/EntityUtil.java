@@ -1,11 +1,8 @@
 /*
- *  Licensed to the Apache Software Foundation (ASF) under one or more
- *  contributor license agreements. See the NOTICE file distributed with
- *  this work for additional information regarding copyright ownership.
- *  The ASF licenses this file to You under the Apache License, Version 2.0
- *  (the "License"); you may not use this file except in compliance with
- *  the License. You may obtain a copy of the License at
- *
+ *  Copyright 2021 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
  *  http://www.apache.org/licenses/LICENSE-2.0
  *  Unless required by applicable law or agreed to in writing, software
  *  distributed under the License is distributed on an "AS IS" BASIS,
@@ -90,6 +87,8 @@ public final class EntityUtil {
 
   public static BiPredicate<Task, Task> taskMatch = (task1, task2) ->
           task1.getName().equals(task2.getName());
+
+  public static BiPredicate<String, String> stringMatch = String::equals;
 
   public static BiPredicate<Column, Column> columnMatch = (column1, column2) ->
           column1.getName().equals(column2.getName()) &&
@@ -282,17 +281,20 @@ public final class EntityUtil {
       // Apply tagLabel to targetFQN that identifies an entity or field
       tagDAO.applyTag(tagLabel.getTagFQN(), targetFQN, tagLabel.getLabelType().ordinal(),
               tagLabel.getState().ordinal());
-
-      // Apply derived tags
-      List<TagLabel> derivedTags = getDerivedTags(tagLabel, tag);
-      applyTags(tagDAO, derivedTags, targetFQN);
     }
   }
 
-  public static List<TagLabel> getDerivedTags(TagLabel tagLabel, Tag tag) {
+  public static List<TagLabel> getDerivedTags(TagDAO tagDAO, TagLabel tagLabel, Tag tag) throws IOException {
     List<TagLabel> derivedTags = new ArrayList<>();
     for (String fqn : Optional.ofNullable(tag.getAssociatedTags()).orElse(Collections.emptyList())) {
-      derivedTags.add(new TagLabel().withTagFQN(fqn).withState(tagLabel.getState()).withLabelType(LabelType.DERIVED));
+      String json = tagDAO.findTag(fqn);
+      if (json == null) {
+        // Invalid TagLabel
+        throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(Tag.class.getSimpleName(), fqn));
+      }
+      Tag tempTag = JsonUtils.readValue(json, Tag.class);
+      derivedTags.add(new TagLabel().withTagFQN(fqn).withState(tagLabel.getState())
+              .withDescription(tempTag.getDescription()).withLabelType(LabelType.DERIVED));
     }
     return derivedTags;
   }
@@ -313,7 +315,7 @@ public final class EntityUtil {
       updatedTagLabels.add(tagLabel);
 
       // Apply derived tags
-      List<TagLabel> derivedTags = getDerivedTags(tagLabel, tag);
+      List<TagLabel> derivedTags = getDerivedTags(tagDAO, tagLabel, tag);
       updatedTagLabels = mergeTags(updatedTagLabels, derivedTags);
     }
     updatedTagLabels.sort(compareTagLabel);
@@ -413,7 +415,7 @@ public final class EntityUtil {
     // Return for fqn=service.database.table.c1.c2 -> c1.c2 (note different from just the local name of the column c2)
     StringBuilder localColumnName = new StringBuilder();
     String[] s = fqn.split("\\.");
-    for (int i = 3; i < s.length -1 ; i++) {
+    for (int i = 3; i < s.length -1; i++) {
       localColumnName.append(s[i]).append(".");
     }
     localColumnName.append(s[s.length - 1]);

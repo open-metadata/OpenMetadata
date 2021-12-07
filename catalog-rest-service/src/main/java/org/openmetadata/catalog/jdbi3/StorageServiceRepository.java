@@ -1,11 +1,8 @@
 /*
- *  Licensed to the Apache Software Foundation (ASF) under one or more
- *  contributor license agreements. See the NOTICE file distributed with
- *  this work for additional information regarding copyright ownership.
- *  The ASF licenses this file to You under the Apache License, Version 2.0
- *  (the "License"); you may not use this file except in compliance with
- *  the License. You may obtain a copy of the License at
- *
+ *  Copyright 2021 Collate 
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
  *  http://www.apache.org/licenses/LICENSE-2.0
  *  Unless required by applicable law or agreed to in writing, software
  *  distributed under the License is distributed on an "AS IS" BASIS,
@@ -19,7 +16,6 @@ package org.openmetadata.catalog.jdbi3;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.services.StorageService;
-import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.resources.services.storage.StorageServiceResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
@@ -27,7 +23,6 @@ import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.JsonUtils;
 
-import javax.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.net.URI;
 import java.text.ParseException;
@@ -35,32 +30,20 @@ import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 
-import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.catalog.util.EntityUtil.Fields;
 
 public class StorageServiceRepository extends EntityRepository<StorageService> {
   private final CollectionDAO dao;
 
   public StorageServiceRepository(CollectionDAO dao) {
-    super(StorageServiceResource.COLLECTION_PATH, StorageService.class, dao.storageServiceDAO(), dao,
-            Fields.EMPTY_FIELDS, Fields.EMPTY_FIELDS);
+    super(StorageServiceResource.COLLECTION_PATH, Entity.STORAGE_SERVICE, StorageService.class,
+            dao.storageServiceDAO(), dao, Fields.EMPTY_FIELDS, Fields.EMPTY_FIELDS);
     this.dao = dao;
-  }
-
-  public StorageService update(UriInfo uriInfo, UUID id, String description)
-          throws IOException {
-    StorageService storageService = dao.storageServiceDAO().findEntityById(id);
-    // Update fields
-    storageService.withDescription(description);
-    dao.storageServiceDAO().update(id, JsonUtils.pojoToJson(storageService));
-    return withHref(uriInfo, storageService);
   }
 
   @Transaction
   public void delete(UUID id) {
-    if (dao.storageServiceDAO().delete(id) <= 0) {
-      throw EntityNotFoundException.byMessage(entityNotFound(Entity.STORAGE_SERVICE, id));
-    }
+    dao.storageServiceDAO().delete(id);
     dao.relationshipDAO().deleteAll(id.toString());
   }
 
@@ -80,14 +63,17 @@ public class StorageServiceRepository extends EntityRepository<StorageService> {
   }
 
   @Override
-  public void validate(StorageService entity) throws IOException {
+  public void prepare(StorageService entity) throws IOException {
   }
 
 
   @Override
-  public void store(StorageService entity, boolean update) throws IOException {
-    dao.storageServiceDAO().insert(entity);
-    // TODO other cleanup
+  public void storeEntity(StorageService service, boolean update) throws IOException {
+    if (update) {
+      dao.storageServiceDAO().update(service.getId(), JsonUtils.pojoToJson(service));
+    } else {
+      dao.storageServiceDAO().insert(service);
+    }
   }
 
   @Override

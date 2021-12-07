@@ -1,11 +1,8 @@
 /*
- *  Licensed to the Apache Software Foundation (ASF) under one or more
- *  contributor license agreements. See the NOTICE file distributed with
- *  this work for additional information regarding copyright ownership.
- *  The ASF licenses this file to You under the Apache License, Version 2.0
- *  (the "License"); you may not use this file except in compliance with
- *  the License. You may obtain a copy of the License at
- *
+ *  Copyright 2021 Collate 
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
  *  http://www.apache.org/licenses/LICENSE-2.0
  *  Unless required by applicable law or agreed to in writing, software
  *  distributed under the License is distributed on an "AS IS" BASIS,
@@ -17,7 +14,6 @@
 package org.openmetadata.catalog.jdbi3;
 
 import org.jdbi.v3.sqlobject.transaction.Transaction;
-import org.openmetadata.catalog.Entity.EntityList;
 import org.openmetadata.catalog.resources.events.EventResource.ChangeEventList;
 import org.openmetadata.catalog.type.ChangeEvent;
 import org.openmetadata.catalog.util.JsonUtils;
@@ -43,13 +39,13 @@ public class ChangeEventRepository {
   public ChangeEventRepository(CollectionDAO dao) { this.dao = dao; }
 
   @Transaction
-  public ResultList<ChangeEvent> list(Date date, EntityList entityCreatedList,
-                                      EntityList entityUpdatedList, EntityList entityDeletedList) throws IOException,
+  public ResultList<ChangeEvent> list(Date date, List<String> entityCreatedList,
+                                      List<String> entityUpdatedList, List<String> entityDeletedList) throws IOException,
           GeneralSecurityException {
     List<String> jsons = new ArrayList<>();
-    jsons.addAll(dao.changeEventDAO().list(ENTITY_CREATED.value(), entityCreatedList.getList(), date.getTime()));
-    jsons.addAll(dao.changeEventDAO().list(ENTITY_UPDATED.value(), entityUpdatedList.getList(), date.getTime()));
-    jsons.addAll(dao.changeEventDAO().list(ENTITY_DELETED.value(), entityDeletedList.getList(), date.getTime()));
+    jsons.addAll(dao.changeEventDAO().list(ENTITY_CREATED.value(), entityCreatedList, date.getTime()));
+    jsons.addAll(dao.changeEventDAO().list(ENTITY_UPDATED.value(), entityUpdatedList, date.getTime()));
+    jsons.addAll(dao.changeEventDAO().list(ENTITY_DELETED.value(), entityDeletedList, date.getTime()));
     List<ChangeEvent> changeEvents = new ArrayList<>();
     for (String json : jsons) {
       changeEvents.add(JsonUtils.readValue(json, ChangeEvent.class));

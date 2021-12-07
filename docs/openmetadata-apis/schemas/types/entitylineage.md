@@ -2,7 +2,7 @@
 
 This schema defines the type used for lineage of an entity.
 
-**$id: https://open-metadata.org/schema/type/entitylineage.json**
+**$id: **[**https://open-metadata.org/schema/type/entitylineage.json**](https://open-metadata.org/schema/type/entitylineage.json)
 
 Type: `object`
 
@@ -56,4 +56,4 @@ This schema does not accept additional properties.
   * **description**
     * Type: `string`
 
-_This document was updated on: Monday, October 18, 2021_
+_This document was updated on: Monday, November 15, 2021_

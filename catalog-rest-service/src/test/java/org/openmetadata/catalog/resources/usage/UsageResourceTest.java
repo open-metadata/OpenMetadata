@@ -1,11 +1,8 @@
 /*
- *  Licensed to the Apache Software Foundation (ASF) under one or more
- *  contributor license agreements. See the NOTICE file distributed with
- *  this work for additional information regarding copyright ownership.
- *  The ASF licenses this file to You under the Apache License, Version 2.0
- *  (the "License"); you may not use this file except in compliance with
- *  the License. You may obtain a copy of the License at
- *
+ *  Copyright 2021 Collate 
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
  *  http://www.apache.org/licenses/LICENSE-2.0
  *  Unless required by applicable law or agreed to in writing, software
  *  distributed under the License is distributed on an "AS IS" BASIS,
@@ -37,8 +34,6 @@ import org.openmetadata.catalog.type.EntityUsage;
 import org.openmetadata.catalog.type.UsageDetails;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.TestUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.ws.rs.client.WebTarget;
 import java.io.IOException;
@@ -63,7 +58,6 @@ import static org.openmetadata.common.utils.CommonUtil.getDateStringByOffset;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class UsageResourceTest extends CatalogApplicationTest {
-  private static final Logger LOG = LoggerFactory.getLogger(UsageResourceTest.class);
   public static final List<Table> TABLES = new ArrayList<>();
   public static final int TABLE_COUNT = 10;
   public static final int DAYS_OF_USAGE = 32;
@@ -72,9 +66,10 @@ public class UsageResourceTest extends CatalogApplicationTest {
   public static void setup(TestInfo test) throws IOException, URISyntaxException {
     TableResourceTest.setup(test); // Initialize TableResourceTest for using helper methods
     // Create TABLE_COUNT number of tables
+    TableResourceTest tableResourceTest = new TableResourceTest();
     for (int i = 0; i < TABLE_COUNT; i++) {
-      CreateTable createTable = TableResourceTest.create(test, i);
-      TABLES.add(TableResourceTest.createTable(createTable, adminAuthHeaders()));
+      CreateTable createTable = tableResourceTest.create(test, i);
+      TABLES.add(tableResourceTest.createEntity(createTable, adminAuthHeaders()));
     }
   }
 
@@ -111,7 +106,8 @@ public class UsageResourceTest extends CatalogApplicationTest {
 
   @Test
   public void post_validUsageByName_200_OK(TestInfo test) throws HttpResponseException {
-    Table table = TableResourceTest.createTable(TableResourceTest.create(test), adminAuthHeaders());
+    TableResourceTest tableResourceTest = new TableResourceTest();
+    Table table = tableResourceTest.createEntity(tableResourceTest.create(test), adminAuthHeaders());
     DailyCount usageReport = usageReport().withCount(100).withDate(RestUtil.DATE_FORMAT.format(new Date()));
     reportUsageByNameAndCheck(TABLE, table.getFullyQualifiedName(), usageReport, 100, 100,
             adminAuthHeaders());
@@ -209,12 +205,12 @@ public class UsageResourceTest extends CatalogApplicationTest {
     // Ensure GET .../tables/{id}?fields=usageSummary returns the latest usage
     date = getDateStringByOffset(RestUtil.DATE_FORMAT, today, DAYS_OF_USAGE - 1); // Latest usage report date
     EntityUsage usage = getUsage(TABLE, tableId, date, null /* days not specified */, adminAuthHeaders());
-    Table table = TableResourceTest.getTable(TABLES.get(0).getId(), "usageSummary", adminAuthHeaders());
+    Table table = new TableResourceTest().getEntity(TABLES.get(0).getId(), "usageSummary", adminAuthHeaders());
     Assertions.assertEquals(usage.getUsage().get(0), table.getUsageSummary());
 
     // Ensure GET .../databases/{id}?fields=usageSummary returns the latest usage
     usage = getUsage(Entity.DATABASE, databaseId, date, null /* days not specified */, adminAuthHeaders());
-    Database database = DatabaseResourceTest.getDatabase(databaseId, "usageSummary", adminAuthHeaders());
+    Database database = new DatabaseResourceTest().getEntity(databaseId, "usageSummary", adminAuthHeaders());
     Assertions.assertEquals(usage.getUsage().get(0), database.getUsageSummary());
   }
 

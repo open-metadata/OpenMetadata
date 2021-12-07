@@ -1,11 +1,8 @@
 /*
- *  Licensed to the Apache Software Foundation (ASF) under one or more
- *  contributor license agreements. See the NOTICE file distributed with
- *  this work for additional information regarding copyright ownership.
- *  The ASF licenses this file to You under the Apache License, Version 2.0
- *  (the "License"); you may not use this file except in compliance with
- *  the License. You may obtain a copy of the License at
- *
+ *  Copyright 2021 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
  *  http://www.apache.org/licenses/LICENSE-2.0
  *  Unless required by applicable law or agreed to in writing, software
  *  distributed under the License is distributed on an "AS IS" BASIS,
@@ -55,7 +52,8 @@ public class UserRepository extends EntityRepository<User> {
 
 
   public UserRepository(CollectionDAO dao) {
-    super(UserResource.COLLECTION_PATH, User.class, dao.userDAO(), dao, USER_PATCH_FIELDS, USER_UPDATE_FIELDS);
+    super(UserResource.COLLECTION_PATH, Entity.USER, User.class, dao.userDAO(), dao, USER_PATCH_FIELDS,
+            USER_UPDATE_FIELDS);
     this.dao = dao;
   }
 
@@ -66,12 +64,12 @@ public class UserRepository extends EntityRepository<User> {
 
 
   @Override
-  public void validate(User entity) throws IOException {
+  public void prepare(User entity) throws IOException {
 
   }
 
   @Override
-  public void store(User user, boolean update) throws IOException {
+  public void storeEntity(User user, boolean update) throws IOException {
     // Relationships and fields such as href are derived and not stored as part of json
     List<EntityReference> teams = user.getTeams();
 

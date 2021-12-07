@@ -1,11 +1,8 @@
 /*
- *  Licensed to the Apache Software Foundation (ASF) under one or more
- *  contributor license agreements. See the NOTICE file distributed with
- *  this work for additional information regarding copyright ownership.
- *  The ASF licenses this file to You under the Apache License, Version 2.0
- *  (the "License"); you may not use this file except in compliance with
- *  the License. You may obtain a copy of the License at
- *
+ *  Copyright 2021 Collate 
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
  *  http://www.apache.org/licenses/LICENSE-2.0
  *  Unless required by applicable law or agreed to in writing, software
  *  distributed under the License is distributed on an "AS IS" BASIS,
@@ -20,7 +17,9 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Dashboard;
-import org.openmetadata.catalog.exception.EntityNotFoundException;
+import org.openmetadata.catalog.entity.services.DashboardService;
+import org.openmetadata.catalog.exception.CatalogExceptionMessage;
+import org.openmetadata.catalog.jdbi3.DashboardServiceRepository.DashboardServiceEntityInterface;
 import org.openmetadata.catalog.resources.dashboards.DashboardResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
@@ -37,22 +36,19 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 
-import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
-
 public class DashboardRepository extends EntityRepository<Dashboard> {
   private static final Fields DASHBOARD_UPDATE_FIELDS = new Fields(DashboardResource.FIELD_LIST,
-          "owner,service,tags,charts");
+          "owner,tags,charts");
   private static final Fields DASHBOARD_PATCH_FIELDS = new Fields(DashboardResource.FIELD_LIST,
-          "owner,service,tags,charts");
+          "owner,tags,charts");
   private final CollectionDAO dao;
 
   public DashboardRepository(CollectionDAO dao) {
-    super(DashboardResource.COLLECTION_PATH, Dashboard.class, dao.dashboardDAO(), dao, DASHBOARD_PATCH_FIELDS,
-            DASHBOARD_UPDATE_FIELDS);
+    super(DashboardResource.COLLECTION_PATH, Entity.DASHBOARD, Dashboard.class, dao.dashboardDAO(), dao,
+            DASHBOARD_PATCH_FIELDS, DASHBOARD_UPDATE_FIELDS);
     this.dao = dao;
   }
 
@@ -70,9 +66,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     if (dao.relationshipDAO().findToCount(id.toString(), Relationship.CONTAINS.ordinal(), Entity.DASHBOARD) > 0) {
       throw new IllegalArgumentException("Dashboard is not empty");
     }
-    if (dao.dashboardDAO().delete(id) <= 0) {
-      throw EntityNotFoundException.byMessage(entityNotFound(Entity.DASHBOARD, id));
-    }
+    dao.dashboardDAO().delete(id);
     dao.relationshipDAO().deleteAll(id.toString());
   }
 
@@ -108,15 +102,23 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
 
   private EntityReference getService(Dashboard dashboard) throws IOException {
     EntityReference ref = EntityUtil.getService(dao.relationshipDAO(), dashboard.getId(), Entity.DASHBOARD_SERVICE);
-    return getService(Objects.requireNonNull(ref));
+    DashboardService service = getService(ref.getId(), ref.getType());
+    ref.setName(service.getName());
+    ref.setDescription(service.getDescription());
+    return ref;
   }
 
-  private EntityReference getService(EntityReference service) throws IOException {
-    if (service.getType().equalsIgnoreCase(Entity.DASHBOARD_SERVICE)) {
-      return dao.dashboardServiceDAO().findEntityReferenceById(service.getId());
-    } else {
-      throw new IllegalArgumentException(String.format("Invalid service type %s for the dashboard", service.getType()));
+  private void populateService(Dashboard dashboard) throws IOException {
+    DashboardService service = getService(dashboard.getService().getId(), dashboard.getService().getType());
+    dashboard.setService(new DashboardServiceEntityInterface(service).getEntityReference());
+    dashboard.setServiceType(service.getServiceType());
+  }
+
+  private DashboardService getService(UUID serviceId, String entityType) throws IOException {
+    if (entityType.equalsIgnoreCase(Entity.DASHBOARD_SERVICE)) {
+      return dao.dashboardServiceDAO().findEntityById(serviceId);
     }
+    throw new IllegalArgumentException(CatalogExceptionMessage.invalidServiceEntity(entityType, Entity.DASHBOARD));
   }
 
   public void setService(Dashboard dashboard, EntityReference service) throws IOException {
@@ -129,21 +131,23 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
   }
 
   @Override
-  public void validate(Dashboard dashboard) throws IOException {
-    dashboard.setService(getService(dashboard.getService()));
+  public void prepare(Dashboard dashboard) throws IOException {
+    populateService(dashboard);
     dashboard.setFullyQualifiedName(getFQN(dashboard));
     EntityUtil.populateOwner(dao.userDAO(), dao.teamDAO(), dashboard.getOwner()); // Validate owner
     dashboard.setTags(EntityUtil.addDerivedTags(dao.tagDAO(), dashboard.getTags()));
+    dashboard.setCharts(getCharts(dashboard.getCharts()));
   }
 
   @Override
-  public void store(Dashboard dashboard, boolean update) throws JsonProcessingException {
+  public void storeEntity(Dashboard dashboard, boolean update) throws JsonProcessingException {
     // Relationships and fields such as href are derived and not stored as part of json
     EntityReference owner = dashboard.getOwner();
     List<TagLabel> tags = dashboard.getTags();
+    EntityReference service = dashboard.getService();
 
     // Don't store owner, database, href and tags as JSON. Build it on the fly based on relationships
-    dashboard.withOwner(null).withHref(null).withTags(null);
+    dashboard.withOwner(null).withHref(null).withTags(null).withService(null);
 
     if (update) {
       dao.dashboardDAO().update(dashboard.getId(), JsonUtils.pojoToJson(dashboard));
@@ -152,7 +156,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     }
 
     // Restore the relationships
-    dashboard.withOwner(owner).withTags(tags);
+    dashboard.withOwner(owner).withTags(tags).withService(service);
   }
 
   @Override
@@ -213,7 +217,26 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     return charts.isEmpty() ? null : charts;
   }
 
-  public void updateCharts(Dashboard original, Dashboard updated, EntityUpdater updater) throws JsonProcessingException {
+  /**
+   This method is used to populate the dashboard entity with all details of Chart EntityReference
+   Users/Tools can send minimum details required to set relationship as id, type are the only required
+   fields in entity reference, whereas we need to send fully populated object such that ElasticSearch index
+   has all the details.
+   */
+  private List<EntityReference> getCharts(List<EntityReference> charts) throws IOException {
+    if (charts == null) {
+      return null;
+    }
+    List<EntityReference> chartRefs = new ArrayList<>();
+    for (EntityReference chart: charts) {
+      EntityReference chartRef = dao.chartDAO().findEntityReferenceById(chart.getId());
+      chartRefs.add(chartRef);
+    }
+    return chartRefs.isEmpty() ? null : chartRefs;
+  }
+
+  public void updateCharts(Dashboard original, Dashboard updated, EntityUpdater updater)
+      throws JsonProcessingException {
     String dashboardId = updated.getId().toString();
 
     // Remove all charts associated with this dashboard
@@ -287,14 +310,14 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     @Override
     public EntityReference getEntityReference() {
       return new EntityReference().withId(getId()).withName(getFullyQualifiedName()).withDescription(getDescription())
-              .withDisplayName(getDisplayName()).withType(Entity.DASHBOARD);
+              .withDisplayName(getDisplayName()).withType(Entity.DASHBOARD).withHref(getHref());
     }
 
     @Override
     public Dashboard getEntity() { return entity; }
 
     @Override
-    public void setId(UUID id) { entity.setId(id);}
+    public void setId(UUID id) { entity.setId(id); }
 
     @Override
     public void setDescription(String description) {

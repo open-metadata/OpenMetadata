@@ -1,12 +1,8 @@
-#  Licensed to the Apache Software Foundation (ASF) under one or more
-#  contributor license agreements. See the NOTICE file distributed with
-#  this work for additional information regarding copyright ownership.
-#  The ASF licenses this file to You under the Apache License, Version 2.0
-#  (the "License"); you may not use this file except in compliance with
-#  the License. You may obtain a copy of the License at
-#
+#  Copyright 2021 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
 #  http://www.apache.org/licenses/LICENSE-2.0
-#
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -17,15 +13,15 @@ import logging
 import time
 from datetime import datetime
 
-
 import pytest
 import requests
 from ldap3 import ALL, Connection, Server
 
-from metadata.ingestion.models.user import MetadataUser, User
+from metadata.generated.schema.api.teams.createUser import CreateUserEntityRequest
 
 headers = {"Content-type": "application/json"}
 url = "http://localhost:8585/api/v1/users"
+
 
 def sleep(timeout_s):
     print(f"sleeping for {timeout_s} seconds")
@@ -34,6 +30,7 @@ def sleep(timeout_s):
         print(f"{i:>{n}}", end="\r", flush=True)
         time.sleep(1)
     print(f"{'':>{n}}", end="\n", flush=True)
+
 
 def read_user_by_name(name: str):
     r = requests.get(url + "/name/" + name)
@@ -48,6 +45,7 @@ def status(r):
     else:
         return 0
 
+
 def ldap_connection():
     s = Server("ldap://localhost:389", get_info=ALL)
     c = Connection(s, user="cn=admin,dc=example,dc=com", password="ldappassword")
@@ -57,10 +55,12 @@ def ldap_connection():
         return False
     return [True, c]
 
+
 def is_ldap_listening(openldap_service):
     c = openldap_service
     if "listening" in str(c):
         return True
+
 
 @pytest.fixture(scope="session")
 def openldap_service(docker_ip, docker_services):
@@ -75,15 +75,21 @@ def openldap_service(docker_ip, docker_services):
     )
     return conn
 
+
 @pytest.fixture(scope="session")
 def ldap_user_entry(openldap_service):
     c = openldap_service
-    c.search('cn=John Doe,ou=users,dc=example,dc=com', '(objectclass=person)', attributes=['*'])
+    c.search(
+        "cn=John Doe,ou=users,dc=example,dc=com",
+        "(objectclass=person)",
+        attributes=["*"],
+    )
     if c.entries:
         return c.entries[0]
     else:
         logging.error("OpenLDAP not running")
         assert 0
+
 
 @pytest.fixture(scope="session")
 def datetime_suffix():
@@ -96,22 +102,12 @@ def datetime_suffix():
 
 
 def test_insert_user(ldap_user_entry, datetime_suffix):
-    user = User(
-        str(ldap_user_entry['mail']),
-        str(ldap_user_entry['givenName']),
-        str(ldap_user_entry['sn']),
-        str(ldap_user_entry['cn']),
-        str(ldap_user_entry['uid']) + datetime_suffix,
-        "",
-        "",
-        "",
-        True,
-        0,
+    metadata_user = CreateUserEntityRequest(
+        name=str(ldap_user_entry["uid"]) + datetime_suffix,
+        displayName=str(ldap_user_entry["cn"]),
+        email=str(ldap_user_entry["mail"]),
     )
-    metadata_user = MetadataUser(
-        name=user.github_username, display_name=user.name, email=user.email
-    )
-    r = requests.post(url, data=metadata_user.to_json(), headers=headers)
+    r = requests.post(url, data=metadata_user.json(), headers=headers)
     r.raise_for_status()
     if r.status_code == 200 or r.status_code == 201:
         assert 1
@@ -120,22 +116,22 @@ def test_insert_user(ldap_user_entry, datetime_suffix):
 
 
 def test_read_user(ldap_user_entry, datetime_suffix):
-    assert read_user_by_name(str(ldap_user_entry['uid']) + datetime_suffix)[0]
+    assert read_user_by_name(str(ldap_user_entry["uid"]) + datetime_suffix)[0]
 
 
 def test_update_user(ldap_user_entry, datetime_suffix):
-    user = read_user_by_name(str(ldap_user_entry['uid']) + datetime_suffix)
+    user = read_user_by_name(str(ldap_user_entry["uid"]) + datetime_suffix)
     user[1]["displayName"] = "Jane Doe"
-    metadata_user = MetadataUser(
+    metadata_user = CreateUserEntityRequest(
         name=user[1]["name"],
-        display_name=user[1]["displayName"],
-        email=user[1]["name"],
+        displayName=user[1]["displayName"],
+        email=user[1]["email"],
     )
-    r = requests.patch(url, data=metadata_user.to_json(), headers=headers)
+    r = requests.patch(url, data=metadata_user.json(), headers=headers)
 
 
 def test_delete_user(ldap_user_entry, datetime_suffix):
-    r = read_user_by_name(str(ldap_user_entry['uid']) + datetime_suffix)
+    r = read_user_by_name(str(ldap_user_entry["uid"]) + datetime_suffix)
     r = requests.delete(url + "/{}".format(r[1]["id"]))
     r.raise_for_status()
     assert 1

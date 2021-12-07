@@ -10,7 +10,7 @@
       "type": "string",
       "javaType": "org.openmetadata.catalog.type.topic.TopicName",
       "minLength": 1,
-      "maxLength": 64,
+      "maxLength": 128,
       "pattern": "^[^.]*$"
     },
     "schemaType": {
@@ -83,6 +83,10 @@
       "description": "Link to the messaging cluster/service where this topic is hosted in.",
       "$ref": "../../type/entityReference.json"
     },
+    "serviceType" : {
+      "description": "Service type where this topic is hosted in.",
+      "$ref" : "../services/messagingService.json#/definitions/messagingServiceType"
+    },
     "partitions" : {
       "description" : "Number of partitions into which the topic is divided.",
       "type" : "integer",
@@ -154,5 +158,6 @@
     "name",
     "partitions",
     "service"
-  ]
+  ],
+  "additionalProperties": false
 }

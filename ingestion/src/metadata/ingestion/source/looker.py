@@ -1,17 +1,14 @@
-#  Licensed to the Apache Software Foundation (ASF) under one or more
-#  contributor license agreements. See the NOTICE file distributed with
-#  this work for additional information regarding copyright ownership.
-#  The ASF licenses this file to You under the Apache License, Version 2.0
-#  (the "License"); you may not use this file except in compliance with
-#  the License. You may obtain a copy of the License at
-#
+#  Copyright 2021 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
 #  http://www.apache.org/licenses/LICENSE-2.0
-#
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+
 import logging
 import os
 import uuid
@@ -22,6 +19,7 @@ import looker_sdk
 from looker_sdk.error import SDKError
 from looker_sdk.sdk.api31.models import Dashboard as LookerDashboard
 from looker_sdk.sdk.api31.models import DashboardElement
+from pydantic import SecretStr
 
 from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.dashboard import Dashboard
@@ -45,7 +43,7 @@ logger = logging.getLogger(__name__)
 
 class LookerSourceConfig(ConfigModel):
     username: str
-    password: str
+    password: SecretStr
     url: str
     platform_name: str = "looker"
     actor: str = ""
@@ -95,7 +93,7 @@ class LookerSource(Source):
             config.service_name,
             DashboardServiceType.Looker.name,
             config.username,
-            config.password,
+            config.password.get_secret_value(),
             config.url,
             metadata_config,
         )

@@ -1,11 +1,8 @@
 /*
- *  Licensed to the Apache Software Foundation (ASF) under one or more
- *  contributor license agreements. See the NOTICE file distributed with
- *  this work for additional information regarding copyright ownership.
- *  The ASF licenses this file to You under the Apache License, Version 2.0
- *  (the "License"); you may not use this file except in compliance with
- *  the License. You may obtain a copy of the License at
- *
+ *  Copyright 2021 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
  *  http://www.apache.org/licenses/LICENSE-2.0
  *  Unless required by applicable law or agreed to in writing, software
  *  distributed under the License is distributed on an "AS IS" BASIS,
@@ -50,7 +47,7 @@ import java.util.List;
 import java.util.Objects;
 
 @Path("/v1/events")
-@Api(value = "Events resource", tags = "Events resource")
+@Api(value = "Events resource", tags = "events")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "events")
@@ -75,20 +72,26 @@ public class EventResource {
 
   @GET
   @Valid
-  @Operation(summary = "Get change events", tags = "usage",
+  @Operation(summary = "Get change events", tags = "events",
           description = "Get a list of change events matching event types, entity type, from a given date",
           responses = {@ApiResponse(responseCode = "200", description = "Entity events",
                   content = @Content(mediaType = "application/json",
                           schema = @Schema(implementation = ChangeEvent.class))),
                   @ApiResponse(responseCode = "404", description = "Entity for instance {id} is not found")})
   public ResultList<ChangeEvent> get(@Context UriInfo uriInfo,
-                                     @Parameter(description = "Entities requested for `entityCreated` event",
+                                     @Parameter(description = "List of comma separated entities requested for " +
+                                             "`entityCreated` event. When null or not set, all entities will be " +
+                                             "returned",
                                              schema = @Schema(type = "string", example = "table,dashboard,..."))
                                      @QueryParam("entityCreated") String entityCreated,
-                                     @Parameter(description = "Entities requested for `entityUpdated` event",
+                                     @Parameter(description = "List of comma separated entities requested for " +
+                                             "`entityUpdated` event. When null or not set, all entities will be " +
+                                             "returned",
                                              schema = @Schema(type = "string", example = "table,dashboard,..."))
                                      @QueryParam("entityUpdated") String entityUpdated,
-                                     @Parameter(description = "Entities requested for `entityDeleted` event",
+                                     @Parameter(description = "List of comma separated entities requested for " +
+                                             "`entityDeleted` event. When null or not set, all entities will be " +
+                                             "returned",
                                              schema = @Schema(type = "string", example = "table,dashboard,..."))
                                      @QueryParam("entityDeleted") String entityDeleted,
                                      @Parameter(description = "Events starting from this date time in ISO8601 format",
@@ -97,9 +100,9 @@ public class EventResource {
                                      @QueryParam("date") String date)
           throws IOException, GeneralSecurityException, ParseException {
     Date parsedDate = RestUtil.DATE_TIME_FORMAT.parse(date);
-    EntityList entityCreatedList = new EntityList(entityCreated);
-    EntityList entityUpdatedList = new EntityList(entityCreated);
-    EntityList entityDeletedList = new EntityList(entityCreated);
+    List<String> entityCreatedList = EntityList.getEntityList("entityCreated", entityCreated);
+    List<String> entityUpdatedList = EntityList.getEntityList("entityUpdated", entityUpdated);
+    List<String> entityDeletedList = EntityList.getEntityList("entityDeleted", entityDeleted);
     return dao.list(parsedDate, entityCreatedList, entityUpdatedList, entityDeletedList);
   }
 }

@@ -1,0 +1,11 @@
+{
+  "id": "89229e26-7f74-4443-a568-85512eaeaa07",
+  "name": "glue",
+  "serviceType": "Glue",
+  "description": "Glue service used for table with location",
+  "href": "null",
+  "jdbc": {
+    "driverClass" : "jdbc",
+    "connectionUrl" : "jdbc://localhost"
+  }
+}

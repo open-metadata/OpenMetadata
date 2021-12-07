@@ -2,7 +2,7 @@
 
 This schema defines the Pipeline Service entity, such as Airflow and Prefect.
 
-**$id: https://open-metadata.org/schema/entity/services/messagingservice.json**
+**$id: **[**https://open-metadata.org/schema/entity/services/messagingservice.json**](https://open-metadata.org/schema/entity/services/messagingservice.json)
 
 Type: `object`
 
@@ -26,7 +26,7 @@ Type: `object`
   * Type: `string`
 * **version**
   * Metadata version of the entity.
-  * $ref: [../../type/basic.json#/definitions/entityVersion](../types/basic.md#entityversion)
+  * $ref: [../../type/entityHistory.json#/definitions/entityVersion](../types/entityhistory.md#entityversion)
 * **updatedAt**
   * Last update time corresponding to the new version of the entity.
   * $ref: [../../type/basic.json#/definitions/dateTime](../types/basic.md#datetime)
@@ -43,6 +43,9 @@ Type: `object`
 * **href**
   * Link to the resource corresponding to this pipeline service.
   * $ref: [../../type/basic.json#/definitions/href](../types/basic.md#href)
+* **changeDescription**
+  * Change that lead to this version of the entity.
+  * $ref: [../../type/entityHistory.json#/definitions/changeDescription](../types/entityhistory.md#changedescription)
 
 ## Type definitions in this schema
 
@@ -53,5 +56,6 @@ Type: `object`
 * The value is restricted to the following:
   1. _"Airflow"_
   2. _"Prefect"_
+  3. _"Glue"_
 
-_This document was updated on: Monday, October 18, 2021_
+_This document was updated on: Monday, November 15, 2021_

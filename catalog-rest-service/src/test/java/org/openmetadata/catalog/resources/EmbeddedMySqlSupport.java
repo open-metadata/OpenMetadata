@@ -1,11 +1,8 @@
 /*
- *  Licensed to the Apache Software Foundation (ASF) under one or more
- *  contributor license agreements. See the NOTICE file distributed with
- *  this work for additional information regarding copyright ownership.
- *  The ASF licenses this file to You under the Apache License, Version 2.0
- *  (the "License"); you may not use this file except in compliance with
- *  the License. You may obtain a copy of the License at
- *
+ *  Copyright 2021 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
  *  http://www.apache.org/licenses/LICENSE-2.0
  *  Unless required by applicable law or agreed to in writing, software
  *  distributed under the License is distributed on an "AS IS" BASIS,
@@ -29,7 +26,7 @@ import org.slf4j.LoggerFactory;
 import java.time.ZoneId;
 import java.util.TimeZone;
 
-import static com.wix.mysql.distribution.Version.v5_7_27;
+import static com.wix.mysql.distribution.Version.v8_latest;
 
 public class EmbeddedMySqlSupport implements BeforeAllCallback, AfterAllCallback {
   public static final Logger LOG = LoggerFactory.getLogger(EmbeddedMySqlSupport.class);
@@ -38,7 +35,7 @@ public class EmbeddedMySqlSupport implements BeforeAllCallback, AfterAllCallback
   @Override
   public void beforeAll(ExtensionContext extensionContext) {
     if (embeddedMysql == null) {
-      MysqldConfig config = MysqldConfig.aMysqldConfig(v5_7_27)
+      MysqldConfig config = MysqldConfig.aMysqldConfig(v8_latest)
               .withPort(3307)
               .withTimeZone(TimeZone.getTimeZone(ZoneId.of("UTC")))
               .withUser("test", "")

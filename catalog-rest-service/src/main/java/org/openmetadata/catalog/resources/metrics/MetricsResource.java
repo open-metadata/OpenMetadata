@@ -1,11 +1,8 @@
 /*
- *  Licensed to the Apache Software Foundation (ASF) under one or more
- *  contributor license agreements. See the NOTICE file distributed with
- *  this work for additional information regarding copyright ownership.
- *  The ASF licenses this file to You under the Apache License, Version 2.0
- *  (the "License"); you may not use this file except in compliance with
- *  the License. You may obtain a copy of the License at
- *
+ *  Copyright 2021 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
  *  http://www.apache.org/licenses/LICENSE-2.0
  *  Unless required by applicable law or agreed to in writing, software
  *  distributed under the License is distributed on an "AS IS" BASIS,
@@ -83,7 +80,7 @@ public class MetricsResource {
     }
   }
 
-  static final String FIELDS ="owner,service,usageSummary";
+  static final String FIELDS ="owner,usageSummary";
   public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replaceAll(" ", "")
           .split(","));
 
@@ -113,13 +110,11 @@ public class MetricsResource {
     RestUtil.validateCursors(before, after);
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
 
-    ResultList<Metrics> metricsList;
     if (before != null) { // Reverse paging
-      metricsList = dao.listBefore(uriInfo, fields, null, limitParam, before);
-    } else { // Forward paging or first page
-      metricsList = dao.listAfter(uriInfo, fields, null, limitParam, after);
+      return dao.listBefore(uriInfo, fields, null, limitParam, before);
     }
-    return metricsList;
+    // Forward paging or first page
+    return dao.listAfter(uriInfo, fields, null, limitParam, after);
   }
 
   @GET

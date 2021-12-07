@@ -1,17 +1,14 @@
-#  Licensed to the Apache Software Foundation (ASF) under one or more
-#  contributor license agreements. See the NOTICE file distributed with
-#  this work for additional information regarding copyright ownership.
-#  The ASF licenses this file to You under the Apache License, Version 2.0
-#  (the "License"); you may not use this file except in compliance with
-#  the License. You may obtain a copy of the License at
-#
+#  Copyright 2021 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
 #  http://www.apache.org/licenses/LICENSE-2.0
-#
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+
 import logging
 import os
 import pathlib
@@ -25,13 +22,7 @@ import click
 import requests as requests
 from pydantic import ValidationError
 
-try:
-    import docker as sys_docker
-except ImportError:
-    raise ImportError(
-        "docker package not found, can you try `pip install 'openmetadata-ingestion[docker]'`"
-    )
-
+from metadata.__version__ import get_metadata_version
 from metadata.config.common import load_config_file
 from metadata.ingestion.api.workflow import Workflow
 
@@ -55,6 +46,7 @@ def check() -> None:
 
 
 @click.group()
+@click.version_option(get_metadata_version())
 @click.option("--debug/--no-debug", default=False)
 def metadata(debug: bool) -> None:
     if os.getenv("METADATA_DEBUG", False):
@@ -79,7 +71,7 @@ def ingest(config: str) -> None:
     workflow_config = load_config_file(config_file)
 
     try:
-        logger.info(f"Using config: {workflow_config}")
+        logger.debug(f"Using config: {workflow_config}")
         workflow = Workflow.create(workflow_config)
     except ValidationError as e:
         click.echo(e, err=True)
@@ -151,7 +143,7 @@ def get_list(docker_type, all_check: bool = None):
 
 
 @metadata.command()
-@click.option("--run", help="Start release Docker containers", is_flag=True)
+@click.option("--start", help="Start release Docker containers", is_flag=True)
 @click.option("--stop", help="Stop Docker containers (local and release)", is_flag=True)
 @click.option(
     "--clean",
@@ -172,24 +164,23 @@ def get_list(docker_type, all_check: bool = None):
     type=click.Path(exists=True, dir_okay=False),
     required=False,
 )
-def docker(run, stop, clean, type, path) -> None:
+def docker(start, stop, clean, type, path) -> None:
     """
     Checks Docker Memory Allocation
     Run Latest Release Docker - metadata docker --run
     Run Local Docker - metadata docker --run -t local -p path/to/docker-compose.yml
     """
     try:
-        try:
-            client = sys_docker.from_env()
-        except sys_docker.errors.DockerException as err:
-            logger.error(f"Error: Docker service is not up and running. {err}")
+        import docker as sys_docker
+
+        from metadata.ingestion.ometa.ometa_api import OpenMetadata
+        from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
+
+        client = sys_docker.from_env()
         docker_info = client.info()
         if docker_info["MemTotal"] < min_memory_limit:
-            raise MemoryError(
-                f"Please Allocate More memory to Docker.\nRecommended: 4GB\nCurrent: "
-                f"{round(float(docker_info['MemTotal']) / calc_gb, 2)}"
-            )
-        if run:
+            raise MemoryError
+        if start:
             if type == "local":
                 logger.info("Running Local Docker")
                 if path == "":
@@ -198,7 +189,7 @@ def docker(run, stop, clean, type, path) -> None:
                     )
                 start_time = time.time()
                 subprocess.run(
-                    f"docker compose -f {path} up --build -d",
+                    f"docker-compose -f {path} up --build -d",
                     shell=True,
                 )
                 elapsed = time.time() - start_time
@@ -213,12 +204,46 @@ def docker(run, stop, clean, type, path) -> None:
                 open("/tmp/docker-compose.yml", "wb").write(r.content)
                 start_time = time.time()
                 subprocess.run(
-                    f"docker compose -f /tmp/docker-compose.yml up -d", shell=True
+                    f"docker-compose -f /tmp/docker-compose.yml up -d", shell=True
                 )
                 elapsed = time.time() - start_time
                 logger.info(
                     f"Time took to get containers running: {str(timedelta(seconds=elapsed))}"
                 )
+            metadata_config = MetadataServerConfig.parse_obj(
+                {
+                    "api_endpoint": "http://localhost:8585/api",
+                    "auth_provider_type": "no-auth",
+                }
+            )
+
+            ometa_client = OpenMetadata(metadata_config).client
+            while True:
+                try:
+                    ometa_client.get(f"/tables/name/bigquery_gcp.shopify.dim_customer")
+                    break
+                except Exception as err:
+                    sys.stdout.write(".")
+                    sys.stdout.flush()
+                    time.sleep(5)
+            elapsed = time.time() - start_time
+            logger.info(
+                f"Time took to get OpenMetadata running: {str(timedelta(seconds=elapsed))}"
+            )
+            click.secho(
+                "\n✔ OpenMetadata is up and running",
+                fg="bright_green",
+            )
+            click.secho(
+                """\nHead to http://localhost:8585 to play around with OpenMetadata UI.
+                \nTo checkout Ingestion via Airflow, go to http://localhost:8080 \n(username: admin, password: admin)
+                """,
+                fg="bright_white",
+            )
+            click.secho(
+                "Need support? Get in touch on Slack: https://slack.open-metadata.org/",
+                fg="bright_magenta",
+            )
         elif stop:
             for container in get_list(client.containers):
                 logger.info(f"Stopping {container.name}")
@@ -233,11 +258,23 @@ def docker(run, stop, clean, type, path) -> None:
             logger.info("Removing Networks")
             for network in get_list(client.networks):
                 network.remove()
-
+    except (ImportError, ModuleNotFoundError):
+        click.secho(
+            "Docker package not found, can you try `pip install 'openmetadata-ingestion[docker]'`",
+            fg="yellow",
+        )
+    except MemoryError:
+        click.secho(
+            f"Please Allocate More memory to Docker.\nRecommended: 4GB\nCurrent: "
+            f"{round(float(docker_info['MemTotal']) / calc_gb, 2)}",
+            fg="red",
+        )
+    except sys_docker.errors.DockerException as err:
+        click.secho(f"Error: Docker service is not up and running. {err}", fg="red")
     except Exception as err:
         logger.error(traceback.format_exc())
         logger.error(traceback.print_exc())
-        logger.error(repr(err))
+        click.secho(str(err), fg="red")
 
 
 metadata.add_command(check)

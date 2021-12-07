@@ -1,11 +1,8 @@
 /*
- *  Licensed to the Apache Software Foundation (ASF) under one or more
- *  contributor license agreements. See the NOTICE file distributed with
- *  this work for additional information regarding copyright ownership.
- *  The ASF licenses this file to You under the Apache License, Version 2.0
- *  (the "License"); you may not use this file except in compliance with
- *  the License. You may obtain a copy of the License at
- *
+ *  Copyright 2021 Collate 
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
  *  http://www.apache.org/licenses/LICENSE-2.0
  *  Unless required by applicable law or agreed to in writing, software
  *  distributed under the License is distributed on an "AS IS" BASIS,
@@ -18,7 +15,7 @@ package org.openmetadata.catalog.jdbi3;
 
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
-import org.openmetadata.catalog.exception.EntityNotFoundException;
+import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.operations.workflows.Ingestion;
 import org.openmetadata.catalog.resources.operations.IngestionResource;
 import org.openmetadata.catalog.type.ChangeDescription;
@@ -37,17 +34,16 @@ import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 
-import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
-
 public class IngestionRepository extends EntityRepository<Ingestion> {
   private static final Fields INGESTION_UPDATE_FIELDS = new Fields(IngestionResource.FIELD_LIST,
-          "owner,tags");
+          "scheduleInterval,owner,tags");
   private static final Fields INGESTION_PATCH_FIELDS = new Fields(IngestionResource.FIELD_LIST,
-          "owner,tags");
+          "scheduleInterval,owner,tags");
   private final CollectionDAO dao;
 
   public IngestionRepository(CollectionDAO dao) {
-    super(Entity.INGESTION, Ingestion.class, dao.ingestionDAO(), dao, INGESTION_PATCH_FIELDS, INGESTION_UPDATE_FIELDS);
+    super(IngestionResource.COLLECTION_PATH, Entity.INGESTION, Ingestion.class, dao.ingestionDAO(), dao,
+            INGESTION_PATCH_FIELDS, INGESTION_UPDATE_FIELDS);
     this.dao = dao;
   }
 
@@ -61,9 +57,7 @@ public class IngestionRepository extends EntityRepository<Ingestion> {
     if (dao.relationshipDAO().findToCount(id.toString(), Relationship.CONTAINS.ordinal(), Entity.INGESTION) > 0) {
       throw new IllegalArgumentException("Ingestion is not empty");
     }
-    if (dao.ingestionDAO().delete(id) <= 0) {
-      throw EntityNotFoundException.byMessage(entityNotFound(Entity.INGESTION, id));
-    }
+    dao.ingestionDAO().delete(id);
     dao.relationshipDAO().deleteAll(id.toString());
   }
 
@@ -76,6 +70,8 @@ public class IngestionRepository extends EntityRepository<Ingestion> {
   public Ingestion setFields(Ingestion ingestion, Fields fields) throws IOException {
     ingestion.setDisplayName(ingestion.getDisplayName());
     ingestion.setService(getService(ingestion));
+    ingestion.setConnectorConfig(ingestion.getConnectorConfig());
+    ingestion.setScheduleInterval(ingestion.getScheduleInterval());
     ingestion.setOwner(fields.contains("owner") ? getOwner(ingestion) : null);
     ingestion.setTags(fields.contains("tags") ? getTags(ingestion.getFullyQualifiedName()) : null);
     return ingestion;
@@ -97,7 +93,7 @@ public class IngestionRepository extends EntityRepository<Ingestion> {
 
 
   @Override
-  public void validate(Ingestion ingestion) throws IOException {
+  public void prepare(Ingestion ingestion) throws IOException {
     ingestion.setService(getService(ingestion.getService()));
     ingestion.setFullyQualifiedName(getFQN(ingestion));
     EntityUtil.populateOwner(dao.userDAO(), dao.teamDAO(), ingestion.getOwner()); // Validate owner
@@ -106,7 +102,7 @@ public class IngestionRepository extends EntityRepository<Ingestion> {
   }
 
   @Override
-  public void store(Ingestion ingestion, boolean update) throws IOException {
+  public void storeEntity(Ingestion ingestion, boolean update) throws IOException {
     // Relationships and fields such as href are derived and not stored as part of json
     EntityReference owner = ingestion.getOwner();
     List<TagLabel> tags = ingestion.getTags();
@@ -165,9 +161,9 @@ public class IngestionRepository extends EntityRepository<Ingestion> {
       return dao.dbServiceDAO().findEntityReferenceById(service.getId());
     } else if (service.getType().equalsIgnoreCase(Entity.DASHBOARD_SERVICE)) {
       return dao.dashboardServiceDAO().findEntityReferenceById(service.getId());
-    } else {
-      throw new IllegalArgumentException(String.format("Invalid service type %s for the ingestion", service.getType()));
     }
+    throw new IllegalArgumentException(CatalogExceptionMessage.invalidServiceEntity(service.getType(),
+            Entity.INGESTION));
   }
 
   public static class IngestionEntityInterface implements EntityInterface<Ingestion> {
@@ -285,8 +281,12 @@ public class IngestionRepository extends EntityRepository<Ingestion> {
 
     @Override
     public void entitySpecificUpdate() throws IOException {
-
+      Ingestion origIngestion = original.getEntity();
+      Ingestion updatedIngestion = updated.getEntity();
+      recordChange("scheduleInterval", origIngestion.getScheduleInterval(), updatedIngestion.getScheduleInterval());
+      recordChange("connectorConfig", origIngestion.getConnectorConfig(), updatedIngestion.getConnectorConfig());
+      recordChange("startDate", origIngestion.getStartDate(), updatedIngestion.getStartDate());
+      recordChange("endDate", origIngestion.getEndDate(), updatedIngestion.getEndDate());
     }
-
   }
 }

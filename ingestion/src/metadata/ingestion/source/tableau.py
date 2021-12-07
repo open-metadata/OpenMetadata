@@ -1,8 +1,20 @@
+#  Copyright 2021 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
 import logging
 import uuid
 from typing import Iterable, Optional
 
 import dateutil.parser as dateparser
+from pydantic import SecretStr
 from tableau_api_lib import TableauServerConnection
 from tableau_api_lib.utils.querying import get_views_dataframe, get_workbooks_dataframe
 
@@ -26,7 +38,7 @@ logger = logging.getLogger(__name__)
 
 class TableauSourceConfig(ConfigModel):
     username: str
-    password: str
+    password: SecretStr
     server: str
     api_version: str
     env: Optional[str] = "tableau_prod"
@@ -57,7 +69,7 @@ class TableauSource(Source):
             config.service_name,
             DashboardServiceType.Tableau.name,
             config.username,
-            config.password,
+            config.password.get_secret_value(),
             config.server,
             metadata_config,
         )
@@ -71,7 +83,7 @@ class TableauSource(Source):
                 "server": self.config.server,
                 "api_version": self.config.api_version,
                 "username": self.config.username,
-                "password": self.config.password,
+                "password": self.config.password.get_secret_value(),
                 "site_name": self.config.site_name,
                 "site_url": self.config.site_url,
             }
@@ -82,7 +94,7 @@ class TableauSource(Source):
             )
             conn.sign_in().json()
         except Exception as err:
-            print(f"{repr(err)}: {err}")
+            logger.error(f"{repr(err)}: {err}")
         return conn
 
     @classmethod

@@ -4,20 +4,19 @@
   "title": "Create Storage service entity request",
   "description": "Create Storage service entity request",
   "type": "object",
-
   "properties" : {
     "name": {
       "description": "Name that identifies the this entity instance uniquely",
       "type": "string",
       "minLength": 1,
-      "maxLength": 64
+      "maxLength": 128
     },
     "description": {
       "description": "Description of Storage entity.",
       "type": "string"
     },
     "serviceType": {
-      "$ref": "../../entity/services/storageService.json#/definitions/storageServiceType"
+      "$ref": "../../type/storage.json#/definitions/storageServiceType"
     }
   },
   "required": ["name"]

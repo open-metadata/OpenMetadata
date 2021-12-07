@@ -1,11 +1,8 @@
 /*
- *  Licensed to the Apache Software Foundation (ASF) under one or more
- *  contributor license agreements. See the NOTICE file distributed with
- *  this work for additional information regarding copyright ownership.
- *  The ASF licenses this file to You under the Apache License, Version 2.0
- *  (the "License"); you may not use this file except in compliance with
- *  the License. You may obtain a copy of the License at
- *
+ *  Copyright 2021 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
  *  http://www.apache.org/licenses/LICENSE-2.0
  *  Unless required by applicable law or agreed to in writing, software
  *  distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,10 +13,10 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.services.PipelineService;
-import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.resources.services.pipeline.PipelineServiceResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
@@ -30,7 +27,6 @@ import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
 
-import javax.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.net.URI;
 import java.text.ParseException;
@@ -38,36 +34,19 @@ import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 
-import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
-
 
 public class PipelineServiceRepository extends EntityRepository<PipelineService> {
   private final CollectionDAO dao;
 
   public PipelineServiceRepository(CollectionDAO dao) {
-    super(PipelineServiceResource.COLLECTION_PATH, PipelineService.class, dao.pipelineServiceDAO(), dao,
-            Fields.EMPTY_FIELDS, Fields.EMPTY_FIELDS);
+    super(PipelineServiceResource.COLLECTION_PATH, Entity.PIPELINE_SERVICE, PipelineService.class,
+            dao.pipelineServiceDAO(), dao, Fields.EMPTY_FIELDS, Fields.EMPTY_FIELDS);
     this.dao = dao;
   }
 
   @Transaction
-  public PipelineService update(UriInfo uriInfo, UUID id, String description, URI url,
-                                 Schedule ingestionSchedule)
-          throws IOException {
-    EntityUtil.validateIngestionSchedule(ingestionSchedule);
-    PipelineService pipelineService = dao.pipelineServiceDAO().findEntityById(id);
-    // Update fields
-    pipelineService.withDescription(description).withIngestionSchedule(ingestionSchedule)
-            .withPipelineUrl(url);
-    dao.pipelineServiceDAO().update(id, JsonUtils.pojoToJson(pipelineService));
-    return withHref(uriInfo, pipelineService);
-  }
-
-  @Transaction
   public void delete(UUID id) {
-    if (dao.pipelineServiceDAO().delete(id) <= 0) {
-      throw EntityNotFoundException.byMessage(entityNotFound(Entity.PIPELINE_SERVICE, id));
-    }
+    dao.pipelineServiceDAO().delete(id);
     dao.relationshipDAO().deleteAll(id.toString());
   }
 
@@ -88,18 +67,27 @@ public class PipelineServiceRepository extends EntityRepository<PipelineService>
   }
 
   @Override
-  public void validate(PipelineService entity) throws IOException {
+  public void prepare(PipelineService entity) throws IOException {
     EntityUtil.validateIngestionSchedule(entity.getIngestionSchedule());
   }
 
   @Override
-  public void store(PipelineService entity, boolean update) throws IOException {
-    dao.pipelineServiceDAO().insert(entity);
+  public void storeEntity(PipelineService service, boolean update) throws IOException {
+    if (update) {
+      dao.pipelineServiceDAO().update(service.getId(), JsonUtils.pojoToJson(service));
+    } else {
+      dao.pipelineServiceDAO().insert(service);
+    }
   }
 
   @Override
   public void storeRelationships(PipelineService entity) throws IOException {
 
+  }
+
+  @Override
+  public EntityUpdater getUpdater(PipelineService original, PipelineService updated, boolean patchOperation) throws IOException {
+    return new PipelineServiceUpdater(original, updated, patchOperation);
   }
 
   public static class PipelineServiceEntityInterface implements EntityInterface<PipelineService> {
@@ -195,5 +183,23 @@ public class PipelineServiceRepository extends EntityRepository<PipelineService>
 
     @Override
     public void setTags(List<TagLabel> tags) { }
+  }
+
+  public class PipelineServiceUpdater extends EntityUpdater {
+    public PipelineServiceUpdater(PipelineService original, PipelineService updated, boolean patchOperation) {
+      super(original, updated, patchOperation);
+    }
+
+    @Override
+    public void entitySpecificUpdate() throws IOException {
+      recordChange("pipelineUrl", original.getEntity().getPipelineUrl(), updated.getEntity().getPipelineUrl());
+      updateIngestionSchedule();
+    }
+
+    private void updateIngestionSchedule() throws JsonProcessingException {
+      Schedule origSchedule = original.getEntity().getIngestionSchedule();
+      Schedule updatedSchedule = updated.getEntity().getIngestionSchedule();
+      recordChange("ingestionSchedule", origSchedule, updatedSchedule, true);
+    }
   }
 }

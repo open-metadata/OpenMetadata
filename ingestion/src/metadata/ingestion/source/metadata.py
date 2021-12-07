@@ -1,12 +1,8 @@
-#  Licensed to the Apache Software Foundation (ASF) under one or more
-#  contributor license agreements. See the NOTICE file distributed with
-#  this work for additional information regarding copyright ownership.
-#  The ASF licenses this file to You under the Apache License, Version 2.0
-#  (the "License"); you may not use this file except in compliance with
-#  the License. You may obtain a copy of the License at
-#
+#  Copyright 2021 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
 #  http://www.apache.org/licenses/LICENSE-2.0
-#
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -24,6 +20,7 @@ from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 from ...generated.schema.entity.data.dashboard import Dashboard
+from ...generated.schema.entity.data.dbtmodel import DbtModel
 from ...generated.schema.entity.data.table import Table
 from ...generated.schema.entity.data.topic import Topic
 from ..ometa.openmetadata_rest import MetadataServerConfig
@@ -100,6 +97,7 @@ class MetadataSource(Source):
         yield from self.fetch_topic()
         yield from self.fetch_dashboard()
         yield from self.fetch_pipeline()
+        yield from self.fetch_dbt_models()
 
     def fetch_table(self) -> Table:
         if self.config.include_tables:
@@ -112,7 +110,6 @@ class MetadataSource(Source):
                         "tableConstraints",
                         "usageSummary",
                         "owner",
-                        "database",
                         "tags",
                         "followers",
                     ],
@@ -132,7 +129,7 @@ class MetadataSource(Source):
             while True:
                 topic_entities = self.metadata.list_entities(
                     entity=Topic,
-                    fields=["owner", "service", "tags", "followers"],
+                    fields=["owner", "tags", "followers"],
                     after=after,
                     limit=self.config.limit_records,
                 )
@@ -151,7 +148,6 @@ class MetadataSource(Source):
                     entity=Dashboard,
                     fields=[
                         "owner",
-                        "service",
                         "tags",
                         "followers",
                         "charts",
@@ -173,7 +169,7 @@ class MetadataSource(Source):
             while True:
                 pipeline_entities = self.metadata.list_entities(
                     entity=Pipeline,
-                    fields=["owner", "service", "tags", "followers", "tasks"],
+                    fields=["owner", "tags", "followers", "tasks"],
                     after=after,
                     limit=self.config.limit_records,
                 )
@@ -183,6 +179,29 @@ class MetadataSource(Source):
                 if pipeline_entities.after is None:
                     break
                 after = pipeline_entities.after
+
+    def fetch_dbt_models(self) -> Pipeline:
+        after = None
+        while True:
+            dbt_model_entities = self.metadata.list_entities(
+                entity=DbtModel,
+                fields=[
+                    "columns",
+                    "owner",
+                    "database",
+                    "tags",
+                    "followers",
+                    "viewDefinition",
+                ],
+                after=after,
+                limit=self.config.limit_records,
+            )
+            for dbt_model in dbt_model_entities.entities:
+                self.status.scanned_dashboard(dbt_model.name)
+                yield dbt_model
+            if dbt_model_entities.after is None:
+                break
+            after = dbt_model_entities.after
 
     def get_status(self) -> SourceStatus:
         return self.status

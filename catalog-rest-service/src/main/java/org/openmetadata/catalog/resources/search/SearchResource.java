@@ -1,11 +1,8 @@
 /*
- *  Licensed to the Apache Software Foundation (ASF) under one or more
- *  contributor license agreements. See the NOTICE file distributed with
- *  this work for additional information regarding copyright ownership.
- *  The ASF licenses this file to You under the Apache License, Version 2.0
- *  (the "License"); you may not use this file except in compliance with
- *  the License. You may obtain a copy of the License at
- *
+ *  Copyright 2021 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
  *  http://www.apache.org/licenses/LICENSE-2.0
  *  Unless required by applicable law or agreed to in writing, software
  *  distributed under the License is distributed on an "AS IS" BASIS,
@@ -17,12 +14,6 @@
 package org.openmetadata.catalog.resources.search;
 
 
-import org.apache.commons.lang3.StringUtils;
-import org.apache.http.auth.AuthScope;
-import org.apache.http.auth.UsernamePasswordCredentials;
-import org.apache.http.client.CredentialsProvider;
-import org.apache.http.impl.client.BasicCredentialsProvider;
-import org.elasticsearch.client.RestClientBuilder;
 import org.elasticsearch.search.fetch.subphase.highlight.HighlightBuilder;
 import org.elasticsearch.search.suggest.Suggest;
 import org.elasticsearch.search.suggest.SuggestBuilder;
@@ -35,17 +26,16 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import org.apache.http.HttpHost;
 import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.client.RequestOptions;
-import org.elasticsearch.client.RestClient;
 import org.elasticsearch.client.RestHighLevelClient;
 import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.search.aggregations.AggregationBuilders;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.elasticsearch.search.sort.SortOrder;
+import org.openmetadata.catalog.util.ElasticSearchClientUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -72,16 +62,7 @@ public class SearchResource {
   private static final Logger LOG = LoggerFactory.getLogger(SearchResource.class);
 
   public SearchResource(ElasticSearchConfiguration esConfig) {
-    RestClientBuilder restClientBuilder = RestClient.builder(new HttpHost(esConfig.getHost(), esConfig.getPort(), "http"));
-    if(StringUtils.isNotEmpty(esConfig.getUsername())){
-      CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
-      credentialsProvider.setCredentials(AuthScope.ANY, new UsernamePasswordCredentials(esConfig.getUsername(), esConfig.getPassword()));
-      restClientBuilder.setHttpClientConfigCallback(httpAsyncClientBuilder -> {
-        httpAsyncClientBuilder.setDefaultCredentialsProvider(credentialsProvider);
-        return  httpAsyncClientBuilder;
-      });
-    }
-    this.client = new RestHighLevelClient(restClientBuilder);
+    this.client = ElasticSearchClientUtils.createElasticSearchClient(esConfig);
   }
 
   @GET
@@ -90,7 +71,7 @@ public class SearchResource {
           description = "Search entities using query test. Use query params `from` and `size` for pagination. Use " +
                   "`sort_field` to sort the results in `sort_order`.",
           responses = {
-                  @ApiResponse(responseCode = "200", description = "search response",
+              @ApiResponse(responseCode = "200", description = "search response",
                           content = @Content(mediaType = "application/json",
                           schema = @Schema(implementation = SearchResponse.class)))
           })
@@ -129,14 +110,19 @@ public class SearchResource {
     if (sortOrderParam.equals("asc")) {
       sortOrder = SortOrder.ASC;
     }
+
     if (index.equals("topic_search_index")) {
       searchSourceBuilder = buildTopicSearchBuilder(query, from, size);
     } else if (index.equals("dashboard_search_index")) {
       searchSourceBuilder = buildDashboardSearchBuilder(query, from, size);
     } else if (index.equals("pipeline_search_index")) {
       searchSourceBuilder = buildPipelineSearchBuilder(query, from, size);
-    } else {
+    } else if (index.equals("dbt_model_search_index")) {
+      searchSourceBuilder = buildDbtModelSearchBuilder(query, from, size);
+    } else if (index.equals("table_search_index")) {
       searchSourceBuilder = buildTableSearchBuilder(query, from, size);
+    } else {
+      searchSourceBuilder = buildAggregateSearchBuilder(query, from, size);
     }
 
     if (sortFieldParam != null && !sortFieldParam.isEmpty()) {
@@ -154,7 +140,7 @@ public class SearchResource {
   @Operation(summary = "Suggest entities", tags = "search",
           description = "Get suggested entities used for auto-completion.",
           responses = {
-                  @ApiResponse(responseCode = "200",
+              @ApiResponse(responseCode = "200",
                           description = "Table Suggestion API",
                           content = @Content(mediaType = "application/json",
                           schema = @Schema(implementation = SearchResponse.class)))
@@ -185,10 +171,24 @@ public class SearchResource {
             .build();
   }
 
+  private SearchSourceBuilder buildAggregateSearchBuilder(String query, int from, int size) {
+    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+    searchSourceBuilder.query(QueryBuilders.queryStringQuery(query)
+            .lenient(true))
+        .aggregation(AggregationBuilders.terms("Service").field("service_type"))
+        .aggregation(AggregationBuilders.terms("ServiceCategory").field("service_category"))
+        .aggregation(AggregationBuilders.terms("EntityType").field("entity_type"))
+        .aggregation(AggregationBuilders.terms("Tier").field("tier"))
+        .aggregation(AggregationBuilders.terms("Tags").field("tags"))
+        .from(from).size(size);
+
+    return searchSourceBuilder;
+  }
+
   private SearchSourceBuilder buildTableSearchBuilder(String query, int from, int size) {
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
     HighlightBuilder.Field highlightTableName =
-            new HighlightBuilder.Field("table_name");
+            new HighlightBuilder.Field("name");
     highlightTableName.highlighterType("unified");
     HighlightBuilder.Field highlightDescription =
             new HighlightBuilder.Field("description");
@@ -207,18 +207,21 @@ public class SearchResource {
     hb.preTags("<span class=\"text-highlighter\">");
     hb.postTags("</span>");
     searchSourceBuilder.query(QueryBuilders.queryStringQuery(query)
-            .field("table_name", 5.0f)
-            .field("description")
-            .field("column_names")
-            .field("column_descriptions")
-            .lenient(true))
-            .aggregation(AggregationBuilders.terms("Service").field("service_type"))
-            .aggregation(AggregationBuilders.terms("Tier").field("tier"))
-            .aggregation(AggregationBuilders.terms("Tags").field("tags"))
-            .highlighter(hb)
-            .from(from).size(size);
+        .field("name", 5.0f)
+        .field("description")
+        .field("column_names")
+        .field("column_descriptions")
+        .lenient(true))
+        .aggregation(AggregationBuilders.terms("Service").field("service_type"))
+        .aggregation(AggregationBuilders.terms("ServiceCategory").field("service_category"))
+        .aggregation(AggregationBuilders.terms("EntityType").field("entity_type"))
+        .aggregation(AggregationBuilders.terms("Tier").field("tier"))
+        .aggregation(AggregationBuilders.terms("Tags").field("tags"))
+        .aggregation(AggregationBuilders.terms("Database").field("database"))
+        .highlighter(hb)
+        .from(from).size(size);
 
-   return searchSourceBuilder;
+    return searchSourceBuilder;
   }
 
   private SearchSourceBuilder buildTopicSearchBuilder(String query, int from, int size) {
@@ -235,14 +238,16 @@ public class SearchResource {
     hb.preTags("<span class=\"text-highlighter\">");
     hb.postTags("</span>");
     searchSourceBuilder.query(QueryBuilders.queryStringQuery(query)
-            .field("topic_name", 5.0f)
-            .field("description")
-            .lenient(true))
-            .aggregation(AggregationBuilders.terms("Service").field("service_type"))
-            .aggregation(AggregationBuilders.terms("Tier").field("tier"))
-            .aggregation(AggregationBuilders.terms("Tags").field("tags"))
-            .highlighter(hb)
-            .from(from).size(size);
+        .field("name", 5.0f)
+        .field("description")
+        .lenient(true))
+        .aggregation(AggregationBuilders.terms("Service").field("service_type"))
+        .aggregation(AggregationBuilders.terms("ServiceCategory").field("service_category"))
+        .aggregation(AggregationBuilders.terms("EntityType").field("entity_type"))
+        .aggregation(AggregationBuilders.terms("Tier").field("tier"))
+        .aggregation(AggregationBuilders.terms("Tags").field("tags"))
+        .highlighter(hb)
+        .from(from).size(size);
 
     return searchSourceBuilder;
   }
@@ -270,16 +275,18 @@ public class SearchResource {
     hb.preTags("<span class=\"text-highlighter\">");
     hb.postTags("</span>");
     searchSourceBuilder.query(QueryBuilders.queryStringQuery(query)
-            .field("dashboard_name", 5.0f)
-            .field("description")
-            .field("chart_names")
-            .field("chart_descriptions")
-            .lenient(true))
-            .aggregation(AggregationBuilders.terms("Service").field("service_type"))
-            .aggregation(AggregationBuilders.terms("Tier").field("tier"))
-            .aggregation(AggregationBuilders.terms("Tags").field("tags"))
-            .highlighter(hb)
-            .from(from).size(size);
+        .field("name", 5.0f)
+        .field("description")
+        .field("chart_names")
+        .field("chart_descriptions")
+        .lenient(true))
+        .aggregation(AggregationBuilders.terms("Service").field("service_type"))
+        .aggregation(AggregationBuilders.terms("ServiceCategory").field("service_category"))
+        .aggregation(AggregationBuilders.terms("EntityType").field("entity_type"))
+        .aggregation(AggregationBuilders.terms("Tier").field("tier"))
+        .aggregation(AggregationBuilders.terms("Tags").field("tags"))
+        .highlighter(hb)
+        .from(from).size(size);
 
     return searchSourceBuilder;
   }
@@ -287,7 +294,7 @@ public class SearchResource {
   private SearchSourceBuilder buildPipelineSearchBuilder(String query, int from, int size) {
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
     HighlightBuilder.Field highlightPipelineName =
-            new HighlightBuilder.Field("pipeline_name");
+            new HighlightBuilder.Field("name");
     highlightPipelineName.highlighterType("unified");
     HighlightBuilder.Field highlightDescription =
             new HighlightBuilder.Field("description");
@@ -306,16 +313,56 @@ public class SearchResource {
     hb.preTags("<span class=\"text-highlighter\">");
     hb.postTags("</span>");
     searchSourceBuilder.query(QueryBuilders.queryStringQuery(query)
-            .field("pipeline_name", 5.0f)
+        .field("pipeline_name", 5.0f)
+        .field("description")
+        .field("task_names")
+        .field("task_descriptions")
+        .lenient(true))
+        .aggregation(AggregationBuilders.terms("Service").field("service_type"))
+        .aggregation(AggregationBuilders.terms("ServiceCategory").field("service_category"))
+        .aggregation(AggregationBuilders.terms("EntityType").field("entity_type"))
+        .aggregation(AggregationBuilders.terms("Tier").field("tier"))
+        .aggregation(AggregationBuilders.terms("Tags").field("tags"))
+        .highlighter(hb)
+        .from(from).size(size);
+
+    return searchSourceBuilder;
+  }
+
+  private SearchSourceBuilder buildDbtModelSearchBuilder(String query, int from, int size) {
+    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+    HighlightBuilder.Field highlightTableName =
+        new HighlightBuilder.Field("name");
+    highlightTableName.highlighterType("unified");
+    HighlightBuilder.Field highlightDescription =
+        new HighlightBuilder.Field("description");
+    highlightDescription.highlighterType("unified");
+    HighlightBuilder.Field highlightColumns =
+        new HighlightBuilder.Field("column_names");
+    highlightColumns.highlighterType("unified");
+    HighlightBuilder.Field highlightColumnDescriptions =
+        new HighlightBuilder.Field("column_descriptions");
+    highlightColumnDescriptions.highlighterType("unified");
+    HighlightBuilder hb = new HighlightBuilder();
+    hb.field(highlightDescription);
+    hb.field(highlightTableName);
+    hb.field(highlightColumns);
+    hb.field(highlightColumnDescriptions);
+    hb.preTags("<span class=\"text-highlighter\">");
+    hb.postTags("</span>");
+    searchSourceBuilder.query(QueryBuilders.queryStringQuery(query)
+            .field("name", 5.0f)
             .field("description")
-            .field("task_names")
-            .field("task_descriptions")
+            .field("column_names")
+            .field("column_descriptions")
             .lenient(true))
-            .aggregation(AggregationBuilders.terms("Service").field("service_type"))
-            .aggregation(AggregationBuilders.terms("Tier").field("tier"))
-            .aggregation(AggregationBuilders.terms("Tags").field("tags"))
-            .highlighter(hb)
-            .from(from).size(size);
+        .aggregation(AggregationBuilders.terms("Service").field("service_type"))
+        .aggregation(AggregationBuilders.terms("ServiceCategory").field("service_category"))
+        .aggregation(AggregationBuilders.terms("EntityType").field("entity_type"))
+        .aggregation(AggregationBuilders.terms("Tier").field("tier"))
+        .aggregation(AggregationBuilders.terms("Tags").field("tags"))
+        .highlighter(hb)
+        .from(from).size(size);
 
     return searchSourceBuilder;
   }

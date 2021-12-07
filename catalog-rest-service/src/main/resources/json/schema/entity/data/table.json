@@ -115,14 +115,14 @@
       "description": "Local name (not fully qualified name) of the column. ColumnName is `-` when the column is not named in struct dataType. For example, BigQuery supports struct with unnamed fields.",
       "type": "string",
       "minLength": 1,
-      "maxLength": 64,
+      "maxLength": 128,
       "pattern": "^[^.]*$"
     },
     "tableName": {
       "description": "Local name (not fully qualified name) of a table.",
       "type": "string",
       "minLength": 1,
-      "maxLength": 64,
+      "maxLength": 128,
       "pattern": "^[^.]*$"
     },
     "fullyQualifiedColumnName": {
@@ -441,6 +441,14 @@
     "database": {
       "description": "Reference to Database that contains this table.",
       "$ref": "../../type/entityReference.json"
+    },
+    "service": {
+      "description": "Link to Database service this table is hosted in.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "serviceType" : {
+      "description": "Service type this table is hosted in.",
+      "$ref" : "../services/databaseService.json#/definitions/databaseServiceType"
     },
     "location": {
       "description": "Reference to the Location that contains this table.",

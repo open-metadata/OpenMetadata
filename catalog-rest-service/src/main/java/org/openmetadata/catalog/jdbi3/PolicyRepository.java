@@ -1,11 +1,8 @@
 /*
- *  Licensed to the Apache Software Foundation (ASF) under one or more
- *  contributor license agreements. See the NOTICE file distributed with
- *  this work for additional information regarding copyright ownership.
- *  The ASF licenses this file to You under the Apache License, Version 2.0
- *  (the "License"); you may not use this file except in compliance with
- *  the License. You may obtain a copy of the License at
- *
+ *  Copyright 2021 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
  *  http://www.apache.org/licenses/LICENSE-2.0
  *  Unless required by applicable law or agreed to in writing, software
  *  distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,12 +13,10 @@
 
 package org.openmetadata.catalog.jdbi3;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.policies.Policy;
-import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.resources.policies.PolicyResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
@@ -38,8 +33,6 @@ import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 
-import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
-
 @Slf4j
 public class PolicyRepository extends EntityRepository<Policy> {
   private static final Fields POLICY_UPDATE_FIELDS = new Fields(PolicyResource.FIELD_LIST,
@@ -49,7 +42,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
   private final CollectionDAO dao;
 
   public PolicyRepository(CollectionDAO dao) {
-    super(PolicyResource.COLLECTION_PATH, Policy.class, dao.policyDAO(), dao, POLICY_PATCH_FIELDS,
+    super(PolicyResource.COLLECTION_PATH, Entity.POLICY, Policy.class, dao.policyDAO(), dao, POLICY_PATCH_FIELDS,
             POLICY_UPDATE_FIELDS);
     this.dao = dao;
   }
@@ -63,9 +56,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
     if (dao.relationshipDAO().findToCount(id.toString(), Relationship.CONTAINS.ordinal(), Entity.POLICY) > 0) {
       throw new IllegalArgumentException("Policy is not empty");
     }
-    if (dao.policyDAO().delete(id) <= 0) {
-      throw EntityNotFoundException.byMessage(entityNotFound(Entity.POLICY, id));
-    }
+    dao.policyDAO().delete(id);
     dao.relationshipDAO().deleteAll(id.toString());
   }
 
@@ -95,7 +86,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
 
 
   @Override
-  public void validate(Policy policy) throws IOException {
+  public void prepare(Policy policy) throws IOException {
     policy.setFullyQualifiedName(getFQN(policy));
 
     // Check if owner is valid and set the relationship
@@ -103,7 +94,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
   }
 
   @Override
-  public void store(Policy policy, boolean update) throws IOException {
+  public void storeEntity(Policy policy, boolean update) throws IOException {
     // Relationships and fields such as href are derived and not stored as part of json
     EntityReference owner = policy.getOwner();
     URI href = policy.getHref();
@@ -142,10 +133,10 @@ public class PolicyRepository extends EntityRepository<Policy> {
     policy.setOwner(owner);
   }
 
-  static class PolicyEntityInterface implements EntityInterface<Policy> {
+  public static class PolicyEntityInterface implements EntityInterface<Policy> {
     private final Policy entity;
 
-    PolicyEntityInterface(Policy entity) {
+    public PolicyEntityInterface(Policy entity) {
       this.entity = entity;
     }
 
@@ -251,7 +242,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
 
     @Override
     public void setOwner(EntityReference owner) {
-      // Policy does not have owner
+      entity.setOwner(owner);
     }
 
     @Override
@@ -273,11 +264,8 @@ public class PolicyRepository extends EntityRepository<Policy> {
 
     @Override
     public void entitySpecificUpdate() throws IOException {
-      updatePolicyUrl(original.getEntity(), updated.getEntity());
-    }
-
-    private void updatePolicyUrl(Policy original, Policy updated) throws JsonProcessingException {
-      recordChange("policyUrl", original.getPolicyUrl(), updated.getPolicyUrl());
+      recordChange("policyUrl", original.getEntity().getPolicyUrl(), updated.getEntity().getPolicyUrl());
+      recordChange("enabled", original.getEntity().getEnabled(), updated.getEntity().getEnabled());
     }
   }
 }

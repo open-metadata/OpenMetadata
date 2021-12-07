@@ -1,12 +1,8 @@
-#  Licensed to the Apache Software Foundation (ASF) under one or more
-#  contributor license agreements. See the NOTICE file distributed with
-#  this work for additional information regarding copyright ownership.
-#  The ASF licenses this file to You under the Apache License, Version 2.0
-#  (the "License"); you may not use this file except in compliance with
-#  the License. You may obtain a copy of the License at
-#
+#  Copyright 2021 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
 #  http://www.apache.org/licenses/LICENSE-2.0
-#
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -15,7 +11,6 @@
 
 import logging
 import traceback
-from typing import List
 
 from pydantic import ValidationError
 
@@ -27,7 +22,13 @@ from metadata.generated.schema.api.data.createDashboard import (
 from metadata.generated.schema.api.data.createDatabase import (
     CreateDatabaseEntityRequest,
 )
-from metadata.generated.schema.api.data.createMLModel import CreateMLModelEntityRequest
+from metadata.generated.schema.api.data.createDbtModel import (
+    CreateDbtModelEntityRequest,
+)
+from metadata.generated.schema.api.data.createLocation import (
+    CreateLocationEntityRequest,
+)
+from metadata.generated.schema.api.data.createMlModel import CreateMlModelEntityRequest
 from metadata.generated.schema.api.data.createPipeline import (
     CreatePipelineEntityRequest,
 )
@@ -37,14 +38,18 @@ from metadata.generated.schema.api.lineage.addLineage import AddLineage
 from metadata.generated.schema.api.teams.createTeam import CreateTeamEntityRequest
 from metadata.generated.schema.api.teams.createUser import CreateUserEntityRequest
 from metadata.generated.schema.entity.data.chart import ChartType
-from metadata.generated.schema.entity.data.mlmodel import MLModel
+from metadata.generated.schema.entity.data.location import Location
+from metadata.generated.schema.entity.data.mlmodel import MlModel
 from metadata.generated.schema.entity.data.pipeline import Pipeline
+from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.common import Record, WorkflowContext
 from metadata.ingestion.api.sink import Sink, SinkStatus
-from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
+from metadata.ingestion.models.ometa_table_db import (
+    OMetaDatabaseAndModel,
+    OMetaDatabaseAndTable,
+)
 from metadata.ingestion.models.table_metadata import Chart, Dashboard
-from metadata.ingestion.models.user import MetadataTeam, User
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
@@ -108,78 +113,131 @@ class MetadataRestSink(Sink):
             self.write_charts(record)
         elif isinstance(record, Dashboard):
             self.write_dashboards(record)
+        elif isinstance(record, Location):
+            self.write_locations(record)
         elif isinstance(record, Pipeline):
             self.write_pipelines(record)
         elif isinstance(record, AddLineage):
             self.write_lineage(record)
         elif isinstance(record, User):
             self.write_users(record)
-        elif isinstance(record, MLModel):
+        elif isinstance(record, MlModel):
             self.write_ml_model(record)
+        elif isinstance(record, OMetaDatabaseAndModel):
+            self.write_dbt_models(record)
         else:
             logging.info(
                 f"Ignoring the record due to unknown Record type {type(record)}"
             )
 
-    def write_tables(self, table_and_db: OMetaDatabaseAndTable):
+    def write_tables(self, db_and_table: OMetaDatabaseAndTable):
         try:
             db_request = CreateDatabaseEntityRequest(
-                name=table_and_db.database.name,
-                description=table_and_db.database.description,
+                name=db_and_table.database.name,
+                description=db_and_table.database.description,
                 service=EntityReference(
-                    id=table_and_db.database.service.id, type="databaseService"
+                    id=db_and_table.database.service.id,
+                    type="databaseService",
                 ),
             )
             db = self.metadata.create_or_update(db_request)
             table_request = CreateTableEntityRequest(
-                name=table_and_db.table.name,
-                tableType=table_and_db.table.tableType,
-                columns=table_and_db.table.columns,
-                description=table_and_db.table.description,
+                name=db_and_table.table.name,
+                tableType=db_and_table.table.tableType,
+                columns=db_and_table.table.columns,
+                description=db_and_table.table.description,
                 database=db.id,
             )
 
-            if (
-                table_and_db.table.viewDefinition is not None
-                and table_and_db.table.viewDefinition != ""
-            ):
+            if db_and_table.table.viewDefinition:
                 table_request.viewDefinition = (
-                    table_and_db.table.viewDefinition.__root__
+                    db_and_table.table.viewDefinition.__root__
                 )
 
             created_table = self.metadata.create_or_update(table_request)
-            if table_and_db.table.sampleData is not None:
-                self.metadata.ingest_table_sample_data(
-                    table=created_table, sample_data=table_and_db.table.sampleData
+            if db_and_table.location is not None:
+                location_request = CreateLocationEntityRequest(
+                    name=db_and_table.location.name,
+                    description=db_and_table.location.description,
+                    service=EntityReference(
+                        id=db_and_table.location.service.id,
+                        type="storageService",
+                    ),
                 )
-            if table_and_db.table.tableProfile is not None:
-                for tp in table_and_db.table.tableProfile:
+                location = self.metadata.create_or_update(location_request)
+                self.metadata.add_location(table=created_table, location=location)
+            if db_and_table.table.sampleData is not None:
+                self.metadata.ingest_table_sample_data(
+                    table=created_table,
+                    sample_data=db_and_table.table.sampleData,
+                )
+            if db_and_table.table.tableProfile is not None:
+                for tp in db_and_table.table.tableProfile:
                     for pd in tp:
                         if pd[0] == "columnProfile":
                             for col in pd[1]:
                                 col.name = col.name.replace(".", "_DOT_")
                 self.metadata.ingest_table_profile_data(
                     table=created_table,
-                    table_profile=table_and_db.table.tableProfile,
+                    table_profile=db_and_table.table.tableProfile,
                 )
 
             logger.info(
                 "Successfully ingested table {}.{}".format(
-                    table_and_db.database.name.__root__, created_table.name.__root__
+                    db_and_table.database.name.__root__,
+                    created_table.name.__root__,
                 )
             )
             self.status.records_written(
-                f"Table: {table_and_db.database.name.__root__}.{created_table.name.__root__}"
+                f"Table: {db_and_table.database.name.__root__}.{created_table.name.__root__}"
             )
         except (APIError, ValidationError) as err:
             logger.error(
                 "Failed to ingest table {} in database {} ".format(
-                    table_and_db.table.name.__root__,
-                    table_and_db.database.name.__root__,
+                    db_and_table.table.name.__root__,
+                    db_and_table.database.name.__root__,
                 )
             )
             logger.error(err)
-            self.status.failure(f"Table: {table_and_db.table.name.__root__}")
+            self.status.failure(f"Table: {db_and_table.table.name.__root__}")
+
+    def write_dbt_models(self, model_and_db: OMetaDatabaseAndModel):
+        try:
+            db_request = CreateDatabaseEntityRequest(
+                name=model_and_db.database.name,
+                description=model_and_db.database.description,
+                service=EntityReference(
+                    id=model_and_db.database.service.id, type="databaseService"
+                ),
+            )
+            db = self.metadata.create_or_update(db_request)
+            model = model_and_db.model
+            model_request = CreateDbtModelEntityRequest(
+                name=model.name,
+                description=model.description,
+                viewDefinition=model.viewDefinition,
+                database=db.id,
+                dbtNodeType=model.dbtNodeType,
+                columns=model.columns,
+            )
+            created_model = self.metadata.create_or_update(model_request)
+            logger.info(
+                "Successfully ingested model {}.{}".format(
+                    db.name.__root__, created_model.name.__root__
+                )
+            )
+            self.status.records_written(
+                f"Model: {db.name.__root__}.{created_model.name.__root__}"
+            )
+        except (APIError, ValidationError) as err:
+            logger.error(
+                "Failed to ingest model {} in database {} ".format(
+                    model_and_db.model.name.__root__,
+                    model_and_db.database.name.__root__,
+                )
+            )
+            logger.error(err)
+            self.status.failure(f"Model: {model_and_db.model.name.__root__}")
 
     def write_topics(self, topic: CreateTopicEntityRequest) -> None:
         try:
@@ -248,6 +306,24 @@ class MetadataRestSink(Sink):
                 chart_references.append(self.charts_dict[chart_id])
         return chart_references
 
+    def write_locations(self, location: Location):
+        try:
+            location_request = CreateLocationEntityRequest(
+                name=location.name,
+                description=location.description,
+                locationType=location.locationType,
+                tags=location.tags,
+                owner=location.owner,
+                service=location.service,
+            )
+            created_location = self.metadata.create_or_update(location_request)
+            logger.info(f"Successfully ingested Location {created_location.name}")
+            self.status.records_written(f"Location: {created_location.name}")
+        except (APIError, ValidationError) as err:
+            logger.error(f"Failed to ingest Location {location.name}")
+            logger.error(err)
+            self.status.failure(f"Location: {location.name}")
+
     def write_pipelines(self, pipeline: Pipeline):
         try:
             pipeline_request = CreatePipelineEntityRequest(
@@ -279,10 +355,9 @@ class MetadataRestSink(Sink):
             logger.error(err)
             self.status.failure(f"Lineage: {add_lineage}")
 
-    def write_ml_model(self, model: MLModel):
+    def write_ml_model(self, model: MlModel):
         try:
-            logger.info(model)
-            model_request = CreateMLModelEntityRequest(
+            model_request = CreateMlModelEntityRequest(
                 name=model.name,
                 displayName=model.displayName,
                 description=model.description,
@@ -302,33 +377,36 @@ class MetadataRestSink(Sink):
         for team in team_response["data"]:
             self.team_entities[team["name"]] = team["id"]
 
-    def _create_team(self, record: User) -> None:
+    def _create_team(self, team: EntityReference) -> None:
         metadata_team = CreateTeamEntityRequest(
-            name=record.team_name, displayName=record.team_name, description="Team Name"
+            name=team.name, displayName=team.name, description="Team Name"
         )
         try:
             r = self.metadata.create_or_update(metadata_team)
-            instance_id = r.id.__root__
-            self.team_entities[record.team_name] = instance_id
+            instance_id = str(r.id.__root__)
+            self.team_entities[team.name] = instance_id
         except Exception as err:
             logger.error(traceback.format_exc())
             logger.error(traceback.print_exc())
             logger.error(err)
 
     def write_users(self, record: User):
-        if record.team_name not in self.team_entities:
-            self._create_team(record)
-        teams = [self.team_entities[record.team_name]]
+        teams = []
+        for team in record.teams.__root__:
+            if team.name not in self.team_entities:
+                self._create_team(team)
+            teams.append(self.team_entities[team.name])
+
         metadata_user = CreateUserEntityRequest(
-            name=record.github_username,
-            displayName=record.name,
+            name=record.name.__root__,
+            displayName=record.displayName,
             email=record.email,
             teams=teams,
         )
         try:
             self.metadata.create_or_update(metadata_user)
-            self.status.records_written(record.github_username)
-            logger.info("Sink: {}".format(record.github_username))
+            self.status.records_written(record.displayName)
+            logger.info("Sink: {}".format(record.displayName))
         except Exception as err:
             logger.error(traceback.format_exc())
             logger.error(traceback.print_exc())

@@ -1,11 +1,8 @@
 /*
- *  Licensed to the Apache Software Foundation (ASF) under one or more
- *  contributor license agreements. See the NOTICE file distributed with
- *  this work for additional information regarding copyright ownership.
- *  The ASF licenses this file to You under the Apache License, Version 2.0
- *  (the "License"); you may not use this file except in compliance with
- *  the License. You may obtain a copy of the License at
- *
+ *  Copyright 2021 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
  *  http://www.apache.org/licenses/LICENSE-2.0
  *  Unless required by applicable law or agreed to in writing, software
  *  distributed under the License is distributed on an "AS IS" BASIS,
@@ -115,7 +112,7 @@ public class PipelineResource {
     }
   }
 
-  static final String FIELDS = "owner,service,tasks,followers,tags,usageSummary";
+  static final String FIELDS = "owner,tasks,followers,tags,usageSummary";
   public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replaceAll(" ", "")
           .split(","));
 
@@ -297,8 +294,7 @@ public class PipelineResource {
   public Response createOrUpdate(@Context UriInfo uriInfo,
                                  @Context SecurityContext securityContext,
                                  @Valid CreatePipeline create) throws IOException, ParseException {
-    Pipeline pipeline = getPipeline(securityContext, create).withConcurrency(create.getConcurrency())
-            .withStartDate(create.getStartDate());
+    Pipeline pipeline = getPipeline(securityContext, create);
     PutResponse<Pipeline> response = dao.createOrUpdate(uriInfo, pipeline);
     addHref(uriInfo, response.getEntity());
     return response.toResponse();
@@ -354,11 +350,14 @@ public class PipelineResource {
 
   private Pipeline getPipeline(SecurityContext securityContext, CreatePipeline create) {
     return new Pipeline().withId(UUID.randomUUID()).withName(create.getName())
-            .withDisplayName(create.getDisplayName())
-            .withDescription(create.getDescription()).withService(create.getService()).withTasks(create.getTasks())
-            .withPipelineUrl(create.getPipelineUrl()).withTags(create.getTags())
-            .withOwner(create.getOwner())
-            .withUpdatedBy(securityContext.getUserPrincipal().getName())
-            .withUpdatedAt(new Date());
+        .withDisplayName(create.getDisplayName())
+        .withDescription(create.getDescription()).withService(create.getService()).withTasks(create.getTasks())
+        .withPipelineUrl(create.getPipelineUrl()).withTags(create.getTags())
+        .withConcurrency(create.getConcurrency())
+        .withStartDate(create.getStartDate())
+        .withPipelineLocation(create.getPipelineLocation())
+        .withOwner(create.getOwner())
+        .withUpdatedBy(securityContext.getUserPrincipal().getName())
+        .withUpdatedAt(new Date());
   }
 }

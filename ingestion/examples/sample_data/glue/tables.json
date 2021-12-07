@@ -1,0 +1,25 @@
+{
+  "tables": [
+    {
+      "name": "sales",
+      "description": "Sales data",
+      "tableType": "Regular",
+      "columns": [
+        {
+          "name": "SKU",
+          "dataType": "NUMERIC",
+          "dataTypeDisplay": "numeric",
+          "description": "Article SKU",
+          "ordinalPosition": 1
+        },
+        {
+          "name": "Quantity",
+          "dataType": "NUMERIC",
+          "dataTypeDisplay": "numeric",
+          "description": "Quantity of SKU",
+          "ordinalPosition": 2
+        }
+      ]
+    }
+  ]
+}

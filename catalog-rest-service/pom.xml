@@ -5,7 +5,7 @@
   <parent>
     <artifactId>catalog</artifactId>
     <groupId>org.openmetadata</groupId>
-    <version>0.6.0-SNAPSHOT</version>
+    <version>0.7.0-SNAPSHOT</version>
   </parent>
   <modelVersion>4.0.0</modelVersion>
 
@@ -14,7 +14,7 @@
   <properties>
     <dropwizard.swagger.version>2.0.12-1</dropwizard.swagger.version>
     <testng.version>7.4.0</testng.version>
-    <selenium.version>4.0.0-rc-1</selenium.version>
+    <selenium.version>4.0.0</selenium.version>
   </properties>
 
   <dependencies>
@@ -281,14 +281,14 @@
     <dependency>
       <groupId>com.auth0</groupId>
       <artifactId>java-jwt</artifactId>
-      <version>3.18.1</version>
+      <version>3.18.2</version>
     </dependency>
 
     <!-- https://mvnrepository.com/artifact/com.auth0/jwks-rsa -->
     <dependency>
       <groupId>com.auth0</groupId>
       <artifactId>jwks-rsa</artifactId>
-      <version>0.19.0</version>
+      <version>0.20.0</version>
     </dependency>
 
 
@@ -296,6 +296,12 @@
       <groupId>org.seleniumhq.selenium</groupId>
       <artifactId>selenium-java</artifactId>
       <version>${selenium.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>io.github.artsok</groupId>
+      <artifactId>rerunner-jupiter</artifactId>
+      <version>2.1.6</version>
       <scope>test</scope>
     </dependency>
     <dependency>
@@ -313,14 +319,6 @@
   </dependencies>
 
   <build>
-    <resources>
-      <resource>
-        <directory>src/main/resources/ui/dist</directory>
-      </resource>
-      <resource>
-        <directory>src/main/resources/json/data</directory>
-      </resource>
-    </resources>
 
     <plugins>
       <plugin>
@@ -409,91 +407,6 @@
             <goals>
               <goal>generate</goal>
             </goals>
-          </execution>
-        </executions>
-      </plugin>
-      <!-- Handle Compiling Frontend -->
-      <plugin>
-        <groupId>com.github.eirslett</groupId>
-        <artifactId>frontend-maven-plugin</artifactId>
-        <version>1.11.0</version>
-
-        <!-- optional -->
-        <configuration>
-          <workingDirectory>src/main/resources/ui/</workingDirectory>
-          <installDirectory>target</installDirectory>
-        </configuration>
-
-        <executions>
-          <execution>
-            <id>install node and npm</id>
-            <goals>
-              <goal>install-node-and-npm</goal>
-            </goals>
-            <configuration>
-              <nodeVersion>v12.16.1</nodeVersion>
-              <npmVersion>6.13.4</npmVersion>
-            </configuration>
-          </execution>
-          <execution>
-            <id>npm install</id>
-            <goals>
-              <goal>npm</goal>
-            </goals>
-            <phase>prepare-package</phase>
-            <configuration>
-              <arguments>install</arguments>
-            </configuration>
-          </execution>
-          <execution>
-            <id>npm run-script build-check</id>
-            <goals>
-              <goal>npm</goal>
-            </goals>
-            <!-- optional: the default phase is "generate-resources" -->
-            <phase>prepare-package</phase>
-            <configuration>
-              <!-- optional: if not specified, it will run gulp's default task
-                  (and you can remove this whole <configuration> section.) -->
-              <arguments>run-script build-check</arguments>
-              <!--arguments>build</arguments-->
-            </configuration>
-          </execution>
-          <execution>
-            <id>npm run-script build</id>
-            <goals>
-              <goal>npm</goal>
-            </goals>
-            <!-- optional: the default phase is "generate-resources" -->
-            <phase>prepare-package</phase>
-            <configuration>
-              <!-- optional: if not specified, it will run gulp's default task
-                  (and you can remove this whole <configuration> section.) -->
-              <arguments>run-script build</arguments>
-              <!--arguments>build</arguments-->
-            </configuration>
-          </execution>
-        </executions>
-      </plugin>
-      <plugin>
-        <artifactId>maven-resources-plugin</artifactId>
-        <executions>
-          <execution>
-            <id>copy-resources</id>
-            <!-- here the phase you need -->
-            <phase>prepare-package</phase>
-            <goals>
-              <goal>copy-resources</goal>
-            </goals>
-            <configuration>
-              <outputDirectory>${basedir}/target/classes</outputDirectory>
-              <resources>
-                <resource>
-                  <directory>src/main/resources/ui/dist</directory>
-                  <filtering>true</filtering>
-                </resource>
-              </resources>
-            </configuration>
           </execution>
         </executions>
       </plugin>

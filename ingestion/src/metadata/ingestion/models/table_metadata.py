@@ -1,12 +1,8 @@
-#  Licensed to the Apache Software Foundation (ASF) under one or more
-#  contributor license agreements. See the NOTICE file distributed with
-#  this work for additional information regarding copyright ownership.
-#  The ASF licenses this file to You under the Apache License, Version 2.0
-#  (the "License"); you may not use this file except in compliance with
-#  the License. You may obtain a copy of the License at
-#
+#  Copyright 2021 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
 #  http://www.apache.org/licenses/LICENSE-2.0
-#
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -27,6 +23,20 @@ class Table(BaseModel):
     fullyQualifiedName: str
 
 
+class FieldChange(BaseModel):
+    name: str
+    newValue: Optional[str]
+    oldValue: Optional[str]
+
+
+class ChangeDescription(BaseModel):
+    updatedBy: str
+    updatedAt: int
+    fieldsAdded: Optional[str]
+    fieldsDeleted: Optional[str]
+    fieldsUpdated: Optional[str]
+
+
 class TableESDocument(BaseModel):
     """Elastic Search Mapping doc"""
 
@@ -34,7 +44,9 @@ class TableESDocument(BaseModel):
     database: str
     service: str
     service_type: str
-    table_name: str
+    service_category: str
+    entity_type: str = "table"
+    name: str
     suggest: List[dict]
     description: Optional[str] = None
     table_type: Optional[str] = None
@@ -50,9 +62,10 @@ class TableESDocument(BaseModel):
     tags: List[str]
     fqdn: str
     tier: Optional[str] = None
-    schema_description: Optional[str] = None
     owner: str
     followers: List[str]
+    change_descriptions: Optional[List[ChangeDescription]] = None
+    doc_as_upsert: bool = True
 
 
 class TopicESDocument(BaseModel):
@@ -61,16 +74,19 @@ class TopicESDocument(BaseModel):
     topic_id: str
     service: str
     service_type: str
-    topic_name: str
+    service_category: str
+    entity_type: str = "topic"
+    name: str
     suggest: List[dict]
     description: Optional[str] = None
     last_updated_timestamp: Optional[int]
     tags: List[str]
     fqdn: str
     tier: Optional[str] = None
-    schema_description: Optional[str] = None
     owner: str
     followers: List[str]
+    change_descriptions: Optional[List[ChangeDescription]] = None
+    doc_as_upsert: bool = True
 
 
 class DashboardESDocument(BaseModel):
@@ -79,7 +95,9 @@ class DashboardESDocument(BaseModel):
     dashboard_id: str
     service: str
     service_type: str
-    dashboard_name: str
+    service_category: str
+    entity_type: str = "dashboard"
+    name: str
     suggest: List[dict]
     description: Optional[str] = None
     last_updated_timestamp: Optional[int]
@@ -96,6 +114,8 @@ class DashboardESDocument(BaseModel):
     weekly_percentile_rank: int
     daily_stats: int
     daily_percentile_rank: int
+    change_descriptions: Optional[List[ChangeDescription]] = None
+    doc_as_upsert: bool = True
 
 
 class PipelineESDocument(BaseModel):
@@ -104,7 +124,9 @@ class PipelineESDocument(BaseModel):
     pipeline_id: str
     service: str
     service_type: str
-    pipeline_name: str
+    service_category: str
+    entity_type: str = "pipeline"
+    name: str
     suggest: List[dict]
     description: Optional[str] = None
     last_updated_timestamp: Optional[int]
@@ -115,6 +137,33 @@ class PipelineESDocument(BaseModel):
     tier: Optional[str] = None
     owner: str
     followers: List[str]
+    change_descriptions: Optional[List[ChangeDescription]] = None
+    doc_as_upsert: bool = True
+
+
+class DbtModelESDocument(BaseModel):
+    """Elastic Search Mapping doc"""
+
+    dbt_model_id: str
+    database: str
+    service: str
+    service_type: str
+    service_category: str
+    entity_type: str = "dbtmodel"
+    name: str
+    suggest: List[dict]
+    description: Optional[str] = None
+    dbt_type: Optional[str] = None
+    last_updated_timestamp: Optional[int]
+    column_names: List[str]
+    column_descriptions: List[str]
+    tags: List[str]
+    fqdn: str
+    tier: Optional[str] = None
+    owner: str
+    followers: List[str]
+    change_descriptions: Optional[List[ChangeDescription]] = None
+    doc_as_upsert: bool = True
 
 
 class DashboardOwner(BaseModel):

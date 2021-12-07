@@ -1,11 +1,8 @@
 /*
- *  Licensed to the Apache Software Foundation (ASF) under one or more
- *  contributor license agreements. See the NOTICE file distributed with
- *  this work for additional information regarding copyright ownership.
- *  The ASF licenses this file to You under the Apache License, Version 2.0
- *  (the "License"); you may not use this file except in compliance with
- *  the License. You may obtain a copy of the License at
- *
+ *  Copyright 2021 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
  *  http://www.apache.org/licenses/LICENSE-2.0
  *  Unless required by applicable law or agreed to in writing, software
  *  distributed under the License is distributed on an "AS IS" BASIS,
@@ -34,19 +31,19 @@ import java.util.List;
 import java.util.UUID;
 
 public class ReportRepository extends EntityRepository<Report> {
-  private static final Fields REPORT_UPDATE_FIELDS = new Fields(ReportResource.FIELD_LIST, "owner,service");
+  private static final Fields REPORT_UPDATE_FIELDS = new Fields(ReportResource.FIELD_LIST, "owner");
   private final CollectionDAO dao;
 
   public ReportRepository(CollectionDAO dao) {
-    super(ReportResource.COLLECTION_PATH, Report.class, dao.reportDAO(), dao, Fields.EMPTY_FIELDS,
+    super(ReportResource.COLLECTION_PATH, Entity.REPORT, Report.class, dao.reportDAO(), dao, Fields.EMPTY_FIELDS,
             REPORT_UPDATE_FIELDS);
     this.dao = dao;
   }
 
   @Override
   public Report setFields(Report report, Fields fields) throws IOException {
+    report.setService(getService(report)); // service is a default field
     report.setOwner(fields.contains("owner") ? getOwner(report) : null);
-    report.setService(fields.contains("service") ? getService(report) : null);
     report.setUsageSummary(fields.contains("usageSummary") ? EntityUtil.getLatestUsage(dao.usageDAO(),
             report.getId()) : null);
     return report;
@@ -63,14 +60,14 @@ public class ReportRepository extends EntityRepository<Report> {
   }
 
   @Override
-  public void validate(Report report) throws IOException {
+  public void prepare(Report report) throws IOException {
     setService(report, report.getService());
     setOwner(report, report.getOwner());
     EntityUtil.populateOwner(dao.userDAO(), dao.teamDAO(), report.getOwner()); // Validate owner
   }
 
   @Override
-  public void store(Report report, boolean update) throws IOException {
+  public void storeEntity(Report report, boolean update) throws IOException {
     // TODO add right checks
     dao.reportDAO().insert(report);
   }

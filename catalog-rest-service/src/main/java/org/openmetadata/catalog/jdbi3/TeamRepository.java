@@ -1,11 +1,8 @@
 /*
- *  Licensed to the Apache Software Foundation (ASF) under one or more
- *  contributor license agreements. See the NOTICE file distributed with
- *  this work for additional information regarding copyright ownership.
- *  The ASF licenses this file to You under the Apache License, Version 2.0
- *  (the "License"); you may not use this file except in compliance with
- *  the License. You may obtain a copy of the License at
- *
+ *  Copyright 2021 Collate 
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
  *  http://www.apache.org/licenses/LICENSE-2.0
  *  Unless required by applicable law or agreed to in writing, software
  *  distributed under the License is distributed on an "AS IS" BASIS,
@@ -21,7 +18,6 @@ import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
-import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.resources.teams.TeamResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
@@ -48,16 +44,15 @@ public class TeamRepository extends EntityRepository<Team> {
   private final CollectionDAO dao;
 
   public TeamRepository(CollectionDAO dao) {
-    super(TeamResource.COLLECTION_PATH, Team.class, dao.teamDAO(), dao, TEAM_PATCH_FIELDS, Fields.EMPTY_FIELDS);
+    super(TeamResource.COLLECTION_PATH, Entity.TEAM, Team.class, dao.teamDAO(), dao, TEAM_PATCH_FIELDS,
+            Fields.EMPTY_FIELDS);
     this.dao = dao;
   }
 
   @Transaction
   public void delete(UUID id) {
     // Query 1 - delete team
-    if (dao.teamDAO().delete(id) <= 0) {
-      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound("Team", id));
-    }
+    dao.teamDAO().delete(id);
 
     // Query 2 - Remove all relationship from and to this team
     // TODO make this UUID based
@@ -106,12 +101,12 @@ public class TeamRepository extends EntityRepository<Team> {
   }
 
   @Override
-  public void validate(Team team) throws IOException {
+  public void prepare(Team team) throws IOException {
     validateUsers(team.getUsers());
   }
 
   @Override
-  public void store(Team team, boolean update) throws IOException {
+  public void storeEntity(Team team, boolean update) throws IOException {
     // Relationships and fields such as href are derived and not stored as part of json
     List<EntityReference> users = team.getUsers();
 

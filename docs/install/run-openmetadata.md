@@ -6,132 +6,203 @@ description: >-
 
 # Run OpenMetadata
 
-## Run Docker (Latest Release)
+## Requirements
+
+Please ensure your host system meets the requirements listed below. Then continue to the Procedure for installing OpenMetadata.
+
+### Python (version 3.8.0 or greater)
+
+To check what version of Python you have, please use the following command.
+
+```
+python3 --version
+```
+
+### pip (version 19.2.3 or greater)
+
+The version of pip (pip3) that ships with Python 3.8.x is 19.2.3. You will need this version or later to install OpenMetadata. You can check what version of pip you have by running the following command.
+
+```
+pip3 --version
+```
+
+### Docker (version 20.10.0 or greater)
 
 [Docker](https://docs.docker.com/get-started/overview/) is an open platform for developing, shipping, and running applications that enables you to separate your applications from your infrastructure so you can deliver software quickly using OS-level virtualization to deliver software in packages called containers.
 
-{% hint style="info" %}
-**Prerequisites**
+To check what version of Docker you have, please use the following command.
 
-* Docker >= 20.10.x
-* Minimum allocated memory to Docker >= 4GB (Preferences -> Resources -> Advanced)
+```
+docker --version
+```
+
+If you need to install Docker, please visit [Get Docker](https://docs.docker.com/get-docker/).
+
+{% hint style="warning" %}
+Note: You must **allocate at least 4GB of memory to Docker** in order to run OpenMetadata. To change the memory allocation for Docker, please visit:
+
+Preferences -> Resources -> Advanced
 {% endhint %}
 
-```bash
-git clone https://github.com/open-metadata/OpenMetadata
-cd OpenMetadata/docker/metadata
-docker-compose up
+## Procedure
+
+### 1. Create a directory for OpenMetadata
+
+Create a new directory for OpenMetadata and navigate into that directory.
+
 ```
+mkdir openmetadata-docker; cd openmetadata-docker
+```
+
+### 2. Create a Python virtual environment
+
+Create a virtual environment to avoid conflicts with other Python environments on your host system. A virtual environment is a self-contained directory tree that contains a Python installation for a particular version of Python, plus a number of additional packages.
+
+In a later step you will install the openmetadata-ingestion Python module and its dependencies in this virtual environment.
+
+```
+python3 -m venv env
+```
+
+### 3. Activate the virtual environment
+
+```
+source env/bin/activate
+```
+
+### 4. Install the OpenMetadata Python module using pip
+
+```bash
+pip3 install 'openmetadata-ingestion[docker]'
+```
+
+### 5. Ensure the module is installed and ready for use&#x20;
+
+```
+metadata docker --help
+```
+
+After running the command above, you should see output similar to the following.
+
+```
+Usage: metadata docker [OPTIONS]
+
+  Checks Docker Memory Allocation Run Latest Release Docker - metadata
+  docker --run Run Local Docker - metadata docker --run -t local -p
+  path/to/docker-compose.yml
+
+Options:
+  --start          Start release Docker containers
+  --stop           Stop Docker containers (local and release)
+  --clean          Prune unused containers, images, volumes and networks
+  -t, --type TEXT  'local' - local type will start local build of OpenMetadata
+                   docker
+
+  -p, --path FILE  Path to Local docker-compose.yml
+  --help           Show this message and exit.
+```
+
+### 6. Start the OpenMetadata Docker containers
+
+```
+metadata docker --start
+```
+
+This will create a docker network and four containers for the following services:
+
+* MySQL to store the metadata catalog
+* Elasticsearch to maintain the metadata index which enables you to search the catalog
+* Apache Airflow which OpenMetadata uses for metadata ingestion
+* The OpenMetadata UI and API server
+
+After starting the Docker containers, you should see output similar to the following.
+
+```
+[2021-11-18 15:53:52,532] INFO     {metadata.cmd:202} - Running Latest Release Docker
+[+] Running 5/5
+ ⠿ Network tmp_app_net                  Created                                                                                                                                          0.3s
+ ⠿ Container tmp_mysql_1                Started                                                                                                                                          1.0s
+ ⠿ Container tmp_elasticsearch_1        Started                                                                                                                                          1.0s
+ ⠿ Container tmp_ingestion_1            Started                                                                                                                                          2.1s
+ ⠿ Container tmp_openmetadata-server_1  Started                                                                                                                                          2.2s
+[2021-11-18 15:53:55,876] INFO     {metadata.cmd:212} - Time took to get containers running: 0:00:03.124889
+.......
+```
+
+After starting the containers, `metadata` will launch Airflow tasks to ingest sample metadata and usage data for you to experiment with. This might take several minutes, depending on your system.
+
+{% hint style="info" %}
+**Note:**
+
+* `metadata docker --stop` will stop the Docker containers.
+* `metadata docker --clean` will clean/prune the containers, volumes, and networks.
+{% endhint %}
+
+### 7. Wait for metadata ingestion to finish
+
+Once metadata ingestion has finished and the OpenMetadata UI is ready for use, you will see output similar to the following.&#x20;
+
+```
+[2021-11-18 15:54:51,165] INFO     {metadata.cmd:232} - Time took to get OpenMetadata running: 0:00:58.414548
+
+✔ OpenMetadata is up and running
+
+Head to http://localhost:8585 to play around with OpenMetadata UI.
+                
+To checkout Ingestion via Airflow, go to http://localhost:8080 
+(username: admin, password: admin)
+                
+Need support? Get in touch on Slack: https://slack.open-metadata.org/
+```
+
+### 8. Log in to Airflow
+
+Once metadata ingestion has finished and you see the message that OpenMetadata is up and running, visit the following url in your web browser.
+
+```
+http://localhost:8080
+```
+
+You will see a login prompt similar to the one in the figure below. Use the following credentials to log in to Airflow.
+
+Username: `admin`&#x20;
+
+Password: `admin`
+
+![](../.gitbook/assets/airflow-login.png)
+
+
+
+### 9. Begin using OpenMetadata
+
+Finally, visit the following url to begin exploring OpenMetadata.
+
+```
+http://localhost:8585
+```
+
+You should see a page similar to the following as the landing page for the OpenMetadata server.
+
+![](../.gitbook/assets/om-local-landing-page.png)
 
 ### Next Steps
 
-1. Docker for OpenMetadata will depend on Mysql Container to be up, It may take few seconds to run.
-2. Once OpenMetadata UI is accessible, Go to [Airflow UI](http://localhost:8080) to invoke the pipelines to ingest data.
+1. Visit the [Features](../features.md) overview page and explore the OpenMetadata UI.
+2. Visit the [Connectors](metadata-ingestion/connectors/) documentation to see what services you can integrate with OpenMetadata.
+3. Visit the [API](../openmetadata-apis/apis/overview.md) documentation and explore the OpenMetadata APIs.
 
-The above command brings up all the necessary services
+### Troubleshooting
 
-1. MySQL
-2. ElasticSearch
-3. OpenMetadata Sever
-4. Ingestion with Airflow
-
-To access the OpenMetadata
-
-Open [http://localhost:8585](http://localhost:8585) in your browser
-
-Airflow UI available at [http://localhost:8080](http://localhost)
-
-## Run Docker (Local Server)
-
-{% hint style="info" %}
-This Docker will enable users to access the Local OpenMetadata Server and Ingestion.
-
-**Prerequisites**
-
-* Docker >= 20.10.x
-* Minimum allocated memory to Docker >= 4GB (Preferences -> Advanced -> Resources)
-{% endhint %}
-
-Run the below script to create the latest Maven build of the local and run the Docker with the respective Maven build and Ingestion.
+#### Could not find a version that satisfied the requirement
 
 ```
-#Run Script to initialize Maven Build and start building Docker
-git clone https://github.com/open-metadata/OpenMetadata
-cd OpenMetadata
-./docker/run_local_docker.sh
+pip3 install 'openmetadata-ingestion[docker]'
+ERROR: Could not find a version that satisfies the requirement openmetadata-ingestion[docker] (from versions: none)
+ERROR: No matching distribution found for openmetadata-ingestion[docker]
 ```
 
-## Run Manually
+If you see the above when attempting to install OpenMetadata, this can be due to using older version of Python and pip. Please check the [Requirements](run-openmetadata.md#requirements) section above and confirm that you have supported versions installed.&#x20;
 
-{% hint style="success" %}
-This is a quick start guide that will show you how to quickly start a standalone server.
-{% endhint %}
 
-### Download the distribution
 
-**Prerequisites**
-
-{% hint style="info" %}
-OpenMetadata is built using Java, DropWizard, Jetty, and MySQL.
-
-1. Java 11 or above
-2. MySQL 8 or above
-{% endhint %}
-
-{% tabs %}
-{% tab title="Download the release" %}
-Download the latest binary release from [OpenMetadata](https://github.com/open-metadata/OpenMetadata/releases/download/0.5.0/openmetadata-0.5.0.tar.gz), Once you have the tar file,
-
-```bash
-# untar it
-tar -zxvf openmetadata-0.5.0.tar.gz
-
-# navigate to directory containing the launcher scripts
-cd openmetadata-0.5.0
-```
-{% endtab %}
-{% endtabs %}
-
-### Install on your local machine
-
-#### macOS
-
-1. Setup Database
-   *   Install MySQL
-
-       ```
-        brew install mysql
-       ```
-   *   Configure MySQL
-
-       ```
-       mysqladmin -u root password 'yourpassword'
-       mysql -u root -p
-       ```
-   *   Setup Database
-
-       ```
-       mysql -u root -p
-       CREATE DATABASE openmetadata_db;
-       CREATE USER 'openmetadata_user'@'localhost' IDENTIFIED BY 'openmetadata_password';
-       GRANT ALL PRIVILEGES ON openmetadata_db.* TO 'openmetadata_user'@'localhost' WITH GRANT OPTION;
-       commit;
-       ```
-2.  Run bootstrap scripts to initialize the database and tables
-
-    ```
-       cd openmetadata-0.5.0
-       ./bootstrap/bootstrap_storage.sh migrate
-    ```
-3.  Start the OpenMetadata Server
-
-    ```
-       cd openmetadata-0.5.0 
-       ./bin/openmetadata.sh start
-    ```
-
-### Ingest Sample Data
-
-Previous steps start OpenMetadata server. To start using it we need to run ElasticSearch and ingest sample metadata. Please follow the below guide:
-
-[Ingest Sample Data](metadata-ingestion/ingest-sample-data.md)
+If you need support please get in touch on Slack: [https://slack.open-metadata.org/](https://slack.open-metadata.org).&#x20;
