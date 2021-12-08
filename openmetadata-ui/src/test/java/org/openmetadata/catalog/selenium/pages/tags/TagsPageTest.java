@@ -194,7 +194,8 @@ public class TagsPageTest {
   public void checkAddedTagToTableColumn() {
     Events.click(webDriver, By.cssSelector("[data-testid='closeWhatsNew']")); // Close What's new
     Events.click(webDriver, By.cssSelector("[data-testid='tables']")); // Tables
-    Events.click(webDriver, By.cssSelector("[data-testid='checkbox'][id='" + tagCategoryDisplayName + "." + tagDisplayName + "']"));
+    Events.click(webDriver, By.cssSelector("[data-testid='checkbox']" +
+        "[id='" + tagCategoryDisplayName + "." + tagDisplayName + "']"));
     Events.click(webDriver, By.xpath("//a[@data-testid='table-link']//button"));
   }
 
