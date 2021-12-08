@@ -32,7 +32,7 @@ from metadata.generated.schema.entity.services.databaseService import DatabaseSe
 from metadata.generated.schema.entity.services.messagingService import MessagingService
 from metadata.generated.schema.entity.services.pipelineService import PipelineService
 from metadata.generated.schema.type import entityReference
-from metadata.ingestion.api.common import Record, WorkflowContext
+from metadata.ingestion.api.common import Entity, WorkflowContext
 from metadata.ingestion.api.sink import Sink, SinkStatus
 from metadata.ingestion.models.table_metadata import (
     ChangeDescription,
@@ -77,7 +77,7 @@ class ElasticSearchConfig(ConfigModel):
     ca_certs: Optional[str] = None
 
 
-class ElasticsearchSink(Sink):
+class ElasticsearchSink(Sink[Entity]):
     """ """
 
     DEFAULT_ELASTICSEARCH_INDEX_MAPPING = TABLE_ELASTICSEARCH_INDEX_MAPPING
@@ -176,7 +176,7 @@ class ElasticsearchSink(Sink):
                 index=index_name, body=es_mapping, request_timeout=self.config.timeout
             )
 
-    def write_record(self, record: Record) -> None:
+    def write_record(self, record: Entity) -> None:
         if isinstance(record, Table):
             table_doc = self._create_table_es_doc(record)
             self.elasticsearch_client.index(

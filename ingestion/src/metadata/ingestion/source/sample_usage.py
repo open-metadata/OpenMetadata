@@ -24,7 +24,7 @@ from metadata.ingestion.source.sample_data import (
 from metadata.utils.helpers import get_database_service_or_create
 
 
-class SampleUsageSource(Source):
+class SampleUsageSource(Source[TableQuery]):
 
     service_type = "BigQuery"
 

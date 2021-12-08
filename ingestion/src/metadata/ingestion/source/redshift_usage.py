@@ -26,7 +26,7 @@ from metadata.utils.helpers import get_start_and_end
 logger = logging.getLogger(__name__)
 
 
-class RedshiftUsageSource(Source):
+class RedshiftUsageSource(Source[TableQuery]):
     # SELECT statement from mysql information_schema to extract table and column metadata
     SQL_STATEMENT = """
         SELECT DISTINCT ss.userid,

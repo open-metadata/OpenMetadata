@@ -11,11 +11,11 @@
 
 from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass, field
-from typing import Dict, List, TypeVar
+from typing import Any, Dict, Generic, List
 
-from .closeable import Closeable
-from .common import Record, WorkflowContext
-from .status import Status
+from metadata.ingestion.api.closeable import Closeable
+from metadata.ingestion.api.common import Entity, WorkflowContext
+from metadata.ingestion.api.status import Status
 
 
 @dataclass
@@ -25,7 +25,7 @@ class StageStatus(Status):
     warnings: Dict[str, List[str]] = field(default_factory=dict)
     failures: Dict[str, List[str]] = field(default_factory=dict)
 
-    def records_status(self, record: Record) -> None:
+    def records_status(self, record: Any) -> None:
         self.records_produced += 1
 
     def warning_status(self, key: str, reason: str) -> None:
@@ -39,11 +39,8 @@ class StageStatus(Status):
         self.failures[key].append(reason)
 
 
-RecordType = TypeVar("RecordType", bound=Record)
-
-
 @dataclass  # type: ignore[misc]
-class Stage(Closeable, metaclass=ABCMeta):
+class Stage(Closeable, Generic[Entity], metaclass=ABCMeta):
     ctx: WorkflowContext
 
     @classmethod
@@ -54,7 +51,7 @@ class Stage(Closeable, metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def stage_record(self, record: Record):
+    def stage_record(self, record: Entity):
         pass
 
     @abstractmethod

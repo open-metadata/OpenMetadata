@@ -29,7 +29,7 @@ class LDAPUserConfig(ConfigModel):
     password: str
 
 
-class LdapUsersSource(Source):
+class LdapUsersSource(Source[CreateUserEntityRequest]):
     config: LDAPUserConfig
     status: SourceStatus
 
@@ -50,16 +50,17 @@ class LdapUsersSource(Source):
     def prepare(self):
         pass
 
-    def _load_users(self, c):
-        if c is not False:
-            c.search(
+    @staticmethod
+    def _load_users(conn):
+        if conn:
+            conn.search(
                 search_base="ou=users,dc=example,dc=com",
                 search_filter="(objectClass=inetOrgPerson)",
                 search_scope=LEVEL,
                 attributes=["cn", "givenName", "uid", "mail", "sn"],
             )
             arr = []
-            for entry in c.response:
+            for entry in conn.response:
                 arr.append(entry)
             return arr
 

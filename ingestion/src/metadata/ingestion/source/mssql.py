@@ -11,11 +11,8 @@
 
 import sqlalchemy_pytds  # noqa: F401
 
-# This import verifies that the dependencies are available.
-from metadata.generated.schema.entity.data.table import TableData
-
-from ..ometa.openmetadata_rest import MetadataServerConfig
-from .sql_source import SQLConnectionConfig, SQLSource
+from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
+from metadata.ingestion.source.sql_source import SQLConnectionConfig, SQLSource
 
 
 class MssqlConfig(SQLConnectionConfig):

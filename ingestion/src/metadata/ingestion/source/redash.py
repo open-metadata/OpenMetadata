@@ -11,7 +11,7 @@
 
 import uuid
 from dataclasses import dataclass, field
-from typing import Iterable, List, Dict
+from typing import Dict, Iterable, List
 
 import requests
 from redash_toolbelt import Redash
@@ -21,9 +21,10 @@ from metadata.generated.schema.entity.services.dashboardService import (
     DashboardServiceType,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.api.common import ConfigModel, Record, WorkflowContext
+from metadata.ingestion.api.common import ConfigModel, Entity, WorkflowContext
 from metadata.ingestion.api.source import Source, SourceStatus
-from metadata.ingestion.models.table_metadata import Dashboard, Chart as ModelChart
+from metadata.ingestion.models.table_metadata import Chart as ModelChart
+from metadata.ingestion.models.table_metadata import Dashboard
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.utils.helpers import get_dashboard_service_or_create
 
@@ -48,7 +49,7 @@ class RedashSourceStatus(SourceStatus):
         self.filtered.append(item)
 
 
-class RedashSource(Source):
+class RedashSource(Source[Entity]):
     config: RedashSourceConfig
     metadata_config: MetadataServerConfig
     status: RedashSourceStatus
@@ -87,7 +88,7 @@ class RedashSource(Source):
     def prepare(self):
         pass
 
-    def next_record(self) -> Iterable[Record]:
+    def next_record(self) -> Iterable[Entity]:
         yield from self.get_redash_charts()
         dashboard_info = self.client.dashboards()
         yield from self.get_redash_dashboard_charts(dashboard_info)
@@ -167,3 +168,6 @@ class RedashSource(Source):
 
     def get_status(self) -> SourceStatus:
         return self.status
+
+    def close(self):
+        self.client.session.close()

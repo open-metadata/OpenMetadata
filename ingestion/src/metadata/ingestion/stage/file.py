@@ -14,7 +14,7 @@ import logging
 import pathlib
 
 from metadata.config.common import ConfigModel
-from metadata.ingestion.api.common import WorkflowContext
+from metadata.ingestion.api.common import Entity, WorkflowContext
 from metadata.ingestion.api.stage import Stage, StageStatus
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 
@@ -25,7 +25,7 @@ class FileStageConfig(ConfigModel):
     filename: str
 
 
-class FileStage(Stage):
+class FileStage(Stage[Entity]):
     config: FileStageConfig
     status: StageStatus
 
@@ -51,7 +51,7 @@ class FileStage(Stage):
         metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
         return cls(ctx, config, metadata_config)
 
-    def stage_record(self, record) -> None:
+    def stage_record(self, record: Entity) -> None:
         json_record = json.loads(record.json())
         self.file.write(json.dumps(json_record))
         self.file.write("\n")
