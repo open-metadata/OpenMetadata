@@ -89,7 +89,7 @@ export const getRelativeDay = (timestamp: number): string => {
   return getRelativeDayDifference(Date.now(), timestamp);
 };
 
-export const getRelativeDayByTimeStamp = (timeStamp: number): string => {
+export const getRelativeDateByTimeStamp = (timeStamp: number): string => {
   return moment(timeStamp).calendar(null, {
     sameDay: '[Today]',
     nextDay: 'DD MMMM YYYY',

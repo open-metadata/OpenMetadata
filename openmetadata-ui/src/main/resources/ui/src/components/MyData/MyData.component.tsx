@@ -27,7 +27,7 @@ import { FeedFilter, Ownership } from '../../enums/mydata.enum';
 import { getOwnerIds } from '../../utils/CommonUtils';
 import { getSummary } from '../../utils/EntityVersionUtils';
 import { dropdownIcon as DropDownIcon } from '../../utils/svgconstant';
-import { getRelativeDayByTimeStamp } from '../../utils/TimeUtils';
+import { getRelativeDateByTimeStamp } from '../../utils/TimeUtils';
 import { Button } from '../buttons/Button/Button';
 import ErrorPlaceHolderES from '../common/error-with-placeholder/ErrorPlaceHolderES';
 import FeedCards from '../common/FeedCard/FeedCards.component';
@@ -35,6 +35,7 @@ import PageLayout from '../containers/PageLayout';
 import DropDownList from '../dropdown/DropDownList';
 import EntityList from '../EntityList/EntityList';
 import MyAssetStats from '../MyAssetStats/MyAssetStats.component';
+import Onboarding from '../onboarding/Onboarding';
 import RecentlyViewed from '../recently-viewed/RecentlyViewed';
 import RecentSearchedTerms from '../RecentSearchedTerms/RecentSearchedTerms';
 import { MyDataProps } from './MyData.interface';
@@ -177,7 +178,7 @@ const MyData: React.FC<MyDataProps> = ({
               description: <div>{getSummary(change, true)}</div>,
               entityType: d.entityType,
               fqn: d.fqn,
-              relativeDay: getRelativeDayByTimeStamp(change.updatedAt),
+              relativeDay: getRelativeDateByTimeStamp(change.updatedAt),
             })) || []
         );
       })
@@ -194,12 +195,19 @@ const MyData: React.FC<MyDataProps> = ({
 
   return (
     <PageLayout leftPanel={getLeftPanel()} rightPanel={getRightPanel()}>
-      {getFilterDropDown()}
-
       {error ? (
         <ErrorPlaceHolderES errorMessage={error} type="error" />
       ) : (
-        <FeedCards {...getFeedsData()} />
+        <Fragment>
+          {getFeedsData().feeds.length > 0 ? (
+            <Fragment>
+              {getFilterDropDown()}
+              <FeedCards {...getFeedsData()} />
+            </Fragment>
+          ) : (
+            <Onboarding showLogo={false} />
+          )}
+        </Fragment>
       )}
     </PageLayout>
   );

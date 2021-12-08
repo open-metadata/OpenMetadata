@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import React from 'react';
+import classNames from 'classnames';
+import React, { FC } from 'react';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 
 const data = [
@@ -20,10 +21,18 @@ const data = [
   'Follow the datasets that you frequently use to stay informed about it.',
 ];
 
-const Onboarding: React.FC = () => {
+interface OnboardingProp {
+  showLogo?: boolean;
+}
+
+const Onboarding: FC<OnboardingProp> = ({
+  showLogo = true,
+}: OnboardingProp) => {
   return (
     <div
-      className="tw-flex tw-items-center tw-justify-around tw-mt-20"
+      className={classNames(
+        'tw-flex tw-items-center tw-justify-around tw-mt-10'
+      )}
       data-testid="onboarding">
       <div className="tw-p-4" style={{ maxWidth: '700px' }}>
         <div className="tw-mb-6">
@@ -49,21 +58,17 @@ const Onboarding: React.FC = () => {
           ))}
         </div>
       </div>
-
-      <div>
-        {/* <img
-          alt=""
-          className="tw-h-auto tw-w-full tw-filter tw-grayscale tw-opacity-50"
-          src={logo}
-        /> */}
-        <SVGIcons
-          alt="OpenMetadata Logo"
-          className="tw-h-auto tw-filter tw-grayscale tw-opacity-50"
-          data-testid="logo"
-          icon={Icons.LOGO_SMALL}
-          width="350"
-        />
-      </div>
+      {showLogo ? (
+        <div>
+          <SVGIcons
+            alt="OpenMetadata Logo"
+            className="tw-h-auto tw-filter tw-grayscale tw-opacity-50"
+            data-testid="logo"
+            icon={Icons.LOGO_SMALL}
+            width="350"
+          />
+        </div>
+      ) : null}
     </div>
   );
 };
