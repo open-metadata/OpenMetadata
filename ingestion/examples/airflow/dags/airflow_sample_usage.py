@@ -59,7 +59,8 @@ config = """
   "bulk_sink": {
     "type": "metadata-usage",
     "config": {
-      "filename": "/tmp/sample_usage"
+      "filename": "/tmp/sample_usage",
+      "service_name": "bigquery_gcp"
     }
   },
   "metadata_server": {
@@ -70,6 +71,7 @@ config = """
     }
   }
 }
+
 """
 
 
