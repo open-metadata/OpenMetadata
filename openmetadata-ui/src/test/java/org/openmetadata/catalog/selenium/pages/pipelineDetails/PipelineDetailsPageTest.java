@@ -164,9 +164,9 @@ public class PipelineDetailsPageTest {
     Events.click(webDriver, By.cssSelector("[data-testid='data-name'][id ='sample_airflowdim_product_etl']"));
     Thread.sleep(waitTime);
     Events.click(webDriver, By.cssSelector("[data-testid='breadcrumb-link']"));
-//    Events.click(webDriver, By.cssSelector("[data-testid='description-edit']")); // edit description
-//    Events.sendKeys(webDriver, By.xpath(enterDescription), faker.address().toString());
-//    Events.click(webDriver, By.cssSelector("[data-testid='save']"));
+    Events.click(webDriver, By.cssSelector("[data-testid='description-edit']")); // edit description
+    Events.sendKeys(webDriver, By.xpath(enterDescription), faker.address().toString());
+    Events.click(webDriver, By.cssSelector("[data-testid='save']"));
     for (int i = 1; i <= 3; i++) { //check topics in service
       Events.click(webDriver, By.xpath("(//tr[@data-testid='column']//td[1]/a)" + "[" + i + "]")); // pipelines
       Thread.sleep(waitTime);
