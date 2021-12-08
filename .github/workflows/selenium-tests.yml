@@ -18,12 +18,12 @@ on:
   push:
     branches: [main]
     paths:
-      - 'openmetadata-ui/src/main/resource/ui/**'
+      - 'openmetadata-ui/src/main/resources/ui/**'
       - 'openmetadata-ui/src/test/java/org/openmetadata/catalog/selenium/pages/**'
   pull_request:
     branches: [main]
     paths:
-      - 'openmetadata-ui/src/main/resource/ui/**'
+      - 'openmetadata-ui/src/main/resources/ui/**'
       - 'openmetadata-ui/src/test/java/org/openmetadata/catalog/selenium/pages/**'
 
 jobs:
