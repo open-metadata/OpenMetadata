@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import moment from 'moment';
 
 const msPerSecond = 1000;
 const msPerMinute = 60 * msPerSecond;
@@ -86,4 +87,19 @@ export const getRelativeTime = (timestamp: number): string => {
 
 export const getRelativeDay = (timestamp: number): string => {
   return getRelativeDayDifference(Date.now(), timestamp);
+};
+
+export const getRelativeDateByTimeStamp = (timeStamp: number): string => {
+  return moment(timeStamp).calendar(null, {
+    sameDay: '[Today]',
+    nextDay: 'DD MMMM YYYY',
+    nextWeek: 'DD MMMM YYYY',
+    lastDay: '[Yesterday]',
+    lastWeek: 'DD MMMM YYYY',
+    sameElse: 'DD MMMM YYYY',
+  });
+};
+
+export const getTimeByTimeStamp = (timeStamp: number): string => {
+  return moment(timeStamp, 'x').format('hh:mm A');
 };

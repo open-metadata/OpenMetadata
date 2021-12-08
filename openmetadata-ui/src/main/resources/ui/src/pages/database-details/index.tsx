@@ -373,7 +373,7 @@ const DatabaseDetails: FunctionComponent = () => {
                 setActiveTab={activeTabHandler}
                 tabs={tabs}
               />
-              <div className="tw-bg-white tw-flex-grow">
+              <div className="tw-bg-white tw-flex-grow tw-py-4">
                 {activeTab === 1 && (
                   <>
                     <table
