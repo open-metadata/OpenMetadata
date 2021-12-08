@@ -48,7 +48,6 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
-import static javax.ws.rs.core.Response.Status.CONFLICT;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -57,6 +56,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.catalog.resources.teams.UserResourceTest.createUser;
 import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
+import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 import static org.openmetadata.catalog.util.TestUtils.authHeaders;
 import static org.openmetadata.catalog.util.TestUtils.validateEntityReference;
@@ -116,18 +116,6 @@ public class TeamResourceTest extends EntityResourceTest<Team> {
     assertEquals(team.getId(), user1.getTeams().get(0).getId());
     user2 = UserResourceTest.getUser(user2.getId(), "teams", authHeaders("test@open-metadata.org"));
     assertEquals(team.getId(), user2.getTeams().get(0).getId());
-  }
-
-  @Test
-  public void get_teamByNameWithDifferentFields_200_OK(TestInfo test) throws HttpResponseException {
-    UserResourceTest userResourceTest = new UserResourceTest();
-    User user1 = createUser(userResourceTest.create(test), adminAuthHeaders());
-    List<UUID> users = Collections.singletonList(user1.getId());
-
-    CreateTeam create = create(test).withDisplayName("displayName").withDescription("description")
-            .withProfile(PROFILE).withUsers(users);
-    Team team = createTeam(create, adminAuthHeaders());
-    validateGetWithDifferentFields(team, true, adminAuthHeaders());
   }
 
   @Test
@@ -218,8 +206,6 @@ public class TeamResourceTest extends EntityResourceTest<Team> {
 //    ChangeDescription change = getChangeDescription(team.getVersion())
 //            .withFieldsAdded(Arrays.asList("displayName", "description", "profile", "users"));
 //    team = patchEntityAndCheck(team, originalJson, adminAuthHeaders(), MINOR_UPDATE, change);
-//    team.getUsers().get(0).setHref(null);
-//    team.getUsers().get(1).setHref(null);
 //
 //    //
 //    // Replace the attributes
@@ -275,8 +261,7 @@ public class TeamResourceTest extends EntityResourceTest<Team> {
   private static void validateTeam(Team team, String expectedDescription, String expectedDisplayName,
                                    Profile expectedProfile, List<EntityReference> expectedUsers,
                                    String expectedUpdatedBy) {
-    assertNotNull(team.getId());
-    assertNotNull(team.getHref());
+    assertListNotNull(team.getId(), team.getHref());
     assertEquals(expectedDescription, team.getDescription());
     assertEquals(expectedUpdatedBy, team.getUpdatedBy());
     assertEquals(expectedDisplayName, team.getDisplayName());
@@ -292,20 +277,21 @@ public class TeamResourceTest extends EntityResourceTest<Team> {
   }
 
   /** Validate returned fields GET .../teams/{id}?fields="..." or GET .../teams/name/{name}?fields="..." */
-  private void validateGetWithDifferentFields(Team expectedTeam, boolean byName, Map<String, String> authHeaders)
-          throws HttpResponseException {
-    String updatedBy = TestUtils.getPrincipal(authHeaders);
+  @Override
+  public void validateGetWithDifferentFields(Team expectedTeam, boolean byName) throws HttpResponseException {
+    String updatedBy = TestUtils.getPrincipal(adminAuthHeaders());
     // .../teams?fields=profile
     String fields = "profile";
-    Team getTeam = byName ? getTeamByName(expectedTeam.getName(), fields, authHeaders) : getTeam(expectedTeam.getId(), fields,
-            authHeaders);
+    Team getTeam = byName ? getTeamByName(expectedTeam.getName(), fields, adminAuthHeaders()) :
+            getTeam(expectedTeam.getId(), fields, adminAuthHeaders());
     validateTeam(getTeam, expectedTeam.getDescription(), expectedTeam.getDisplayName(), expectedTeam.getProfile(),
             null, updatedBy);
     assertNull(getTeam.getOwns());
 
     // .../teams?fields=users,owns
     fields = "users,owns,profile";
-    getTeam = byName ? getTeamByName(expectedTeam.getName(), fields, authHeaders) : getTeam(expectedTeam.getId(), fields, authHeaders);
+    getTeam = byName ? getTeamByName(expectedTeam.getName(), fields, adminAuthHeaders()) :
+            getTeam(expectedTeam.getId(), fields, adminAuthHeaders());
     assertNotNull(getTeam.getProfile());
     validateEntityReference(getTeam.getUsers());
     validateEntityReference(getTeam.getOwns());
@@ -338,7 +324,7 @@ public class TeamResourceTest extends EntityResourceTest<Team> {
 
   @Override
   public Object createRequest(String name, String description, String displayName, EntityReference owner) {
-    return create(name).withDescription(description).withDisplayName(displayName);
+    return create(name).withDescription(description).withDisplayName(displayName).withProfile(PROFILE);
   }
 
   @Override

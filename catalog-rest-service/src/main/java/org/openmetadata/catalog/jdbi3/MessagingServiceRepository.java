@@ -20,7 +20,6 @@ import org.openmetadata.catalog.entity.services.MessagingService;
 import org.openmetadata.catalog.resources.services.messaging.MessagingServiceResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
-import org.openmetadata.catalog.type.Schedule;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
@@ -190,19 +189,12 @@ public class MessagingServiceRepository extends EntityRepository<MessagingServic
 
     @Override
     public void entitySpecificUpdate() throws IOException {
-      updateSchemaRegistry();
-      updateIngestionSchedule();
+      MessagingService origService = original.getEntity();
+      MessagingService updatedService = updated.getEntity();
+      recordChange("schemaRegistry", origService.getSchemaRegistry(), updatedService.getSchemaRegistry());
+      recordChange("ingestionSchedule", origService.getIngestionSchedule(),
+              updatedService.getIngestionSchedule(), true);
       updateBrokers();
-    }
-
-    private void updateSchemaRegistry() throws JsonProcessingException {
-      recordChange("schemaRegistry", original.getEntity().getSchemaRegistry(), updated.getEntity().getSchemaRegistry());
-    }
-
-    private void updateIngestionSchedule() throws JsonProcessingException {
-      Schedule origSchedule = original.getEntity().getIngestionSchedule();
-      Schedule updatedSchedule = updated.getEntity().getIngestionSchedule();
-      recordChange("ingestionSchedule", origSchedule, updatedSchedule, true);
     }
 
     private void updateBrokers() throws JsonProcessingException {

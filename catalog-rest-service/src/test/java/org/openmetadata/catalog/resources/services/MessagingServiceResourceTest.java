@@ -296,6 +296,16 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
   }
 
   @Override
+  public void validateGetWithDifferentFields(MessagingService service, boolean byName) throws HttpResponseException {
+    // No fields support
+    String fields = "";
+    service = byName ? getEntityByName(service.getName(), fields, adminAuthHeaders()) :
+            getEntity(service.getId(), fields, adminAuthHeaders());
+    TestUtils.assertListNotNull(service.getHref(), service.getVersion(), service.getUpdatedBy(),
+            service.getServiceType(), service.getUpdatedAt());
+  }
+
+  @Override
   public void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException {
     if (fieldName.equals("ingestionSchedule")) {
       Schedule expectedSchedule = (Schedule) expected;

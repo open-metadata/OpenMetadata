@@ -41,12 +41,11 @@ import java.util.HashMap;
 import java.util.Map;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
-import static javax.ws.rs.core.Response.Status.CONFLICT;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.openmetadata.catalog.exception.CatalogExceptionMessage.ENTITY_ALREADY_EXISTS;
 import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
+import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 import static org.openmetadata.catalog.util.TestUtils.authHeaders;
 
@@ -129,22 +128,6 @@ public class ChartResourceTest extends EntityResourceTest<Chart> {
   }
 
   @Test
-  public void get_chartWithDifferentFields_200_OK(TestInfo test) throws IOException {
-    CreateChart create = create(test).withDescription("description").withOwner(USER_OWNER1)
-            .withService(SUPERSET_REFERENCE);
-    Chart chart = createAndCheckEntity(create, adminAuthHeaders());
-    validateGetWithDifferentFields(chart, false);
-  }
-
-  @Test
-  public void get_chartByNameWithDifferentFields_200_OK(TestInfo test) throws IOException {
-    CreateChart create = create(test).withDescription("description").withOwner(USER_OWNER1)
-            .withService(SUPERSET_REFERENCE);
-    Chart chart = createAndCheckEntity(create, adminAuthHeaders());
-    validateGetWithDifferentFields(chart, true);
-  }
-
-  @Test
   public void delete_emptyChart_200_ok(TestInfo test) throws HttpResponseException {
     Chart chart = createEntity(create(test), adminAuthHeaders());
     deleteEntity(chart.getId(), adminAuthHeaders());
@@ -158,14 +141,13 @@ public class ChartResourceTest extends EntityResourceTest<Chart> {
   /**
    * Validate returned fields GET .../charts/{id}?fields="..." or GET .../charts/name/{fqn}?fields="..."
    */
-  private void validateGetWithDifferentFields(Chart chart, boolean byName) throws HttpResponseException {
+  @Override
+  public void validateGetWithDifferentFields(Chart chart, boolean byName) throws HttpResponseException {
     // .../charts?fields=owner
     String fields = "owner";
     chart = byName ? getEntityByName(chart.getFullyQualifiedName(), fields, adminAuthHeaders()) :
             getEntity(chart.getId(), fields, adminAuthHeaders());
-    assertNotNull(chart.getOwner());
-    assertNotNull(chart.getService()); // We always return the service
-    assertNotNull(chart.getServiceType()); // We always return the service
+    assertListNotNull(chart.getOwner(), chart.getService(), chart.getServiceType());
   }
 
   private CreateChart create(TestInfo test) {

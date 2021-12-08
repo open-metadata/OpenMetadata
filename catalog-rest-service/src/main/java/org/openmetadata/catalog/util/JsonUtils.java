@@ -128,6 +128,9 @@ public final class JsonUtils {
   }
 
   public static String pojoToJson(Object o) throws JsonProcessingException {
+    if (o == null) {
+      return null;
+    }
     return pojoToJson(o, false);
   }
 
