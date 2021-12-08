@@ -442,7 +442,7 @@ class SampleDataSource(Source[Entity]):
                 ]
                 user_metadata = User(
                     id=uuid.uuid4(),
-                    name=user["email"],
+                    name=user["name"],
                     displayName=user["displayName"],
                     email=user["email"],
                     teams=teams,
