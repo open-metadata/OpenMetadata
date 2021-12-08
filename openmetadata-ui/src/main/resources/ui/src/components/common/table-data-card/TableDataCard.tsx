@@ -39,6 +39,7 @@ type Props = {
     key: string;
     value: number;
   }[];
+  database?: string;
 };
 
 const TableDataCard: FunctionComponent<Props> = ({
@@ -52,6 +53,7 @@ const TableDataCard: FunctionComponent<Props> = ({
   tags,
   indexType,
   matches,
+  database,
 }: Props) => {
   const getTier = () => {
     if (tier) {
@@ -73,6 +75,12 @@ const TableDataCard: FunctionComponent<Props> = ({
         indexType !== SearchIndex.DASHBOARD && usage !== undefined
           ? getUsagePercentile(usage)
           : undefined,
+    });
+  }
+  if (database) {
+    OtherDetails.push({
+      key: 'Database',
+      value: database,
     });
   }
   const getAssetTags = () => {
