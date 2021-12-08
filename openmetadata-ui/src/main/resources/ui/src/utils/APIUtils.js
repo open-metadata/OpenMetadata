@@ -40,8 +40,12 @@ export const formatDataResponse = (hits) => {
     newData.tier = hit._source.tier;
     newData.owner = hit._source.owner;
     newData.highlight = hit.highlight;
+
+    newData.database = hit._source.database;
+
     newData.entityType = hit._source.entity_type;
     newData.changeDescriptions = hit._source.change_descriptions;
+
 
     return newData;
   });
