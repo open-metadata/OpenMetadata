@@ -11,23 +11,15 @@
  *  limitations under the License.
  */
 
-import { isEmpty } from 'lodash';
 import { Ownership } from '../enums/mydata.enum';
 import { User } from '../generated/entity/teams/user';
-import { getCurrentUserId } from './CommonUtils';
+import { getOwnerIds } from './CommonUtils';
 
 export const getMyDataFilters = (
   filter: Ownership,
   userDetails: User
 ): string => {
-  if (filter === Ownership.OWNER && userDetails.teams) {
-    const userTeams = !isEmpty(userDetails)
-      ? userDetails.teams.map((team) => `${filter}:${team.id}`)
-      : [];
-    const ownerIds = [...userTeams, `${filter}:${getCurrentUserId()}`];
-
-    return `(${ownerIds.join(' OR ')})`;
-  } else {
-    return `${filter}:${getCurrentUserId()}`;
-  }
+  return `(${getOwnerIds(filter, userDetails)
+    .map((id) => `${filter}:${id}`)
+    .join(' OR ')})`;
 };

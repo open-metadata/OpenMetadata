@@ -27,6 +27,8 @@ import {
   LOCALSTORAGE_RECENTLY_VIEWED,
   TITLE_FOR_NON_OWNER_ACTION,
 } from '../constants/constants';
+import { Ownership } from '../enums/mydata.enum';
+import { User } from '../generated/entity/teams/user';
 import { UserTeam } from '../interface/team.interface';
 
 export const arraySorterByKey = (
@@ -255,4 +257,19 @@ export const getHtmlForNonAdminAction = (isClaimOwner: boolean) => {
       {!isClaimOwner ? <p>Claim ownership in Manage </p> : null}
     </>
   );
+};
+
+export const getOwnerIds = (
+  filter: Ownership,
+  userDetails: User
+): Array<string> => {
+  if (filter === Ownership.OWNER && userDetails.teams) {
+    const userTeams = !isEmpty(userDetails)
+      ? userDetails.teams.map((team) => team.id)
+      : [];
+
+    return [...userTeams, getCurrentUserId()];
+  } else {
+    return [getCurrentUserId()];
+  }
 };

@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { isEmpty } from 'lodash';
 import { observer } from 'mobx-react';
 import React, {
   Fragment,
@@ -25,7 +24,7 @@ import AppState from '../../AppState';
 import { getExplorePathWithSearch } from '../../constants/constants';
 import { filterList } from '../../constants/Mydata.constants';
 import { FeedFilter, Ownership } from '../../enums/mydata.enum';
-import { getCurrentUserId } from '../../utils/CommonUtils';
+import { getOwnerIds } from '../../utils/CommonUtils';
 import { getSummary } from '../../utils/EntityVersionUtils';
 import { dropdownIcon as DropDownIcon } from '../../utils/svgconstant';
 import { getRelativeDayByTimeStamp } from '../../utils/TimeUtils';
@@ -89,16 +88,10 @@ const MyData: React.FC<MyDataProps> = ({
   };
 
   const getLinkByFilter = (filter: Ownership) => {
-    if (filter === Ownership.OWNER && AppState.userDetails.teams) {
-      const userTeams = !isEmpty(AppState.userDetails)
-        ? AppState.userDetails.teams.map((team) => `${team.id}`)
-        : [];
-      const ownerIds = [...userTeams, `${getCurrentUserId()}`];
-
-      return `${getExplorePathWithSearch()}?${filter}=${ownerIds.join()}`;
-    } else {
-      return `${getExplorePathWithSearch()}?${filter}=${getCurrentUserId()}`;
-    }
+    return `${getExplorePathWithSearch()}?${filter}=${getOwnerIds(
+      filter,
+      AppState.userDetails
+    ).join()}`;
   };
 
   const getLeftPanel = () => {
