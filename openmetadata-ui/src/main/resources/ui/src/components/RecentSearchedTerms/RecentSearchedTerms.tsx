@@ -29,6 +29,7 @@ const RecentSearchedTerms: FunctionComponent = () => {
           return (
             <div
               className="tw-flex tw-items-center tw-justify-between tw-mb-2"
+              data-testid={`Recently-Search-${item.term}`}
               key={index}>
               <div className="tw-flex">
                 <Link

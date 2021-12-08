@@ -20,12 +20,14 @@ interface Prop {
   entityList: Array<FormatedTableData>;
   headerText: string | JSX.Element;
   noDataPlaceholder: JSX.Element;
+  testIDText: string;
 }
 
 const EntityList: FunctionComponent<Prop> = ({
   entityList = [],
   headerText,
   noDataPlaceholder,
+  testIDText,
 }: Prop) => {
   return (
     <>
@@ -37,6 +39,7 @@ const EntityList: FunctionComponent<Prop> = ({
             return (
               <div
                 className="tw-flex tw-items-center tw-justify-between tw-mb-2"
+                data-testid={`${testIDText}-${item.name}`}
                 key={index}>
                 <div className="tw-flex">
                   {getEntityIcon(item.index)}

@@ -126,7 +126,9 @@ const MyData: React.FC<MyDataProps> = ({
             <div className="tw-flex tw-justify-between">
               My Data
               {ownedData.length ? (
-                <Link to={getLinkByFilter(Ownership.OWNER)}>
+                <Link
+                  data-testid="my-data"
+                  to={getLinkByFilter(Ownership.OWNER)}>
                   <span className="link-text tw-font-light tw-text-xs">
                     View All
                   </span>
@@ -135,6 +137,7 @@ const MyData: React.FC<MyDataProps> = ({
             </div>
           }
           noDataPlaceholder={<>You have not owned anything yet!</>}
+          testIDText="My data"
         />
         <div className="tw-filter-seperator tw-mt-3" />
         <EntityList
@@ -143,7 +146,9 @@ const MyData: React.FC<MyDataProps> = ({
             <div className="tw-flex tw-justify-between">
               Following
               {followedData.length ? (
-                <Link to={getLinkByFilter(Ownership.FOLLOWERS)}>
+                <Link
+                  data-testid="following-data"
+                  to={getLinkByFilter(Ownership.FOLLOWERS)}>
                   <span className="link-text tw-font-light tw-text-xs">
                     View All
                   </span>
@@ -152,6 +157,7 @@ const MyData: React.FC<MyDataProps> = ({
             </div>
           }
           noDataPlaceholder={<>You have not followed anything yet!</>}
+          testIDText="Following data"
         />
         <div className="tw-filter-seperator tw-mt-3" />
       </div>
