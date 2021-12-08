@@ -48,10 +48,10 @@ export const postService: Function = (
 
 export const updateService: Function = (
   serviceName: string,
-  id: string,
+  _id: string,
   options: ServiceOption
 ): Promise<AxiosResponse> => {
-  return APIClient.put(`/services/${serviceName}/${id}`, options);
+  return APIClient.put(`/services/${serviceName}`, options);
 };
 
 export const deleteService: Function = (
