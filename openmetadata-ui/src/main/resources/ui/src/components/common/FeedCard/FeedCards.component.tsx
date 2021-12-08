@@ -17,6 +17,14 @@ interface FeedCardsProp {
 const FeedCards: FC<FeedCardsProp> = ({ feeds = [] }: FeedCardsProp) => {
   return (
     <div className="tw-grid tw-grid-rows-1 tw-grid-cols-1 tw-mt-3">
+      <div className="tw-relative tw-mb-3">
+        <div className="tw-flex tw-justify-center">
+          <hr className="tw-absolute tw-top-3 tw-border-b-2 tw-border-main tw-w-full tw-z-0" />
+          <span className="tw-bg-white tw-px-4 tw-py-px tw-border tw-border-main tw-rounded tw-z-10 tw-text-grey-muted tw-font-normal">
+            Today
+          </span>
+        </div>
+      </div>
       {feeds
         .sort((a, b) => b.updatedAt - a.updatedAt)
         .map((feed, i) => (
