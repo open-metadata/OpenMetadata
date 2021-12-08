@@ -377,6 +377,7 @@ const TagsPage = () => {
                                   {tag.usageCount ? (
                                     <Link
                                       className="link-text tw-align-middle"
+                                      data-testid="usage-count"
                                       to={getUsageCountLink(
                                         tag.fullyQualifiedName || ''
                                       )}>
