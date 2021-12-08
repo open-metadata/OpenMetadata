@@ -189,7 +189,10 @@ export const summaryFormatter = (v: FieldChange) => {
   }
 };
 
-export const getSummary = (changeDescription: ChangeDescription) => {
+export const getSummary = (
+  changeDescription: ChangeDescription,
+  isPrefix = false
+) => {
   const fieldsAdded = [...(changeDescription?.fieldsAdded || [])];
   const fieldsDeleted = [...(changeDescription?.fieldsDeleted || [])];
   const fieldsUpdated = [...(changeDescription?.fieldsUpdated || [])];
@@ -198,17 +201,23 @@ export const getSummary = (changeDescription: ChangeDescription) => {
     <Fragment>
       {fieldsAdded?.length > 0 ? (
         <p className="tw-mb-2">
-          {fieldsAdded?.map(summaryFormatter).join(', ')} has been added
+          {`${isPrefix ? '+ Added' : ''} ${fieldsAdded
+            ?.map(summaryFormatter)
+            .join(', ')} ${!isPrefix ? `has been added` : ''}`}{' '}
         </p>
       ) : null}
       {fieldsUpdated?.length ? (
         <p className="tw-mb-2">
-          {fieldsUpdated?.map(summaryFormatter).join(', ')} has been updated
+          {`${isPrefix ? 'Edited' : ''} ${fieldsUpdated
+            ?.map(summaryFormatter)
+            .join(', ')} ${!isPrefix ? `has been updated` : ''}`}{' '}
         </p>
       ) : null}
       {fieldsDeleted?.length ? (
         <p className="tw-mb-2">
-          {fieldsDeleted?.map(summaryFormatter).join(', ')} has been deleted
+          {`${isPrefix ? '- Removed' : ''} ${fieldsDeleted
+            ?.map(summaryFormatter)
+            .join(', ')} ${!isPrefix ? `has been Deleted` : ''}`}{' '}
         </p>
       ) : null}
     </Fragment>

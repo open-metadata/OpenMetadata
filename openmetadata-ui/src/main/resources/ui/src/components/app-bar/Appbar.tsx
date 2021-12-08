@@ -34,7 +34,7 @@ import {
 import { urlGitbookDocs, urlJoinSlack } from '../../constants/url.const';
 import { useAuth } from '../../hooks/authHooks';
 import { userSignOut } from '../../utils/AuthUtils';
-import { addToRecentSearch } from '../../utils/CommonUtils';
+import { addToRecentSearched } from '../../utils/CommonUtils';
 import {
   inPageSearchOptions,
   isInPageSearchAllowed,
@@ -215,7 +215,7 @@ const Appbar: React.FC = (): JSX.Element => {
                   const target = e.target as HTMLInputElement;
                   if (e.key === 'Enter') {
                     setIsOpen(false);
-                    addToRecentSearch(target.value);
+                    addToRecentSearched(target.value);
                     history.push(
                       getExplorePathWithSearch(
                         target.value,

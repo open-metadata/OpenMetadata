@@ -14,19 +14,21 @@
 import classNames from 'classnames';
 import { isEmpty, isUndefined } from 'lodash';
 import {
-  RecentlySearchData,
+  RecentlySearched,
+  RecentlySearchedData,
   RecentlyViewed,
   RecentlyViewedData,
-  SearchData,
 } from 'Models';
 import React from 'react';
 import { reactLocalStorage } from 'reactjs-localstorage';
 import AppState from '../AppState';
 import {
-  LOCALSTORAGE_RECENTLY_SEARCH,
+  LOCALSTORAGE_RECENTLY_SEARCHED,
   LOCALSTORAGE_RECENTLY_VIEWED,
   TITLE_FOR_NON_OWNER_ACTION,
 } from '../constants/constants';
+import { Ownership } from '../enums/mydata.enum';
+import { User } from '../generated/entity/teams/user';
 import { UserTeam } from '../interface/team.interface';
 
 export const arraySorterByKey = (
@@ -152,11 +154,51 @@ export const getCountBadge = (
   );
 };
 
-export const addToRecentSearch = (searchTerm: string): void => {
+export const getRecentlyViewedData = (): Array<RecentlyViewedData> => {
+  const recentlyViewed: RecentlyViewed = reactLocalStorage.getObject(
+    LOCALSTORAGE_RECENTLY_VIEWED
+  ) as RecentlyViewed;
+
+  if (recentlyViewed?.data) {
+    return recentlyViewed.data;
+  }
+
+  return [];
+};
+
+export const getRecentlySearchedData = (): Array<RecentlySearchedData> => {
+  const recentlySearch: RecentlySearched = reactLocalStorage.getObject(
+    LOCALSTORAGE_RECENTLY_SEARCHED
+  ) as RecentlySearched;
+  if (recentlySearch?.data) {
+    return recentlySearch.data;
+  }
+
+  return [];
+};
+
+export const setRecentlyViewedData = (
+  recentData: Array<RecentlyViewedData>
+): void => {
+  reactLocalStorage.setObject(LOCALSTORAGE_RECENTLY_VIEWED, {
+    data: recentData,
+  });
+};
+
+export const setRecentlySearchedData = (
+  recentData: Array<RecentlySearchedData>
+): void => {
+  reactLocalStorage.setObject(LOCALSTORAGE_RECENTLY_SEARCHED, {
+    data: recentData,
+  });
+};
+
+export const addToRecentSearched = (searchTerm: string): void => {
   const searchData = { term: searchTerm, timestamp: Date.now() };
-  let recentlySearch: SearchData = reactLocalStorage.getObject(
-    LOCALSTORAGE_RECENTLY_SEARCH
-  ) as SearchData;
+  const recentlySearch: RecentlySearched = reactLocalStorage.getObject(
+    LOCALSTORAGE_RECENTLY_SEARCHED
+  ) as RecentlySearched;
+  let arrSearchedData: RecentlySearched['data'] = [];
   if (recentlySearch?.data) {
     const arrData = recentlySearch.data
       // search term is case-insensetive so we should also take care of it.
@@ -164,8 +206,8 @@ export const addToRecentSearch = (searchTerm: string): void => {
       .filter((item) => item.term !== searchData.term)
       .sort(
         arraySorterByKey('timestamp', true) as (
-          a: RecentlySearchData,
-          b: RecentlySearchData
+          a: RecentlySearchedData,
+          b: RecentlySearchedData
         ) => number
       );
     arrData.unshift(searchData);
@@ -173,13 +215,11 @@ export const addToRecentSearch = (searchTerm: string): void => {
     if (arrData.length > 5) {
       arrData.pop();
     }
-    recentlySearch.data = arrData;
+    arrSearchedData = arrData;
   } else {
-    recentlySearch = {
-      data: [searchData],
-    };
+    arrSearchedData = [searchData];
   }
-  reactLocalStorage.setObject(LOCALSTORAGE_RECENTLY_SEARCH, recentlySearch);
+  setRecentlySearchedData(arrSearchedData);
 };
 
 export const addToRecentViewed = (eData: RecentlyViewedData): void => {
@@ -210,37 +250,6 @@ export const addToRecentViewed = (eData: RecentlyViewedData): void => {
   reactLocalStorage.setObject(LOCALSTORAGE_RECENTLY_VIEWED, recentlyViewed);
 };
 
-export const getRecentlyViewedData = (): Array<RecentlyViewedData> => {
-  const recentlyViewed: RecentlyViewed = reactLocalStorage.getObject(
-    LOCALSTORAGE_RECENTLY_VIEWED
-  ) as RecentlyViewed;
-
-  if (recentlyViewed?.data) {
-    return recentlyViewed.data;
-  }
-
-  return [];
-};
-
-export const getRecentlySearchData = (): Array<RecentlySearchData> => {
-  const recentlySearch: SearchData = reactLocalStorage.getObject(
-    LOCALSTORAGE_RECENTLY_SEARCH
-  ) as SearchData;
-  if (recentlySearch?.data) {
-    return recentlySearch.data;
-  }
-
-  return [];
-};
-
-export const setRecentlyViewedData = (
-  recentData: Array<RecentlyViewedData>
-): void => {
-  reactLocalStorage.setObject(LOCALSTORAGE_RECENTLY_VIEWED, {
-    data: recentData,
-  });
-};
-
 export const getHtmlForNonAdminAction = (isClaimOwner: boolean) => {
   return (
     <>
@@ -248,4 +257,19 @@ export const getHtmlForNonAdminAction = (isClaimOwner: boolean) => {
       {!isClaimOwner ? <p>Claim ownership in Manage </p> : null}
     </>
   );
+};
+
+export const getOwnerIds = (
+  filter: Ownership,
+  userDetails: User
+): Array<string> => {
+  if (filter === Ownership.OWNER && userDetails.teams) {
+    const userTeams = !isEmpty(userDetails)
+      ? userDetails.teams.map((team) => team.id)
+      : [];
+
+    return [...userTeams, getCurrentUserId()];
+  } else {
+    return [getCurrentUserId()];
+  }
 };

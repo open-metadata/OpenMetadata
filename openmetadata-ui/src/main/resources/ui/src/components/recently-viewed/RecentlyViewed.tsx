@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { isString } from 'lodash';
 import { FormatedTableData } from 'Models';
 import React, { FunctionComponent, useEffect, useState } from 'react';
 import { getDashboardByFqn } from '../../axiosAPIs/dashboardAPI';
@@ -26,9 +25,8 @@ import {
 } from '../../utils/CommonUtils';
 import { getOwnerFromId, getTierTags } from '../../utils/TableUtils';
 import { getTableTags } from '../../utils/TagsUtils';
-import TableDataCard from '../common/table-data-card/TableDataCard';
+import EntityList from '../EntityList/EntityList';
 import Loader from '../Loader/Loader';
-import Onboarding from '../onboarding/Onboarding';
 
 const RecentlyViewed: FunctionComponent = () => {
   const recentlyViewedData = getRecentlyViewedData();
@@ -184,32 +182,12 @@ const RecentlyViewed: FunctionComponent = () => {
       {isLoading ? (
         <Loader />
       ) : (
-        <>
-          {data.length ? (
-            data.map((item, index) => {
-              return (
-                <div className="tw-mb-3" key={index}>
-                  <TableDataCard
-                    description={item.description}
-                    fullyQualifiedName={item.fullyQualifiedName}
-                    indexType={item.index}
-                    name={item.name}
-                    owner={item.owner}
-                    serviceType={item.serviceType || '--'}
-                    tableType={item.tableType}
-                    tags={item.tags}
-                    tier={
-                      isString(item.tier) ? item.tier?.split('.')[1] : item.tier
-                    }
-                    usage={item.weeklyPercentileRank}
-                  />
-                </div>
-              );
-            })
-          ) : (
-            <Onboarding />
-          )}
-        </>
+        <EntityList
+          entityList={data}
+          headerText="Recently Viewed"
+          noDataPlaceholder={<>No recently viewed data!</>}
+          testIDText="Recently Viewed"
+        />
       )}
     </>
   );

@@ -11,13 +11,15 @@
  *  limitations under the License.
  */
 
-export enum Ownership {
-  OWNER = 'owner',
-  FOLLOWERS = 'followers',
-}
+import { Ownership } from '../enums/mydata.enum';
+import { User } from '../generated/entity/teams/user';
+import { getOwnerIds } from './CommonUtils';
 
-export enum FeedFilter {
-  ALL = 'all',
-  OWNED = 'owner',
-  FOLLOWING = 'followers',
-}
+export const getMyDataFilters = (
+  filter: Ownership,
+  userDetails: User
+): string => {
+  return `(${getOwnerIds(filter, userDetails)
+    .map((id) => `${filter}:${id}`)
+    .join(' OR ')})`;
+};

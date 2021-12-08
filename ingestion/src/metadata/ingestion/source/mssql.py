@@ -19,8 +19,16 @@ class MssqlConfig(SQLConnectionConfig):
     host_port = "localhost:1433"
     scheme = "mssql+pytds"
     service_type = "MSSQL"
+    use_pymssql: bool = False
+    use_pyodbc: bool = False
+    uri_string: str = ""
 
     def get_connection_url(self):
+        if self.use_pyodbc:
+            self.scheme = "mssql+pyodbc"
+            return f"{self.scheme}://{self.uri_string}"
+        elif self.use_pymssql:
+            self.scheme = "mssql+pymssql"
         return super().get_connection_url()
 
 

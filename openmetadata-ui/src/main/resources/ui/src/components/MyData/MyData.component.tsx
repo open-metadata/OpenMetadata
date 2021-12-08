@@ -11,157 +11,206 @@
  *  limitations under the License.
  */
 
-import { isEmpty } from 'lodash';
-import { FormatedTableData } from 'Models';
-import React, { useEffect, useRef, useState } from 'react';
-import { Ownership } from '../../enums/mydata.enum';
-import { formatDataResponse } from '../../utils/APIUtils';
-import { getCurrentUserId } from '../../utils/CommonUtils';
+import { observer } from 'mobx-react';
+import React, {
+  Fragment,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
+import { Link } from 'react-router-dom';
+import AppState from '../../AppState';
+import { getExplorePathWithSearch } from '../../constants/constants';
+import { filterList } from '../../constants/Mydata.constants';
+import { FeedFilter, Ownership } from '../../enums/mydata.enum';
+import { getOwnerIds } from '../../utils/CommonUtils';
+import { getSummary } from '../../utils/EntityVersionUtils';
+import { dropdownIcon as DropDownIcon } from '../../utils/svgconstant';
+import { getRelativeDateByTimeStamp } from '../../utils/TimeUtils';
+import { Button } from '../buttons/Button/Button';
 import ErrorPlaceHolderES from '../common/error-with-placeholder/ErrorPlaceHolderES';
-import PageContainer from '../containers/PageContainer';
-import MyDataHeader from '../MyDataHeader/MyDataHeader.component';
+import FeedCards from '../common/FeedCard/FeedCards.component';
+import PageLayout from '../containers/PageLayout';
+import DropDownList from '../dropdown/DropDownList';
+import EntityList from '../EntityList/EntityList';
+import MyAssetStats from '../MyAssetStats/MyAssetStats.component';
+import Onboarding from '../onboarding/Onboarding';
 import RecentlyViewed from '../recently-viewed/RecentlyViewed';
-import SearchedData from '../searched-data/SearchedData';
+import RecentSearchedTerms from '../RecentSearchedTerms/RecentSearchedTerms';
 import { MyDataProps } from './MyData.interface';
 
 const MyData: React.FC<MyDataProps> = ({
   error,
   countServices,
   ingestionCount,
-  userDetails,
-  searchResult,
-  fetchData,
+  ownedData,
+  followedData,
   entityCounts,
+  feedData,
+  feedFilter,
+  feedFilterHandler,
 }: MyDataProps): React.ReactElement => {
-  const [data, setData] = useState<Array<FormatedTableData>>([]);
-  const [currentPage, setCurrentPage] = useState<number>(1);
-  const [totalNumberOfValue, setTotalNumberOfValues] = useState<number>(0);
-  const [isEntityLoading, setIsEntityLoading] = useState<boolean>(true);
-  const [currentTab, setCurrentTab] = useState<number>(1);
-  const [filter, setFilter] = useState<string>('');
-
+  const [fieldListVisible, setFieldListVisible] = useState<boolean>(false);
   const isMounted = useRef(false);
 
-  const getActiveTabClass = (tab: number) => {
-    return tab === currentTab ? 'active' : '';
+  const handleDropDown = (
+    _e: React.MouseEvent<HTMLElement, MouseEvent>,
+    value?: string
+  ) => {
+    feedFilterHandler((value as FeedFilter) || FeedFilter.ALL);
+    setFieldListVisible(false);
   };
-
-  const getFilters = (): string => {
-    if (filter === 'owner' && userDetails.teams) {
-      const userTeams = !isEmpty(userDetails)
-        ? userDetails.teams.map((team) => `${filter}:${team.id}`)
-        : [];
-      const ownerIds = [...userTeams, `${filter}:${getCurrentUserId()}`];
-
-      return `(${ownerIds.join(' OR ')})`;
-    }
-
-    return `${filter}:${getCurrentUserId()}`;
-  };
-
-  const handleTabChange = (tab: number, filter: string) => {
-    if (currentTab !== tab) {
-      setIsEntityLoading(true);
-      setCurrentTab(tab);
-      setFilter(filter);
-      setCurrentPage(1);
-    }
-  };
-
-  const getTabs = () => {
+  const getFilterDropDown = () => {
     return (
-      <div className="tw-mb-3 tw--mt-4" data-testid="tabs">
-        <nav className="tw-flex tw-flex-row tw-gh-tabs-container tw-px-4">
-          <button
-            className={`tw-pb-2 tw-px-4 tw-gh-tabs ${getActiveTabClass(1)}`}
-            data-testid="tab"
-            id="recentlyViewedTab"
-            onClick={() => handleTabChange(1, '')}>
-            Recently Viewed
-          </button>
-          <button
-            className={`tw-pb-2 tw-px-4 tw-gh-tabs ${getActiveTabClass(2)}`}
-            data-testid="tab"
-            id="myDataTab"
-            onClick={() => handleTabChange(2, Ownership.OWNER)}>
-            My Data
-          </button>
-          <button
-            className={`tw-pb-2 tw-px-4 tw-gh-tabs ${getActiveTabClass(3)}`}
-            data-testid="tab"
-            id="followingTab"
-            onClick={() => handleTabChange(3, Ownership.FOLLOWERS)}>
-            Following
-          </button>
-        </nav>
+      <Fragment>
+        <div className="tw-relative tw-mt-5">
+          <Button
+            data-testid="feeds"
+            size="custom"
+            theme="default"
+            variant="text"
+            onClick={() => setFieldListVisible((visible) => !visible)}>
+            <span className="tw-text-grey-body tw-font-normal">
+              {filterList.find((f) => f.value === feedFilter)?.name}
+            </span>
+            <DropDownIcon />
+          </Button>
+          {fieldListVisible && (
+            <DropDownList
+              dropDownList={filterList}
+              value={feedFilter}
+              onSelect={handleDropDown}
+            />
+          )}
+        </div>
+      </Fragment>
+    );
+  };
+
+  const getLinkByFilter = (filter: Ownership) => {
+    return `${getExplorePathWithSearch()}?${filter}=${getOwnerIds(
+      filter,
+      AppState.userDetails
+    ).join()}`;
+  };
+
+  const getLeftPanel = () => {
+    return (
+      <div className="tw-mt-5">
+        <MyAssetStats
+          countServices={countServices}
+          entityCounts={entityCounts}
+          ingestionCount={ingestionCount}
+        />
+        <div className="tw-filter-seperator" />
+        <RecentlyViewed />
+        <div className="tw-filter-seperator tw-mt-3" />
+        <RecentSearchedTerms />
+        <div className="tw-filter-seperator tw-mt-3" />
       </div>
     );
   };
 
-  const paginate = (pageNumber: number) => {
-    setCurrentPage(pageNumber);
-  };
+  const getRightPanel = useCallback(() => {
+    return (
+      <div className="tw-mt-5">
+        <EntityList
+          entityList={ownedData}
+          headerText={
+            <div className="tw-flex tw-justify-between">
+              My Data
+              {ownedData.length ? (
+                <Link
+                  data-testid="my-data"
+                  to={getLinkByFilter(Ownership.OWNER)}>
+                  <span className="link-text tw-font-light tw-text-xs">
+                    View All
+                  </span>
+                </Link>
+              ) : null}
+            </div>
+          }
+          noDataPlaceholder={<>You have not owned anything yet!</>}
+          testIDText="My data"
+        />
+        <div className="tw-filter-seperator tw-mt-3" />
+        <EntityList
+          entityList={followedData}
+          headerText={
+            <div className="tw-flex tw-justify-between">
+              Following
+              {followedData.length ? (
+                <Link
+                  data-testid="following-data"
+                  to={getLinkByFilter(Ownership.FOLLOWERS)}>
+                  <span className="link-text tw-font-light tw-text-xs">
+                    View All
+                  </span>
+                </Link>
+              ) : null}
+            </div>
+          }
+          noDataPlaceholder={<>You have not followed anything yet!</>}
+          testIDText="Following data"
+        />
+        <div className="tw-filter-seperator tw-mt-3" />
+      </div>
+    );
+  }, [ownedData, followedData]);
 
-  useEffect(() => {
-    if (isMounted.current && Boolean(currentTab === 2 || currentTab === 3)) {
-      setIsEntityLoading(true);
-      fetchData({
-        queryString: '',
-        from: currentPage,
-        filters: filter ? getFilters() : '',
-        sortField: '',
-        sortOrder: '',
-      });
-    }
-  }, [currentPage, filter]);
+  const getFeedsData = useCallback(() => {
+    const feeds = feedData
+      .map((f) => ({
+        name: f.name,
+        fqn: f.fullyQualifiedName,
+        entityType: f.entityType,
+        changeDescriptions: f.changeDescriptions,
+      }))
+      .map((d) => {
+        return (
+          d.changeDescriptions
+            .filter((c) => c.fieldsAdded || c.fieldsDeleted || c.fieldsUpdated)
+            .map((change) => ({
+              updatedAt: change.updatedAt,
+              updatedBy: change.updatedBy,
+              entityName: d.name,
+              description: <div>{getSummary(change, true)}</div>,
+              entityType: d.entityType,
+              fqn: d.fqn,
+              relativeDay: getRelativeDateByTimeStamp(change.updatedAt),
+            })) || []
+        );
+      })
+      .flat(1)
+      .sort((a, b) => b.updatedAt - a.updatedAt);
+    const relativeDays = [...new Set(feeds.map((f) => f.relativeDay))];
 
-  useEffect(() => {
-    if (searchResult) {
-      const hits = searchResult.data.hits.hits;
-      if (hits.length > 0) {
-        setTotalNumberOfValues(searchResult.data.hits.total.value);
-        setData(formatDataResponse(hits));
-      } else {
-        setData([]);
-        setTotalNumberOfValues(0);
-      }
-    }
-
-    setIsEntityLoading(false);
-  }, [searchResult]);
+    return { feeds, relativeDays };
+  }, [feedData]);
 
   useEffect(() => {
     isMounted.current = true;
   }, []);
 
   return (
-    <PageContainer>
-      <div className="container-fluid" data-testid="fluid-container">
-        <MyDataHeader
-          countServices={countServices}
-          entityCounts={entityCounts}
-          ingestionCount={ingestionCount}
-        />
-        {getTabs()}
-        {error && Boolean(currentTab === 2 || currentTab === 3) ? (
-          <ErrorPlaceHolderES errorMessage={error} type="error" />
-        ) : (
-          <SearchedData
-            showOnboardingTemplate
-            currentPage={currentPage}
-            data={data}
-            isLoading={currentTab === 1 ? false : isEntityLoading}
-            paginate={paginate}
-            searchText="*"
-            showOnlyChildren={currentTab === 1}
-            showResultCount={filter && data.length > 0 ? true : false}
-            totalValue={totalNumberOfValue}>
-            {currentTab === 1 ? <RecentlyViewed /> : null}
-          </SearchedData>
-        )}
-      </div>
-    </PageContainer>
+    <PageLayout leftPanel={getLeftPanel()} rightPanel={getRightPanel()}>
+      {error ? (
+        <ErrorPlaceHolderES errorMessage={error} type="error" />
+      ) : (
+        <Fragment>
+          {getFeedsData().feeds.length > 0 ? (
+            <Fragment>
+              {getFilterDropDown()}
+              <FeedCards {...getFeedsData()} />
+            </Fragment>
+          ) : (
+            <Onboarding showLogo={false} />
+          )}
+        </Fragment>
+      )}
+    </PageLayout>
   );
 };
 
-export default MyData;
+export default observer(MyData);
