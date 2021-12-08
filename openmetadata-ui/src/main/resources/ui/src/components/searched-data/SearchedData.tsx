@@ -110,6 +110,7 @@ const SearchedData: React.FC<SearchedDataProp> = ({
       return (
         <div className="tw-mb-3" key={index}>
           <TableDataCard
+            database={table.database}
             description={tDesc}
             fullyQualifiedName={table.fullyQualifiedName}
             indexType={table.index}

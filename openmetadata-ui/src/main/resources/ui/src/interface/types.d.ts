@@ -203,6 +203,7 @@ declare module 'Models' {
       table_name: string[];
     };
     index: string;
+    database?: string;
   };
 
   export type NewUser = {
