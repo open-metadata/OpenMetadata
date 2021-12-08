@@ -730,8 +730,8 @@ public class TableRepository extends EntityRepository<Table> {
     public void entitySpecificUpdate() throws IOException {
       Table origTable = original.getEntity();
       Table updatedTable = updated.getEntity();
+      recordChange("tableType", origTable.getTableType(), updatedTable.getTableType());
       updateConstraints(origTable, updatedTable);
-      updateTableType(origTable, updatedTable);
       updateColumns("columns", origTable.getColumns(), updated.getEntity().getColumns(), EntityUtil.columnMatch);
     }
 
@@ -751,10 +751,6 @@ public class TableRepository extends EntityRepository<Table> {
       List<TableConstraint> deleted = new ArrayList<>();
       recordListChange("tableConstraints", origConstraints, updatedConstraints, added, deleted,
               EntityUtil.tableConstraintMatch);
-    }
-
-    private void updateTableType(Table origTable, Table updatedTable) throws JsonProcessingException {
-      recordChange("tableType", origTable.getTableType(), updatedTable.getTableType());
     }
 
     private void updateColumns(String fieldName, List<Column> origColumns, List<Column> updatedColumns,
@@ -816,5 +812,4 @@ public class TableRepository extends EntityRepository<Table> {
       return "columns." + localColumnName + (columnField == null ? "" : "." + columnField);
     }
   }
-
 }

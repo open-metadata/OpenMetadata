@@ -20,7 +20,6 @@ import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.services.CreateDatabaseService;
 import org.openmetadata.catalog.api.services.CreateDatabaseService.DatabaseServiceType;
 import org.openmetadata.catalog.entity.services.DatabaseService;
-import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.jdbi3.DatabaseServiceRepository.DatabaseServiceEntityInterface;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.services.database.DatabaseServiceResource.DatabaseServiceList;
@@ -39,7 +38,6 @@ import java.util.Date;
 import java.util.Map;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
-import static javax.ws.rs.core.Response.Status.CONFLICT;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -251,6 +249,16 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
   @Override
   public EntityInterface<DatabaseService> getEntityInterface(DatabaseService entity) {
     return new DatabaseServiceEntityInterface(entity);
+  }
+
+  @Override
+  public void validateGetWithDifferentFields(DatabaseService service, boolean byName) throws HttpResponseException {
+    // No fields support
+    String fields = "";
+    service = byName ? getEntityByName(service.getName(), fields, adminAuthHeaders()) :
+            getEntity(service.getId(), fields, adminAuthHeaders());
+    TestUtils.assertListNotNull(service.getHref(), service.getVersion(), service.getUpdatedBy(),
+            service.getServiceType(), service.getJdbc(), service.getUpdatedAt());
   }
 
   @Override

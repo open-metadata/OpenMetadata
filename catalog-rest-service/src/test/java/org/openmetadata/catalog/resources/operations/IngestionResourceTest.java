@@ -41,10 +41,10 @@ import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
+import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 import static org.openmetadata.catalog.util.TestUtils.authHeaders;
 
@@ -207,22 +207,6 @@ public class IngestionResourceTest extends EntityOperationsResourceTest<Ingestio
   }
 
   @Test
-  public void get_IngestionWithDifferentFields_200_OK(TestInfo test) throws IOException {
-    CreateIngestion create = create(test).withDescription("description").withOwner(USER_OWNER1)
-            .withService(REDSHIFT_REFERENCE).withConcurrency(10);
-    Ingestion ingestion = createAndCheckEntity(create, adminAuthHeaders());
-    validateGetWithDifferentFields(ingestion, false);
-  }
-
-  @Test
-  public void get_IngestionByNameWithDifferentFields_200_OK(TestInfo test) throws IOException {
-    CreateIngestion create = create(test).withDescription("description").withOwner(USER_OWNER1)
-            .withService(BIGQUERY_REFERENCE);
-    Ingestion ingestion = createAndCheckEntity(create, adminAuthHeaders());
-    validateGetWithDifferentFields(ingestion, true);
-  }
-
-  @Test
   public void delete_ingestion_200_ok(TestInfo test) throws HttpResponseException {
     Ingestion ingestion = createEntity(create(test), adminAuthHeaders());
     deleteEntity(ingestion.getId(), adminAuthHeaders());
@@ -242,13 +226,13 @@ public class IngestionResourceTest extends EntityOperationsResourceTest<Ingestio
    * Validate returned fields GET .../operations/ingestion/{id}?fields="..." or
    * GET .../operations/ingestion/name/{fqn}?fields="..."
    */
-  private void validateGetWithDifferentFields(Ingestion ingestion, boolean byName) throws HttpResponseException {
+  @Override
+  public void validateGetWithDifferentFields(Ingestion ingestion, boolean byName) throws HttpResponseException {
     // .../Pipelines?fields=owner
     String fields = "owner";
     ingestion = byName ? getEntityByName(ingestion.getFullyQualifiedName(), fields, adminAuthHeaders()) :
             getEntity(ingestion.getId(), fields, adminAuthHeaders());
-    assertNotNull(ingestion.getOwner());
-    assertNotNull(ingestion.getService()); // We always return the service
+    assertListNotNull(ingestion.getOwner(), ingestion.getService());
   }
 
   private CreateIngestion create(TestInfo test) {
