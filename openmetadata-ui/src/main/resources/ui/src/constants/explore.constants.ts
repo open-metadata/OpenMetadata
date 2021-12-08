@@ -49,7 +49,9 @@ export const getQueryParam = (urlSearchQuery = ''): FilterObject => {
     .map((filter) => {
       const arrFilter = filter.split('=');
 
-      return { [arrFilter[0]]: [arrFilter[1]] };
+      return {
+        [arrFilter[0]]: [arrFilter[1]].map((r) => r.split(',')).flat(1),
+      };
     })
     .reduce((prev, curr) => {
       return Object.assign(prev, curr);

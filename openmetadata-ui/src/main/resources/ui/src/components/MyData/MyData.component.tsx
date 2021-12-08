@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { isEmpty } from 'lodash';
 import React, {
   Fragment,
   useCallback,
@@ -19,6 +20,7 @@ import React, {
   useState,
 } from 'react';
 import { Link } from 'react-router-dom';
+import AppState from '../../AppState';
 import { getExplorePathWithSearch } from '../../constants/constants';
 import { Ownership } from '../../enums/mydata.enum';
 import { getCurrentUserId } from '../../utils/CommonUtils';
@@ -89,7 +91,16 @@ const MyData: React.FC<MyDataProps> = ({
   };
 
   const getLinkByFilter = (filter: Ownership) => {
-    return `${getExplorePathWithSearch()}?${filter}=${getCurrentUserId()}`;
+    if (filter === Ownership.OWNER && AppState.userDetails.teams) {
+      const userTeams = !isEmpty(AppState.userDetails)
+        ? AppState.userDetails.teams.map((team) => `${team.id}`)
+        : [];
+      const ownerIds = [...userTeams, `${getCurrentUserId()}`];
+
+      return `${getExplorePathWithSearch()}?${filter}=${ownerIds.join()}`;
+    } else {
+      return `${getExplorePathWithSearch()}?${filter}=${getCurrentUserId()}`;
+    }
   };
 
   const getLeftPanel = () => {

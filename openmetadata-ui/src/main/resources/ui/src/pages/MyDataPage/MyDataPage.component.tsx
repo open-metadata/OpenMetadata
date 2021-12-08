@@ -94,7 +94,7 @@ const MyDataPage = () => {
       1,
       5,
       getMyDataFilters(Ownership.OWNER, AppState.userDetails),
-      '',
+      'last_updated_timestamp',
       '',
       myDataSearchIndex
     );
@@ -104,7 +104,7 @@ const MyDataPage = () => {
       1,
       5,
       getMyDataFilters(Ownership.FOLLOWERS, AppState.userDetails),
-      '',
+      'last_updated_timestamp',
       '',
       myDataSearchIndex
     );
