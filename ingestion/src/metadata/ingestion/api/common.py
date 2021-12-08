@@ -11,9 +11,8 @@
 
 import logging
 import re
-from abc import ABC, ABCMeta, abstractmethod
 from dataclasses import dataclass
-from typing import IO, Any, Dict, Generic, List, Optional, TypeVar
+from typing import Any, Dict, Generic, List, Optional, TypeVar
 
 from pydantic import BaseModel
 
@@ -21,10 +20,8 @@ T = TypeVar("T")
 
 logger: logging.Logger = logging.getLogger(__name__)
 
-
-@dataclass
-class Record(Generic[T]):
-    metadata: Dict[str, Any]
+# Allow types from the generated pydantic models
+Entity = TypeVar("Entity", bound=BaseModel)
 
 
 @dataclass

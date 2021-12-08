@@ -29,12 +29,7 @@ from metadata.generated.schema.entity.services.messagingService import (
     MessagingServiceType,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.api.common import (
-    IncludeFilterPattern,
-    Record,
-    WorkflowContext,
-    logger,
-)
+from metadata.ingestion.api.common import IncludeFilterPattern, WorkflowContext, logger
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.utils.helpers import get_messaging_service_or_create
@@ -62,7 +57,7 @@ class KafkaSourceConfig(ConfigModel):
 
 
 @dataclass
-class KafkaSource(Source):
+class KafkaSource(Source[CreateTopicEntityRequest]):
     config: KafkaSourceConfig
     admin_client: AdminClient
     report: KafkaSourceStatus

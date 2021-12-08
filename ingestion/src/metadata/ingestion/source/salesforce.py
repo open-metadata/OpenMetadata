@@ -17,16 +17,20 @@ from typing import Iterable, List, Optional
 from pydantic import SecretStr, ValidationError
 from simple_salesforce import Salesforce
 
+from metadata.generated.schema.entity.data.database import Database
+from metadata.generated.schema.entity.data.table import (
+    Column,
+    Constraint,
+    Table,
+    TableData,
+)
+from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.common import WorkflowContext
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
+from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
+from metadata.ingestion.source.sql_source import SQLConnectionConfig
 from metadata.utils.helpers import get_database_service_or_create
-
-from ...generated.schema.entity.data.database import Database
-from ...generated.schema.entity.data.table import Column, Constraint, Table, TableData
-from ...generated.schema.type.entityReference import EntityReference
-from ..ometa.openmetadata_rest import MetadataServerConfig
-from .sql_source import SQLConnectionConfig
 
 logger: logging.Logger = logging.getLogger(__name__)
 
@@ -62,7 +66,7 @@ class SalesforceConfig(SQLConnectionConfig):
         return super().get_connection_url()
 
 
-class SalesforceSource(Source):
+class SalesforceSource(Source[OMetaDatabaseAndTable]):
     def __init__(
         self, config: SalesforceConfig, metadata_config: MetadataServerConfig, ctx
     ):
@@ -170,3 +174,6 @@ class SalesforceSource(Source):
 
     def get_status(self) -> SourceStatus:
         return self.status
+
+    def close(self):
+        pass

@@ -19,14 +19,14 @@ import boto3
 from metadata.generated.schema.api.services.createStorageService import (
     CreateStorageServiceEntityRequest,
 )
+from metadata.generated.schema.entity.data.location import Location, LocationType
+from metadata.generated.schema.entity.services.storageService import StorageService
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.storage import StorageServiceType
-from metadata.ingestion.api.common import ConfigModel, Record, WorkflowContext
+from metadata.ingestion.api.common import ConfigModel, Entity, WorkflowContext
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
-from metadata.generated.schema.entity.data.location import Location, LocationType
-from metadata.generated.schema.entity.services.storageService import StorageService
 
 logger: logging.Logger = logging.getLogger(__name__)
 
@@ -37,7 +37,7 @@ class S3SourceConfig(ConfigModel):
     aws_secret_access_key: str
 
 
-class S3Source(Source):
+class S3Source(Source[Entity]):
     config: S3SourceConfig
     status: SourceStatus
 
@@ -66,7 +66,7 @@ class S3Source(Source):
     def prepare(self):
         pass
 
-    def next_record(self) -> Iterable[Record]:
+    def next_record(self) -> Iterable[Entity]:
         try:
             for bucket in self.s3.buckets.all():
                 self.status.scanned(bucket)
@@ -88,12 +88,16 @@ class S3Source(Source):
     def get_status(self) -> SourceStatus:
         return self.status
 
-    def _get_bucket_name_with_prefix(self, bucket_name: str) -> str:
+    @staticmethod
+    def _get_bucket_name_with_prefix(bucket_name: str) -> str:
         return (
             "s3://" + bucket_name
             if not bucket_name.startswith("s3://")
             else bucket_name
         )
+
+    def close(self):
+        pass
 
 
 def get_storage_service_or_create(

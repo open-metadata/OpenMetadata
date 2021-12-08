@@ -58,7 +58,7 @@ def get_table_column_join(table, table_aliases, joins):
     return TableColumnJoin(table_column=table_column, joined_with=joined_with)
 
 
-class TableUsageStage(Stage):
+class TableUsageStage(Stage[QueryParserData]):
     config: FileStageConfig
     status: StageStatus
 

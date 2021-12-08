@@ -24,7 +24,7 @@ from metadata.ingestion.source.sql_alchemy_helper import (
 from metadata.utils.helpers import get_start_and_end
 
 
-class SnowflakeUsageSource(Source):
+class SnowflakeUsageSource(Source[TableQuery]):
     # SELECT statement from mysql information_schema to extract table and column metadata
     SQL_STATEMENT = """
         select query_type,query_text,user_name,database_name,

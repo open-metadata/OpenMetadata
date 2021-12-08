@@ -39,7 +39,6 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.common import (
     ConfigModel,
     IncludeFilterPattern,
-    Record,
     WorkflowContext,
 )
 from metadata.ingestion.api.source import Source, SourceStatus
@@ -120,7 +119,7 @@ def _get_table_description(schema: str, table: str, inspector: Inspector) -> str
     return description
 
 
-class SQLSource(Source):
+class SQLSource(Source[OMetaDatabaseAndTable]):
     def __init__(
         self,
         config: SQLConnectionConfig,

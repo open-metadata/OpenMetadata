@@ -11,11 +11,11 @@
 
 from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass, field
-from typing import Any, List
+from typing import Any, Generic, List
 
-from .closeable import Closeable
-from .common import Record, WorkflowContext
-from .status import Status
+from metadata.ingestion.api.closeable import Closeable
+from metadata.ingestion.api.common import Entity, WorkflowContext
+from metadata.ingestion.api.status import Status
 
 
 @dataclass
@@ -24,7 +24,7 @@ class ProcessorStatus(Status):
     warnings: List[Any] = field(default_factory=list)
     failures: List[Any] = field(default_factory=list)
 
-    def processed(self, record: Record):
+    def processed(self, record: Any):
         self.records += 1
 
     def warning(self, info: Any) -> None:
@@ -35,7 +35,7 @@ class ProcessorStatus(Status):
 
 
 @dataclass
-class Processor(Closeable, metaclass=ABCMeta):
+class Processor(Closeable, Generic[Entity], metaclass=ABCMeta):
     ctx: WorkflowContext
 
     @classmethod
@@ -46,7 +46,7 @@ class Processor(Closeable, metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def process(self, record: Record) -> Record:
+    def process(self, record: Entity) -> Entity:
         pass
 
     @abstractmethod

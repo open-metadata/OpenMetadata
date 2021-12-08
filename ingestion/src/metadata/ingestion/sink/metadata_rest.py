@@ -11,8 +11,9 @@
 
 import logging
 import traceback
+from typing import Generic, TypeVar
 
-from pydantic import ValidationError
+from pydantic import BaseModel, ValidationError
 
 from metadata.config.common import ConfigModel
 from metadata.generated.schema.api.data.createChart import CreateChartEntityRequest
@@ -43,7 +44,7 @@ from metadata.generated.schema.entity.data.mlmodel import MlModel
 from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.api.common import Record, WorkflowContext
+from metadata.ingestion.api.common import Entity, WorkflowContext
 from metadata.ingestion.api.sink import Sink, SinkStatus
 from metadata.ingestion.models.ometa_table_db import (
     OMetaDatabaseAndModel,
@@ -55,6 +56,11 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 
 logger = logging.getLogger(__name__)
+
+
+# Allow types from the generated pydantic models
+T = TypeVar("T", bound=BaseModel)
+
 
 om_chart_type_dict = {
     "line": ChartType.Line,
@@ -75,7 +81,7 @@ class MetadataRestSinkConfig(ConfigModel):
     api_endpoint: str = None
 
 
-class MetadataRestSink(Sink):
+class MetadataRestSink(Sink[Entity]):
     config: MetadataRestSinkConfig
     status: SinkStatus
 
@@ -104,7 +110,7 @@ class MetadataRestSink(Sink):
         metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
         return cls(ctx, config, metadata_config)
 
-    def write_record(self, record: Record) -> None:
+    def write_record(self, record: Entity) -> None:
         if isinstance(record, OMetaDatabaseAndTable):
             self.write_tables(record)
         elif isinstance(record, CreateTopicEntityRequest):

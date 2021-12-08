@@ -12,8 +12,8 @@
 # This import verifies that the dependencies are available.
 import cx_Oracle  # noqa: F401
 
-from ..ometa.openmetadata_rest import MetadataServerConfig
-from .sql_source import SQLConnectionConfig, SQLSource
+from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
+from metadata.ingestion.source.sql_source import SQLConnectionConfig, SQLSource
 
 
 class OracleConfig(SQLConnectionConfig):
