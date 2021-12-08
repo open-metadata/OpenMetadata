@@ -25,27 +25,25 @@ const FeedCards: FC<FeedCardsProp> = ({ feeds = [] }: FeedCardsProp) => {
           </span>
         </div>
       </div>
-      {feeds
-        .sort((a, b) => b.updatedAt - a.updatedAt)
-        .map((feed, i) => (
-          <div
-            className="tw-bg-white tw-p-3 tw-border tw-border-main tw-rounded-md tw-mb-3"
-            key={i}>
-            <div className="tw-flex tw-mb-1">
-              <Avatar name={feed.updatedBy} width="24" />
-              <h6 className="tw-flex tw-items-center tw-m-0 tw-heading tw-pl-2">
-                {feed.updatedBy}
-                <span className="tw-pl-1 tw-font-normal">
-                  updated{' '}
-                  <Link to={getEntityLink(feed.entityType, feed.fqn)}>
-                    <span className="link-text">{feed.entityName}</span>
-                  </Link>
-                </span>
-              </h6>
-            </div>
-            <div className="tw-pl-7">{feed.description}</div>
+      {feeds.map((feed, i) => (
+        <div
+          className="tw-bg-white tw-p-3 tw-border tw-border-main tw-rounded-md tw-mb-3"
+          key={i}>
+          <div className="tw-flex tw-mb-1">
+            <Avatar name={feed.updatedBy} width="24" />
+            <h6 className="tw-flex tw-items-center tw-m-0 tw-heading tw-pl-2">
+              {feed.updatedBy}
+              <span className="tw-pl-1 tw-font-normal">
+                updated{' '}
+                <Link to={getEntityLink(feed.entityType, feed.fqn)}>
+                  <span className="link-text">{feed.entityName}</span>
+                </Link>
+              </span>
+            </h6>
           </div>
-        ))}
+          <div className="tw-pl-7">{feed.description}</div>
+        </div>
+      ))}
     </div>
   );
 };

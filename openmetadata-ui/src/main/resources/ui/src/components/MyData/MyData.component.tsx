@@ -70,7 +70,7 @@ const MyData: React.FC<MyDataProps> = ({
             theme="default"
             variant="text"
             onClick={() => setFieldListVisible((visible) => !visible)}>
-            <span className="tw-text-grey-body">
+            <span className="tw-text-grey-body tw-font-normal">
               {filterList.find((f) => f.value === feedFilter)?.name}
             </span>
             <DropDownIcon />
@@ -180,7 +180,8 @@ const MyData: React.FC<MyDataProps> = ({
             })) || []
         );
       })
-      .flat(1);
+      .flat(1)
+      .sort((a, b) => b.updatedAt - a.updatedAt);
 
     return data;
   }, [feedData]);
