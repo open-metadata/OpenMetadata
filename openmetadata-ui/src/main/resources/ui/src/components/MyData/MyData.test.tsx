@@ -248,6 +248,8 @@ jest.mock('../../utils/ServiceUtils', () => ({
   getTotalEntityCountByService: jest.fn().mockReturnValue(2),
 }));
 
+const feedFilterHandler = jest.fn();
+
 const fetchData = jest.fn();
 
 describe('Test MyData page', () => {
@@ -263,6 +265,8 @@ describe('Test MyData page', () => {
         }}
         error=""
         feedData={formatDataResponse(mockData.data.hits.hits)}
+        feedFilter=""
+        feedFilterHandler={feedFilterHandler}
         fetchData={fetchData}
         followedData={formatDataResponse(mockData.data.hits.hits)}
         ingestionCount={0}

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { AxiosError } from 'axios';
+import { AxiosError, AxiosResponse } from 'axios';
 import { isEmpty, isNil, isUndefined } from 'lodash';
 import { observer } from 'mobx-react';
 import { EntityCounts, FormatedTableData, SearchResponse } from 'Models';
@@ -27,7 +27,7 @@ import {
   myDataEntityCounts,
   myDataSearchIndex,
 } from '../../constants/Mydata.constants';
-import { Ownership } from '../../enums/mydata.enum';
+import { FeedFilter, Ownership } from '../../enums/mydata.enum';
 import { ChangeDescription } from '../../generated/entity/teams/user';
 import { useAuth } from '../../hooks/authHooks';
 import { formatDataResponse } from '../../utils/APIUtils';
@@ -57,6 +57,11 @@ const MyDataPage = () => {
       }
     >
   >();
+  const [feedFilter, setFeedFilter] = useState<FeedFilter>(FeedFilter.ALL);
+
+  const feedFilterHandler = (filter: FeedFilter) => {
+    setFeedFilter(filter);
+  };
 
   const fetchData = (fetchService = false) => {
     setError('');
@@ -109,18 +114,8 @@ const MyDataPage = () => {
       myDataSearchIndex
     );
 
-    const feedEntity = searchData(
-      '',
-      1,
-      20,
-      '',
-      'last_updated_timestamp',
-      '',
-      myDataSearchIndex
-    );
-
-    Promise.allSettled([ownedEntity, followedEntity, feedEntity]).then(
-      ([resOwnedEntity, resFollowedEntity, resFeedEntity]) => {
+    Promise.allSettled([ownedEntity, followedEntity]).then(
+      ([resOwnedEntity, resFollowedEntity]) => {
         if (resOwnedEntity.status === 'fulfilled') {
           setOwnedData(formatDataResponse(resOwnedEntity.value.data.hits.hits));
         }
@@ -129,16 +124,40 @@ const MyDataPage = () => {
             formatDataResponse(resFollowedEntity.value.data.hits.hits)
           );
         }
-        if (resFeedEntity.status === 'fulfilled') {
-          setFeedData(formatDataResponse(resFeedEntity.value.data.hits.hits));
-        }
       }
     );
+  };
+
+  const getFeedData = () => {
+    searchData(
+      '',
+      1,
+      20,
+      feedFilter !== FeedFilter.ALL
+        ? getMyDataFilters(
+            feedFilter === FeedFilter.OWNED
+              ? Ownership.OWNER
+              : Ownership.FOLLOWERS,
+            AppState.userDetails
+          )
+        : '',
+      'last_updated_timestamp',
+      '',
+      myDataSearchIndex
+    ).then((res: AxiosResponse) => {
+      if (res.data) {
+        setFeedData(formatDataResponse(res.data.hits.hits));
+      }
+    });
   };
 
   useEffect(() => {
     fetchData(true);
   }, []);
+
+  useEffect(() => {
+    getFeedData();
+  }, [feedFilter]);
 
   useEffect(() => {
     if (
@@ -161,6 +180,8 @@ const MyDataPage = () => {
           entityCounts={entityCounts}
           error={error}
           feedData={feedData || []}
+          feedFilter={feedFilter}
+          feedFilterHandler={feedFilterHandler}
           followedData={followedData || []}
           ingestionCount={ingestionCount}
           ownedData={ownedData || []}

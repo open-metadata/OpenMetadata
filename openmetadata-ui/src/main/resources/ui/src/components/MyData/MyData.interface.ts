@@ -17,6 +17,7 @@ import {
   SearchDataFunctionType,
   SearchResponse,
 } from 'Models';
+import { FeedFilter } from '../../enums/mydata.enum';
 import { ChangeDescription, User } from '../../generated/entity/teams/user';
 
 export interface MyDataProps {
@@ -35,6 +36,8 @@ export interface MyDataProps {
       >;
     }
   >;
+  feedFilter: string;
+  feedFilterHandler: (v: FeedFilter) => void;
   fetchData?: (value: SearchDataFunctionType) => void;
   entityCounts: EntityCounts;
 }

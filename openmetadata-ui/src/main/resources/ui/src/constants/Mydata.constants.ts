@@ -50,3 +50,9 @@ export const getFilters = (
       : `${facetFilterString}`
   }`;
 };
+
+export const filterList = [
+  { name: 'All Activity Feeds', value: 'all' },
+  { name: 'My Data Feeds', value: 'owner' },
+  { name: 'Following Data Feeds', value: 'followers' },
+];

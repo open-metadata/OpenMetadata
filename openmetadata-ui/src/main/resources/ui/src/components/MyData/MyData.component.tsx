@@ -12,6 +12,7 @@
  */
 
 import { isEmpty } from 'lodash';
+import { observer } from 'mobx-react';
 import React, {
   Fragment,
   useCallback,
@@ -22,7 +23,8 @@ import React, {
 import { Link } from 'react-router-dom';
 import AppState from '../../AppState';
 import { getExplorePathWithSearch } from '../../constants/constants';
-import { Ownership } from '../../enums/mydata.enum';
+import { filterList } from '../../constants/Mydata.constants';
+import { FeedFilter, Ownership } from '../../enums/mydata.enum';
 import { getCurrentUserId } from '../../utils/CommonUtils';
 import { getSummary } from '../../utils/EntityVersionUtils';
 import { dropdownIcon as DropDownIcon } from '../../utils/svgconstant';
@@ -37,12 +39,6 @@ import RecentlyViewed from '../recently-viewed/RecentlyViewed';
 import RecentSearchedTerms from '../RecentSearchedTerms/RecentSearchedTerms';
 import { MyDataProps } from './MyData.interface';
 
-const filterList = [
-  { name: 'All Activity Feeds', value: 'all' },
-  { name: 'My Data Feeds', value: 'mydata' },
-  { name: 'Following Data Feeds', value: 'following' },
-];
-
 const MyData: React.FC<MyDataProps> = ({
   error,
   countServices,
@@ -51,8 +47,9 @@ const MyData: React.FC<MyDataProps> = ({
   followedData,
   entityCounts,
   feedData,
+  feedFilter,
+  feedFilterHandler,
 }: MyDataProps): React.ReactElement => {
-  const [filter, setFilter] = useState<string>('all');
   const [fieldListVisible, setFieldListVisible] = useState<boolean>(false);
   const isMounted = useRef(false);
 
@@ -60,7 +57,7 @@ const MyData: React.FC<MyDataProps> = ({
     _e: React.MouseEvent<HTMLElement, MouseEvent>,
     value?: string
   ) => {
-    setFilter(value || 'all');
+    feedFilterHandler((value as FeedFilter) || FeedFilter.ALL);
     setFieldListVisible(false);
   };
   const getFilterDropDown = () => {
@@ -74,14 +71,14 @@ const MyData: React.FC<MyDataProps> = ({
             variant="text"
             onClick={() => setFieldListVisible((visible) => !visible)}>
             <span className="tw-text-grey-body">
-              {filterList.find((f) => f.value === filter)?.name}
+              {filterList.find((f) => f.value === feedFilter)?.name}
             </span>
             <DropDownIcon />
           </Button>
           {fieldListVisible && (
             <DropDownList
               dropDownList={filterList}
-              value={filter}
+              value={feedFilter}
               onSelect={handleDropDown}
             />
           )}
@@ -205,4 +202,4 @@ const MyData: React.FC<MyDataProps> = ({
   );
 };
 
-export default MyData;
+export default observer(MyData);
