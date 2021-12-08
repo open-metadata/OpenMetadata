@@ -11,9 +11,10 @@
  *  limitations under the License.
  */
 
-import React, { FC, ReactNode } from 'react';
+import React, { FC, Fragment, ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { getEntityLink } from '../../../utils/TableUtils';
+import { getTimeByTimeStamp } from '../../../utils/TimeUtils';
 import Avatar from '../avatar/Avatar';
 interface Feed {
   updatedAt: number;
@@ -22,42 +23,57 @@ interface Feed {
   entityName: string;
   entityType: string;
   fqn: string;
-}
-interface FeedCardsProp {
-  feeds: Array<Feed>;
+  relativeDay: string;
 }
 
-const FeedCards: FC<FeedCardsProp> = ({ feeds = [] }: FeedCardsProp) => {
+interface FeedCardsProp {
+  feeds: Array<Feed>;
+  relativeDays: Array<string>;
+}
+
+const FeedCards: FC<FeedCardsProp> = ({
+  feeds = [],
+  relativeDays = [],
+}: FeedCardsProp) => {
   return (
-    <div className="tw-grid tw-grid-rows-1 tw-grid-cols-1 tw-mt-3">
-      <div className="tw-relative tw-mb-3">
-        <div className="tw-flex tw-justify-center">
-          <hr className="tw-absolute tw-top-3 tw-border-b-2 tw-border-main tw-w-full tw-z-0" />
-          <span className="tw-bg-white tw-px-4 tw-py-px tw-border tw-border-main tw-rounded tw-z-10 tw-text-grey-muted tw-font-normal">
-            Today
-          </span>
-        </div>
-      </div>
-      {feeds.map((feed, i) => (
-        <div
-          className="tw-bg-white tw-p-3 tw-border tw-border-main tw-rounded-md tw-mb-3"
-          key={i}>
-          <div className="tw-flex tw-mb-1">
-            <Avatar name={feed.updatedBy} width="24" />
-            <h6 className="tw-flex tw-items-center tw-m-0 tw-heading tw-pl-2">
-              {feed.updatedBy}
-              <span className="tw-pl-1 tw-font-normal">
-                updated{' '}
-                <Link to={getEntityLink(feed.entityType, feed.fqn)}>
-                  <span className="link-text">{feed.entityName}</span>
-                </Link>
+    <Fragment>
+      {relativeDays.map((d, i) => (
+        <div className="tw-grid tw-grid-rows-1 tw-grid-cols-1 tw-mt-3" key={i}>
+          <div className="tw-relative tw-mb-3">
+            <div className="tw-flex tw-justify-center">
+              <hr className="tw-absolute tw-top-3 tw-border-b-2 tw-border-main tw-w-full tw-z-0" />
+              <span className="tw-bg-white tw-px-4 tw-py-px tw-border tw-border-main tw-rounded tw-z-10 tw-text-grey-muted tw-font-normal">
+                {d}
               </span>
-            </h6>
+            </div>
           </div>
-          <div className="tw-pl-7">{feed.description}</div>
+          {feeds
+            .filter((f) => f.relativeDay === d)
+            .map((feed, i) => (
+              <div
+                className="tw-bg-white tw-p-3 tw-border tw-border-main tw-rounded-md tw-mb-3"
+                key={i}>
+                <div className="tw-flex tw-mb-1">
+                  <Avatar name={feed.updatedBy} width="24" />
+                  <h6 className="tw-flex tw-items-center tw-m-0 tw-heading tw-pl-2">
+                    {feed.updatedBy}
+                    <span className="tw-pl-1 tw-font-normal">
+                      updated{' '}
+                      <Link to={getEntityLink(feed.entityType, feed.fqn)}>
+                        <span className="link-text">{feed.entityName}</span>
+                      </Link>
+                      <span className="tw-text-grey-muted tw-pl-1 tw-text-xs">
+                        {getTimeByTimeStamp(feed.updatedAt)}
+                      </span>
+                    </span>
+                  </h6>
+                </div>
+                <div className="tw-pl-7">{feed.description}</div>
+              </div>
+            ))}
         </div>
       ))}
-    </div>
+    </Fragment>
   );
 };
 

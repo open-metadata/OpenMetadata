@@ -28,6 +28,7 @@ import { FeedFilter, Ownership } from '../../enums/mydata.enum';
 import { getCurrentUserId } from '../../utils/CommonUtils';
 import { getSummary } from '../../utils/EntityVersionUtils';
 import { dropdownIcon as DropDownIcon } from '../../utils/svgconstant';
+import { getRelativeDayByTimeStamp } from '../../utils/TimeUtils';
 import { Button } from '../buttons/Button/Button';
 import ErrorPlaceHolderES from '../common/error-with-placeholder/ErrorPlaceHolderES';
 import FeedCards from '../common/FeedCard/FeedCards.component';
@@ -165,7 +166,7 @@ const MyData: React.FC<MyDataProps> = ({
   }, [ownedData, followedData]);
 
   const getFeedsData = useCallback(() => {
-    const data = feedData
+    const feeds = feedData
       .map((f) => ({
         name: f.name,
         fqn: f.fullyQualifiedName,
@@ -183,13 +184,15 @@ const MyData: React.FC<MyDataProps> = ({
               description: <div>{getSummary(change, true)}</div>,
               entityType: d.entityType,
               fqn: d.fqn,
+              relativeDay: getRelativeDayByTimeStamp(change.updatedAt),
             })) || []
         );
       })
       .flat(1)
       .sort((a, b) => b.updatedAt - a.updatedAt);
+    const relativeDays = [...new Set(feeds.map((f) => f.relativeDay))];
 
-    return data;
+    return { feeds, relativeDays };
   }, [feedData]);
 
   useEffect(() => {
@@ -203,7 +206,7 @@ const MyData: React.FC<MyDataProps> = ({
       {error ? (
         <ErrorPlaceHolderES errorMessage={error} type="error" />
       ) : (
-        <FeedCards feeds={getFeedsData()} />
+        <FeedCards {...getFeedsData()} />
       )}
     </PageLayout>
   );
