@@ -83,3 +83,37 @@ To expose the OpenMetadata UI on a local Kubernetes instance, run this command.
 kubectl port-forward <openmetadata-front end pod name> 8585:8585
 ```
 {% endhint %}
+
+## Troubleshooting
+### View helm chart deployment status
+
+Run the below command to view status of openmetadata helm chart deployed -
+
+```
+helm status openmetadata
+```
+
+For more information, visit helm command line reference [here](https://helm.sh/docs/helm/helm_status/).
+
+### View openmetadata kubernetes pod logs
+
+Run the below command to list openmetadata kubernetes pods deployed in a namespace -
+
+```
+kubectl get pods --namespace <NAMESPACE_NAME> -l='app.kubernetes.io/managed-by=Helm,app.kubernetes.io/instance=<RELEASE_NAME>'
+```
+
+Example, list pods deployed by helm release name 'ometa' in the namespace 'ometa-dev' -
+
+```
+kubectl get pods --namespace ometa-dev -l='app.kubernetes.io/managed-by=Helm,app.kubernetes.io/instance=ometa'
+```
+
+Next, view the logs of pod by running the below command,
+
+```
+kubectl logs <POD_NAME> --namespace <NAMESPACE_NAME>
+```
+
+For more information, visit the kubectl logs command line reference documentation [here](https://kubernetes.io/docs/tasks/debug-application-cluster/debug-running-pod/).
+
