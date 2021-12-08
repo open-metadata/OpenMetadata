@@ -303,12 +303,13 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
     @Override
     public void entitySpecificUpdate() throws IOException {
-      updateTasks(original.getEntity(), updated.getEntity());
-      recordChange("pipelineUrl", original.getEntity().getPipelineUrl(), updated.getEntity().getPipelineUrl());
-      recordChange("concurrency", original.getEntity().getConcurrency(), updated.getEntity().getConcurrency());
-      recordChange("pipelineLocation", original.getEntity().getPipelineLocation(),
-          updated.getEntity().getPipelineLocation());
-      recordChange("startDate", original.getEntity().getStartDate(), updated.getEntity().getStartDate());
+      Pipeline origPipeline = original.getEntity();
+      Pipeline updatedPipeline = updated.getEntity();
+      updateTasks(origPipeline, updatedPipeline);
+      recordChange("pipelineUrl", origPipeline.getPipelineUrl(), updatedPipeline.getPipelineUrl());
+      recordChange("concurrency", origPipeline.getConcurrency(), updatedPipeline.getConcurrency());
+      recordChange("pipelineLocation", origPipeline.getPipelineLocation(), updatedPipeline.getPipelineLocation());
+      recordChange("startDate", origPipeline.getStartDate(), updatedPipeline.getStartDate());
     }
 
     private void updateTasks(Pipeline origPipeline, Pipeline updatedPipeline) throws JsonProcessingException {

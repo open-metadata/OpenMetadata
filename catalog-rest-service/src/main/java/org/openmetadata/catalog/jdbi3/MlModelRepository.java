@@ -22,6 +22,7 @@ import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.MlFeature;
 import org.openmetadata.catalog.type.MlFeatureSource;
+import org.openmetadata.catalog.type.MlHyperParameter;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
@@ -33,9 +34,15 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.net.URI;
 import java.text.ParseException;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
+
+import static org.openmetadata.catalog.util.EntityUtil.entityReferenceMatch;
+import static org.openmetadata.catalog.util.EntityUtil.mlFeatureMatch;
+import static org.openmetadata.catalog.util.EntityUtil.mlHyperParameterMatch;
+import static org.openmetadata.catalog.util.EntityUtil.objectMatch;
 
 public class MlModelRepository extends EntityRepository<MlModel> {
   private static final Logger LOG = LoggerFactory.getLogger(MlModelRepository.class);
@@ -350,11 +357,17 @@ public class MlModelRepository extends EntityRepository<MlModel> {
     }
 
     private void updateMlFeatures(MlModel origModel, MlModel updatedModel) throws JsonProcessingException {
-      recordChange("mlFeatures", origModel.getMlFeatures(), updatedModel.getMlFeatures(), true);
+      List<MlFeature> addedList = new ArrayList<>();
+      List<MlFeature> deletedList = new ArrayList<>();
+      recordListChange("mlFeatures", origModel.getMlFeatures(), updatedModel.getMlFeatures(), addedList,
+              deletedList, mlFeatureMatch);
     }
 
     private void updateMlHyperParameters(MlModel origModel, MlModel updatedModel) throws JsonProcessingException {
-      recordChange("mlHyperParameters", origModel.getMlHyperParameters(), updatedModel.getMlHyperParameters(), true);
+      List<MlHyperParameter> addedList = new ArrayList<>();
+      List<MlHyperParameter> deletedList = new ArrayList<>();
+      recordListChange("mlHyperParameters", origModel.getMlHyperParameters(), updatedModel.getMlHyperParameters(),
+              addedList, deletedList, mlHyperParameterMatch);
     }
 
     private void updateMlStore(MlModel origModel, MlModel updatedModel) throws JsonProcessingException {
@@ -370,21 +383,22 @@ public class MlModelRepository extends EntityRepository<MlModel> {
     }
 
     private void updateDashboard(MlModel origModel, MlModel updatedModel) throws JsonProcessingException {
-      String modelId = updatedModel.getId().toString();
-
-      // Remove the dashboard associated with the model, if any
-      if (origModel.getDashboard() != null) {
-        dao.relationshipDAO().deleteFrom(modelId, Relationship.USES.ordinal(), "dashboard");
-      }
-
-      // Add relationship from model to dashboard
+      EntityReference origDashboard = origModel.getDashboard();
       EntityReference updatedDashboard = updatedModel.getDashboard();
-      if (updatedDashboard != null) {
-        dao.relationshipDAO().insert(modelId, updatedDashboard.getId().toString(),
-                Entity.MLMODEL, Entity.DASHBOARD, Relationship.USES.ordinal());
-      }
-      recordChange("dashboard", origModel.getDashboard(), updatedDashboard, true);
+      if (recordChange("dashboard", origDashboard, updatedDashboard, true, entityReferenceMatch)) {
 
+        // Remove the dashboard associated with the model, if any
+        String modelId = updatedModel.getId().toString();
+        if (origModel.getDashboard() != null) {
+          dao.relationshipDAO().deleteFrom(modelId, Relationship.USES.ordinal(), "dashboard");
+        }
+
+        // Add relationship from model to dashboard
+        if (updatedDashboard != null) {
+          dao.relationshipDAO().insert(modelId, updatedDashboard.getId().toString(),
+                  Entity.MLMODEL, Entity.DASHBOARD, Relationship.USES.ordinal());
+        }
+      }
     }
   }
 }

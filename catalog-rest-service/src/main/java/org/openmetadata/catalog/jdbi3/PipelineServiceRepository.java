@@ -13,14 +13,12 @@
 
 package org.openmetadata.catalog.jdbi3;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.services.PipelineService;
 import org.openmetadata.catalog.resources.services.pipeline.PipelineServiceResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
-import org.openmetadata.catalog.type.Schedule;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
@@ -193,13 +191,8 @@ public class PipelineServiceRepository extends EntityRepository<PipelineService>
     @Override
     public void entitySpecificUpdate() throws IOException {
       recordChange("pipelineUrl", original.getEntity().getPipelineUrl(), updated.getEntity().getPipelineUrl());
-      updateIngestionSchedule();
-    }
-
-    private void updateIngestionSchedule() throws JsonProcessingException {
-      Schedule origSchedule = original.getEntity().getIngestionSchedule();
-      Schedule updatedSchedule = updated.getEntity().getIngestionSchedule();
-      recordChange("ingestionSchedule", origSchedule, updatedSchedule, true);
+      recordChange("ingestionSchedule", original.getEntity().getIngestionSchedule(),
+              updated.getEntity().getIngestionSchedule(), true);
     }
   }
 }

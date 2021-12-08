@@ -350,13 +350,7 @@ public class LocationRepository extends EntityRepository<Location> {
 
     @Override
     public void entitySpecificUpdate() throws IOException {
-      Location origLocation = original.getEntity();
-      Location updatedLocation = updated.getEntity();
-      updateLocationType(origLocation, updatedLocation);
-    }
-
-    private void updateLocationType(Location origLocation, Location updatedLocation) throws JsonProcessingException {
-      recordChange("locationType", origLocation.getLocationType(), updatedLocation.getLocationType());
+      recordChange("locationType", original.getEntity().getLocationType(), updated.getEntity().getLocationType());
     }
   }
 }

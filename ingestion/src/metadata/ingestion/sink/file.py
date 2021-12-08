@@ -11,9 +11,10 @@
 
 import logging
 import pathlib
+from typing import Generic
 
 from metadata.config.common import ConfigModel
-from metadata.ingestion.api.common import Record, WorkflowContext
+from metadata.ingestion.api.common import Entity, WorkflowContext
 from metadata.ingestion.api.sink import Sink, SinkStatus
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 
@@ -24,7 +25,7 @@ class FileSinkConfig(ConfigModel):
     filename: str
 
 
-class FileSink(Sink):
+class FileSink(Sink[Entity]):
     config: FileSinkConfig
     report: SinkStatus
 
@@ -52,7 +53,7 @@ class FileSink(Sink):
         metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
         return cls(ctx, config, metadata_config)
 
-    def write_record(self, record: Record) -> None:
+    def write_record(self, record: Entity) -> None:
 
         if self.wrote_something:
             self.file.write(",\n")

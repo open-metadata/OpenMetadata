@@ -11,8 +11,8 @@
 
 from urllib.parse import quote_plus
 
-from ..ometa.openmetadata_rest import MetadataServerConfig
-from .sql_source import SQLConnectionConfig, SQLSource
+from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
+from metadata.ingestion.source.sql_source import SQLConnectionConfig, SQLSource
 
 
 class PrestoConfig(SQLConnectionConfig):

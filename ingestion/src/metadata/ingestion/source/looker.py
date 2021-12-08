@@ -26,12 +26,11 @@ from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.services.dashboardService import (
     DashboardServiceType,
 )
-from metadata.generated.schema.type.basic import Uuid
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.common import (
     ConfigModel,
+    Entity,
     IncludeFilterPattern,
-    Record,
     WorkflowContext,
 )
 from metadata.ingestion.api.source import Source, SourceStatus
@@ -74,7 +73,7 @@ class LookerDashboardSourceStatus(SourceStatus):
         self.filtered_charts.append(view)
 
 
-class LookerSource(Source):
+class LookerSource(Source[Entity]):
     config: LookerSourceConfig
     metadata_config: MetadataServerConfig
     status: LookerDashboardSourceStatus
@@ -117,7 +116,7 @@ class LookerSource(Source):
     def prepare(self):
         pass
 
-    def next_record(self) -> Iterable[Record]:
+    def next_record(self) -> Iterable[Entity]:
         yield from self._get_looker_charts()
         yield from self._get_looker_dashboards()
 

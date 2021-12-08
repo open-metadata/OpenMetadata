@@ -23,6 +23,7 @@ export type ExploreSearchData = {
   resAggServiceType: SearchResponse;
   resAggTier: SearchResponse;
   resAggTag: SearchResponse;
+  resAggDatabase: SearchResponse;
 };
 
 export interface ExploreProps {

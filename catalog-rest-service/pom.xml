@@ -361,7 +361,7 @@
             </servers>
             <info>
               <title>OpenMetadata Apis</title>
-              <version>0.3.0</version>
+              <version>${project.parent.version}</version>
               <contact>
                 <email>openmetadata-dev@googlegroups.com</email>
                 <name>OpenMetadata</name>

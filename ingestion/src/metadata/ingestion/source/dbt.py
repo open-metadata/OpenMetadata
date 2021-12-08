@@ -11,7 +11,6 @@
 
 import json
 import logging
-import re
 import uuid
 from typing import Dict, Iterable, Optional
 
@@ -23,7 +22,7 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.api.common import IncludeFilterPattern, Record
+from metadata.ingestion.api.common import Entity, IncludeFilterPattern
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndModel
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -52,7 +51,7 @@ class DBTSourceConfig(ConfigModel):
 register_custom_str_type("CHARACTER VARYING", "VARCHAR")
 
 
-class DbtSource(Source):
+class DbtSource(Source[Entity]):
     dbt_manifest: Dict
     dbt_catalog: Dict
     dbt_run_results: Dict
@@ -90,7 +89,7 @@ class DbtSource(Source):
             self.catalog_schema = self.dbt_catalog["metadata"]["dbt_schema_version"]
             self.catalog_version = self.dbt_manifest["metadata"]["dbt_version"]
 
-    def next_record(self) -> Iterable[Record]:
+    def next_record(self) -> Iterable[Entity]:
         yield from self._parse_dbt()
 
     def close(self):

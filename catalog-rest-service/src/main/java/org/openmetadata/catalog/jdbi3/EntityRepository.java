@@ -58,6 +58,9 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.function.BiPredicate;
 
+import static org.openmetadata.catalog.util.EntityUtil.entityReferenceMatch;
+import static org.openmetadata.catalog.util.EntityUtil.objectMatch;
+
 /**
  * This is the base class used by Entity Resources to perform READ and WRITE operations to the backend database to
  * Create, Retrieve, Update, and Delete entities.
@@ -469,18 +472,7 @@ public abstract class EntityRepository<T> {
     private void updateOwner() throws JsonProcessingException {
       EntityReference origOwner = original.getOwner();
       EntityReference updatedOwner = updated.getOwner();
-      if (origOwner == null && updatedOwner == null) {
-        return;
-      }
-
-      UUID origId = origOwner == null ? null : origOwner.getId();
-      UUID updatedId = updatedOwner == null ? null : updatedOwner.getId();
-      if (Objects.equals(origId, updatedId)) {
-        return; // No change
-      }
-
-      if (recordChange("owner", origOwner == null ? null : JsonUtils.pojoToJson(origOwner),
-              updatedOwner == null ? null : JsonUtils.pojoToJson(updatedOwner))) {
+      if (recordChange("owner", origOwner, updatedOwner, true, entityReferenceMatch)) {
         EntityUtil.updateOwner(daoCollection.relationshipDAO(), origOwner,
                 updatedOwner, original.getId(), entityName);
       }
@@ -532,11 +524,17 @@ public abstract class EntityRepository<T> {
               !changeDescription.getFieldsDeleted().isEmpty();
     }
 
-    public final boolean recordChange(String field, Object orig, Object updated) throws JsonProcessingException {
-      return recordChange(field, orig, updated, false);
+    public final <K> boolean recordChange(String field, K orig, K updated) throws JsonProcessingException {
+      return recordChange(field, orig, updated, false, objectMatch);
     }
 
-    public final boolean recordChange(String field, Object orig, Object updated, boolean jsonValue)
+    public final <K> boolean recordChange(String field, K orig, K updated, boolean jsonValue)
+            throws JsonProcessingException {
+      return recordChange(field, orig, updated, jsonValue, objectMatch);
+    }
+
+    public final <K> boolean recordChange(String field, K orig, K updated, boolean jsonValue,
+                                      BiPredicate<K, K> typeMatch)
             throws JsonProcessingException {
       if (orig == null && updated == null) {
         return false;
@@ -550,16 +548,18 @@ public abstract class EntityRepository<T> {
       } else if (updated == null) {
         changeDescription.getFieldsDeleted().add(fieldChange);
         return true;
-      } else if (!orig.equals(updated)) {
+      } else if (!typeMatch.test(orig, updated)) {
         changeDescription.getFieldsUpdated().add(fieldChange);
         return true;
       }
       return false;
     }
 
-    public final <K> void recordListChange(String field, List<K> origList, List<K> updatedList, List<K> addedItems,
+    public final <K> boolean recordListChange(String field, List<K> origList, List<K> updatedList, List<K> addedItems,
                                            List<K> deletedItems, BiPredicate<K, K> typeMatch)
             throws JsonProcessingException {
+      origList = Optional.ofNullable(origList).orElse(Collections.emptyList());
+      updatedList = Optional.ofNullable(updatedList).orElse(Collections.emptyList());
       for (K stored : origList) {
         // If an entry in the original list is not in updated list, then it is deleted during update
         K updated = updatedList.stream().filter(c -> typeMatch.test(c, stored)).findAny().orElse(null);
@@ -583,6 +583,7 @@ public abstract class EntityRepository<T> {
         FieldChange fieldChange = new FieldChange().withName(field).withOldValue(JsonUtils.pojoToJson(deletedItems));
         changeDescription.getFieldsDeleted().add(fieldChange);
       }
+      return !addedItems.isEmpty() || !deletedItems.isEmpty();
     }
 
     public final void storeUpdate() throws IOException, ParseException {

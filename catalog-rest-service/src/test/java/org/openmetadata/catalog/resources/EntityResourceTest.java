@@ -94,6 +94,8 @@ import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.NO_CHANGE;
 import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
 import static org.openmetadata.catalog.util.TestUtils.assertEntityPagination;
+import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
+import static org.openmetadata.catalog.util.TestUtils.assertListNull;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 import static org.openmetadata.catalog.util.TestUtils.authHeaders;
 import static org.openmetadata.catalog.util.TestUtils.checkUserFollowing;
@@ -237,6 +239,9 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
   // Get interface to access all common entity attributes
   public abstract EntityInterface<T> getEntityInterface(T entity);
 
+  // Get an entity by ID and name with different fields. See TableResourceTest for example.
+  public abstract void validateGetWithDifferentFields(T entity, boolean byName) throws HttpResponseException;
+
   // Assert field change in an entity recorded during PUT or POST operations
   public abstract void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException;
 
@@ -324,6 +329,14 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     HttpResponseException exception = assertThrows(HttpResponseException.class, ()
             -> listEntities(null, 1, "", "", adminAuthHeaders()));
     assertResponse(exception, BAD_REQUEST, "Only one of before or after query parameter allowed");
+  }
+
+  @Test
+  public void get_entityWithDifferentFields_200_OK(TestInfo test) throws IOException, URISyntaxException {
+    Object create = createRequest(getEntityName(test), "description", "displayName", USER_OWNER1);
+    T entity = createAndCheckEntity(create, adminAuthHeaders());
+    validateGetWithDifferentFields(entity, false);
+    validateGetWithDifferentFields(entity, true);
   }
 
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -486,10 +499,9 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
 
     // Update empty description with a new description
     request = createRequest(getEntityName(test), "updatedDescription", "displayName", null);
-    FieldChange fieldChange = new FieldChange().withName("description").withOldValue("")
-            .withNewValue("updatedDescription");
-    ChangeDescription change = getChangeDescription(entityInterface.getVersion())
-            .withFieldsUpdated(Collections.singletonList(fieldChange));
+    ChangeDescription change = getChangeDescription(entityInterface.getVersion());
+    change.getFieldsUpdated().add(new FieldChange().withName("description").withOldValue("")
+            .withNewValue("updatedDescription"));
     updateAndCheckEntity(request, OK, adminAuthHeaders(), MINOR_UPDATE, change);
   }
 
@@ -566,8 +578,7 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     // Create chart without description, owner
     T entity = createEntity(createRequest(getEntityName(test), null, null, null), adminAuthHeaders());
     EntityInterface<T> entityInterface = getEntityInterface(entity);
-    assertNull(entityInterface.getDescription());
-    assertNull(entityInterface.getOwner());
+    assertListNull(entityInterface.getDescription(), entityInterface.getOwner());
 
     entity = getEntity(entityInterface.getId(), adminAuthHeaders());
     entityInterface = getEntityInterface(entity);
@@ -864,9 +875,7 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
 
   protected final void validateCommonEntityFields(EntityInterface<T> entity, String expectedDescription,
                                                String expectedUpdatedByUser, EntityReference expectedOwner) {
-    assertNotNull(entity.getId());
-    assertNotNull(entity.getHref());
-    assertNotNull(entity.getFullyQualifiedName());
+    assertListNotNull(entity.getId(), entity.getHref(), entity.getFullyQualifiedName());
     assertEquals(expectedDescription, entity.getDescription());
     assertEquals(expectedUpdatedByUser, entity.getUpdatedBy());
     assertOwner(expectedOwner, entity.getOwner());
@@ -966,8 +975,7 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
       assertNull(changeEvent.getEntity());
       assertChangeDescription(expectedChangeDescription, changeEvent.getChangeDescription());
     } else if (expectedEventType == EventType.ENTITY_DELETED) {
-      assertNull(changeEvent.getEntity());
-      assertNull(changeEvent.getChangeDescription());
+      assertListNull(changeEvent.getEntity(), changeEvent.getChangeDescription());
     }
   }
 

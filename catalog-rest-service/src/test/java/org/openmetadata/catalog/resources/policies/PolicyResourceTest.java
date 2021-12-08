@@ -21,7 +21,6 @@ import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.policies.CreatePolicy;
 import org.openmetadata.catalog.entity.policies.Policy;
-import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.jdbi3.PolicyRepository.PolicyEntityInterface;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.policies.PolicyResource.PolicyList;
@@ -41,7 +40,6 @@ import java.util.Map;
 import java.util.UUID;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
-import static javax.ws.rs.core.Response.Status.CONFLICT;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -239,20 +237,6 @@ public class PolicyResourceTest extends EntityResourceTest<Policy> {
   }
 
   @Test
-  public void get_PolicyWithDifferentFields_200_OK(TestInfo test) throws IOException {
-    CreatePolicy create = create(test);
-    Policy policy = createAndCheckEntity(create, adminAuthHeaders());
-    validateGetWithDifferentFields(policy, false);
-  }
-
-  @Test
-  public void get_PolicyByNameWithDifferentFields_200_OK(TestInfo test) throws IOException {
-    CreatePolicy create = create(test);
-    Policy policy = createAndCheckEntity(create, adminAuthHeaders());
-    validateGetWithDifferentFields(policy, true);
-  }
-
-  @Test
   public void patch_PolicyAttributes_200_ok(TestInfo test) throws IOException {
     Policy policy = createAndCheckEntity(create(test), adminAuthHeaders());
 
@@ -299,7 +283,8 @@ public class PolicyResourceTest extends EntityResourceTest<Policy> {
   /**
    * Validate returned fields GET .../policies/{id}?fields="..." or GET .../policies/name/{fqn}?fields="..."
    */
-  private void validateGetWithDifferentFields(Policy policy, boolean byName) throws HttpResponseException {
+  @Override
+  public void validateGetWithDifferentFields(Policy policy, boolean byName) throws HttpResponseException {
     // .../policies?fields=owner
     String fields = "owner";
     policy = byName ? getPolicyByName(policy.getFullyQualifiedName(), fields, adminAuthHeaders()) :

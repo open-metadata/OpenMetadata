@@ -35,6 +35,8 @@ import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 
+import static org.openmetadata.catalog.util.EntityUtil.objectMatch;
+
 
 public class DatabaseServiceRepository extends EntityRepository<DatabaseService> {
   public static final String COLLECTION_PATH = "v1/services/databaseServices";
@@ -192,19 +194,14 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
     @Override
     public void entitySpecificUpdate() throws IOException {
       updateJdbc();
-      updateIngestionSchedule();
+      recordChange("ingestionSchedule", original.getEntity().getIngestionSchedule(),
+              updated.getEntity().getIngestionSchedule(), true);
     }
 
     private void updateJdbc() throws JsonProcessingException {
       JdbcInfo origJdbc = original.getEntity().getJdbc();
       JdbcInfo updatedJdbc = updated.getEntity().getJdbc();
-      recordChange("jdbc", origJdbc, updatedJdbc);
-    }
-
-    private void updateIngestionSchedule() throws JsonProcessingException {
-      Schedule origSchedule = original.getEntity().getIngestionSchedule();
-      Schedule updatedSchedule = updated.getEntity().getIngestionSchedule();
-      recordChange("ingestionSchedule", origSchedule, updatedSchedule, true);
+      recordChange("jdbc", origJdbc, updatedJdbc, true);
     }
   }
 }

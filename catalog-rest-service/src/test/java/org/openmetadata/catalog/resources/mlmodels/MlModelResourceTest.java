@@ -56,16 +56,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.BiConsumer;
 
-import static javax.ws.rs.core.Response.Status.CONFLICT;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.openmetadata.catalog.exception.CatalogExceptionMessage.ENTITY_ALREADY_EXISTS;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MAJOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.NO_CHANGE;
 import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
+import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 import static org.openmetadata.catalog.util.TestUtils.authHeaders;
 
@@ -282,17 +281,16 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
   public void put_MlModelUpdateMlFeatures_200(TestInfo test) throws IOException {
     CreateMlModel request = create(test);
     MlModel model = createAndCheckEntity(request, adminAuthHeaders());
-    ChangeDescription change = getChangeDescription(model.getVersion());
 
-    MlFeature newMlFeature = new MlFeature()
-            .withName("color")
-            .withDataType(MlFeatureDataType.Categorical);
-
+    //
+    // Add new ML features from previously empty
+    //
+    MlFeature newMlFeature = new MlFeature().withName("color").withDataType(MlFeatureDataType.Categorical);
     List<MlFeature> newFeatures = Collections.singletonList(newMlFeature);
 
-    change.getFieldsUpdated().add(
-            new FieldChange().withName("mlFeatures").withNewValue(newFeatures).withOldValue(ML_FEATURES)
-    );
+    ChangeDescription change = getChangeDescription(model.getVersion());
+    change.getFieldsAdded().add(new FieldChange().withName("mlFeatures").withNewValue(newFeatures));
+    change.getFieldsDeleted().add(new FieldChange().withName("mlFeatures").withOldValue(ML_FEATURES));
 
     updateAndCheckEntity(
             request.withMlFeatures(newFeatures), Status.OK, adminAuthHeaders(), MINOR_UPDATE, change
@@ -312,61 +310,40 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
   }
 
   @Test
-  public void get_MlModelWithDifferentFields_200_OK(TestInfo test) throws IOException {
-    CreateMlModel create = create(test).withDescription("description")
-            .withOwner(USER_OWNER1).withDashboard(DASHBOARD_REFERENCE);
-    MlModel model = createAndCheckEntity(create, adminAuthHeaders());
-    validateGetWithDifferentFields(model, false);
-  }
-
-  @Test
-  public void get_MlModelByNameWithDifferentFields_200_OK(TestInfo test) throws IOException {
-    CreateMlModel create = create(test).withDescription("description")
-            .withOwner(USER_OWNER1).withDashboard(DASHBOARD_REFERENCE);
-    MlModel model = createAndCheckEntity(create, adminAuthHeaders());
-    validateGetWithDifferentFields(model, true);
-  }
-
-  @Test
   public void delete_MlModel_200_ok(TestInfo test) throws HttpResponseException {
     MlModel model = createMlModel(create(test), adminAuthHeaders());
     deleteEntity(model.getId(), adminAuthHeaders());
   }
 
   /** Validate returned fields GET .../models/{id}?fields="..." or GET .../models/name/{fqn}?fields="..." */
-  private void validateGetWithDifferentFields(MlModel model, boolean byName) throws HttpResponseException {
+  @Override
+  public void validateGetWithDifferentFields(MlModel model, boolean byName) throws HttpResponseException {
     // .../models?fields=owner
     String fields = "owner";
     model = byName ? getEntityByName(model.getFullyQualifiedName(), fields, adminAuthHeaders()) :
             getEntity(model.getId(), fields, adminAuthHeaders());
-    assertNotNull(model.getOwner());
-    assertNotNull(model.getAlgorithm()); // Provided as default field
+    assertNotNull(model.getOwner(), model.getAlgorithm());
     assertNull(model.getDashboard());
 
     // .../models?fields=mlFeatures,mlHyperParameters
     fields = "mlFeatures,mlHyperParameters";
     model = byName ? getEntityByName(model.getFullyQualifiedName(), fields, adminAuthHeaders()) :
             getEntity(model.getId(), fields, adminAuthHeaders());
-    assertNotNull(model.getAlgorithm()); // Provided as default field
-    assertNotNull(model.getMlFeatures());
-    assertNotNull(model.getMlHyperParameters());
+    assertListNotNull(model.getAlgorithm(), model.getMlFeatures(), model.getMlHyperParameters());
     assertNull(model.getDashboard());
 
     // .../models?fields=owner,algorithm
     fields = "owner,algorithm";
     model = byName ? getEntityByName(model.getFullyQualifiedName(), fields, adminAuthHeaders()) :
             getEntity(model.getId(), fields, adminAuthHeaders());
-    assertNotNull(model.getOwner());
-    assertNotNull(model.getAlgorithm());
+    assertListNotNull(model.getOwner(), model.getAlgorithm());
     assertNull(model.getDashboard());
 
     // .../models?fields=owner,algorithm, dashboard
     fields = "owner,algorithm,dashboard";
     model = byName ? getEntityByName(model.getFullyQualifiedName(), fields, adminAuthHeaders()) :
             getEntity(model.getId(), fields, adminAuthHeaders());
-    assertNotNull(model.getOwner());
-    assertNotNull(model.getAlgorithm());
-    assertNotNull(model.getDashboard());
+    assertListNotNull(model.getOwner(), model.getAlgorithm(), model.getDashboard());
     TestUtils.validateEntityReference(model.getDashboard());
   }
 
@@ -381,7 +358,8 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
 
   @Override
   public Object createRequest(String name, String description, String displayName, EntityReference owner) {
-    return create(name).withDescription(description).withDisplayName(displayName).withOwner(owner);
+    return create(name).withDescription(description).withDisplayName(displayName).withOwner(owner)
+            .withDashboard(DASHBOARD_REFERENCE);
   }
 
   @Override

@@ -22,7 +22,6 @@ import org.openmetadata.catalog.api.data.CreateLocation;
 import org.openmetadata.catalog.api.services.CreateStorageService;
 import org.openmetadata.catalog.entity.data.Location;
 import org.openmetadata.catalog.entity.services.StorageService;
-import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.jdbi3.LocationRepository.LocationEntityInterface;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.locations.LocationResource.LocationList;
@@ -45,13 +44,12 @@ import java.util.List;
 import java.util.Map;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
-import static javax.ws.rs.core.Response.Status.CONFLICT;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
+import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 import static org.openmetadata.catalog.util.TestUtils.authHeaders;
 
@@ -235,22 +233,6 @@ public class LocationResourceTest extends EntityResourceTest<Location> {
     assertEquals("description", location.getDescription());
   }
 
-  @Test
-  public void get_locationWithDifferentFields_200_OK(TestInfo test) throws IOException {
-    CreateLocation create = create(test).withDescription("description").withOwner(USER_OWNER1)
-            .withService(AWS_REFERENCE);
-    Location location = createAndCheckEntity(create, adminAuthHeaders());
-    validateGetWithDifferentFields(location, false);
-  }
-
-  @Test
-  public void get_locationByNameWithDifferentFields_200_OK(TestInfo test) throws IOException {
-    CreateLocation create = create(test).withDescription("description").withOwner(USER_OWNER1)
-            .withService(AWS_REFERENCE);
-    Location location = createAndCheckEntity(create, adminAuthHeaders());
-    validateGetWithDifferentFields(location, true);
-  }
-
   public static Location updateLocation(CreateLocation create,
                                         Status status,
                                         Map<String, String> authHeaders) throws HttpResponseException {
@@ -265,15 +247,13 @@ public class LocationResourceTest extends EntityResourceTest<Location> {
   /**
    * Validate returned fields GET .../locations/{id}?fields="..." or GET .../locations/name/{fqn}?fields="..."
    */
-  private void validateGetWithDifferentFields(Location location, boolean byName) throws HttpResponseException {
+  @Override
+  public void validateGetWithDifferentFields(Location location, boolean byName) throws HttpResponseException {
     // .../locations?fields=owner
     String fields = "owner";
     location = byName ? getEntityByName(location.getFullyQualifiedName(), fields, adminAuthHeaders()) :
             getEntity(location.getId(), fields, adminAuthHeaders());
-    assertNotNull(location.getOwner());
-    assertNotNull(location.getService()); // We always return the service
-    assertNotNull(location.getServiceType()); // We always return the service
-
+    assertListNotNull(location.getOwner(), location.getService(), location.getServiceType());
     // TODO add other fields
   }
 

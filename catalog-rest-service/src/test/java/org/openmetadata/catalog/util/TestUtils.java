@@ -15,6 +15,7 @@ package org.openmetadata.catalog.util;
 
 import org.apache.http.client.HttpResponseException;
 import org.eclipse.jetty.http.HttpStatus;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.function.Executable;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.resources.tags.TagResourceTest;
@@ -326,4 +327,15 @@ public final class TestUtils {
             "Entry exists in list - expected:" + expectedExistsInList + " actual:" + exists);
   }
 
+  public static void assertListNull(Object... values) {
+    for (Object value : values) {
+      Assertions.assertNull(value);
+    }
+  }
+
+  public static void assertListNotNull(Object... values) {
+    for (Object value : values) {
+      Assertions.assertNotNull(value);
+    }
+  }
 }

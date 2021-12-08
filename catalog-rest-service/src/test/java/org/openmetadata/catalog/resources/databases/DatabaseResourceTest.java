@@ -20,7 +20,6 @@ import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.data.CreateDatabase;
 import org.openmetadata.catalog.entity.data.Database;
-import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.jdbi3.DatabaseRepository.DatabaseEntityInterface;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.databases.DatabaseResource.DatabaseList;
@@ -35,13 +34,13 @@ import java.util.HashMap;
 import java.util.Map;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
-import static javax.ws.rs.core.Response.Status.CONFLICT;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
+import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
+import static org.openmetadata.catalog.util.TestUtils.assertListNull;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 import static org.openmetadata.catalog.util.TestUtils.authHeaders;
 
@@ -122,22 +121,6 @@ public class DatabaseResourceTest extends EntityResourceTest<Database> {
   }
 
   @Test
-  public void get_databaseWithDifferentFields_200_OK(TestInfo test) throws IOException {
-    CreateDatabase create = create(test).withDescription("description").withOwner(USER_OWNER1)
-            .withService(SNOWFLAKE_REFERENCE);
-    Database database = createAndCheckEntity(create, adminAuthHeaders());
-    validateGetWithDifferentFields(database, false);
-  }
-
-  @Test
-  public void get_databaseByNameWithDifferentFields_200_OK(TestInfo test) throws IOException {
-    CreateDatabase create = create(test).withDescription("description").withOwner(USER_OWNER1)
-            .withService(SNOWFLAKE_REFERENCE);
-    Database database = createAndCheckEntity(create, adminAuthHeaders());
-    validateGetWithDifferentFields(database, true);
-  }
-
-  @Test
   public void delete_emptyDatabase_200_ok(TestInfo test) throws HttpResponseException {
     Database database = createDatabase(create(test), adminAuthHeaders());
     deleteEntity(database.getId(), adminAuthHeaders());
@@ -154,28 +137,22 @@ public class DatabaseResourceTest extends EntityResourceTest<Database> {
   }
 
   /** Validate returned fields GET .../databases/{id}?fields="..." or GET .../databases/name/{fqn}?fields="..." */
-  private void validateGetWithDifferentFields(Database database, boolean byName) throws HttpResponseException {
+  @Override
+  public void validateGetWithDifferentFields(Database database, boolean byName) throws HttpResponseException {
     // .../databases?fields=owner
     String fields = "owner";
     database = byName ? getEntityByName(database.getFullyQualifiedName(), fields, adminAuthHeaders()) :
             getEntity(database.getId(), fields, adminAuthHeaders());
-    assertNotNull(database.getOwner());
-    assertNotNull(database.getService()); // We always return the service
-    assertNotNull(database.getServiceType());
-    assertNull(database.getTables());
-    assertNull(database.getUsageSummary());
+    assertListNotNull(database.getOwner(), database.getService(), database.getServiceType());
+    assertListNull(database.getTables(), database.getUsageSummary());
 
     // .../databases?fields=owner,tables,usageSummary
     fields = "owner,tables,usageSummary";
     database = byName ? getEntityByName(database.getFullyQualifiedName(), fields, adminAuthHeaders()) :
             getEntity(database.getId(), fields, adminAuthHeaders());
-    assertNotNull(database.getOwner());
-    assertNotNull(database.getService()); // We always return the service
-    assertNotNull(database.getServiceType());
-    assertNotNull(database.getTables());
+    assertListNotNull(database.getOwner(), database.getService(), database.getServiceType(), database.getTables(),
+            database.getUsageSummary());
     TestUtils.validateEntityReference(database.getTables());
-    assertNotNull(database.getUsageSummary());
-
   }
 
   public CreateDatabase create(TestInfo test) {

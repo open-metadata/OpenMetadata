@@ -30,10 +30,9 @@ from metadata.generated.schema.api.services.createMessagingService import (
 )
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import Column, Constraint, Table
-from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.tagLabel import TagLabel
-from metadata.ingestion.api.common import Record
+from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.models.table_metadata import Chart, Dashboard
@@ -77,7 +76,7 @@ class SampleEntitySourceStatus(SourceStatus):
         logger.warning("Dropped {} {} due to {}".format(entity_type, entity_name, err))
 
 
-class SampleEntitySource(Source):
+class SampleEntitySource(Source[Entity]):
     def __init__(
         self,
         config: SampleEntitySourceConfig,
@@ -135,7 +134,7 @@ class SampleEntitySource(Source):
         logging.debug("PiiTypes are %s", ",".join(str(x) for x in list(types)))
         return list(types)
 
-    def next_record(self) -> Iterable[OMetaDatabaseAndTable]:
+    def next_record(self) -> Iterable[Entity]:
         if self.config.generate_tables:
             yield from self.ingest_tables()
         if self.config.generate_dashboards:
@@ -223,7 +222,7 @@ class SampleEntitySource(Source):
                     )
                     yield table_and_db
 
-    def ingest_dashboards(self) -> Iterable[Record]:
+    def ingest_dashboards(self) -> Iterable[Dashboard]:
         for h in range(self.config.no_of_services):
             create_service = None
             while True:

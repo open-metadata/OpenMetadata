@@ -36,9 +36,9 @@ import java.util.UUID;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
+import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 import static org.openmetadata.catalog.util.TestUtils.authHeaders;
 
@@ -115,14 +115,6 @@ public class TopicResourceTest extends EntityResourceTest<Topic> {
   }
 
   @Test
-  public void get_topicByNameWithDifferentFields_200_OK(TestInfo test) throws IOException {
-    CreateTopic create = create(test).withDescription("description").withOwner(USER_OWNER1)
-            .withService(KAFKA_REFERENCE);
-    Topic topic = createAndCheckEntity(create, adminAuthHeaders());
-    validateGetWithDifferentFields(topic, true);
-  }
-
-  @Test
   public void delete_emptyTopic_200_ok(TestInfo test) throws HttpResponseException {
     Topic topic = createTopic(create(test), adminAuthHeaders());
     deleteEntity(topic.getId(), adminAuthHeaders());
@@ -141,14 +133,13 @@ public class TopicResourceTest extends EntityResourceTest<Topic> {
   /**
    * Validate returned fields GET .../topics/{id}?fields="..." or GET .../topics/name/{fqn}?fields="..."
    */
-  private void validateGetWithDifferentFields(Topic topic, boolean byName) throws HttpResponseException {
+  @Override
+  public void validateGetWithDifferentFields(Topic topic, boolean byName) throws HttpResponseException {
     // .../topics?fields=owner
     String fields = "owner";
     topic = byName ? getTopicByName(topic.getFullyQualifiedName(), fields, adminAuthHeaders()) :
             getTopic(topic.getId(), fields, adminAuthHeaders());
-    assertNotNull(topic.getOwner());
-    assertNotNull(topic.getService()); // We always return the service
-    assertNotNull(topic.getServiceType());
+    assertListNotNull(topic.getOwner(), topic.getService(), topic.getServiceType());
   }
 
   public static Topic getTopic(UUID id, String fields, Map<String, String> authHeaders)

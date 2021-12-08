@@ -11,11 +11,11 @@
 
 from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass, field
-from typing import Dict, Iterable, List
+from typing import Any, Generic, Iterable, List
 
-from .closeable import Closeable
-from .common import Record, WorkflowContext
-from .status import Status
+from metadata.ingestion.api.closeable import Closeable
+from metadata.ingestion.api.common import Entity, WorkflowContext
+from metadata.ingestion.api.status import Status
 
 
 @dataclass
@@ -25,7 +25,7 @@ class SourceStatus(Status):
     warnings: List[str] = field(default_factory=list)
     failures: List[str] = field(default_factory=list)
 
-    def scanned(self, record: Record) -> None:
+    def scanned(self, record: Any) -> None:
         self.records += 1
 
     def warning(self, key: str, reason: str) -> None:
@@ -36,7 +36,7 @@ class SourceStatus(Status):
 
 
 @dataclass  # type: ignore[misc]
-class Source(Closeable, metaclass=ABCMeta):
+class Source(Closeable, Generic[Entity], metaclass=ABCMeta):
     ctx: WorkflowContext
 
     @classmethod
@@ -51,7 +51,7 @@ class Source(Closeable, metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def next_record(self) -> Iterable[Record]:
+    def next_record(self) -> Iterable[Entity]:
         pass
 
     @abstractmethod

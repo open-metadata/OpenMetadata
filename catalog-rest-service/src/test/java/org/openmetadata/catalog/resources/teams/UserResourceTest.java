@@ -54,7 +54,6 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
-import static javax.ws.rs.core.Response.Status.CONFLICT;
 import static javax.ws.rs.core.Response.Status.CREATED;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static javax.ws.rs.core.Response.Status.OK;
@@ -69,6 +68,8 @@ import static org.openmetadata.catalog.exception.CatalogExceptionMessage.readOnl
 import static org.openmetadata.catalog.resources.teams.TeamResourceTest.createTeam;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
+import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
+import static org.openmetadata.catalog.util.TestUtils.assertListNull;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 import static org.openmetadata.catalog.util.TestUtils.authHeaders;
 
@@ -189,30 +190,6 @@ public class UserResourceTest extends EntityResourceTest<User> {
   }
 
   @Test
-  public void get_userWithDifferentFields_200_OK(TestInfo test) throws HttpResponseException {
-    // Create team and role for the user
-    TeamResourceTest teamResourceTest = new TeamResourceTest();
-    Team team = createTeam(teamResourceTest.create(test), adminAuthHeaders());
-    List<UUID> teamIds = Collections.singletonList(team.getId());
-
-    CreateUser create = create(test).withDisplayName("displayName").withTeams(teamIds).withProfile(PROFILE);
-    User user = createUser(create, adminAuthHeaders());
-    validateGetWithDifferentField(user, false);
-  }
-
-  @Test
-  public void get_userByNameWithDifferentFields_200_OK(TestInfo test) throws HttpResponseException {
-    // Create team and role for the user
-    TeamResourceTest teamResourceTest = new TeamResourceTest();
-    Team team = createTeam(teamResourceTest.create(test), adminAuthHeaders());
-    List<UUID> teamIds = Collections.singletonList(team.getId());
-
-    CreateUser create = create(test).withDisplayName("displayName").withTeams(teamIds).withProfile(PROFILE);
-    User user = createUser(create, adminAuthHeaders());
-    validateGetWithDifferentField(user, true);
-  }
-
-  @Test
   public void get_userWithInvalidFields_400_BadRequest(TestInfo test) throws HttpResponseException {
     User user = createUser(create(test), adminAuthHeaders());
 
@@ -276,11 +253,7 @@ public class UserResourceTest extends EntityResourceTest<User> {
   public void patch_userAttributes_as_admin_200_ok(TestInfo test) throws IOException {
     // Create user without any attributes - ***Note*** isAdmin by default is false.
     User user = createUser(create(test), adminAuthHeaders());
-    assertNull(user.getDisplayName());
-    assertNull(user.getIsBot());
-    assertNull(user.getProfile());
-//    assertNull(user.getDeactivated());
-    assertNull(user.getTimezone());
+    assertListNull(user.getDisplayName(), user.getIsBot(), user.getProfile(), user.getTimezone());
 
     TeamResourceTest teamResourceTest = new TeamResourceTest();
     EntityReference team1 = new TeamEntityInterface(createTeam(teamResourceTest.create(test, 1),
@@ -425,7 +398,8 @@ public class UserResourceTest extends EntityResourceTest<User> {
   }
 
   /** Validate returned fields GET .../users/{id}?fields="..." or GET .../users/name/{name}?fields="..." */
-  private void validateGetWithDifferentField(User user, boolean byName) throws HttpResponseException {
+  @Override
+  public void validateGetWithDifferentFields(User user, boolean byName) throws HttpResponseException {
     // .../teams?fields=profile
     String fields = "profile";
     user = byName ? getUserByName(user.getName(), fields, adminAuthHeaders()) :
@@ -437,8 +411,7 @@ public class UserResourceTest extends EntityResourceTest<User> {
     fields = "profile, teams";
     user = byName ? getUserByName(user.getName(), fields, adminAuthHeaders()) :
             getUser(user.getId(), fields, adminAuthHeaders());
-    assertNotNull(user.getProfile());
-    assertNotNull(user.getTeams());
+    assertListNotNull(user.getProfile(), user.getTeams());
   }
 
   public static User getUser(UUID id, Map<String, String> authHeaders) throws HttpResponseException {
@@ -460,7 +433,7 @@ public class UserResourceTest extends EntityResourceTest<User> {
 
   @Override
   public Object createRequest(String name, String description, String displayName, EntityReference owner) {
-    return create(name).withDescription(description).withDisplayName(displayName);
+    return create(name).withDescription(description).withDisplayName(displayName).withProfile(PROFILE);
   }
 
   @Override
