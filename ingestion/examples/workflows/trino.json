@@ -4,7 +4,8 @@
     "config": {
       "service_name": "local_trino",
       "host_port": "localhost:8080",
-      "catalog": "system"
+      "catalog": "catalog_name",
+      "schema_name": "schema_name"
     }
   },
   "sink": {
