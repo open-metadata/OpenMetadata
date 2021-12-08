@@ -11,15 +11,33 @@
  *  limitations under the License.
  */
 
-import { EntityCounts, SearchDataFunctionType, SearchResponse } from 'Models';
-import { User } from '../../generated/entity/teams/user';
+import {
+  EntityCounts,
+  FormatedTableData,
+  SearchDataFunctionType,
+  SearchResponse,
+} from 'Models';
+import { FeedFilter } from '../../enums/mydata.enum';
+import { ChangeDescription, User } from '../../generated/entity/teams/user';
 
 export interface MyDataProps {
   error: string;
   ingestionCount: number;
   countServices: number;
-  userDetails: User;
+  userDetails?: User;
   searchResult: SearchResponse | undefined;
-  fetchData: (value: SearchDataFunctionType) => void;
+  ownedData: Array<FormatedTableData>;
+  followedData: Array<FormatedTableData>;
+  feedData: Array<
+    FormatedTableData & {
+      entityType: string;
+      changeDescriptions: Array<
+        ChangeDescription & { updatedAt: number; updatedBy: string }
+      >;
+    }
+  >;
+  feedFilter: string;
+  feedFilterHandler: (v: FeedFilter) => void;
+  fetchData?: (value: SearchDataFunctionType) => void;
   entityCounts: EntityCounts;
 }

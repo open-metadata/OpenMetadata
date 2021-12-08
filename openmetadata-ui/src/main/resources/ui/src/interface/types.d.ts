@@ -391,15 +391,15 @@ declare module 'Models' {
     timestamp: number;
   }
 
-  interface RecentlySearchData {
+  interface RecentlySearchedData {
     term: string;
     timestamp: number;
   }
   export interface RecentlyViewed {
     data: Array<RecentlyViewedData>;
   }
-  export interface SearchData {
-    data: Array<RecentlySearchData>;
+  export interface RecentlySearched {
+    data: Array<RecentlySearchedData>;
   }
 
   export type DatasetSchemaTableTab = 'schema' | 'sample_data';
