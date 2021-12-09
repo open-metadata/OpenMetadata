@@ -110,7 +110,10 @@ const TableProfiler = ({ tableProfiles, columns }: Props) => {
                         </span>
                         {colIndex === 0 && (
                           <span className="tw-mr-3 tw--ml-2">
-                            {getConstraintIcon('PRIMARY_KEY', 'tw-relative')}
+                            {getConstraintIcon(
+                              col.name.constraint,
+                              'tw-relative'
+                            )}
                           </span>
                         )}
                         <span>{col.name.colName}</span>
