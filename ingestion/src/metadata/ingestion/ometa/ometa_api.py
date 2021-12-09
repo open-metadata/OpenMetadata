@@ -316,8 +316,7 @@ class OpenMetadata(OMetaLineageMixin, OMetaTableMixin, Generic[T, C]):
         """
 
         entity = data.__class__
-        is_create = "create" in entity.__name__.lower()
-        is_service = "service" in entity.__name__.lower()
+        is_create = "create" in data.__class__.__name__.lower()
 
         # Prepare the return Entity Type
         if is_create:
@@ -327,14 +326,7 @@ class OpenMetadata(OMetaLineageMixin, OMetaTableMixin, Generic[T, C]):
                 f"PUT operations need a CrateEntity, not {entity}"
             )
 
-        # Prepare the request method
-        if is_service and is_create:
-            # Services can only be created via POST
-            method = self.client.post
-        else:
-            method = self.client.put
-
-        resp = method(self.get_suffix(entity), data=data.json())
+        resp = self.client.put(self.get_suffix(entity), data=data.json())
         return entity_class(**resp)
 
     @staticmethod
