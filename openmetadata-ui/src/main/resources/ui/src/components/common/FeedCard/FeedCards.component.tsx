@@ -40,7 +40,7 @@ const FeedCards: FC<FeedCardsProp> = ({
     <Fragment>
       {relativeDays.map((d, i) => (
         <div className="tw-grid tw-grid-rows-1 tw-grid-cols-1 tw-mt-3" key={i}>
-          <div className="tw-relative tw-my-3">
+          <div className="tw-relative tw-mt-3 tw-mb-3.5">
             <div className="tw-flex tw-justify-center">
               <hr className="tw-absolute tw-top-3 tw-border-b-2 tw-border-main tw-w-full tw-z-0" />
               <span className="tw-bg-white tw-px-4 tw-py-px tw-border tw-border-main tw-rounded tw-z-10 tw-text-grey-muted tw-font-normal">
@@ -53,7 +53,7 @@ const FeedCards: FC<FeedCardsProp> = ({
             .map((feed, i) => (
               <div key={i}>
                 <div
-                  className={classNames('tw-flex tw-mb-2', {
+                  className={classNames('tw-flex tw-mb-1.5', {
                     'tw-mt-5': i !== 0,
                   })}>
                   <Avatar name={feed.updatedBy} width="24" />
@@ -72,10 +72,7 @@ const FeedCards: FC<FeedCardsProp> = ({
                 </div>
                 <div
                   className={classNames(
-                    'tw-bg-white tw-p-3 tw-pb-1 tw-border tw-border-main tw-rounded-md tw-ml-7',
-                    {
-                      'tw-mt-3': i !== 0,
-                    }
+                    'tw-bg-white tw-p-3 tw-pb-1 tw-border tw-border-main tw-rounded-md tw-ml-7'
                   )}>
                   <div>{feed.description}</div>
                 </div>
