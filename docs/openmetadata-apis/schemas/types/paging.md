@@ -6,6 +6,8 @@ Type used for cursor based pagination information in GET list responses.
 
 Type: `object`
 
+This schema <u>does not</u> accept additional properties.
+
 ## Properties
 - **before**
   - Before cursor used for getting the previous page (see API pagination for details).
@@ -17,4 +19,4 @@ Type: `object`
   - Total number of entries available to page through.
   - Type: `integer`
 
-_This document was updated on: Monday, November 15, 2021_
+_This document was updated on: Thursday, December 9, 2021_

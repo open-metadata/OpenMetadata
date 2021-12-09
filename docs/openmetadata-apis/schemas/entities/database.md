@@ -6,6 +6,8 @@ This schema defines the Database entity. A database also referred to as Database
 
 Type: `object`
 
+This schema <u>does not</u> accept additional properties.
+
 ## Properties
 - **id**
   - Unique identifier that identifies this database instance.
@@ -40,6 +42,9 @@ Type: `object`
 - **service** `required`
   - Link to the database cluster/service where this database is hosted in.
   - $ref: [../../type/entityReference.json](../types/entityreference.md)
+- **serviceType**
+  - Service type where this database is hosted in.
+  - $ref: [../services/databaseService.json#/definitions/databaseServiceType](../services/databaseservice.md#databaseservicetype)
 - **location**
   - Reference to the Location that contains this database.
   - $ref: [../../type/entityReference.json](../types/entityreference.md)
@@ -61,7 +66,6 @@ Type: `object`
 - Name that identifies the database.
 - Type: `string`
 - The value must match this pattern: `^[^.]*$`
-- Length: between 1 and 64
+- Length: between 1 and 128
 
-
-_This document was updated on: Monday, November 15, 2021_
+_This document was updated on: Thursday, December 9, 2021_

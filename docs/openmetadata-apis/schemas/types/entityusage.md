@@ -6,6 +6,8 @@ This schema defines the type used for capturing usage details of an entity.
 
 Type: `object`
 
+This schema <u>does not</u> accept additional properties.
+
 ## Properties
 - **entity** `required`
   - Entity for which usage is returned.
@@ -16,4 +18,4 @@ Type: `object`
     - **Items**
     - $ref: [usageDetails.json](usagedetails.md)
 
-_This document was updated on: Monday, November 15, 2021_
+_This document was updated on: Thursday, December 9, 2021_
