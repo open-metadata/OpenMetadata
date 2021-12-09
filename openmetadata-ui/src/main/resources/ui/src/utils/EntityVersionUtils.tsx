@@ -319,18 +319,6 @@ export const feedSummaryFromatter = (
       const ownerText =
         !isEmpty(oldValue) && !isEmpty(newValue) ? (
           <Fragment>
-            <span className="tw-pl-1">from</span>
-            {oldValue?.type === 'team' ? (
-              <Link
-                className="tw-pl-1"
-                to={getTeamDetailsPath(oldValue?.name || '')}>
-                {getOwnerName(oldValue?.id as string)}
-              </Link>
-            ) : (
-              <span className="tw-pl-1">
-                {getOwnerName(oldValue?.id as string)}
-              </span>
-            )}
             <span className="tw-pl-1">to</span>
             {newValue?.type === 'team' ? (
               <Link
