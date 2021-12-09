@@ -39,4 +39,4 @@ Type: `object`
     - Type: `string`
     - String format must be a "uri"
 
-_This document was updated on: Monday, November 15, 2021_
+_This document was updated on: Thursday, December 9, 2021_

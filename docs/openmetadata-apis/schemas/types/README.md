@@ -49,6 +49,11 @@ OpenMetadata supports many common types reused across different schemas. Definin
 {% content-ref url="schedule.md" %}
 [schedule.md](schedule.md)
 {% endcontent-ref %}
+]
+
+{% content-ref url="storage.md" %}
+[storage.md](storage.md)
+{% endcontent-ref %}
 
 {% content-ref url="taglabel.md" %}
 [taglabel.md](taglabel.md)

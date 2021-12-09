@@ -6,6 +6,8 @@ This schema defines the type for usage details. Daily, weekly, and monthly aggre
 
 Type: `object`
 
+This schema <u>does not</u> accept additional properties.
+
 ## Properties
 - **dailyStats** `required`
   - Daily usage stats of a data asset on the start date.
@@ -37,4 +39,4 @@ Type: `object`
     - Type: `number`
     - Range: between 0 and 100
 
-_This document was updated on: Monday, November 15, 2021_
+_This document was updated on: Thursday, December 9, 2021_

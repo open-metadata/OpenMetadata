@@ -12,6 +12,10 @@ OpenMetadata has the following high-level core entities and relationships:
 
 ## List of Schema Entities
 
+{% content-ref url="accesscontrolrule.md" %}
+[accesscontrolrule.md](accesscontrolrule.md)
+{% endcontent-ref %}
+
 {% content-ref url="bot.md" %}
 [bot.md](bot.md)
 {% endcontent-ref %}
@@ -36,6 +40,18 @@ OpenMetadata has the following high-level core entities and relationships:
 [databaseservice.md](databaseservice.md)
 {% endcontent-ref %}
 
+{% content-ref url="dbtmodel.md" %}
+[dbtmodel.md](dbtmodel.md)
+{% endcontent-ref %}
+
+{% content-ref url="deleteaction.md" %}
+[deleteaction.md](deleteaction.md)
+{% endcontent-ref %}
+
+{% content-ref url="filters.md" %}
+[filters.md](filters.md)
+{% endcontent-ref %}
+
 {% content-ref url="location.md" %}
 [location.md](location.md)
 {% endcontent-ref %}
@@ -50,6 +66,10 @@ OpenMetadata has the following high-level core entities and relationships:
 
 {% content-ref url="mlmodel.md" %}
 [mlmodel.md](mlmodel.md)
+{% endcontent-ref %}
+
+{% content-ref url="moveaction.md" %}
+[moveaction.md](moveaction.md)
 {% endcontent-ref %}
 
 {% content-ref url="pipeline.md" %}
@@ -68,6 +88,10 @@ OpenMetadata has the following high-level core entities and relationships:
 [report.md](report.md)
 {% endcontent-ref %}
 
+{% content-ref url="rule.md" %}
+[rule.md](rule.md)
+{% endcontent-ref %}
+
 {% content-ref url="storageservice.md" %}
 [storageservice.md](storageservice.md)
 {% endcontent-ref %}
@@ -76,8 +100,16 @@ OpenMetadata has the following high-level core entities and relationships:
 [table.md](table.md)
 {% endcontent-ref %}
 
+{% content-ref url="tagbased.md" %}
+[tagbased.md](tagbased.md)
+{% endcontent-ref %}
+
 {% content-ref url="tagcategory.md" %}
 [tagcategory.md](tagcategory.md)
+{% endcontent-ref %}
+
+{% content-ref url="task.md" %}
+[task.md](task.md)
 {% endcontent-ref %}
 
 {% content-ref url="team.md" %}
