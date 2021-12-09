@@ -76,7 +76,7 @@ OpenMetadata release ships with `./bin/openmetadata` init.d style script. Run th
 ./bin/openmetdata start
 ```
 
-We recommend configuring `serviced` to monitor the OpenMetadata command to restart in case of any failures.Start OpenMetadata.
+We recommend configuring `serviced` to monitor the OpenMetadata command to restart in case of any failures.
 
 ## Running with a load balancer
 

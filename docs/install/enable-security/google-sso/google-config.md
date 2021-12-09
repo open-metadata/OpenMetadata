@@ -2,7 +2,7 @@
 
 ## Update conf/openmetadata-security.yaml
 
-Once the c`lient id` and `client secret` are generated, add `client id` as the value of the `clientId` field in the openmetadata-security.yaml file. See the snippet below for an example of where to place the `client id` value.
+Once the `client id` and `client secret` are generated, add `client id` as the value of the `clientId` field in the openmetadata-security.yaml file. See the snippet below for an example of where to place the `client id` value.
 
 ```
 authenticationConfiguration:
