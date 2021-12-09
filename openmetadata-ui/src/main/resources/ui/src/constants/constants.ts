@@ -63,6 +63,8 @@ export const versionTypes = [
   { name: 'Minor', value: 'minor' },
 ];
 
+export const DESCRIPTIONLENGTH = 100;
+
 export const visibleFilters = ['service', 'tier', 'tags', 'database'];
 
 export const tableSortingFields = [
