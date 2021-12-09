@@ -19,3 +19,9 @@ export enum EntityType {
   PIPELINE = 'pipeline',
   DBT_MODEL = 'dbt_model',
 }
+
+export enum ChangeType {
+  ADDED = 'Added',
+  UPDATED = 'Updated',
+  REMOVED = 'Removed',
+}
