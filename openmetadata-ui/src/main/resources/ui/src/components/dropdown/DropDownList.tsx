@@ -173,7 +173,11 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
                       key={index}
                       onClick={() => setActiveTab(index + 1)}>
                       {grp}
-                      {getCountBadge(getSearchedListByGroup(grp).length)}
+                      {getCountBadge(
+                        getSearchedListByGroup(grp).length,
+                        '',
+                        activeTab === index + 1
+                      )}
                     </button>
                   );
                 })}

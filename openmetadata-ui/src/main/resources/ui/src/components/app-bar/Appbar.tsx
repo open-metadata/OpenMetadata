@@ -163,7 +163,7 @@ const Appbar: React.FC = (): JSX.Element => {
   return (
     <>
       {isAuthenticatedRoute && isSignedIn ? (
-        <div className="tw-h-14 tw-py-2 tw-px-5 tw-border-b-2 tw-border-separator">
+        <div className="tw-h-16 tw-py-3 tw-px-5 tw-border-b-2 tw-border-separator">
           <div className="tw-flex tw-items-center tw-flex-row tw-justify-between tw-flex-nowrap">
             <div className="tw-flex tw-items-center tw-flex-row tw-justify-between tw-flex-nowrap">
               <NavLink id="openmetadata_logo" to="/">
@@ -196,12 +196,12 @@ const Appbar: React.FC = (): JSX.Element => {
               data-testid="appbar-item">
               <SVGIcons
                 alt="icon-search"
-                className="tw-absolute tw-block tw-z-10 tw-w-4 tw-h-4 tw-right-2.5 tw-top-2 tw-leading-8 tw-text-center tw-pointer-events-none"
+                className="tw-absolute tw-block tw-z-10 tw-w-4 tw-h-4 tw-right-2.5 tw-top-2.5 tw-leading-8 tw-text-center tw-pointer-events-none"
                 icon="icon-searchv1"
               />
               <input
                 autoComplete="off"
-                className="tw-relative search-grey tw-rounded tw-border tw-border-main focus:tw-outline-none tw-pl-2 tw-py-1 tw-form-inputs"
+                className="tw-relative search-grey tw-rounded tw-border tw-border-main focus:tw-outline-none tw-pl-2 tw-pt-2 tw-pb-1.5 tw-form-inputs"
                 data-testid="searchBox"
                 id="searchBox"
                 placeholder="Search for Table, Topics, Dashboards and Pipeline"
@@ -253,7 +253,7 @@ const Appbar: React.FC = (): JSX.Element => {
                 onClick={openModal}>
                 <SVGIcons
                   alt="Doc icon"
-                  className="tw-align-middle tw--mt-0.5 tw-mr-1"
+                  className="tw-align-middle tw-mr-1"
                   icon={Icons.WHATS_NEW}
                   width="16"
                 />

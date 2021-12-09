@@ -41,7 +41,6 @@ import { Team } from '../../generated/entity/teams/team';
 import { User } from '../../generated/entity/teams/user';
 import { useAuth } from '../../hooks/authHooks';
 import { UserTeam } from '../../interface/team.interface';
-import { getNameFromEmail } from '../../utils/AuthProvider.util';
 import { getCountBadge } from '../../utils/CommonUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import AddUsersModal from './AddUsersModal';
@@ -215,7 +214,7 @@ const TeamsPage = () => {
           {currentTeam?.users?.map((user, index) => {
             const User = {
               description: user.displayName || user.name || '',
-              name: getNameFromEmail(user.name || '') || '',
+              name: user.name || '',
               id: user.id,
             };
 
@@ -346,7 +345,7 @@ const TeamsPage = () => {
           description: user.displayName || '',
           id: user.id,
           href: user.href,
-          name: getNameFromEmail(user.name),
+          name: user.name || '',
           type: 'user',
         };
       });
