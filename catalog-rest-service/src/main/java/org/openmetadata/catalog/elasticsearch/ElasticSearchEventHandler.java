@@ -145,8 +145,8 @@ public class ElasticSearchEventHandler implements EventHandler {
         for (EntityReference follower : entityReferences) {
           newFollowers.add(follower.getId().toString());
         }
-        //fieldAddParams.put(fieldChange.getName(), newFollowers);
-        //scriptTxt.append("ctx._source.followers.addAll(params.followers);");
+        fieldAddParams.put(fieldChange.getName(), newFollowers);
+        scriptTxt.append("ctx._source.followers.addAll(params.followers);");
       }
     }
 
@@ -164,7 +164,7 @@ public class ElasticSearchEventHandler implements EventHandler {
         .updatedBy(event.getUserName()).build();
     esChangeDescription.setFieldsAdded(changeDescription.getFieldsAdded());
     esChangeDescription.setFieldsDeleted(changeDescription.getFieldsDeleted());
-    esChangeDescription.setFieldsUpdated(changeDescription.getFieldsAdded());
+    esChangeDescription.setFieldsUpdated(changeDescription.getFieldsUpdated());
     Map<String, Object> esChangeDescriptionDoc = JsonUtils.getMap(esChangeDescription);
     fieldAddParams.put("change_description", esChangeDescriptionDoc);
     scriptTxt.append("ctx._source.change_descriptions.add(params.change_description);");
