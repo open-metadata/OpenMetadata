@@ -1,4 +1,4 @@
-# Table
+# Location
 
 This schema defines the Location entity. A Location can contain the data of a table or group other sublocation together.
 
@@ -6,13 +6,15 @@ This schema defines the Location entity. A Location can contain the data of a ta
 
 Type: `object`
 
+This schema <u>does not</u> accept additional properties.
+
 ## Properties
 - **id**
   - Unique identifier of this location instance.
   - $ref: [../../type/basic.json#/definitions/uuid](../types/basic.md#uuid)
 - **name** `required`
   - Name of a location without the service. For example s3://bucket/path1/path2.
-  - Type: `string`
+  - $ref: [#/definitions/locationName](#locationname)
 - **displayName**
   - Display Name that identifies this table. It could be title or label from the source services.
   - Type: `string`
@@ -50,12 +52,20 @@ Type: `object`
 - **service** `required`
   - Link to the database cluster/service where this database is hosted in.
   - $ref: [../../type/entityReference.json](../types/entityreference.md)
+- **serviceType**
+    - Service type where this storage location is hosted in.
+    - $ref: [../../type/storage.json#/definitions/storageServiceType](../types/storage.md#storageservicetype)
 - **changeDescription**
   - Change that lead to this version of the entity.
   - $ref: [../../type/entityHistory.json#/definitions/changeDescription](../types/entityhistory.md#changedescription)
 
 
 ## Type definitions in this schema
+### locationName
+- Local name (not fully qualified name) of a location.
+- Type: `string`
+- Length: between 1 and 128
+
 
 ### locationType
 
@@ -68,4 +78,4 @@ Type: `object`
   4. _"Table"_
    
 
-_This document was updated on: Monday, November 15, 2021_
+_This document was updated on: Thursday, December 9, 2021_

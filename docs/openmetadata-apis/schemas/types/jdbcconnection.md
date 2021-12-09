@@ -6,6 +6,8 @@ This schema defines the type used for JDBC connection information.
 
 Type: `object`
 
+This schema <u>does not</u> accept additional properties.
+
 ## Properties
 - **driverClass** `required`
   - JDBC driver class.
@@ -43,4 +45,4 @@ Type: `object`
   - **connectionUrl** `required`
     - $ref: [#/definitions/connectionUrl](#connectionurl)
 
-_This document was updated on: Monday, November 15, 2021_
+    - _This document was updated on: Thursday, December 9, 2021_

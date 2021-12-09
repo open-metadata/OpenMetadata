@@ -6,6 +6,8 @@ This schema defines the Topic entity. A topic is a feed into which message are p
 
 Type: `object`
 
+This schema <u>does not</u> accept additional properties.
+
 ## Properties
 - **id** `required`
   - Unique identifier that identifies this topic instance.
@@ -34,6 +36,9 @@ Type: `object`
 - **service** `required`
   - Link to the messaging cluster/service where this topic is hosted in.
   - $ref: [../../type/entityReference.json](../types/entityreference.md)
+- **serviceType**
+  - Service type where this topic is hosted in.
+  - $ref: [../services/messagingService.json#/definitions/messagingServiceType](../services/messagingservice.md#messagingservicetype)
 - **partitions** `required`
   - Number of partitions into which the topic is divided.
   - Type: `integer`
@@ -90,7 +95,7 @@ Type: `object`
 - Name that identifies a topic.
 - Type: `string`
 - The value must match this pattern: `^[^.]*$`
-- Length: between 1 and 64
+- Length: between 1 and 128
 
 ### schemaType
 
@@ -108,4 +113,4 @@ Type: `object`
   1. _"delete"_
   2. _"compact"_
 
-_This document was updated on: Monday, November 15, 2021_
+_This document was updated on: Thursday, December 9, 2021_

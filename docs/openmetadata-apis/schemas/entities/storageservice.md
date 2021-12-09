@@ -6,6 +6,8 @@ This schema defines the Storage Service entity, such as S3, GCS, HDFS.
 
 Type: `object`
 
+This schema <u>does not</u> accept additional properties.
+
 ## Properties
 - **id** `required`
   - Unique identifier of this storage service instance.
@@ -13,13 +15,13 @@ Type: `object`
 - **name** `required`
   - Name that identifies this storage service.
   - Type: `string`
-  - Length: between 1 and 64
+  - Length: between 1 and 128
 - **displayName**
   - Display Name that identifies this storage service.
   - Type: `string`
 - **serviceType** `required`
   - Type of storage service such as S3, GCS, HDFS...
-  - $ref: [#/definitions/storageServiceType](#storageservicetype)
+  - $ref: [../../type/storage.json#/definitions/storageServiceType](../types/storage.md#storageservicetype)
 - **description**
   - Description of a storage service instance.
   - Type: `string`
@@ -39,16 +41,4 @@ Type: `object`
   - Change that lead to this version of the entity.
   - $ref: [../../type/entityHistory.json#/definitions/changeDescription](../types/entityhistory.md#changedescription)
 
-
-## Type definitions in this schema
-
-### storageServiceType
-
-- Type of storage service such as S3, GCS, HDFS...
-- Type: `string`
-- The value is restricted to the following: 
-  1. _"S3"_
-  2. _"GCS"_
-  3. _"HDFS"_
-
-_This document was updated on: Monday, November 15, 2021_
+_This document was updated on: Thursday, December 9, 2021_

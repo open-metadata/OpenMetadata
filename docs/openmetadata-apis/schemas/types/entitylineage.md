@@ -6,54 +6,54 @@ This schema defines the type used for lineage of an entity.
 
 Type: `object`
 
-This schema does not accept additional properties.
+This schema <u>does not</u> accept additional properties.
 
 ## Properties
+- **entity** `required` 
+  - Primary entity for which this lineage graph is created.
+  - $ref: [entityReference.json](entityreference.md)
+- **nodes**
+  - Type: `array`
+    - **Items**
+    - $ref: [entityReference.json](entityreference.md)
+- **upstreamEdges**
+  - Type: `array`
+    - **Items**
+    - $ref: [#/definitions/edge](#edge)
+- **downstreamEdges**
+  - Type: `array`
+    - **Items**
+    - $ref: [#/definitions/edge](#edge)
 
-* **entity** `required`
-  * Primary entity for which this lineage graph is created.
-  * $ref: [entityReference.json](entityreference.md)
-* **nodes**
-  * Type: `array`
-    * **Items**
-    * $ref: [entityReference.json](entityreference.md)
-* **upstreamEdges**
-  * Type: `array`
-    * **Items**
-    * $ref: [#/definitions/edge](entitylineage.md#edge)
-* **downstreamEdges**
-  * Type: `array`
-    * **Items**
-    * $ref: [#/definitions/edge](entitylineage.md#edge)
 
 ## Type definitions in this schema
 
 ### edge
 
-* Edge in the lineage graph from one entity to another by entity IDs.
-* Type: `object`
-* **Properties**
-  * **fromEntity**
-    * From entity that is upstream of lineage edge.
-    * $ref: [basic.json#/definitions/uuid](basic.md#uuid)
-  * **toEntity**
-    * To entity that is downstream of lineage edge.
-    * $ref: [basic.json#/definitions/uuid](basic.md#uuid)
-  * **description**
-    * Type: `string`
+- Edge in the lineage graph from one entity to another by entity IDs.
+- Type: `object`
+- **Properties**
+  - **fromEntity**
+    - From entity that is upstream of lineage edge.
+    - $ref: [basic.json#/definitions/uuid](basic.md#uuid)
+  - **toEntity**
+    - To entity that is downstream of lineage edge.
+    - $ref: [basic.json#/definitions/uuid](basic.md#uuid)
+  - **description**
+    - Type: `string`
 
 ### entitiesEdge
 
-* Edge in the lineage graph from one entity to another using entity references.
-* Type: `object`
-* **Properties**
-  * **fromEntity**
-    * From entity that is upstream of lineage edge.
-    * $ref: [entityReference.json](entityreference.md)
-  * **toEntity**
-    * To entity that is downstream of lineage edge.
-    * $ref: [entityReference.json](entityreference.md)
-  * **description**
-    * Type: `string`
+- Edge in the lineage graph from one entity to another using entity references.
+- Type: `object`
+- **Properties**
+  - **fromEntity**
+    - From entity that is upstream of lineage edge.
+    - $ref: [entityReference.json](entityreference.md)
+  - **toEntity**
+    - To entity that is downstream of lineage edge.
+    - $ref: [entityReference.json](entityreference.md)
+  - **description**
+    - Type: `string`
 
-_This document was updated on: Monday, November 15, 2021_
+_This document was updated on: Thursday, December 9, 2021_
