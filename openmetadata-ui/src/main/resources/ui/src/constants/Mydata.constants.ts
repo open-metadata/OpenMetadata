@@ -52,7 +52,7 @@ export const getFilters = (
 };
 
 export const filterList = [
-  { name: 'All Activity Feeds', value: 'all' },
-  { name: 'My Data Activity Feeds', value: 'owner' },
-  { name: 'Followed Data Activity Feeds', value: 'followers' },
+  { name: 'All Activity', value: 'all' },
+  { name: 'My Data', value: 'owner' },
+  { name: 'Following Data', value: 'followers' },
 ];

@@ -786,3 +786,14 @@ body .profiler-graph .recharts-active-dot circle {
 .page-layout-container-center {
   grid-template-areas: 'centerarea centerarea centerarea';
 }
+
+/* Feed CSS */
+
+.feed-change-description {
+  /* display: inline; */
+  padding: 2px 3px;
+  border-radius: 4px;
+  background: #ebeef1;
+  font-size: 90%;
+  /* margin-left: 8px; */
+}
