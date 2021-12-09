@@ -6,6 +6,8 @@ This schema defines the Pipeline entity. A pipeline enables the flow of data fro
 
 Type: `object`
 
+This schema <u>does not</u> accept additional properties.
+
 ## Properties
 - **id** `required`
   - Unique identifier that identifies a pipeline instance.
@@ -13,14 +15,13 @@ Type: `object`
 - **name** `required`
   - Name that identifies this pipeline instance uniquely.
   - Type: `string`
-  - Length: between 1 and 64
+  - Length: between 1 and 128
 - **displayName**
   - Display Name that identifies this Pipeline. It could be title or label from the source services.
   - Type: `string`
 - **fullyQualifiedName**
   - A unique name that identifies a pipeline in the format 'ServiceName.PipelineName'.
   - Type: `string`
-  - Length: between 1 and 64
 - **description**
   - Description of this Pipeline.
   - Type: `string`
@@ -68,6 +69,9 @@ Type: `object`
 - **service** `required`
   - Link to service where this pipeline is hosted in.
   - $ref: [../../type/entityReference.json](../types/entityreference.md)
+- **serviceType**
+  - Service type where this pipeline is hosted in.
+  - $ref: [../services/pipelineService.json#/definitions/pipelineServiceType](../services/pipelineservice.md#pipelineservicetype)
 - **changeDescription**
   - Change that lead to this version of the entity.
   - $ref: [../../type/entityHistory.json#/definitions/changeDescription](../types/entityhistory.md#changedescription)
@@ -81,14 +85,12 @@ Type: `object`
   - **name** `required`
     - Name that identifies this task instance uniquely.
     - Type: `string`
-    - Length: between 1 and 64
   - **displayName**
     - Display Name that identifies this Task. It could be title or label from the pipeline services.
     - Type: `string`
   - **fullyQualifiedName**
     - A unique name that identifies a pipeline in the format 'ServiceName.PipelineName.TaskName'.
     - Type: `string`
-    - Length: between 1 and 64
   - **description**
     - Description of this Task.
     - Type: `string`
@@ -101,7 +103,6 @@ Type: `object`
     - Type: `array`
       - **Items**
       - Type: `string`
-      - Length: between 1 and 64
   - **taskType**
     - Type of the Task. Usually refers to the class it implements.
     - Type: `string`
@@ -114,4 +115,4 @@ Type: `object`
       - **Items**
       - $ref: [../../type/tagLabel.json](../types/taglabel.md)
 
-_This document was updated on: Monday, November 15, 2021_
+_This document was updated on: Thursday, December 9, 2021_

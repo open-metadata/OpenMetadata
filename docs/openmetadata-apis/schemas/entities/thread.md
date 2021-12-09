@@ -6,6 +6,8 @@ This schema defines the Thread entity. A Thread is a collection of posts made by
 
 Type: `object`
 
+This schema <u>does not</u> accept additional properties.
+
 ## Properties
 - **id** `required`
   - Unique identifier that identifies an entity instance.
@@ -45,4 +47,4 @@ Type: `object`
     - ID of User (regular user or a bot) posting the message.
     - $ref: [../../type/basic.json#/definitions/uuid](../types/basic.md#uuid)
 
-_This document was updated on: Monday, November 15, 2021_
+_This document was updated on: Thursday, December 9, 2021_
