@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import classNames from 'classnames';
 import { EntityTags, TableDetail } from 'Models';
 import React from 'react';
 import AppState from '../AppState';
@@ -144,7 +145,7 @@ export const getFollowerDetail = (id: string) => {
   return follower;
 };
 
-export const getConstraintIcon = (constraint = '') => {
+export const getConstraintIcon = (constraint = '', className = '') => {
   let title: string, icon: string;
   switch (constraint) {
     case ConstraintTypes.PRIMARY_KEY:
@@ -174,7 +175,7 @@ export const getConstraintIcon = (constraint = '') => {
 
   return (
     <PopOver
-      className="tw-absolute tw-left-2"
+      className={classNames('tw-absolute tw-left-2', className)}
       position="bottom"
       size="small"
       title={title}
