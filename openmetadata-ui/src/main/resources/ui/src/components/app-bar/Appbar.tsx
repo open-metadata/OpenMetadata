@@ -62,9 +62,7 @@ const Appbar: React.FC = (): JSX.Element => {
   const searchQuery = match?.params?.searchQuery;
   const [searchValue, setSearchValue] = useState(searchQuery);
   const [isOpen, setIsOpen] = useState<boolean>(true);
-  const [isFeatureModalOpen, setIsFeatureModalOpen] = useState<boolean>(() => {
-    return !isFirstTimeUser && cookieStorage.getItem(COOKIE_VERSION) !== 'true';
-  });
+  const [isFeatureModalOpen, setIsFeatureModalOpen] = useState<boolean>(false);
 
   const [version, setVersion] = useState<string>('');
 
@@ -143,7 +141,8 @@ const Appbar: React.FC = (): JSX.Element => {
 
   useEffect(() => {
     setIsFeatureModalOpen(
-      !isFirstTimeUser && cookieStorage.getItem(COOKIE_VERSION) !== 'true'
+      // TODO: Add !isFirstTimeUser to condition if showing Welcome Modal
+      cookieStorage.getItem(COOKIE_VERSION) !== 'true'
     );
   }, [isFirstTimeUser]);
 
