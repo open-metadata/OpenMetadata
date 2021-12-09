@@ -139,9 +139,9 @@ public class IngestionResource {
                   " Use cursor-based pagination to limit the number " +
                   "entries in the list using `limit` and `before` or `after` query params.",
           responses = {
-                  @ApiResponse(responseCode = "200", description = "List of ingestion workflows",
+              @ApiResponse(responseCode = "200", description = "List of ingestion workflows",
                           content = @Content(mediaType = "application/json",
-                                  schema = @Schema(implementation = IngestionList.class)))
+                          schema = @Schema(implementation = IngestionList.class)))
           })
   public ResultList<Ingestion> list(@Context UriInfo uriInfo,
                                     @Context SecurityContext securityContext,
@@ -199,10 +199,10 @@ public class IngestionResource {
   @Operation(summary = "Get a ingestion workflow", tags = "ingestion",
           description = "Get a ingestion workflow by `id`.",
           responses = {
-                  @ApiResponse(responseCode = "200", description = "The ingestion",
+              @ApiResponse(responseCode = "200", description = "The ingestion",
                           content = @Content(mediaType = "application/json",
-                                  schema = @Schema(implementation = Ingestion.class))),
-                  @ApiResponse(responseCode = "404", description = "ingestion for instance {id} is not found")
+                          schema = @Schema(implementation = Ingestion.class))),
+              @ApiResponse(responseCode = "404", description = "ingestion for instance {id} is not found")
           })
   public Ingestion get(@Context UriInfo uriInfo,
                        @Context SecurityContext securityContext,
@@ -223,10 +223,10 @@ public class IngestionResource {
   @Operation(summary = "Get a version of the ingestion", tags = "ingestion",
           description = "Get a version of the ingestion by given `id`",
           responses = {
-                  @ApiResponse(responseCode = "200", description = "ingestion",
+              @ApiResponse(responseCode = "200", description = "ingestion",
                           content = @Content(mediaType = "application/json",
-                                  schema = @Schema(implementation = Ingestion.class))),
-                  @ApiResponse(responseCode = "404", description = "Ingestion for instance {id} and version  " +
+                          schema = @Schema(implementation = Ingestion.class))),
+              @ApiResponse(responseCode = "404", description = "Ingestion for instance {id} and version  " +
                           "{version} is not found")
           })
   public Ingestion getVersion(@Context UriInfo uriInfo,
@@ -244,10 +244,10 @@ public class IngestionResource {
   @Operation(summary = "Get a ingestion by name", tags = "ingestion",
           description = "Get a ingestion by fully qualified name.",
           responses = {
-                  @ApiResponse(responseCode = "200", description = "The ingestion",
+              @ApiResponse(responseCode = "200", description = "The ingestion",
                           content = @Content(mediaType = "application/json",
-                                  schema = @Schema(implementation = Ingestion.class))),
-                  @ApiResponse(responseCode = "404", description = "Ingestion for instance {id} is not found")
+                          schema = @Schema(implementation = Ingestion.class))),
+              @ApiResponse(responseCode = "404", description = "Ingestion for instance {id} is not found")
           })
   public Ingestion getByName(@Context UriInfo uriInfo, @PathParam("fqn") String fqn,
                              @Context SecurityContext securityContext,
@@ -267,10 +267,10 @@ public class IngestionResource {
   @Operation(summary = "Create a Ingestion", tags = "ingestion",
           description = "Create a new Ingestion.",
           responses = {
-                  @ApiResponse(responseCode = "200", description = "The ingestion",
+              @ApiResponse(responseCode = "200", description = "The ingestion",
                           content = @Content(mediaType = "application/json",
-                                  schema = @Schema(implementation = CreateIngestion.class))),
-                  @ApiResponse(responseCode = "400", description = "Bad request")
+                          schema = @Schema(implementation = CreateIngestion.class))),
+              @ApiResponse(responseCode = "400", description = "Bad request")
           })
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext,
                          @Valid CreateIngestion create) throws IOException, ParseException {
@@ -312,10 +312,10 @@ public class IngestionResource {
   @Operation(summary = "Create or update a ingestion", tags = "ingestion",
           description = "Create a new ingestion, if it does not exist or update an existing ingestion.",
           responses = {
-                  @ApiResponse(responseCode = "200", description = "The ingestion",
+              @ApiResponse(responseCode = "200", description = "The ingestion",
                           content = @Content(mediaType = "application/json",
-                                  schema = @Schema(implementation = Ingestion.class))),
-                  @ApiResponse(responseCode = "400", description = "Bad request")
+                          schema = @Schema(implementation = Ingestion.class))),
+              @ApiResponse(responseCode = "400", description = "Bad request")
           })
   public Response createOrUpdate(@Context UriInfo uriInfo,
                                  @Context SecurityContext securityContext,
@@ -333,10 +333,10 @@ public class IngestionResource {
   @Operation(summary = "Trigger a ingestion workflow run", tags = "ingestion",
             description = "Trigger a ingestion workflow run by ingestion name.",
             responses = {
-                    @ApiResponse(responseCode = "200", description = "The ingestion",
+                @ApiResponse(responseCode = "200", description = "The ingestion",
                             content = @Content(mediaType = "application/json",
-                                    schema = @Schema(implementation = Ingestion.class))),
-                    @ApiResponse(responseCode = "404", description = "Ingestion for instance {name} is not found")
+                            schema = @Schema(implementation = Ingestion.class))),
+                @ApiResponse(responseCode = "404", description = "Ingestion for instance {name} is not found")
             })
   public Ingestion triggerIngestion(@Context UriInfo uriInfo, @PathParam("id") String id,
                                    @Context SecurityContext securityContext) throws IOException, ParseException {
@@ -352,8 +352,8 @@ public class IngestionResource {
   @Operation(summary = "Delete a Ingestion", tags = "ingestion",
           description = "Delete a ingestion by `id`.",
           responses = {
-                  @ApiResponse(responseCode = "200", description = "OK"),
-                  @ApiResponse(responseCode = "404", description = "ingestion for instance {id} is not found")
+              @ApiResponse(responseCode = "200", description = "OK"),
+              @ApiResponse(responseCode = "404", description = "ingestion for instance {id} is not found")
           })
   public Response delete(@Context UriInfo uriInfo, @PathParam("id") String id) {
     dao.delete(UUID.fromString(id));
