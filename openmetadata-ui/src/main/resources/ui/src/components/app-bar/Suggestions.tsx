@@ -302,7 +302,7 @@ const Suggestions = ({ searchText, isOpen, setIsOpen }: SuggestionProp) => {
           <div
             aria-labelledby="menu-button"
             aria-orientation="vertical"
-            className="tw-origin-top-right tw-absolute tw-z-10
+            className="tw-origin-top-right tw-absolute tw-z-20
           tw-w-full tw-mt-1 tw-rounded-md tw-shadow-lg
         tw-bg-white tw-ring-1 tw-ring-black tw-ring-opacity-5 focus:tw-outline-none"
             role="menu">
