@@ -281,7 +281,7 @@ a:focus {
   flex-wrap: nowrap;
   align-content: flex-start;
   position: relative;
-  height: calc(100% - 61px);
+  height: calc(100% - 70px);
   overflow-y: auto;
   padding: 15px 0 0;
   box-shadow: 0 -5px 5px -5px #d1cfc7;
@@ -738,7 +738,7 @@ body .profiler-graph .recharts-active-dot circle {
   flex-wrap: nowrap;
   align-content: flex-start;
   position: relative;
-  height: calc(100% - 61px);
+  height: calc(100% - 70px);
   overflow-y: hidden;
 }
 

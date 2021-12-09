@@ -392,9 +392,9 @@
 /* side-panel */
 .side-panel {
   position: fixed;
-  top: 56px;
+  top: 64px;
   width: 275px;
-  height: calc(100vh - 56px);
+  height: calc(100vh - 70px);
   padding: 15px;
   background-color: #fff;
   /* border-right: 1px solid #d1cfc7; */
