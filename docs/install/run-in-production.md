@@ -34,6 +34,12 @@ To install MySQL see the instructions for your operating system (OS) at [Install
 * [Installing MySQL on Microsoft Windows](https://dev.mysql.com/doc/mysql-installation-excerpt/8.0/en/windows-installation.html)
 * [Installing MySQL on macOS](https://dev.mysql.com/doc/mysql-installation-excerpt/8.0/en/macos-installation.html)
 
+{% hint style="info" %}
+Make sure to configure required databases and users for OpenMetadata.
+
+You can refer a sample script from [here](https://github.com/open-metadata/OpenMetadata/blob/main/docker/local-metadata/mysql-script.sql).
+{% endhint %}
+
 ### Elasticsearch (version 7.0.0 or greater)
 
 To install or upgrade Elasticsearch to a supported version please see the instructions for your operating system at [Installing Elasticsearch](https://www.elastic.co/guide/en/elasticsearch/reference/current/install-elasticsearch.html).
@@ -73,7 +79,7 @@ cd openmetadata-0.6.0
 OpenMetadata release ships with `./bin/openmetadata` init.d style script. Run the following command from the `openmetadata-0.6.0` directory.
 
 ```
-./bin/openmetdata start
+./bin/openmetdata.sh start
 ```
 
 We recommend configuring `serviced` to monitor the OpenMetadata command to restart in case of any failures.
