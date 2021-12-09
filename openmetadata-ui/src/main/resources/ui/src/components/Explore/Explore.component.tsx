@@ -390,11 +390,11 @@ const Explore: React.FC<ExploreProps> = ({
   const getTabs = () => {
     return (
       <div className="tw-mb-5">
-        <nav className="tw-flex tw-flex-row tw-gh-tabs-container tw-px-5 tw-pl-16 tw-mx-6 tw-justify-between">
+        <nav className="tw-flex tw-flex-row tw-gh-tabs-container tw-mx-6 tw-justify-around">
           <div>
             {tabsInfo.map((tabDetail, index) => (
               <button
-                className={`tw-pb-2 tw-px-4 tw-gh-tabs ${getActiveTabClass(
+                className={`tw-pb-2 tw-pr-6 tw-gh-tabs ${getActiveTabClass(
                   tabDetail.tab
                 )}`}
                 data-testid="tab"
@@ -408,7 +408,9 @@ const Explore: React.FC<ExploreProps> = ({
                   icon={tabDetail.icon}
                 />
                 {tabDetail.label}
-                {getTabCount(tabDetail.index, tabDetail.tab === currentTab)}
+                <span className="tw-pl-2">
+                  {getTabCount(tabDetail.index, tabDetail.tab === currentTab)}
+                </span>
               </button>
             ))}
           </div>

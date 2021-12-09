@@ -28,7 +28,7 @@ const PageLayout: FC<PageLayoutProp> = ({
   return (
     <div
       className={classNames(
-        'page-layout-container tw-gap-x-3 tw-px-4 tw-overflow-y-auto',
+        'page-layout-container tw-gap-x-3 tw-px-12 tw-overflow-y-auto',
         {
           'page-layout-container-left-center-right':
             leftPanel && children && rightPanel,
