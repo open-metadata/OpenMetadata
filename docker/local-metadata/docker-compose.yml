@@ -61,6 +61,22 @@ services:
       - "localhost:172.16.239.10"
       - "elasticsearch:172.16.239.11"
 
+  ingestion:
+    build:
+      context: ../../.
+      dockerfile: ingestion/Dockerfile
+    depends_on:
+      - mysql
+    expose:
+      - 8080
+    ports:
+      - 8080:8080
+    networks:
+      - local_app_net
+    extra_hosts:
+      - "localhost:172.16.239.10"
+      - "localhost:172.16.239.11"
+      - "localhost:172.16.239.13"
 
 networks:
   local_app_net:
