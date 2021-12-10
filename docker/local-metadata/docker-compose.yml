@@ -15,6 +15,7 @@ services:
     build:
       context: ../../.
       dockerfile: docker/local-metadata/Dockerfile_mysql
+    container_name: openmetadata_mysql
     restart: always
     environment:
       MYSQL_ROOT_PASSWORD: password
@@ -26,6 +27,7 @@ services:
 
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:7.10.2
+    container_name: openmetadata_elasticsearch
     environment:
       - discovery.type=single-node
       - ES_JAVA_OPTS=-Xms1024m -Xmx1024m
@@ -45,6 +47,7 @@ services:
     build:
       context: ../../.
       dockerfile: docker/local-metadata/Dockerfile
+    container_name: openmetadata_server
     expose:
       - 8585
       - 9200
@@ -65,6 +68,7 @@ services:
     build:
       context: ../../.
       dockerfile: ingestion/Dockerfile
+    container_name: openmetadata_ingestion
     depends_on:
       - mysql
     expose:

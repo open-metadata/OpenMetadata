@@ -167,8 +167,8 @@ def get_list(docker_type, all_check: bool = None):
 def docker(start, stop, clean, type, path) -> None:
     """
     Checks Docker Memory Allocation
-    Run Latest Release Docker - metadata docker --run
-    Run Local Docker - metadata docker --run -t local -p path/to/docker-compose.yml
+    Run Latest Release Docker - metadata docker --start
+    Run Local Docker - metadata docker --start -t local -p path/to/docker-compose.yml
     """
     try:
         import docker as sys_docker
