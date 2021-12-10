@@ -10,7 +10,10 @@
 #  limitations under the License.
 
 # This import verifies that the dependencies are available.
+from typing import Optional
+
 import cx_Oracle  # noqa: F401
+import pydantic
 
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.source.sql_source import SQLConnectionConfig, SQLSource
@@ -19,9 +22,23 @@ from metadata.ingestion.source.sql_source import SQLConnectionConfig, SQLSource
 class OracleConfig(SQLConnectionConfig):
     # defaults
     scheme = "oracle+cx_oracle"
+    oracle_service_name: Optional[str] = None
+    query: Optional[str] = "select * from {}.{} where ROWNUM <= 50"
+
+    @pydantic.validator("oracle_service_name")
+    def check_oracle_service_name(cls, v, values):
+        if values.get("database") and v:
+            raise ValueError(
+                "Please provide database or oracle_service_name but not both"
+            )
+        return v
 
     def get_connection_url(self):
-        return super().get_connection_url()
+        url = super().get_connection_url()
+        if self.oracle_service_name:
+            assert not self.database
+            url = f"{url}/?service_name={self.oracle_service_name}"
+        return url
 
 
 class OracleSource(SQLSource):
