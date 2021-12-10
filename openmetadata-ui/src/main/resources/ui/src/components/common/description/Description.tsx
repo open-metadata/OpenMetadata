@@ -46,7 +46,7 @@ const Description = ({
   return (
     <div className="schema-description tw-flex tw-flex-col tw-h-full tw-min-h-168 tw-relative tw-border tw-border-main tw-rounded-md">
       <div className="tw-flex tw-items-center tw-px-3 tw-py-1 tw-border-b tw-border-main">
-        <span className="tw-flex-1 tw-leading-8 tw-m-0 tw-text-sm tw-font-normal">
+        <span className="tw-flex-1 tw-leading-8 tw-m-0 tw-text-sm tw-font-medium">
           Description
         </span>
         {!isReadOnly ? (
