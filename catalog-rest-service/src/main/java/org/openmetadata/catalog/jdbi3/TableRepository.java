@@ -237,6 +237,22 @@ public class TableRepository extends EntityRepository<Table> {
   public Table addDataModel(UUID tableId, DataModel dataModel) throws IOException, ParseException {
     Table table = dao.tableDAO().findEntityById(tableId);
     table.withDataModel(dataModel);
+
+    // Carry forward the table description from the model to table entity, if empty
+    if (table.getDescription() == null || table.getDescription().isEmpty()) {
+      table.setDescription(dataModel.getDescription());
+    }
+    // Carry forward the column description from the model to table columns, if empty
+    for (Column modelColumn : Optional.ofNullable(dataModel.getColumns()).orElse(Collections.emptyList())) {
+      Column stored = table.getColumns().stream().filter(c ->
+              EntityUtil.columnNameMatch.test(c, modelColumn)).findAny().orElse(null);
+      if (stored == null) {
+        continue;
+      }
+      if (stored.getDescription() == null || stored.getDescription().isEmpty()) {
+        stored.setDescription(modelColumn.getDescription());
+      }
+    }
     dao.tableDAO().update(table.getId(), JsonUtils.pojoToJson(table));
     setFields(table, Fields.EMPTY_FIELDS);
     return table;
@@ -785,8 +801,7 @@ public class TableRepository extends EntityRepository<Table> {
       // Carry forward the user generated metadata from existing columns to new columns
       for (Column updated : updatedColumns) {
         // Find stored column matching name, data type and ordinal position
-        Column stored = origColumns.stream().filter(c ->
-            EntityUtil.columnMatch.test(c, updated)).findAny().orElse(null);
+        Column stored = origColumns.stream().filter(c -> columnMatch.test(c, updated)).findAny().orElse(null);
         if (stored == null) { // New column added
           continue;
         }
