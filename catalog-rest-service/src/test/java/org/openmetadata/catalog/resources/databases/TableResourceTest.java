@@ -44,6 +44,8 @@ import org.openmetadata.catalog.type.ColumnConstraint;
 import org.openmetadata.catalog.type.ColumnDataType;
 import org.openmetadata.catalog.type.ColumnJoin;
 import org.openmetadata.catalog.type.ColumnProfile;
+import org.openmetadata.catalog.type.DataModel;
+import org.openmetadata.catalog.type.DataModel.ModelType;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.type.JoinedWith;
@@ -70,6 +72,7 @@ import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -506,7 +509,7 @@ public class TableResourceTest extends EntityResourceTest<Table> {
       // Report joins starting from today back to 30 days. After every report, check the cumulative join count
       TableJoins table1Joins =
               new TableJoins().withDayCount(1).withStartDate(RestUtil.today(-(i-1))).withColumnJoins(reportedJoins);
-      putJoins(table1.getId(), table1Joins, adminAuthHeaders());
+      Table putResponse = putJoins(table1.getId(), table1Joins, adminAuthHeaders());
 
       List<ColumnJoin> expectedJoins1 = Arrays.asList(
               // table1.c1 is joined with table2.c1, and table3.c1 with join count 10
@@ -521,6 +524,9 @@ public class TableResourceTest extends EntityResourceTest<Table> {
               new ColumnJoin().withColumnName("c3").withJoinedWith(Arrays.asList(
                       new JoinedWith().withFullyQualifiedName(t2c3).withJoinCount(30 * i),
                       new JoinedWith().withFullyQualifiedName(t3c3).withJoinCount(30 * i))));
+
+      // Ensure PUT response returns the joins information
+      assertColumnJoins(expectedJoins1, putResponse.getJoins());
 
       // getTable and ensure the following column joins are correct
       table1 = getEntity(table1.getId(), "joins", adminAuthHeaders());
@@ -628,7 +634,8 @@ public class TableResourceTest extends EntityResourceTest<Table> {
                                             Arrays.asList("c1Value3", 3, true));
 
     TableData tableData = new TableData().withColumns(columns).withRows(rows);
-    putSampleData(table.getId(), tableData, adminAuthHeaders());
+    Table putResponse = putSampleData(table.getId(), tableData, adminAuthHeaders());
+    assertEquals(tableData, putResponse.getSampleData());
 
     table = getEntity(table.getId(), "sampleData", adminAuthHeaders());
     assertEquals(tableData, table.getSampleData());
@@ -711,7 +718,8 @@ public class TableResourceTest extends EntityResourceTest<Table> {
     List<ColumnProfile> columnProfiles = List.of(c1Profile, c2Profile, c3Profile);
     TableProfile tableProfile = new TableProfile().withRowCount(6.0).withColumnCount(3.0)
             .withColumnProfile(columnProfiles).withProfileDate("2021-09-09");
-    putTableProfileData(table.getId(), tableProfile, adminAuthHeaders());
+    Table putResponse = putTableProfileData(table.getId(), tableProfile, adminAuthHeaders());
+    verifyTableProfileData(putResponse.getTableProfile(), List.of(tableProfile));
 
     table = getEntity(table.getId(), "tableProfile", adminAuthHeaders());
     verifyTableProfileData(table.getTableProfile(), List.of(tableProfile));
@@ -719,14 +727,19 @@ public class TableResourceTest extends EntityResourceTest<Table> {
     // Add new date for TableProfile
     TableProfile newTableProfile = new TableProfile().withRowCount(7.0).withColumnCount(3.0)
             .withColumnProfile(columnProfiles).withProfileDate("2021-09-08");
-    putTableProfileData(table.getId(), newTableProfile, adminAuthHeaders());
+    putResponse = putTableProfileData(table.getId(), newTableProfile, adminAuthHeaders());
+    verifyTableProfileData(putResponse.getTableProfile(), List.of(newTableProfile, tableProfile));
+
     table = getEntity(table.getId(), "tableProfile", adminAuthHeaders());
     verifyTableProfileData(table.getTableProfile(), List.of(newTableProfile, tableProfile));
 
     // Replace table profile for a date
     TableProfile newTableProfile1 = new TableProfile().withRowCount(21.0).withColumnCount(3.0)
             .withColumnProfile(columnProfiles).withProfileDate("2021-09-08");
-    putTableProfileData(table.getId(), newTableProfile1, adminAuthHeaders());
+    putResponse = putTableProfileData(table.getId(), newTableProfile1, adminAuthHeaders());
+    assertEquals(tableProfile.getProfileDate(), putResponse.getTableProfile().get(0).getProfileDate());
+    verifyTableProfileData(putResponse.getTableProfile(), List.of(newTableProfile1, tableProfile));
+
     table = getEntity(table.getId(), "tableProfile", adminAuthHeaders());
     // first result should be the latest date
     assertEquals(tableProfile.getProfileDate(), table.getTableProfile().get(0).getProfileDate());
@@ -755,28 +768,80 @@ public class TableResourceTest extends EntityResourceTest<Table> {
     Table table = createAndCheckEntity(create(test), adminAuthHeaders());
     SQLQuery query = new SQLQuery().withQuery("select * from test;").withQueryDate("2021-09-08")
             .withDuration(600.0);
-    putTableQueriesData(table.getId(), query, adminAuthHeaders());
+    Table putResponse = putTableQueriesData(table.getId(), query, adminAuthHeaders());
     table = getEntity(table.getId(), "tableQueries", adminAuthHeaders());
+    assertEquals(query.getQuery(), putResponse.getTableQueries().get(0).getQuery());
+
     // first result should be the latest date
     assertEquals(query.getQuery(), table.getTableQueries().get(0).getQuery());
     SQLQuery query1 = new SQLQuery().withQuery("select * from test;").withQueryDate("2021-09-09")
             .withDuration(200.0).withVote(2.0);
+
+    //
     // try updating the same query again
-    putTableQueriesData(table.getId(), query1, adminAuthHeaders());
+    //
+    putResponse = putTableQueriesData(table.getId(), query1, adminAuthHeaders());
+    assertEquals(putResponse.getTableQueries().size(), 1);
+    assertEquals(query1.getQuery(), putResponse.getTableQueries().get(0).getQuery());
+    assertEquals(query1.getVote(), putResponse.getTableQueries().get(0).getVote());
+
     table = getEntity(table.getId(), "tableQueries", adminAuthHeaders());
     assertEquals(table.getTableQueries().size(), 1);
     assertEquals(query1.getQuery(), table.getTableQueries().get(0).getQuery());
     assertEquals(query1.getVote(), table.getTableQueries().get(0).getVote());
 
+    //
+    // Update again
+    //
     SQLQuery query2= new SQLQuery().withQuery("select * from users;").withQueryDate("2021-09-09")
             .withDuration(200.0).withVote(5.0);
-    putTableQueriesData(table.getId(), query2, adminAuthHeaders());
+    putResponse = putTableQueriesData(table.getId(), query2, adminAuthHeaders());
+    assertEquals(putResponse.getTableQueries().size(), 2);
+    // query2 with the highest vote should be the first result.
+    assertEquals(query2.getQuery(), putResponse.getTableQueries().get(0).getQuery());
+    assertEquals(query2.getVote(), putResponse.getTableQueries().get(0).getVote());
+
     table = getEntity(table.getId(), "tableQueries", adminAuthHeaders());
     assertEquals(table.getTableQueries().size(), 2);
     // query2 with the highest vote should be the first result.
     assertEquals(query2.getQuery(), table.getTableQueries().get(0).getQuery());
     assertEquals(query2.getVote(), table.getTableQueries().get(0).getVote());
 
+  }
+
+  @Test
+  public void put_tableDataModel(TestInfo test) throws IOException {
+    Table table = createAndCheckEntity(create(test), adminAuthHeaders());
+
+    //
+    // Update the data model and validate the response
+    //
+    String query = "select * from test;";
+    DataModel dataModel = new DataModel().withModelType(ModelType.DBT).withSql(query).withGeneratedAt(new Date());
+    Table putResponse = putTableDataModel(table.getId(), dataModel, adminAuthHeaders());
+    assertDataModel(dataModel, putResponse.getDataModel());
+
+    // Get the table and validate the data model
+    Table getResponse = getEntity(table.getId(), "dataModel", adminAuthHeaders());
+    assertDataModel(dataModel, getResponse.getDataModel());
+
+    //
+    // Update again
+    //
+    query = "select * from testUpdated;";
+    dataModel = new DataModel().withModelType(ModelType.DBT).withSql(query).withGeneratedAt(new Date());
+    putResponse = putTableDataModel(table.getId(), dataModel, adminAuthHeaders());
+    assertDataModel(dataModel, putResponse.getDataModel());
+
+    // Get the table and validate the data model
+    getResponse = getEntity(table.getId(), "dataModel", adminAuthHeaders());
+    assertDataModel(dataModel, getResponse.getDataModel());
+  }
+
+  public void assertDataModel(DataModel expected, DataModel actual) {
+    assertEquals(expected.getSql(), actual.getSql());
+    assertEquals(expected.getModelType(), actual.getModelType());
+    assertEquals(expected.getGeneratedAt(), actual.getGeneratedAt());
   }
 
   @Test
@@ -1122,28 +1187,34 @@ public class TableResourceTest extends EntityResourceTest<Table> {
     return createEntity(create, adminAuthHeaders());
   }
 
-  public static void putJoins(UUID tableId, TableJoins joins, Map<String, String> authHeaders)
+  public static Table putJoins(UUID tableId, TableJoins joins, Map<String, String> authHeaders)
           throws HttpResponseException {
     WebTarget target = CatalogApplicationTest.getResource("tables/" + tableId + "/joins");
-    TestUtils.put(target, joins, OK, authHeaders);
+    return TestUtils.put(target, joins, Table.class, OK, authHeaders);
   }
 
-  public static void putSampleData(UUID tableId, TableData data, Map<String, String> authHeaders)
+  public static Table putSampleData(UUID tableId, TableData data, Map<String, String> authHeaders)
           throws HttpResponseException {
     WebTarget target = CatalogApplicationTest.getResource("tables/" + tableId + "/sampleData");
-    TestUtils.put(target, data, OK, authHeaders);
+    return TestUtils.put(target, data, Table.class, OK, authHeaders);
   }
 
-  public static void putTableProfileData(UUID tableId, TableProfile data, Map<String, String> authHeaders)
+  public static Table putTableProfileData(UUID tableId, TableProfile data, Map<String, String> authHeaders)
           throws HttpResponseException {
     WebTarget target = CatalogApplicationTest.getResource("tables/" + tableId + "/tableProfile");
-    TestUtils.put(target, data, OK, authHeaders);
+    return TestUtils.put(target, data, Table.class, OK, authHeaders);
   }
 
-  public static void putTableQueriesData(UUID tableId, SQLQuery data, Map<String, String> authHeaders)
+  public static Table putTableQueriesData(UUID tableId, SQLQuery data, Map<String, String> authHeaders)
           throws HttpResponseException {
     WebTarget target = CatalogApplicationTest.getResource("tables/" + tableId + "/tableQuery");
-    TestUtils.put(target, data, OK, authHeaders);
+    return TestUtils.put(target, data, Table.class, OK, authHeaders);
+  }
+
+  public static Table putTableDataModel(UUID tableId, DataModel dataModel, Map<String, String> authHeaders)
+          throws HttpResponseException {
+    WebTarget target = CatalogApplicationTest.getResource("tables/" + tableId + "/dataModel");
+    return TestUtils.put(target, dataModel, Table.class, OK, authHeaders);
   }
 
   private static int getTagUsageCount(String tagFQN, Map<String, String> authHeaders) throws HttpResponseException {

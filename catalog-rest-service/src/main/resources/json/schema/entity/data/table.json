@@ -375,6 +375,58 @@
           "$ref": "../../type/basic.json#/definitions/date"
         }
       }
+    },
+    "modelType" : {
+      "$comment": "Currently only DBT model type is supported",
+      "enum": [
+        "DBT"
+      ],
+      "javaEnums": [
+        {
+          "name": "DBT"
+        }
+      ]
+    },
+    "dataModel" : {
+      "description": "This captures information about how the table is modeled. Currently only DBT model is supported.",
+      "type" : "object",
+      "javaType": "org.openmetadata.catalog.type.DataModel",
+      "properties": {
+        "modelType" : {
+          "$ref" : "#/definitions/modelType"
+        },
+        "path" : {
+          "description": "Path to sql definition file.",
+          "type" : "string"
+        },
+        "rawSql" : {
+          "description": "This corresponds to rws SQL from `<model_name>.sql` in DBT. This might be null when SQL query need not be compiled as done in DBT.",
+          "$ref": "../../type/basic.json#/definitions/sqlQuery"
+        },
+        "sql" : {
+          "description": "This corresponds to compile SQL from `<model_name>.sql` in DBT. In cases where compilation is not necessary, this corresponds to SQL that created the table.",
+          "$ref": "../../type/basic.json#/definitions/sqlQuery"
+        },
+        "upstream" : {
+          "description": "Fully qualified name of Models/tables used for in `sql` for creating this table",
+          "type": "array",
+          "items": {
+            "type" : "string"
+          }
+        },
+        "columns": {
+          "description": "Columns from the schema defined during modeling. In case of DBT, the metadata here comes from `schema.yaml`.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/column"
+          },
+          "default": null
+        },
+        "generatedAt" : {
+          "$ref": "../../type/basic.json#/definitions/dateTime"
+        }
+      },
+      "required" : [ "modelType", "sql"]
     }
   },
   "properties": {
@@ -500,6 +552,10 @@
         "$ref": "#/definitions/sqlQuery"
       },
       "default": null
+    },
+    "dataModel" : {
+      "description": "This captures information about how the table is modeled. Currently only DBT model is supported.",
+      "$ref": "#/definitions/dataModel"
     },
     "changeDescription": {
       "description" : "Change that lead to this version of the entity.",
