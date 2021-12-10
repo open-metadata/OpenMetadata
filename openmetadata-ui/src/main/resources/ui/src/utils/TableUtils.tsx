@@ -19,7 +19,6 @@ import PopOver from '../components/common/popover/PopOver';
 import {
   getDashboardDetailsPath,
   getDatasetDetailsPath,
-  getDBTModelDetailsPath,
   getPipelineDetailsPath,
   getTopicDetailsPath,
 } from '../constants/constants';
@@ -202,10 +201,6 @@ export const getEntityLink = (
     case EntityType.PIPELINE:
       return getPipelineDetailsPath(fullyQualifiedName);
 
-    case SearchIndex.DBT_MODEL:
-    case EntityType.DBT_MODEL:
-      return getDBTModelDetailsPath(fullyQualifiedName);
-
     case SearchIndex.TABLE:
     case EntityType.TABLE:
     default:
@@ -232,11 +227,6 @@ export const getEntityIcon = (indexType: string) => {
       icon = 'pipeline-grey';
 
       break;
-    case SearchIndex.DBT_MODEL:
-      icon = 'dbtmodel-grey';
-
-      break;
-
     case SearchIndex.TABLE:
     case EntityType.TABLE:
     default:

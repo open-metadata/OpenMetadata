@@ -103,11 +103,6 @@ export const getCurrentIndex = (tab: string) => {
       currentIndex = SearchIndex.PIPELINE;
 
       break;
-    case 'dbt_model':
-      currentIndex = SearchIndex.DBT_MODEL;
-
-      break;
-
     case 'tables':
     default:
       currentIndex = SearchIndex.TABLE;
@@ -131,11 +126,6 @@ export const getCurrentTab = (tab: string) => {
       break;
     case 'pipelines':
       currentTab = 4;
-
-      break;
-
-    case 'dbt_model':
-      currentTab = 5;
 
       break;
 
@@ -185,14 +175,5 @@ export const tabsInfo = [
     tab: 4,
     path: 'pipelines',
     icon: Icons.PIPELINE_GREY,
-  },
-  {
-    label: 'DBT Model',
-    index: SearchIndex.DBT_MODEL,
-    sortingFields: topicSortingFields,
-    sortField: '',
-    tab: 5,
-    path: 'dbt_model',
-    icon: Icons.DBTMODEL_GREY,
   },
 ];
