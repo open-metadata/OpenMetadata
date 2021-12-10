@@ -375,7 +375,7 @@ class SQLSource(Source):
                     )
                 else:
                     col_type = get_column_type(
-                        self.status, dataset_name, column["type"]
+                        self.status, dataset_name, str(column["type"]).upper()
                     )
                     if col_type == "ARRAY":
                         if re.match(r"(?:\w*)(?:\()(\w*)(?:.*)", str(column["type"])):
@@ -422,8 +422,9 @@ class SQLSource(Source):
                         arrayDataType=arr_data_type,
                     )
                 except Exception as err:
-                    logger.error(traceback.format_exc())
-                    logger.error(traceback.print_exc())
+                    logger.debug(f"Error Parsing Column Type:{col_type}")
+                    logger.debug(traceback.format_exc())
+                    logger.debug(traceback.print_exc())
                     logger.error(err)
                     continue
                 table_columns.append(om_column)
