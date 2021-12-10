@@ -10,7 +10,6 @@ import sys
 import warnings
 from urllib.parse import urlparse
 
-import mlflow
 import mlflow.sklearn
 import numpy as np
 import pandas as pd
