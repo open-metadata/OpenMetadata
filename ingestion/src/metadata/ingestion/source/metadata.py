@@ -14,16 +14,14 @@ from dataclasses import dataclass, field
 from typing import Iterable, List, Optional
 
 from metadata.config.common import ConfigModel
+from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.pipeline import Pipeline
+from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.data.topic import Topic
 from metadata.ingestion.api.common import Entity, WorkflowContext
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-
-from ...generated.schema.entity.data.dashboard import Dashboard
-from ...generated.schema.entity.data.dbtmodel import DbtModel
-from ...generated.schema.entity.data.table import Table
-from ...generated.schema.entity.data.topic import Topic
-from ..ometa.openmetadata_rest import MetadataServerConfig
+from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 
 logger = logging.getLogger(__name__)
 
