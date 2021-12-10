@@ -100,6 +100,9 @@ public final class EntityUtil {
           column1.getArrayDataType() == column2.getArrayDataType() &&
           Objects.equals(column1.getOrdinalPosition(), column2.getOrdinalPosition());
 
+  public static BiPredicate<Column, Column> columnNameMatch = (column1, column2) ->
+          column1.getName().equals(column2.getName());
+
   public static BiPredicate<TableConstraint, TableConstraint> tableConstraintMatch = (constraint1, constraint2) ->
           constraint1.getConstraintType() == constraint2.getConstraintType() &&
           constraint1.getColumns().equals(constraint2.getColumns());

@@ -420,7 +420,7 @@ public class TableResource {
   @Path("/{id}/dataModel")
   @Operation(summary = "Add data modeling information to a table", tags = "tables",
           description = "Add data modeling (such as DBT model) information on how the table was created to the table.")
-  public Table addQuery(@Context UriInfo uriInfo,
+  public Table addDataModel(@Context UriInfo uriInfo,
                         @Context SecurityContext securityContext,
                         @Parameter(description = "Id of the table", schema = @Schema(type = "string"))
                         @PathParam("id") String id, DataModel dataModel) throws IOException, ParseException {

@@ -8,7 +8,7 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-
+import json
 import logging
 import re
 import traceback
@@ -28,6 +28,8 @@ from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import (
     Column,
     Constraint,
+    DataModel,
+    ModelType,
     Table,
     TableData,
     TableProfile,
@@ -87,6 +89,8 @@ class SQLConnectionConfig(ConfigModel):
     data_profiler_offset: Optional[int] = 0
     data_profiler_limit: Optional[int] = 50000
     filter_pattern: IncludeFilterPattern = IncludeFilterPattern.allow_all()
+    dbt_manifest_file: Optional[str] = None
+    dbt_catalog_file: Optional[str] = None
 
     @abstractmethod
     def get_connection_url(self):
@@ -136,6 +140,11 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         self.engine = create_engine(self.connection_string, **self.sql_config.options)
         self.connection = self.engine.connect()
         self.data_profiler = None
+        self.data_models = {}
+        if self.config.dbt_catalog_file is not None:
+            self.dbt_catalog = json.load(open(self.config.dbt_catalog_file, "r"))
+        if self.config.dbt_manifest_file is not None:
+            self.dbt_manifest = json.load(open(self.config.dbt_manifest_file, "r"))
 
     def _instantiate_profiler(self):
         try:
@@ -155,7 +164,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
             )
 
     def prepare(self):
-        pass
+        self._parse_data_model()
 
     @classmethod
     def create(
@@ -244,6 +253,11 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                     table_entity.tableProfile = (
                         [profile] if profile is not None else None
                     )
+                # check if we have any model to associate with
+                table_fqn = f"{schema}.{table_name}"
+                if table_fqn in self.data_models:
+                    model = self.data_models[table_fqn]
+                    table_entity.dataModel = model
 
                 table_and_db = OMetaDatabaseAndTable(
                     table=table_entity, database=self._get_database(schema)
@@ -313,6 +327,85 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                     "{}.{}".format(self.config.service_name, view_name)
                 )
                 continue
+
+    def _parse_data_model(self) -> DataModel:
+        logger.info("Parsing Data Models")
+        if (
+            self.config.dbt_manifest_file is not None
+            and self.config.dbt_catalog_file is not None
+        ):
+            manifest_nodes = self.dbt_manifest["nodes"]
+            manifest_sources = self.dbt_manifest["sources"]
+            manifest_entities = {**manifest_nodes, **manifest_sources}
+            catalog_nodes = self.dbt_catalog["nodes"]
+            catalog_sources = self.dbt_catalog["sources"]
+            catalog_entities = {**catalog_nodes, **catalog_sources}
+
+            for key, mnode in manifest_entities.items():
+                name = mnode["alias"] if "alias" in mnode.keys() else mnode["name"]
+                cnode = catalog_entities.get(key)
+                if cnode is not None:
+                    columns = self._parse_data_model_columns(name, mnode, cnode)
+                else:
+                    columns = []
+                if mnode["resource_type"] == "test":
+                    continue
+                upstream_nodes = self._parse_data_model_upstream(mnode)
+                model_name = (
+                    mnode["alias"] if "alias" in mnode.keys() else mnode["name"]
+                )
+                description = mnode.get("description", "")
+                schema = mnode["schema"]
+                path = f"{mnode['root_path']}/{mnode['original_file_path']}"
+                model = DataModel(
+                    modelType=ModelType.DBT,
+                    description=description,
+                    path=path,
+                    rawSql=mnode["raw_sql"] if "raw_sql" in mnode else None,
+                    sql=mnode["compiled_sql"] if "compiled_sql" in mnode else None,
+                    columns=columns,
+                    upstream=upstream_nodes,
+                )
+                model_fqdn = f"{schema}.{model_name}"
+                self.data_models[model_fqdn] = model
+
+    def _parse_data_model_upstream(self, mnode):
+        upstream_nodes = []
+        if "depends_on" in mnode and "nodes" in mnode["depends_on"]:
+            for node in mnode["depends_on"]["nodes"]:
+                node_type, database, table = node.split(".")
+                table_fqn = f"{self.config.service_name}.{database}.{table}"
+                upstream_nodes.append(table_fqn)
+        return upstream_nodes
+
+    def _parse_data_model_columns(
+        self, model_name: str, mnode: Dict, cnode: Dict
+    ) -> [Column]:
+        columns = []
+        ccolumns = cnode.get("columns")
+        manifest_columns = mnode.get("columns", {})
+        for key in ccolumns:
+            ccolumn = ccolumns[key]
+            try:
+                ctype = ccolumn["type"]
+                col_type = get_column_type(self.status, model_name, ctype)
+                description = manifest_columns.get(key.lower(), {}).get(
+                    "description", None
+                )
+                if description is None:
+                    description = ccolumn.get("comment", None)
+                col = Column(
+                    name=ccolumn["name"].lower(),
+                    description=description,
+                    dataType=col_type,
+                    dataLength=1,
+                    ordinalPosition=ccolumn["index"],
+                )
+                columns.append(col)
+            except Exception as e:
+                logger.error(f"Failed to parse column type due to {e}")
+
+        return columns
 
     def _get_database(self, schema: str) -> Database:
         return Database(

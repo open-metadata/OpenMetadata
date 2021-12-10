@@ -18,7 +18,6 @@ from metadata.generated.schema.api.lineage.addLineage import AddLineage
 from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.database import Database
-from metadata.generated.schema.entity.data.dbtmodel import DbtModel
 from metadata.generated.schema.entity.data.location import Location
 from metadata.generated.schema.entity.data.metrics import Metrics
 from metadata.generated.schema.entity.data.mlmodel import MlModel
@@ -170,11 +169,6 @@ class OpenMetadata(OMetaLineageMixin, OMetaTableMixin, Generic[T, C]):
             entity, get_args(Union[Topic, self.get_create_entity_type(Topic)])
         ):
             return "/topics"
-
-        if issubclass(
-            entity, get_args(Union[DbtModel, self.get_create_entity_type(DbtModel)])
-        ):
-            return "/dbtmodels"
 
         if issubclass(entity, Metrics):
             return "/metrics"
