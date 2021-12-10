@@ -364,8 +364,8 @@ class MetadataRestSink(Sink[Entity]):
     def write_ml_model(self, model: CreateMlModelEntityRequest):
         try:
             created_model = self.metadata.create_or_update(model)
-            logger.info(f"Successfully added Model {created_model.displayName}")
-            self.status.records_written(f"Model: {created_model.displayName}")
+            logger.info(f"Successfully added Model {created_model.name}")
+            self.status.records_written(f"Model: {created_model.name}")
         except (APIError, ValidationError) as err:
             logger.error(f"Failed to ingest Model {model.name}")
             logger.error(err)

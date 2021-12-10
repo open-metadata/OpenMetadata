@@ -64,7 +64,7 @@ class MlFlowConnectionConfig(ConfigModel):
     registry_uri: Optional[str]
 
 
-class MlFlowSource(Source[CreateMlModelEntityRequest]):
+class MlflowSource(Source[CreateMlModelEntityRequest]):
     """
     Source implementation to ingest MLFlow data.
 
@@ -113,6 +113,8 @@ class MlFlowSource(Source[CreateMlModelEntityRequest]):
                 self.status.failed(model.name, reason="Invalid version")
 
             run = self.client.get_run(latest_version.run_id)
+
+            self.status.scanned(model.name)
 
             yield CreateMlModelEntityRequest(
                 name=model.name,
