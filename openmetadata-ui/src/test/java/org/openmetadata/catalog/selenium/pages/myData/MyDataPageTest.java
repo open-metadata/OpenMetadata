@@ -40,6 +40,7 @@ public class MyDataPageTest {
   static String url = Property.getInstance().getURL();
   static Actions actions;
   static WebDriverWait wait;
+  static String table = "dim_product_variant";
   Integer waitTime = Property.getInstance().getSleepTime();
 
   @BeforeEach
@@ -65,14 +66,6 @@ public class MyDataPageTest {
 
   @RepeatedIfExceptionsTest(repeats = 2)
   @Order(2)
-  public void checkTabs() {
-    checkWhatsNew();
-    Events.click(webDriver, By.cssSelector("[data-testid='tab'][id='myDataTab']")); // My Data
-    Events.click(webDriver, By.cssSelector("[data-testid='tab'][id='followingTab']")); // Following
-  }
-
-  @RepeatedIfExceptionsTest(repeats = 2)
-  @Order(3)
   public void checkOverview() throws InterruptedException {
     checkWhatsNew();
     Events.click(webDriver, By.cssSelector("[data-testid='tables']")); // Tables
@@ -93,7 +86,7 @@ public class MyDataPageTest {
   }
 
   @RepeatedIfExceptionsTest(repeats = 2)
-  @Order(4)
+  @Order(3)
   public void checkSearchBar() throws InterruptedException {
     checkWhatsNew();
     wait.until(ExpectedConditions.elementToBeClickable(
@@ -105,7 +98,7 @@ public class MyDataPageTest {
 
 
   @RepeatedIfExceptionsTest(repeats = 2)
-  @Order(5)
+  @Order(4)
   public void checkHeaders() {
     checkWhatsNew();
     ArrayList<String> tabs = new ArrayList<>(webDriver.getWindowHandles());
@@ -135,11 +128,12 @@ public class MyDataPageTest {
   }
 
   @RepeatedIfExceptionsTest(repeats = 2)
-  @Order(6)
+  @Order(5)
   public void checkMyDataTab() {
     checkWhatsNew();
     Events.click(webDriver, By.cssSelector("[data-testid='tables']")); // Tables
-    Events.click(webDriver, By.xpath("(//a[@data-testid='table-link'])[last()]"));
+    Events.sendKeys(webDriver, By.cssSelector("[data-testid='searchBox']"), table);
+    Events.click(webDriver, By.cssSelector("[data-testid='data-name'][id='bigquery_gcpshopifydim_product_variant']"));
     Events.click(webDriver, By.xpath("(//button[@data-testid='tab'])[4]")); // Manage
     Events.click(webDriver, By.cssSelector("[data-testid='owner-dropdown']")); // Owner
     Events.click(webDriver, By.xpath("//div[@data-testid='dropdown-list']//div[2]//button[2]"));
@@ -147,25 +141,30 @@ public class MyDataPageTest {
     Events.click(webDriver, By.cssSelector("[data-testid='saveManageTab']")); // Save
     Events.click(webDriver, By.cssSelector("[data-testid='image']"));
     webDriver.navigate().refresh();
-    Events.click(webDriver, By.cssSelector("[data-testid='tab'][id='myDataTab']")); // My Data
+    Events.click(webDriver, By.cssSelector("[data-testid='My data-" + table + "']"));
+    webDriver.navigate().back();
+    Events.click(webDriver, By.cssSelector("[data-testid='my-data']")); // My Data
+    Events.click(webDriver, By.xpath("//a[@data-testid='table-link']//button"));
+  }
+
+  @RepeatedIfExceptionsTest(repeats = 2)
+  @Order(6)
+  public void checkFollowingTab() {
+    checkWhatsNew();
+    Events.click(webDriver, By.cssSelector("[data-testid='tables']")); // Tables
+    Events.sendKeys(webDriver, By.cssSelector("[data-testid='searchBox']"), table);
+    Events.click(webDriver, By.cssSelector("[data-testid='data-name'][id='bigquery_gcpshopifydim_product_variant']"));
+    Events.click(webDriver, By.cssSelector("[data-testid='follow-button']"));
+    Events.click(webDriver, By.cssSelector("[data-testid='image']"));
+    webDriver.navigate().refresh();
+    Events.click(webDriver, By.cssSelector("[data-testid='Following data-" + table + "']"));
+    webDriver.navigate().back();
+    Events.click(webDriver, By.cssSelector("[data-testid='following-data']")); // Following
     Events.click(webDriver, By.xpath("//a[@data-testid='table-link']//button"));
   }
 
   @RepeatedIfExceptionsTest(repeats = 2)
   @Order(7)
-  public void checkFollowingTab() {
-    checkWhatsNew();
-    Events.click(webDriver, By.cssSelector("[data-testid='tables']")); // Tables
-    Events.click(webDriver, By.xpath("(//a[@data-testid='table-link'])[last()]"));
-    Events.click(webDriver, By.cssSelector("[data-testid='follow-button']"));
-    Events.click(webDriver, By.cssSelector("[data-testid='image']"));
-    webDriver.navigate().refresh();
-    Events.click(webDriver, By.cssSelector("[data-testid='tab'][id='followingTab']")); // Following
-    Events.click(webDriver, By.xpath("//a[@data-testid='table-link']//button"));
-  }
-
-  @RepeatedIfExceptionsTest(repeats = 2)
-  @Order(8)
   public void checkLogout() {
     checkWhatsNew();
     Events.click(webDriver, By.cssSelector("[data-testid='dropdown-profile']"));
