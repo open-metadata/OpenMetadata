@@ -31,7 +31,7 @@ const ErrorPlaceHolder = ({ children }: Props) => (
       />
     </div>
     {children && (
-      <div className="tw-flex tw-flex-col tw-items-center tw-mt-10 tw-text-base tw-font-normal">
+      <div className="tw-flex tw-flex-col tw-items-center tw-mt-10 tw-text-base tw-font-medium">
         {children}
       </div>
     )}
