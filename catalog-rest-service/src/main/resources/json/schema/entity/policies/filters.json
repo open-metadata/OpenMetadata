@@ -3,15 +3,25 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Filters",
   "definitions": {
+    "prefix": {
+      "description": "Prefix path of the entity.",
+      "type": "string"
+    },
+    "regex": {
+      "description": "Regex that matches the entity.",
+      "type": "string"
+    },
     "filters": {
       "description": "The set of filters that are used to match on entities. A logical AND operation is applied across all filters.",
       "type": "array",
-      "minLength": 1,
+      "minItems": 1,
       "items": {
         "anyOf": [
           {
-            "description": "Regex that matches the entity FQN.",
-            "type": "string"
+            "$ref": "#/definitions/prefix"
+          },
+          {
+            "$ref": "#/definitions/regex"
           },
           {
             "description": "Entity tags to match on.",

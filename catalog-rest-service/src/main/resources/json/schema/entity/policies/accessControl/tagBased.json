@@ -9,7 +9,7 @@
     "tags": {
       "description": "Tags that are associated with the entities.",
       "type": "array",
-      "minLength": 1,
+      "minItems": 1,
       "items": [
         {
           "$ref": "../../../type/tagLabel.json"
@@ -19,7 +19,7 @@
     "allow": {
       "description": "Teams and Users who are able to access the tagged entities.",
       "type": "array",
-      "minLength": 1,
+      "minItems": 1,
       "items": {
         "anyOf": [
           {

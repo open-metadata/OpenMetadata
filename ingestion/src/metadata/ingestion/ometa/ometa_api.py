@@ -25,6 +25,7 @@ from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.data.report import Report
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.data.topic import Topic
+from metadata.generated.schema.entity.policies.policy import Policy
 from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.messagingService import MessagingService
@@ -90,6 +91,7 @@ class OpenMetadata(OMetaLineageMixin, OMetaTableMixin, Generic[T, C]):
     entity_path = "entity"
     api_path = "api"
     data_path = "data"
+    policies_path = "policies"
     services_path = "services"
     teams_path = "teams"
 
@@ -159,6 +161,11 @@ class OpenMetadata(OMetaLineageMixin, OMetaTableMixin, Generic[T, C]):
             entity, get_args(Union[Location, self.get_create_entity_type(Location)])
         ):
             return "/locations"
+
+        if issubclass(
+            entity, get_args(Union[Policy, self.get_create_entity_type(Policy)])
+        ):
+            return "/policies"
 
         if issubclass(
             entity, get_args(Union[Table, self.get_create_entity_type(Table)])
@@ -250,6 +257,9 @@ class OpenMetadata(OMetaLineageMixin, OMetaTableMixin, Generic[T, C]):
         Based on the entity, return the module path
         it is found inside generated
         """
+
+        if "policy" in entity.__name__.lower():
+            return self.policies_path
 
         if "service" in entity.__name__.lower():
             return self.services_path

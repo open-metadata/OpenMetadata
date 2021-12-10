@@ -32,6 +32,9 @@ from metadata.generated.schema.api.data.createPipeline import (
 )
 from metadata.generated.schema.api.data.createTable import CreateTableEntityRequest
 from metadata.generated.schema.api.data.createTopic import CreateTopicEntityRequest
+from metadata.generated.schema.api.policies.createPolicy import (
+    CreatePolicyEntityRequest,
+)
 from metadata.generated.schema.api.lineage.addLineage import AddLineage
 from metadata.generated.schema.api.teams.createTeam import CreateTeamEntityRequest
 from metadata.generated.schema.api.teams.createUser import CreateUserEntityRequest
@@ -39,6 +42,7 @@ from metadata.generated.schema.entity.data.chart import ChartType
 from metadata.generated.schema.entity.data.location import Location
 from metadata.generated.schema.entity.data.mlmodel import MlModel
 from metadata.generated.schema.entity.data.pipeline import Pipeline
+from metadata.generated.schema.entity.policies.policy import Policy
 from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.common import Entity, WorkflowContext
@@ -115,6 +119,8 @@ class MetadataRestSink(Sink[Entity]):
             self.write_dashboards(record)
         elif isinstance(record, Location):
             self.write_locations(record)
+        elif isinstance(record, Policy):
+            self.write_policies(record)
         elif isinstance(record, Pipeline):
             self.write_pipelines(record)
         elif isinstance(record, AddLineage):
@@ -308,6 +314,25 @@ class MetadataRestSink(Sink[Entity]):
             logger.error(f"Failed to ingest pipeline {pipeline.name}")
             logger.error(err)
             self.status.failure(f"Pipeline: {pipeline.name}")
+
+    def write_policies(self, policy: Policy):
+        try:
+            policy_request = CreatePolicyEntityRequest(
+                name=policy.name,
+                displayName=policy.displayName,
+                description=policy.description,
+                owner=policy.owner,
+                policyUrl=policy.policyUrl,
+                policyType=policy.policyType,
+                rules=policy.rules,
+            )
+            created_policy = self.metadata.create_or_update(policy_request)
+            logger.info(f"Successfully ingested Policy {created_policy.name}")
+            self.status.records_written(f"Policy: {created_policy.name}")
+        except (APIError, ValidationError) as err:
+            logger.error(f"Failed to ingest Policy {policy.name}")
+            logger.error(err)
+            self.status.failure(f"Policy: {policy.name}")
 
     def write_lineage(self, add_lineage: AddLineage):
         try:

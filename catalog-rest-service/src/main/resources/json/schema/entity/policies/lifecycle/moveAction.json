@@ -35,19 +35,5 @@
       }
     }
   },
-  "oneOf": [
-    {
-      "required": [
-        "daysAfterCreation",
-        "destination"
-      ]
-    },
-    {
-      "required": [
-        "daysAfterModification",
-        "destination"
-      ]
-    }
-  ],
   "additionalProperties": false
 }

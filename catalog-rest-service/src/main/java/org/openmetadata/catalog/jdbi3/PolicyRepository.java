@@ -36,9 +36,9 @@ import java.util.UUID;
 @Slf4j
 public class PolicyRepository extends EntityRepository<Policy> {
   private static final Fields POLICY_UPDATE_FIELDS = new Fields(PolicyResource.FIELD_LIST,
-          "displayName,description,owner,policyUrl,enabled");
+          "displayName,description,owner,policyUrl,enabled,rules");
   private static final Fields POLICY_PATCH_FIELDS = new Fields(PolicyResource.FIELD_LIST,
-          "displayName,description,owner,policyUrl,enabled");
+          "displayName,description,owner,policyUrl,enabled,rules");
   private final CollectionDAO dao;
 
   public PolicyRepository(CollectionDAO dao) {
@@ -72,6 +72,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
     policy.setOwner(fields.contains("owner") ? getOwner(policy) : null);
     policy.setPolicyUrl(fields.contains("policyUrl") ? policy.getPolicyUrl() : null);
     policy.setEnabled(fields.contains("enabled") ? policy.getEnabled() : null);
+    policy.setRules(fields.contains("rules") ? policy.getRules() : null);
     return policy;
   }
 
@@ -171,6 +172,10 @@ public class PolicyRepository extends EntityRepository<Policy> {
       return null;
     }
 
+    public List<Object> getRules() {
+      return entity.getRules();
+    }
+
     @Override
     public Double getVersion() {
       return entity.getVersion();
@@ -245,6 +250,10 @@ public class PolicyRepository extends EntityRepository<Policy> {
       entity.setOwner(owner);
     }
 
+    public void setRules(List<Object> rules) {
+      entity.setRules(rules);
+    }
+
     @Override
     public Policy withHref(URI href) { return entity.withHref(href); }
 
@@ -266,6 +275,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
     public void entitySpecificUpdate() throws IOException {
       recordChange("policyUrl", original.getEntity().getPolicyUrl(), updated.getEntity().getPolicyUrl());
       recordChange("enabled", original.getEntity().getEnabled(), updated.getEntity().getEnabled());
+      recordChange("rules", original.getEntity().getRules(), updated.getEntity().getRules());
     }
   }
 }
