@@ -330,38 +330,44 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
 
     def _parse_data_model(self) -> DataModel:
         logger.info("Parsing Data Models")
-        manifest_nodes = self.dbt_manifest["nodes"]
-        manifest_sources = self.dbt_manifest["sources"]
-        manifest_entities = {**manifest_nodes, **manifest_sources}
-        catalog_nodes = self.dbt_catalog["nodes"]
-        catalog_sources = self.dbt_catalog["sources"]
-        catalog_entities = {**catalog_nodes, **catalog_sources}
+        if (
+            self.config.dbt_manifest_file is not None
+            and self.config.dbt_catalog_file is not None
+        ):
+            manifest_nodes = self.dbt_manifest["nodes"]
+            manifest_sources = self.dbt_manifest["sources"]
+            manifest_entities = {**manifest_nodes, **manifest_sources}
+            catalog_nodes = self.dbt_catalog["nodes"]
+            catalog_sources = self.dbt_catalog["sources"]
+            catalog_entities = {**catalog_nodes, **catalog_sources}
 
-        for key, mnode in manifest_entities.items():
-            name = mnode["alias"] if "alias" in mnode.keys() else mnode["name"]
-            cnode = catalog_entities.get(key)
-            if cnode is not None:
-                columns = self._parse_data_model_columns(name, mnode, cnode)
-            else:
-                columns = []
-            if mnode["resource_type"] == "test":
-                continue
-            upstream_nodes = self._parse_data_model_upstream(mnode)
-            model_name = mnode["alias"] if "alias" in mnode.keys() else mnode["name"]
-            description = mnode.get("description", "")
-            schema = mnode["schema"]
-            path = f"{mnode['root_path']}/{mnode['original_file_path']}"
-            model = DataModel(
-                modelType=ModelType.DBT,
-                description=description,
-                path=path,
-                rawSql=mnode["raw_sql"] if "raw_sql" in mnode else None,
-                sql=mnode["compiled_sql"] if "compiled_sql" in mnode else None,
-                columns=columns,
-                upstream=upstream_nodes,
-            )
-            model_fqdn = f"{schema}.{model_name}"
-            self.data_models[model_fqdn] = model
+            for key, mnode in manifest_entities.items():
+                name = mnode["alias"] if "alias" in mnode.keys() else mnode["name"]
+                cnode = catalog_entities.get(key)
+                if cnode is not None:
+                    columns = self._parse_data_model_columns(name, mnode, cnode)
+                else:
+                    columns = []
+                if mnode["resource_type"] == "test":
+                    continue
+                upstream_nodes = self._parse_data_model_upstream(mnode)
+                model_name = (
+                    mnode["alias"] if "alias" in mnode.keys() else mnode["name"]
+                )
+                description = mnode.get("description", "")
+                schema = mnode["schema"]
+                path = f"{mnode['root_path']}/{mnode['original_file_path']}"
+                model = DataModel(
+                    modelType=ModelType.DBT,
+                    description=description,
+                    path=path,
+                    rawSql=mnode["raw_sql"] if "raw_sql" in mnode else None,
+                    sql=mnode["compiled_sql"] if "compiled_sql" in mnode else None,
+                    columns=columns,
+                    upstream=upstream_nodes,
+                )
+                model_fqdn = f"{schema}.{model_name}"
+                self.data_models[model_fqdn] = model
 
     def _parse_data_model_upstream(self, mnode):
         upstream_nodes = []
