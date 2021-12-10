@@ -39,6 +39,7 @@ class MlFlowStatus(SourceStatus):
 
     success: List[str] = field(default_factory=list)
     failures: List[str] = field(default_factory=list)
+    warnings: List[str] = field(default_factory=list)
 
     def scanned(self, model_name: str) -> None:
         """
@@ -52,7 +53,14 @@ class MlFlowStatus(SourceStatus):
         Log failed ML Model scans
         """
         self.failures.append(model_name)
-        logger.warning(f"ML Model failed: {model_name} - {reason}")
+        logger.error(f"ML Model failed: {model_name} - {reason}")
+
+    def warned(self, model_name: str, reason: str) -> None:
+        """
+        Log Ml Model with warnings
+        """
+        self.warnings.append(model_name)
+        logger.warning(f"ML Model warning: {model_name} - {reason}")
 
 
 class MlFlowConnectionConfig(ConfigModel):
@@ -111,6 +119,7 @@ class MlflowSource(Source[CreateMlModelEntityRequest]):
             )
             if not latest_version:
                 self.status.failed(model.name, reason="Invalid version")
+                continue
 
             run = self.client.get_run(latest_version.run_id)
 
@@ -121,7 +130,9 @@ class MlflowSource(Source[CreateMlModelEntityRequest]):
                 description=model.description,
                 algorithm="mlflow",  # Setting this to a constant
                 mlHyperParameters=self._get_hyper_params(run.data),
-                mlFeatures=self._get_ml_features(run.data, latest_version.run_id),
+                mlFeatures=self._get_ml_features(
+                    run.data, latest_version.run_id, model.name
+                ),
                 mlStore=self._get_ml_store(latest_version),
             )
 
@@ -148,8 +159,9 @@ class MlflowSource(Source[CreateMlModelEntityRequest]):
             return MlStore(storage=version.source)
         return None
 
-    @staticmethod
-    def _get_ml_features(data: RunData, run_id: str) -> Optional[List[MlFeature]]:
+    def _get_ml_features(
+        self, data: RunData, run_id: str, model_name: str
+    ) -> Optional[List[MlFeature]]:
         """
         The RunData object comes with stringified `tags`.
         Let's transform those and try to extract the `signature`
@@ -162,12 +174,16 @@ class MlflowSource(Source[CreateMlModelEntityRequest]):
                     (prop for prop in props if prop["run_id"] == run_id), None
                 )
                 if not latest_props:
-                    logging.error(f"Cannot find the run ID properties for {run_id}")
+                    reason = f"Cannot find the run ID properties for {run_id}"
+                    logging.warning(reason)
+                    self.status.warned(model_name, reason)
                     return None
 
                 if latest_props.get("signature") and latest_props["signature"].get(
                     "inputs"
                 ):
+
+                    features = ast.literal_eval(latest_props["signature"]["inputs"])
 
                     return [
                         MlFeature(
@@ -176,11 +192,13 @@ class MlflowSource(Source[CreateMlModelEntityRequest]):
                             if feature["type"] == "string"
                             else FeatureType.numerical,
                         )
-                        for feature in latest_props["signature"]["inputs"]
+                        for feature in features
                     ]
 
             except Exception as exc:
-                logging.error(f"Cannot extract properties from RunData {exc}")
+                reason = f"Cannot extract properties from RunData {exc}"
+                logging.warning(reason)
+                self.status.warned(model_name, reason)
 
         return None
 
