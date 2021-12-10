@@ -52,7 +52,7 @@ export interface Policy {
   /**
    * Owner of this Policy.
    */
-  owner: PolicyOwner;
+  owner?: PolicyOwner;
   policyType: PolicyType;
   /**
    * Link to a well documented definition of this Policy.
