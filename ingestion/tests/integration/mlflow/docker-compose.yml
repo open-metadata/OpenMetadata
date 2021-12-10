@@ -29,7 +29,7 @@ services:
 
   mlflow:
     container_name: mlflow
-    build: tests
+    build: .
     image: mlflow
     restart: always
     depends_on:
