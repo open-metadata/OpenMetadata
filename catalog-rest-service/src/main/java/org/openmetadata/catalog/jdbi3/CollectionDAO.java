@@ -26,7 +26,6 @@ import org.openmetadata.catalog.entity.Bots;
 import org.openmetadata.catalog.entity.data.Chart;
 import org.openmetadata.catalog.entity.data.Dashboard;
 import org.openmetadata.catalog.entity.data.Database;
-import org.openmetadata.catalog.entity.data.DbtModel;
 import org.openmetadata.catalog.entity.data.Location;
 import org.openmetadata.catalog.entity.data.Metrics;
 import org.openmetadata.catalog.entity.data.MlModel;
@@ -50,7 +49,6 @@ import org.openmetadata.catalog.jdbi3.DashboardRepository.DashboardEntityInterfa
 import org.openmetadata.catalog.jdbi3.DashboardServiceRepository.DashboardServiceEntityInterface;
 import org.openmetadata.catalog.jdbi3.DatabaseRepository.DatabaseEntityInterface;
 import org.openmetadata.catalog.jdbi3.DatabaseServiceRepository.DatabaseServiceEntityInterface;
-import org.openmetadata.catalog.jdbi3.DbtModelRepository.DbtModelEntityInterface;
 import org.openmetadata.catalog.jdbi3.LocationRepository.LocationEntityInterface;
 import org.openmetadata.catalog.jdbi3.MessagingServiceRepository.MessagingServiceEntityInterface;
 import org.openmetadata.catalog.jdbi3.MetricsRepository.MetricsEntityInterface;
@@ -121,9 +119,6 @@ public interface CollectionDAO {
 
   @CreateSqlObject
   TopicDAO topicDAO();
-
-  @CreateSqlObject
-  DbtModelDAO dbtModelDAO();
 
   @CreateSqlObject
   MlModelDAO mlModelDAO();
@@ -506,22 +501,6 @@ public interface CollectionDAO {
     @Override
     default EntityReference getEntityReference(MlModel entity) {
       return new MlModelEntityInterface(entity).getEntityReference();
-    }
-  }
-
-  interface DbtModelDAO extends EntityDAO<DbtModel>{
-    @Override
-    default String getTableName() { return "dbt_model_entity"; }
-
-    @Override
-    default Class<DbtModel> getEntityClass() { return DbtModel.class; }
-
-    @Override
-    default String getNameColumn() { return "fullyQualifiedName"; }
-
-    @Override
-    default EntityReference getEntityReference(DbtModel entity) {
-      return new DbtModelEntityInterface(entity).getEntityReference();
     }
   }
 

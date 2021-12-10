@@ -104,9 +104,8 @@ public final class EntityUtil {
           constraint1.getConstraintType() == constraint2.getConstraintType() &&
           constraint1.getColumns().equals(constraint2.getColumns());
 
-  public static BiPredicate<MlFeature, MlFeature> mlFeatureMatch = (ref1, ref2) -> ref1.equals(ref2);
-  public static BiPredicate<MlHyperParameter, MlHyperParameter> mlHyperParameterMatch =
-          (ref1, ref2) -> ref1.equals(ref2);
+  public static BiPredicate<MlFeature, MlFeature> mlFeatureMatch = MlFeature::equals;
+  public static BiPredicate<MlHyperParameter, MlHyperParameter> mlHyperParameterMatch = MlHyperParameter::equals;
 
   private EntityUtil() {
 
