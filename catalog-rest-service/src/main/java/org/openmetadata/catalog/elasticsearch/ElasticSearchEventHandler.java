@@ -30,7 +30,6 @@ import org.openmetadata.catalog.ElasticSearchConfiguration;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.elasticsearch.ElasticSearchIndexDefinition.ElasticSearchIndexType;
 import org.openmetadata.catalog.entity.data.Dashboard;
-import org.openmetadata.catalog.entity.data.DbtModel;
 import org.openmetadata.catalog.entity.data.Pipeline;
 import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.entity.data.Topic;
@@ -114,13 +113,6 @@ public class ElasticSearchEventHandler implements EventHandler {
           if (exists) {
             Pipeline instance = (Pipeline) entity;
             updateRequest = updatePipeline(instance, responseContext);
-          }
-        } else if (entityClass.toLowerCase().endsWith(Entity.DBTMODEL.toLowerCase())) {
-          boolean exists =
-              esIndexDefinition.checkIndexExistsOrCreate(ElasticSearchIndexType.DBT_MODEL_SEARCH_INDEX);
-          if (exists) {
-            DbtModel instance = (DbtModel) entity;
-            updateRequest = updateDbtModel(instance, responseContext);
           }
         } else if (entityClass.toLowerCase().equalsIgnoreCase(ChangeEvent.class.toString())) {
           ChangeEvent changeEvent = (ChangeEvent) entity;
@@ -237,22 +229,6 @@ public class ElasticSearchEventHandler implements EventHandler {
     } else {
       //only upsert if it's a new entity
       updateRequest.doc(JsonUtils.pojoToJson(pipelineESIndex), XContentType.JSON);
-      updateRequest.docAsUpsert(true);
-    }
-    return updateRequest;
-  }
-
-  private UpdateRequest updateDbtModel(DbtModel instance, ContainerResponseContext responseContext)
-      throws JsonProcessingException {
-    int responseCode = responseContext.getStatus();
-    DbtModelESIndex dbtModelESIndex = DbtModelESIndex.builder(instance, responseCode).build();
-    UpdateRequest updateRequest = new UpdateRequest(ElasticSearchIndexType.DBT_MODEL_SEARCH_INDEX.indexName,
-        instance.getId().toString());
-    //only append to changeDescriptions on updates
-    if  (responseCode != Response.Status.CREATED.getStatusCode()) {
-      scriptedUpsert(dbtModelESIndex, updateRequest);
-    } else {
-      updateRequest.doc(JsonUtils.pojoToJson(dbtModelESIndex), XContentType.JSON);
       updateRequest.docAsUpsert(true);
     }
     return updateRequest;

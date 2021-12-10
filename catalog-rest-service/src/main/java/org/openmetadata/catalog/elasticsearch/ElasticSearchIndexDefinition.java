@@ -20,7 +20,6 @@ import org.elasticsearch.client.indices.GetIndexRequest;
 import org.elasticsearch.common.xcontent.XContentType;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Dashboard;
-import org.openmetadata.catalog.entity.data.DbtModel;
 import org.openmetadata.catalog.entity.data.Pipeline;
 import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.entity.data.Topic;
@@ -159,8 +158,6 @@ public class ElasticSearchIndexDefinition {
       return ElasticSearchIndexType.PIPELINE_SEARCH_INDEX;
     } else if (type.equalsIgnoreCase(Entity.TOPIC)) {
       return ElasticSearchIndexType.TOPIC_SEARCH_INDEX;
-    } else if (type.equalsIgnoreCase(Entity.DBTMODEL)) {
-      return ElasticSearchIndexType.DBT_MODEL_SEARCH_INDEX;
     }
     throw new RuntimeException("Failed to find index doc for type {}".format(type));
   }
@@ -612,83 +609,3 @@ class PipelineESIndex extends ElasticSearchIndex {
     return pipelineESIndexBuilder;
   }
 }
-
-
-@Getter
-@SuperBuilder(builderMethodName = "internalBuilder")
-@Value
-@JsonInclude(JsonInclude.Include.NON_NULL)
-class DbtModelESIndex extends ElasticSearchIndex {
-  @JsonProperty("dbt_model_id")
-  String dbtModelId;
-  @JsonProperty("column_names")
-  List<String> columnNames;
-  @JsonProperty("column_descriptions")
-  List<String> columnDescriptions;
-  String database;
-  @JsonProperty("node_type")
-  String nodeType;
-
-  public static DbtModelESIndexBuilder builder(DbtModel dbtModel, int responseCode) throws JsonProcessingException  {
-    List<String> tags = new ArrayList<>();
-    List<String> columnNames = new ArrayList<>();
-    List<String> columnDescriptions = new ArrayList<>();
-    List<ElasticSearchSuggest> suggest = new ArrayList<>();
-    suggest.add(ElasticSearchSuggest.builder().input(dbtModel.getFullyQualifiedName()).weight(5).build());
-    suggest.add(ElasticSearchSuggest.builder().input(dbtModel.getName()).weight(10).build());
-
-    if (dbtModel.getTags() != null) {
-      dbtModel.getTags().forEach(tag -> tags.add(tag.getTagFQN()));
-    }
-
-    for (Column column: dbtModel.getColumns()) {
-      columnNames.add(column.getName());
-      columnDescriptions.add(column.getDescription());
-    }
-
-    DbtModelESIndexBuilder dbtModelESIndexBuilder =  internalBuilder().dbtModelId(dbtModel.getId().toString())
-        .name(dbtModel.getName())
-        .displayName(dbtModel.getName())
-        .description(dbtModel.getDescription())
-        .fqdn(dbtModel.getFullyQualifiedName())
-        .columnNames(columnNames)
-        .columnDescriptions(columnDescriptions)
-        .entityType("dbtmodel")
-        .suggest(suggest)
-        .serviceCategory("databaseService")
-        .nodeType(dbtModel.getDbtNodeType().toString())
-        .database(dbtModel.getDatabase().getName())
-        .tags(tags);
-
-
-    if (dbtModel.getFollowers() != null) {
-      dbtModelESIndexBuilder.followers(dbtModel.getFollowers().stream().map(item ->
-              item.getId().toString()).collect(Collectors.toList()));
-    } else if (responseCode == Response.Status.CREATED.getStatusCode()) {
-      dbtModelESIndexBuilder.followers(Collections.emptyList());
-    }
-    if (dbtModel.getOwner() != null) {
-      dbtModelESIndexBuilder.owner(dbtModel.getOwner().getId().toString());
-    }
-    ESChangeDescription esChangeDescription = null;
-    if (dbtModel.getChangeDescription() != null) {
-      esChangeDescription = ESChangeDescription.builder()
-          .updatedAt(dbtModel.getUpdatedAt().getTime())
-          .updatedBy(dbtModel.getUpdatedBy()).build();
-      esChangeDescription.setFieldsAdded(dbtModel.getChangeDescription().getFieldsAdded());
-      esChangeDescription.setFieldsDeleted(dbtModel.getChangeDescription().getFieldsDeleted());
-      esChangeDescription.setFieldsUpdated(dbtModel.getChangeDescription().getFieldsUpdated());
-
-    } else if (responseCode == Response.Status.CREATED.getStatusCode()) {
-      // add an entry when the entity gets created first-time
-      esChangeDescription = ESChangeDescription.builder()
-          .updatedAt(dbtModel.getUpdatedAt().getTime())
-          .updatedBy(dbtModel.getUpdatedBy()).build();
-    }
-
-    dbtModelESIndexBuilder.changeDescriptions(esChangeDescription != null ? List.of(esChangeDescription): null);
-    return dbtModelESIndexBuilder;
-  }
-}
-
-
