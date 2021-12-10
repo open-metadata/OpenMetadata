@@ -38,6 +38,7 @@ export interface DatasetDetailsProps {
   tableDetails: Table;
   entityName: string;
   datasetFQN: string;
+  dataModel?: Table['dataModel'];
   activeTab: number;
   owner: DatasetOwner;
   description: string;

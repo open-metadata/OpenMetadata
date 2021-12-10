@@ -97,7 +97,6 @@ const ExplorePage: FunctionComponent = () => {
       SearchIndex.TOPIC,
       SearchIndex.DASHBOARD,
       SearchIndex.PIPELINE,
-      SearchIndex.DBT_MODEL,
     ];
 
     const entityCounts = entities.map((entity) =>
@@ -119,7 +118,6 @@ const ExplorePage: FunctionComponent = () => {
           topic,
           dashboard,
           pipeline,
-          dbtModel,
         ]: PromiseSettledResult<SearchResponse>[]) => {
           setTableCount(
             table.status === 'fulfilled'
@@ -149,14 +147,6 @@ const ExplorePage: FunctionComponent = () => {
             pipeline.status === 'fulfilled'
               ? getTotalEntityCountByType(
                   pipeline.value.data.aggregations?.['sterms#EntityType']
-                    ?.buckets as Bucket[]
-                )
-              : 0
-          );
-          setDbtModelCount(
-            dbtModel.status === 'fulfilled'
-              ? getTotalEntityCountByType(
-                  dbtModel.value.data.aggregations?.['sterms#EntityType']
                     ?.buckets as Bucket[]
                 )
               : 0

@@ -24,7 +24,6 @@ import {
   getDatabaseDetailsByFQN,
   patchDatabaseDetails,
 } from '../../axiosAPIs/databaseAPI';
-import { getDatabaseDBTModels } from '../../axiosAPIs/dbtModelAPI';
 import { postFeed } from '../../axiosAPIs/feedsAPI';
 import { getServiceById } from '../../axiosAPIs/serviceAPI';
 import { getDatabaseTables } from '../../axiosAPIs/tableAPI';
@@ -40,7 +39,6 @@ import { ModalWithMarkdownEditor } from '../../components/Modals/ModalWithMarkdo
 import Tags from '../../components/tags/tags';
 import {
   getDatasetDetailsPath,
-  getDBTModelDetailsPath,
   getExplorePathWithSearch,
   getServiceDetailsPath,
   pagingObject,
@@ -48,7 +46,6 @@ import {
 } from '../../constants/constants';
 import { ServiceCategory } from '../../enums/service.enum';
 import { Database } from '../../generated/entity/data/database';
-import { Dbtmodel } from '../../generated/entity/data/dbtmodel';
 import { Table } from '../../generated/entity/data/table';
 import useToastContext from '../../hooks/useToastContext';
 import { getCurrentUserId, isEven } from '../../utils/CommonUtils';
@@ -68,7 +65,6 @@ const DatabaseDetails: FunctionComponent = () => {
   const [database, setDatabase] = useState<Database>();
   const [serviceName, setServiceName] = useState<string>();
   const [tableData, setTableData] = useState<Array<Table>>([]);
-  const [dbtModelData, setDbtModelData] = useState<Array<Dbtmodel>>([]);
 
   const [databaseName, setDatabaseName] = useState<string>(
     databaseFQN.split('.').slice(-1).pop() || ''
@@ -77,9 +73,7 @@ const DatabaseDetails: FunctionComponent = () => {
   const [description, setDescription] = useState('');
   const [databaseId, setDatabaseId] = useState('');
   const [tablePaging, setTablePaging] = useState<Paging>(pagingObject);
-  const [dbtModelPaging, setDbtModelPaging] = useState<Paging>(pagingObject);
   const [tableInstanceCount, setTableInstanceCount] = useState<number>(0);
-  const [dbtModelInstanceCount, setDbtModelInstanceCount] = useState<number>(0);
 
   const [activeTab, setActiveTab] = useState<number>(1);
 
@@ -98,17 +92,6 @@ const DatabaseDetails: FunctionComponent = () => {
       count: tableInstanceCount,
       isProtected: false,
       position: 1,
-    },
-    {
-      name: 'DBT Models',
-      icon: {
-        alt: 'dbt_models',
-        name: 'dbtmodel-grey',
-        title: 'DBT Models',
-      },
-      count: dbtModelInstanceCount,
-      isProtected: false,
-      position: 2,
     },
   ];
 
@@ -137,32 +120,9 @@ const DatabaseDetails: FunctionComponent = () => {
     });
   };
 
-  const fetchDatabaseDBTModels = (paging?: string) => {
-    return new Promise<void>((resolve, reject) => {
-      getDatabaseDBTModels(databaseFQN, paging, ['owner', 'tags', 'columns'])
-        .then((res: AxiosResponse) => {
-          if (res.data.data) {
-            setDbtModelData(res.data.data);
-            setDbtModelPaging(res.data.paging);
-            setDbtModelInstanceCount(res.data.paging.total);
-          } else {
-            setDbtModelData([]);
-            setDbtModelPaging(pagingObject);
-          }
-          resolve();
-        })
-        .catch(() => {
-          reject();
-        });
-    });
-  };
-
   const fetchDatabaseTablesAndDBTModels = () => {
     setIsLoading(true);
-    Promise.allSettled([
-      fetchDatabaseTables(),
-      fetchDatabaseDBTModels(),
-    ]).finally(() => {
+    Promise.allSettled([fetchDatabaseTables()]).finally(() => {
       setIsLoading(false);
     });
   };
@@ -271,16 +231,6 @@ const DatabaseDetails: FunctionComponent = () => {
     }`;
     setIsLoading(true);
     fetchDatabaseTables(pagingString).finally(() => {
-      setIsLoading(false);
-    });
-  };
-
-  const dbtModelPagingHandler = (cursorType: string) => {
-    const pagingString = `&${cursorType}=${
-      dbtModelPaging[cursorType as keyof typeof dbtModelPaging]
-    }`;
-    setIsLoading(true);
-    fetchDatabaseDBTModels(pagingString).finally(() => {
       setIsLoading(false);
     });
   };
@@ -501,125 +451,6 @@ const DatabaseDetails: FunctionComponent = () => {
                       <NextPrevious
                         paging={tablePaging}
                         pagingHandler={tablePagingHandler}
-                      />
-                    )}
-                  </>
-                )}
-                {activeTab === 2 && (
-                  <>
-                    <table
-                      className="tw-bg-white tw-w-full tw-mb-4"
-                      data-testid="database-tables">
-                      <thead data-testid="table-header">
-                        <tr className="tableHead-row">
-                          <th
-                            className="tableHead-cell"
-                            data-testid="header-name">
-                            DBT Model Name
-                          </th>
-                          <th
-                            className="tableHead-cell"
-                            data-testid="header-description">
-                            Description
-                          </th>
-                          <th
-                            className="tableHead-cell"
-                            data-testid="header-owner">
-                            Owner
-                          </th>
-                          <th
-                            className="tableHead-cell tw-w-60"
-                            data-testid="header-tags">
-                            Tags
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="tableBody">
-                        {dbtModelData.length > 0 ? (
-                          dbtModelData.map((dbtModel, index) => (
-                            <tr
-                              className={classNames(
-                                'tableBody-row',
-                                !isEven(index + 1) ? 'odd-row' : null
-                              )}
-                              data-testid="tabale-column"
-                              key={index}>
-                              <td className="tableBody-cell">
-                                <Link
-                                  to={
-                                    dbtModel.fullyQualifiedName
-                                      ? getDBTModelDetailsPath(
-                                          dbtModel.fullyQualifiedName
-                                        )
-                                      : ''
-                                  }>
-                                  {dbtModel.name}
-                                </Link>
-                              </td>
-                              <td className="tableBody-cell">
-                                {dbtModel.description?.trim() ? (
-                                  <RichTextEditorPreviewer
-                                    markdown={dbtModel.description}
-                                  />
-                                ) : (
-                                  <span className="tw-no-description">
-                                    No description added
-                                  </span>
-                                )}
-                              </td>
-                              <td className="tableBody-cell">
-                                <p>
-                                  {getOwnerFromId(dbtModel?.owner?.id)?.name ||
-                                    '--'}
-                                </p>
-                              </td>
-                              <td className="tableBody-cell">
-                                {dbtModel.tags?.map((tag, tagIndex) => (
-                                  <Tags
-                                    className="tw-bg-gray-200"
-                                    key={tagIndex}
-                                    startWith="#"
-                                    tag={{
-                                      ...tag,
-                                      tagFQN: tag.tagFQN?.startsWith(
-                                        'Tier.Tier'
-                                      )
-                                        ? tag.tagFQN.split('.')[1]
-                                        : tag.tagFQN,
-                                    }}
-                                  />
-                                ))}
-                                {getTableTags(dbtModel.columns).map(
-                                  (tag, tagIdx) => (
-                                    <Tags
-                                      className="tw-bg-gray-200"
-                                      key={tagIdx}
-                                      startWith="#"
-                                      tag={tag}
-                                    />
-                                  )
-                                )}
-                              </td>
-                            </tr>
-                          ))
-                        ) : (
-                          <tr className="tableBody-row">
-                            <td
-                              className="tableBody-cell tw-text-center"
-                              colSpan={5}>
-                              No records found.
-                            </td>
-                          </tr>
-                        )}
-                      </tbody>
-                    </table>
-                    {Boolean(
-                      !isNil(dbtModelPaging.after) ||
-                        !isNil(dbtModelPaging.before)
-                    ) && (
-                      <NextPrevious
-                        paging={dbtModelPaging}
-                        pagingHandler={dbtModelPagingHandler}
                       />
                     )}
                   </>
