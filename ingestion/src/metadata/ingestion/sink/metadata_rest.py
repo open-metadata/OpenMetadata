@@ -181,7 +181,6 @@ class MetadataRestSink(Sink[Entity]):
                 )
 
             if db_and_table.table.dataModel is not None:
-                logger.info("hello world ingesting dataModel")
                 self.metadata.ingest_table_data_model(
                     table=created_table, data_model=db_and_table.table.dataModel
                 )

@@ -256,7 +256,6 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                 # check if we have any model to associate with
                 table_fqn = f"{schema}.{table_name}"
                 if table_fqn in self.data_models:
-                    logger.info(f"are we able to fetch {table_fqn}")
                     model = self.data_models[table_fqn]
                     table_entity.dataModel = model
 
@@ -340,10 +339,9 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
 
         for key, mnode in manifest_entities.items():
             name = mnode["alias"] if "alias" in mnode.keys() else mnode["name"]
-            description = mnode.get("description", "")
             cnode = catalog_entities.get(key)
             if cnode is not None:
-                columns = self._parse_data_model_columns(name, cnode)
+                columns = self._parse_data_model_columns(name, mnode, cnode)
             else:
                 columns = []
             if mnode["resource_type"] == "test":
@@ -351,11 +349,12 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
             upstream_nodes = self._parse_data_model_upstream(mnode)
             model_name = mnode["alias"] if "alias" in mnode.keys() else mnode["name"]
             description = mnode.get("description", "")
-            database = mnode["database"]
             schema = mnode["schema"]
+            path = f"{mnode['root_path']}/{mnode['original_file_path']}"
             model = DataModel(
                 modelType=ModelType.DBT,
                 description=description,
+                path=path,
                 rawSql=mnode["raw_sql"] if "raw_sql" in mnode else None,
                 sql=mnode["compiled_sql"] if "compiled_sql" in mnode else None,
                 columns=columns,
@@ -373,18 +372,25 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                 upstream_nodes.append(table_fqn)
         return upstream_nodes
 
-    def _parse_data_model_columns(self, model_name: str, cnode: Dict) -> [Column]:
+    def _parse_data_model_columns(
+        self, model_name: str, mnode: Dict, cnode: Dict
+    ) -> [Column]:
         columns = []
         ccolumns = cnode.get("columns")
-
+        manifest_columns = mnode.get("columns", {})
         for key in ccolumns:
             ccolumn = ccolumns[key]
             try:
                 ctype = ccolumn["type"]
                 col_type = get_column_type(self.status, model_name, ctype)
+                description = manifest_columns.get(key.lower(), {}).get(
+                    "description", None
+                )
+                if description is None:
+                    description = ccolumn.get("comment", None)
                 col = Column(
                     name=ccolumn["name"].lower(),
-                    description=ccolumn.get("comment", ""),
+                    description=description,
                     dataType=col_type,
                     dataLength=1,
                     ordinalPosition=ccolumn["index"],
