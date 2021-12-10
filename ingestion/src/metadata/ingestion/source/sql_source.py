@@ -160,7 +160,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         except Exception:
             logger.error(
                 "DataProfiler configuration is enabled. Please make sure you ran "
-                "pip install 'openmetadata[data-profiler]'"
+                "pip install 'openmetadata-ingestion[data-profiler]'"
             )
 
     def prepare(self):
