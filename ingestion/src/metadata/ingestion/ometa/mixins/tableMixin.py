@@ -36,11 +36,14 @@ class OMetaTableMixin:
         :param table: Table Entity to update
         :param sample_data: Data to add
         """
-        resp = self.client.put(
-            f"{self.get_suffix(Table)}/{table.id.__root__}/sampleData",
-            data=sample_data.json(),
-        )
-        return TableData(**resp["sampleData"])
+        try:
+            resp = self.client.put(
+                f"{self.get_suffix(Table)}/{table.id.__root__}/sampleData",
+                data=sample_data.json(),
+            )
+            return TableData(**resp["sampleData"])
+        except Exception as err:
+            logger.error(repr(err))
 
     def ingest_table_profile_data(
         self, table: Table, table_profile: List[TableProfile]
