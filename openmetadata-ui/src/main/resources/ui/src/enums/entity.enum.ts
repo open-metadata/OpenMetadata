@@ -17,7 +17,6 @@ export enum EntityType {
   TOPIC = 'topic',
   DASHBOARD = 'dashboard',
   PIPELINE = 'pipeline',
-  DBT_MODEL = 'dbt_model',
 }
 
 export enum ChangeType {

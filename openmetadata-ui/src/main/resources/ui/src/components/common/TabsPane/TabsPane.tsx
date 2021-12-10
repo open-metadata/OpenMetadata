@@ -26,6 +26,7 @@ type Tab = {
     title: string;
   };
   isProtected: boolean;
+  isHidden?: boolean;
   protectedState?: boolean;
   count?: number;
   position: number;
@@ -47,14 +48,30 @@ const TabsPane = ({ activeTab, setActiveTab, tabs, className = '' }: Props) => {
         className="tw-flex tw-flex-row tw-gh-tabs-container tw-px-4"
         id="tabs">
         {tabs.map((tab) =>
-          tab.isProtected ? (
-            <NonAdminAction
-              isOwner={tab.protectedState}
-              key={tab.position}
-              title={TITLE_FOR_NON_OWNER_ACTION}>
+          !tab.isHidden ? (
+            tab.isProtected ? (
+              <NonAdminAction
+                isOwner={tab.protectedState}
+                key={tab.position}
+                title={TITLE_FOR_NON_OWNER_ACTION}>
+                <button
+                  className={getTabClasses(tab.position, activeTab)}
+                  data-testid="tab"
+                  onClick={() => setActiveTab?.(tab.position)}>
+                  <SVGIcons
+                    alt={tab.icon.alt}
+                    icon={tab.icon.name}
+                    title={tab.icon.title}
+                    width="16"
+                  />{' '}
+                  {tab.name}
+                </button>
+              </NonAdminAction>
+            ) : (
               <button
                 className={getTabClasses(tab.position, activeTab)}
                 data-testid="tab"
+                key={tab.position}
                 onClick={() => setActiveTab?.(tab.position)}>
                 <SVGIcons
                   alt={tab.icon.alt}
@@ -63,24 +80,10 @@ const TabsPane = ({ activeTab, setActiveTab, tabs, className = '' }: Props) => {
                   width="16"
                 />{' '}
                 {tab.name}
+                {!isNil(tab.count) ? getCountBadge(tab.count) : null}
               </button>
-            </NonAdminAction>
-          ) : (
-            <button
-              className={getTabClasses(tab.position, activeTab)}
-              data-testid="tab"
-              key={tab.position}
-              onClick={() => setActiveTab?.(tab.position)}>
-              <SVGIcons
-                alt={tab.icon.alt}
-                icon={tab.icon.name}
-                title={tab.icon.title}
-                width="16"
-              />{' '}
-              {tab.name}
-              {!isNil(tab.count) ? getCountBadge(tab.count) : null}
-            </button>
-          )
+            )
+          ) : null
         )}
       </nav>
     </div>
