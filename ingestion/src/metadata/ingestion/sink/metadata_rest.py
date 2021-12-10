@@ -127,7 +127,7 @@ class MetadataRestSink(Sink[Entity]):
             self.write_lineage(record)
         elif isinstance(record, User):
             self.write_users(record)
-        elif isinstance(record, MlModel):
+        elif isinstance(record, CreateMlModelEntityRequest):
             self.write_ml_model(record)
         elif isinstance(record, OMetaDatabaseAndModel):
             self.write_dbt_models(record)
@@ -361,16 +361,9 @@ class MetadataRestSink(Sink[Entity]):
             logger.error(err)
             self.status.failure(f"Lineage: {add_lineage}")
 
-    def write_ml_model(self, model: MlModel):
+    def write_ml_model(self, model: CreateMlModelEntityRequest):
         try:
-            model_request = CreateMlModelEntityRequest(
-                name=model.name,
-                displayName=model.displayName,
-                description=model.description,
-                algorithm=model.algorithm,
-                dashboard=model.dashboard,
-            )
-            created_model = self.metadata.create_or_update(model_request)
+            created_model = self.metadata.create_or_update(model)
             logger.info(f"Successfully added Model {created_model.displayName}")
             self.status.records_written(f"Model: {created_model.displayName}")
         except (APIError, ValidationError) as err:
