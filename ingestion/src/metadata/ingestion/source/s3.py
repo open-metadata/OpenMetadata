@@ -12,21 +12,28 @@
 import logging
 import os
 import uuid
-from typing import Iterable
+from typing import Iterable, List
 
 import boto3
 
 from metadata.generated.schema.api.services.createStorageService import (
     CreateStorageServiceEntityRequest,
 )
-from metadata.generated.schema.entity.data.location import Location, LocationType
-from metadata.generated.schema.entity.services.storageService import StorageService
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.generated.schema.type.storage import StorageServiceType
 from metadata.ingestion.api.common import ConfigModel, Entity, WorkflowContext
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
+from metadata.generated.schema.entity.data.location import Location, LocationType
+from metadata.generated.schema.entity.policies.filters import Filters1, Prefix
+from metadata.generated.schema.entity.policies.policy import Policy, PolicyType
+from metadata.generated.schema.entity.policies.lifecycle.rule import LifecycleRule
+from metadata.generated.schema.entity.policies.lifecycle.moveAction import (
+    Destination,
+    LifecycleMoveAction,
+)
+from metadata.generated.schema.entity.services.storageService import StorageService
+from metadata.generated.schema.type.storage import StorageServiceType, S3StorageClass
 
 logger: logging.Logger = logging.getLogger(__name__)
 
@@ -71,7 +78,7 @@ class S3Source(Source[Entity]):
             for bucket in self.s3.buckets.all():
                 self.status.scanned(bucket)
                 bucket_name = self._get_bucket_name_with_prefix(bucket.name)
-                yield Location(
+                location = Location(
                     id=uuid.uuid4(),
                     name=bucket_name,
                     displayName=bucket_name,
@@ -81,6 +88,22 @@ class S3Source(Source[Entity]):
                         type="storageService",
                         name=self.service.name,
                     ),
+                )
+                yield location
+
+                # Retrieve lifecycle policies for the bucket.
+                rules: List[LifecycleRule] = []
+                for rule in self.s3.BucketLifecycleConfiguration(bucket.name).rules:
+                    rules.append(self._get_rule(rule, location))
+                policy_name = f"{bucket.name}-lifecycle-policy"
+                yield Policy(
+                    id=uuid.uuid4(),
+                    name=policy_name,
+                    displayName=policy_name,
+                    description=policy_name,
+                    policyType=PolicyType.Lifecycle,
+                    rules=rules,
+                    enabled=True,
                 )
         except Exception as e:
             self.status.failure("error", str(e))
@@ -98,6 +121,39 @@ class S3Source(Source[Entity]):
 
     def close(self):
         pass
+
+    def _get_rule(self, rule: dict, location: Location) -> LifecycleRule:
+        actions = []
+        if "Transitions" in rule:
+            for transition in rule["Transitions"]:
+                if "StorageClass" in transition and "Days" in transition:
+                    actions.append(
+                        LifecycleMoveAction(
+                            daysAfterCreation=transition["Days"],
+                            destination=Destination(
+                                storageServiceType=self.service,
+                                storageClassType=S3StorageClass(
+                                    transition["StorageClass"]
+                                ),
+                                location=location,
+                            ),
+                        )
+                    )
+
+        enabled = rule["Status"] == "Enabled" if "Status" in rule else False
+
+        filters = []
+        if "Filter" in rule and "Prefix" in rule["Filter"]:
+            filters.append(Prefix.parse_obj(rule["Filter"]["Prefix"]))
+
+        name = rule["ID"] if "ID" in rule else None
+
+        return LifecycleRule(
+            actions=actions,
+            enabled=enabled,
+            filters=Filters1.parse_obj(filters),
+            name=name,
+        )
 
 
 def get_storage_service_or_create(

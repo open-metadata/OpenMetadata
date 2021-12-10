@@ -28,6 +28,9 @@
     },
     "policyType": {
       "$ref": "../../entity/policies/policy.json#/definitions/policyType"
+    },
+    "rules": {
+      "$ref": "../../entity/policies/policy.json#/definitions/rules"
     }
   },
   "required": [
