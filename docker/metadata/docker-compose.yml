@@ -12,6 +12,7 @@
 version: "3.9"
 services:
   mysql:
+    container_name: openmetadata_mysql
     image: openmetadata/db:latest
     restart: always
     environment:
@@ -23,6 +24,7 @@ services:
         ipv4_address: 172.16.240.10
 
   elasticsearch:
+    container_name: openmetadata_elasticsearch
     image: docker.elastic.co/elasticsearch/elasticsearch:7.10.2
     environment:
       - discovery.type=single-node
@@ -36,6 +38,7 @@ services:
       - 9300:9300
 
   openmetadata-server:
+    container_name: openmetadata_server
     restart: always
     image: openmetadata/server:latest
     expose:
@@ -55,6 +58,7 @@ services:
       - "elasticsearch:172.16.240.11"
 
   ingestion:
+    container_name: openmetadata_ingestion
     image: openmetadata/ingestion:latest
     depends_on:
       - mysql
