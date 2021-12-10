@@ -133,9 +133,11 @@ public class ElasticSearchEventHandler implements EventHandler {
     ElasticSearchIndexType esIndexType = esIndexDefinition.getIndexMappingByEntityType(entityType);
     UUID entityId = event.getEntityId();
     ChangeDescription changeDescription = event.getChangeDescription();
+
     List<FieldChange> fieldsAdded = changeDescription.getFieldsAdded();
     StringBuilder scriptTxt = new StringBuilder();
     Map<String, Object> fieldAddParams = new HashMap<>();
+
     for (FieldChange fieldChange: fieldsAdded) {
       if (fieldChange.getName().equalsIgnoreCase("followers")) {
         List<EntityReference> entityReferences = (List<EntityReference>) fieldChange.getNewValue();
@@ -154,17 +156,25 @@ public class ElasticSearchEventHandler implements EventHandler {
         for (EntityReference follower : entityReferences) {
           fieldAddParams.put(fieldChange.getName(), follower.getId().toString());
         }
-
-        scriptTxt.append("ctx._source.followers.removeAll(Collections.singleton(params.followers))");
+        scriptTxt.append("ctx._source.followers.removeAll(Collections.singleton(params.followers));");
       }
     }
-
+    ESChangeDescription esChangeDescription = ESChangeDescription.builder()
+        .updatedAt(event.getDateTime().getTime())
+        .updatedBy(event.getUserName()).build();
+    esChangeDescription.setFieldsAdded(changeDescription.getFieldsAdded());
+    esChangeDescription.setFieldsDeleted(changeDescription.getFieldsDeleted());
+    esChangeDescription.setFieldsUpdated(changeDescription.getFieldsUpdated());
+    Map<String, Object> esChangeDescriptionDoc = JsonUtils.getMap(esChangeDescription);
+    fieldAddParams.put("change_description", esChangeDescriptionDoc);
+    scriptTxt.append("ctx._source.change_descriptions.add(params.change_description);");
     if (!scriptTxt.toString().isEmpty()) {
       Script script = new Script(ScriptType.INLINE, "painless",
           scriptTxt.toString(),
           fieldAddParams);
       UpdateRequest updateRequest = new UpdateRequest(esIndexType.indexName, entityId.toString());
       updateRequest.script(script);
+
       return updateRequest;
     } else {
       return null;

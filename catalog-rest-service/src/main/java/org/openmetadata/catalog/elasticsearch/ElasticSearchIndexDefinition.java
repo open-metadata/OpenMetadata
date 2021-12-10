@@ -189,27 +189,6 @@ class ElasticSearchIndex {
   Long lastUpdatedTimestamp = System.currentTimeMillis();
   @JsonProperty("change_descriptions")
   List<ESChangeDescription> changeDescriptions;
-
-
-  public void parseTags(List<String> tags) {
-    if (!tags.isEmpty()) {
-      List<String> tagsList = new ArrayList<>(tags);
-      String tierTag = null;
-      for (String tag : tagsList) {
-        if (tag.toLowerCase().matches("(.*)tier(.*)")) {
-          tierTag = tag;
-          break;
-        }
-      }
-      if (tierTag != null) {
-        tagsList.remove(tierTag);
-        this.tier = tierTag;
-      }
-      this.tags = tagsList;
-    } else {
-      this.tags = tags;
-    }
-  }
 }
 
 @Getter
@@ -236,6 +215,31 @@ class ESChangeDescription {
   List<FieldChange> fieldsAdded;
   List<FieldChange> fieldsUpdated;
   List<FieldChange> fieldsDeleted;
+}
+
+class ParseTags {
+  String tierTag;
+  List<String> tags;
+
+  ParseTags(List<String> tags) {
+    if (!tags.isEmpty()) {
+      List<String> tagsList = new ArrayList<>(tags);
+      String tierTag = null;
+      for (String tag : tagsList) {
+        if (tag.toLowerCase().matches("(.*)tier(.*)")) {
+          tierTag = tag;
+          break;
+        }
+      }
+      if (tierTag != null) {
+        tagsList.remove(tierTag);
+        this.tierTag = tierTag;
+      }
+      this.tags = tagsList;
+    } else {
+      this.tags = tags;
+    }
+  }
 }
 
 @EqualsAndHashCode(callSuper = true)
@@ -294,6 +298,7 @@ class TableESIndex extends ElasticSearchIndex {
         columnNames.add(col.getName());
       }
     }
+    ParseTags parseTags = new ParseTags(tags);
     TableESIndexBuilder tableESIndexBuilder =  internalBuilder().tableId(tableId)
         .name(tableName)
         .displayName(tableName)
@@ -305,7 +310,8 @@ class TableESIndex extends ElasticSearchIndex {
         .columnNames(columnNames)
         .columnDescriptions(columnDescriptions)
         .tableType(table.getTableType().toString())
-        .tags(tags);
+        .tags(parseTags.tags)
+        .tier(parseTags.tierTag);
 
     if (table.getDatabase() != null) {
       tableESIndexBuilder.database(table.getDatabase().getName());
@@ -400,7 +406,7 @@ class TopicESIndex extends ElasticSearchIndex {
     if (topic.getTags() != null) {
       topic.getTags().forEach(tag -> tags.add(tag.getTagFQN()));
     }
-
+    ParseTags parseTags = new ParseTags(tags);
     TopicESIndexBuilder topicESIndexBuilder =  internalBuilder().topicId(topic.getId().toString())
         .name(topic.getName())
         .displayName(topic.getDisplayName())
@@ -411,7 +417,8 @@ class TopicESIndex extends ElasticSearchIndex {
         .serviceType(topic.getServiceType().toString())
         .serviceCategory("messagingService")
         .entityType("topic")
-        .tags(tags);
+        .tags(parseTags.tags)
+        .tier(parseTags.tierTag);
 
     if (topic.getFollowers() != null) {
       topicESIndexBuilder.followers(topic.getFollowers().stream().map(item ->
@@ -485,7 +492,7 @@ class DashboardESIndex extends ElasticSearchIndex {
       chartNames.add(chart.getDisplayName());
       chartDescriptions.add(chart.getDescription());
     }
-
+    ParseTags parseTags = new ParseTags(tags);
     DashboardESIndexBuilder dashboardESIndexBuilder =  internalBuilder().dashboardId(dashboard.getId().toString())
         .name(dashboard.getDisplayName())
         .displayName(dashboard.getDisplayName())
@@ -498,7 +505,8 @@ class DashboardESIndex extends ElasticSearchIndex {
         .service(dashboard.getService().getName())
         .serviceType(dashboard.getServiceType().toString())
         .serviceCategory("dashboardService")
-        .tags(tags);
+        .tags(parseTags.tags)
+        .tier(parseTags.tierTag);
 
     if (dashboard.getUsageSummary() != null) {
       dashboardESIndexBuilder.weeklyStats(dashboard.getUsageSummary().getWeeklyStats().getCount())
@@ -566,7 +574,7 @@ class PipelineESIndex extends ElasticSearchIndex {
       taskNames.add(task.getDisplayName());
       taskDescriptions.add(task.getDescription());
     }
-
+    ParseTags parseTags = new ParseTags(tags);
     PipelineESIndexBuilder pipelineESIndexBuilder = internalBuilder().pipelineId(pipeline.getId().toString())
         .name(pipeline.getDisplayName())
         .displayName(pipeline.getDisplayName())
@@ -579,7 +587,8 @@ class PipelineESIndex extends ElasticSearchIndex {
         .service(pipeline.getService().getName())
         .serviceType(pipeline.getServiceType().toString())
         .serviceCategory("pipelineService")
-        .tags(tags);
+        .tags(parseTags.tags)
+        .tier(parseTags.tierTag);
 
     if (pipeline.getFollowers() != null) {
       pipelineESIndexBuilder.followers(pipeline.getFollowers().stream().map(item ->
