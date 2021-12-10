@@ -5,8 +5,8 @@ services:
     container_name: mlflow-db
     image: mysql
     restart: always
-    expose:
-      - "3306"
+    ports:
+      - "3306:3306"
     environment:
       - MYSQL_DATABASE=experiments
       - MYSQL_USER=mlflow
@@ -41,4 +41,4 @@ services:
       - MLFLOW_S3_ENDPOINT_URL=http://localhost:9000
       - AWS_ACCESS_KEY_ID="minio"
       - AWS_SECRET_ACCESS_KEY="password"
-    command: mlflow server --backend-store-uri mysql+pymysql://mlflow:password@mlflow-db:3306/experiments --default-artifact-root mlops.local.com --host 0.0.0.0
+    command: mlflow server --backend-store-uri mysql+pymysql://mlflow:password@mlflow-db:3306/experiments --default-artifact-root s3://mlops.local.com --host 0.0.0.0
