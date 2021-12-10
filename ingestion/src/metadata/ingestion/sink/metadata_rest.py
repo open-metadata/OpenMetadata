@@ -23,9 +23,6 @@ from metadata.generated.schema.api.data.createDashboard import (
 from metadata.generated.schema.api.data.createDatabase import (
     CreateDatabaseEntityRequest,
 )
-from metadata.generated.schema.api.data.createDbtModel import (
-    CreateDbtModelEntityRequest,
-)
 from metadata.generated.schema.api.data.createLocation import (
     CreateLocationEntityRequest,
 )
@@ -46,10 +43,7 @@ from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.common import Entity, WorkflowContext
 from metadata.ingestion.api.sink import Sink, SinkStatus
-from metadata.ingestion.models.ometa_table_db import (
-    OMetaDatabaseAndModel,
-    OMetaDatabaseAndTable,
-)
+from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.models.table_metadata import Chart, Dashboard
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -129,8 +123,6 @@ class MetadataRestSink(Sink[Entity]):
             self.write_users(record)
         elif isinstance(record, MlModel):
             self.write_ml_model(record)
-        elif isinstance(record, OMetaDatabaseAndModel):
-            self.write_dbt_models(record)
         else:
             logging.info(
                 f"Ignoring the record due to unknown Record type {type(record)}"
@@ -188,6 +180,11 @@ class MetadataRestSink(Sink[Entity]):
                     table_profile=db_and_table.table.tableProfile,
                 )
 
+            if db_and_table.table.dataModel is not None:
+                self.metadata.ingest_table_data_model(
+                    table=created_table, data_model=db_and_table.table.dataModel
+                )
+
             logger.info(
                 "Successfully ingested table {}.{}".format(
                     db_and_table.database.name.__root__,
@@ -206,44 +203,6 @@ class MetadataRestSink(Sink[Entity]):
             )
             logger.error(err)
             self.status.failure(f"Table: {db_and_table.table.name.__root__}")
-
-    def write_dbt_models(self, model_and_db: OMetaDatabaseAndModel):
-        try:
-            db_request = CreateDatabaseEntityRequest(
-                name=model_and_db.database.name,
-                description=model_and_db.database.description,
-                service=EntityReference(
-                    id=model_and_db.database.service.id, type="databaseService"
-                ),
-            )
-            db = self.metadata.create_or_update(db_request)
-            model = model_and_db.model
-            model_request = CreateDbtModelEntityRequest(
-                name=model.name,
-                description=model.description,
-                viewDefinition=model.viewDefinition,
-                database=db.id,
-                dbtNodeType=model.dbtNodeType,
-                columns=model.columns,
-            )
-            created_model = self.metadata.create_or_update(model_request)
-            logger.info(
-                "Successfully ingested model {}.{}".format(
-                    db.name.__root__, created_model.name.__root__
-                )
-            )
-            self.status.records_written(
-                f"Model: {db.name.__root__}.{created_model.name.__root__}"
-            )
-        except (APIError, ValidationError) as err:
-            logger.error(
-                "Failed to ingest model {} in database {} ".format(
-                    model_and_db.model.name.__root__,
-                    model_and_db.database.name.__root__,
-                )
-            )
-            logger.error(err)
-            self.status.failure(f"Model: {model_and_db.model.name.__root__}")
 
     def write_topics(self, topic: CreateTopicEntityRequest) -> None:
         try:

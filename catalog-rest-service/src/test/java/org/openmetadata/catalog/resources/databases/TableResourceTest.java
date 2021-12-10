@@ -811,19 +811,30 @@ public class TableResourceTest extends EntityResourceTest<Table> {
 
   @Test
   public void put_tableDataModel(TestInfo test) throws IOException {
-    Table table = createAndCheckEntity(create(test), adminAuthHeaders());
+    List<Column> columns = Arrays.asList(
+            getColumn("c1", BIGINT, USER_ADDRESS_TAG_LABEL).withDescription(null),
+            getColumn("c2", ColumnDataType.VARCHAR, USER_ADDRESS_TAG_LABEL)
+                    .withDataLength(10).withDescription(null));
+    Table table = createAndCheckEntity(create(test).withColumns(columns).withDescription(null), adminAuthHeaders());
 
     //
-    // Update the data model and validate the response
+    // Update the data model and validate the response.
+    // Make sure table and column description is carried forward if the original entity had them as null
     //
+    columns.get(0).setDescription("updatedDescription");
+    columns.get(1).setDescription("updatedDescription");
     String query = "select * from test;";
-    DataModel dataModel = new DataModel().withModelType(ModelType.DBT).withSql(query).withGeneratedAt(new Date());
+    DataModel dataModel = new DataModel().withDescription("updatedTableDescription").withModelType(ModelType.DBT)
+            .withSql(query).withGeneratedAt(new Date()).withColumns(columns);
     Table putResponse = putTableDataModel(table.getId(), dataModel, adminAuthHeaders());
     assertDataModel(dataModel, putResponse.getDataModel());
+    assertEquals("updatedTableDescription", putResponse.getDescription()); // Table description updated
 
     // Get the table and validate the data model
-    Table getResponse = getEntity(table.getId(), "dataModel", adminAuthHeaders());
+    Table getResponse = getEntity(table.getId(), "dataModel,columns,tags", adminAuthHeaders());
     assertDataModel(dataModel, getResponse.getDataModel());
+    assertEquals("updatedTableDescription", getResponse.getDescription()); // Table description updated
+    assertColumns(columns, getResponse.getColumns()); // Column description updated
 
     //
     // Update again

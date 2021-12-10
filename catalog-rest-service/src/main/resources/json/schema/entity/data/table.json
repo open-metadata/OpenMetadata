@@ -395,6 +395,10 @@
         "modelType" : {
           "$ref" : "#/definitions/modelType"
         },
+        "description" : {
+          "description": "Description of the Table from the model",
+          "type" : "string"
+        },
         "path" : {
           "description": "Path to sql definition file.",
           "type" : "string"
