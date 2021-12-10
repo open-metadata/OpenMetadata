@@ -322,7 +322,7 @@ const DatabaseDetails: FunctionComponent = () => {
                   className="schema-description tw-flex tw-flex-col tw-h-full tw-relative tw-border tw-border-main tw-rounded-md"
                   data-testid="description-container">
                   <div className="tw-flex tw-items-center tw-px-3 tw-py-1 tw-border-b tw-border-main">
-                    <span className="tw-flex-1 tw-leading-8 tw-m-0 tw-text-sm tw-font-normal">
+                    <span className="tw-flex-1 tw-leading-8 tw-m-0 tw-text-sm tw-font-medium">
                       Description
                     </span>
                     <div className="tw-flex-initial">

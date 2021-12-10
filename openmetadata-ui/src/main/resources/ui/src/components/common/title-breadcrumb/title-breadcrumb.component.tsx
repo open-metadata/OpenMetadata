@@ -25,7 +25,7 @@ const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
       <ol className="list-reset tw-py-2 tw-rounded tw-flex">
         {titleLinks.map((link, index) => {
           const classes =
-            'link-title' + (link.activeTitle ? ' tw-font-normal' : '');
+            'link-title' + (link.activeTitle ? ' tw-font-medium' : '');
 
           return (
             <li data-testid="breadcrumb-link" key={index}>
