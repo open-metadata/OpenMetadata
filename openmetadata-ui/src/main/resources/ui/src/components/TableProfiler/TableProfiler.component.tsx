@@ -15,11 +15,12 @@ import classNames from 'classnames';
 import React, { Fragment, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Table, TableProfile } from '../../generated/entity/data/table';
+import { getConstraintIcon } from '../../utils/TableUtils';
 import TableProfilerGraph from './TableProfilerGraph.component';
 
 type Props = {
   tableProfiles: Table['tableProfile'];
-  columns: Array<string>;
+  columns: Array<{ constraint: string; colName: string }>;
 };
 
 type ProfilerGraphData = Array<{
@@ -45,7 +46,7 @@ const TableProfiler = ({ tableProfiles, columns }: Props) => {
   const columnSpecificData = columns.map((column) => {
     const data = modifiedData?.map((md) => {
       const currentColumn = md.columnProfile?.find(
-        (colProfile) => colProfile.name === column
+        (colProfile) => colProfile.name === column.colName
       );
 
       return { profilDate: md.profileDate, ...currentColumn, rows: md.rows };
@@ -85,19 +86,19 @@ const TableProfiler = ({ tableProfiles, columns }: Props) => {
                     <td
                       className="tw-relative tableBody-cell"
                       data-testid="tableBody-cell">
-                      <p className="tw-flex">
+                      <div className="tw-flex">
                         <span
                           className="tw-mr-2 tw-cursor-pointer"
                           onClick={() =>
                             setExpandedColumn((prevState) => ({
-                              name: col.name,
+                              name: col.name.colName,
                               isExpanded:
-                                prevState.name === col.name
+                                prevState.name === col.name.colName
                                   ? !prevState.isExpanded
                                   : true,
                             }))
                           }>
-                          {expandedColumn.name === col.name ? (
+                          {expandedColumn.name === col.name.colName ? (
                             expandedColumn.isExpanded ? (
                               <i className="fas fa-caret-down" />
                             ) : (
@@ -107,8 +108,16 @@ const TableProfiler = ({ tableProfiles, columns }: Props) => {
                             <i className="fas fa-caret-right" />
                           )}
                         </span>
-                        <span>{col.name}</span>
-                      </p>
+                        {colIndex === 0 && (
+                          <span className="tw-mr-3 tw--ml-2">
+                            {getConstraintIcon(
+                              col.name.constraint,
+                              'tw-relative'
+                            )}
+                          </span>
+                        )}
+                        <span>{col.name.colName}</span>
+                      </div>
                     </td>
                     <td className="tw-relative tableBody-cell profiler-graph">
                       <TableProfilerGraph
@@ -151,47 +160,50 @@ const TableProfiler = ({ tableProfiles, columns }: Props) => {
                     </td>
                   </tr>
                 </tbody>
-                {expandedColumn.name === col.name && expandedColumn.isExpanded && (
-                  <tbody>
-                    {col.data?.map((colData, index) => (
-                      <tr
-                        className={classNames(
-                          'tableBody-row tw-border-0 tw-border-l tw-border-r',
-                          {
-                            'tw-border-b':
-                              columnSpecificData.length - 1 === colIndex &&
-                              col.data?.length === index + 1,
-                          }
-                        )}
-                        key={index}>
-                        <td className="tw-relative tableBody-cell">
-                          <span className="tw-pl-6">{colData.profilDate}</span>
-                        </td>
-                        <td className="tw-relative tableBody-cell">
-                          <span className="tw-pl-6">{colData.rows}</span>
-                        </td>
-                        <td className="tw-relative tableBody-cell">
-                          {colData.uniqueProportion ?? 0}
-                        </td>
-                        <td className="tw-relative tableBody-cell">
-                          {colData.nullProportion ?? 0}
-                        </td>
-                        <td className="tw-relative tableBody-cell">
-                          {colData.min ?? 0}
-                        </td>
-                        <td className="tw-relative tableBody-cell">
-                          {colData.max ?? 0}
-                        </td>
-                        <td className="tw-relative tableBody-cell">
-                          {colData.median ?? 0}
-                        </td>
-                        <td className="tw-relative tableBody-cell">
-                          {colData.stddev ?? 0}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                )}
+                {expandedColumn.name === col.name.colName &&
+                  expandedColumn.isExpanded && (
+                    <tbody>
+                      {col.data?.map((colData, index) => (
+                        <tr
+                          className={classNames(
+                            'tableBody-row tw-border-0 tw-border-l tw-border-r',
+                            {
+                              'tw-border-b':
+                                columnSpecificData.length - 1 === colIndex &&
+                                col.data?.length === index + 1,
+                            }
+                          )}
+                          key={index}>
+                          <td className="tw-relative tableBody-cell">
+                            <span className="tw-pl-6">
+                              {colData.profilDate}
+                            </span>
+                          </td>
+                          <td className="tw-relative tableBody-cell">
+                            <span className="tw-pl-6">{colData.rows}</span>
+                          </td>
+                          <td className="tw-relative tableBody-cell">
+                            {colData.uniqueProportion ?? 0}
+                          </td>
+                          <td className="tw-relative tableBody-cell">
+                            {colData.nullProportion ?? 0}
+                          </td>
+                          <td className="tw-relative tableBody-cell">
+                            {colData.min ?? 0}
+                          </td>
+                          <td className="tw-relative tableBody-cell">
+                            {colData.max ?? 0}
+                          </td>
+                          <td className="tw-relative tableBody-cell">
+                            {colData.median ?? 0}
+                          </td>
+                          <td className="tw-relative tableBody-cell">
+                            {colData.stddev ?? 0}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  )}
               </Fragment>
             );
           })}

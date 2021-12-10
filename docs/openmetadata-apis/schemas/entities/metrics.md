@@ -6,6 +6,8 @@ This schema defines the Metrics entity. Metrics are measurements computed from d
 
 Type: `object`
 
+This schema <u>does not</u> accept additional properties.
+
 ## Properties
 - **id** `required`
   - Unique identifier that identifies this metrics instance.
@@ -13,11 +15,11 @@ Type: `object`
 - **name** `required`
   - Name that identifies this metrics instance uniquely.
   - Type: `string`
-  - Length: between 1 and 64
+  - Length: between 1 and 128
 - **fullyQualifiedName**
   - A unique name that identifies a metric in the format 'ServiceName.MetricName'.
   - Type: `string`
-  - Length: between 1 and 64
+  - Length: between 1 and 256
 - **displayName**
   - Display Name that identifies this metric.
   - Type: `string`
@@ -54,5 +56,4 @@ Type: `object`
   - Change that lead to this version of the entity.
   - $ref: [../../type/entityHistory.json#/definitions/changeDescription](../types/entityhistory.md#changedescription)
 
-
-_This document was updated on: Monday, November 15, 2021_
+_This document was updated on: Thursday, December 9, 2021_

@@ -36,8 +36,8 @@ const Onboarding: FC<OnboardingProp> = ({
       data-testid="onboarding">
       <div className="tw-p-4" style={{ maxWidth: '700px' }}>
         <div className="tw-mb-6">
-          <h4>Welcome to OpenMetadata.</h4>
-          <p className="tw-text-lg tw-font-normal">
+          <h5>Welcome to OpenMetadata.</h5>
+          <p className="tw-font-normal">
             A central place to discover and collaborate on all your data.
           </p>
         </div>
@@ -46,7 +46,7 @@ const Onboarding: FC<OnboardingProp> = ({
             <div className="tw-flex tw-items-center tw-gap-4 tw-mb-5" key={i}>
               <div className="tw-flex tw-items-center">
                 <span
-                  className="tw-w-8 tw-h-8 tw-flex tw-items-center tw-justify-center tw-font-medium tw-p-2 
+                  className="tw-w-6 tw-h-6 tw-flex tw-items-center tw-justify-center tw-font-normal tw-p-2 
                   tw-bg-primary-lite tw-text-primary tw-rounded-full">
                   {i + 1}
                 </span>

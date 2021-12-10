@@ -1,4 +1,4 @@
-# MLModel
+# MlModel
 
 This schema defines the Model entity. Models are algorithms trained on data to find patterns or make predictions.
 
@@ -6,26 +6,28 @@ This schema defines the Model entity. Models are algorithms trained on data to f
 
 Type: `object`
 
+This schema <u>does not</u> accept additional properties.
+
 ## Properties
 - **id** `required`
-  - Unique identifier of a MLModel instance.
+  - Unique identifier of an ML Model instance.
   - $ref: [../../type/basic.json#/definitions/uuid](../types/basic.md#uuid)
 - **name** `required`
-  - Name that identifies this MLModel.
+  - Name that identifies this ML Model.
   - Type: `string`
-  - Length: between 1 and 64
+  - Length: between 1 and 128
 - **fullyQualifiedName**
-  - A unique name that identifies a MLModel.
+  - A unique name that identifies an ML Model.
   - Type: `string`
-  - Length: between 1 and 64
+  - Length: between 1 and 256
 - **displayName**
-  - Display Name that identifies this MLModel.
+  - Display Name that identifies this ML Model.
   - Type: `string`
 - **description**
-  - Description of the MLModel, what it is, and how to use it.
+  - Description of the ML Model, what it is, and how to use it.
   - Type: `string`
 - **algorithm** `required`
-  - Algorithm used to train the MLModel.
+  - Algorithm used to train the ML Model.
   - Type: `string`
 - **mlFeatures**
   - Features used to train the ML Model.
@@ -40,22 +42,28 @@ Type: `object`
 - **dashboard**
   - Performance Dashboard URL to track metric evolution.
   - $ref: [../../type/entityReference.json](../types/entityreference.md)
+- **mlStore**
+  - Location containing the ML Model. It can be a storage layer and/or a container repository.
+  - $ref: [#/definitions/mlStore](#mlstore)
+- **server**
+  - Endpoint that makes the ML Model available, e.g,. a REST API serving the data or computing predictions.
+  - $ref: [../../type/basic.json#/definitions/href](../types/basic.md#href)
 - **href**
   - Link to the resource corresponding to this entity.
   - $ref: [../../type/basic.json#/definitions/href](../types/basic.md#href)
 - **owner**
-  - Owner of this MLModel.
+  - Owner of this ML Model.
   - $ref: [../../type/entityReference.json](../types/entityreference.md)
 - **followers**
-  - Followers of this MLModel.
+  - Followers of this ML Model.
   - $ref: [../../type/entityReference.json#/definitions/entityReferenceList](../types/entityreference.md#entityreferencelist)
 - **tags**
-  - Tags for this MLModel.
+  - Tags for this ML Model.
   - Type: `array`
     - **Items**
     - $ref: [../../type/tagLabel.json](../types/taglabel.md)
 - **usageSummary**
-  - Latest usage information for this MLModel.
+  - Latest usage information for this ML Model.
   - $ref: [../../type/usageDetails.json](../types/usagedetails.md)
 - **version**
   - Metadata version of the entity.
@@ -101,7 +109,7 @@ Type: `object`
 - Local name (not fully qualified name) of the ML Feature.
 - Type: `string`
 - The value must match this pattern: `^[^.]*$`
-- Length: between 1 and 64
+- Length: between 1 and 128
 
 
 ### featureSourceName
@@ -109,7 +117,7 @@ Type: `object`
 - Local name (not fully qualified name) of a ML Feature source.
 - Type: `string`
 - The value must match this pattern: `^[^.]*$`
-- Length: between 1 and 64
+- Length: between 1 and 128
 
 
 ### fullyQualifiedFeatureSourceName
@@ -151,7 +159,7 @@ Type: `object`
 
 ### mlFeature
 
-- This schema defines the type for a ML Feature used in a MLModel.
+- This schema defines the type for an ML Feature used in an ML Model.
 - Type: `object`
 - This schema <u>does not</u> accept additional properties.
 - **Properties**
@@ -182,7 +190,7 @@ Type: `object`
 
 ### mlHyperParameter
 
-- This schema defines the type for a ML HyperParameter used in a MLModel.
+- This schema defines the type for an ML HyperParameter used in an ML Model.
 - Type: `object`
 - This schema <u>does not</u> accept additional properties.
 - **Properties**
@@ -196,4 +204,17 @@ Type: `object`
     - Description of the Hyper Parameter.
     - Type: `string`
 
-_This document was updated on: Monday, November 15, 2021_
+### mlStore
+
+- Location containing the ML Model. It can be a storage layer and/or a container repository.
+- Type: `object`
+- This schema <u>does not</u> accept additional properties.
+- **Properties**
+  - **storage**
+    - Storage Layer containing the ML Model data.
+    - $ref: [../../type/basic.json#/definitions/href](../types/basic.md#href)
+  - **imageRepository**
+    - Container Repository with the ML Model image.
+    - $ref: [../../type/basic.json#/definitions/href](../types/basic.md#href)
+
+_This document was updated on: Thursday, December 9, 2021_

@@ -6,6 +6,8 @@ This schema defines the Dashboard Service entity, such as Looker and Superset.
 
 Type: `object`
 
+This schema <u>does not</u> accept additional properties.
+
 ## Properties
 - **id** `required`
   - Unique identifier of this dashboard service instance.
@@ -13,7 +15,7 @@ Type: `object`
 - **name** `required`
   - Name that identifies this dashboard service.
   - Type: `string`
-  - Length: between 1 and 64
+  - Length: between 1 and 128
 - **displayName**
   - Display Name that identifies this dashboard service.
   - Type: `string`
@@ -65,5 +67,4 @@ Type: `object`
   3. _"Tableau"_
   4. _"Redash"_
 
-
-_This document was updated on: Monday, November 15, 2021_
+_This document was updated on: Thursday, December 9, 2021_

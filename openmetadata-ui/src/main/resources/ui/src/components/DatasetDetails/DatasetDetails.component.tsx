@@ -394,7 +394,10 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
             {activeTab === 2 && (
               <div className="tw-mt-4">
                 <TableProfiler
-                  columns={columns.map((col) => col.name)}
+                  columns={columns.map((col) => ({
+                    constraint: col.constraint as string,
+                    colName: col.name,
+                  }))}
                   tableProfiles={tableProfile}
                 />
               </div>

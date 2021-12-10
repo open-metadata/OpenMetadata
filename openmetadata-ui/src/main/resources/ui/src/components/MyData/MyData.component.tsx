@@ -25,7 +25,7 @@ import { getExplorePathWithSearch } from '../../constants/constants';
 import { filterList } from '../../constants/Mydata.constants';
 import { FeedFilter, Ownership } from '../../enums/mydata.enum';
 import { getOwnerIds } from '../../utils/CommonUtils';
-import { getSummary } from '../../utils/EntityVersionUtils';
+import { getFeedSummary } from '../../utils/EntityVersionUtils';
 import { dropdownIcon as DropDownIcon } from '../../utils/svgconstant';
 import { getRelativeDateByTimeStamp } from '../../utils/TimeUtils';
 import { Button } from '../buttons/Button/Button';
@@ -170,12 +170,19 @@ const MyData: React.FC<MyDataProps> = ({
       .map((d) => {
         return (
           d.changeDescriptions
-            .filter((c) => c.fieldsAdded || c.fieldsDeleted || c.fieldsUpdated)
+            .filter(
+              (c) =>
+                c.fieldsAdded?.length ||
+                c.fieldsDeleted?.length ||
+                c.fieldsUpdated?.length
+            )
             .map((change) => ({
               updatedAt: change.updatedAt,
               updatedBy: change.updatedBy,
               entityName: d.name,
-              description: <div>{getSummary(change, true)}</div>,
+              description: (
+                <div>{getFeedSummary(change, d.name, d.entityType, d.fqn)}</div>
+              ),
               entityType: d.entityType,
               fqn: d.fqn,
               relativeDay: getRelativeDateByTimeStamp(change.updatedAt),
@@ -199,11 +206,9 @@ const MyData: React.FC<MyDataProps> = ({
         <ErrorPlaceHolderES errorMessage={error} type="error" />
       ) : (
         <Fragment>
+          {getFilterDropDown()}
           {getFeedsData().feeds.length > 0 ? (
-            <Fragment>
-              {getFilterDropDown()}
-              <FeedCards {...getFeedsData()} />
-            </Fragment>
+            <FeedCards {...getFeedsData()} />
           ) : (
             <Onboarding showLogo={false} />
           )}

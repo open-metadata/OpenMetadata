@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import classNames from 'classnames';
 import React, { FC, Fragment, ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { getEntityLink } from '../../../utils/TableUtils';
@@ -39,7 +40,7 @@ const FeedCards: FC<FeedCardsProp> = ({
     <Fragment>
       {relativeDays.map((d, i) => (
         <div className="tw-grid tw-grid-rows-1 tw-grid-cols-1 tw-mt-3" key={i}>
-          <div className="tw-relative tw-mb-3">
+          <div className="tw-relative tw-mt-3 tw-mb-3.5">
             <div className="tw-flex tw-justify-center">
               <hr className="tw-absolute tw-top-3 tw-border-b-2 tw-border-main tw-w-full tw-z-0" />
               <span className="tw-bg-white tw-px-4 tw-py-px tw-border tw-border-main tw-rounded tw-z-10 tw-text-grey-muted tw-font-normal">
@@ -50,10 +51,11 @@ const FeedCards: FC<FeedCardsProp> = ({
           {feeds
             .filter((f) => f.relativeDay === d)
             .map((feed, i) => (
-              <div
-                className="tw-bg-white tw-p-3 tw-border tw-border-main tw-rounded-md tw-mb-3"
-                key={i}>
-                <div className="tw-flex tw-mb-1">
+              <div key={i}>
+                <div
+                  className={classNames('tw-flex tw-mb-1.5', {
+                    'tw-mt-5': i !== 0,
+                  })}>
                   <Avatar name={feed.updatedBy} width="24" />
                   <h6 className="tw-flex tw-items-center tw-m-0 tw-heading tw-pl-2">
                     {feed.updatedBy}
@@ -68,7 +70,12 @@ const FeedCards: FC<FeedCardsProp> = ({
                     </span>
                   </h6>
                 </div>
-                <div className="tw-pl-7">{feed.description}</div>
+                <div
+                  className={classNames(
+                    'tw-bg-white tw-p-3 tw-pb-1 tw-border tw-border-main tw-rounded-md tw-ml-7'
+                  )}>
+                  <div>{feed.description}</div>
+                </div>
               </div>
             ))}
         </div>

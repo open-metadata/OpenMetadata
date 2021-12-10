@@ -13,7 +13,7 @@ Type: `object`
 - **name**
   - Name of the bot.
   - Type: `string`
-  - Length: between 1 and 64
+  - Length: between 1 and 128
 - **displayName**
   - Name used for display purposes. Example 'FirstName LastName'.
   - Type: `string`
@@ -36,5 +36,4 @@ Type: `object`
   - Change that lead to this version of the entity.
   - $ref: [../type/entityHistory.json#/definitions/changeDescription](../types/entityhistory.md#changedescription)
 
-
-_This document was updated on: Monday, November 15, 2021_
+_This document was updated on: Thursday, December 9, 2021_

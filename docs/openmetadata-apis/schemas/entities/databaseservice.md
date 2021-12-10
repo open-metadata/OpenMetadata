@@ -6,6 +6,8 @@ This schema defines the Database Service entity, such as MySQL, BigQuery, Redshi
 
 Type: `object`
 
+This schema <u>does not</u> accept additional properties.
+
 ## Properties
 - **id** `required`
   - Unique identifier of this database service instance.
@@ -13,7 +15,7 @@ Type: `object`
 - **name** `required`
   - Name that identifies this database service.
   - Type: `string`
-  - Length: between 1 and 64
+  - Length: between 1 and 128
 - **displayName**
   - Display Name that identifies this database service.
   - Type: `string`
@@ -66,6 +68,8 @@ Type: `object`
   11. _"Trino"_
   12. _"Vertica"_
   13. _"Glue"_
+  14. _"MariaDB"_
+  15. _"Druid"_
 
 
-_This document was updated on: Monday, November 15, 2021_
+_This document was updated on: Thursday, December 9, 2021_
