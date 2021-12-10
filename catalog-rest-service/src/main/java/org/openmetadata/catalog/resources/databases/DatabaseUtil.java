@@ -13,7 +13,6 @@
 
 package org.openmetadata.catalog.resources.databases;
 
-import org.openmetadata.catalog.entity.data.DbtModel;
 import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.type.Column;
 import org.openmetadata.catalog.type.ColumnConstraint;
@@ -79,16 +78,6 @@ public final class DatabaseUtil {
   public static void validateColumns(Table table) {
     validateColumnNames(table.getColumns());
     for (Column c : table.getColumns()) {
-      validateColumnDataTypeDisplay(c);
-      validateColumnDataLength(c);
-      validateArrayColumn(c);
-      validateStructColumn(c);
-    }
-  }
-
-  public static void validateColumns(DbtModel dbtModel) {
-    validateColumnNames(dbtModel.getColumns());
-    for (Column c : dbtModel.getColumns()) {
       validateColumnDataTypeDisplay(c);
       validateColumnDataLength(c);
       validateArrayColumn(c);

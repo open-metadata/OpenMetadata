@@ -31,6 +31,7 @@ import org.openmetadata.catalog.jdbi3.TableRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
+import org.openmetadata.catalog.type.DataModel;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.SQLQuery;
@@ -110,7 +111,7 @@ public class TableResource {
   }
 
   static final String FIELDS = "columns,tableConstraints,usageSummary,owner," +
-          "tags,followers,joins,sampleData,viewDefinition,tableProfile,location,tableQueries";
+          "tags,followers,joins,sampleData,viewDefinition,tableProfile,location,tableQueries,dataModel";
   public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replaceAll(" ", "")
           .split(","));
 
@@ -353,9 +354,7 @@ public class TableResource {
                            @Parameter(description = "Id of the table", schema = @Schema(type = "string"))
                            @PathParam("id") String id, TableJoins joins) throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    Fields fields = new Fields(FIELD_LIST, "joins");
-    dao.addJoins(UUID.fromString(id), joins);
-    Table table = dao.get(uriInfo, id, fields);
+    Table table = dao.addJoins(UUID.fromString(id), joins);
     return addHref(uriInfo, table);
   }
 
@@ -368,9 +367,7 @@ public class TableResource {
                                 @Parameter(description = "Id of the table", schema = @Schema(type = "string"))
                                 @PathParam("id") String id, TableData tableData) throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    Fields fields = new Fields(FIELD_LIST, "sampleData");
-    dao.addSampleData(UUID.fromString(id), tableData);
-    Table table = dao.get(uriInfo, id, fields);
+    Table table = dao.addSampleData(UUID.fromString(id), tableData);
     return addHref(uriInfo, table);
   }
 
@@ -383,9 +380,7 @@ public class TableResource {
                              @Parameter(description = "Id of the table", schema = @Schema(type = "string"))
                              @PathParam("id") String id, TableProfile tableProfile) throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    Fields fields = new Fields(FIELD_LIST, "tableProfile");
-    dao.addTableProfileData(UUID.fromString(id), tableProfile);
-    Table table = dao.get(uriInfo, id, fields);
+    Table table = dao.addTableProfileData(UUID.fromString(id), tableProfile);
     return addHref(uriInfo, table);
   }
 
@@ -404,10 +399,8 @@ public class TableResource {
                               @Parameter(description = "Id of the location to be added",
                                       schema = @Schema(type = "string"))
                                       String locationId) throws IOException, ParseException {
-    Fields fields = new Fields(FIELD_LIST, "location");
-    Status status = dao.addLocation(UUID.fromString(id), UUID.fromString(locationId));
-    Table table = dao.get(uriInfo, id, fields);
-    return Response.status(status).entity(table).build();
+    Table table = dao.addLocation(UUID.fromString(id), UUID.fromString(locationId));
+    return Response.ok().entity(table).build();
   }
 
   @PUT
@@ -419,9 +412,20 @@ public class TableResource {
                                @Parameter(description = "Id of the table", schema = @Schema(type = "string"))
                                @PathParam("id") String id, SQLQuery sqlQuery) throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    Fields fields = new Fields(FIELD_LIST, "tableQueries");
-    dao.addQuery(UUID.fromString(id), sqlQuery);
-    Table table = dao.get(uriInfo, id, fields);
+    Table table = dao.addQuery(UUID.fromString(id), sqlQuery);
+    return addHref(uriInfo, table);
+  }
+
+  @PUT
+  @Path("/{id}/dataModel")
+  @Operation(summary = "Add data modeling information to a table", tags = "tables",
+          description = "Add data modeling (such as DBT model) information on how the table was created to the table.")
+  public Table addQuery(@Context UriInfo uriInfo,
+                        @Context SecurityContext securityContext,
+                        @Parameter(description = "Id of the table", schema = @Schema(type = "string"))
+                        @PathParam("id") String id, DataModel dataModel) throws IOException, ParseException {
+    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
+    Table table = dao.addDataModel(UUID.fromString(id), dataModel);
     return addHref(uriInfo, table);
   }
 
