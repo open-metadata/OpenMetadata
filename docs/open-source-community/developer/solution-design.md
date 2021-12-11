@@ -100,3 +100,13 @@ This JSON does not store any Relationship. E.g., a User owning a Dashboard is a 
 This separation helps us decouple concerns. We can process related entities independently and validate at runtime what information needs to be updated and/or retrieved. For example, if we delete a Dashboard being owned by a User, we will then clean up this row in `entity_relationship`, but that won't alter the information from the User.
 
 Another trickier example would be trying to delete a Database that contains Tables. In this case, the process would check that the Database Entity is not empty, and therefore we cannot continue with the removal.
+
+### Change Events Store
+
+You might have already noticed that in all Entities definitions we have a `changeDescription` field. It is defined as _"Change that leads to this version of the entity_". If we inspect further the properties of `changeDescription`, we can see how it stores the differences between the current and last versions of an Entity.
+
+This results in giving visibility on the last update step of each Entity instance. However, there might be times when this level of tracking is not enough.
+
+One of the greatest features of OpenMetadata is the ability to track **all** **Entity versions**. Each operation that leads to a change (`PUT`, `POST`, `PATCH`) will generate a trace that is going to be stored in the table `change_event`.
+
+Using the API to get events data, or directly exploring the different versions of each entity gives great debugging power to both data consumers and producers.
