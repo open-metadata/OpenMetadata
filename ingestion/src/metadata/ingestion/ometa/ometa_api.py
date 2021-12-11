@@ -18,7 +18,6 @@ from metadata.generated.schema.api.lineage.addLineage import AddLineage
 from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.database import Database
-from metadata.generated.schema.entity.data.dbtmodel import DbtModel
 from metadata.generated.schema.entity.data.location import Location
 from metadata.generated.schema.entity.data.metrics import Metrics
 from metadata.generated.schema.entity.data.mlmodel import MlModel
@@ -26,6 +25,7 @@ from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.data.report import Report
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.data.topic import Topic
+from metadata.generated.schema.entity.policies.policy import Policy
 from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.messagingService import MessagingService
@@ -91,6 +91,7 @@ class OpenMetadata(OMetaLineageMixin, OMetaTableMixin, Generic[T, C]):
     entity_path = "entity"
     api_path = "api"
     data_path = "data"
+    policies_path = "policies"
     services_path = "services"
     teams_path = "teams"
 
@@ -162,6 +163,11 @@ class OpenMetadata(OMetaLineageMixin, OMetaTableMixin, Generic[T, C]):
             return "/locations"
 
         if issubclass(
+            entity, get_args(Union[Policy, self.get_create_entity_type(Policy)])
+        ):
+            return "/policies"
+
+        if issubclass(
             entity, get_args(Union[Table, self.get_create_entity_type(Table)])
         ):
             return "/tables"
@@ -170,11 +176,6 @@ class OpenMetadata(OMetaLineageMixin, OMetaTableMixin, Generic[T, C]):
             entity, get_args(Union[Topic, self.get_create_entity_type(Topic)])
         ):
             return "/topics"
-
-        if issubclass(
-            entity, get_args(Union[DbtModel, self.get_create_entity_type(DbtModel)])
-        ):
-            return "/dbtmodels"
 
         if issubclass(entity, Metrics):
             return "/metrics"
@@ -257,6 +258,9 @@ class OpenMetadata(OMetaLineageMixin, OMetaTableMixin, Generic[T, C]):
         it is found inside generated
         """
 
+        if "policy" in entity.__name__.lower():
+            return self.policies_path
+
         if "service" in entity.__name__.lower():
             return self.services_path
 
@@ -316,8 +320,7 @@ class OpenMetadata(OMetaLineageMixin, OMetaTableMixin, Generic[T, C]):
         """
 
         entity = data.__class__
-        is_create = "create" in entity.__name__.lower()
-        is_service = "service" in entity.__name__.lower()
+        is_create = "create" in data.__class__.__name__.lower()
 
         # Prepare the return Entity Type
         if is_create:
@@ -327,14 +330,7 @@ class OpenMetadata(OMetaLineageMixin, OMetaTableMixin, Generic[T, C]):
                 f"PUT operations need a CrateEntity, not {entity}"
             )
 
-        # Prepare the request method
-        if is_service and is_create:
-            # Services can only be created via POST
-            method = self.client.post
-        else:
-            method = self.client.put
-
-        resp = method(self.get_suffix(entity), data=data.json())
+        resp = self.client.put(self.get_suffix(entity), data=data.json())
         return entity_class(**resp)
 
     @staticmethod

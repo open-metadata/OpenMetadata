@@ -27,6 +27,20 @@
           "name": "Lifecycle"
         }
       ]
+    },
+    "rules": {
+      "description": "A set of rules associated with the Policy.",
+      "type": "array",
+      "items": {
+        "anyOf": [
+          {
+            "$ref": "accessControl/rule.json"
+          },
+          {
+            "$ref": "lifecycle/rule.json"
+          }
+        ]
+      }
     }
   },
   "properties": {
@@ -92,19 +106,7 @@
       "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
     },
     "rules": {
-      "description": "A set of rules associated with this Policy.",
-      "type": "array",
-      "minLength": 1,
-      "items": {
-        "anyOf": [
-          {
-            "$ref": "accessControl/rule.json"
-          },
-          {
-            "$ref": "lifecycle/rule.json"
-          }
-        ]
-      }
+      "$ref": "#/definitions/rules"
     }
   },
   "required": [

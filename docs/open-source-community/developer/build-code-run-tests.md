@@ -17,8 +17,8 @@
     2. Extract the distribution tar.gz file and run the following command
 
     ```
-    cd openmetadata-<version>/bootstrap
-    sh bootstrap_storage.sh drop-create
+    cd open-metadata-<version>/bootstrap
+    sh bootstrap_storage.sh drop-create-all
     ```
 *   Bootstrap ES with indexes and load sample data into MySQL
 
@@ -44,7 +44,7 @@ The following commands must be run from the top-level directory.
 
 `mvn clean install`
 
-If you wish to skip the unit tests you can do this by adding `-DskipTests `to the command line.
+If you wish to skip the unit tests you can do this by adding `-DskipTests` to the command line.
 
 ## Create a distribution (packaging)
 
@@ -52,9 +52,6 @@ You can create a _distribution_ as follows.
 
 ```
 $ mvn clean install
-
-# Create the binary distribution.
-$ cd openmetadata-dist && mvn package
 ```
 
 The binaries will be created at:
@@ -68,7 +65,11 @@ openmetadata-dist/target/open-metadata-<version>.tar.gz
 
 Add a new Run/Debug configuration like the below screenshot.
 
-![Intellij Run Configuration](<../../.gitbook/assets/image (1).png>)
+1. Click on Intellij - Run menu
+2. Click on "Edit Configurations"
+3. Click + sign and Select Application and make sure your config looks similar to the below image
+
+![Intellij Runtime Configuration](<../../.gitbook/assets/Intellij-Runtime Config.png>)
 
 ## Add missing dependency
 

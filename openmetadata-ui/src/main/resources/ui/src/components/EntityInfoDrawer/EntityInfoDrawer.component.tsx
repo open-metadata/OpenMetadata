@@ -44,13 +44,13 @@ const getHeaderLabel = (
     <>
       {isMainNode ? (
         <span
-          className="tw-break-words description-text tw-self-center tw-font-normal"
+          className="tw-break-words description-text tw-self-center tw-font-medium"
           data-testid="lineage-entity">
           {v.split(separator)[length - 1]}
         </span>
       ) : (
         <span
-          className="tw-break-words description-text tw-self-center link-text tw-font-normal"
+          className="tw-break-words description-text tw-self-center link-text tw-font-medium"
           data-testid="lineage-entity">
           <Link to={getEntityLink(type, v)}>
             {v.split(separator)[length - 1]}

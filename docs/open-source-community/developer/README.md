@@ -33,3 +33,11 @@ This document summarizes information relevant to OpenMetadata committers and con
 {% content-ref url="generate-typescript-types-from-json-schema.md" %}
 [generate-typescript-types-from-json-schema.md](generate-typescript-types-from-json-schema.md)
 {% endcontent-ref %}
+
+{% content-ref url="solution-design.md" %}
+[solution-design.md](solution-design.md)
+{% endcontent-ref %}
+
+{% content-ref url="python-api.md" %}
+[python-api.md](python-api.md)
+{% endcontent-ref %}

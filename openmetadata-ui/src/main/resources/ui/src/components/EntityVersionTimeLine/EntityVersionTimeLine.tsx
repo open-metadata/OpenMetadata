@@ -115,13 +115,13 @@ const EntityVersionTimeLine: React.FC<Props> = ({
               </div>
               <div className="tw-grid tw-gap-0.5">
                 <p
-                  className={classNames('tw-text-grey-body tw-font-normal', {
+                  className={classNames('tw-text-grey-body tw-font-medium', {
                     'tw-text-primary-active':
                       toString(currV?.version) === currentVersion,
                   })}>
                   <span>v{parseFloat(currV?.version).toFixed(1)}</span>
                   {majorVersionChecks() ? (
-                    <span className="tw-ml-2 tw-text-xs tw-font-normal tw-text-grey-body tw-bg-tag tw-px-2 tw-py-0.5 tw-rounded">
+                    <span className="tw-ml-2 tw-text-xs tw-font-medium tw-text-grey-body tw-bg-tag tw-px-2 tw-py-0.5 tw-rounded">
                       Major
                     </span>
                   ) : null}
@@ -130,9 +130,9 @@ const EntityVersionTimeLine: React.FC<Props> = ({
                   {getSummary(currV?.changeDescription)}
                 </div>
                 <p className="tw-text-xs tw-italic">
-                  <span className="tw-font-normal">{currV?.updatedBy}</span>
+                  <span className="tw-font-medium">{currV?.updatedBy}</span>
                   <span className="tw-text-grey-muted"> updated on </span>
-                  <span className="tw-font-normal">
+                  <span className="tw-font-medium">
                     {new Date(currV?.updatedAt).toLocaleDateString('en-CA', {
                       hour: 'numeric',
                       minute: 'numeric',

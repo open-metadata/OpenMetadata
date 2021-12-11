@@ -23,9 +23,6 @@ from metadata.generated.schema.api.data.createDashboard import (
 from metadata.generated.schema.api.data.createDatabase import (
     CreateDatabaseEntityRequest,
 )
-from metadata.generated.schema.api.data.createDbtModel import (
-    CreateDbtModelEntityRequest,
-)
 from metadata.generated.schema.api.data.createLocation import (
     CreateLocationEntityRequest,
 )
@@ -35,6 +32,9 @@ from metadata.generated.schema.api.data.createPipeline import (
 )
 from metadata.generated.schema.api.data.createTable import CreateTableEntityRequest
 from metadata.generated.schema.api.data.createTopic import CreateTopicEntityRequest
+from metadata.generated.schema.api.policies.createPolicy import (
+    CreatePolicyEntityRequest,
+)
 from metadata.generated.schema.api.lineage.addLineage import AddLineage
 from metadata.generated.schema.api.teams.createTeam import CreateTeamEntityRequest
 from metadata.generated.schema.api.teams.createUser import CreateUserEntityRequest
@@ -42,14 +42,12 @@ from metadata.generated.schema.entity.data.chart import ChartType
 from metadata.generated.schema.entity.data.location import Location
 from metadata.generated.schema.entity.data.mlmodel import MlModel
 from metadata.generated.schema.entity.data.pipeline import Pipeline
+from metadata.generated.schema.entity.policies.policy import Policy
 from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.common import Entity, WorkflowContext
 from metadata.ingestion.api.sink import Sink, SinkStatus
-from metadata.ingestion.models.ometa_table_db import (
-    OMetaDatabaseAndModel,
-    OMetaDatabaseAndTable,
-)
+from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.models.table_metadata import Chart, Dashboard
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -121,6 +119,8 @@ class MetadataRestSink(Sink[Entity]):
             self.write_dashboards(record)
         elif isinstance(record, Location):
             self.write_locations(record)
+        elif isinstance(record, Policy):
+            self.write_policies(record)
         elif isinstance(record, Pipeline):
             self.write_pipelines(record)
         elif isinstance(record, AddLineage):
@@ -129,8 +129,6 @@ class MetadataRestSink(Sink[Entity]):
             self.write_users(record)
         elif isinstance(record, CreateMlModelEntityRequest):
             self.write_ml_model(record)
-        elif isinstance(record, OMetaDatabaseAndModel):
-            self.write_dbt_models(record)
         else:
             logging.info(
                 f"Ignoring the record due to unknown Record type {type(record)}"
@@ -188,6 +186,11 @@ class MetadataRestSink(Sink[Entity]):
                     table_profile=db_and_table.table.tableProfile,
                 )
 
+            if db_and_table.table.dataModel is not None:
+                self.metadata.ingest_table_data_model(
+                    table=created_table, data_model=db_and_table.table.dataModel
+                )
+
             logger.info(
                 "Successfully ingested table {}.{}".format(
                     db_and_table.database.name.__root__,
@@ -206,44 +209,6 @@ class MetadataRestSink(Sink[Entity]):
             )
             logger.error(err)
             self.status.failure(f"Table: {db_and_table.table.name.__root__}")
-
-    def write_dbt_models(self, model_and_db: OMetaDatabaseAndModel):
-        try:
-            db_request = CreateDatabaseEntityRequest(
-                name=model_and_db.database.name,
-                description=model_and_db.database.description,
-                service=EntityReference(
-                    id=model_and_db.database.service.id, type="databaseService"
-                ),
-            )
-            db = self.metadata.create_or_update(db_request)
-            model = model_and_db.model
-            model_request = CreateDbtModelEntityRequest(
-                name=model.name,
-                description=model.description,
-                viewDefinition=model.viewDefinition,
-                database=db.id,
-                dbtNodeType=model.dbtNodeType,
-                columns=model.columns,
-            )
-            created_model = self.metadata.create_or_update(model_request)
-            logger.info(
-                "Successfully ingested model {}.{}".format(
-                    db.name.__root__, created_model.name.__root__
-                )
-            )
-            self.status.records_written(
-                f"Model: {db.name.__root__}.{created_model.name.__root__}"
-            )
-        except (APIError, ValidationError) as err:
-            logger.error(
-                "Failed to ingest model {} in database {} ".format(
-                    model_and_db.model.name.__root__,
-                    model_and_db.database.name.__root__,
-                )
-            )
-            logger.error(err)
-            self.status.failure(f"Model: {model_and_db.model.name.__root__}")
 
     def write_topics(self, topic: CreateTopicEntityRequest) -> None:
         try:
@@ -349,6 +314,25 @@ class MetadataRestSink(Sink[Entity]):
             logger.error(f"Failed to ingest pipeline {pipeline.name}")
             logger.error(err)
             self.status.failure(f"Pipeline: {pipeline.name}")
+
+    def write_policies(self, policy: Policy):
+        try:
+            policy_request = CreatePolicyEntityRequest(
+                name=policy.name,
+                displayName=policy.displayName,
+                description=policy.description,
+                owner=policy.owner,
+                policyUrl=policy.policyUrl,
+                policyType=policy.policyType,
+                rules=policy.rules,
+            )
+            created_policy = self.metadata.create_or_update(policy_request)
+            logger.info(f"Successfully ingested Policy {created_policy.name}")
+            self.status.records_written(f"Policy: {created_policy.name}")
+        except (APIError, ValidationError) as err:
+            logger.error(f"Failed to ingest Policy {policy.name}")
+            logger.error(err)
+            self.status.failure(f"Policy: {policy.name}")
 
     def write_lineage(self, add_lineage: AddLineage):
         try:

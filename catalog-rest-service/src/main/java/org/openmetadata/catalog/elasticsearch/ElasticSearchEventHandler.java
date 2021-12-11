@@ -30,7 +30,6 @@ import org.openmetadata.catalog.ElasticSearchConfiguration;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.elasticsearch.ElasticSearchIndexDefinition.ElasticSearchIndexType;
 import org.openmetadata.catalog.entity.data.Dashboard;
-import org.openmetadata.catalog.entity.data.DbtModel;
 import org.openmetadata.catalog.entity.data.Pipeline;
 import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.entity.data.Topic;
@@ -115,13 +114,6 @@ public class ElasticSearchEventHandler implements EventHandler {
             Pipeline instance = (Pipeline) entity;
             updateRequest = updatePipeline(instance, responseContext);
           }
-        } else if (entityClass.toLowerCase().endsWith(Entity.DBTMODEL.toLowerCase())) {
-          boolean exists =
-              esIndexDefinition.checkIndexExistsOrCreate(ElasticSearchIndexType.DBT_MODEL_SEARCH_INDEX);
-          if (exists) {
-            DbtModel instance = (DbtModel) entity;
-            updateRequest = updateDbtModel(instance, responseContext);
-          }
         } else if (entityClass.toLowerCase().equalsIgnoreCase(ChangeEvent.class.toString())) {
           ChangeEvent changeEvent = (ChangeEvent) entity;
           updateRequest = applyChangeEvent(changeEvent);
@@ -141,9 +133,11 @@ public class ElasticSearchEventHandler implements EventHandler {
     ElasticSearchIndexType esIndexType = esIndexDefinition.getIndexMappingByEntityType(entityType);
     UUID entityId = event.getEntityId();
     ChangeDescription changeDescription = event.getChangeDescription();
+
     List<FieldChange> fieldsAdded = changeDescription.getFieldsAdded();
     StringBuilder scriptTxt = new StringBuilder();
     Map<String, Object> fieldAddParams = new HashMap<>();
+
     for (FieldChange fieldChange: fieldsAdded) {
       if (fieldChange.getName().equalsIgnoreCase("followers")) {
         List<EntityReference> entityReferences = (List<EntityReference>) fieldChange.getNewValue();
@@ -162,17 +156,25 @@ public class ElasticSearchEventHandler implements EventHandler {
         for (EntityReference follower : entityReferences) {
           fieldAddParams.put(fieldChange.getName(), follower.getId().toString());
         }
-
-        scriptTxt.append("ctx._source.followers.removeAll(Collections.singleton(params.followers))");
+        scriptTxt.append("ctx._source.followers.removeAll(Collections.singleton(params.followers));");
       }
     }
-
+    ESChangeDescription esChangeDescription = ESChangeDescription.builder()
+        .updatedAt(event.getDateTime().getTime())
+        .updatedBy(event.getUserName()).build();
+    esChangeDescription.setFieldsAdded(changeDescription.getFieldsAdded());
+    esChangeDescription.setFieldsDeleted(changeDescription.getFieldsDeleted());
+    esChangeDescription.setFieldsUpdated(changeDescription.getFieldsUpdated());
+    Map<String, Object> esChangeDescriptionDoc = JsonUtils.getMap(esChangeDescription);
+    fieldAddParams.put("change_description", esChangeDescriptionDoc);
+    scriptTxt.append("ctx._source.change_descriptions.add(params.change_description);");
     if (!scriptTxt.toString().isEmpty()) {
       Script script = new Script(ScriptType.INLINE, "painless",
           scriptTxt.toString(),
           fieldAddParams);
       UpdateRequest updateRequest = new UpdateRequest(esIndexType.indexName, entityId.toString());
       updateRequest.script(script);
+
       return updateRequest;
     } else {
       return null;
@@ -237,22 +239,6 @@ public class ElasticSearchEventHandler implements EventHandler {
     } else {
       //only upsert if it's a new entity
       updateRequest.doc(JsonUtils.pojoToJson(pipelineESIndex), XContentType.JSON);
-      updateRequest.docAsUpsert(true);
-    }
-    return updateRequest;
-  }
-
-  private UpdateRequest updateDbtModel(DbtModel instance, ContainerResponseContext responseContext)
-      throws JsonProcessingException {
-    int responseCode = responseContext.getStatus();
-    DbtModelESIndex dbtModelESIndex = DbtModelESIndex.builder(instance, responseCode).build();
-    UpdateRequest updateRequest = new UpdateRequest(ElasticSearchIndexType.DBT_MODEL_SEARCH_INDEX.indexName,
-        instance.getId().toString());
-    //only append to changeDescriptions on updates
-    if  (responseCode != Response.Status.CREATED.getStatusCode()) {
-      scriptedUpsert(dbtModelESIndex, updateRequest);
-    } else {
-      updateRequest.doc(JsonUtils.pojoToJson(dbtModelESIndex), XContentType.JSON);
       updateRequest.docAsUpsert(true);
     }
     return updateRequest;

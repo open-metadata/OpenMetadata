@@ -2,7 +2,7 @@
 
 This schema defines the change event type to capture the changes to entities. Entities change due to user activity, such as updating description of a dataset, changing ownership, or adding new tags. Entity also changes due to activities at the metadata sources, such as a new dataset was created, a datasets was deleted, or schema of a dataset is modified. When state of entity changes, an event is produced. These events can be used to build apps and bots that respond to the change from activities.
 
-**$id: **[**https://open-metadata.org/schema/type/auditLog.json**](https://open-metadata.org/schema/type/auditLog.json)
+**$id:** [**https://open-metadata.org/schema/type/auditLog.json**](https://open-metadata.org/schema/type/auditLog.json)
 
 Type: `object`
 

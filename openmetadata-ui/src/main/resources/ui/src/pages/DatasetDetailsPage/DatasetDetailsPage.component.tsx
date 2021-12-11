@@ -224,7 +224,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
     setIsLoading(true);
     getTableDetailsByFQN(
       getPartialNameFromFQN(tableFQN, ['service', 'database', 'table'], '.'),
-      'columns, usageSummary, followers, joins, tags, owner, sampleData, tableProfile'
+      'columns, usageSummary, followers, joins, tags, owner, sampleData, tableProfile, dataModel'
     )
       .then((res: AxiosResponse) => {
         const {
@@ -315,6 +315,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
           activeTab={activeTab}
           columns={columns}
           columnsUpdateHandler={columnsUpdateHandler}
+          dataModel={tableDetails.dataModel}
           datasetFQN={tableFQN}
           description={description}
           descriptionUpdateHandler={descriptionUpdateHandler}

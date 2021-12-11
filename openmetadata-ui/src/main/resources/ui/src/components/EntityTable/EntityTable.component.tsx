@@ -30,7 +30,6 @@ import {
   getHtmlForNonAdminAction,
   getPartialNameFromFQN,
   getTableFQNFromColumnFQN,
-  isEven,
 } from '../../utils/CommonUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import { getConstraintIcon, makeData } from '../../utils/TableUtils';
@@ -443,10 +442,7 @@ const EntityTable = ({
 
             return (
               <tr
-                className={classNames(
-                  'tableBody-row',
-                  !isEven(index + 1) ? 'odd-row' : null
-                )}
+                className={classNames('tableBody-row')}
                 key={index}
                 {...row.getRowProps()}>
                 {/* eslint-disable-next-line */}

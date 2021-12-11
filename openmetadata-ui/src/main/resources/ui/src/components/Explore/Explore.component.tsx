@@ -75,7 +75,6 @@ const Explore: React.FC<ExploreProps> = ({
   updateTableCount,
   updateTopicCount,
   updateDashboardCount,
-  updateDbtModelCount,
   updatePipelineCount,
 }: ExploreProps) => {
   const location = useLocation();
@@ -212,10 +211,6 @@ const Explore: React.FC<ExploreProps> = ({
         break;
       case SearchIndex.PIPELINE:
         updatePipelineCount(count);
-
-        break;
-      case SearchIndex.DBT_MODEL:
-        updateDbtModelCount(count);
 
         break;
       default:
@@ -368,8 +363,6 @@ const Explore: React.FC<ExploreProps> = ({
         return getCountBadge(tabCounts.dashboard, className, isActive);
       case SearchIndex.PIPELINE:
         return getCountBadge(tabCounts.pipeline, className, isActive);
-      case SearchIndex.DBT_MODEL:
-        return getCountBadge(tabCounts.dbtModel, className, isActive);
       default:
         return getCountBadge();
     }
@@ -390,11 +383,11 @@ const Explore: React.FC<ExploreProps> = ({
   const getTabs = () => {
     return (
       <div className="tw-mb-5">
-        <nav className="tw-flex tw-flex-row tw-gh-tabs-container tw-px-5 tw-pl-16 tw-mx-6 tw-justify-between">
+        <nav className="tw-flex tw-flex-row tw-gh-tabs-container tw-mx-6 tw-justify-around">
           <div>
             {tabsInfo.map((tabDetail, index) => (
               <button
-                className={`tw-pb-2 tw-px-4 tw-gh-tabs ${getActiveTabClass(
+                className={`tw-pb-2 tw-pr-6 tw-gh-tabs ${getActiveTabClass(
                   tabDetail.tab
                 )}`}
                 data-testid="tab"
@@ -408,7 +401,9 @@ const Explore: React.FC<ExploreProps> = ({
                   icon={tabDetail.icon}
                 />
                 {tabDetail.label}
-                {getTabCount(tabDetail.index, tabDetail.tab === currentTab)}
+                <span className="tw-pl-2">
+                  {getTabCount(tabDetail.index, tabDetail.tab === currentTab)}
+                </span>
               </button>
             ))}
           </div>

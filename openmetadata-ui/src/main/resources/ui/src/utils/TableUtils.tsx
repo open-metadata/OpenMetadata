@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import classNames from 'classnames';
 import { EntityTags, TableDetail } from 'Models';
 import React from 'react';
 import AppState from '../AppState';
@@ -18,7 +19,6 @@ import PopOver from '../components/common/popover/PopOver';
 import {
   getDashboardDetailsPath,
   getDatasetDetailsPath,
-  getDBTModelDetailsPath,
   getPipelineDetailsPath,
   getTopicDetailsPath,
 } from '../constants/constants';
@@ -144,7 +144,7 @@ export const getFollowerDetail = (id: string) => {
   return follower;
 };
 
-export const getConstraintIcon = (constraint = '') => {
+export const getConstraintIcon = (constraint = '', className = '') => {
   let title: string, icon: string;
   switch (constraint) {
     case ConstraintTypes.PRIMARY_KEY:
@@ -174,7 +174,7 @@ export const getConstraintIcon = (constraint = '') => {
 
   return (
     <PopOver
-      className="tw-absolute tw-left-2"
+      className={classNames('tw-absolute tw-left-2', className)}
       position="bottom"
       size="small"
       title={title}
@@ -200,10 +200,6 @@ export const getEntityLink = (
     case SearchIndex.PIPELINE:
     case EntityType.PIPELINE:
       return getPipelineDetailsPath(fullyQualifiedName);
-
-    case SearchIndex.DBT_MODEL:
-    case EntityType.DBT_MODEL:
-      return getDBTModelDetailsPath(fullyQualifiedName);
 
     case SearchIndex.TABLE:
     case EntityType.TABLE:
@@ -231,11 +227,6 @@ export const getEntityIcon = (indexType: string) => {
       icon = 'pipeline-grey';
 
       break;
-    case SearchIndex.DBT_MODEL:
-      icon = 'dbtmodel-grey';
-
-      break;
-
     case SearchIndex.TABLE:
     case EntityType.TABLE:
     default:

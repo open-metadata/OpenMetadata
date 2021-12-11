@@ -31,6 +31,11 @@ export interface Table {
    */
   database?: EntityReference;
   /**
+   * This captures information about how the table is modeled. Currently only DBT model is
+   * supported.
+   */
+  dataModel?: DataModel;
+  /**
    * Description of a table.
    */
   description?: string;
@@ -320,6 +325,46 @@ export enum LabelType {
 export enum State {
   Confirmed = 'Confirmed',
   Suggested = 'Suggested',
+}
+
+/**
+ * This captures information about how the table is modeled. Currently only DBT model is
+ * supported.
+ */
+export interface DataModel {
+  /**
+   * Columns from the schema defined during modeling. In case of DBT, the metadata here comes
+   * from `schema.yaml`.
+   */
+  columns?: Column[];
+  /**
+   * Description of the Table from the model
+   */
+  description?: string;
+  generatedAt?: Date;
+  modelType: ModelType;
+  /**
+   * Path to sql definition file.
+   */
+  path?: string;
+  /**
+   * This corresponds to rws SQL from `<model_name>.sql` in DBT. This might be null when SQL
+   * query need not be compiled as done in DBT.
+   */
+  rawSql?: string;
+  /**
+   * This corresponds to compile SQL from `<model_name>.sql` in DBT. In cases where
+   * compilation is not necessary, this corresponds to SQL that created the table.
+   */
+  sql: string;
+  /**
+   * Fully qualified name of Models/tables used for in `sql` for creating this table
+   */
+  upstream?: string[];
+}
+
+export enum ModelType {
+  Dbt = 'DBT',
 }
 
 /**
