@@ -20,6 +20,10 @@ const mockItem = {
   description: 'description1',
   name: 'name1',
   id: 'id1',
+  email: 'string@email.com',
+  isActiveUser: true,
+  profilePhoto: '',
+  teamCount: 2,
 };
 
 const mockRemove = jest.fn();
@@ -43,7 +47,7 @@ jest.mock('../../utils/SvgUtils', () => {
 describe('Test userCard component', () => {
   it('Component should render', async () => {
     const { container } = render(
-      <UserDataCard isIconVisible item={mockItem} />,
+      <UserDataCard item={mockItem} onClick={mockRemove} />,
       {
         wrapper: MemoryRouter,
       }
@@ -57,16 +61,19 @@ describe('Test userCard component', () => {
   });
 
   it('Data should render', async () => {
-    const { container } = render(<UserDataCard item={mockItem} />, {
-      wrapper: MemoryRouter,
-    });
+    const { container } = render(
+      <UserDataCard item={mockItem} onClick={mockRemove} />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
 
     expect(await findByTestId(container, 'data-container')).toBeInTheDocument();
   });
 
   it('If isActionVisible is passed it should show delete icon', async () => {
     const { container } = render(
-      <UserDataCard isActionVisible item={mockItem} onRemove={mockRemove} />,
+      <UserDataCard item={mockItem} onClick={mockRemove} />,
       {
         wrapper: MemoryRouter,
       }
@@ -83,7 +90,7 @@ describe('Test userCard component', () => {
 
   it('If dataset is provided, it should display accordingly', async () => {
     const { container } = render(
-      <UserDataCard isDataset isIconVisible item={mockItem} />,
+      <UserDataCard item={mockItem} onClick={mockRemove} />,
       {
         wrapper: MemoryRouter,
       }

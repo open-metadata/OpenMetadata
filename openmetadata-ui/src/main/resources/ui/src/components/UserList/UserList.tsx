@@ -11,23 +11,29 @@
  *  limitations under the License.
  */
 
+import { compare, Operation } from 'fast-json-patch';
+import { isUndefined, lowerCase } from 'lodash';
 import React, { FunctionComponent, useEffect, useState } from 'react';
 import PageLayout from '../../components/containers/PageLayout';
 import Loader from '../../components/Loader/Loader';
 import { Team } from '../../generated/entity/teams/team';
 import { User } from '../../generated/entity/teams/user';
 import { getCountBadge } from '../../utils/CommonUtils';
+import Searchbar from '../common/searchbar/Searchbar';
+import UserDetailsModal from '../Modals/UserDetailsModal/UserDetailsModal';
 import UserDataCard from '../UserDataCard/UserDataCard';
 
 interface Props {
   teams: Array<Team>;
   allUsers: Array<User>;
+  updateUser: (id: string, data: Operation[], updatedUser: User) => void;
   isLoading: boolean;
 }
 
 const UserList: FunctionComponent<Props> = ({
   allUsers = [],
   isLoading,
+  updateUser,
   teams = [],
 }: Props) => {
   const [userList, setUserList] = useState<Array<User>>(allUsers);
@@ -36,10 +42,15 @@ const UserList: FunctionComponent<Props> = ({
   const [currentTeam, setCurrentTeam] = useState<Team>();
   const [currentTab, setCurrentTab] = useState<number>(1);
   const [selectedUser, setSelectedUser] = useState<User>();
+  const [searchText, setSearchText] = useState('');
 
   if (selectedUser) {
     selectedUser;
   }
+
+  const handleSearchAction = (searchValue: string) => {
+    setSearchText(searchValue);
+  };
 
   const selectTeam = (team?: Team) => {
     setCurrentTeam(team);
@@ -79,30 +90,64 @@ const UserList: FunctionComponent<Props> = ({
     return tab === currentTab ? 'active' : '';
   };
 
+  const handleSave = () => {
+    if (selectedUser) {
+      const updatedData: User = {
+        ...selectedUser,
+        isAdmin: !selectedUser.isAdmin,
+      };
+      const jsonPatch = compare(selectedUser, updatedData);
+      updateUser(selectedUser.id, jsonPatch, updatedData);
+
+      setSelectedUser(undefined);
+    }
+  };
+
+  const handleTabChange = (tab: number) => {
+    setSearchText('');
+    setCurrentTab(tab);
+    if (tab === 1) {
+      setAdmins(userList.filter((user) => user.isAdmin));
+    } else {
+      setUsers(userList.filter((user) => !user.isAdmin));
+    }
+  };
+
   const getTabs = () => {
     return (
       <div className="tw-mb-3 ">
         <nav
           className="tw-flex tw-flex-row tw-gh-tabs-container tw-px-4"
           data-testid="tabs">
-          <button
-            className={`tw-pb-2 tw-px-4 tw-gh-tabs ${getActiveTabClass(1)}`}
-            data-testid="users"
-            onClick={() => {
-              setCurrentTab(1);
-            }}>
-            Users
-            {getCountBadge(users.length, '', currentTab === 1)}
-          </button>
-          <button
-            className={`tw-pb-2 tw-px-4 tw-gh-tabs ${getActiveTabClass(2)}`}
-            data-testid="assets"
-            onClick={() => {
-              setCurrentTab(2);
-            }}>
-            Admins
-            {getCountBadge(admins.length, '', currentTab === 2)}
-          </button>
+          <div className="tw-w-8/12">
+            <button
+              className={`tw-pb-2 tw-px-4 tw-gh-tabs ${getActiveTabClass(1)}`}
+              data-testid="users"
+              onClick={() => {
+                handleTabChange(1);
+              }}>
+              Users
+              {getCountBadge(users.length, '', currentTab === 1)}
+            </button>
+            <button
+              className={`tw-pb-2 tw-px-4 tw-gh-tabs ${getActiveTabClass(2)}`}
+              data-testid="assets"
+              onClick={() => {
+                handleTabChange(2);
+              }}>
+              Admins
+              {getCountBadge(admins.length, '', currentTab === 2)}
+            </button>
+          </div>
+          <div className="tw-w-4/12 tw-pt-2">
+            <Searchbar
+              removeMargin
+              placeholder="Search for user..."
+              searchValue={searchText}
+              typingInterval={500}
+              onSearch={handleSearchAction}
+            />
+          </div>
         </nav>
       </div>
     );
@@ -118,6 +163,34 @@ const UserList: FunctionComponent<Props> = ({
       setUserList(allUsers);
     }
   }, [allUsers]);
+
+  const isIncludes = (name: string) => {
+    return lowerCase(name).includes(searchText);
+  };
+
+  useEffect(() => {
+    if (currentTab === 1) {
+      setUsers(
+        userList.filter((user) => {
+          if (!user.isAdmin && isIncludes(user.displayName || user.name)) {
+            return true;
+          }
+
+          return false;
+        })
+      );
+    } else {
+      setAdmins(
+        userList.filter((user) => {
+          if (user.isAdmin && isIncludes(user.displayName || user.name)) {
+            return true;
+          }
+
+          return false;
+        })
+      );
+    }
+  }, [searchText]);
 
   const getLeftPanel = () => {
     return (
@@ -145,6 +218,7 @@ const UserList: FunctionComponent<Props> = ({
                 )}`}
                 onClick={() => {
                   selectTeam(team);
+                  setSearchText('');
                 }}>
                 <p className="tw-text-center tag-category tw-self-center">
                   {team.displayName}
@@ -167,22 +241,21 @@ const UserList: FunctionComponent<Props> = ({
     return (
       <>
         <div
-          className="tw-grid xl:tw-grid-cols-4 md:tw-grid-cols-3 tw-gap-4"
+          className="tw-grid xl:tw-grid-cols-3 tw-gap-4"
           data-testid="user-card-container">
           {listUserData.map((user, index) => {
             const User = {
               description: user.displayName || user.name || '',
               name: user.name || '',
               id: user.id,
+              email: user.email || '',
+              isActiveUser: !user.deactivated,
+              profilePhoto: user.profile?.images?.image || '',
+              teamCount: user.teams?.length || 0,
             };
 
             return (
-              <UserDataCard
-                isIconVisible
-                item={User}
-                key={index}
-                onClick={selectUser}
-              />
+              <UserDataCard item={User} key={index} onClick={selectUser} />
             );
           })}
         </div>
@@ -197,6 +270,14 @@ const UserList: FunctionComponent<Props> = ({
           {getTabs()}
           {currentTab === 1 && getUserCards()}
           {currentTab === 2 && getUserCards(true)}
+          {!isUndefined(selectedUser) && (
+            <UserDetailsModal
+              header="User Details"
+              userData={selectedUser}
+              onCancel={() => setSelectedUser(undefined)}
+              onSave={handleSave}
+            />
+          )}
         </>
       ) : (
         <Loader />

@@ -12,10 +12,12 @@
  */
 
 import { AxiosError, AxiosResponse } from 'axios';
+import { Operation } from 'fast-json-patch';
 import { observer } from 'mobx-react';
 import React, { useEffect, useState } from 'react';
 import AppState from '../../AppState';
 import { getTeams } from '../../axiosAPIs/teamsAPI';
+import { updateUserDetail } from '../../axiosAPIs/userAPI';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
 import UserList from '../../components/UserList/UserList';
 import { Team } from '../../generated/entity/teams/team';
@@ -46,6 +48,25 @@ const UserListPage = () => {
       });
   };
 
+  const updateUser = (id: string, data: Operation[], updatedUser: User) => {
+    setIsLoading(true);
+    updateUserDetail(id, data)
+      .then(() => {
+        setAllUsers(
+          allUsers.map((user) => {
+            if (user.id === id) {
+              return updatedUser;
+            }
+
+            return user;
+          })
+        );
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
+  };
+
   useEffect(() => {
     setAllUsers(AppState.users);
   }, [AppState.users]);
@@ -56,7 +77,12 @@ const UserListPage = () => {
 
   return (
     <PageContainerV1>
-      <UserList allUsers={allUsers} isLoading={isLoading} teams={teams} />
+      <UserList
+        allUsers={allUsers}
+        isLoading={isLoading}
+        teams={teams}
+        updateUser={updateUser}
+      />
     </PageContainerV1>
   );
 };
