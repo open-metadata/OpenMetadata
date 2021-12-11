@@ -3,7 +3,7 @@
     "type": "mlflow",
     "config": {
       "tracking_uri": "http://localhost:5000",
-      "registry_uri": "mysql+pymysql://mlflow:password@localhost:3306/experiments"
+      "registry_uri": "mysql+pymysql://mlflow:password@localhost:3307/experiments"
     }
   },
   "sink": {
