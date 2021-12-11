@@ -12,174 +12,64 @@
  */
 
 import classNames from 'classnames';
-import { capitalize } from 'lodash';
 import React from 'react';
-import { Link } from 'react-router-dom';
-import { SearchIndex } from '../../enums/search.enum';
-import { getPartialNameFromFQN } from '../../utils/CommonUtils';
-import SVGIcons, { Icons } from '../../utils/SvgUtils';
-import { getEntityLink } from '../../utils/TableUtils';
 import Avatar from '../common/avatar/Avatar';
 
-type Props = {
-  item: { description: string; name: string; id?: string };
-  isActionVisible?: boolean;
-  isIconVisible?: boolean;
-  isDataset?: boolean;
-  isCheckBoxes?: boolean;
-  onClick?: (value: string) => void;
-  onSelect?: (value: string) => void;
-  onRemove?: (value: string) => void;
+type Item = {
+  description: string;
+  name: string;
+  id?: string;
+  email: string;
+  isActiveUser: boolean;
+  profilePhoto: string;
+  teamCount: number;
 };
 
-enum DatasetType {
-  TABLE = 'table',
-  TOPIC = 'topic',
-  DASHBOARD = 'dashboard',
-}
+type Props = {
+  item: Item;
+  onClick: (value: string) => void;
+};
 
-const UserDataCard = ({
-  item,
-  isActionVisible = false,
-  isIconVisible = false,
-  isDataset = false,
-  isCheckBoxes = false,
-  onClick,
-  onSelect,
-  onRemove,
-}: Props) => {
-  const getArrForPartialName = (
-    type: string
-  ): Array<'service' | 'database' | 'table' | 'column'> => {
-    switch (type) {
-      case DatasetType.TABLE:
-        return ['database', 'table'];
-      case DatasetType.TOPIC:
-      case DatasetType.DASHBOARD:
-      default:
-        return ['service', 'database', 'table'];
-    }
-  };
-
-  const getDatasetIcon = (type: string) => {
-    let icon = '';
-    switch (type) {
-      case DatasetType.TOPIC:
-        icon = Icons.TOPIC;
-
-        break;
-      case DatasetType.DASHBOARD:
-        icon = Icons.DASHBOARD;
-
-        break;
-      case DatasetType.TABLE:
-      default:
-        icon = Icons.TABLE;
-
-        break;
-    }
-
-    return (
-      <SVGIcons
-        alt="icon"
-        className={classNames('tw-h-4 tw-w-4', {
-          'tw-mt-0.5': type !== DatasetType.DASHBOARD,
-        })}
-        icon={icon}
-      />
-    );
-  };
-
-  const getDatasetTitle = (type: string, fqn: string) => {
-    let link = '';
-    switch (type) {
-      case DatasetType.TOPIC:
-        link = getEntityLink(SearchIndex.TOPIC, fqn);
-
-        break;
-      case DatasetType.DASHBOARD:
-        link = getEntityLink(SearchIndex.DASHBOARD, fqn);
-
-        break;
-      case DatasetType.TABLE:
-      default:
-        link = getEntityLink(SearchIndex.TABLE, fqn);
-
-        break;
-    }
-
-    return (
-      <Link data-testid="dataset-link" to={link}>
-        <button className="tw-font-normal tw-text-grey-body tw-break-all">
-          {getPartialNameFromFQN(fqn, getArrForPartialName(type))}
-        </button>
-      </Link>
-    );
-  };
-
+const UserDataCard = ({ item, onClick }: Props) => {
   return (
     <div
-      className={classNames(
-        'tw-card tw-flex tw-justify-between tw-py-2 tw-px-3 tw-group',
-        { 'tw-py-5': isDataset }
-      )}
+      className="tw-card tw-flex tw-gap-1 tw-py-2 tw-px-3 tw-group"
       data-testid="user-card-container">
-      <div className={`tw-flex ${isCheckBoxes ? 'tw-mr-2' : 'tw-gap-1'}`}>
-        {isIconVisible && !isDataset ? (
-          <Avatar name={item.description} />
-        ) : (
-          <>{getDatasetIcon(item.name)}</>
-        )}
-
-        <div
-          className={classNames('tw-flex tw-flex-col', {
-            'tw-pl-2': !isDataset,
-          })}
-          data-testid="data-container">
-          {isDataset ? (
-            <>{getDatasetTitle(item.name, item.description)}</>
-          ) : (
-            <>
-              <p
-                className={classNames('tw-font-normal', {
-                  'tw-cursor-pointer': Boolean(onClick),
-                })}
-                onClick={() => {
-                  onClick?.(item.id as string);
-                }}>
-                {item.description}
-              </p>
-              <p>{isIconVisible ? item.name : capitalize(item.name)}</p>
-            </>
-          )}
+      {item.profilePhoto ? (
+        <div className="tw-h-9 tw-w-9">
+          <img
+            alt="profile"
+            className="tw-rounded-full tw-w-full"
+            src={item.profilePhoto}
+          />
         </div>
-      </div>
-      {isActionVisible && (
-        <div className="tw-flex-none">
-          {isCheckBoxes ? (
-            <input
-              className="tw-px-2 custom-checkbox"
-              data-testid="checkboxAddUser"
-              type="checkbox"
-              onChange={() => {
-                onSelect?.(item.id as string);
-              }}
-            />
-          ) : (
-            <span
-              data-testid="remove"
-              onClick={() => onRemove?.(item.id as string)}>
-              <SVGIcons
-                alt="delete"
-                className="tw-text-gray-500 tw-cursor-pointer tw-opacity-0 hover:tw-text-gray-700 group-hover:tw-opacity-100"
-                icon="icon-delete"
-                title="Remove"
-                width="12px"
-              />
+      ) : (
+        <Avatar name={item.description} />
+      )}
+
+      <div
+        className="tw-flex tw-flex-col tw-flex-1 tw-pl-2"
+        data-testid="data-container">
+        <div className="tw-flex tw-justify-between">
+          <p
+            className={classNames('tw-font-normal', {
+              'tw-cursor-pointer': Boolean(onClick),
+            })}
+            onClick={() => {
+              onClick(item.id as string);
+            }}>
+            {item.description}
+          </p>
+          {!item.isActiveUser && (
+            <span className="tw-text-xs tw-bg-badge tw-border tw-px-2 tw-py-0.5 tw-rounded">
+              Inactive
             </span>
           )}
         </div>
-      )}
+        {/* <p>{isIconVisible ? item.name : capitalize(item.name)}</p> */}
+        <p className="tw-truncate">{item.email}</p>
+        <p>Teams: {item.teamCount}</p>
+      </div>
     </div>
   );
 };
