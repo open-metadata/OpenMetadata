@@ -110,3 +110,45 @@ This results in giving visibility on the last update step of each Entity instanc
 One of the greatest features of OpenMetadata is the ability to track **all** **Entity versions**. Each operation that leads to a change (`PUT`, `POST`, `PATCH`) will generate a trace that is going to be stored in the table `change_event`.
 
 Using the API to get events data, or directly exploring the different versions of each entity gives great debugging power to both data consumers and producers.
+
+## API Component Diagram
+
+Now that we have a clear picture of the main pieces and their roles, we will analyze the logical flow of a `POST` and a `PUT` calls to the API. The main goal of this section is to get familiar with the code organisation and its main steps.
+
+{% hint style="info" %}
+To take the most out of this section, it is recommended to follow the source code as well, from the Entity JSON you'd like to use as an example to its implementation of `Resource` and `Repository`.
+{% endhint %}
+
+### Create a new Entity - POST
+
+We will start with the simplest scenario: Creating a new Entity via a `POST` call. This is a great first point to review as part of the logic and methods are reused during updates.
+
+![Component Diagram of a POST call to the API](../../.gitbook/assets/system-context-diagram-API-component-POST-diagram.drawio.png)
+
+#### Create
+
+As we already know, the recipient of the HTTP call will be the `EntityResource`. In there, we have the `create` function with the `@POST` **annotation** and the description of the API endpoint and expected schemas.
+
+The role of this first component is to receive the call and validate the request body and headers, but the real implementation happens in the `EntityRepository`, which we already described as the **DAO**.
+
+For the `POST` operation, the internal flow is rather simple and is composed of two steps:
+
+1. **Prepare**: Which validates the Entity data and computes some attributes at the server-side.
+2. **Store**: This saves the Entity JSON and its Relationships to the backend DB.
+
+#### Prepare
+
+This method is used for **validating** an entity to be created during `POST`, `PUT`, and `PATCH` operations and **preparing** the entity with all the required attributes and relationships.
+
+Here we handle, for example, the process of setting up the FQDN of an Entity based on its hierarchy. While all Entities require an FQDN, this is not an attribute we expect to receive in a request.
+
+Moreover, this checks that the received attributes are being correctly informed, e.g., we have a valid `User` as an `owner` or a valid `Database` for a `Table`.
+
+#### Store
+
+The storing process is divided into two different steps (as we have two tables holding the information).
+
+1. We strip the validated Entity from any `href` attribute (such as `owner` or `tags`) in order to just store a JSON document with the Entity intrinsic values.
+2. We then store the graph representation of the Relationships for the attributes omitted above.&#x20;
+
+At the end of these calls, we end up with a validated Entity holding all the required attributes, which have been validated and stored accordingly. We can then return the created Entity to the caller.
