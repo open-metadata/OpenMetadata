@@ -11,7 +11,7 @@ To run this test:
 
 - `cd` into this directory
 - `make build`
-- `pip install mlflow sklearn`
+- `pip install mlflow-skinny sklearn`. We use the skinny one for the client.
 - `python experiment.py` should show new experiments in http://localhost:5000
 - `python train.py` will register a new model
 - `metadata ingest -c examples/workflows/mlflow.json` will run the workflow.
