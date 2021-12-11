@@ -252,10 +252,10 @@ public class UserRepository extends EntityRepository<User> {
     public void setId(UUID id) { entity.setId(id); }
 
     @Override
-    public void setDescription(String description) { entity.setDescription(description);}
+    public void setDescription(String description) { entity.setDescription(description); }
 
     @Override
-    public void setDisplayName(String displayName) { entity.setDisplayName(displayName);}
+    public void setDisplayName(String displayName) { entity.setDisplayName(displayName); }
 
     @Override
     public void setUpdateDetails(String updatedBy, Date updatedAt) {

@@ -38,6 +38,7 @@ import org.openmetadata.catalog.type.Profile;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.JsonUtils;
+import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.TestUtils;
 import org.openmetadata.catalog.util.TestUtils.UpdateType;
 import org.openmetadata.common.utils.JsonSchemaUtil;
@@ -50,10 +51,12 @@ import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Predicate;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.CREATED;
@@ -194,6 +197,42 @@ public class UserResourceTest extends EntityResourceTest<User> {
     assertEquals(user.getId(), team1.getUsers().get(0).getId());
     team2 = TeamResourceTest.getTeam(team2.getId(), "users", adminAuthHeaders());
     assertEquals(user.getId(), team2.getUsers().get(0).getId());
+  }
+
+  @Test
+  public void get_listUsersWithTeams_200_ok(TestInfo test) throws IOException {
+    TeamResourceTest teamResourceTest = new TeamResourceTest();
+    Team team1 = createTeam(teamResourceTest.create(test, 1), adminAuthHeaders());
+    Team team2 = createTeam(teamResourceTest.create(test, 2), adminAuthHeaders());
+    List<UUID> teams = List.of(team1.getId(), team2.getId());
+    List<UUID> team = List.of(team1.getId());
+
+    CreateUser create = create(test, 0);
+    User user0 = createAndCheckEntity(create, adminAuthHeaders());
+    create = create(test, 1).withTeams(team);
+    User user1 = createAndCheckEntity(create, adminAuthHeaders());
+    create = create(test, 2).withTeams(teams);
+    User user2 = createAndCheckEntity(create, adminAuthHeaders());
+
+    Predicate<User> isUser0 = u -> u.getId().equals(user0.getId());
+    Predicate<User> isUser1 = u -> u.getId().equals(user1.getId());
+    Predicate<User> isUser2 = u -> u.getId().equals(user2.getId());
+
+    Map<String, String> queryParams = new HashMap<>() {{put("team", team1.getName()); }};
+    ResultList<User> users = listEntities(queryParams, 100_000, null, null, adminAuthHeaders());
+    assertEquals(2, users.getData().size());
+    assertTrue(users.getData().stream().anyMatch(isUser1));
+    assertTrue(users.getData().stream().anyMatch(isUser2));
+
+    queryParams = new HashMap<>() {{put("team", team2.getName()); }};
+    users = listEntities(queryParams, 100_000, null, null, adminAuthHeaders());
+    assertEquals(1, users.getData().size());
+    assertTrue(users.getData().stream().anyMatch(isUser2));
+
+    users = listEntities(null, 100_000, null, null, adminAuthHeaders());
+    assertTrue(users.getData().stream().anyMatch(isUser0));
+    assertTrue(users.getData().stream().anyMatch(isUser1));
+    assertTrue(users.getData().stream().anyMatch(isUser2));
   }
 
   @Test
