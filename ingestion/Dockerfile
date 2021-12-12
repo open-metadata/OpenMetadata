@@ -12,7 +12,7 @@ ENV AIRFLOW_VERSION=2.2.1
 ENV CONSTRAINT_URL="https://raw.githubusercontent.com/apache/airflow/constraints-${AIRFLOW_VERSION}/constraints-3.9.txt"
 RUN pip install "apache-airflow==${AIRFLOW_VERSION}" --constraint "${CONSTRAINT_URL}"
 COPY ingestion /ingestion
-RUN pip install -e '.[all]' openmetadata-airflow-managed-apis
+RUN pip install . openmetadata-airflow-managed-apis
 RUN airflow db init
 RUN cp -r /ingestion/examples/airflow/airflow.cfg /airflow/airflow.cfg
 RUN cp -r /om-airflow/plugins /airflow/plugins
