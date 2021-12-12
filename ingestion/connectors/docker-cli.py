@@ -17,10 +17,9 @@ logger = logging.getLogger(__name__)
 client = docker.from_env()
 
 TARGET = "openmetadata/ingestion-connector-{name}"
-DOCKERFILE = """
-FROM openmetadata/ingestion-connector-base
-"""
-REQUIREMENTS = "RUN pip install {requirements}"
+DOCKERFILE = "FROM openmetadata/ingestion-connector-base\n"
+REQUIREMENTS = "RUN pip install {requirements}\n"
+ENTRYPOINT = 'ENTRYPOINT ["python", "main.py"]'
 
 
 def get_setup_data():
@@ -56,9 +55,9 @@ def build():
         conn_reqs = " ".join((f'"{req}"' for req in plugins[conn]))
 
         if plugins[conn]:
-            file = DOCKERFILE + REQUIREMENTS.format(requirements=conn_reqs)
+            file = DOCKERFILE + REQUIREMENTS.format(requirements=conn_reqs) + ENTRYPOINT
         else:
-            file = DOCKERFILE
+            file = DOCKERFILE + ENTRYPOINT
 
         target = TARGET.format(name=conn)
 

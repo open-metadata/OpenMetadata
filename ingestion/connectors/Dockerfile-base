@@ -11,5 +11,6 @@ RUN apt-get update && \
 COPY src/ src/
 COPY setup.* .
 COPY README.md .
+COPY connectors/main.py .
 
 RUN pip install .
