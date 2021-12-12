@@ -152,3 +152,66 @@ The storing process is divided into two different steps (as we have two tables h
 2. We then store the graph representation of the Relationships for the attributes omitted above.&#x20;
 
 At the end of these calls, we end up with a validated Entity holding all the required attributes, which have been validated and stored accordingly. We can then return the created Entity to the caller.
+
+### Create or Update an Entity - PUT
+
+Let's now build on top of what we learned during the `POST` discussion, expanding the example to a `PUT` request handling.
+
+![Component Diagram of a PUT call to the API](../../.gitbook/assets/system-context-diagram-API-component-PUT-diagram.drawio.png)
+
+The first steps are fairly similar:
+
+1. We have a function in our `Resource` annotated as `@PUT` and handling headers, auth and schemas.
+2. The `Resource` then calls the DAO at the `Repository`, bootstrapping the data-related logic.
+3. We validate the Entity and cook some attributes during the `prepare` step.
+
+After processing and validating the Entity request, we then check if the Entity instance has already been stored, querying the backend database by its FQDN. If it has not, then we proceed with the same logic as the `POST` operation -> simple creation. Otherwise, we need to validate the updated fields.
+
+#### Set Fields
+
+We cannot allow all fields to be updated for a given Entity instance. For example, the `id` or `name` stay immutable once the instance is created, and the same thing happens to the `Database` of a `Table`.
+
+The list of specified fields that can change is defined at each Entity's `Repository`, and we should only allow changes on those attributes that can naturally evolve throughout the **lifecycle** of the object.
+
+At this step, we set the fields to the Entity that are either required by the JSON schema definition (e.g., the `algorithm` for an `MlModel`) or, in the case of a `GET` operation, that are requested as `GET <url>/api/v1/<collectionName>/<id>?fields=field1,field2...`
+
+#### Update
+
+In the `EntityRepository` there is an abstract implementation of the `EntityUpdater` interface, which is in charge of defining the generic update logic flow common for all the Entities.
+
+The main steps handled in the `update` calls are:
+
+1. Update the Entity **generic** fields, such as the description or the owner.
+2. Run Entity **specific** updates, which are implemented by each Entity's `EntityUpdater` extension.
+3. **Store** the updated Entity JSON doc to the Entity Table in MySQL.
+
+#### Entity Spcific Updates
+
+Each Entity has a set of attributes that define it. These attributes are going to have a very specific behaviour, so the implementation of the `update` logic falls to each Entity `Repository`.
+
+For example, we can update the `Columns` of a `Table`, or the `Dashboard` holding the performance metrics of an `MlModel`. Both of these changes are going to be treated differently, in terms of how the Entity performs internally the update, how the Entity **version** gets affected, or the impact on the **Relationship** data.
+
+For the sake of discussion, we'll follow a couple of `update` scenarios.
+
+#### Example 1 - Updating Columns of a Table
+
+When updating `Columns`, we need to compare the existing set of columns in the original Entity vs. the incoming columns of the `PUT` request.
+
+If we are receiving an existing column, we might need to update its `description` or `tags`. This change will be considered a **minor** change. Therefore, the version of the Entity will be bumped by `0.1`, following the software release specification model.
+
+However, what happens if a stored column is not received in the updated instance? That would mean that such a column has been deleted. This is a type of change that could possibly break integrations on top of the Table's data. Therefore, we can mark this scenario as a **major** update. In this case, the version of the Entity will increase by `1.0`.
+
+Checking the Change Events or visiting the Entity history will easily show us the evolution of an Entity instance, which will be immensely valuable when debugging data issues.
+
+#### Example 2 - Updating the Dashboard of an ML Model
+
+One of the attributes for an `MlModel` is the `EntityReference` to a `Dashboard` holding its performance metrics evolution.
+
+As this attribute is a reference to another existing Entity, this data is not directly stored in the `MlModel` JSON doc, but rather as a Relationship graph, as we have been discussing previously. Therefore, during the `update` step we will need to:
+
+1. Insert the relationship, if the original Entity had no Dashboard informed,
+2. Delete the relationship if the Dashboard has been removed, or
+3. Update the relationship if we now point to a different Dashboard.
+
+Note how during the `POST` operation we needed to always call the `storeRelationship` function, as it was the first time we were storing the instance's information. During an update, we will just modify the Relationship data if the Entity's specific attributes require it.
+
