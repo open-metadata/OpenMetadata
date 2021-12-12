@@ -45,3 +45,7 @@ OpenMetadata supports connectors to some popular services. We will continue as a
 * Airflow
 * Prefect
 * Glue
+
+**ML Services**
+
+* [MlFlow](../../../connectors/mlflow.md)
