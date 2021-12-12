@@ -165,7 +165,6 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
 
     def prepare(self):
         self._parse_data_model()
-        print(self.data_models.keys())
 
     @classmethod
     def create(
