@@ -215,3 +215,12 @@ As this attribute is a reference to another existing Entity, this data is not di
 
 Note how during the `POST` operation we needed to always call the `storeRelationship` function, as it was the first time we were storing the instance's information. During an update, we will just modify the Relationship data if the Entity's specific attributes require it.
 
+### Handling Events
+
+During all these discussions and examples we've been showing how the backend API handles HTTP requests and what the Entities' data lifecycle is. Not only we've been focusing on the JSON docs and Relationships, but from time to time we have talked about Change Events.
+
+Moreover, In the _API Container Diagram ****_ we drew a Container representing the Table holding the Change Event data, but yet, we have not found any Component accessing it.
+
+This is because the API server is powered by **Jetty**, which means that luckily we do not need to make those calls ourselves! By defining a `ChangeEventHandler` and registering it during the creation of the server, this postprocessing of the calls happens transparently.
+
+Our `ChangeEventHandler` will check if the Entity has been Created, Updated or Deleted and will store the appropriate `ChangeEvent` data from our response to the backend DB.
