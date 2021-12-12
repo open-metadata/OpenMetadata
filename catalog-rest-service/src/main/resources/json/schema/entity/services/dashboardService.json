@@ -12,7 +12,8 @@
         "Superset",
         "Looker",
         "Tableau",
-        "Redash"
+        "Redash",
+        "Metabase"
       ],
       "javaEnums": [
         {
@@ -26,6 +27,9 @@
         },
         {
           "name": "Redash"
+        },
+        {
+          "name": "Metabase"
         }
       ]
     }
