@@ -116,6 +116,7 @@ plugins: Dict[str, Set[str]] = {
     "airflow": {"apache-airflow >= 1.10.2"},
     "salesforce": {"simple_salesforce~=1.11.4"},
     "okta": {"okta~=2.3.0"},
+    "mlflow": {"mlflow-skinny~=1.22.0"},
 }
 
 build_options = {"includes": ["_cffi_backend"]}
