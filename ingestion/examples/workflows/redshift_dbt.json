@@ -2,16 +2,14 @@
   "source": {
     "type": "redshift",
     "config": {
-      "host_port": "cluster.name.region.redshift.amazonaws.com:5439",
+   "host_port": "cluster.name.region.redshift.amazonaws.com:5439",
       "username": "username",
       "password": "strong_password",
       "database": "warehouse",
       "service_name": "aws_redshift",
+      "generate_sample_data": "false",
       "filter_pattern": {
-        "excludes": [
-          "information_schema.*",
-          "[\\w]*event_vw.*"
-        ]
+        "excludes": ["information_schema.*", "[\\w]*event_vw.*"]
       },
       "dbt_manifest_file": "./examples/sample_data/dbt/manifest.json",
       "dbt_catalog_file": "./examples/sample_data/dbt/catalog.json"
