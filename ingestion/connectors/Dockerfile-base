@@ -4,6 +4,10 @@ MAINTAINER OpenMetadata Committers
 
 WORKDIR /ingestion
 
+RUN apt-get update && \
+    apt-get install -y gcc libsasl2-dev curl build-essential libssl-dev libffi-dev librdkafka-dev unixodbc-dev python3.9-dev libevent-dev wget --no-install-recommends && \
+    rm -rf /var/lib/apt/lists/*
+
 COPY src/ src/
 COPY setup.* .
 COPY README.md .
