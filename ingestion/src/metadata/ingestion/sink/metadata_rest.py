@@ -32,10 +32,10 @@ from metadata.generated.schema.api.data.createPipeline import (
 )
 from metadata.generated.schema.api.data.createTable import CreateTableEntityRequest
 from metadata.generated.schema.api.data.createTopic import CreateTopicEntityRequest
+from metadata.generated.schema.api.lineage.addLineage import AddLineage
 from metadata.generated.schema.api.policies.createPolicy import (
     CreatePolicyEntityRequest,
 )
-from metadata.generated.schema.api.lineage.addLineage import AddLineage
 from metadata.generated.schema.api.teams.createTeam import CreateTeamEntityRequest
 from metadata.generated.schema.api.teams.createUser import CreateUserEntityRequest
 from metadata.generated.schema.entity.data.chart import ChartType
@@ -149,10 +149,9 @@ class MetadataRestSink(Sink[Entity]):
                 name=db_and_table.table.name,
                 tableType=db_and_table.table.tableType,
                 columns=db_and_table.table.columns,
-                description=db_and_table.table.description,
+                description=db_and_table.table.description.strip(),
                 database=db.id,
             )
-
             if db_and_table.table.viewDefinition:
                 table_request.viewDefinition = (
                     db_and_table.table.viewDefinition.__root__
@@ -162,7 +161,7 @@ class MetadataRestSink(Sink[Entity]):
             if db_and_table.location is not None:
                 location_request = CreateLocationEntityRequest(
                     name=db_and_table.location.name,
-                    description=db_and_table.location.description,
+                    description=db_and_table.location.description.strip(),
                     service=EntityReference(
                         id=db_and_table.location.service.id,
                         type="storageService",
