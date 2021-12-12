@@ -1,0 +1,11 @@
+FROM python:3.9-slim
+
+MAINTAINER OpenMetadata Committers
+
+WORKDIR /ingestion
+
+COPY src/ src/
+COPY setup.* .
+COPY README.md .
+
+RUN pip install .

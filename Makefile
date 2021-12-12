@@ -48,3 +48,7 @@ publish:
 	  python setup.py install sdist bdist_wheel; \
 	  twine check dist/*; \
 	  twine upload dist/*
+
+build_docker_base:
+	make install_dev generate
+	docker build -f ingestion/connectors/Dockerfile-base ingestion/ -t openmetadata/ingestion-connector-base
