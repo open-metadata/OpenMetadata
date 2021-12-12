@@ -15,20 +15,10 @@ from typing import Dict, Set
 from setuptools import find_namespace_packages, setup
 
 
-def get_version():
-    root = os.path.dirname(__file__)
-    changelog = os.path.join(root, "CHANGELOG")
-    with open(changelog) as f:
-        return f.readline().strip()
-
-
 def get_long_description():
     root = os.path.dirname(__file__)
     with open(os.path.join(root, "README.md")) as f:
         description = f.read()
-    description += "\n\nChangelog\n=========\n\n"
-    with open(os.path.join(root, "CHANGELOG")) as f:
-        description += f.read()
     return description
 
 
