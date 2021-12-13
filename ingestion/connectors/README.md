@@ -43,3 +43,11 @@ ingest_task = DockerOperator(
 Note that the `config` object should be a `str` representing the JSON connector
 configuration. The connector images have been built packaging a `main.py` script that
 will load the `config` environment variable and pass it to the `Workflow`.
+
+## Configs
+
+Note that in the example DAG for `airflow_sample_data.py` we are passing the `config` object with `"sample_data_folder": "/opt/operator/sample_data"`.
+
+In the DAG definition we are mounting a volume with the `examples` data to `/opt/operator/` in the `DockerOperator`. A symlink is being generated in `run_local_docker.sh`.
+
+Note that these specific configurations are just needed in our development/showcase DAG because of specific infra requirements. Each architecture will need to prepare its own volume and network settings.
