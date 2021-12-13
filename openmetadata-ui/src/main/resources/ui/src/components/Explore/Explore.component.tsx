@@ -383,7 +383,7 @@ const Explore: React.FC<ExploreProps> = ({
   const getTabs = () => {
     return (
       <div className="tw-mb-5">
-        <nav className="tw-flex tw-flex-row tw-gh-tabs-container tw-mx-6 tw-justify-around">
+        <nav className="tw-flex tw-flex-row tw-gh-tabs-container tw-mx-9 tw-pl-72 tw-pr-80 tw-justify-between">
           <div>
             {tabsInfo.map((tabDetail, index) => (
               <button

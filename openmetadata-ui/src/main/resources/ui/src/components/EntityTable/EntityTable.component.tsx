@@ -529,6 +529,7 @@ const EntityTable = ({
                                     key={i}
                                     startWith="#"
                                     tag={tag}
+                                    type="label"
                                   />
                                 )
                               )}
@@ -549,6 +550,7 @@ const EntityTable = ({
                                   editable={editColumnTag?.index === row.id}
                                   selectedTags={cell.value || []}
                                   tagList={allTags}
+                                  type="label"
                                   onCancel={() => {
                                     handleTagSelection();
                                   }}
