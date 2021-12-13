@@ -12,16 +12,14 @@
  */
 
 import { isString, isUndefined, startCase, uniqueId } from 'lodash';
+import { ExtraInfo } from 'Models';
 import React, { FunctionComponent } from 'react';
 import { Link } from 'react-router-dom';
 import { SearchIndex } from '../../../enums/search.enum';
 import { TagLabel } from '../../../generated/type/tagLabel';
+import { serviceTypeLogo } from '../../../utils/ServiceUtils';
 import { stringToHTML } from '../../../utils/StringsUtils';
-import {
-  getEntityIcon,
-  getEntityLink,
-  getUsagePercentile,
-} from '../../../utils/TableUtils';
+import { getEntityLink, getUsagePercentile } from '../../../utils/TableUtils';
 import TableDataCardBody from './TableDataCardBody';
 
 type Props = {
@@ -44,7 +42,7 @@ type Props = {
 
 const TableDataCard: FunctionComponent<Props> = ({
   name,
-  owner = '--',
+  owner = '',
   description,
   tier = '',
   usage,
@@ -60,12 +58,12 @@ const TableDataCard: FunctionComponent<Props> = ({
       return isString(tier) ? tier : tier.tagFQN.split('.')[1];
     }
 
-    return 'No Tier';
+    return '';
   };
 
-  const OtherDetails = [
+  const OtherDetails: Array<ExtraInfo> = [
     { key: 'Owner', value: owner },
-    { key: 'Service', value: serviceType },
+    // { key: 'Service', value: serviceType },
     { key: 'Tier', value: getTier() },
   ];
   if (indexType !== SearchIndex.DASHBOARD && usage !== undefined) {
@@ -81,6 +79,7 @@ const TableDataCard: FunctionComponent<Props> = ({
     OtherDetails.push({
       key: 'Database',
       value: database,
+      showLabel: true,
     });
   }
   const getAssetTags = () => {
@@ -100,7 +99,12 @@ const TableDataCard: FunctionComponent<Props> = ({
       data-testid="table-data-card">
       <div>
         <div className="tw-flex">
-          {getEntityIcon(indexType)}
+          {/* {getEntityIcon(indexType)} */}
+          <img
+            alt=""
+            className="tw-inline tw-h-5 tw-w-5"
+            src={serviceTypeLogo(serviceType || '')}
+          />
           <h6 className="tw-flex tw-items-center tw-m-0 tw-heading tw-pl-2">
             <Link
               data-testid="table-link"

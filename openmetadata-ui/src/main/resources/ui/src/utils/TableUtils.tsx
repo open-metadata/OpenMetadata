@@ -51,11 +51,13 @@ export const usageSeverity = (value: number): string => {
   }
 };
 
-export const getUsagePercentile = (pctRank: number) => {
+export const getUsagePercentile = (pctRank: number, isLiteral = false) => {
   const percentile = Math.round(pctRank * 10) / 10;
   const ordinalPercentile = ordinalize(percentile);
   const strSeverity = usageSeverity(percentile);
-  const usagePercentile = `${strSeverity} - ${ordinalPercentile} pctile`;
+  const usagePercentile = `${strSeverity}${
+    isLiteral ? ' usage' : ''
+  } - ${ordinalPercentile} pctile`;
 
   return usagePercentile;
 };

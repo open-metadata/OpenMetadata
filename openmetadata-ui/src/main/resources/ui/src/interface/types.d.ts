@@ -413,4 +413,13 @@ declare module 'Models' {
     id: string | undefined;
     state: boolean;
   }
+
+  export type ExtraInfo = {
+    key?: string;
+    value: string | number | React.ReactNode;
+    isLink?: boolean;
+    placeholderText?: string;
+    openInNewTab?: boolean;
+    showLabel?: boolean;
+  };
 }
