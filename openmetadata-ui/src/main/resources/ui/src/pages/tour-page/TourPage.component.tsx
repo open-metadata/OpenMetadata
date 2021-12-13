@@ -76,10 +76,17 @@ const TourPage = () => {
               pipelineCount: 8,
             }}
             error=""
+            feedData={[]}
+            feedFilter=""
+            feedFilterHandler={() => {
+              setMyDataSearchResult(mockData);
+            }}
             fetchData={() => {
               setMyDataSearchResult(mockData);
             }}
+            followedData={[]}
             ingestionCount={0}
+            ownedData={[]}
             searchResult={myDataSearchResult as unknown as SearchResponse}
             userDetails={AppState.userDetails}
           />
