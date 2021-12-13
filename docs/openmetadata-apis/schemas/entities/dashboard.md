@@ -6,6 +6,8 @@ This schema defines the Dashboard entity. Dashboards are computed from data and 
 
 Type: `object`
 
+This schema <u>does not</u> accept additional properties.
+
 ## Properties
 - **id** `required`
   - Unique identifier that identifies a dashboard instance.
@@ -13,14 +15,14 @@ Type: `object`
 - **name** `required`
   - Name that identifies this dashboard.
   - Type: `string`
-  - Length: between 1 and 64
+  - Length: between 1 and 128
 - **displayName**
   - Display Name that identifies this Dashboard. It could be title or label from the source services.
   - Type: `string`
 - **fullyQualifiedName**
   - A unique name that identifies a dashboard in the format 'ServiceName.DashboardName'.
   - Type: `string`
-  - Length: between 1 and 64
+  - Length: between 1 and 256
 - **description**
   - Description of the dashboard, what it is, and how to use it.
   - Type: `string`
@@ -59,6 +61,9 @@ Type: `object`
 - **service** `required`
   - Link to service where this dashboard is hosted in.
   - $ref: [../../type/entityReference.json](../types/entityreference.md)
+- **serviceType**
+  - Service type where this dashboard is hosted in.
+  - $ref: [../services/dashboardService.json#/definitions/dashboardServiceType](../services/dashboardservice.md#dashboardservicetype)
 - **usageSummary**
   - Latest usage information for this database.
   - $ref: [../../type/usageDetails.json](../types/usagedetails.md)
@@ -66,5 +71,4 @@ Type: `object`
   - Change that lead to this version of the entity.
   - $ref: [../../type/entityHistory.json#/definitions/changeDescription](../types/entityhistory.md#changedescription)
 
-
-_This document was updated on: Monday, November 15, 2021_
+_This document was updated on: Thursday, December 9, 2021_

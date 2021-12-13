@@ -19,18 +19,18 @@ import looker_sdk
 from looker_sdk.error import SDKError
 from looker_sdk.sdk.api31.models import Dashboard as LookerDashboard
 from looker_sdk.sdk.api31.models import DashboardElement
+from pydantic import SecretStr
 
 from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.services.dashboardService import (
     DashboardServiceType,
 )
-from metadata.generated.schema.type.basic import Uuid
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.common import (
     ConfigModel,
+    Entity,
     IncludeFilterPattern,
-    Record,
     WorkflowContext,
 )
 from metadata.ingestion.api.source import Source, SourceStatus
@@ -42,7 +42,7 @@ logger = logging.getLogger(__name__)
 
 class LookerSourceConfig(ConfigModel):
     username: str
-    password: str
+    password: SecretStr
     url: str
     platform_name: str = "looker"
     actor: str = ""
@@ -73,7 +73,7 @@ class LookerDashboardSourceStatus(SourceStatus):
         self.filtered_charts.append(view)
 
 
-class LookerSource(Source):
+class LookerSource(Source[Entity]):
     config: LookerSourceConfig
     metadata_config: MetadataServerConfig
     status: LookerDashboardSourceStatus
@@ -92,7 +92,7 @@ class LookerSource(Source):
             config.service_name,
             DashboardServiceType.Looker.name,
             config.username,
-            config.password,
+            config.password.get_secret_value(),
             config.url,
             metadata_config,
         )
@@ -116,7 +116,7 @@ class LookerSource(Source):
     def prepare(self):
         pass
 
-    def next_record(self) -> Iterable[Record]:
+    def next_record(self) -> Iterable[Entity]:
         yield from self._get_looker_charts()
         yield from self._get_looker_dashboards()
 

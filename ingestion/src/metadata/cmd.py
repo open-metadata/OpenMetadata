@@ -71,7 +71,7 @@ def ingest(config: str) -> None:
     workflow_config = load_config_file(config_file)
 
     try:
-        logger.info(f"Using config: {workflow_config}")
+        logger.debug(f"Using config: {workflow_config}")
         workflow = Workflow.create(workflow_config)
     except ValidationError as e:
         click.echo(e, err=True)
@@ -167,8 +167,8 @@ def get_list(docker_type, all_check: bool = None):
 def docker(start, stop, clean, type, path) -> None:
     """
     Checks Docker Memory Allocation
-    Run Latest Release Docker - metadata docker --run
-    Run Local Docker - metadata docker --run -t local -p path/to/docker-compose.yml
+    Run Latest Release Docker - metadata docker --start
+    Run Local Docker - metadata docker --start -t local -p path/to/docker-compose.yml
     """
     try:
         import docker as sys_docker
@@ -238,7 +238,7 @@ def docker(start, stop, clean, type, path) -> None:
                 """\nHead to http://localhost:8585 to play around with OpenMetadata UI.
                 \nTo checkout Ingestion via Airflow, go to http://localhost:8080 \n(username: admin, password: admin)
                 """,
-                fg="bright_white",
+                fg="bright_blue",
             )
             click.secho(
                 "Need support? Get in touch on Slack: https://slack.open-metadata.org/",

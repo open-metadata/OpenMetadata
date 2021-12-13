@@ -54,10 +54,8 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
-import static javax.ws.rs.core.Response.Status.CONFLICT;
 import static javax.ws.rs.core.Response.Status.CREATED;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
-import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.OK;
 import static javax.ws.rs.core.Response.Status.UNAUTHORIZED;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -66,11 +64,12 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.deactivatedUser;
-import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.readOnlyAttribute;
 import static org.openmetadata.catalog.resources.teams.TeamResourceTest.createTeam;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
+import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
+import static org.openmetadata.catalog.util.TestUtils.assertListNull;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 import static org.openmetadata.catalog.util.TestUtils.authHeaders;
 
@@ -100,15 +99,6 @@ public class UserResourceTest extends EntityResourceTest<User> {
     create.withEmail("invalidEmail");
     exception = assertThrows(HttpResponseException.class, () -> createUser(create, adminAuthHeaders()));
     TestUtils.assertResponseContains(exception, BAD_REQUEST, "[email must match \"^\\S+@\\S+\\.\\S+$\"]");
-  }
-
-  @Test
-  public void post_userAlreadyExists_409_conflict(TestInfo test) throws HttpResponseException {
-    CreateUser create = create(test);
-    createUser(create, adminAuthHeaders()); // Create user first
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            createUser(create, adminAuthHeaders())); // Creating again must fail
-    assertResponse(exception, CONFLICT, CatalogExceptionMessage.ENTITY_ALREADY_EXISTS);
   }
 
   @Test
@@ -200,37 +190,6 @@ public class UserResourceTest extends EntityResourceTest<User> {
   }
 
   @Test
-  public void get_nonExistentUser_404_notFound() {
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            getUser(TestUtils.NON_EXISTENT_ENTITY, adminAuthHeaders()));
-    assertResponse(exception, NOT_FOUND, entityNotFound("User", TestUtils.NON_EXISTENT_ENTITY));
-  }
-
-  @Test
-  public void get_userWithDifferentFields_200_OK(TestInfo test) throws HttpResponseException {
-    // Create team and role for the user
-    TeamResourceTest teamResourceTest = new TeamResourceTest();
-    Team team = createTeam(teamResourceTest.create(test), adminAuthHeaders());
-    List<UUID> teamIds = Collections.singletonList(team.getId());
-
-    CreateUser create = create(test).withDisplayName("displayName").withTeams(teamIds).withProfile(PROFILE);
-    User user = createUser(create, adminAuthHeaders());
-    validateGetWithDifferentField(user, false);
-  }
-
-  @Test
-  public void get_userByNameWithDifferentFields_200_OK(TestInfo test) throws HttpResponseException {
-    // Create team and role for the user
-    TeamResourceTest teamResourceTest = new TeamResourceTest();
-    Team team = createTeam(teamResourceTest.create(test), adminAuthHeaders());
-    List<UUID> teamIds = Collections.singletonList(team.getId());
-
-    CreateUser create = create(test).withDisplayName("displayName").withTeams(teamIds).withProfile(PROFILE);
-    User user = createUser(create, adminAuthHeaders());
-    validateGetWithDifferentField(user, true);
-  }
-
-  @Test
   public void get_userWithInvalidFields_400_BadRequest(TestInfo test) throws HttpResponseException {
     User user = createUser(create(test), adminAuthHeaders());
 
@@ -294,11 +253,7 @@ public class UserResourceTest extends EntityResourceTest<User> {
   public void patch_userAttributes_as_admin_200_ok(TestInfo test) throws IOException {
     // Create user without any attributes - ***Note*** isAdmin by default is false.
     User user = createUser(create(test), adminAuthHeaders());
-    assertNull(user.getDisplayName());
-    assertNull(user.getIsBot());
-    assertNull(user.getProfile());
-//    assertNull(user.getDeactivated());
-    assertNull(user.getTimezone());
+    assertListNull(user.getDisplayName(), user.getIsBot(), user.getProfile(), user.getTimezone());
 
     TeamResourceTest teamResourceTest = new TeamResourceTest();
     EntityReference team1 = new TeamEntityInterface(createTeam(teamResourceTest.create(test, 1),
@@ -372,8 +327,8 @@ public class UserResourceTest extends EntityResourceTest<User> {
     CreateUser create = create(test).withName("test3").withEmail("test3@email.com");
     User user = createUser(create, authHeaders("test3"));
 
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () -> deleteUser(user.getId(),
-            authHeaders("test3@email.com")));
+    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
+            deleteEntity(user.getId(), authHeaders("test3@email.com")));
     assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test3'} is not admin");
   }
 
@@ -391,11 +346,7 @@ public class UserResourceTest extends EntityResourceTest<User> {
     Table table = tableResourceTest.createEntity(test, 1);
     tableResourceTest.addAndCheckFollower(table.getId(), user.getId(), CREATED, 1, adminAuthHeaders());
 
-    deleteUser(user.getId(), adminAuthHeaders());
-
-    // Make sure team entity no longer shows relationship to this user
-    team = TeamResourceTest.getTeam(team.getId(), "users", adminAuthHeaders());
-    assertTrue(team.getUsers().isEmpty());
+    deleteEntity(user.getId(), adminAuthHeaders());
 
     // Make sure the user is no longer following the table
     team = TeamResourceTest.getTeam(team.getId(), "users", adminAuthHeaders());
@@ -413,13 +364,6 @@ public class UserResourceTest extends EntityResourceTest<User> {
     assertResponse(exception, BAD_REQUEST, deactivatedUser(user.getId()));
 
     // TODO deactivated user can't be made owner
-  }
-
-  @Test
-  public void delete_nonExistentUser_404_notFound() {
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            deleteUser(TestUtils.NON_EXISTENT_ENTITY, adminAuthHeaders()));
-    assertResponse(exception, NOT_FOUND, entityNotFound("User", TestUtils.NON_EXISTENT_ENTITY));
   }
 
   private User patchUser(UUID userId, String originalJson, User updated, Map<String, String> headers)
@@ -454,7 +398,8 @@ public class UserResourceTest extends EntityResourceTest<User> {
   }
 
   /** Validate returned fields GET .../users/{id}?fields="..." or GET .../users/name/{name}?fields="..." */
-  private void validateGetWithDifferentField(User user, boolean byName) throws HttpResponseException {
+  @Override
+  public void validateGetWithDifferentFields(User user, boolean byName) throws HttpResponseException {
     // .../teams?fields=profile
     String fields = "profile";
     user = byName ? getUserByName(user.getName(), fields, adminAuthHeaders()) :
@@ -466,8 +411,7 @@ public class UserResourceTest extends EntityResourceTest<User> {
     fields = "profile, teams";
     user = byName ? getUserByName(user.getName(), fields, adminAuthHeaders()) :
             getUser(user.getId(), fields, adminAuthHeaders());
-    assertNotNull(user.getProfile());
-    assertNotNull(user.getTeams());
+    assertListNotNull(user.getProfile(), user.getTeams());
   }
 
   public static User getUser(UUID id, Map<String, String> authHeaders) throws HttpResponseException {
@@ -487,13 +431,9 @@ public class UserResourceTest extends EntityResourceTest<User> {
     return TestUtils.get(target, User.class, authHeaders);
   }
 
-  private void deleteUser(UUID id, Map<String, String> headers) throws HttpResponseException {
-    TestUtils.delete(CatalogApplicationTest.getResource("users/" + id), headers);
-  }
-
   @Override
   public Object createRequest(String name, String description, String displayName, EntityReference owner) {
-    return create(name).withDescription(description).withDisplayName(displayName);
+    return create(name).withDescription(description).withDisplayName(displayName).withProfile(PROFILE);
   }
 
   @Override

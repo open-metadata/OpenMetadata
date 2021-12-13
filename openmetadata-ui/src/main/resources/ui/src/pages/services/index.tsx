@@ -13,7 +13,7 @@
 
 import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
-import { isNil, isNull, lowerCase } from 'lodash';
+import { isNil, isNull } from 'lodash';
 import { Paging, ServiceCollection, ServiceData, ServiceTypes } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -28,7 +28,6 @@ import { Button } from '../../components/buttons/Button/Button';
 import NextPrevious from '../../components/common/next-previous/NextPrevious';
 import NonAdminAction from '../../components/common/non-admin-action/NonAdminAction';
 import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
-import Searchbar from '../../components/common/searchbar/Searchbar';
 import PageContainer from '../../components/containers/PageContainer';
 import Loader from '../../components/Loader/Loader';
 import {
@@ -169,17 +168,7 @@ const ServicesPage = () => {
       );
     }
   };
-  const handleSearchAction = (searchValue: string) => {
-    setSearchText(searchValue);
-    const curServ = services[serviceName];
-    const updatedResult = (curServ as unknown as Array<ServiceDataObj>).filter(
-      (serv) =>
-        lowerCase(serv.description)?.includes(lowerCase(searchValue)) ||
-        lowerCase(serv.name)?.includes(lowerCase(searchValue))
-    );
-    setServiceList(updatedResult);
-    setServicesCount({ ...servicesCount, [serviceName]: updatedResult.length });
-  };
+
   const handleAddService = () => {
     setEditData(undefined);
     setIsModalOpen(true);
@@ -473,22 +462,35 @@ const ServicesPage = () => {
                     key={index}
                     onClick={() => handleTabChange(tab.name)}>
                     {tab.displayName}
-                    {getCountBadge(servicesCount[tab.name])}
+                    {getCountBadge(
+                      servicesCount[tab.name],
+                      '',
+                      tab.name === serviceName
+                    )}
                   </button>
                 ))}
+                <div className="tw-self-end tw-ml-auto">
+                  {serviceList.length > 0 ? (
+                    <NonAdminAction
+                      position="bottom"
+                      title={TITLE_FOR_NON_ADMIN_ACTION}>
+                      <Button
+                        className={classNames('tw-h-8 tw-rounded tw-mb-2', {
+                          'tw-opacity-40': !isAdminUser && !isAuthDisabled,
+                        })}
+                        data-testid="add-new-user-button"
+                        size="small"
+                        theme="primary"
+                        variant="contained"
+                        onClick={() => handleAddService()}>
+                        Add New Service
+                      </Button>
+                    </NonAdminAction>
+                  ) : null}
+                </div>
               </nav>
             </div>
-            <div className="tw-flex">
-              <div className="tw-w-4/12">
-                {searchText || serviceList.length > 0 ? (
-                  <Searchbar
-                    placeholder={`Search for ${servicesDisplayName[serviceName]}...`}
-                    searchValue={searchText}
-                    typingInterval={100}
-                    onSearch={handleSearchAction}
-                  />
-                ) : null}
-              </div>
+            {/* <div className="tw-flex">
               <div className="tw-w-8/12 tw-flex tw-justify-end">
                 {serviceList.length > 0 ? (
                   <NonAdminAction
@@ -508,7 +510,7 @@ const ServicesPage = () => {
                   </NonAdminAction>
                 ) : null}
               </div>
-            </div>
+            </div> */}
             {serviceList.length ? (
               <div
                 className="tw-grid tw-grid-cols-4 tw-gap-4 tw-mb-4"
@@ -527,7 +529,7 @@ const ServicesPage = () => {
                         <button>
                           <h6
                             className="tw-text-base tw-text-grey-body tw-font-medium"
-                            data-testid="service-name">
+                            data-testid={`service-name-${service.name}`}>
                             {service.name}
                           </h6>
                         </button>
@@ -570,7 +572,7 @@ const ServicesPage = () => {
                           title={TITLE_FOR_NON_ADMIN_ACTION}>
                           <button
                             className="tw-pr-3 focus:tw-outline-none"
-                            data-testid="edit-service"
+                            data-testid={`edit-service-${service.name}`}
                             onClick={() => handleEdit(service)}>
                             <SVGIcons
                               alt="edit"
@@ -585,7 +587,7 @@ const ServicesPage = () => {
                           title={TITLE_FOR_NON_ADMIN_ACTION}>
                           <button
                             className="focus:tw-outline-none"
-                            data-testid="delete-service"
+                            data-testid={`delete-service-${service.name}`}
                             onClick={() =>
                               ConfirmDelete(service.id || '', service.name)
                             }>

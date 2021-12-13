@@ -52,7 +52,9 @@ const Avatar = ({
         background: getBgColorByCode(name?.charCodeAt(0)),
         color: 'black',
       }}>
-      <p className={classNames('tw-self-center', textClass)}>{name?.[0]}</p>
+      <p className={classNames('tw-self-center tw-capitalize', textClass)}>
+        {name?.[0]}
+      </p>
     </div>
   );
 };

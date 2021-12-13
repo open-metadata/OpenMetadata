@@ -71,6 +71,6 @@ This schema <u>does not</u> accept additional properties.
 
 - A unique name of the user, typically the user ID from an identity provider. Example - uid from LDAP.
 - Type: `string`
-- Length: between 1 and 64
+- Length: between 1 and 128
 
-_This document was updated on: Monday, November 15, 2021_
+_This document was updated on: Thursday, December 9, 2021_

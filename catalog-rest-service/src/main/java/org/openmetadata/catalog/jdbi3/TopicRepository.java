@@ -40,7 +40,7 @@ import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityN
 
 public class TopicRepository extends EntityRepository<Topic> {
   private static final Fields TOPIC_UPDATE_FIELDS = new Fields(TopicResource.FIELD_LIST, "owner,tags");
-  private static final Fields TOPIC_PATCH_FIELDS = new Fields(TopicResource.FIELD_LIST, "owner,service,tags");
+  private static final Fields TOPIC_PATCH_FIELDS = new Fields(TopicResource.FIELD_LIST, "owner,tags");
   private final CollectionDAO dao;
 
   public static String getFQN(Topic topic) {
@@ -58,9 +58,7 @@ public class TopicRepository extends EntityRepository<Topic> {
     if (dao.relationshipDAO().findToCount(id.toString(), Relationship.CONTAINS.ordinal(), Entity.TOPIC) > 0) {
       throw new IllegalArgumentException("Topic is not empty");
     }
-    if (dao.topicDAO().delete(id) <= 0) {
-      throw EntityNotFoundException.byMessage(entityNotFound(Entity.TOPIC, id));
-    }
+    dao.topicDAO().delete(id);
     dao.relationshipDAO().deleteAll(id.toString());
   }
 

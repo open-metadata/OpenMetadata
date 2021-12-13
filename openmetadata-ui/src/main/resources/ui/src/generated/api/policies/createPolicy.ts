@@ -19,7 +19,7 @@ export interface CreatePolicy {
   /**
    * A short description of the Policy, comprehensible to regular users.
    */
-  description: string;
+  description?: string;
   /**
    * Title for this Policy.
    */
@@ -31,7 +31,7 @@ export interface CreatePolicy {
   /**
    * Owner of this Policy.
    */
-  owner: EntityReference;
+  owner?: EntityReference;
   policyType: PolicyType;
   /**
    * Link to a well documented definition of this Policy.
@@ -70,8 +70,8 @@ export interface EntityReference {
    */
   name?: string;
   /**
-   * Entity type/class name - Examples: `database`, `table`, `metrics`, `redshift`, `mysql`,
-   * `bigquery`, `snowflake`...
+   * Entity type/class name - Examples: `database`, `table`, `metrics`, `databaseService`,
+   * `dashboardService`...
    */
   type: string;
 }

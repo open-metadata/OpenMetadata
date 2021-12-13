@@ -10,11 +10,14 @@
 #  limitations under the License.
 
 import logging
+from typing import Generic
+
+from pydantic import BaseModel
 
 from metadata.config.common import ConfigModel
 from metadata.generated.schema.api.teams.createUser import CreateUserEntityRequest
 from metadata.generated.schema.entity.teams.user import User
-from metadata.ingestion.api.common import Record, WorkflowContext
+from metadata.ingestion.api.common import Entity, WorkflowContext
 from metadata.ingestion.api.sink import Sink, SinkStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
@@ -26,7 +29,7 @@ class LDAPSourceConfig(ConfigModel):
     api_end_point: str
 
 
-class LdapRestUsersSink(Sink):
+class LdapRestUsersSink(Sink[User]):
     config: LDAPSourceConfig
     status: SinkStatus
 
@@ -51,7 +54,7 @@ class LdapRestUsersSink(Sink):
         metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
         return cls(ctx, config, metadata_config)
 
-    def write_record(self, record: Record) -> None:
+    def write_record(self, record: User) -> None:
         self._create_user(record)
 
     def _create_user(self, record: User) -> None:

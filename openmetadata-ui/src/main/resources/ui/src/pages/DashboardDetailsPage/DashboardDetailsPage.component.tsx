@@ -24,7 +24,6 @@ import {
   patchDashboardDetails,
   removeFollower,
 } from '../../axiosAPIs/dashboardAPI';
-import { getServiceById } from '../../axiosAPIs/serviceAPI';
 import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
 import DashboardDetails from '../../components/DashboardDetails/DashboardDetails.component';
 import Loader from '../../components/Loader/Loader';
@@ -125,9 +124,7 @@ const DashboardDetailsPage = () => {
     let chartsData: ChartType[] = [];
     let promiseArr: Array<AxiosPromise> = [];
     if (charts?.length) {
-      promiseArr = charts.map((chart) =>
-        getChartById(chart.id, ['service', 'tags'])
-      );
+      promiseArr = charts.map((chart) => getChartById(chart.id, ['tags']));
       await Promise.allSettled(promiseArr).then(
         (res: PromiseSettledResult<AxiosResponse>[]) => {
           if (res.length) {
@@ -149,7 +146,6 @@ const DashboardDetailsPage = () => {
     setLoading(true);
     getDashboardByFqn(dashboardFQN, [
       'owner',
-      'service',
       'followers',
       'tags',
       'usageSummary',
@@ -166,6 +162,7 @@ const DashboardDetailsPage = () => {
         displayName,
         charts,
         dashboardUrl,
+        serviceType,
       } = res.data;
       setDisplayName(displayName);
       setDashboardDetails(res.data);
@@ -175,38 +172,33 @@ const DashboardDetailsPage = () => {
       setOwner(getOwnerFromId(owner?.id));
       setTier(getTierTags(tags));
       setTags(getTagsWithoutTier(tags));
-      getServiceById('dashboardServices', service?.id).then(
-        (serviceRes: AxiosResponse) => {
-          setServiceType(serviceRes.data.serviceType);
-          setSlashedDashboardName([
-            {
-              name: serviceRes.data.name,
-              url: serviceRes.data.name
-                ? getServiceDetailsPath(
-                    serviceRes.data.name,
-                    serviceRes.data.serviceType,
-                    ServiceCategory.DASHBOARD_SERVICES
-                  )
-                : '',
-              imgSrc: serviceRes.data.serviceType
-                ? serviceTypeLogo(serviceRes.data.serviceType)
-                : undefined,
-            },
-            {
-              name: displayName,
-              url: '',
-              activeTitle: true,
-            },
-          ]);
+      setServiceType(serviceType);
+      setSlashedDashboardName([
+        {
+          name: service.name,
+          url: service.name
+            ? getServiceDetailsPath(
+                service.name,
+                serviceType,
+                ServiceCategory.DASHBOARD_SERVICES
+              )
+            : '',
+          imgSrc: serviceType ? serviceTypeLogo(serviceType) : undefined,
+        },
+        {
+          name: displayName,
+          url: '',
+          activeTitle: true,
+        },
+      ]);
 
-          addToRecentViewed({
-            entityType: EntityType.DASHBOARD,
-            fqn: fullyQualifiedName,
-            serviceType: serviceRes.data.serviceType,
-            timestamp: 0,
-          });
-        }
-      );
+      addToRecentViewed({
+        entityType: EntityType.DASHBOARD,
+        fqn: fullyQualifiedName,
+        serviceType: serviceType,
+        timestamp: 0,
+      });
+
       setDashboardUrl(dashboardUrl);
       fetchCharts(charts).then((charts) => setCharts(charts));
       setLoading(false);

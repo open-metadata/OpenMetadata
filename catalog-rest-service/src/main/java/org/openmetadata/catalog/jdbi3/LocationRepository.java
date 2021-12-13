@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate 
+ *  Copyright 2021 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -17,6 +17,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Location;
+import org.openmetadata.catalog.entity.services.StorageService;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.resources.locations.LocationResource;
 import org.openmetadata.catalog.type.ChangeDescription;
@@ -42,7 +43,7 @@ import java.util.UUID;
 public class LocationRepository extends EntityRepository<Location> {
   // Location fields that can be patched in a PATCH request
   private static final Fields LOCATION_PATCH_FIELDS = new Fields(LocationResource.FIELD_LIST,
-          "owner,service,tags");
+          "owner,tags");
   // Location fields that can be updated in a PUT request
   private static final Fields LOCATION_UPDATE_FIELDS = new Fields(LocationResource.FIELD_LIST,
           "owner,tags");
@@ -57,8 +58,8 @@ public class LocationRepository extends EntityRepository<Location> {
 
   @Override
   public Location setFields(Location location, Fields fields) throws IOException {
+    location.setService(getService(location));
     location.setOwner(fields.contains("owner") ? getOwner(location) : null);
-    location.setService(fields.contains("service") ? getService(location) : null);
     location.setFollowers(fields.contains("followers") ? getFollowers(location) : null);
     location.setTags(fields.contains("tags") ? getTags(location.getFullyQualifiedName()) : null);
     return location;
@@ -68,7 +69,7 @@ public class LocationRepository extends EntityRepository<Location> {
   public void restorePatchAttributes(Location original, Location updated) throws IOException, ParseException {
     // Patch can't make changes to following fields. Ignore the changes
     updated.withFullyQualifiedName(original.getFullyQualifiedName()).withName(original.getName())
-            .withId(original.getId());
+            .withService(original.getService()).withId(original.getId());
   }
 
   @Transaction
@@ -141,16 +142,22 @@ public class LocationRepository extends EntityRepository<Location> {
   public EntityReference getOwnerReference(Location location) throws IOException {
     return EntityUtil.populateOwner(dao.userDAO(), dao.teamDAO(), location.getOwner());
   }
+  
+  private StorageService getService(UUID serviceId, String entityType) throws IOException {
+    if (entityType.equalsIgnoreCase(Entity.STORAGE_SERVICE)) {
+      return dao.storageServiceDAO().findEntityById(serviceId);
+    }
+    throw new IllegalArgumentException(CatalogExceptionMessage.invalidServiceEntity(entityType, Entity.LOCATION));
+  }
 
   @Override
   public void prepare(Location location) throws IOException {
-    // Set data in location entity based on storage relationship
+    StorageService storageService = getService(location.getService().getId(), location.getService().getType());
+    location.setService(new StorageServiceRepository.StorageServiceEntityInterface(storageService)
+            .getEntityReference());
+    location.setServiceType(storageService.getServiceType());
     location.setFullyQualifiedName(getFQN(location));
-
-    // Check if owner is valid and set the relationship
-    location.setOwner(EntityUtil.populateOwner(dao.userDAO(), dao.teamDAO(), location.getOwner()));
-
-    // Validate location tags and add derived tags to the list
+    EntityUtil.populateOwner(dao.userDAO(), dao.teamDAO(), location.getOwner()); // Validate owner
     location.setTags(EntityUtil.addDerivedTags(dao.tagDAO(), location.getTags()));
   }
 
@@ -162,7 +169,7 @@ public class LocationRepository extends EntityRepository<Location> {
     List<TagLabel> tags = location.getTags();
 
     // Don't store owner, href and tags as JSON. Build it on the fly based on relationships
-    location.withOwner(null).withHref(null).withTags(null);
+    location.withOwner(null).withService(null).withHref(null).withTags(null);
 
     if (update) {
       dao.locationDAO().update(location.getId(), JsonUtils.pojoToJson(location));
@@ -187,7 +194,7 @@ public class LocationRepository extends EntityRepository<Location> {
 
   @Override
   public EntityUpdater getUpdater(Location original, Location updated, boolean patchOperation) throws IOException {
-    return new LocationRepository.LocationUpdater(original, updated, patchOperation);
+    return new LocationUpdater(original, updated, patchOperation);
   }
 
   public EntityReference getOwner(Location location) throws IOException {
@@ -343,13 +350,7 @@ public class LocationRepository extends EntityRepository<Location> {
 
     @Override
     public void entitySpecificUpdate() throws IOException {
-      Location origLocation = original.getEntity();
-      Location updatedLocation = updated.getEntity();
-      updateLocationType(origLocation, updatedLocation);
-    }
-
-    private void updateLocationType(Location origLocation, Location updatedLocation) throws JsonProcessingException {
-      recordChange("locationType", origLocation.getLocationType(), updatedLocation.getLocationType());
+      recordChange("locationType", original.getEntity().getLocationType(), updated.getEntity().getLocationType());
     }
   }
 }

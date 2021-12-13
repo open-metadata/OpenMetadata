@@ -13,12 +13,10 @@
 
 package org.openmetadata.catalog.jdbi3;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.policies.Policy;
-import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.resources.policies.PolicyResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
@@ -35,14 +33,12 @@ import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 
-import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
-
 @Slf4j
 public class PolicyRepository extends EntityRepository<Policy> {
   private static final Fields POLICY_UPDATE_FIELDS = new Fields(PolicyResource.FIELD_LIST,
-          "displayName,description,owner,policyUrl,enabled");
+          "displayName,description,owner,policyUrl,enabled,rules");
   private static final Fields POLICY_PATCH_FIELDS = new Fields(PolicyResource.FIELD_LIST,
-          "displayName,description,owner,policyUrl,enabled");
+          "displayName,description,owner,policyUrl,enabled,rules");
   private final CollectionDAO dao;
 
   public PolicyRepository(CollectionDAO dao) {
@@ -60,9 +56,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
     if (dao.relationshipDAO().findToCount(id.toString(), Relationship.CONTAINS.ordinal(), Entity.POLICY) > 0) {
       throw new IllegalArgumentException("Policy is not empty");
     }
-    if (dao.policyDAO().delete(id) <= 0) {
-      throw EntityNotFoundException.byMessage(entityNotFound(Entity.POLICY, id));
-    }
+    dao.policyDAO().delete(id);
     dao.relationshipDAO().deleteAll(id.toString());
   }
 
@@ -78,6 +72,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
     policy.setOwner(fields.contains("owner") ? getOwner(policy) : null);
     policy.setPolicyUrl(fields.contains("policyUrl") ? policy.getPolicyUrl() : null);
     policy.setEnabled(fields.contains("enabled") ? policy.getEnabled() : null);
+    policy.setRules(fields.contains("rules") ? policy.getRules() : null);
     return policy;
   }
 
@@ -139,10 +134,10 @@ public class PolicyRepository extends EntityRepository<Policy> {
     policy.setOwner(owner);
   }
 
-  static class PolicyEntityInterface implements EntityInterface<Policy> {
+  public static class PolicyEntityInterface implements EntityInterface<Policy> {
     private final Policy entity;
 
-    PolicyEntityInterface(Policy entity) {
+    public PolicyEntityInterface(Policy entity) {
       this.entity = entity;
     }
 
@@ -175,6 +170,10 @@ public class PolicyRepository extends EntityRepository<Policy> {
     public List<TagLabel> getTags() {
       // Policy does not have tags.
       return null;
+    }
+
+    public List<Object> getRules() {
+      return entity.getRules();
     }
 
     @Override
@@ -248,7 +247,11 @@ public class PolicyRepository extends EntityRepository<Policy> {
 
     @Override
     public void setOwner(EntityReference owner) {
-      // Policy does not have owner
+      entity.setOwner(owner);
+    }
+
+    public void setRules(List<Object> rules) {
+      entity.setRules(rules);
     }
 
     @Override
@@ -270,11 +273,9 @@ public class PolicyRepository extends EntityRepository<Policy> {
 
     @Override
     public void entitySpecificUpdate() throws IOException {
-      updatePolicyUrl(original.getEntity(), updated.getEntity());
-    }
-
-    private void updatePolicyUrl(Policy original, Policy updated) throws JsonProcessingException {
-      recordChange("policyUrl", original.getPolicyUrl(), updated.getPolicyUrl());
+      recordChange("policyUrl", original.getEntity().getPolicyUrl(), updated.getEntity().getPolicyUrl());
+      recordChange("enabled", original.getEntity().getEnabled(), updated.getEntity().getEnabled());
+      recordChange("rules", original.getEntity().getRules(), updated.getEntity().getRules());
     }
   }
 }

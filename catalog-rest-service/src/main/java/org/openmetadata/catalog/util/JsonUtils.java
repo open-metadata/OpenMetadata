@@ -128,6 +128,9 @@ public final class JsonUtils {
   }
 
   public static String pojoToJson(Object o) throws JsonProcessingException {
+    if (o == null) {
+      return null;
+    }
     return pojoToJson(o, false);
   }
 
@@ -138,6 +141,10 @@ public final class JsonUtils {
 
   public static JsonStructure getJsonStructure(Object o) {
     return OBJECT_MAPPER.convertValue(o, JsonStructure.class);
+  }
+
+  public static Map<String, Object> getMap(Object o) {
+    return OBJECT_MAPPER.convertValue(o, Map.class);
   }
 
   public static <T> T readValue(String json, Class<T> clz) throws IOException {

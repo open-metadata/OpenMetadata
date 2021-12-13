@@ -9,7 +9,7 @@ Type: `object`
 This schema <u>does not</u> accept additional properties.
 
 ## Properties
-- **id** `required`
+- **id** `required` 
   - Unique identifier of this table instance.
   - $ref: [../../type/basic.json#/definitions/uuid](../types/basic.md#uuid)
 - **name** `required`
@@ -54,6 +54,12 @@ This schema <u>does not</u> accept additional properties.
 - **database**
   - Reference to Database that contains this table.
   - $ref: [../../type/entityReference.json](../types/entityreference.md)
+- **service**
+  - Link to Database service this table is hosted in.
+  - $ref: [../../type/entityReference.json](../types/entityreference.md)
+- **serviceType**
+  - Service type this table is hosted in.
+  - $ref: [../services/databaseService.json#/definitions/databaseServiceType](../services/databaseservice.md#databaseservicetype)
 - **location**
   - Reference to the Location that contains this table.
   - $ref: [../../type/entityReference.json](../types/entityreference.md)
@@ -177,14 +183,14 @@ This schema <u>does not</u> accept additional properties.
 - Local name (not fully qualified name) of the column. ColumnName is `-` when the column is not named in struct dataType. For example, BigQuery supports struct with unnamed fields.
 - Type: `string`
 - The value must match this pattern: `^[^.]*$`
-- Length: between 1 and 64
+- Length: between 1 and 128
 
 ### tableName
 
 - Local name (not fully qualified name) of a table.
 - Type: `string`
 - The value must match this pattern: `^[^.]*$`
-- Length: between 1 and 64
+- Length: between 1 and 128
 
 ### fullyQualifiedColumnName
 
@@ -374,4 +380,4 @@ This schema <u>does not</u> accept additional properties.
     - Date on which the query ran.
     - $ref: [../../type/basic.json#/definitions/date](../types/basic.md#date)
 
-_This document was updated on: Monday, November 15, 2021_
+_This document was updated on: Thursday, December 9, 2021_

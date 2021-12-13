@@ -24,6 +24,7 @@ import IconDashboardGrey from '../assets/svg/dashboard-grey.svg';
 import IconDashboard from '../assets/svg/dashboard.svg';
 import IconAsstest from '../assets/svg/data-assets.svg';
 import IconDBTModelGrey from '../assets/svg/dbt-model-grey.svg';
+import IconDBTModelLightGrey from '../assets/svg/dbt-model-light-grey.svg';
 import IconDBTModel from '../assets/svg/dbt-model.svg';
 import IconDeploy from '../assets/svg/deploy-icon.svg';
 import IconDoc from '../assets/svg/doc.svg';
@@ -76,6 +77,7 @@ import IconPipeline from '../assets/svg/pipeline.svg';
 import IconPlus from '../assets/svg/plus.svg';
 import IconProfiler from '../assets/svg/profiler.svg';
 import IconHelpCircle from '../assets/svg/question-circle.svg';
+import IconSearchV1 from '../assets/svg/search.svg';
 import IconSetting from '../assets/svg/service.svg';
 import IconSlackGrey from '../assets/svg/slack-grey.svg';
 import IconSlack from '../assets/svg/slack.svg';
@@ -168,6 +170,7 @@ export const Icons = {
   PIPELINE: 'pipeline',
   PIPELINE_GREY: 'pipeline-grey',
   DBTMODEL_GREY: 'dbtmodel-grey',
+  DBTMODEL_LIGHT_GREY: 'dbtmodel-light-grey',
   DBTMODEL: 'dbtmodel',
   VERSION: 'icon-version',
   VERSION_WHITE: 'icon-version-white',
@@ -177,6 +180,7 @@ export const Icons = {
   ICON_MINUS: 'icon-minus',
   TAG: 'icon-tag',
   TIER: 'icon-tier',
+  SEARCHV1: 'icon-searchv1',
 };
 
 const SVGIcons: FunctionComponent<Props> = ({
@@ -491,6 +495,10 @@ const SVGIcons: FunctionComponent<Props> = ({
       IconComponent = IconDBTModelGrey;
 
       break;
+    case Icons.DBTMODEL_LIGHT_GREY:
+      IconComponent = IconDBTModelLightGrey;
+
+      break;
     case Icons.DBTMODEL:
       IconComponent = IconDBTModel;
 
@@ -501,6 +509,10 @@ const SVGIcons: FunctionComponent<Props> = ({
       break;
     case Icons.TIER:
       IconComponent = IconTier;
+
+      break;
+    case Icons.SEARCHV1:
+      IconComponent = IconSearchV1;
 
       break;
 

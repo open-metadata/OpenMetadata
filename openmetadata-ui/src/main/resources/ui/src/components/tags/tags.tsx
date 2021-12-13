@@ -75,10 +75,7 @@ const Tags: FunctionComponent<TagProps> = ({
                 <div className="tw-text-left tw-p-1">
                   {tag.description && (
                     <div className="tw-mb-3">
-                      <RichTextEditorPreviewer
-                        className="tw-p-2"
-                        markdown={tag.description}
-                      />
+                      <RichTextEditorPreviewer markdown={tag.description} />
                     </div>
                   )}
                   <p>Set as {tag.labelType}</p>

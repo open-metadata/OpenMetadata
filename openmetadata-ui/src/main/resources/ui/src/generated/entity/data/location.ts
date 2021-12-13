@@ -60,6 +60,10 @@ export interface Location {
    */
   service: EntityReference;
   /**
+   * Service type where this storage location is hosted in.
+   */
+  serviceType?: StorageServiceType;
+  /**
    * Tags for this location.
    */
   tags?: TagLabel[];
@@ -153,8 +157,8 @@ export interface EntityReference {
    */
   name?: string;
   /**
-   * Entity type/class name - Examples: `database`, `table`, `metrics`, `redshift`, `mysql`,
-   * `bigquery`, `snowflake`...
+   * Entity type/class name - Examples: `database`, `table`, `metrics`, `databaseService`,
+   * `dashboardService`...
    */
   type: string;
 }
@@ -167,6 +171,18 @@ export enum LocationType {
   Database = 'Database',
   Prefix = 'Prefix',
   Table = 'Table',
+}
+
+/**
+ * Service type where this storage location is hosted in.
+ *
+ * Type of storage service such as S3, GCS, HDFS...
+ */
+export enum StorageServiceType {
+  Abfs = 'ABFS',
+  Gcs = 'GCS',
+  Hdfs = 'HDFS',
+  S3 = 'S3',
 }
 
 /**

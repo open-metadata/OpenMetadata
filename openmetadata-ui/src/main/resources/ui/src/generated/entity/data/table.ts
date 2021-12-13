@@ -31,6 +31,11 @@ export interface Table {
    */
   database?: EntityReference;
   /**
+   * This captures information about how the table is modeled. Currently only DBT model is
+   * supported.
+   */
+  dataModel?: DataModel;
+  /**
    * Description of a table.
    */
   description?: string;
@@ -75,6 +80,14 @@ export interface Table {
    * Sample data for a table.
    */
   sampleData?: TableData;
+  /**
+   * Link to Database service this table is hosted in.
+   */
+  service?: EntityReference;
+  /**
+   * Service type this table is hosted in.
+   */
+  serviceType?: DatabaseServiceType;
   /**
    * Table constraints.
    */
@@ -315,6 +328,46 @@ export enum State {
 }
 
 /**
+ * This captures information about how the table is modeled. Currently only DBT model is
+ * supported.
+ */
+export interface DataModel {
+  /**
+   * Columns from the schema defined during modeling. In case of DBT, the metadata here comes
+   * from `schema.yaml`.
+   */
+  columns?: Column[];
+  /**
+   * Description of the Table from the model
+   */
+  description?: string;
+  generatedAt?: Date;
+  modelType: ModelType;
+  /**
+   * Path to sql definition file.
+   */
+  path?: string;
+  /**
+   * This corresponds to rws SQL from `<model_name>.sql` in DBT. This might be null when SQL
+   * query need not be compiled as done in DBT.
+   */
+  rawSql?: string;
+  /**
+   * This corresponds to compile SQL from `<model_name>.sql` in DBT. In cases where
+   * compilation is not necessary, this corresponds to SQL that created the table.
+   */
+  sql: string;
+  /**
+   * Fully qualified name of Models/tables used for in `sql` for creating this table
+   */
+  upstream?: string[];
+}
+
+export enum ModelType {
+  Dbt = 'DBT',
+}
+
+/**
  * Reference to Database that contains this table.
  *
  * This schema defines the EntityReference type used for referencing an entity.
@@ -327,6 +380,8 @@ export enum State {
  * Reference to the Location that contains this table.
  *
  * Owner of this table.
+ *
+ * Link to Database service this table is hosted in.
  *
  * User who ran this query.
  */
@@ -353,8 +408,8 @@ export interface EntityReference {
    */
   name?: string;
   /**
-   * Entity type/class name - Examples: `database`, `table`, `metrics`, `redshift`, `mysql`,
-   * `bigquery`, `snowflake`...
+   * Entity type/class name - Examples: `database`, `table`, `metrics`, `databaseService`,
+   * `dashboardService`...
    */
   type: string;
 }
@@ -405,6 +460,29 @@ export interface TableData {
    * Data for multiple rows of the table.
    */
   rows?: Array<any[]>;
+}
+
+/**
+ * Service type this table is hosted in.
+ *
+ * Type of database service such as MySQL, BigQuery, Snowflake, Redshift, Postgres...
+ */
+export enum DatabaseServiceType {
+  Athena = 'Athena',
+  BigQuery = 'BigQuery',
+  Druid = 'Druid',
+  Glue = 'Glue',
+  Hive = 'Hive',
+  MariaDB = 'MariaDB',
+  Mssql = 'MSSQL',
+  MySQL = 'MySQL',
+  Oracle = 'Oracle',
+  Postgres = 'Postgres',
+  Presto = 'Presto',
+  Redshift = 'Redshift',
+  Snowflake = 'Snowflake',
+  Trino = 'Trino',
+  Vertica = 'Vertica',
 }
 
 /**

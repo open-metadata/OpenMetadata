@@ -17,6 +17,7 @@ import React, { FunctionComponent, useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import AppState from '../../AppState';
 import { searchData } from '../../axiosAPIs/miscAPI';
+import PageContainerV1 from '../../components/containers/PageContainerV1';
 import Explore from '../../components/Explore/Explore.component';
 import {
   ExploreSearchData,
@@ -96,7 +97,6 @@ const ExplorePage: FunctionComponent = () => {
       SearchIndex.TOPIC,
       SearchIndex.DASHBOARD,
       SearchIndex.PIPELINE,
-      SearchIndex.DBT_MODEL,
     ];
 
     const entityCounts = entities.map((entity) =>
@@ -118,7 +118,6 @@ const ExplorePage: FunctionComponent = () => {
           topic,
           dashboard,
           pipeline,
-          dbtModel,
         ]: PromiseSettledResult<SearchResponse>[]) => {
           setTableCount(
             table.status === 'fulfilled'
@@ -152,14 +151,6 @@ const ExplorePage: FunctionComponent = () => {
                 )
               : 0
           );
-          setDbtModelCount(
-            dbtModel.status === 'fulfilled'
-              ? getTotalEntityCountByType(
-                  dbtModel.value.data.aggregations?.['sterms#EntityType']
-                    ?.buckets as Bucket[]
-                )
-              : 0
-          );
           setIsLoading(false);
         }
       )
@@ -186,6 +177,7 @@ const ExplorePage: FunctionComponent = () => {
           resAggServiceType,
           resAggTier,
           resAggTag,
+          resAggDatabase,
         ]: Array<SearchResponse>) => {
           setError('');
           setSearchResult({
@@ -193,6 +185,7 @@ const ExplorePage: FunctionComponent = () => {
             resAggServiceType,
             resAggTier,
             resAggTag,
+            resAggDatabase,
           });
           setIsLoadingForData(false);
         }
@@ -253,30 +246,32 @@ const ExplorePage: FunctionComponent = () => {
       {isLoading || isLoadingForData ? (
         <Loader />
       ) : (
-        <Explore
-          error={error}
-          fetchCount={fetchCounts}
-          fetchData={fetchData}
-          handlePathChange={handlePathChange}
-          handleSearchText={handleSearchText}
-          searchQuery={searchQuery}
-          searchResult={searchResult}
-          searchText={searchText}
-          sortValue={initialSortField}
-          tab={tab}
-          tabCounts={{
-            table: tableCount,
-            topic: topicCount,
-            dashboard: dashboardCount,
-            pipeline: pipelineCount,
-            dbtModel: dbtModelCount,
-          }}
-          updateDashboardCount={handleDashboardCount}
-          updateDbtModelCount={handleDbtModelCount}
-          updatePipelineCount={handlePipelineCount}
-          updateTableCount={handleTableCount}
-          updateTopicCount={handleTopicCount}
-        />
+        <PageContainerV1>
+          <Explore
+            error={error}
+            fetchCount={fetchCounts}
+            fetchData={fetchData}
+            handlePathChange={handlePathChange}
+            handleSearchText={handleSearchText}
+            searchQuery={searchQuery}
+            searchResult={searchResult}
+            searchText={searchText}
+            sortValue={initialSortField}
+            tab={tab}
+            tabCounts={{
+              table: tableCount,
+              topic: topicCount,
+              dashboard: dashboardCount,
+              pipeline: pipelineCount,
+              dbtModel: dbtModelCount,
+            }}
+            updateDashboardCount={handleDashboardCount}
+            updateDbtModelCount={handleDbtModelCount}
+            updatePipelineCount={handlePipelineCount}
+            updateTableCount={handleTableCount}
+            updateTopicCount={handleTopicCount}
+          />
+        </PageContainerV1>
       )}
     </>
   );

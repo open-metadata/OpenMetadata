@@ -38,8 +38,9 @@ const statusQueued = '#777777';
 
 // Background colors
 const bodyBG = '#F8F9FA';
-const bodyHoverBG = '#F9F8FD';
+const bodyHoverBG = '#F5F6F8';
 const tagBG = '#EEEAF8';
+const badgeBG = '#E3E5E8';
 const primaryBG = '#7147E840'; // 'rgba(113, 71, 232, 0.25)';
 const backdropBG = '#302E36';
 
@@ -93,6 +94,7 @@ module.exports = {
         'body-main': bodyBG,
         'body-hover': bodyHoverBG,
         tag: tagBG,
+        badge: badgeBG,
         success: success,
         error: error,
         warning: warning,
@@ -123,7 +125,7 @@ module.exports = {
         120: '30rem',
       },
       minWidth: {
-        badgeCount: '24px',
+        badgeCount: '30px',
       },
       maxHeight: {
         32: '8rem',

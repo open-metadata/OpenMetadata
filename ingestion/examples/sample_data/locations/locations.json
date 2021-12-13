@@ -1,0 +1,22 @@
+{
+  "locations": [
+    {
+      "name": "s3://bucket-a",
+      "displayName": "s3://bucket-a",
+      "description": "Bucket A",
+      "locationType": "Bucket"
+    },
+    {
+      "name": "s3://bucket-b",
+      "displayName": "s3://bucket-b",
+      "description": "Bucket B",
+      "locationType": "Bucket"
+    },
+    {
+      "name": "s3://bucket-a/user/hive/dwh",
+      "displayName": "s3://bucket-a/user/hive/dwh",
+      "description": "Bucket A prefix",
+      "locationType": "Prefix"
+    }
+  ]
+}

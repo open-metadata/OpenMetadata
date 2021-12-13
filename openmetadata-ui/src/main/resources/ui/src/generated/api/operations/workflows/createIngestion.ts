@@ -103,14 +103,7 @@ export interface ConnectorConfig {
   /**
    * Regex exclude tables or databases that matches the pattern.
    */
-  excludeFilterPattern?:
-    | string[]
-    | boolean
-    | number
-    | number
-    | { [key: string]: any }
-    | null
-    | string;
+  excludeFilterPattern?: string[];
   /**
    * Host and port of the data source.
    */
@@ -143,6 +136,7 @@ export enum IngestionType {
   Mssql = 'mssql',
   Mysql = 'mysql',
   Postgres = 'postgres',
+  Presto = 'presto',
   Redshift = 'redshift',
   RedshiftUsage = 'redshift-usage',
   Snowflake = 'snowflake',
@@ -184,8 +178,8 @@ export interface EntityReference {
    */
   name?: string;
   /**
-   * Entity type/class name - Examples: `database`, `table`, `metrics`, `redshift`, `mysql`,
-   * `bigquery`, `snowflake`...
+   * Entity type/class name - Examples: `database`, `table`, `metrics`, `databaseService`,
+   * `dashboardService`...
    */
   type: string;
 }

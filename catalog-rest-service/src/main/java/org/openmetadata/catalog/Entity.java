@@ -58,7 +58,8 @@ public final class Entity {
   public static final String REPORT = "report";
   public static final String TOPIC = "topic";
   public static final String MLMODEL = "mlmodel";
-  public static final String DBTMODEL = "dbtmodel";
+  // Not deleted to ensure the ordinal value of the entities after this remains the same
+  public static final String UNUSED   = "unused";
   public static final String BOTS = "bots";
   public static final String LOCATION = "location";
 
@@ -73,7 +74,9 @@ public final class Entity {
   public static final String USER = "user";
   public static final String TEAM = "team";
 
+  //
   // Operations
+  //
   public static final String INGESTION = "ingestion";
 
   private Entity() {
@@ -139,6 +142,10 @@ public final class Entity {
       throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entityName));
     }
     return entityRepository.getEntityInterface(entity);
+  }
+
+  public static String getEntityNameFromClass(Class clz) {
+    return CANONICAL_ENTITY_NAME_MAP.get(clz.getSimpleName().toLowerCase(Locale.ROOT));
   }
 
   public static String getEntityNameFromObject(Object object) {

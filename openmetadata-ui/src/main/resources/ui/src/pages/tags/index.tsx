@@ -42,7 +42,7 @@ import {
 } from '../../generated/api/tags/createTagCategory';
 import { TagCategory, TagClass } from '../../generated/entity/tags/tagCategory';
 import { useAuth } from '../../hooks/authHooks';
-import { isEven } from '../../utils/CommonUtils';
+import { getCountBadge, isEven } from '../../utils/CommonUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import { getTagCategories, getTaglist } from '../../utils/TagsUtils';
 import Form from './Form';
@@ -209,9 +209,11 @@ const TagsPage = () => {
                 {category.name}
               </p>
 
-              <p className="tw-bg-gray-200 tw-px-2 tw-py-1 tw-rounded tw-text-xs">
-                {category.usageCount}
-              </p>
+              {getCountBadge(
+                category.children?.length || 0,
+                'tw-self-center',
+                currentCategory?.name === category.name
+              )}
             </div>
           ))}
       </>
@@ -258,7 +260,7 @@ const TagsPage = () => {
                 className="tw-flex tw-flex-col tw-border tw-border-main tw-rounded-md tw-mb-3 tw-min-h-32 tw-bg-white"
                 data-testid="description-container">
                 <div className="tw-flex tw-items-center tw-px-3 tw-py-1 tw-border-b tw-border-main">
-                  <span className="tw-flex-1 tw-leading-8 tw-m-0 tw-font-normal">
+                  <span className="tw-flex-1 tw-leading-8 tw-m-0 tw-font-medium">
                     Description
                   </span>
                   <div className="tw-flex-initial">
@@ -375,6 +377,7 @@ const TagsPage = () => {
                                   {tag.usageCount ? (
                                     <Link
                                       className="link-text tw-align-middle"
+                                      data-testid="usage-count"
                                       to={getUsageCountLink(
                                         tag.fullyQualifiedName || ''
                                       )}>

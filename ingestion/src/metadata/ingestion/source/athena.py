@@ -12,14 +12,16 @@
 from typing import Optional
 from urllib.parse import quote_plus
 
-from ..ometa.openmetadata_rest import MetadataServerConfig
-from .sql_source import SQLConnectionConfig, SQLSource
+from pydantic import SecretStr
+
+from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
+from metadata.ingestion.source.sql_source import SQLConnectionConfig, SQLSource
 
 
 class AthenaConfig(SQLConnectionConfig):
     scheme: str = "awsathena+rest"
     username: Optional[str] = None
-    password: Optional[str] = None
+    password: Optional[SecretStr] = None
     database: Optional[str] = None
     aws_region: str
     s3_staging_dir: str
@@ -30,7 +32,7 @@ class AthenaConfig(SQLConnectionConfig):
         if self.username:
             url += f"{quote_plus(self.username)}"
             if self.password:
-                url += f":{quote_plus(self.password)}"
+                url += f":{quote_plus(self.password.get_secret_value())}"
         else:
             url += ":"
         url += f"@athena.{self.aws_region}.amazonaws.com:443/"

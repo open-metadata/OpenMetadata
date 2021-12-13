@@ -8,19 +8,16 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+from typing import Optional
 
 from pydantic import BaseModel
 
 from metadata.generated.schema.entity.data.database import Database
-from metadata.generated.schema.entity.data.dbtmodel import DbtModel
+from metadata.generated.schema.entity.data.location import Location
 from metadata.generated.schema.entity.data.table import Table
 
 
 class OMetaDatabaseAndTable(BaseModel):
+    database: Database
     table: Table
-    database: Database
-
-
-class OMetaDatabaseAndModel(BaseModel):
-    model: DbtModel
-    database: Database
+    location: Optional[Location]

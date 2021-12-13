@@ -27,7 +27,8 @@
   "bulk_sink": {
     "type": "metadata-usage",
     "config": {
-      "filename": "/tmp/bigquery_usage"
+      "filename": "/tmp/bigquery_usage",
+      "service_name": "gcp_bigquery"
     }
   },
   "metadata_server": {

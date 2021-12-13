@@ -18,7 +18,6 @@ import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Database;
 import org.openmetadata.catalog.entity.services.DatabaseService;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
-import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.jdbi3.DatabaseServiceRepository.DatabaseServiceEntityInterface;
 import org.openmetadata.catalog.resources.databases.DatabaseResource;
 import org.openmetadata.catalog.type.ChangeDescription;
@@ -39,12 +38,10 @@ import java.util.List;
 import java.util.UUID;
 
 import static javax.ws.rs.core.Response.Status.CREATED;
-import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 
 public class DatabaseRepository extends EntityRepository<Database> {
   private static final Fields DATABASE_UPDATE_FIELDS = new Fields(DatabaseResource.FIELD_LIST, "owner");
-  private static final Fields DATABASE_PATCH_FIELDS = new Fields(DatabaseResource.FIELD_LIST,
-          "owner,service, usageSummary");
+  private static final Fields DATABASE_PATCH_FIELDS = new Fields(DatabaseResource.FIELD_LIST,"owner,usageSummary");
   private final CollectionDAO dao;
 
   public DatabaseRepository(CollectionDAO dao) {
@@ -62,9 +59,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
     if (dao.relationshipDAO().findToCount(id.toString(), Relationship.CONTAINS.ordinal(), Entity.TABLE) > 0) {
       throw new IllegalArgumentException("Database is not empty");
     }
-    if (dao.databaseDAO().delete(id) <= 0) {
-      throw EntityNotFoundException.byMessage(entityNotFound(Entity.DATABASE, id));
-    }
+    dao.databaseDAO().delete(id);
     dao.relationshipDAO().deleteAll(id.toString());
   }
 

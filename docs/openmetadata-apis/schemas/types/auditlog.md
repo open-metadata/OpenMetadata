@@ -6,6 +6,8 @@ This schema defines the Audit Log type to capture the audit trail of POST, PUT, 
 
 Type: `object`
 
+This schema <u>does not</u> accept additional properties.
+
 ## Properties
 - **method** `required`
   - HTTP Method used in a call.
@@ -34,4 +36,4 @@ Type: `object`
   - Date when the API call is made.
   - $ref: [basic.json#/definitions/dateTime](basic.md#datetime)
 
-_This document was updated on: Monday, November 15, 2021_
+_This document was updated on: Thursday, December 9, 2021_

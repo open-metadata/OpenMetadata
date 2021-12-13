@@ -11,11 +11,13 @@
 
 from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass, field
-from typing import Any, List
+from typing import Any, Generic, List
 
-from .closeable import Closeable
-from .common import Record, WorkflowContext
-from .status import Status
+from pydantic import BaseModel
+
+from metadata.ingestion.api.closeable import Closeable
+from metadata.ingestion.api.common import Entity, WorkflowContext
+from metadata.ingestion.api.status import Status
 
 
 @dataclass
@@ -35,7 +37,7 @@ class SinkStatus(Status):
 
 
 @dataclass  # type: ignore[misc]
-class Sink(Closeable, metaclass=ABCMeta):
+class Sink(Closeable, Generic[Entity], metaclass=ABCMeta):
     """All Sinks must inherit this base class."""
 
     ctx: WorkflowContext
@@ -48,7 +50,7 @@ class Sink(Closeable, metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def write_record(self, record: Record) -> None:
+    def write_record(self, record: Entity) -> None:
         # must call callback when done.
         pass
 

@@ -15,7 +15,6 @@ import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { getDatabase } from '../../axiosAPIs/databaseAPI';
 import { getPipelineByFqn } from '../../axiosAPIs/pipelineAPI';
 import { getServiceById } from '../../axiosAPIs/serviceAPI';
 import { getTableDetailsByFQN } from '../../axiosAPIs/tableAPI';
@@ -45,13 +44,13 @@ const getHeaderLabel = (
     <>
       {isMainNode ? (
         <span
-          className="tw-break-words description-text tw-self-center tw-font-normal"
+          className="tw-break-words description-text tw-self-center tw-font-medium"
           data-testid="lineage-entity">
           {v.split(separator)[length - 1]}
         </span>
       ) : (
         <span
-          className="tw-break-words description-text tw-self-center link-text tw-font-normal"
+          className="tw-break-words description-text tw-self-center link-text tw-font-medium"
           data-testid="lineage-entity">
           <Link to={getEntityLink(type, v)}>
             {v.split(separator)[length - 1]}
@@ -91,25 +90,8 @@ const EntityInfoDrawer = ({
           'columns',
           'usageSummary',
           'tableProfile',
-          'database',
         ])
           .then((res: AxiosResponse) => {
-            getDatabase(res.data.database.id, 'service')
-              .then((resDB: AxiosResponse) => {
-                getServiceById('databaseServices', resDB.data.service?.id).then(
-                  (resService: AxiosResponse) => {
-                    setServiceType(resService.data.serviceType);
-                  }
-                );
-              })
-              .catch((err: AxiosError) => {
-                const msg = err.message;
-                showToast({
-                  variant: 'error',
-                  body:
-                    msg ?? `Error while getting ${selectedNode.name} details`,
-                });
-              });
             setEntityDetail(res.data);
             setIsLoading(false);
           })

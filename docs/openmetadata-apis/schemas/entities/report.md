@@ -6,6 +6,8 @@ This schema defines the Report entity. Reports are static information computed f
 
 Type: `object`
 
+This schema <u>does not</u> accept additional properties.
+
 ## Properties
 - **id** `required`
   - Unique identifier that identifies this report.
@@ -13,11 +15,11 @@ Type: `object`
 - **name** `required`
   - Name that identifies this report instance uniquely.
   - Type: `string`
-  - Length: between 1 and 64
+  - Length: between 1 and 128
 - **fullyQualifiedName**
   - A unique name that identifies a report in the format 'ServiceName.ReportName'.
   - Type: `string`
-  - Length: between 1 and 64
+  - Length: between 1 and 256
 - **displayName**
   - Display Name that identifies this report. It could be title or label from the source services.
   - Type: `string`
@@ -50,4 +52,4 @@ Type: `object`
   - $ref: [../../type/entityHistory.json#/definitions/changeDescription](../types/entityhistory.md#changedescription)
 
 
-_This document was updated on: Monday, November 15, 2021_
+_This document was updated on: Thursday, December 9, 2021_

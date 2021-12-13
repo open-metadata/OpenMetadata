@@ -25,12 +25,7 @@ export const formatDataResponse = (hits) => {
       hit._source.topic_id ||
       hit._source.dashboard_id ||
       hit._source.pipeline_id;
-    newData.name =
-      hit._source.table_name ||
-      hit._source.topic_name ||
-      hit._source.dashboard_name ||
-      hit._source.pipeline_name ||
-      hit._source.dbt_model_name;
+    newData.name = hit._source.name;
     newData.description = hit._source.description;
     newData.fullyQualifiedName = hit._source.fqdn;
     newData.tableType = hit._source.table_type;
@@ -45,6 +40,11 @@ export const formatDataResponse = (hits) => {
     newData.tier = hit._source.tier;
     newData.owner = hit._source.owner;
     newData.highlight = hit.highlight;
+
+    newData.database = hit._source.database;
+
+    newData.entityType = hit._source.entity_type;
+    newData.changeDescriptions = hit._source.change_descriptions;
 
     return newData;
   });

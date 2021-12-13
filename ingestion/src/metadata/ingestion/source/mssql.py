@@ -11,19 +11,24 @@
 
 import sqlalchemy_pytds  # noqa: F401
 
-# This import verifies that the dependencies are available.
-from metadata.generated.schema.entity.data.table import TableData
-
-from ..ometa.openmetadata_rest import MetadataServerConfig
-from .sql_source import SQLConnectionConfig, SQLSource
+from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
+from metadata.ingestion.source.sql_source import SQLConnectionConfig, SQLSource
 
 
 class MssqlConfig(SQLConnectionConfig):
     host_port = "localhost:1433"
     scheme = "mssql+pytds"
     service_type = "MSSQL"
+    use_pymssql: bool = False
+    use_pyodbc: bool = False
+    uri_string: str = ""
 
     def get_connection_url(self):
+        if self.use_pyodbc:
+            self.scheme = "mssql+pyodbc"
+            return f"{self.scheme}://{self.uri_string}"
+        elif self.use_pymssql:
+            self.scheme = "mssql+pymssql"
         return super().get_connection_url()
 
 

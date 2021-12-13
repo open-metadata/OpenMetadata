@@ -53,7 +53,7 @@ const IngestionPage = () => {
   };
 
   const getAllIngestionWorkflows = (paging?: string) => {
-    getIngestionWorkflows(['owner, service, tags, status'], paging)
+    getIngestionWorkflows(['owner, tags, status'], paging)
       .then((res) => {
         if (res.data.data) {
           setIngestions(res.data.data);

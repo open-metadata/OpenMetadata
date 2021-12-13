@@ -14,6 +14,10 @@ This document summarizes information relevant to OpenMetadata committers and con
 [build-code-run-tests.md](build-code-run-tests.md)
 {% endcontent-ref %}
 
+{% content-ref url="quick-start-guide.md" %}
+[quick-start-guide.md](quick-start-guide.md)
+{% endcontent-ref %}
+
 {% content-ref url="build-a-connector/" %}
 [build-a-connector](build-a-connector/)
 {% endcontent-ref %}
@@ -28,4 +32,12 @@ This document summarizes information relevant to OpenMetadata committers and con
 
 {% content-ref url="generate-typescript-types-from-json-schema.md" %}
 [generate-typescript-types-from-json-schema.md](generate-typescript-types-from-json-schema.md)
+{% endcontent-ref %}
+
+{% content-ref url="solution-design.md" %}
+[solution-design.md](solution-design.md)
+{% endcontent-ref %}
+
+{% content-ref url="python-api.md" %}
+[python-api.md](python-api.md)
 {% endcontent-ref %}

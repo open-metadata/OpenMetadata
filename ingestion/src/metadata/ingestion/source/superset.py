@@ -10,17 +10,15 @@
 #  limitations under the License.
 
 import json
-from typing import Iterable, Tuple
+from typing import Iterable
 
 import dateutil.parser as dateparser
 
-from metadata.generated.schema.api.data.createChart import CreateChartEntityRequest
-from metadata.generated.schema.entity.data.chart import ChartType
 from metadata.generated.schema.entity.services.dashboardService import (
     DashboardServiceType,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.api.common import Record, WorkflowContext
+from metadata.ingestion.api.common import Entity, WorkflowContext
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.models.table_metadata import Chart, Dashboard, DashboardOwner
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
@@ -92,7 +90,7 @@ def get_service_type_from_database_uri(uri: str) -> str:
     return "external"
 
 
-class SupersetSource(Source):
+class SupersetSource(Source[Entity]):
     config: SupersetConfig
     metadata_config: MetadataServerConfig
     status: SourceStatus
@@ -114,7 +112,7 @@ class SupersetSource(Source):
             config.service_name,
             DashboardServiceType.Superset.name,
             config.username,
-            config.password,
+            config.password.get_secret_value(),
             config.url,
             metadata_config,
         )
@@ -130,7 +128,7 @@ class SupersetSource(Source):
     def prepare(self):
         pass
 
-    def next_record(self) -> Iterable[Record]:
+    def next_record(self) -> Iterable[Entity]:
         yield from self._fetch_charts()
         yield from self._fetch_dashboards()
 
@@ -164,7 +162,7 @@ class SupersetSource(Source):
             lastModified=last_modified,
         )
 
-    def _fetch_dashboards(self) -> Iterable[Record]:
+    def _fetch_dashboards(self) -> Iterable[Entity]:
         current_page = 0
         page_size = 25
         total_dashboards = self.client.fetch_total_dashboards()

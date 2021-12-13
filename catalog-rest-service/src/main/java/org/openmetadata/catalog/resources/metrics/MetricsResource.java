@@ -80,7 +80,7 @@ public class MetricsResource {
     }
   }
 
-  static final String FIELDS ="owner,service,usageSummary";
+  static final String FIELDS ="owner,usageSummary";
   public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replaceAll(" ", "")
           .split(","));
 

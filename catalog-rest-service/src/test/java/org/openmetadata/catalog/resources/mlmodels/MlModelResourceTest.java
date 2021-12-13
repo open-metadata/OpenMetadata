@@ -25,29 +25,27 @@ import org.openmetadata.catalog.api.services.CreateDashboardService;
 import org.openmetadata.catalog.api.services.CreateDashboardService.DashboardServiceType;
 import org.openmetadata.catalog.entity.data.Dashboard;
 import org.openmetadata.catalog.entity.data.MlModel;
-import org.openmetadata.catalog.exception.CatalogExceptionMessage;
+import org.openmetadata.catalog.entity.services.DashboardService;
+import org.openmetadata.catalog.jdbi3.DashboardRepository.DashboardEntityInterface;
+import org.openmetadata.catalog.jdbi3.DashboardServiceRepository.DashboardServiceEntityInterface;
 import org.openmetadata.catalog.jdbi3.MlModelRepository;
 import org.openmetadata.catalog.resources.EntityResourceTest;
+import org.openmetadata.catalog.resources.dashboards.DashboardResourceTest;
+import org.openmetadata.catalog.resources.mlmodels.MlModelResource.MlModelList;
+import org.openmetadata.catalog.resources.services.DashboardServiceResourceTest;
 import org.openmetadata.catalog.type.ChangeDescription;
+import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.FeatureSourceDataType;
 import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.type.MlFeature;
 import org.openmetadata.catalog.type.MlFeatureDataType;
-import org.openmetadata.catalog.type.MlStore;
 import org.openmetadata.catalog.type.MlFeatureSource;
 import org.openmetadata.catalog.type.MlHyperParameter;
-import org.openmetadata.catalog.entity.services.DashboardService;
-import org.openmetadata.catalog.jdbi3.DashboardRepository.DashboardEntityInterface;
-import org.openmetadata.catalog.jdbi3.DashboardServiceRepository.DashboardServiceEntityInterface;
-import org.openmetadata.catalog.resources.dashboards.DashboardResourceTest;
-import org.openmetadata.catalog.resources.mlmodels.MlModelResource.MlModelList;
-import org.openmetadata.catalog.resources.services.DashboardServiceResourceTest;
-import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.MlStore;
 import org.openmetadata.catalog.util.EntityInterface;
-import org.openmetadata.catalog.util.TestUtils;
 import org.openmetadata.catalog.util.JsonUtils;
+import org.openmetadata.catalog.util.TestUtils;
 
-import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response.Status;
 import java.io.IOException;
 import java.net.URI;
@@ -56,23 +54,17 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import java.util.function.BiConsumer;
 
-import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
-import static javax.ws.rs.core.Response.Status.CONFLICT;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
-import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.openmetadata.catalog.exception.CatalogExceptionMessage.ENTITY_ALREADY_EXISTS;
-import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MAJOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.NO_CHANGE;
 import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
+import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 import static org.openmetadata.catalog.util.TestUtils.authHeaders;
 
@@ -149,13 +141,6 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
   }
 
   @Test
-  public void post_MlModelAlreadyExists_409_conflict(TestInfo test) throws HttpResponseException {
-    CreateMlModel create = create(test);
-    createMlModel(create, adminAuthHeaders());
-    assertResponse(() -> createMlModel(create, adminAuthHeaders()), CONFLICT, ENTITY_ALREADY_EXISTS);
-  }
-
-  @Test
   public void post_validMlModels_as_admin_200_OK(TestInfo test) throws IOException {
     // Create valid model
     CreateMlModel create = create(test);
@@ -206,25 +191,6 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
   }
 
   @Test
-  public void post_MlModelWithInvalidOwnerType_4xx(TestInfo test) {
-    EntityReference owner = new EntityReference().withId(TEAM1.getId()); /* No owner type is set */
-    CreateMlModel create = create(test).withOwner(owner);
-
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            createEntity(create, adminAuthHeaders()));
-    TestUtils.assertResponseContains(exception, BAD_REQUEST, "type must not be null");
-  }
-
-  @Test
-  public void post_MlModelWithNonExistentOwner_4xx(TestInfo test) {
-    EntityReference owner = new EntityReference().withId(TestUtils.NON_EXISTENT_ENTITY).withType("user");
-    CreateMlModel create = create(test).withOwner(owner);
-
-    assertResponse(() -> createMlModel(create, adminAuthHeaders()), NOT_FOUND,
-            entityNotFound("User", TestUtils.NON_EXISTENT_ENTITY));
-  }
-
-  @Test
   public void put_MlModelUpdateWithNoChange_200(TestInfo test) throws IOException {
     // Create a Model with POST
     CreateMlModel request = create(test).withOwner(USER_OWNER1);
@@ -257,6 +223,16 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
     updateAndCheckEntity(
             request.withDashboard(DASHBOARD_REFERENCE), Status.OK, adminAuthHeaders(), MINOR_UPDATE, change
     );
+  }
+
+  @Test
+  public void put_MlModelAddInvalidDashboard_200(TestInfo test) throws IOException {
+    CreateMlModel request = create(test);
+    // Create a made up dashboard reference by picking up a random UUID
+    EntityReference dashboard = new EntityReference().withId(USER1.getId()).withType("dashboard");
+    //MlModel model = createAndCheckEntity(request, adminAuthHeaders());
+    assertResponse(() -> createMlModel(request.withDashboard(dashboard), adminAuthHeaders()), Status.NOT_FOUND,
+            String.format("dashboard instance for %s not found", USER1.getId()));
   }
 
   @Test
@@ -315,17 +291,16 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
   public void put_MlModelUpdateMlFeatures_200(TestInfo test) throws IOException {
     CreateMlModel request = create(test);
     MlModel model = createAndCheckEntity(request, adminAuthHeaders());
-    ChangeDescription change = getChangeDescription(model.getVersion());
 
-    MlFeature newMlFeature = new MlFeature()
-            .withName("color")
-            .withDataType(MlFeatureDataType.Categorical);
-
+    //
+    // Add new ML features from previously empty
+    //
+    MlFeature newMlFeature = new MlFeature().withName("color").withDataType(MlFeatureDataType.Categorical);
     List<MlFeature> newFeatures = Collections.singletonList(newMlFeature);
 
-    change.getFieldsUpdated().add(
-            new FieldChange().withName("mlFeatures").withNewValue(newFeatures).withOldValue(ML_FEATURES)
-    );
+    ChangeDescription change = getChangeDescription(model.getVersion());
+    change.getFieldsAdded().add(new FieldChange().withName("mlFeatures").withNewValue(newFeatures));
+    change.getFieldsDeleted().add(new FieldChange().withName("mlFeatures").withOldValue(ML_FEATURES));
 
     updateAndCheckEntity(
             request.withMlFeatures(newFeatures), Status.OK, adminAuthHeaders(), MINOR_UPDATE, change
@@ -345,106 +320,41 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
   }
 
   @Test
-  public void get_nonExistentMlModel_404_notFound() {
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            getModel(TestUtils.NON_EXISTENT_ENTITY, adminAuthHeaders()));
-    // TODO: issue-1415
-    assertResponse(exception, NOT_FOUND,
-            entityNotFound("mlModel", TestUtils.NON_EXISTENT_ENTITY));
-  }
-
-  @Test
-  public void get_MlModelWithDifferentFields_200_OK(TestInfo test) throws IOException {
-    CreateMlModel create = create(test).withDescription("description")
-            .withOwner(USER_OWNER1).withDashboard(DASHBOARD_REFERENCE);
-    MlModel model = createAndCheckEntity(create, adminAuthHeaders());
-    validateGetWithDifferentFields(model, false);
-  }
-
-  @Test
-  public void get_MlModelByNameWithDifferentFields_200_OK(TestInfo test) throws IOException {
-    CreateMlModel create = create(test).withDescription("description")
-            .withOwner(USER_OWNER1).withDashboard(DASHBOARD_REFERENCE);
-    MlModel model = createAndCheckEntity(create, adminAuthHeaders());
-    validateGetWithDifferentFields(model, true);
-  }
-
-  @Test
   public void delete_MlModel_200_ok(TestInfo test) throws HttpResponseException {
     MlModel model = createMlModel(create(test), adminAuthHeaders());
-    deleteModel(model.getId(), adminAuthHeaders());
-  }
-
-  @Test
-  public void delete_nonExistentModel_404() {
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            deleteModel(TestUtils.NON_EXISTENT_ENTITY, adminAuthHeaders()));
-    // TODO: issue-1415
-    assertResponse(exception, NOT_FOUND, entityNotFound("mlModel", TestUtils.NON_EXISTENT_ENTITY));
+    deleteEntity(model.getId(), adminAuthHeaders());
   }
 
   /** Validate returned fields GET .../models/{id}?fields="..." or GET .../models/name/{fqn}?fields="..." */
-  private void validateGetWithDifferentFields(MlModel model, boolean byName) throws HttpResponseException {
+  @Override
+  public void validateGetWithDifferentFields(MlModel model, boolean byName) throws HttpResponseException {
     // .../models?fields=owner
     String fields = "owner";
-    model = byName ? getModelByName(model.getFullyQualifiedName(), fields, adminAuthHeaders()) :
-            getModel(model.getId(), fields, adminAuthHeaders());
-    assertNotNull(model.getOwner());
-    assertNotNull(model.getAlgorithm()); // Provided as default field
+    model = byName ? getEntityByName(model.getFullyQualifiedName(), fields, adminAuthHeaders()) :
+            getEntity(model.getId(), fields, adminAuthHeaders());
+    assertNotNull(model.getOwner(), model.getAlgorithm());
     assertNull(model.getDashboard());
 
     // .../models?fields=mlFeatures,mlHyperParameters
     fields = "mlFeatures,mlHyperParameters";
-    model = byName ? getModelByName(model.getFullyQualifiedName(), fields, adminAuthHeaders()) :
-            getModel(model.getId(), fields, adminAuthHeaders());
-    assertNotNull(model.getAlgorithm()); // Provided as default field
-    assertNotNull(model.getMlFeatures());
-    assertNotNull(model.getMlHyperParameters());
+    model = byName ? getEntityByName(model.getFullyQualifiedName(), fields, adminAuthHeaders()) :
+            getEntity(model.getId(), fields, adminAuthHeaders());
+    assertListNotNull(model.getAlgorithm(), model.getMlFeatures(), model.getMlHyperParameters());
     assertNull(model.getDashboard());
 
     // .../models?fields=owner,algorithm
     fields = "owner,algorithm";
-    model = byName ? getModelByName(model.getFullyQualifiedName(), fields, adminAuthHeaders()) :
-            getModel(model.getId(), fields, adminAuthHeaders());
-    assertNotNull(model.getOwner());
-    assertNotNull(model.getAlgorithm());
+    model = byName ? getEntityByName(model.getFullyQualifiedName(), fields, adminAuthHeaders()) :
+            getEntity(model.getId(), fields, adminAuthHeaders());
+    assertListNotNull(model.getOwner(), model.getAlgorithm());
     assertNull(model.getDashboard());
 
     // .../models?fields=owner,algorithm, dashboard
     fields = "owner,algorithm,dashboard";
-    model = byName ? getModelByName(model.getFullyQualifiedName(), fields, adminAuthHeaders()) :
-            getModel(model.getId(), fields, adminAuthHeaders());
-    assertNotNull(model.getOwner());
-    assertNotNull(model.getAlgorithm());
-    assertNotNull(model.getDashboard());
+    model = byName ? getEntityByName(model.getFullyQualifiedName(), fields, adminAuthHeaders()) :
+            getEntity(model.getId(), fields, adminAuthHeaders());
+    assertListNotNull(model.getOwner(), model.getAlgorithm(), model.getDashboard());
     TestUtils.validateEntityReference(model.getDashboard());
-  }
-
-  public static void getModel(UUID id, Map<String, String> authHeaders) throws HttpResponseException {
-    getModel(id, null, authHeaders);
-  }
-
-  public static MlModel getModel(UUID id, String fields, Map<String, String> authHeaders)
-          throws HttpResponseException {
-    WebTarget target = getResource("mlmodels/" + id);
-    target = fields != null ? target.queryParam("fields", fields): target;
-    return TestUtils.get(target, MlModel.class, authHeaders);
-  }
-
-  public static MlModel getModelByName(String fqn, String fields, Map<String, String> authHeaders)
-          throws HttpResponseException {
-    WebTarget target = getResource("mlmodels/name/" + fqn);
-    target = fields != null ? target.queryParam("fields", fields): target;
-    return TestUtils.get(target, MlModel.class, authHeaders);
-  }
-
-  private void deleteModel(UUID id, Map<String, String> authHeaders) throws HttpResponseException {
-    TestUtils.delete(getResource("mlmodels/" + id), authHeaders);
-
-    // Check to make sure database does not exist
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () -> getModel(id, authHeaders));
-    // TODO: issue-1415 instead of mlModel, use Entity.MLMODEL
-    assertResponse(exception, NOT_FOUND, CatalogExceptionMessage.entityNotFound("mlModel", id));
   }
 
   private CreateMlModel create(TestInfo test) {
@@ -458,7 +368,8 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
 
   @Override
   public Object createRequest(String name, String description, String displayName, EntityReference owner) {
-    return create(name).withDescription(description).withDisplayName(displayName).withOwner(owner);
+    return create(name).withDescription(description).withDisplayName(displayName).withOwner(owner)
+            .withDashboard(DASHBOARD_REFERENCE);
   }
 
   @Override

@@ -17,7 +17,6 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.services.DashboardService;
-import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.resources.services.dashboard.DashboardServiceResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
@@ -35,8 +34,6 @@ import java.text.ParseException;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
-
-import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 
 
 public class DashboardServiceRepository extends EntityRepository<DashboardService> {
@@ -62,9 +59,7 @@ public class DashboardServiceRepository extends EntityRepository<DashboardServic
 
   @Transaction
   public void delete(UUID id) {
-    if (dao.dashboardServiceDAO().delete(id) <= 0) {
-      throw EntityNotFoundException.byMessage(entityNotFound(Entity.CHART, id));
-    }
+    dao.dashboardServiceDAO().delete(id);
     dao.relationshipDAO().deleteAll(id.toString());
   }
 

@@ -17,7 +17,6 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.services.DatabaseService;
-import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.resources.services.database.DatabaseServiceResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
@@ -36,7 +35,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 
-import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
+import static org.openmetadata.catalog.util.EntityUtil.objectMatch;
 
 
 public class DatabaseServiceRepository extends EntityRepository<DatabaseService> {
@@ -51,9 +50,7 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
 
   @Transaction
   public void delete(UUID id) {
-    if (dao.dbServiceDAO().delete(id) <= 0) {
-      throw EntityNotFoundException.byMessage(entityNotFound(Entity.DATABASE_SERVICE, id));
-    }
+    dao.dbServiceDAO().delete(id);
     dao.relationshipDAO().deleteAll(id.toString());
   }
 
@@ -197,19 +194,14 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
     @Override
     public void entitySpecificUpdate() throws IOException {
       updateJdbc();
-      updateIngestionSchedule();
+      recordChange("ingestionSchedule", original.getEntity().getIngestionSchedule(),
+              updated.getEntity().getIngestionSchedule(), true);
     }
 
     private void updateJdbc() throws JsonProcessingException {
       JdbcInfo origJdbc = original.getEntity().getJdbc();
       JdbcInfo updatedJdbc = updated.getEntity().getJdbc();
-      recordChange("jdbc", origJdbc, updatedJdbc);
-    }
-
-    private void updateIngestionSchedule() throws JsonProcessingException {
-      Schedule origSchedule = original.getEntity().getIngestionSchedule();
-      Schedule updatedSchedule = updated.getEntity().getIngestionSchedule();
-      recordChange("ingestionSchedule", origSchedule, updatedSchedule, true);
+      recordChange("jdbc", origJdbc, updatedJdbc, true);
     }
   }
 }

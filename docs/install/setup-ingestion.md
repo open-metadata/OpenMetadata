@@ -61,13 +61,6 @@ metadata ingest -c ./examples/workflows/redshift.json
  source env/bin/activate
  metadata ingest -c ./pipelines/sample_usage.json
 ```
-#### Generate Sample Users
-
-```text
- source env/bin/activate
- metadata ingest -c ./pipelines/sample_users.json
-```
-
 #### Ingest MySQL data to Metadata APIs
 
 ```text

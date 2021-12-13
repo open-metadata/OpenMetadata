@@ -19,7 +19,13 @@ import {
   FormatedTableData,
   SearchResponse,
 } from 'Models';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, {
+  Fragment,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import { useHistory, useLocation } from 'react-router-dom';
 import { Button } from '../../components/buttons/Button/Button';
 import ErrorPlaceHolderES from '../../components/common/error-with-placeholder/ErrorPlaceHolderES';
@@ -52,7 +58,6 @@ import { getCountBadge } from '../../utils/CommonUtils';
 import { getFilterString } from '../../utils/FilterUtils';
 import { dropdownIcon as DropDownIcon } from '../../utils/svgconstant';
 import SVGIcons from '../../utils/SvgUtils';
-import PageContainerV1 from '../containers/PageContainerV1';
 import PageLayout from '../containers/PageLayout';
 import { ExploreProps } from './explore.interface';
 
@@ -71,13 +76,12 @@ const Explore: React.FC<ExploreProps> = ({
   updateTableCount,
   updateTopicCount,
   updateDashboardCount,
-  updateDbtModelCount,
   updatePipelineCount,
 }: ExploreProps) => {
   const location = useLocation();
   const history = useHistory();
   const filterObject: FilterObject = {
-    ...{ tags: [], service: [], tier: [] },
+    ...{ tags: [], service: [], tier: [], database: [] },
     ...getQueryParam(location.search),
   };
   const [data, setData] = useState<Array<FormatedTableData>>([]);
@@ -210,10 +214,6 @@ const Explore: React.FC<ExploreProps> = ({
         updatePipelineCount(count);
 
         break;
-      case SearchIndex.DBT_MODEL:
-        updateDbtModelCount(count);
-
-        break;
       default:
         break;
     }
@@ -254,6 +254,15 @@ const Explore: React.FC<ExploreProps> = ({
         from: currentPage,
         size: ZERO_SIZE,
         filters: getFilterString(filters, ['tags']),
+        sortField: sortField,
+        sortOrder: sortOrder,
+        searchIndex: searchIndex,
+      },
+      {
+        queryString: searchText,
+        from: currentPage,
+        size: ZERO_SIZE,
+        filters: getFilterString(filters, ['database']),
         sortField: sortField,
         sortOrder: sortOrder,
         searchIndex: searchIndex,
@@ -345,18 +354,16 @@ const Explore: React.FC<ExploreProps> = ({
     });
   };
 
-  const getTabCount = (index: string, className = '') => {
+  const getTabCount = (index: string, isActive: boolean, className = '') => {
     switch (index) {
       case SearchIndex.TABLE:
-        return getCountBadge(tabCounts.table, className);
+        return getCountBadge(tabCounts.table, className, isActive);
       case SearchIndex.TOPIC:
-        return getCountBadge(tabCounts.topic, className);
+        return getCountBadge(tabCounts.topic, className, isActive);
       case SearchIndex.DASHBOARD:
-        return getCountBadge(tabCounts.dashboard, className);
+        return getCountBadge(tabCounts.dashboard, className, isActive);
       case SearchIndex.PIPELINE:
-        return getCountBadge(tabCounts.pipeline, className);
-      case SearchIndex.DBT_MODEL:
-        return getCountBadge(tabCounts.dbtModel, className);
+        return getCountBadge(tabCounts.pipeline, className, isActive);
       default:
         return getCountBadge();
     }
@@ -377,11 +384,11 @@ const Explore: React.FC<ExploreProps> = ({
   const getTabs = () => {
     return (
       <div className="tw-mb-5">
-        <nav className="tw-flex tw-flex-row tw-gh-tabs-container tw-px-5 tw-pl-16 tw-mx-6 tw-justify-between">
+        <nav className="tw-flex tw-flex-row tw-gh-tabs-container tw-mx-6 tw-justify-around">
           <div>
             {tabsInfo.map((tabDetail, index) => (
               <button
-                className={`tw-pb-2 tw-px-4 tw-gh-tabs ${getActiveTabClass(
+                className={`tw-pb-2 tw-pr-6 tw-gh-tabs ${getActiveTabClass(
                   tabDetail.tab
                 )}`}
                 data-testid="tab"
@@ -395,16 +402,9 @@ const Explore: React.FC<ExploreProps> = ({
                   icon={tabDetail.icon}
                 />
                 {tabDetail.label}
-                {getTabCount(
-                  tabDetail.index,
-                  classNames(
-                    { 'tw-bg-tag': tabDetail.tab !== currentTab },
-                    {
-                      'tw-bg-primary tw-text-white tw-border-none':
-                        tabDetail.tab === currentTab,
-                    }
-                  )
-                )}
+                <span className="tw-pl-2">
+                  {getTabCount(tabDetail.index, tabDetail.tab === currentTab)}
+                </span>
               </button>
             ))}
           </div>
@@ -412,6 +412,13 @@ const Explore: React.FC<ExploreProps> = ({
         </nav>
       </div>
     );
+  };
+
+  const getData = () => {
+    if (!isMounting.current && previsouIndex === getCurrentIndex(tab)) {
+      forceSetAgg.current = false;
+      fetchTableData();
+    }
   };
 
   useEffect(() => {
@@ -474,19 +481,33 @@ const Explore: React.FC<ExploreProps> = ({
           searchResult.resAggTag.data.aggregations,
           'tags'
         );
+        const aggDatabase = getAggregationList(
+          searchResult.resAggTag.data.aggregations,
+          'database'
+        );
 
-        updateAggregationCount([...aggServiceType, ...aggTier, ...aggTag]);
+        updateAggregationCount([
+          ...aggServiceType,
+          ...aggTier,
+          ...aggTag,
+          ...aggDatabase,
+        ]);
       }
       setIsEntityLoading(false);
     }
   }, [searchResult]);
 
   useEffect(() => {
-    if (!isMounting.current && previsouIndex === getCurrentIndex(tab)) {
-      forceSetAgg.current = false;
-      fetchTableData();
+    getData();
+  }, [currentPage, sortField, sortOrder]);
+
+  useEffect(() => {
+    if (currentPage === 1) {
+      getData();
+    } else {
+      setCurrentPage(1);
     }
-  }, [currentPage, filters, sortField, sortOrder]);
+  }, [filters]);
 
   // alwyas Keep this useEffect at the end...
   useEffect(() => {
@@ -510,7 +531,7 @@ const Explore: React.FC<ExploreProps> = ({
   };
 
   return (
-    <PageContainerV1>
+    <Fragment>
       {!connectionError && getTabs()}
       <PageLayout
         leftPanel={Boolean(!error) && fetchLeftPanel()}
@@ -531,7 +552,7 @@ const Explore: React.FC<ExploreProps> = ({
           />
         )}
       </PageLayout>
-    </PageContainerV1>
+    </Fragment>
   );
 };
 

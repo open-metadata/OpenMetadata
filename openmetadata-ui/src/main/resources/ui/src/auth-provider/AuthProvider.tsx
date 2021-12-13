@@ -15,7 +15,6 @@ import { AxiosResponse } from 'axios';
 import { CookieStorage } from 'cookie-storage';
 import { isEmpty, isNil } from 'lodash';
 import { observer } from 'mobx-react';
-import { NewUser } from 'Models';
 import { UserManager, WebStorageStateStore } from 'oidc-client';
 import React, {
   ComponentType,
@@ -36,7 +35,6 @@ import axiosClient from '../axiosAPIs';
 import { fetchAuthorizerConfig } from '../axiosAPIs/miscAPI';
 import { getLoggedInUser, getUserByName } from '../axiosAPIs/userAPI';
 import Loader from '../components/Loader/Loader';
-import { FirstTimeUserModal } from '../components/Modals/FirstTimeUserModal/FirstTimeUserModal';
 import { COOKIE_VERSION } from '../components/Modals/WhatsNewModal/whatsNewData';
 import { oidcTokenKey, ROUTES } from '../constants/constants';
 import { ClientErrors } from '../enums/axios.enum';
@@ -72,13 +70,9 @@ const AuthProvider: FunctionComponent<AuthProviderProps> = ({
   const location = useLocation();
   const history = useHistory();
   const showToast = useToastContext();
-  const {
-    isAuthenticatedRoute,
-    isFirstTimeUser,
-    isSignedIn,
-    isSigningIn,
-    isSignedOut,
-  } = useAuth(location.pathname);
+  const { isFirstTimeUser, isSignedIn, isSigningIn, isSignedOut } = useAuth(
+    location.pathname
+  );
 
   const oidcUserToken = cookieStorage.getItem(oidcTokenKey);
   const [loading, setLoading] = useState(true);
@@ -187,14 +181,14 @@ const AuthProvider: FunctionComponent<AuthProviderProps> = ({
       });
   };
 
-  const handleFirstTourModal = (skip: boolean) => {
-    appState.newUser = {} as NewUser;
-    if (skip) {
-      history.push(ROUTES.HOME);
-    } else {
-      // TODO: Route to tour page
-    }
-  };
+  // const handleFirstTourModal = (skip: boolean) => {
+  //   appState.newUser = {} as NewUser;
+  //   if (skip) {
+  //     history.push(ROUTES.HOME);
+  //   } else {
+  //     // TODO: Route to tour page
+  //   }
+  // };
 
   useEffect(() => {
     fetchAuthConfig();
@@ -276,12 +270,13 @@ const AuthProvider: FunctionComponent<AuthProviderProps> = ({
               <AppWithAuth />
             )}
           </Switch>
-          {isAuthenticatedRoute && isFirstTimeUser ? (
+          {/* TODO: Uncomment below lines to show Welcome modal on Sign-up */}
+          {/* {isAuthenticatedRoute && isFirstTimeUser ? (
             <FirstTimeUserModal
               onCancel={() => handleFirstTourModal(true)}
               onSave={() => handleFirstTourModal(false)}
             />
-          ) : null}
+          ) : null} */}
         </>
       ) : null}
     </>

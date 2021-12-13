@@ -11,10 +11,11 @@
  *  limitations under the License.
  */
 
-import { isEqual, isNil } from 'lodash';
+import { isEqual, isNil, isUndefined } from 'lodash';
 import { ColumnJoins, EntityTags } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { getTeamDetailsPath } from '../../constants/constants';
+import { CSMode } from '../../enums/codemirror.enum';
 import {
   JoinedWith,
   Table,
@@ -38,6 +39,7 @@ import PageContainer from '../containers/PageContainer';
 import Entitylineage from '../EntityLineage/EntityLineage.component';
 import FrequentlyJoinedTables from '../FrequentlyJoinedTables/FrequentlyJoinedTables.component';
 import ManageTab from '../ManageTab/ManageTab.component';
+import SchemaEditor from '../schema-editor/SchemaEditor';
 import SchemaTab from '../SchemaTab/SchemaTab.component';
 import TableProfiler from '../TableProfiler/TableProfiler.component';
 import TableProfilerGraph from '../TableProfiler/TableProfilerGraph.component';
@@ -72,6 +74,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   loadNodeHandler,
   lineageLeafNodes,
   isNodeLoading,
+  dataModel,
 }: DatasetDetailsProps) => {
   const { isAuthDisabled } = useAuth();
   const [isEdit, setIsEdit] = useState(false);
@@ -145,6 +148,17 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
       position: 3,
     },
     {
+      name: 'DBT',
+      icon: {
+        alt: 'dbt-model',
+        name: 'dbtmodel-light-grey',
+        title: 'DBT',
+      },
+      isProtected: false,
+      isHidden: !dataModel?.sql,
+      position: 4,
+    },
+    {
       name: 'Manage',
       icon: {
         alt: 'manage',
@@ -153,7 +167,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
       },
       isProtected: true,
       protectedState: !owner || hasEditAccess(),
-      position: 4,
+      position: 5,
     },
   ];
 
@@ -216,26 +230,27 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
     },
     {
       key: 'Rows',
-      value: tableProfile ? (
-        <TableProfilerGraph
-          className="tw--mt-5"
-          data={
-            tableProfile
-              ?.map((d) => ({
-                date: d.profileDate,
-                value: d.rowCount ?? 0,
-              }))
-              .reverse() as Array<{
-              date: Date;
-              value: number;
-            }>
-          }
-          height={38}
-          toolTipPos={{ x: 20, y: -30 }}
-        />
-      ) : (
-        '--'
-      ),
+      value:
+        !isUndefined(tableProfile) && tableProfile.length > 0 ? (
+          <TableProfilerGraph
+            className="tw--mt-5"
+            data={
+              tableProfile
+                ?.map((d) => ({
+                  date: d.profileDate,
+                  value: d.rowCount ?? 0,
+                }))
+                .reverse() as Array<{
+                date: Date;
+                value: number;
+              }>
+            }
+            height={38}
+            toolTipPos={{ x: 20, y: -30 }}
+          />
+        ) : (
+          '--'
+        ),
     },
   ];
 
@@ -393,7 +408,10 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
             {activeTab === 2 && (
               <div className="tw-mt-4">
                 <TableProfiler
-                  columns={columns.map((col) => col.name)}
+                  columns={columns.map((col) => ({
+                    constraint: col.constraint as string,
+                    colName: col.name,
+                  }))}
                   tableProfiles={tableProfile}
                 />
               </div>
@@ -408,7 +426,16 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                 />
               </div>
             )}
-            {activeTab === 4 && (
+            {activeTab === 4 && Boolean(dataModel?.sql) && (
+              <div className="tw-my-4 tw-border tw-border-main tw-rounded-md tw-py-4 tw-h-full cm-h-full">
+                <SchemaEditor
+                  className="tw-h-full"
+                  mode={{ name: CSMode.SQL }}
+                  value={dataModel?.sql || ''}
+                />
+              </div>
+            )}
+            {activeTab === 5 && (
               <div className="tw-mt-4">
                 <ManageTab
                   currentTier={tier?.tagFQN}

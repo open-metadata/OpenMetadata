@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { isString } from 'lodash';
 import { FormatedTableData } from 'Models';
 import React, { FunctionComponent, useEffect, useState } from 'react';
 import { getDashboardByFqn } from '../../axiosAPIs/dashboardAPI';
@@ -26,9 +25,8 @@ import {
 } from '../../utils/CommonUtils';
 import { getOwnerFromId, getTierTags } from '../../utils/TableUtils';
 import { getTableTags } from '../../utils/TagsUtils';
-import TableDataCard from '../common/table-data-card/TableDataCard';
+import EntityList from '../EntityList/EntityList';
 import Loader from '../Loader/Loader';
-import Onboarding from '../onboarding/Onboarding';
 
 const RecentlyViewed: FunctionComponent = () => {
   const recentlyViewedData = getRecentlyViewedData();
@@ -48,7 +46,7 @@ const RecentlyViewed: FunctionComponent = () => {
           case EntityType.DATASET: {
             const res = await getTableDetailsByFQN(
               oData.fqn,
-              'database, usageSummary, tags, owner,columns'
+              'usageSummary, tags, owner,columns'
             );
 
             const {
@@ -79,7 +77,7 @@ const RecentlyViewed: FunctionComponent = () => {
             break;
           }
           case EntityType.TOPIC: {
-            const res = await getTopicByFqn(oData.fqn, 'owner, service, tags');
+            const res = await getTopicByFqn(oData.fqn, 'owner, tags');
 
             const { description, id, name, tags, owner, fullyQualifiedName } =
               res.data;
@@ -100,7 +98,7 @@ const RecentlyViewed: FunctionComponent = () => {
           case EntityType.DASHBOARD: {
             const res = await getDashboardByFqn(
               oData.fqn,
-              'owner, service, tags, usageSummary'
+              'owner, tags, usageSummary'
             );
 
             const {
@@ -129,7 +127,7 @@ const RecentlyViewed: FunctionComponent = () => {
           case EntityType.PIPELINE: {
             const res = await getPipelineByFqn(
               oData.fqn,
-              'owner, service, tags, usageSummary'
+              'owner, tags, usageSummary'
             );
 
             const {
@@ -184,32 +182,12 @@ const RecentlyViewed: FunctionComponent = () => {
       {isLoading ? (
         <Loader />
       ) : (
-        <>
-          {data.length ? (
-            data.map((item, index) => {
-              return (
-                <div className="tw-mb-3" key={index}>
-                  <TableDataCard
-                    description={item.description}
-                    fullyQualifiedName={item.fullyQualifiedName}
-                    indexType={item.index}
-                    name={item.name}
-                    owner={item.owner}
-                    serviceType={item.serviceType || '--'}
-                    tableType={item.tableType}
-                    tags={item.tags}
-                    tier={
-                      isString(item.tier) ? item.tier?.split('.')[1] : item.tier
-                    }
-                    usage={item.weeklyPercentileRank}
-                  />
-                </div>
-              );
-            })
-          ) : (
-            <Onboarding />
-          )}
-        </>
+        <EntityList
+          entityList={data}
+          headerText="Recently Viewed"
+          noDataPlaceholder={<>No recently viewed data!</>}
+          testIDText="Recently Viewed"
+        />
       )}
     </>
   );

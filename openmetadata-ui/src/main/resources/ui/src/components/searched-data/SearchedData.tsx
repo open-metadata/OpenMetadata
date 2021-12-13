@@ -45,7 +45,6 @@ const ASSETS_NAME = [
   'topic_name',
   'dashboard_name',
   'pipeline_name',
-  'dbt_model_name',
 ];
 
 const SearchedData: React.FC<SearchedDataProp> = ({
@@ -110,6 +109,7 @@ const SearchedData: React.FC<SearchedDataProp> = ({
       return (
         <div className="tw-mb-3" key={index}>
           <TableDataCard
+            database={table.database}
             description={tDesc}
             fullyQualifiedName={table.fullyQualifiedName}
             id={`tabledatacard${index}`}
@@ -149,7 +149,9 @@ const SearchedData: React.FC<SearchedDataProp> = ({
                     </div>
                   ) : null}
                   {data.length > 0 ? (
-                    <div className="tw-grid tw-grid-rows-1 tw-grid-cols-1">
+                    <div
+                      className="tw-grid tw-grid-rows-1 tw-grid-cols-1"
+                      data-testid="search-results">
                       {highlightSearchResult()}
                       {totalValue > PAGE_SIZE && data.length > 0 && (
                         <Pagination

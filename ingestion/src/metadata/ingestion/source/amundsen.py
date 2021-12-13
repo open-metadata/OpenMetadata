@@ -17,6 +17,8 @@ import uuid
 from dataclasses import dataclass, field
 from typing import Iterable, List, Optional
 
+from pydantic import SecretStr
+
 from metadata.config.common import ConfigModel
 from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceEntityRequest,
@@ -28,7 +30,7 @@ from metadata.generated.schema.entity.services.dashboardService import (
 )
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.api.common import Record
+from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.models.table_metadata import Chart, Dashboard
@@ -44,7 +46,7 @@ logger: logging.Logger = logging.getLogger(__name__)
 
 class AmundsenConfig(ConfigModel):
     neo4j_username: Optional[str] = None
-    neo4j_password: Optional[str] = None
+    neo4j_password: Optional[SecretStr] = None
     neo4j_url: str
     neo4j_max_connection_life_time: int = 50
     neo4j_encrypted: bool = True
@@ -168,7 +170,7 @@ class AmundsenStatus(SourceStatus):
         self.failures.append({key: reason})
 
 
-class AmundsenSource(Source):
+class AmundsenSource(Source[Entity]):
     def __init__(
         self, config: AmundsenConfig, metadata_config: MetadataServerConfig, ctx
     ):
@@ -177,7 +179,7 @@ class AmundsenSource(Source):
         self.ctx = ctx
         neo4j_config = Neo4JConfig(
             username=self.config.neo4j_username,
-            password=self.config.neo4j_password,
+            password=self.config.neo4j_password.get_secret_value(),
             neo4j_url=self.config.neo4j_url,
             max_connection_life_time=self.config.neo4j_max_connection_life_time,
             neo4j_encrypted=self.config.neo4j_encrypted,
@@ -195,7 +197,7 @@ class AmundsenSource(Source):
     def prepare(self):
         pass
 
-    def next_record(self) -> Iterable[Record]:
+    def next_record(self) -> Iterable[Entity]:
         user_entities = self.neo4j_helper.execute_query(NEO4J_AMUNDSEN_USER_QUERY)
         for user in user_entities:
             yield from self.create_user_entity(user)

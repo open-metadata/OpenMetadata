@@ -6,6 +6,8 @@ This schema defines the Team entity. A Team is a group of zero or more users. Te
 
 Type: `object`
 
+This schema <u>does not</u> accept additional properties.
+
 ## Properties
 - **id** `required`
   - $ref: [../../type/basic.json#/definitions/uuid](../types/basic.md#uuid)
@@ -51,6 +53,6 @@ Type: `object`
 
 - A unique name of the team typically the team ID from an identity provider. Example - group Id from LDAP.
 - Type: `string`
-- Length: between 1 and 64
+- Length: between 1 and 128
 
-_This document was updated on: Monday, November 15, 2021_
+_This document was updated on: Thursday, December 9, 2021_

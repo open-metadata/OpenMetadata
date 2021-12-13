@@ -59,7 +59,7 @@ import {
 import SVGIcons from '../../utils/SvgUtils';
 import { getEntityLink, getUsagePercentile } from '../../utils/TableUtils';
 
-type Data = Database | Topic | Dashboard;
+type Data = Database & Topic & Dashboard;
 type ServiceDataObj = { name: string } & Partial<DatabaseService> &
   Partial<MessagingService> &
   Partial<DashboardService> &
@@ -87,7 +87,7 @@ const ServicePage: FunctionComponent = () => {
 
   const fetchDatabases = (paging?: string) => {
     setIsloading(true);
-    getDatabases(serviceFQN, paging, ['owner', 'usageSummary', 'service'])
+    getDatabases(serviceFQN, paging, ['owner', 'usageSummary'])
       .then((res: AxiosResponse) => {
         if (res.data.data) {
           setData(res.data.data);
@@ -107,7 +107,7 @@ const ServicePage: FunctionComponent = () => {
 
   const fetchTopics = (paging?: string) => {
     setIsloading(true);
-    getTopics(serviceFQN, paging, ['owner', 'service', 'tags'])
+    getTopics(serviceFQN, paging, ['owner', 'tags'])
       .then((res: AxiosResponse) => {
         if (res.data.data) {
           setData(res.data.data);
@@ -127,12 +127,7 @@ const ServicePage: FunctionComponent = () => {
 
   const fetchDashboards = (paging?: string) => {
     setIsloading(true);
-    getDashboards(serviceFQN, paging, [
-      'owner',
-      'service',
-      'usageSummary',
-      'tags',
-    ])
+    getDashboards(serviceFQN, paging, ['owner', 'usageSummary', 'tags'])
       .then((res: AxiosResponse) => {
         if (res.data.data) {
           setData(res.data.data);
@@ -152,12 +147,7 @@ const ServicePage: FunctionComponent = () => {
 
   const fetchPipeLines = (paging?: string) => {
     setIsloading(true);
-    getPipelines(serviceFQN, paging, [
-      'owner',
-      'service',
-      'usageSummary',
-      'tags',
-    ])
+    getPipelines(serviceFQN, paging, ['owner', 'usageSummary', 'tags'])
       .then((res: AxiosResponse) => {
         if (res.data.data) {
           setData(res.data.data);
@@ -688,7 +678,7 @@ const ServicePage: FunctionComponent = () => {
                   className="schema-description tw-flex tw-flex-col tw-h-full tw-relative tw-border tw-border-main tw-rounded-md"
                   data-testid="description-container">
                   <div className="tw-flex tw-items-center tw-px-3 tw-py-1 tw-border-b tw-border-main">
-                    <span className="tw-flex-1 tw-leading-8 tw-m-0 tw-text-sm tw-font-normal">
+                    <span className="tw-flex-1 tw-leading-8 tw-m-0 tw-text-sm tw-font-medium">
                       Description
                     </span>
                     <div className="tw-flex-initial">

@@ -203,6 +203,7 @@ declare module 'Models' {
       table_name: string[];
     };
     index: string;
+    database?: string;
   };
 
   export type NewUser = {
@@ -385,21 +386,21 @@ declare module 'Models' {
   // topic interface end
 
   interface RecentlyViewedData {
-    entityType: 'dataset' | 'topic' | 'dashboard' | 'pipeline' | 'dbt_model';
+    entityType: 'dataset' | 'topic' | 'dashboard' | 'pipeline';
     fqn: string;
     serviceType?: string;
     timestamp: number;
   }
 
-  interface RecentlySearchData {
+  interface RecentlySearchedData {
     term: string;
     timestamp: number;
   }
   export interface RecentlyViewed {
     data: Array<RecentlyViewedData>;
   }
-  export interface SearchData {
-    data: Array<RecentlySearchData>;
+  export interface RecentlySearched {
+    data: Array<RecentlySearchedData>;
   }
 
   export type DatasetSchemaTableTab = 'schema' | 'sample_data';

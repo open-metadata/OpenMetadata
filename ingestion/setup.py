@@ -35,7 +35,7 @@ def get_long_description():
 base_requirements = {
     "commonregex",
     "idna<3,>=2.5",
-    "click<7.2.0,>=7.1.1",
+    "click>=7.1.1",
     "expandvars>=0.6.5"
     "dataclasses>=0.8"
     "typing_extensions>=3.7.4"
@@ -71,7 +71,7 @@ base_plugins = {
 plugins: Dict[str, Set[str]] = {
     "amundsen": {"neo4j~=4.4.0"},
     "athena": {"PyAthena[SQLAlchemy]"},
-    "bigquery": {"openmetadata-sqlalchemy-bigquery==0.2.1"},
+    "bigquery": {"openmetadata-sqlalchemy-bigquery==0.2.2"},
     "bigquery-usage": {"google-cloud-logging", "cachetools"},
     "docker": {"docker==5.0.3"},
     "dbt": {},
@@ -106,9 +106,9 @@ plugins: Dict[str, Set[str]] = {
         "GeoAlchemy2",
     },
     "data-profiler": {"openmetadata-data-profiler"},
-    "snowflake": {"snowflake-sqlalchemy<=1.2.4"},
-    "snowflake-usage": {"snowflake-sqlalchemy<=1.2.4"},
-    "sample-data": {"faker~=8.1.1"},
+    "snowflake": {"snowflake-sqlalchemy<=1.3.2"},
+    "snowflake-usage": {"snowflake-sqlalchemy<=1.3.2"},
+    "sample-entity": {"faker~=8.1.1"},
     "superset": {},
     "tableau": {"tableau-api-lib==0.1.22"},
     "vertica": {"sqlalchemy-vertica[vertica-python]>=0.0.5"},
@@ -116,12 +116,13 @@ plugins: Dict[str, Set[str]] = {
     "airflow": {"apache-airflow >= 1.10.2"},
     "salesforce": {"simple_salesforce~=1.11.4"},
     "okta": {"okta~=2.3.0"},
+    "mlflow": {"mlflow-skinny~=1.22.0"},
 }
 
 build_options = {"includes": ["_cffi_backend"]}
 setup(
     name="openmetadata-ingestion",
-    version="0.4.5.dev1",
+    version="0.5.0.dev0",
     url="https://open-metadata.org/",
     author="OpenMetadata Committers",
     license="Apache License 2.0",

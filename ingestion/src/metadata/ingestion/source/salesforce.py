@@ -14,24 +14,23 @@ import uuid
 from dataclasses import dataclass, field
 from typing import Iterable, List, Optional
 
-from pydantic import ValidationError
+from pydantic import SecretStr, ValidationError
 from simple_salesforce import Salesforce
 
-from metadata.ingestion.api.common import WorkflowContext
-from metadata.ingestion.api.source import Source, SourceStatus
-from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
-from metadata.utils.helpers import get_database_service_or_create
-
-from ...generated.schema.entity.data.database import Database
-from ...generated.schema.entity.data.table import (
+from metadata.generated.schema.entity.data.database import Database
+from metadata.generated.schema.entity.data.table import (
     Column,
     Constraint,
     Table,
     TableData,
 )
-from ...generated.schema.type.entityReference import EntityReference
-from ..ometa.openmetadata_rest import MetadataServerConfig
-from .sql_source import SQLConnectionConfig
+from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ingestion.api.common import WorkflowContext
+from metadata.ingestion.api.source import Source, SourceStatus
+from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
+from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
+from metadata.ingestion.source.sql_source import SQLConnectionConfig
+from metadata.utils.helpers import get_database_service_or_create
 
 logger: logging.Logger = logging.getLogger(__name__)
 
@@ -56,7 +55,7 @@ class SalesforceSourceStatus(SourceStatus):
 
 class SalesforceConfig(SQLConnectionConfig):
     username: str
-    password: str
+    password: SecretStr
     security_token: str
     host_port: Optional[str]
     scheme: str
@@ -67,7 +66,7 @@ class SalesforceConfig(SQLConnectionConfig):
         return super().get_connection_url()
 
 
-class SalesforceSource(Source):
+class SalesforceSource(Source[OMetaDatabaseAndTable]):
     def __init__(
         self, config: SalesforceConfig, metadata_config: MetadataServerConfig, ctx
     ):
@@ -77,7 +76,7 @@ class SalesforceSource(Source):
         self.status = SalesforceSourceStatus()
         self.sf = Salesforce(
             username=self.config.username,
-            password=self.config.password,
+            password=self.config.password.get_secret_value(),
             security_token=self.config.security_token,
         )
 
@@ -175,3 +174,6 @@ class SalesforceSource(Source):
 
     def get_status(self) -> SourceStatus:
         return self.status
+
+    def close(self):
+        pass

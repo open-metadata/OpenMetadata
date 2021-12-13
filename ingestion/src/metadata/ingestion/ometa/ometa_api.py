@@ -18,7 +18,6 @@ from metadata.generated.schema.api.lineage.addLineage import AddLineage
 from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.database import Database
-from metadata.generated.schema.entity.data.dbtmodel import DbtModel
 from metadata.generated.schema.entity.data.location import Location
 from metadata.generated.schema.entity.data.metrics import Metrics
 from metadata.generated.schema.entity.data.mlmodel import MlModel
@@ -26,6 +25,7 @@ from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.data.report import Report
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.data.topic import Topic
+from metadata.generated.schema.entity.policies.policy import Policy
 from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.messagingService import MessagingService
@@ -34,6 +34,8 @@ from metadata.generated.schema.entity.services.storageService import StorageServ
 from metadata.generated.schema.entity.tags.tagCategory import Tag
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
+from metadata.generated.schema.type import basic
+from metadata.generated.schema.type.entityHistory import EntityVersionHistory
 from metadata.ingestion.ometa.auth_provider import AuthenticationProvider
 from metadata.ingestion.ometa.client import REST, APIError, ClientConfig
 from metadata.ingestion.ometa.mixins.lineageMixin import OMetaLineageMixin
@@ -89,6 +91,7 @@ class OpenMetadata(OMetaLineageMixin, OMetaTableMixin, Generic[T, C]):
     entity_path = "entity"
     api_path = "api"
     data_path = "data"
+    policies_path = "policies"
     services_path = "services"
     teams_path = "teams"
 
@@ -160,6 +163,11 @@ class OpenMetadata(OMetaLineageMixin, OMetaTableMixin, Generic[T, C]):
             return "/locations"
 
         if issubclass(
+            entity, get_args(Union[Policy, self.get_create_entity_type(Policy)])
+        ):
+            return "/policies"
+
+        if issubclass(
             entity, get_args(Union[Table, self.get_create_entity_type(Table)])
         ):
             return "/tables"
@@ -168,11 +176,6 @@ class OpenMetadata(OMetaLineageMixin, OMetaTableMixin, Generic[T, C]):
             entity, get_args(Union[Topic, self.get_create_entity_type(Topic)])
         ):
             return "/topics"
-
-        if issubclass(
-            entity, get_args(Union[DbtModel, self.get_create_entity_type(DbtModel)])
-        ):
-            return "/dbtmodels"
 
         if issubclass(entity, Metrics):
             return "/metrics"
@@ -255,6 +258,9 @@ class OpenMetadata(OMetaLineageMixin, OMetaTableMixin, Generic[T, C]):
         it is found inside generated
         """
 
+        if "policy" in entity.__name__.lower():
+            return self.policies_path
+
         if "service" in entity.__name__.lower():
             return self.services_path
 
@@ -314,8 +320,7 @@ class OpenMetadata(OMetaLineageMixin, OMetaTableMixin, Generic[T, C]):
         """
 
         entity = data.__class__
-        is_create = "create" in entity.__name__.lower()
-        is_service = "service" in entity.__name__.lower()
+        is_create = "create" in data.__class__.__name__.lower()
 
         # Prepare the return Entity Type
         if is_create:
@@ -325,15 +330,22 @@ class OpenMetadata(OMetaLineageMixin, OMetaTableMixin, Generic[T, C]):
                 f"PUT operations need a CrateEntity, not {entity}"
             )
 
-        # Prepare the request method
-        if is_service and is_create:
-            # Services can only be created via POST
-            method = self.client.post
-        else:
-            method = self.client.put
-
-        resp = method(self.get_suffix(entity), data=data.json())
+        resp = self.client.put(self.get_suffix(entity), data=data.json())
         return entity_class(**resp)
+
+    @staticmethod
+    def uuid_to_str(entity_id: Union[str, basic.Uuid]) -> str:
+        """
+        Given an entity_id, that can be a str or our pydantic
+        definition of Uuid, return a proper str to build
+        the endpoint path
+        :param entity_id: Entity ID to onvert to string
+        :return: str for the ID
+        """
+        if isinstance(entity_id, basic.Uuid):
+            return str(entity_id.__root__)
+
+        return entity_id
 
     def get_by_name(
         self, entity: Type[T], fqdn: str, fields: Optional[List[str]] = None
@@ -345,13 +357,16 @@ class OpenMetadata(OMetaLineageMixin, OMetaTableMixin, Generic[T, C]):
         return self._get(entity=entity, path=f"name/{fqdn}", fields=fields)
 
     def get_by_id(
-        self, entity: Type[T], entity_id: str, fields: Optional[List[str]] = None
+        self,
+        entity: Type[T],
+        entity_id: Union[str, basic.Uuid],
+        fields: Optional[List[str]] = None,
     ) -> Optional[T]:
         """
         Return entity by ID or None
         """
 
-        return self._get(entity=entity, path=entity_id, fields=fields)
+        return self._get(entity=entity, path=self.uuid_to_str(entity_id), fields=fields)
 
     def _get(
         self, entity: Type[T], path: str, fields: Optional[List[str]] = None
@@ -398,6 +413,22 @@ class OpenMetadata(OMetaLineageMixin, OMetaTableMixin, Generic[T, C]):
             after = resp["paging"]["after"] if "after" in resp["paging"] else None
             return EntityList(entities=entities, total=total, after=after)
 
+    def list_versions(
+        self, entity_id: Union[str, basic.Uuid], entity: Type[T]
+    ) -> EntityVersionHistory:
+        """
+        Helps us paginate over the collection
+        """
+
+        suffix = self.get_suffix(entity)
+        path = f"/{self.uuid_to_str(entity_id)}/versions"
+        resp = self.client.get(f"{suffix}{path}")
+
+        if self._use_raw_data:
+            return resp
+        else:
+            return EntityVersionHistory(**resp)
+
     def list_services(self, entity: Type[T]) -> List[EntityList[T]]:
         """
         Service listing does not implement paging
@@ -409,8 +440,8 @@ class OpenMetadata(OMetaLineageMixin, OMetaTableMixin, Generic[T, C]):
         else:
             return [entity(**p) for p in resp["data"]]
 
-    def delete(self, entity: Type[T], entity_id: str) -> None:
-        self.client.delete(f"{self.get_suffix(entity)}/{entity_id}")
+    def delete(self, entity: Type[T], entity_id: Union[str, basic.Uuid]) -> None:
+        self.client.delete(f"{self.get_suffix(entity)}/{self.uuid_to_str(entity_id)}")
 
     def compute_percentile(self, entity: Union[Type[T], str], date: str) -> None:
         """

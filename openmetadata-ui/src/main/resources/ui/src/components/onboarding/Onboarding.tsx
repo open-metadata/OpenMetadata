@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import React from 'react';
+import classNames from 'classnames';
+import React, { FC } from 'react';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 
 const data = [
@@ -20,15 +21,23 @@ const data = [
   'Follow the datasets that you frequently use to stay informed about it.',
 ];
 
-const Onboarding: React.FC = () => {
+interface OnboardingProp {
+  showLogo?: boolean;
+}
+
+const Onboarding: FC<OnboardingProp> = ({
+  showLogo = true,
+}: OnboardingProp) => {
   return (
     <div
-      className="tw-flex tw-items-center tw-justify-around tw-mt-20"
+      className={classNames(
+        'tw-flex tw-items-center tw-justify-around tw-mt-10'
+      )}
       data-testid="onboarding">
       <div className="tw-p-4" style={{ maxWidth: '700px' }}>
         <div className="tw-mb-6">
-          <h4>Welcome to OpenMetadata.</h4>
-          <p className="tw-text-lg tw-font-normal">
+          <h5>Welcome to OpenMetadata.</h5>
+          <p className="tw-font-normal">
             A central place to discover and collaborate on all your data.
           </p>
         </div>
@@ -37,7 +46,7 @@ const Onboarding: React.FC = () => {
             <div className="tw-flex tw-items-center tw-gap-4 tw-mb-5" key={i}>
               <div className="tw-flex tw-items-center">
                 <span
-                  className="tw-w-8 tw-h-8 tw-flex tw-items-center tw-justify-center tw-font-medium tw-p-2 
+                  className="tw-w-6 tw-h-6 tw-flex tw-items-center tw-justify-center tw-font-normal tw-p-2 
                   tw-bg-primary-lite tw-text-primary tw-rounded-full">
                   {i + 1}
                 </span>
@@ -49,21 +58,17 @@ const Onboarding: React.FC = () => {
           ))}
         </div>
       </div>
-
-      <div>
-        {/* <img
-          alt=""
-          className="tw-h-auto tw-w-full tw-filter tw-grayscale tw-opacity-50"
-          src={logo}
-        /> */}
-        <SVGIcons
-          alt="OpenMetadata Logo"
-          className="tw-h-auto tw-filter tw-grayscale tw-opacity-50"
-          data-testid="logo"
-          icon={Icons.LOGO_SMALL}
-          width="350"
-        />
-      </div>
+      {showLogo ? (
+        <div>
+          <SVGIcons
+            alt="OpenMetadata Logo"
+            className="tw-h-auto tw-filter tw-grayscale tw-opacity-50"
+            data-testid="logo"
+            icon={Icons.LOGO_SMALL}
+            width="350"
+          />
+        </div>
+      ) : null}
     </div>
   );
 };

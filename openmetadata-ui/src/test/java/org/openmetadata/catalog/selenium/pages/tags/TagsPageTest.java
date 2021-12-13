@@ -172,7 +172,7 @@ public class TagsPageTest {
     Events.click(webDriver, By.cssSelector("[data-testid='appbar-item'][id='explore']")); // Explore
     Events.click(webDriver, By.cssSelector("[data-testid='sortBy']")); // Sort By
     Events.click(webDriver, By.cssSelector("[data-testid='list-item']")); // Last Updated
-    Events.click(webDriver, By.xpath("//div[@data-testid='search-container']//div//div[10]//div//div//h6"));
+    Events.click(webDriver, By.xpath("(//a[@data-testid='table-link'])[last()]"));
     Thread.sleep(waitTime);
     actions.moveToElement(webDriver.findElement(By.cssSelector("[data-testid='tags']"))).perform();
     Thread.sleep(waitTime);
@@ -184,7 +184,33 @@ public class TagsPageTest {
     Events.click(webDriver, By.cssSelector("[data-testid='saveAssociatedTag']"));
     Events.click(webDriver, By.cssSelector("[data-testid='menu-button'][id='menu-button-Settings']")); // Setting
     Events.click(webDriver, By.cssSelector("[data-testid='menu-item-Tags']")); // Setting/Tags
+    Events.click(webDriver, By.xpath("//*[text()[contains(.,'" + tagCategoryDisplayName + "')]] "));
+    Events.click(webDriver, By.cssSelector("[data-testid='usage-count']"));
     webDriver.navigate().refresh();
+  }
+
+  @RepeatedIfExceptionsTest(repeats = 2)
+  @Order(9)
+  public void checkAddedTagToTableColumn() {
+    Events.click(webDriver, By.cssSelector("[data-testid='closeWhatsNew']")); // Close What's new
+    Events.click(webDriver, By.cssSelector("[data-testid='tables']")); // Tables
+    Events.click(webDriver, By.cssSelector("[data-testid='checkbox']" +
+        "[id='" + tagCategoryDisplayName + "." + tagDisplayName + "']"));
+    Events.click(webDriver, By.xpath("//a[@data-testid='table-link']//button"));
+  }
+
+  @RepeatedIfExceptionsTest(repeats = 2)
+  @Order(10)
+  public void removeTagFromTableColumn() throws InterruptedException {
+    openTagsPage();
+    Events.click(webDriver, By.xpath("//*[text()[contains(.,'" + tagCategoryDisplayName + "')]] "));
+    Events.click(webDriver, By.cssSelector("[data-testid='usage-count']"));
+    Events.click(webDriver, By.xpath("//a[@data-testid='table-link']//button"));
+    Thread.sleep(waitTime);
+    actions.moveToElement(webDriver.findElement(By.xpath("//div[@data-testid='tag-conatiner']//span"))).perform();
+    Events.click(webDriver, By.xpath("//div[@data-testid='tag-conatiner']//span"));
+    Events.click(webDriver, By.cssSelector("[data-testid='remove']"));
+    Events.click(webDriver, By.cssSelector("[data-testid='saveAssociatedTag']"));
   }
 
   @AfterEach

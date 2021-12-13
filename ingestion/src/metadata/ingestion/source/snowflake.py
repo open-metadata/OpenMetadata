@@ -13,10 +13,9 @@ from typing import Optional
 
 from snowflake.sqlalchemy import custom_types
 
+from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
+from metadata.ingestion.source.sql_source import SQLConnectionConfig, SQLSource
 from metadata.utils.column_helpers import register_custom_type
-
-from ..ometa.openmetadata_rest import MetadataServerConfig
-from .sql_source import SQLConnectionConfig, SQLSource
 
 register_custom_type(custom_types.TIMESTAMP_TZ, "TIME")
 register_custom_type(custom_types.TIMESTAMP_LTZ, "TIME")
@@ -26,7 +25,8 @@ register_custom_type(custom_types.TIMESTAMP_NTZ, "TIME")
 class SnowflakeConfig(SQLConnectionConfig):
     scheme = "snowflake"
     account: str
-    database: str  # database is required
+    database: Optional[str]
+    schema: Optional[str]
     warehouse: Optional[str]
     role: Optional[str]
     duration: Optional[int]
@@ -34,6 +34,8 @@ class SnowflakeConfig(SQLConnectionConfig):
 
     def get_connection_url(self):
         connect_string = super().get_connection_url()
+        if self.schema and self.database:
+            connect_string += f"/{self.schema}"
         options = {
             "account": self.account,
             "warehouse": self.warehouse,

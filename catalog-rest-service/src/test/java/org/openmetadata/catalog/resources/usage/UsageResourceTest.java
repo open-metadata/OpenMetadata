@@ -34,8 +34,6 @@ import org.openmetadata.catalog.type.EntityUsage;
 import org.openmetadata.catalog.type.UsageDetails;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.TestUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.ws.rs.client.WebTarget;
 import java.io.IOException;
@@ -60,7 +58,6 @@ import static org.openmetadata.common.utils.CommonUtil.getDateStringByOffset;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class UsageResourceTest extends CatalogApplicationTest {
-  private static final Logger LOG = LoggerFactory.getLogger(UsageResourceTest.class);
   public static final List<Table> TABLES = new ArrayList<>();
   public static final int TABLE_COUNT = 10;
   public static final int DAYS_OF_USAGE = 32;
@@ -208,12 +205,12 @@ public class UsageResourceTest extends CatalogApplicationTest {
     // Ensure GET .../tables/{id}?fields=usageSummary returns the latest usage
     date = getDateStringByOffset(RestUtil.DATE_FORMAT, today, DAYS_OF_USAGE - 1); // Latest usage report date
     EntityUsage usage = getUsage(TABLE, tableId, date, null /* days not specified */, adminAuthHeaders());
-    Table table = TableResourceTest.getTable(TABLES.get(0).getId(), "usageSummary", adminAuthHeaders());
+    Table table = new TableResourceTest().getEntity(TABLES.get(0).getId(), "usageSummary", adminAuthHeaders());
     Assertions.assertEquals(usage.getUsage().get(0), table.getUsageSummary());
 
     // Ensure GET .../databases/{id}?fields=usageSummary returns the latest usage
     usage = getUsage(Entity.DATABASE, databaseId, date, null /* days not specified */, adminAuthHeaders());
-    Database database = DatabaseResourceTest.getDatabase(databaseId, "usageSummary", adminAuthHeaders());
+    Database database = new DatabaseResourceTest().getEntity(databaseId, "usageSummary", adminAuthHeaders());
     Assertions.assertEquals(usage.getUsage().get(0), database.getUsageSummary());
   }
 

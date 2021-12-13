@@ -42,7 +42,7 @@ const stepsData = [
     title: 'Install Service Connectors',
     description:
       'There are a lot of connectors available here to index data from your services. Please checkout our connectors',
-    link: 'https://docs.open-metadata.org/install/metadata-ingestion/connectors',
+    link: 'https://docs.open-metadata.org/connectors',
   },
   {
     step: 4,
@@ -64,7 +64,7 @@ const ErrorPlaceHolderES = ({ type, errorMessage, query = '' }: Props) => {
   };
   const noRecordForES = () => {
     return (
-      <p className="tw-text-center">
+      <p className="tw-text-center" data-testid="no-search-results">
         No matching data assets found
         {query ? (
           <>
@@ -129,7 +129,7 @@ const ErrorPlaceHolderES = ({ type, errorMessage, query = '' }: Props) => {
   };
 
   return (
-    <div className="tw-mt-10 tw-text-base tw-font-normal">
+    <div className="tw-mt-10 tw-text-base tw-font-medium">
       <p className="tw-text-center tw-text-lg tw-font-bold tw-mb-1 tw-text-primary">
         {`Hi, ${getUserDisplayName()}!`}
       </p>

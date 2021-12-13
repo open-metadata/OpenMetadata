@@ -6,6 +6,8 @@ This schema defines the Messaging Service entity, such as Kafka and Pulsar.
 
 Type: `object`
 
+This schema <u>does not</u> accept additional properties.
+
 ## Properties
 - **id** `required`
   - Unique identifier of this messaging service instance.
@@ -13,7 +15,7 @@ Type: `object`
 - **name** `required`
   - Name that identifies this messaging service.
   - Type: `string`
-  - Length: between 1 and 64
+  - Length: between 1 and 128
 - **serviceType** `required`
   - Type of messaging service such as Kafka or Pulsar...
   - $ref: [#/definitions/messagingServiceType](#messagingservicetype)
@@ -51,7 +53,6 @@ Type: `object`
 
 
 ## Type definitions in this schema
-
 ### messagingServiceType
 
 - Type of messaging service - Kafka or Pulsar.
@@ -67,5 +68,4 @@ Type: `object`
   - **Items**
   - Type: `string`
 
-
-_This document was updated on: Monday, November 15, 2021_
+_This document was updated on: Thursday, December 9, 2021_

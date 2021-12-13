@@ -31,6 +31,8 @@ import org.openmetadata.catalog.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.catalog.type.Column;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.FieldChange;
+import org.openmetadata.catalog.type.MlFeature;
+import org.openmetadata.catalog.type.MlHyperParameter;
 import org.openmetadata.catalog.type.Schedule;
 import org.openmetadata.catalog.type.TableConstraint;
 import org.openmetadata.catalog.type.Tag;
@@ -79,6 +81,8 @@ public final class EntityUtil {
   //
   // Matchers used for matching two items in a list
   //
+  public static BiPredicate<Object, Object> objectMatch = Object::equals;
+
   public static BiPredicate<EntityReference, EntityReference> entityReferenceMatch = (ref1, ref2) ->
           ref1.getId().equals(ref2.getId());
 
@@ -96,9 +100,15 @@ public final class EntityUtil {
           column1.getArrayDataType() == column2.getArrayDataType() &&
           Objects.equals(column1.getOrdinalPosition(), column2.getOrdinalPosition());
 
+  public static BiPredicate<Column, Column> columnNameMatch = (column1, column2) ->
+          column1.getName().equals(column2.getName());
+
   public static BiPredicate<TableConstraint, TableConstraint> tableConstraintMatch = (constraint1, constraint2) ->
           constraint1.getConstraintType() == constraint2.getConstraintType() &&
           constraint1.getColumns().equals(constraint2.getColumns());
+
+  public static BiPredicate<MlFeature, MlFeature> mlFeatureMatch = MlFeature::equals;
+  public static BiPredicate<MlHyperParameter, MlHyperParameter> mlHyperParameterMatch = MlHyperParameter::equals;
 
   private EntityUtil() {
 
@@ -276,7 +286,6 @@ public final class EntityUtil {
         throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(Tag.class.getSimpleName(),
                 tagLabel.getTagFQN()));
       }
-      Tag tag = JsonUtils.readValue(json, Tag.class);
 
       // Apply tagLabel to targetFQN that identifies an entity or field
       tagDAO.applyTag(tagLabel.getTagFQN(), targetFQN, tagLabel.getLabelType().ordinal(),

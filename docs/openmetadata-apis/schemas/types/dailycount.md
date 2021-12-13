@@ -16,4 +16,4 @@ This schema <u>does not</u> accept additional properties.
 - **date** `required`
   - $ref: [basic.json#/definitions/date](basic.md#date)
 
-_This document was updated on: Monday, November 15, 2021_
+_This document was updated on: Thursday, December 9, 2021_

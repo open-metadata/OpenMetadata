@@ -13,7 +13,7 @@ This schema <u>does not</u> accept additional properties.
   - Unique identifier that identifies an entity instance.
   - $ref: [basic.json#/definitions/uuid](basic.md#uuid)
 - **type** `required`
-  - Entity type/class name - Examples: `database`, `table`, `metrics`, `redshift`, `mysql`, `bigquery`, `snowflake`...
+  - Entity type/class name - Examples: `database`, `table`, `metrics`, `databaseService`, `dashboardService`...
   - Type: `string`
 - **name**
   - Name of the entity instance. For entities such as tables, databases where the name is not unique, fullyQualifiedName is returned in this field.
@@ -37,4 +37,4 @@ This schema <u>does not</u> accept additional properties.
   - **Items**
   - $ref: [entityReference.json](entityreference.md)
 
-_This document was updated on: Monday, November 15, 2021_
+_This document was updated on: Thursday, December 9, 2021_

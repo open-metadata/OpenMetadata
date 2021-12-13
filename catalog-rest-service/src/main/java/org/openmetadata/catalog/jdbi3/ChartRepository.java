@@ -19,7 +19,6 @@ import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Chart;
 import org.openmetadata.catalog.entity.services.DashboardService;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
-import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.jdbi3.DashboardServiceRepository.DashboardServiceEntityInterface;
 import org.openmetadata.catalog.resources.charts.ChartResource;
 import org.openmetadata.catalog.type.ChangeDescription;
@@ -37,12 +36,10 @@ import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 
-import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
-
 
 public class ChartRepository extends EntityRepository<Chart> {
   private static final Fields CHART_UPDATE_FIELDS = new Fields(ChartResource.FIELD_LIST, "owner");
-  private static final Fields CHART_PATCH_FIELDS = new Fields(ChartResource.FIELD_LIST, "owner,service,tags");
+  private static final Fields CHART_PATCH_FIELDS = new Fields(ChartResource.FIELD_LIST, "owner,tags");
   private final CollectionDAO dao;
 
   public ChartRepository(CollectionDAO dao) {
@@ -60,9 +57,7 @@ public class ChartRepository extends EntityRepository<Chart> {
     if (dao.relationshipDAO().findToCount(id.toString(), Relationship.CONTAINS.ordinal(), Entity.CHART) > 0) {
       throw new IllegalArgumentException("Chart is not empty");
     }
-    if (dao.chartDAO().delete(id) <= 0) {
-      throw EntityNotFoundException.byMessage(entityNotFound(Entity.CHART, id));
-    }
+    dao.chartDAO().delete(id);
     dao.relationshipDAO().deleteAll(id.toString());
   }
 
