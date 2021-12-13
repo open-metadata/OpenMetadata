@@ -94,7 +94,7 @@ public class DefaultCatalogAuthorizer implements CatalogAuthorizer {
                 return true;
               }
             })
-            .forEach(this::addUser);
+            .forEach(this::addBot);
   }
 
 
@@ -169,6 +169,24 @@ public class DefaultCatalogAuthorizer implements CatalogAuthorizer {
             .withIsAdmin(true)
             .withUpdatedBy(name)
             .withUpdatedAt(new Date());
+
+    try {
+      User addedUser = userRepository.create(null, user);
+      LOG.debug("Added admin user entry: {}", addedUser);
+    } catch (DuplicateEntityException | IOException | ParseException exception) {
+      // In HA setup the other server may have already added the user.
+      LOG.debug("Caught exception: " + ExceptionUtils.getStackTrace(exception));
+      LOG.debug("Bot user entry: {} already exists.", user);
+    }
+  }
+
+  private void addBot(String name) {
+    User user = new User().withId(UUID.randomUUID())
+        .withName(name)
+        .withEmail(name + "@" + principalDomain)
+        .withIsBot(true)
+        .withUpdatedBy(name)
+        .withUpdatedAt(new Date());
 
     try {
       User addedUser = userRepository.create(null, user);
