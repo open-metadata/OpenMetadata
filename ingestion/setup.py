@@ -106,8 +106,8 @@ plugins: Dict[str, Set[str]] = {
         "GeoAlchemy2",
     },
     "data-profiler": {"openmetadata-data-profiler"},
-    "snowflake": {"snowflake-sqlalchemy<=1.2.4"},
-    "snowflake-usage": {"snowflake-sqlalchemy<=1.2.4"},
+    "snowflake": {"snowflake-sqlalchemy<=1.3.2"},
+    "snowflake-usage": {"snowflake-sqlalchemy<=1.3.2"},
     "sample-entity": {"faker~=8.1.1"},
     "superset": {},
     "tableau": {"tableau-api-lib==0.1.22"},
@@ -116,6 +116,7 @@ plugins: Dict[str, Set[str]] = {
     "airflow": {"apache-airflow >= 1.10.2"},
     "salesforce": {"simple_salesforce~=1.11.4"},
     "okta": {"okta~=2.3.0"},
+    "mlflow": {"mlflow-skinny~=1.22.0"},
 }
 
 build_options = {"includes": ["_cffi_backend"]}

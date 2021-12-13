@@ -75,7 +75,6 @@ const Explore: React.FC<ExploreProps> = ({
   updateTableCount,
   updateTopicCount,
   updateDashboardCount,
-  updateDbtModelCount,
   updatePipelineCount,
 }: ExploreProps) => {
   const location = useLocation();
@@ -212,10 +211,6 @@ const Explore: React.FC<ExploreProps> = ({
         break;
       case SearchIndex.PIPELINE:
         updatePipelineCount(count);
-
-        break;
-      case SearchIndex.DBT_MODEL:
-        updateDbtModelCount(count);
 
         break;
       default:
@@ -368,8 +363,6 @@ const Explore: React.FC<ExploreProps> = ({
         return getCountBadge(tabCounts.dashboard, className, isActive);
       case SearchIndex.PIPELINE:
         return getCountBadge(tabCounts.pipeline, className, isActive);
-      case SearchIndex.DBT_MODEL:
-        return getCountBadge(tabCounts.dbtModel, className, isActive);
       default:
         return getCountBadge();
     }

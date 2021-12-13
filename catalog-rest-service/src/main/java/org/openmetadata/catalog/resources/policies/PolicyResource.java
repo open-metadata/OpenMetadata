@@ -109,7 +109,7 @@ public class PolicyResource {
     }
   }
 
-  static final String FIELDS = "displayName,description,owner,policyUrl,enabled";
+  static final String FIELDS = "displayName,description,owner,policyUrl,enabled,rules";
   public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replaceAll(" ", "")
           .split(","));
 
@@ -254,7 +254,9 @@ public class PolicyResource {
             .withPolicyUrl(create.getPolicyUrl())
             .withPolicyType(create.getPolicyType())
             .withUpdatedBy(securityContext.getUserPrincipal().getName())
-            .withUpdatedAt(new Date());
+            .withUpdatedAt(new Date())
+            .withRules(create.getRules());
+
     policy = addHref(uriInfo, dao.create(uriInfo, policy));
     return Response.created(policy.getHref()).entity(policy).build();
   }
@@ -306,7 +308,8 @@ public class PolicyResource {
             .withPolicyUrl(create.getPolicyUrl())
             .withPolicyType(create.getPolicyType())
             .withUpdatedBy(securityContext.getUserPrincipal().getName())
-            .withUpdatedAt(new Date());
+            .withUpdatedAt(new Date())
+            .withRules(create.getRules());
 
     PutResponse<Policy> response = dao.createOrUpdate(uriInfo, policy);
     addHref(uriInfo, response.getEntity());

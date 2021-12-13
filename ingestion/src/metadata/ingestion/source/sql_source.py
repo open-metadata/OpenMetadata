@@ -254,10 +254,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                         [profile] if profile is not None else None
                     )
                 # check if we have any model to associate with
-                table_fqn = f"{schema}.{table_name}"
-                if table_fqn in self.data_models:
-                    model = self.data_models[table_fqn]
-                    table_entity.dataModel = model
+                table_entity.dataModel = self._get_data_model(schema, table_name)
 
                 table_and_db = OMetaDatabaseAndTable(
                     table=table_entity, database=self._get_database(schema)
@@ -316,7 +313,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                 if self.sql_config.generate_sample_data:
                     table_data = self.fetch_sample_data(schema, view_name)
                     table.sampleData = table_data
-
+                table.dataModel = self._get_data_model(schema, view_name)
                 table_and_db = OMetaDatabaseAndTable(
                     table=table, database=self._get_database(schema)
                 )
@@ -328,7 +325,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                 )
                 continue
 
-    def _parse_data_model(self) -> DataModel:
+    def _parse_data_model(self):
         logger.info("Parsing Data Models")
         if (
             self.config.dbt_manifest_file is not None
@@ -377,6 +374,13 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                 table_fqn = f"{self.config.service_name}.{database}.{table}"
                 upstream_nodes.append(table_fqn)
         return upstream_nodes
+
+    def _get_data_model(self, schema, table_name):
+        table_fqn = f"{schema}.{table_name}"
+        if table_fqn in self.data_models:
+            model = self.data_models[table_fqn]
+            return model
+        return None
 
     def _parse_data_model_columns(
         self, model_name: str, mnode: Dict, cnode: Dict

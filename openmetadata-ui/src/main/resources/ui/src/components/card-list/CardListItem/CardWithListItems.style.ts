@@ -20,7 +20,7 @@ export const cardStyle = {
     default: 'tw-bg-tag',
     active: 'tw-bg-primary tw-rounded-t-md tw-text-white',
     title: 'tw-text-base tw-mb-0',
-    description: 'tw-font-normal tw-pr-2',
+    description: 'tw-font-medium tw-pr-2',
   },
   body: {
     base: 'tw-py-5 tw-px-10',

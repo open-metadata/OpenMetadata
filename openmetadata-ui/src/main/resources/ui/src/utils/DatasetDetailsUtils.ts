@@ -25,6 +25,10 @@ export const datasetTableTabs = [
     path: 'lineage',
   },
   {
+    name: 'DBT',
+    path: 'dbt',
+  },
+  {
     name: 'Manage',
     path: 'manage',
   },
@@ -41,8 +45,13 @@ export const getCurrentDatasetTab = (tab: string) => {
       currentTab = 3;
 
       break;
-    case 'manage':
+    case 'dbt':
       currentTab = 4;
+
+      break;
+
+    case 'manage':
+      currentTab = 5;
 
       break;
 
