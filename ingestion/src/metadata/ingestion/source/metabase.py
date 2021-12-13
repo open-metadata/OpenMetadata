@@ -14,29 +14,26 @@ import logging
 import traceback
 import uuid
 from typing import Iterable
+from urllib.parse import quote
 
 import requests
 
-from metadata.generated.schema.entity.data.chart import Chart
-from metadata.generated.schema.entity.data.dashboard import Dashboard
-from metadata.generated.schema.entity.data.database import Database
-from metadata.generated.schema.entity.data.table import Column, Table
+from metadata.generated.schema.api.lineage.addLineage import AddLineage
+from metadata.generated.schema.entity.data.dashboard import Dashboard as Model_Dashboard
+from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.dashboardService import (
     DashboardServiceType,
 )
+from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.common import Entity, WorkflowContext
 from metadata.ingestion.api.source import Source, SourceStatus
-from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.models.table_metadata import Chart, Dashboard
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.source.sql_alchemy_helper import SQLSourceStatus
 from metadata.ingestion.source.sql_source import SQLConnectionConfig, SQLSourceStatus
-from metadata.utils.column_helpers import check_column_complex_type, get_column_type
-from metadata.utils.helpers import (
-    get_dashboard_service_or_create,
-    get_database_service_or_create,
-)
+from metadata.utils.helpers import get_dashboard_service_or_create
 
 HEADERS = {"Content-Type": "application/json", "Accept": "*/*"}
 
@@ -48,21 +45,10 @@ class MetabaseConnectionConfig(SQLConnectionConfig):
     service_type = "MySQL"
     session_id: str = None
     scheme = ""
+    database_service_name: str = None
 
     def get_connection_url(self):
         pass
-
-    def get_session_id(self):
-        try:
-            resp_session_id = requests.post(
-                self.host_port + "/api/session/",
-                data=json.dumps(params),
-                headers=HEADERS,
-            )
-            if resp_session_id.status_code == 200:
-                self.session_id = resp_session_id.json()["id"]
-        except Exception as err:
-            logger.error(repr(err))
 
 
 class MetabaseSource(Source[Entity]):
@@ -98,10 +84,8 @@ class MetabaseSource(Source[Entity]):
             config.host_port,
             metadata_config,
         )
-        self.database_service = get_database_service_or_create(
-            config, metadata_config, self.config.service_name
-        )
         self.charts = []
+        self.metric_charts = []
 
     @classmethod
     def create(cls, config_dict, metadata_config_dict, ctx):
@@ -111,15 +95,14 @@ class MetabaseSource(Source[Entity]):
 
     def next_record(self) -> Iterable[Entity]:
         yield from self.get_dashboards()
-        yield from self.get_tables()
-        # yield from self.get_lineage()
+        yield from self.get_metrics()
 
     def get_charts(self, charts) -> Iterable[Chart]:
         for chart in charts:
             try:
                 chart_details = chart["card"]
-                self.charts.append(chart_details["name"])
                 yield Chart(
+                    id=uuid.uuid4(),
                     name=chart_details["name"],
                     displayName=chart_details["name"],
                     description=chart_details["description"]
@@ -131,111 +114,112 @@ class MetabaseSource(Source[Entity]):
                         id=self.dashboard_service.id, type="dashboardService"
                     ),
                 )
+                self.charts.append(chart_details["name"])
                 self.status.scanned(chart_details["name"])
             except Exception as err:
                 logger.error(repr(err))
-                traceback.format_exc()
+                traceback.print_exc()
+                continue
 
     def get_dashboards(self):
         resp_dashboards = self.req_get("/api/dashboard")
         if resp_dashboards.status_code == 200:
             for dashboard in resp_dashboards.json():
+                resp_dashboard = self.req_get(f"/api/dashboard/{dashboard['id']}")
+                dashboard_details = resp_dashboard.json()
+                self.charts = []
+                yield from self.get_charts(dashboard_details["ordered_cards"])
+                yield Dashboard(
+                    id=uuid.uuid4(),
+                    name=dashboard_details["name"],
+                    url=self.config.host_port,
+                    displayName=dashboard_details["name"],
+                    description=dashboard_details["description"]
+                    if dashboard_details["description"] is not None
+                    else "",
+                    charts=self.charts,
+                    service=EntityReference(
+                        id=self.dashboard_service.id, type="dashboardService"
+                    ),
+                )
+                yield from self.get_lineage(
+                    dashboard_details["ordered_cards"], dashboard_details["name"]
+                )
+
+    def get_metrics(self):
+        resp_metrics = self.req_get("/api/metric")
+        if resp_metrics.status_code == 200:
+            dashboard_ev = Dashboard(
+                id=uuid.uuid4(),
+                name="metabase_metric",
+                displayName="Metrics",
+                url=self.config.host_port,
+                description="Metabase Metrics",
+                charts=self.metric_charts,
+                service=EntityReference(
+                    id=self.dashboard_service.id, type="dashboardService"
+                ),
+            )
+            self.mertic_charts = []
+            for metric in resp_metrics.json():
                 try:
-                    resp_dashboard = self.req_get(f"/api/dashboard/{dashboard['id']}")
-                    dashboard_details = resp_dashboard.json()
-                    self.charts = []
-                    yield from self.get_charts(dashboard_details["ordered_cards"])
-                    logger.info(self.charts)
-                    dashboard_ev = Dashboard(
-                        name=dashboard_details["name"],
-                        displayName=dashboard_details["name"],
-                        description=dashboard_details["description"]
-                        if dashboard_details["description"] is not None
-                        else "",
+                    try:
+                        chart_type = "Other"
+                        if "type" in metric["query_description"]["aggregation"]:
+                            chart_type = metric["query_description"]["aggregation"][
+                                "type"
+                            ]
+                    except Exception as err:
+                        logger.error(repr(err))
+                    self.metric_charts.append(metric["name"])
+                    yield Chart(
+                        id=uuid.uuid4(),
+                        name=metric["name"],
                         url=self.config.host_port,
-                        charts=self.charts,
+                        chart_type=chart_type,
+                        displayName=metric["name"],
+                        description=metric["description"]
+                        if metric["description"] is not None
+                        else "",
                         service=EntityReference(
                             id=self.dashboard_service.id, type="dashboardService"
                         ),
                     )
-                    self.status.scanned(dashboard_ev.name)
-                    yield dashboard_ev
                 except Exception as err:
                     logger.error(repr(err))
-                    logger.error(traceback.format_exc())
+            dashboard_ev.charts = self.metric_charts
+            yield dashboard_ev
 
-    def get_columns(self, column_arr, dataset_name):
-        for column in column_arr:
+    def get_lineage(self, chart_list, dashboard_name):
+        metadata = OpenMetadata(self.metadata_config)
+        for chart in chart_list:
             try:
-                (
-                    col_type,
-                    data_type_display,
-                    arr_data_type,
-                    children,
-                ) = check_column_complex_type(
-                    self.status,
-                    dataset_name,
-                    column["database_type"].lower(),
-                    column["name"],
-                )
-                col = Column(
-                    name=column["name"].replace(".", "_DOT_")[:128],
-                    description="",
-                    dataType=col_type,
-                    children=children,
-                    dataTypeDisplay="{}({})".format(col_type, 1)
-                    if data_type_display is None
-                    else data_type_display,
-                    dataLength=1,
-                )
-                col.arrayDataType = arr_data_type
-                yield col
-            except Exception as err:
-                logger.error(column["database_type"])
-                logger.error(repr(err))
-                logger.error(traceback.format_exc())
-                continue
-
-    def get_tables(self):
-        resp_database = self.req_get("/api/database?include=tables")
-        if resp_database.status_code == 200:
-            for iter_database in resp_database.json()["data"]:
-                resp_tables = self.req_get(
-                    f"/api/database/{iter_database['id']}?include=tables.fields"
-                )
+                chart_details = chart["card"]
+                resp_tables = self.req_get(f"/api/table/{chart_details['table_id']}")
                 if resp_tables.status_code == 200:
-                    for table in resp_tables.json()["tables"]:
-                        try:
-                            db = Database(
-                                id=uuid.uuid4(),
-                                name=table["schema"],
-                                description=iter_database["description"]
-                                if iter_database["description"] is not None
-                                else "",
-                                service=EntityReference(
-                                    id=self.database_service.id,
-                                    type="databaseService",
-                                ),
-                            )
-                            columns = self.get_columns(table["fields"], table["name"])
-                            table_entity = Table(
-                                id=uuid.uuid4(),
-                                name=table["name"],
-                                tableType="Regular",
-                                description=table["description"]
-                                if table["description"] is not None
-                                else "",
-                                columns=columns,
-                            )
-                            table_and_db = OMetaDatabaseAndTable(
-                                table=table_entity,
-                                database=db,
-                            )
-                            yield table_and_db
-                        except Exception as err:
-                            logger.error(repr(err))
-                            logger.error(traceback.format_exc())
-                            continue
+                    table = resp_tables.json()
+                    table_fqdn = f"{self.config.database_service_name}.{table['schema']}.{table['name']}"
+                    dashboard_fqdn = (
+                        f"{self.dashboard_service.name}.{quote(dashboard_name)}"
+                    )
+                    table_entity = metadata.get_by_name(entity=Table, fqdn=table_fqdn)
+                    chart_entity = metadata.get_by_name(
+                        entity=Model_Dashboard, fqdn=dashboard_fqdn
+                    )
+                    logger.debug("from entity {}".format(table_entity))
+                    lineage = AddLineage(
+                        edge=EntitiesEdge(
+                            fromEntity=EntityReference(
+                                id=table_entity.id.__root__, type="table"
+                            ),
+                            toEntity=EntityReference(
+                                id=chart_entity.id.__root__, type="dashboard"
+                            ),
+                        )
+                    )
+                    yield lineage
+            except Exception as err:
+                logger.error(traceback.print_exc())
 
     def req_get(self, path):
         return requests.get(self.config.host_port + path, headers=self.metabase_session)
