@@ -15,6 +15,7 @@ package org.openmetadata.catalog.resources.teams;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.apache.http.client.HttpResponseException;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.catalog.CatalogApplicationTest;
@@ -45,6 +46,7 @@ import javax.json.JsonPatch;
 import javax.ws.rs.client.WebTarget;
 import java.io.IOException;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -79,6 +81,11 @@ public class UserResourceTest extends EntityResourceTest<User> {
   public UserResourceTest() {
     super(Entity.USER, User.class, UserList.class, "users", UserResource.FIELDS,
             false, false, false);
+  }
+
+  @BeforeAll
+  public static void setup(TestInfo test) throws IOException, URISyntaxException {
+    TableResourceTest.setup(test); // Initialize TableResourceTest for using helper methods
   }
 
   @Test
