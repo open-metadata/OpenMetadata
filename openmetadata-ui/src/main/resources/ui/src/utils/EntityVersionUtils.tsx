@@ -299,7 +299,7 @@ export const feedSummaryFromatter = (
       }
     }
 
-    case v?.name === 'tags':
+    case v?.name === 'tags': {
       const tier = value?.find((t: any) => t?.tagFQN?.startsWith('Tier'));
       const tags = value?.filter((t: any) => !t?.tagFQN?.startsWith('Tier'));
       return (
@@ -314,8 +314,9 @@ export const feedSummaryFromatter = (
           ) : null}
         </div>
       );
+    }
 
-    case v?.name === 'owner':
+    case v?.name === 'owner': {
       const ownerText =
         !isEmpty(oldValue) && !isEmpty(newValue) ? (
           <Fragment>
@@ -353,7 +354,9 @@ export const feedSummaryFromatter = (
           {ownerText}
         </p>
       );
-    case v?.name === 'description':
+    }
+
+    case v?.name === 'description': {
       return (
         <p key={uniqueId()}>
           {`${
@@ -366,6 +369,15 @@ export const feedSummaryFromatter = (
           {getDescriptionElement(v)}
         </p>
       );
+    }
+
+    case v?.name === 'followers': {
+      return (
+        <p key={uniqueId()}>{`${
+          v?.newValue ? 'Started Following' : 'Unfollowed'
+        } ${_entityName}`}</p>
+      );
+    }
 
     default:
       return <p key={uniqueId()}>{`${type} ${v?.name}`}</p>;
