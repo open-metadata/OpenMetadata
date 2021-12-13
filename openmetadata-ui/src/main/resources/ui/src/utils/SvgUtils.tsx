@@ -82,6 +82,7 @@ import IconSlackGrey from '../assets/svg/slack-grey.svg';
 import IconSlack from '../assets/svg/slack.svg';
 import IconTableGrey from '../assets/svg/table-grey.svg';
 import IconTable from '../assets/svg/table.svg';
+import IconTagGrey from '../assets/svg/tag-grey.svg';
 import IconTag from '../assets/svg/tag.svg';
 import IconTerns from '../assets/svg/terms.svg';
 import IconTier from '../assets/svg/tier.svg';
@@ -179,6 +180,7 @@ export const Icons = {
   ICON_PLUS: 'icon-plus',
   ICON_MINUS: 'icon-minus',
   TAG: 'icon-tag',
+  TAG_GREY: 'icon-tag-grey',
   TIER: 'icon-tier',
   SEARCHV1: 'icon-searchv1',
 };
@@ -505,6 +507,10 @@ const SVGIcons: FunctionComponent<Props> = ({
       break;
     case Icons.TAG:
       IconComponent = IconTag;
+
+      break;
+    case Icons.TAG_GREY:
+      IconComponent = IconTagGrey;
 
       break;
     case Icons.TIER:

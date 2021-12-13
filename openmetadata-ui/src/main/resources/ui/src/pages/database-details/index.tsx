@@ -408,7 +408,6 @@ const DatabaseDetails: FunctionComponent = () => {
                               <td className="tableBody-cell">
                                 {table.tags?.map((tag, tagIndex) => (
                                   <Tags
-                                    className="tw-bg-gray-200"
                                     key={tagIndex}
                                     startWith="#"
                                     tag={{
@@ -419,15 +418,16 @@ const DatabaseDetails: FunctionComponent = () => {
                                         ? tag.tagFQN.split('.')[1]
                                         : tag.tagFQN,
                                     }}
+                                    type="label"
                                   />
                                 ))}
                                 {getTableTags(table.columns).map(
                                   (tag, tagIdx) => (
                                     <Tags
-                                      className="tw-bg-gray-200"
                                       key={tagIdx}
                                       startWith="#"
                                       tag={tag}
+                                      type="label"
                                     />
                                   )
                                 )}

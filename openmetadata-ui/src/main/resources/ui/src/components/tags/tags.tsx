@@ -31,9 +31,8 @@ const Tags: FunctionComponent<TagProps> = ({
   const baseStyle = tagStyles.base;
   const layoutStyles = tagStyles[type];
   const textBaseStyle = tagStyles.text.base;
-  const textLayoutStyles = editable
-    ? tagStyles.text.editable
-    : tagStyles.text.default;
+  const textLayoutStyles = tagStyles.text[type] || tagStyles.text.default;
+  const textEditStyles = editable ? tagStyles.text.editable : '';
 
   const getTagString = (tag: string) => {
     return tag.startsWith('#') ? tag.slice(1) : tag;
@@ -44,12 +43,17 @@ const Tags: FunctionComponent<TagProps> = ({
       <span
         className={classNames(baseStyle, layoutStyles, className)}
         data-testid="tags">
-        <span className={classNames(textBaseStyle, textLayoutStyles)}>
+        <span
+          className={classNames(
+            textBaseStyle,
+            textLayoutStyles,
+            textEditStyles
+          )}>
           {`${startWith}${tag}`}
         </span>
         {editable && isRemovable && (
           <span
-            className="tw-py-1 tw-px-2 tw-rounded tw-cursor-pointer"
+            className="tw-py-0.5 tw-px-2 tw-rounded tw-cursor-pointer"
             data-testid="remove"
             onClick={(e: React.MouseEvent<HTMLElement, MouseEvent>) => {
               e.preventDefault();

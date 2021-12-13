@@ -76,11 +76,23 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
 
   const getConfigDetails = () => {
     return [
-      { key: 'Partitions', value: partitions },
-      { key: 'Replication Factor', value: replicationFactor },
-      { key: 'Retention Size', value: bytesToSize(retentionSize) },
-      { key: 'CleanUp Policies', value: cleanupPolicies.join(',') },
-      { key: 'Max Message Size', value: bytesToSize(maximumMessageSize) },
+      { key: 'Partitions', value: `${partitions} partitions` },
+      {
+        key: 'Replication Factor',
+        value: `${replicationFactor} replication factor`,
+      },
+      {
+        key: 'Retention Size',
+        value: `${bytesToSize(retentionSize)} retention size`,
+      },
+      {
+        key: 'Clean-up Policies',
+        value: `${cleanupPolicies.join(', ')} clean-up policies`,
+      },
+      {
+        key: 'Max Message Size',
+        value: `${bytesToSize(maximumMessageSize)} maximum size`,
+      },
     ];
   };
 
