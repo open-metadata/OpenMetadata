@@ -36,18 +36,19 @@ metadata ingest -c ./examples/workflows/looker.json
   "source": {
     "type": "looker",
     "config": {
-      "username": "username",
-      "password": "password",
+      "username": "Looker Client ID",
+      "password": "Looker Client Secret",
       "url": "http://localhost",
       "service_name": "looker",
-      "service_type": "Looker",
+      "service_type": "Looker"
     }
-  },
+  }
+...
 ```
 {% endcode %}
 
-1. **username** - pass the Looker username.
-2. **password** - the password for the Looker username.
+1. **username** - pass the Looker Client ID.
+2. **password** - the password for the Looker Client Secret.
 3. **url** - looker connector url
 4. **service\_name** - Service Name for this Looker cluster. If you added the Looker cluster through OpenMetadata UI, make sure the service name matches the same.
 5. **filter\_pattern** - It contains includes, excludes options to choose which pattern of datasets you want to ingest into OpenMetadata.
@@ -61,15 +62,14 @@ Add Optionally`pii` processor and `metadata-rest` sink along with `metadata-serv
 {% code title="looker.json" %}
 ```javascript
 {
-  {
   "source": {
     "type": "looker",
     "config": {
-      "username": "username",
-      "password": "password",
+      "username": "Looker Client ID",
+      "password": "Looker Client Secret",
       "url": "http://localhost",
       "service_name": "looker",
-      "service_type": "Looker",
+      "service_type": "Looker"
     }
   },
   "sink": {
