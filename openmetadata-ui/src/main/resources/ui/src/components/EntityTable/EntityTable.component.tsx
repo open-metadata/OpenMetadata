@@ -652,7 +652,8 @@ const EntityTable = ({
                                         )}>
                                         {getPartialNameFromFQN(
                                           columnJoin?.fullyQualifiedName as string,
-                                          ['database', 'table', 'column']
+                                          ['database', 'table', 'column'],
+                                          '.'
                                         )}
                                       </Link>
                                     </Fragment>

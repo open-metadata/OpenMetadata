@@ -184,7 +184,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
           );
 
           return {
-            name: getPartialNameFromFQN(tableFQN, ['database', 'table']),
+            name: getPartialNameFromFQN(tableFQN, ['database', 'table'], '.'),
             fullyQualifiedName: tableFQN,
             joinCount: joinedCol.joinCount,
           };
