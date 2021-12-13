@@ -60,22 +60,6 @@ const TeamsPage = () => {
   const [isAddingTeam, setIsAddingTeam] = useState<boolean>(false);
   const [isAddingUsers, setIsAddingUsers] = useState<boolean>(false);
   const [userList, setUserList] = useState<Array<User>>([]);
-  const fetchCurrentTeam = (name: string, update = false) => {
-    if (currentTeam?.name !== name || update) {
-      setIsLoading(true);
-      getTeamByName(name, ['users', 'owns'])
-        .then((res: AxiosResponse) => {
-          setCurrentTeam(res.data);
-          setIsLoading(false);
-        })
-        .catch((err: AxiosError) => {
-          if (err?.response?.data.code) {
-            setError(ERROR404);
-          }
-          setIsLoading(false);
-        });
-    }
-  };
 
   const fetchTeams = () => {
     setIsLoading(true);
@@ -85,14 +69,36 @@ const TeamsPage = () => {
           setCurrentTeam(res.data.data[0]);
         }
         setTeams(res.data.data);
-        setIsLoading(false);
       })
       .catch((err: AxiosError) => {
         if (err?.response?.data.code) {
           setError(ERROR404);
         }
+      })
+      .finally(() => {
         setIsLoading(false);
       });
+  };
+
+  const fetchCurrentTeam = (name: string, update = false) => {
+    if (currentTeam?.name !== name || update) {
+      setIsLoading(true);
+      getTeamByName(name, ['users', 'owns'])
+        .then((res: AxiosResponse) => {
+          setCurrentTeam(res.data);
+          if (teams.length <= 0) {
+            fetchTeams();
+          }
+        })
+        .catch((err: AxiosError) => {
+          if (err?.response?.data.code) {
+            setError(ERROR404);
+          }
+        })
+        .finally(() => {
+          setIsLoading(false);
+        });
+    }
   };
 
   const createNewTeam = (data: Team) => {
@@ -100,12 +106,9 @@ const TeamsPage = () => {
       .then((res: AxiosResponse) => {
         if (res.data) {
           fetchTeams();
-          setIsAddingTeam(false);
-        } else {
-          setIsAddingTeam(false);
         }
       })
-      .catch(() => {
+      .finally(() => {
         setIsAddingTeam(false);
       });
   };
