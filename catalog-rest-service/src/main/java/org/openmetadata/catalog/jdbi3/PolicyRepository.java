@@ -21,6 +21,7 @@ import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
+import org.openmetadata.catalog.entity.data.Location;
 import org.openmetadata.catalog.entity.policies.Policy;
 import org.openmetadata.catalog.resources.policies.PolicyResource;
 import org.openmetadata.catalog.type.ChangeDescription;
@@ -34,9 +35,11 @@ import org.openmetadata.catalog.util.JsonUtils;
 @Slf4j
 public class PolicyRepository extends EntityRepository<Policy> {
   private static final Fields POLICY_UPDATE_FIELDS =
-      new Fields(PolicyResource.FIELD_LIST, "displayName,description,owner,policyUrl,enabled,rules");
+      new Fields(
+          PolicyResource.FIELD_LIST, "displayName,description,owner,policyUrl,enabled,rules,location");
   private static final Fields POLICY_PATCH_FIELDS =
-      new Fields(PolicyResource.FIELD_LIST, "displayName,description,owner,policyUrl,enabled,rules");
+      new Fields(
+          PolicyResource.FIELD_LIST, "displayName,description,owner,policyUrl,enabled,rules,location");
   private final CollectionDAO dao;
 
   public PolicyRepository(CollectionDAO dao) {
@@ -57,7 +60,9 @@ public class PolicyRepository extends EntityRepository<Policy> {
 
   @Transaction
   public void delete(UUID id) {
-    if (dao.relationshipDAO().findToCount(id.toString(), Relationship.CONTAINS.ordinal(), Entity.POLICY) > 0) {
+    if (dao.relationshipDAO()
+            .findToCount(id.toString(), Relationship.CONTAINS.ordinal(), Entity.POLICY)
+        > 0) {
       throw new IllegalArgumentException("Policy is not empty");
     }
     dao.policyDAO().delete(id);
@@ -69,6 +74,18 @@ public class PolicyRepository extends EntityRepository<Policy> {
     return EntityUtil.populateOwner(dao.userDAO(), dao.teamDAO(), policy.getOwner());
   }
 
+  /** Find the location to which this policy applies to. * */
+  @Transaction
+  private EntityReference getLocationForPolicy(UUID policyId) throws IOException {
+    List<String> result =
+        dao.relationshipDAO()
+            .findTo(policyId.toString(), Relationship.APPLIED_TO.ordinal(), Entity.LOCATION);
+    // There is at most one location for a policy.
+    return result.size() == 1
+        ? dao.locationDAO().findEntityReferenceById(UUID.fromString(result.get(0)))
+        : null;
+  }
+
   @Override
   public Policy setFields(Policy policy, Fields fields) throws IOException {
     policy.setDisplayName(fields.contains("displayName") ? policy.getDisplayName() : null);
@@ -77,6 +94,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
     policy.setPolicyUrl(fields.contains("policyUrl") ? policy.getPolicyUrl() : null);
     policy.setEnabled(fields.contains("enabled") ? policy.getEnabled() : null);
     policy.setRules(fields.contains("rules") ? policy.getRules() : null);
+    policy.setLocation(fields.contains("location") ? getLocationForPolicy(policy.getId()) : null);
     return policy;
   }
 
@@ -88,22 +106,43 @@ public class PolicyRepository extends EntityRepository<Policy> {
     return new PolicyEntityInterface(entity);
   }
 
+  /** Generate EntityReference for a given Policy's Location. * */
+  @Transaction
+  private EntityReference getLocationReference(Policy policy) throws IOException {
+    if (policy == null || policy.getLocation() == null || policy.getLocation().getId() == null) {
+      return null;
+    }
+
+    Location location = dao.locationDAO().findEntityById(policy.getLocation().getId());
+    if (location == null) {
+      return null;
+    }
+    return new EntityReference()
+        .withDescription(location.getDescription())
+        .withDisplayName(location.getDisplayName())
+        .withId(location.getId())
+        .withHref(location.getHref())
+        .withName(location.getName())
+        .withType(Entity.LOCATION);
+  }
+
   @Override
   public void prepare(Policy policy) throws IOException {
     policy.setFullyQualifiedName(getFQN(policy));
-
+    policy.setLocation(getLocationReference(policy));
     // Check if owner is valid and set the relationship
-    EntityUtil.populateOwner(dao.userDAO(), dao.teamDAO(), policy.getOwner());
+    policy.setOwner(EntityUtil.populateOwner(dao.userDAO(), dao.teamDAO(), policy.getOwner()));
   }
 
   @Override
   public void storeEntity(Policy policy, boolean update) throws IOException {
     // Relationships and fields such as href are derived and not stored as part of json
     EntityReference owner = policy.getOwner();
+    EntityReference location = policy.getLocation();
     URI href = policy.getHref();
 
-    // Don't store owner and href as JSON. Build it on the fly based on relationships
-    policy.withOwner(null).withHref(null);
+    // Don't store owner, location and href as JSON. Build it on the fly based on relationships
+    policy.withOwner(null).withLocation(null).withHref(null);
 
     if (update) {
       dao.policyDAO().update(policy.getId(), JsonUtils.pojoToJson(policy));
@@ -112,13 +151,15 @@ public class PolicyRepository extends EntityRepository<Policy> {
     }
 
     // Restore the relationships
-    policy.withOwner(owner).withHref(href);
+    policy.withOwner(owner).withLocation(location).withHref(href);
   }
 
   @Override
   public void storeRelationships(Policy policy) {
-    // Add policy owner relationship
+    // Add policy owner relationship.
     setOwner(policy, policy.getOwner());
+    // Add location to which policy is assigned to.
+    setLocation(policy, policy.getLocation());
   }
 
   @Override
@@ -129,12 +170,26 @@ public class PolicyRepository extends EntityRepository<Policy> {
   private EntityReference getOwner(Policy policy) throws IOException {
     return policy == null
         ? null
-        : EntityUtil.populateOwner(policy.getId(), dao.relationshipDAO(), dao.userDAO(), dao.teamDAO());
+        : EntityUtil.populateOwner(
+            policy.getId(), dao.relationshipDAO(), dao.userDAO(), dao.teamDAO());
   }
 
-  public void setOwner(Policy policy, EntityReference owner) {
+  private void setOwner(Policy policy, EntityReference owner) {
     EntityUtil.setOwner(dao.relationshipDAO(), policy.getId(), Entity.POLICY, owner);
     policy.setOwner(owner);
+  }
+
+  private void setLocation(Policy policy, EntityReference location) {
+    if (location == null || location.getId() == null) {
+      return;
+    }
+    dao.relationshipDAO()
+        .insert(
+            policy.getId().toString(),
+            policy.getLocation().getId().toString(),
+            Entity.POLICY,
+            Entity.LOCATION,
+            Relationship.APPLIED_TO.ordinal());
   }
 
   public static class PolicyEntityInterface implements EntityInterface<Policy> {
@@ -280,9 +335,33 @@ public class PolicyRepository extends EntityRepository<Policy> {
 
     @Override
     public void entitySpecificUpdate() throws IOException {
-      recordChange("policyUrl", original.getEntity().getPolicyUrl(), updated.getEntity().getPolicyUrl());
+      recordChange(
+          "policyUrl", original.getEntity().getPolicyUrl(), updated.getEntity().getPolicyUrl());
       recordChange("enabled", original.getEntity().getEnabled(), updated.getEntity().getEnabled());
       recordChange("rules", original.getEntity().getRules(), updated.getEntity().getRules());
+      updateLocation(original.getEntity(), updated.getEntity());
+    }
+
+    private void updateLocation(Policy origPolicy, Policy updatedPolicy) throws IOException {
+      // remove original Policy --> Location relationship if exists.
+      if (origPolicy.getLocation() != null && origPolicy.getLocation().getId() != null) {
+        dao.relationshipDAO()
+            .delete(
+                origPolicy.getId().toString(),
+                origPolicy.getLocation().getId().toString(),
+                Relationship.APPLIED_TO.ordinal());
+      }
+      // insert updated Policy --> Location relationship.
+      if (updatedPolicy.getLocation() != null && updatedPolicy.getLocation().getId() != null) {
+        dao.relationshipDAO()
+            .insert(
+                updatedPolicy.getId().toString(),
+                updatedPolicy.getLocation().getId().toString(),
+                Entity.POLICY,
+                Entity.LOCATION,
+                Relationship.APPLIED_TO.ordinal());
+      }
+      recordChange("location", origPolicy.getLocation(), updatedPolicy.getLocation());
     }
   }
 }

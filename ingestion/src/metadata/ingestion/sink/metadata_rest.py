@@ -47,6 +47,7 @@ from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.common import Entity, WorkflowContext
 from metadata.ingestion.api.sink import Sink, SinkStatus
+from metadata.ingestion.models.ometa_policy import OMetaPolicy
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.models.table_metadata import Chart, Dashboard
 from metadata.ingestion.ometa.client import APIError
@@ -55,10 +56,8 @@ from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 
 logger = logging.getLogger(__name__)
 
-
 # Allow types from the generated pydantic models
 T = TypeVar("T", bound=BaseModel)
-
 
 om_chart_type_dict = {
     "line": ChartType.Line,
@@ -119,7 +118,7 @@ class MetadataRestSink(Sink[Entity]):
             self.write_dashboards(record)
         elif isinstance(record, Location):
             self.write_locations(record)
-        elif isinstance(record, Policy):
+        elif isinstance(record, OMetaPolicy):
             self.write_policies(record)
         elif isinstance(record, Pipeline):
             self.write_pipelines(record)
@@ -293,14 +292,7 @@ class MetadataRestSink(Sink[Entity]):
 
     def write_locations(self, location: Location):
         try:
-            location_request = CreateLocationEntityRequest(
-                name=location.name,
-                description=location.description,
-                locationType=location.locationType,
-                owner=location.owner,
-                service=location.service,
-            )
-            created_location = self.metadata.create_or_update(location_request)
+            created_location = self._create_location(location)
             logger.info(f"Successfully ingested Location {created_location.name}")
             self.status.records_written(f"Location: {created_location.name}")
         except (APIError, ValidationError) as err:
@@ -328,24 +320,44 @@ class MetadataRestSink(Sink[Entity]):
             logger.error(err)
             self.status.failure(f"Pipeline: {pipeline.name}")
 
-    def write_policies(self, policy: Policy):
+    def write_policies(self, ometa_policy: OMetaPolicy) -> None:
         try:
+            created_location = None
+            if ometa_policy.location is not None:
+                created_location = self._create_location(ometa_policy.location)
+                logger.info(f"Successfully ingested Location {created_location.name}")
+                self.status.records_written(f"Location: {created_location.name}")
+
             policy_request = CreatePolicyEntityRequest(
-                name=policy.name,
-                displayName=policy.displayName,
-                description=policy.description,
-                owner=policy.owner,
-                policyUrl=policy.policyUrl,
-                policyType=policy.policyType,
-                rules=policy.rules,
+                name=ometa_policy.policy.name,
+                displayName=ometa_policy.policy.displayName,
+                description=ometa_policy.policy.description,
+                owner=ometa_policy.policy.owner,
+                policyUrl=ometa_policy.policy.policyUrl,
+                policyType=ometa_policy.policy.policyType,
+                rules=ometa_policy.policy.rules,
+                location=created_location.id if created_location else None,
             )
             created_policy = self.metadata.create_or_update(policy_request)
             logger.info(f"Successfully ingested Policy {created_policy.name}")
             self.status.records_written(f"Policy: {created_policy.name}")
+
         except (APIError, ValidationError) as err:
-            logger.error(f"Failed to ingest Policy {policy.name}")
+            logger.error(f"Failed to ingest Policy {ometa_policy.policy.name}")
             logger.error(err)
-            self.status.failure(f"Policy: {policy.name}")
+            traceback.print_exc()
+            self.status.failure(f"Policy: {ometa_policy.policy.name}")
+
+    def _create_location(self, location: Location) -> Location:
+        location_request = CreateLocationEntityRequest(
+            name=location.name,
+            description=location.description,
+            locationType=location.locationType,
+            tags=location.tags,
+            owner=location.owner,
+            service=location.service,
+        )
+        return self.metadata.create_or_update(location_request)
 
     def write_lineage(self, add_lineage: AddLineage):
         try:

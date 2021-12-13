@@ -55,7 +55,15 @@ import org.openmetadata.catalog.util.TestUtils;
 public class PolicyResourceTest extends EntityResourceTest<Policy> {
 
   public PolicyResourceTest() {
-    super(Entity.POLICY, Policy.class, PolicyList.class, "policies", PolicyResource.FIELDS, false, true, false);
+    super(
+        Entity.POLICY,
+        Policy.class,
+        PolicyList.class,
+        "policies",
+        PolicyResource.FIELDS,
+        false,
+        true,
+        false);
   }
 
   @BeforeAll
@@ -64,12 +72,14 @@ public class PolicyResourceTest extends EntityResourceTest<Policy> {
   }
 
   @Override
-  public Object createRequest(String name, String description, String displayName, EntityReference owner) {
+  public Object createRequest(
+      String name, String description, String displayName, EntityReference owner) {
     return create(name).withDescription(description).withDisplayName(displayName).withOwner(owner);
   }
 
   @Override
-  public void validateCreatedEntity(Policy policy, Object request, Map<String, String> authHeaders) {
+  public void validateCreatedEntity(
+      Policy policy, Object request, Map<String, String> authHeaders) {
     CreatePolicy createRequest = (CreatePolicy) request;
     validateCommonEntityFields(
         getEntityInterface(policy),
@@ -80,7 +90,8 @@ public class PolicyResourceTest extends EntityResourceTest<Policy> {
   }
 
   @Override
-  public void validateUpdatedEntity(Policy updatedEntity, Object request, Map<String, String> authHeaders) {
+  public void validateUpdatedEntity(
+      Policy updatedEntity, Object request, Map<String, String> authHeaders) {
     validateCreatedEntity(updatedEntity, request, authHeaders);
   }
 
@@ -93,7 +104,8 @@ public class PolicyResourceTest extends EntityResourceTest<Policy> {
   }
 
   @Override
-  public void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException {
+  public void assertFieldChange(String fieldName, Object expected, Object actual)
+      throws IOException {
     if (expected == actual) {
       return;
     }
@@ -141,7 +153,9 @@ public class PolicyResourceTest extends EntityResourceTest<Policy> {
   public void post_Policy_as_non_admin_401(TestInfo test) {
     CreatePolicy create = create(test);
     HttpResponseException exception =
-        assertThrows(HttpResponseException.class, () -> createPolicy(create, authHeaders("test@open-metadata.org")));
+        assertThrows(
+            HttpResponseException.class,
+            () -> createPolicy(create, authHeaders("test@open-metadata.org")));
     assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
   }
 
@@ -149,22 +163,33 @@ public class PolicyResourceTest extends EntityResourceTest<Policy> {
   public void get_PolicyListWithInvalidLimitOffset_4xx() {
     // Limit must be >= 1 and <= 1000,000
     HttpResponseException exception =
-        assertThrows(HttpResponseException.class, () -> listPolicies(null, -1, null, null, adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, "[query param limit must be greater than or equal to 1]");
-
-    exception = assertThrows(HttpResponseException.class, () -> listPolicies(null, 0, null, null, adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, "[query param limit must be greater than or equal to 1]");
+        assertThrows(
+            HttpResponseException.class,
+            () -> listPolicies(null, -1, null, null, adminAuthHeaders()));
+    assertResponse(
+        exception, BAD_REQUEST, "[query param limit must be greater than or equal to 1]");
 
     exception =
-        assertThrows(HttpResponseException.class, () -> listPolicies(null, 1000001, null, null, adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, "[query param limit must be less than or equal to 1000000]");
+        assertThrows(
+            HttpResponseException.class,
+            () -> listPolicies(null, 0, null, null, adminAuthHeaders()));
+    assertResponse(
+        exception, BAD_REQUEST, "[query param limit must be greater than or equal to 1]");
+
+    exception =
+        assertThrows(
+            HttpResponseException.class,
+            () -> listPolicies(null, 1000001, null, null, adminAuthHeaders()));
+    assertResponse(
+        exception, BAD_REQUEST, "[query param limit must be less than or equal to 1000000]");
   }
 
   @Test
   public void get_PolicyListWithInvalidPaginationCursors_4xx() {
     // Passing both before and after cursors is invalid
     HttpResponseException exception =
-        assertThrows(HttpResponseException.class, () -> listPolicies(null, 1, "", "", adminAuthHeaders()));
+        assertThrows(
+            HttpResponseException.class, () -> listPolicies(null, 1, "", "", adminAuthHeaders()));
     assertResponse(exception, BAD_REQUEST, "Only one of before or after query parameter allowed");
   }
 
@@ -197,12 +222,14 @@ public class PolicyResourceTest extends EntityResourceTest<Policy> {
         before = forwardPage.getPaging().getBefore();
         assertEntityPagination(allPolicies.getData(), forwardPage, limit, indexInAllPolicies);
 
-        if (pageCount == 0) { // CASE 0 - First page is being returned. Therefore, before cursor is null
+        if (pageCount
+            == 0) { // CASE 0 - First page is being returned. Therefore, before cursor is null
           assertNull(before);
         } else {
           // Make sure scrolling back based on before cursor returns the correct result
           backwardPage = listPolicies(null, limit, before, null, adminAuthHeaders());
-          assertEntityPagination(allPolicies.getData(), backwardPage, limit, (indexInAllPolicies - limit));
+          assertEntityPagination(
+              allPolicies.getData(), backwardPage, limit, (indexInAllPolicies - limit));
         }
 
         indexInAllPolicies += forwardPage.getData().size();
@@ -246,7 +273,9 @@ public class PolicyResourceTest extends EntityResourceTest<Policy> {
     policy.setEnabled(false);
     ChangeDescription change = getChangeDescription(policy.getVersion());
     change.getFieldsAdded().add(new FieldChange().withName("policyUrl").withNewValue(uri));
-    change.getFieldsUpdated().add(new FieldChange().withName("enabled").withOldValue(true).withNewValue(false));
+    change
+        .getFieldsUpdated()
+        .add(new FieldChange().withName("enabled").withOldValue(true).withNewValue(false));
     policy = patchEntityAndCheck(policy, origJson, adminAuthHeaders(), MINOR_UPDATE, change);
 
     // Remove policyUrl
@@ -268,13 +297,18 @@ public class PolicyResourceTest extends EntityResourceTest<Policy> {
     // TODO
   }
 
-  public static Policy createPolicy(CreatePolicy create, Map<String, String> authHeaders) throws HttpResponseException {
+  public static Policy createPolicy(CreatePolicy create, Map<String, String> authHeaders)
+      throws HttpResponseException {
     return TestUtils.post(getResource("policies"), create, Policy.class, authHeaders);
   }
 
-  /** Validate returned fields GET .../policies/{id}?fields="..." or GET .../policies/name/{fqn}?fields="..." */
+  /**
+   * Validate returned fields GET .../policies/{id}?fields="..." or GET
+   * .../policies/name/{fqn}?fields="..."
+   */
   @Override
-  public void validateGetWithDifferentFields(Policy policy, boolean byName) throws HttpResponseException {
+  public void validateGetWithDifferentFields(Policy policy, boolean byName)
+      throws HttpResponseException {
     // .../policies?fields=owner
     String fields = "owner";
     policy =
@@ -300,7 +334,8 @@ public class PolicyResourceTest extends EntityResourceTest<Policy> {
     assertNotNull(policy.getOwner());
   }
 
-  public static Policy getPolicy(UUID id, String fields, Map<String, String> authHeaders) throws HttpResponseException {
+  public static Policy getPolicy(UUID id, String fields, Map<String, String> authHeaders)
+      throws HttpResponseException {
     WebTarget target = getResource("policies/" + id);
     target = fields != null ? target.queryParam("fields", fields) : target;
     return TestUtils.get(target, Policy.class, authHeaders);
@@ -314,7 +349,11 @@ public class PolicyResourceTest extends EntityResourceTest<Policy> {
   }
 
   public static PolicyList listPolicies(
-      String fields, Integer limitParam, String before, String after, Map<String, String> authHeaders)
+      String fields,
+      Integer limitParam,
+      String before,
+      String after,
+      Map<String, String> authHeaders)
       throws HttpResponseException {
     WebTarget target = getResource("policies");
     target = fields != null ? target.queryParam("fields", fields) : target;
@@ -336,7 +375,7 @@ public class PolicyResourceTest extends EntityResourceTest<Policy> {
     return new CreatePolicy()
         .withName(name)
         .withDescription("description")
-        .withPolicyType(PolicyType.AccessControl)
+        .withPolicyType(PolicyType.Lifecycle)
         .withOwner(USER_OWNER1);
   }
 }

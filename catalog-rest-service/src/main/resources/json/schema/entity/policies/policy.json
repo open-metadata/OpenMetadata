@@ -107,6 +107,10 @@
     },
     "rules": {
       "$ref": "#/definitions/rules"
+    },
+    "location": {
+      "$ref": "../../type/entityReference.json",
+      "default": null
     }
   },
   "required": [

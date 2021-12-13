@@ -22,6 +22,7 @@ from metadata.generated.schema.api.services.createStorageService import (
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.common import ConfigModel, Entity, WorkflowContext
 from metadata.ingestion.api.source import Source, SourceStatus
+from metadata.ingestion.models.ometa_policy import OMetaPolicy
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.generated.schema.entity.data.location import Location, LocationType
@@ -73,15 +74,16 @@ class S3Source(Source[Entity]):
     def prepare(self):
         pass
 
-    def next_record(self) -> Iterable[Entity]:
+    def next_record(self) -> Iterable[OMetaPolicy]:
         try:
             for bucket in self.s3.buckets.all():
                 self.status.scanned(bucket)
-                bucket_name = self._get_bucket_name_with_prefix(bucket.name)
+                location_name = self._get_bucket_name_with_prefix(bucket.name)
+                location_id = uuid.uuid4()
                 location = Location(
-                    id=uuid.uuid4(),
-                    name=bucket_name,
-                    displayName=bucket_name,
+                    id=location_id,
+                    name=location_name,
+                    displayName=location_name,
                     locationType=LocationType.Bucket,
                     service=EntityReference(
                         id=self.service.id,
@@ -89,14 +91,13 @@ class S3Source(Source[Entity]):
                         name=self.service.name,
                     ),
                 )
-                yield location
 
-                # Retrieve lifecycle policies for the bucket.
+                # Retrieve lifecycle policy and rules for the bucket.
                 rules: List[LifecycleRule] = []
                 for rule in self.s3.BucketLifecycleConfiguration(bucket.name).rules:
                     rules.append(self._get_rule(rule, location))
                 policy_name = f"{bucket.name}-lifecycle-policy"
-                yield Policy(
+                policy = Policy(
                     id=uuid.uuid4(),
                     name=policy_name,
                     displayName=policy_name,
@@ -104,6 +105,10 @@ class S3Source(Source[Entity]):
                     policyType=PolicyType.Lifecycle,
                     rules=rules,
                     enabled=True,
+                )
+                yield OMetaPolicy(
+                    location=location,
+                    policy=policy,
                 )
         except Exception as e:
             self.status.failure("error", str(e))
