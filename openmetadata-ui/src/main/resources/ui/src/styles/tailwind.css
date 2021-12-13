@@ -35,7 +35,7 @@
     @apply tw-text-h6 tw-font-medium tw-mb-2;
   }
   body {
-    @apply tw-text-body tw-text-grey-body tw-font-light;
+    @apply tw-text-body tw-text-grey-body tw-font-normal;
   }
 
   .tw-table {
@@ -79,9 +79,6 @@
   .tableBody-row {
     @apply tw-border tw-border-main hover:tw-bg-body-hover;
   }
-  .tableBody-row.odd-row {
-    @apply tw-bg-body-main hover:tw-bg-body-hover;
-  }
   .tableBody-cell {
     @apply tw-py-3 tw-px-6 tw-text-left;
   }
@@ -94,10 +91,10 @@
     @apply tw-border-b tw-border-separator;
   }
   .tw-gh-tabs {
-    @apply tw-text-grey-muted tw-font-normal tw-pt-4 tw-pb-2 tw-px-6 tw-border-b-2 tw-border-transparent hover:tw-border-main focus:tw-outline-none;
+    @apply tw-text-grey-body tw-font-normal tw-pt-4 tw-pb-2 tw-px-6 tw-border-b-2 tw-border-transparent hover:tw-border-main focus:tw-outline-none;
   }
   .tw-gh-tabs.active {
-    @apply tw-text-grey-body tw-border-b-2 tw-border-primary;
+    @apply tw-text-grey-dark tw-border-b-2 tw-border-primary;
   }
   .tw-gh-tabs:disabled {
     @apply tw-opacity-50 tw-pointer-events-none hover:tw-border-none;

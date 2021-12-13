@@ -12,6 +12,7 @@
  */
 
 // import SVGIcons, { Icons } from '../../../utils/SvgUtils';
+import classNames from 'classnames';
 import { debounce } from 'lodash';
 import PropTypes from 'prop-types';
 import React, { useCallback, useEffect, useState } from 'react';
@@ -22,6 +23,7 @@ type Props = {
   typingInterval?: number;
   placeholder?: string;
   label?: string;
+  removeMargin?: boolean;
 };
 
 const Searchbar = ({
@@ -30,6 +32,7 @@ const Searchbar = ({
   typingInterval = 0,
   placeholder,
   label,
+  removeMargin = false,
 }: Props) => {
   const [userSearch, setUserSearch] = useState('');
   // const typingTimer = useRef<ReturnType<typeof setInterval>>();
@@ -62,7 +65,9 @@ const Searchbar = ({
 
   return (
     <div
-      className="tw-group tw-mb-4 page-search-bar"
+      className={classNames('tw-group page-search-bar', {
+        'tw-mb-4': !removeMargin,
+      })}
       data-testid="search-bar-container">
       {label !== '' && <label>{label}</label>}
       <div className="tw-flex tw-bg-body-main tw-h-8">

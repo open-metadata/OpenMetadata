@@ -38,7 +38,7 @@ const TableProfilerGraph = ({
   }) => {
     if (active && payload && payload.length) {
       return (
-        <div className="tw-py-1.5 tw-px-1 tw-bg-black tw-opacity-50 tw-rounded tw-text-white tw-text-xs tw-font-normal">
+        <div className="tw-py-1.5 tw-px-1 tw-bg-black tw-opacity-50 tw-rounded tw-text-white tw-text-xs tw-font-medium">
           <div>Value {payload[0].value}</div>
           <div>Date {payload[0].payload.date}</div>
         </div>

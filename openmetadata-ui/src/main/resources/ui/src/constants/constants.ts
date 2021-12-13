@@ -35,7 +35,6 @@ export const ERROR500 = 'Something went wrong';
 const PLACEHOLDER_ROUTE_DATASET_FQN = ':datasetFQN';
 const PLACEHOLDER_ROUTE_TOPIC_FQN = ':topicFQN';
 const PLACEHOLDER_ROUTE_PIPELINE_FQN = ':pipelineFQN';
-const PLACEHOLDER_ROUTE_DBT_MODEL_FQN = ':dbtModelFQN';
 const PLACEHOLDER_ROUTE_DASHBOARD_FQN = ':dashboardFQN';
 const PLACEHOLDER_ROUTE_DATABASE_FQN = ':databaseFQN';
 const PLACEHOLDER_ROUTE_SERVICE_FQN = ':serviceFQN';
@@ -144,10 +143,9 @@ export const ROUTES = {
   DATABASE_DETAILS: `/database/${PLACEHOLDER_ROUTE_DATABASE_FQN}`,
   PIPELINE_DETAILS: `/pipeline/${PLACEHOLDER_ROUTE_PIPELINE_FQN}`,
   PIPELINE_DETAILS_WITH_TAB: `/pipeline/${PLACEHOLDER_ROUTE_PIPELINE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
-  DBT_MODEL_DETAILS: `/dbtmodel/${PLACEHOLDER_ROUTE_DBT_MODEL_FQN}`,
-  DBT_MODEL_DETAILS_WITH_TAB: `/dbtmodel/${PLACEHOLDER_ROUTE_DBT_MODEL_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
   ONBOARDING: '/onboarding',
   INGESTION: '/ingestion',
+  USER_LIST: '/user-list',
 };
 
 export const IN_PAGE_SEARCH_ROUTES: Record<string, Array<string>> = {
@@ -245,17 +243,6 @@ export const getPipelineDetailsPath = (pipelineFQN: string, tab?: string) => {
   return path;
 };
 
-export const getDBTModelDetailsPath = (dbtModelFQN: string, tab?: string) => {
-  let path = tab ? ROUTES.DBT_MODEL_DETAILS_WITH_TAB : ROUTES.DBT_MODEL_DETAILS;
-  path = path.replace(PLACEHOLDER_ROUTE_DBT_MODEL_FQN, dbtModelFQN);
-
-  if (tab) {
-    path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
-  }
-
-  return path;
-};
-
 export const getTeamDetailsPath = (teamName: string) => {
   let path = ROUTES.TEAM_DETAILS;
   path = path.replace(PLACEHOLDER_ROUTE_TEAM, teamName);
@@ -278,6 +265,7 @@ export const navLinkDevelop = [
 
 export const navLinkSettings = [
   { name: 'Teams', to: '/teams', disabled: false },
+  { name: 'User List', to: '/user-list', disabled: false, isAdminOnly: true },
   { name: 'Tags', to: '/tags', disabled: false },
   // { name: 'Store', to: '/store', disabled: false },
   { name: 'Services', to: '/services', disabled: false },

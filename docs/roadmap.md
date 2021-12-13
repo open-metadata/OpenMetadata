@@ -83,23 +83,69 @@ If you would like to prioritize any feature or would like to add a new feature t
 ### Airflow APIs
 
 * Airflow APIs to deploy DAGS and manage them
-* UI integration to deploy ingestion workflows&#x20;
+* UI integration to deploy ingestion workflows
+
+### Connectors
+
+* AWS Glue
+* DBT
+* MariaDB
 
 ## 0.7 Release - Dec 15th, 2021
 
-### Support for User Collaboration
+#### Theme: Data Collaboration - Activity Feeds,&#x20;
 
-* Allow users to ask questions, suggest changes, request new features for data assets
-* Activity feeds for User and Data assets
-* Tracking activity feeds as tasks
+### UI - Activity Feed, Improved UX for Search
 
-### Lineage new features
+* Users will have access to Activity Feed of all the changes to the Metadata
+* New and Improved UX for Search and Landing page
 
-* Allow users to add lineage information manually for table and column levels
-* Tier propagation to upstream datasets using lineage
-* Propagating column level tags and descriptions using lineage (Work in progress)
+### Support for Table Location
+
+* Extract Location information from Glue, Redshift&#x20;
+* Show Location details on the Table Page
+
+### Elastic Search - Improvements
+
+* Support SSL (including self-signed certs) enabled ElasticSearch
+* New entities will be indexed into ElasticSearch directly
+
+### Connectors
+
+* Metabase
+* Apache Druid
+* Glue Improvements
+* MSSQL - SSL support
+* Apache Atlas Import connector
+* Amundsen Import connector
 
 ### Other features
 
 * Metadata Change Event integration into Slack and framework for integration into other services such as Kafka or other Notification frameworks
 * Delta Lake support, Databricks, Iceberg
+
+## 0.8 Release - Jan 15th, 2021
+
+### Data Quality&#x20;
+
+* Data Quality Tests  support with Json Schemas and APIs
+* UI Integration to enable user to write tests and run them on Airflow
+* Store the test results and provide notifications via eventing apis&#x20;
+* Provide integration of DBT tests into OpenMetadata&#x20;
+
+### Access Control Policies
+
+* Design of Access Control Policies
+* Provide Role based access control with community feedback
+
+### Eventing Webhook
+
+* Register webhooks to get metadata event notifications
+* Metadata Change Event integration into Slack and framework for integration into other services such as Kafka or other Notification frameworks
+
+### Connectors
+
+* Delta Lake
+* Iceberg
+* PowerBI
+* Azure SQL

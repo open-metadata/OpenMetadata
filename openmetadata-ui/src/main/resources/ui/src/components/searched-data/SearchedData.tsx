@@ -45,7 +45,6 @@ const ASSETS_NAME = [
   'topic_name',
   'dashboard_name',
   'pipeline_name',
-  'dbt_model_name',
 ];
 
 const SearchedData: React.FC<SearchedDataProp> = ({

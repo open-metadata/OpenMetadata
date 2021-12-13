@@ -19,6 +19,7 @@
         "mssql",
         "mysql",
         "postgres",
+        "presto",
         "trino",
         "vertica"
       ],
@@ -114,6 +115,7 @@
         },
         "excludeFilterPattern": {
           "description": "Regex exclude tables or databases that matches the pattern.",
+          "type": "array",
           "items": {
             "type": "string"
           },
