@@ -96,7 +96,7 @@ const getNoLineageDataPlaceholder = () => {
     <div className="tw-mt-4 tw-ml-4 tw-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8">
       <span>
         Lineage is currently supported for Airflow. To enable lineage collection
-        from Airflow, Please follow the documentation
+        from Airflow, please follow the documentation
       </span>
       <Link
         className="tw-ml-1"
@@ -105,7 +105,7 @@ const getNoLineageDataPlaceholder = () => {
           pathname:
             'https://docs.open-metadata.org/install/metadata-ingestion/airflow/configure-airflow-lineage',
         }}>
-        here
+        here.
       </Link>
     </div>
   );

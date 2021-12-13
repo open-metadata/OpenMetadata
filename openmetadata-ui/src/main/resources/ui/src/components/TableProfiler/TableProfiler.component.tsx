@@ -220,7 +220,7 @@ const TableProfiler = ({ tableProfiles, columns }: Props) => {
             to={{
               pathname: 'https://docs.open-metadata.org/connectors',
             }}>
-            here
+            here.
           </Link>
         </div>
       )}

@@ -71,7 +71,7 @@
     @apply tw-border tw-border-main tw-leading-normal;
   }
   .tableHead-cell {
-    @apply tw-py-3 tw-px-6 tw-text-left tw-font-normal tw-whitespace-nowrap;
+    @apply tw-py-3 tw-px-6 tw-font-medium tw-text-left tw-whitespace-nowrap;
   }
   .tableBody {
     @apply tw-text-grey-body;
