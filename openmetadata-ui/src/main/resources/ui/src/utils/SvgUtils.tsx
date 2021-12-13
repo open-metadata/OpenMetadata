@@ -88,6 +88,7 @@ import IconTier from '../assets/svg/tier.svg';
 import IconTopicGrey from '../assets/svg/topic-grey.svg';
 import IconTopic from '../assets/svg/topic.svg';
 import IconUser from '../assets/svg/user.svg';
+import IconVersionBlack from '../assets/svg/version-black.svg';
 import IconVersionWhite from '../assets/svg/version-white.svg';
 import IconVersion from '../assets/svg/version.svg';
 import IconWarning from '../assets/svg/warning.svg';
@@ -173,6 +174,7 @@ export const Icons = {
   DBTMODEL: 'dbtmodel',
   VERSION: 'icon-version',
   VERSION_WHITE: 'icon-version-white',
+  VERSION_BLACK: 'icon-version-black',
   ICON_DEPLOY: 'icon-deploy',
   ICON_PLUS: 'icon-plus',
   ICON_MINUS: 'icon-minus',
@@ -471,6 +473,10 @@ const SVGIcons: FunctionComponent<Props> = ({
       break;
     case Icons.VERSION_WHITE:
       IconComponent = IconVersionWhite;
+
+      break;
+    case Icons.VERSION_BLACK:
+      IconComponent = IconVersionBlack;
 
       break;
     case Icons.ICON_DEPLOY:

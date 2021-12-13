@@ -15,6 +15,7 @@ import React, { FunctionComponent } from 'react';
 import { Link } from 'react-router-dom';
 import { getExplorePathWithSearch } from '../../constants/constants';
 import { getRecentlySearchedData } from '../../utils/CommonUtils';
+import PopOver from '../common/popover/PopOver';
 
 const RecentSearchedTerms: FunctionComponent = () => {
   const recentlySearchedTerms = getRecentlySearchedData();
@@ -32,12 +33,26 @@ const RecentSearchedTerms: FunctionComponent = () => {
               data-testid={`Recently-Search-${item.term}`}
               key={index}>
               <div className="tw-flex">
+                <i className="fa fa-search tw-text-grey-muted tw-pr-2 tw-self-center" />
                 <Link
                   className="tw-font-medium"
                   to={getExplorePathWithSearch(item.term)}>
                   <button className="tw-text-grey-body hover:tw-text-primary-hover hover:tw-underline">
-                    <i className="fa fa-search tw-text-grey-muted tw-pr-2" />
-                    {item.term}
+                    {item.term.length > 20 ? (
+                      <PopOver
+                        html={
+                          <div className="tw-flex tw-flex-nowrap">
+                            {item.term}
+                          </div>
+                        }
+                        position="top"
+                        size="regular"
+                        trigger="mouseenter">
+                        {item.term.slice(0, 20)}...
+                      </PopOver>
+                    ) : (
+                      item.term
+                    )}
                   </button>
                 </Link>
               </div>

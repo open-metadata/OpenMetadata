@@ -78,6 +78,25 @@ const Appbar: React.FC = (): JSX.Element => {
 
   const supportLinks = [
     {
+      name: (
+        <span>
+          <SVGIcons
+            alt="API icon"
+            className="tw-align-middle tw--mt-0.5 tw-mr-0.5"
+            icon={Icons.VERSION_BLACK}
+            width="12"
+          />{' '}
+          <span className="tw-text-grey-muted">{`Version ${
+            (version ? version : '?').split('-')[0]
+          }`}</span>
+        </span>
+      ),
+      to: '',
+      disabled: false,
+      icon: <></>,
+      isText: true,
+    },
+    {
       name: `Docs`,
       to: urlGitbookDocs,
       isOpenNewTab: true,
@@ -130,7 +149,6 @@ const Appbar: React.FC = (): JSX.Element => {
     return (
       <span data-testid="greeting-text">
         <span className="tw-font-medium">{name}</span>
-        <hr className="tw--mr-2 tw--ml-2 tw-mt-1.5" />
       </span>
     );
   };
@@ -296,24 +314,7 @@ const Appbar: React.FC = (): JSX.Element => {
               <DropDown
                 dropDownList={[
                   {
-                    name: (
-                      <p className="tw-flex tw-flex-col">
-                        <span>Signed in as</span>
-                        {getUserDisplayName()}
-                      </p>
-                    ),
-                    to: '',
-                    disabled: false,
-                    icon: <></>,
-                    isText: true,
-                  },
-                  {
-                    name: (
-                      <span className="tw-text-grey-muted tw-cursor-text tw-text-xs">
-                        {`Version ${(version ? version : '?').split('-')[0]}`}
-                        <hr className="tw--mr-2 tw--ml-2 tw-mt-2" />
-                      </span>
-                    ),
+                    name: getUserDisplayName(),
                     to: '',
                     disabled: false,
                     icon: <></>,
@@ -347,6 +348,7 @@ const Appbar: React.FC = (): JSX.Element => {
                     )}
                   </>
                 }
+                isDropDownIconVisible={false}
                 type="link"
               />
             </div>
