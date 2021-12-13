@@ -29,6 +29,7 @@ export type DropDownListItem = {
   icon?: React.ReactElement;
   isOpenNewTab?: boolean;
   isText?: boolean;
+  isAdminOnly?: boolean;
 } & Record<
   string,
   string | number | boolean | undefined | Function | React.ReactElement
