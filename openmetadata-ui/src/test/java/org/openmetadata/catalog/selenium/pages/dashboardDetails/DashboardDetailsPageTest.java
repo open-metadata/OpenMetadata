@@ -153,8 +153,11 @@ public class DashboardDetailsPageTest {
     Thread.sleep(waitTime);
     actions.moveToElement(webDriver.findElement(By.cssSelector("[data-testid='edit-tags']"))).perform();
     Events.click(webDriver, By.cssSelector("[data-testid='edit-tags']"));
+    Thread.sleep(waitTime);
     Events.click(webDriver, By.cssSelector("[data-testid='remove']"));
+    Thread.sleep(waitTime);
     Events.click(webDriver, By.cssSelector("[data-testid='remove']"));
+    Thread.sleep(waitTime);
     Events.click(webDriver, By.cssSelector("[data-testid='saveAssociatedTag']"));
   }
 

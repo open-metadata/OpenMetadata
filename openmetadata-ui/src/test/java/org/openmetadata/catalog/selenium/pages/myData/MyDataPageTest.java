@@ -157,7 +157,7 @@ public class MyDataPageTest {
     Events.click(webDriver, By.cssSelector("[data-testid='follow-button']"));
     Events.click(webDriver, By.cssSelector("[data-testid='image']"));
     webDriver.navigate().refresh();
-    Events.click(webDriver, By.cssSelector("[data-testid='Following data-" + table + "']"));
+    Events.click(webDriver, By.xpath("//div[@data-testid='Following data-" + table + "']//div//a//button"));
     webDriver.navigate().back();
     Events.click(webDriver, By.cssSelector("[data-testid='following-data']")); // Following
     Events.click(webDriver, By.xpath("//a[@data-testid='table-link']//button"));
