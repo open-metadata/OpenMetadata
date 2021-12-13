@@ -9,8 +9,8 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 COPY src/ src/
-COPY setup.* .
+COPY setup.* ./
 COPY README.md .
-COPY connectors/main.py ./
+COPY connectors/main.py .
 
 RUN pip install .
