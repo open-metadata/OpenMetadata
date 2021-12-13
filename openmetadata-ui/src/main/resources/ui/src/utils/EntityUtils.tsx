@@ -337,7 +337,7 @@ export const getInfoElements = (data: ExtraInfo) => {
         retVal =
           displayVal && displayVal !== '--' ? (
             isString(displayVal) ? (
-              <div className="tw-inline-block tw-mr-1">
+              <div className="tw-inline-block tw-mr-2">
                 <Avatar name={displayVal} textClass="tw-text-xs" width="22" />
               </div>
             ) : (
