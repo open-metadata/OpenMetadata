@@ -16,8 +16,8 @@ import { getTeams, getUsers } from '../axiosAPIs/userAPI';
 import { API_RES_MAX_SIZE } from '../constants/constants';
 
 // Moving this code here from App.tsx
-const getAllUsersList = (): void => {
-  getUsers('', API_RES_MAX_SIZE).then((res) => {
+const getAllUsersList = (arrQueryFields = ''): void => {
+  getUsers(arrQueryFields, API_RES_MAX_SIZE).then((res) => {
     AppState.users = res.data.data;
   });
 };
@@ -29,7 +29,7 @@ const getAllTeams = (): void => {
 };
 
 export const fetchAllUsers = () => {
-  getAllUsersList();
+  getAllUsersList('profile,teams');
   getAllTeams();
   // TODO: uncomment below line to update users list in real time.
   // setInterval(getAllUsersList, TIMEOUT.USER_LIST);
