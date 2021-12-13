@@ -74,19 +74,27 @@ tar -zxvf openmetadata-0.6.0.tar.gz
 cd openmetadata-0.6.0
 ```
 
-### 4. Start OpenMetadata
+### 4. Initialize the Database and Tables
+
+Run Bootstrap scripts to initialize the Database and Tables.
+
+```
+./bootstrap/bootstrap_storage.sh migrate
+```
+
+### 5. Start OpenMetadata
 
 OpenMetadata release ships with `./bin/openmetadata` init.d style script. Run the following command from the `openmetadata-0.6.0` directory.
 
 ```
-./bin/openmetdata.sh start
+./bin/openmetadata.sh start
 ```
 
 We recommend configuring `serviced` to monitor the OpenMetadata command to restart in case of any failures.Start OpenMetadata.
 
 ## Running with a load balancer
 
-One or more OpenMetadata instances can be put behind a load balancer for reverse proxying, in that case, an appropriate OpenMetdata URL must be mentioned in the load balancer's configuration file.
+One or more OpenMetadata instances can be put behind a load balancer for reverse proxying, in that case, an appropriate OpenMetadata URL must be mentioned in the load balancer's configuration file.
 
 For example, in case Apache mod proxy the VirtualHost tag in the configuration file should be edited out with the following
 
