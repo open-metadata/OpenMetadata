@@ -145,6 +145,7 @@ export const ROUTES = {
   PIPELINE_DETAILS_WITH_TAB: `/pipeline/${PLACEHOLDER_ROUTE_PIPELINE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
   ONBOARDING: '/onboarding',
   INGESTION: '/ingestion',
+  USER_LIST: '/user-list',
 };
 
 export const IN_PAGE_SEARCH_ROUTES: Record<string, Array<string>> = {
@@ -264,6 +265,7 @@ export const navLinkDevelop = [
 
 export const navLinkSettings = [
   { name: 'Teams', to: '/teams', disabled: false },
+  { name: 'User List', to: '/user-list', disabled: false, isAdminOnly: true },
   { name: 'Tags', to: '/tags', disabled: false },
   // { name: 'Store', to: '/store', disabled: false },
   { name: 'Services', to: '/services', disabled: false },

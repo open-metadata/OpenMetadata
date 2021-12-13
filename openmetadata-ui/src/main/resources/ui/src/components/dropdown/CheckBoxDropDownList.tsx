@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import React from 'react';
+import React, { Fragment } from 'react';
+import { useAuth } from '../../hooks/authHooks';
 import { DropDownListItem, DropDownListProp } from './types';
 
 const CheckBoxDropDownList = ({
@@ -20,6 +21,8 @@ const CheckBoxDropDownList = ({
   onSelect,
   selectedItems,
 }: DropDownListProp) => {
+  const { isAuthDisabled, isAdminUser } = useAuth();
+
   return (
     <>
       <button
@@ -34,19 +37,23 @@ const CheckBoxDropDownList = ({
               tw-bg-white tw-rounded focus:tw-outline-none"
         role="menu">
         <div className="py-1" role="none">
-          {dropDownList.map((item: DropDownListItem, index: number) => (
-            <div
-              className="tw-cursor-pointer"
-              key={index}
-              onClick={(e) => onSelect && onSelect(e, item.value as string)}>
-              <input
-                checked={selectedItems?.includes(item.value as string)}
-                className="tw-ml-3 tw-mr-2 tw-align-middle custom-checkbox"
-                type="checkbox"
-              />
-              <p className="tw-inline-block">{item.name}</p>
-            </div>
-          ))}
+          {dropDownList.map((item: DropDownListItem, index: number) =>
+            !item.isAdminOnly || isAuthDisabled || isAdminUser ? (
+              <div
+                className="tw-cursor-pointer"
+                key={index}
+                onClick={(e) => onSelect && onSelect(e, item.value as string)}>
+                <input
+                  checked={selectedItems?.includes(item.value as string)}
+                  className="tw-ml-3 tw-mr-2 tw-align-middle custom-checkbox"
+                  type="checkbox"
+                />
+                <p className="tw-inline-block">{item.name}</p>
+              </div>
+            ) : (
+              <Fragment />
+            )
+          )}
         </div>
       </div>
     </>

@@ -17,6 +17,7 @@ import { Redirect, Route, Switch } from 'react-router-dom';
 import AppState from '../AppState';
 import Onboarding from '../components/onboarding/Onboarding'; // Remove this route once Onboarding is added to my-data
 import { ROUTES } from '../constants/constants';
+import { useAuth } from '../hooks/authHooks';
 import DashboardDetailsPage from '../pages/DashboardDetailsPage/DashboardDetailsPage.component';
 import DatabaseDetails from '../pages/database-details/index';
 import DatasetDetailsPage from '../pages/DatasetDetailsPage/DatasetDetailsPage.component';
@@ -38,9 +39,12 @@ import TagsPage from '../pages/tags';
 import TeamsPage from '../pages/teams';
 import TopicDetailsPage from '../pages/TopicDetails/TopicDetailsPage.component';
 import TourPage from '../pages/tour-page';
+import UserListPage from '../pages/UserListPage/UserListPage';
 import UsersPage from '../pages/users';
 import WorkflowsPage from '../pages/workflows';
 const AuthenticatedAppRouter: FunctionComponent = () => {
+  const { isAuthDisabled, isAdminUser } = useAuth();
+
   return (
     <Switch>
       <Route exact component={MyDataPage} path={ROUTES.MY_DATA} />
@@ -108,6 +112,9 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         path={ROUTES.DATASET_VERSION}
       />
       <Route exact component={IngestionPage} path={ROUTES.INGESTION} />
+      {isAuthDisabled || isAdminUser ? (
+        <Route exact component={UserListPage} path={ROUTES.USER_LIST} />
+      ) : null}
 
       <Redirect to={ROUTES.NOT_FOUND} />
     </Switch>

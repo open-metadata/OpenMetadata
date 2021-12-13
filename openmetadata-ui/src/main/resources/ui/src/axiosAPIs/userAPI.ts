@@ -12,6 +12,7 @@
  */
 
 import { AxiosResponse } from 'axios';
+import { Operation } from 'fast-json-patch';
 import { UserProfile } from 'Models';
 import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
@@ -26,6 +27,18 @@ export const getUsers = (
 
   return APIClient.get(url);
 };
+
+export const updateUserDetail = (
+  id: string,
+  data: Operation[]
+): Promise<AxiosResponse> => {
+  const configOptions = {
+    headers: { 'Content-type': 'application/json-patch+json' },
+  };
+
+  return APIClient.patch(`/users/${id}`, data, configOptions);
+};
+
 export const getUserByName = (
   name: string,
   arrQueryFields?: string
