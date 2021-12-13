@@ -208,33 +208,33 @@ const getLinkWithColumn = (column: string, eFqn: string, eType: string) => {
   );
 };
 
-const getDescriptionText = (v: string) => {
-  const length = v.length;
-  return `${v.slice(0, DESCRIPTIONLENGTH)}${
+const getDescriptionText = (value: string) => {
+  const length = value.length;
+  return `${value.slice(0, DESCRIPTIONLENGTH)}${
     length > DESCRIPTIONLENGTH ? '...' : ''
   }`;
 };
 
-const getDescriptionElement = (v: FieldChange) => {
-  return v?.newValue && v?.oldValue ? (
+const getDescriptionElement = (fieldChange: FieldChange) => {
+  return fieldChange?.newValue && fieldChange?.oldValue ? (
     <Fragment>
       &nbsp;
       <span className="tw-italic feed-change-description">{`${getDescriptionText(
-        v?.newValue
+        fieldChange?.newValue
       )}`}</span>
     </Fragment>
-  ) : v?.newValue ? (
+  ) : fieldChange?.newValue ? (
     <Fragment>
       &nbsp;
       <span className="tw-italic feed-change-description">
-        {`${getDescriptionText(v?.newValue)}`}
+        {`${getDescriptionText(fieldChange?.newValue)}`}
       </span>
     </Fragment>
   ) : (
     <Fragment>
       &nbsp;
       <span className="tw-italic feed-change-description">
-        {`${getDescriptionText(v?.oldValue)}`}
+        {`${getDescriptionText(fieldChange?.oldValue)}`}
       </span>
     </Fragment>
   );
@@ -245,64 +245,83 @@ const getOwnerName = (id: string) => {
 };
 
 export const feedSummaryFromatter = (
-  v: FieldChange,
+  fieldChange: FieldChange,
   type: ChangeType,
   _entityName: string,
   entityType: string,
   entityFQN: string
 ) => {
   const value = JSON.parse(
-    isValidJSONString(v?.newValue)
-      ? v?.newValue
-      : isValidJSONString(v?.oldValue)
-      ? v?.oldValue
+    isValidJSONString(fieldChange?.newValue)
+      ? fieldChange?.newValue
+      : isValidJSONString(fieldChange?.oldValue)
+      ? fieldChange?.oldValue
       : '{}'
   );
   const oldValue = JSON.parse(
-    isValidJSONString(v?.oldValue) ? v?.oldValue : '{}'
+    isValidJSONString(fieldChange?.oldValue) ? fieldChange?.oldValue : '{}'
   );
   const newValue = JSON.parse(
-    isValidJSONString(v?.newValue) ? v?.newValue : '{}'
+    isValidJSONString(fieldChange?.newValue) ? fieldChange?.newValue : '{}'
   );
+  let summary: JSX.Element;
   switch (true) {
-    case v?.name?.startsWith('column'): {
-      if (v?.name?.endsWith('tags')) {
-        return (
+    case fieldChange?.name?.startsWith('column'): {
+      if (fieldChange?.name?.endsWith('tags')) {
+        summary = (
           <p key={uniqueId()}>
             {`${type} tags ${value
               ?.map((val: any) => val?.tagFQN)
-              ?.join(', ')} ${getPreposition(type)}`}
-            {getLinkWithColumn(v?.name as string, entityFQN, entityType)}
+              ?.join(', ')} ${getPreposition(type)} column`}
+            {getLinkWithColumn(
+              fieldChange?.name as string,
+              entityFQN,
+              entityType
+            )}
           </p>
         );
-      } else if (v?.name?.endsWith('description')) {
-        return (
+
+        break;
+      } else if (fieldChange?.name?.endsWith('description')) {
+        summary = (
           <p key={uniqueId()}>
             {`${
-              v?.newValue && v?.oldValue
+              fieldChange?.newValue && fieldChange?.oldValue
                 ? type
-                : v?.newValue
+                : fieldChange?.newValue
                 ? 'Added'
                 : 'Removed'
             } column description for`}
-            {getLinkWithColumn(v?.name as string, entityFQN, entityType)}
-            {isEmpty(value) ? getDescriptionElement(v) : ''}
+            {getLinkWithColumn(
+              fieldChange?.name as string,
+              entityFQN,
+              entityType
+            )}
+            {isEmpty(value) ? getDescriptionElement(fieldChange) : ''}
           </p>
         );
+
+        break;
       } else {
-        return (
+        summary = (
           <p key={uniqueId()}>
             {`${type}`}
-            {getLinkWithColumn(v?.name as string, entityFQN, entityType)}
+            {getLinkWithColumn(
+              fieldChange?.name as string,
+              entityFQN,
+              entityType
+            )}
           </p>
         );
+
+        break;
       }
     }
 
-    case v?.name === 'tags': {
+    case fieldChange?.name === 'tags': {
       const tier = value?.find((t: any) => t?.tagFQN?.startsWith('Tier'));
       const tags = value?.filter((t: any) => !t?.tagFQN?.startsWith('Tier'));
-      return (
+      summary = (
         <div>
           {tags?.length > 0 ? (
             <p key={uniqueId()}>{`${type} tags ${tags
@@ -310,17 +329,20 @@ export const feedSummaryFromatter = (
               ?.join(', ')}`}</p>
           ) : null}
           {tier ? (
-            <p key={uniqueId()}>{`${type} tier ${tier?.tagFQN}`}</p>
+            <p key={uniqueId()}>{`${type} tier ${
+              tier?.tagFQN?.split('.')[1]
+            }`}</p>
           ) : null}
         </div>
       );
+
+      break;
     }
 
-    case v?.name === 'owner': {
+    case fieldChange?.name === 'owner': {
       const ownerText =
         !isEmpty(oldValue) && !isEmpty(newValue) ? (
           <Fragment>
-            <span className="tw-pl-1">to</span>
             {newValue?.type === 'team' ? (
               <Link
                 className="tw-pl-1"
@@ -348,40 +370,49 @@ export const feedSummaryFromatter = (
             )}
           </Fragment>
         );
-      return (
+      summary = (
         <p key={uniqueId()}>
-          {`${type} ${v?.name}`}
+          {`Assigned Ownership to`}
           {ownerText}
         </p>
       );
+
+      break;
     }
 
-    case v?.name === 'description': {
-      return (
+    case fieldChange?.name === 'description': {
+      summary = (
         <p key={uniqueId()}>
           {`${
-            v?.newValue && v?.oldValue
+            fieldChange?.newValue && fieldChange?.oldValue
               ? type
-              : v?.newValue
+              : fieldChange?.newValue
               ? 'Added'
               : 'Removed'
           } description`}
-          {getDescriptionElement(v)}
+          {getDescriptionElement(fieldChange)}
         </p>
       );
+
+      break;
     }
 
-    case v?.name === 'followers': {
-      return (
+    case fieldChange?.name === 'followers': {
+      summary = (
         <p key={uniqueId()}>{`${
-          v?.newValue ? 'Started Following' : 'Unfollowed'
+          fieldChange?.newValue ? 'Started Following' : 'Unfollowed'
         } ${_entityName}`}</p>
       );
+
+      break;
     }
 
     default:
-      return <p key={uniqueId()}>{`${type} ${v?.name}`}</p>;
+      summary = <p key={uniqueId()}>{`${type} ${fieldChange?.name}`}</p>;
+
+      break;
   }
+  return summary;
 };
 
 export const getFeedSummary = (
@@ -445,22 +476,25 @@ export const getFeedSummary = (
   );
 };
 
-export const summaryFormatter = (v: FieldChange) => {
+export const summaryFormatter = (fieldChange: FieldChange) => {
   const value = JSON.parse(
-    isValidJSONString(v?.newValue)
-      ? v?.newValue
-      : isValidJSONString(v?.oldValue)
-      ? v?.oldValue
+    isValidJSONString(fieldChange?.newValue)
+      ? fieldChange?.newValue
+      : isValidJSONString(fieldChange?.oldValue)
+      ? fieldChange?.oldValue
       : '{}'
   );
-  if (v.name === 'columns') {
+  if (fieldChange.name === 'columns') {
     return `columns ${value?.map((val: any) => val?.name).join(', ')}`;
-  } else if (v.name === 'tags' || v.name?.endsWith('tags')) {
+  } else if (
+    fieldChange.name === 'tags' ||
+    fieldChange.name?.endsWith('tags')
+  ) {
     return `tags ${value?.map((val: any) => val?.tagFQN)?.join(', ')}`;
-  } else if (v.name === 'owner') {
-    return `${v.name} ${value.name}`;
+  } else if (fieldChange.name === 'owner') {
+    return `${fieldChange.name} ${value.name}`;
   } else {
-    return v.name;
+    return fieldChange.name;
   }
 };
 
@@ -499,6 +533,6 @@ export const getSummary = (
   );
 };
 
-export const isMajorVersion = (v1: string, v2: string) => {
-  return v2.split('.')[0] > v1.split('.')[0];
+export const isMajorVersion = (version1: string, version2: string) => {
+  return version2.split('.')[0] > version1.split('.')[0];
 };
