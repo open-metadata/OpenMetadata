@@ -4,8 +4,9 @@
     "config": {
       "service_name": "local_trino",
       "host_port": "localhost:8080",
-      "catalog": "catalog_name",
-      "schema_name": "schema_name"
+      "username": "user",
+      "catalog": "tpcds",
+      "database": "tiny"
     }
   },
   "sink": {

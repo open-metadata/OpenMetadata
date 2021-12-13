@@ -9,15 +9,13 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from typing import Iterable, Optional
-from urllib.parse import quote_plus
+from typing import Iterable
 
 from sqlalchemy.inspection import inspect
 
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
-
-from ..ometa.openmetadata_rest import MetadataServerConfig
 from .sql_source import SQLConnectionConfig, SQLSource
+from ..ometa.openmetadata_rest import MetadataServerConfig
 
 
 class TrinoConfig(SQLConnectionConfig):
@@ -25,18 +23,20 @@ class TrinoConfig(SQLConnectionConfig):
     scheme = "trino"
     service_type = "Trino"
     catalog: str
-    schema_name: Optional[str]
+    database: str
 
     def get_connection_url(self):
-        url = f"{self.scheme}://{self.host_port}"
-        if self.catalog:
-            url += f"/{quote_plus(self.catalog)}"
-            if self.schema_name:
-                url += f"/{quote_plus(self.schema_name)}"
-        if self.username:
-            url += f"?user={quote_plus(self.username)}"
-            if self.password:
-                url += f"&password={quote_plus(self.password)}"
+        url = f"{self.scheme}://"
+        if self.username is not None:
+            url += f"{self.username}"
+            if self.password is not None:
+                url += f":{self.password.get_secret_value()}"
+            url += "@"
+        url += f"{self.host_port}"
+        if self.catalog is not None:
+            url += f"/{self.catalog}"
+            if self.database is not None:
+                url += f"/{self.database}"
         return url
 
 
@@ -53,6 +53,6 @@ class TrinoSource(SQLSource):
     def next_record(self) -> Iterable[OMetaDatabaseAndTable]:
         inspector = inspect(self.engine)
         if self.config.include_tables:
-            yield from self.fetch_tables(inspector, self.config.schema_name)
+            yield from self.fetch_tables(inspector, self.config.database)
         if self.config.include_views:
-            yield from self.fetch_views(inspector, self.config.schema_name)
+            yield from self.fetch_views(inspector, self.config.database)
