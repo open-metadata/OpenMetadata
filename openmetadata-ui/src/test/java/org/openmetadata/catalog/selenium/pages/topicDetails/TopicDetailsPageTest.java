@@ -118,8 +118,11 @@ public class TopicDetailsPageTest {
     Events.click(webDriver, By.cssSelector("[data-testid='list-item']")); // Last Updated
     Events.click(webDriver, By.xpath("(//a[@data-testid='table-link'])[1]"));
     Events.click(webDriver, By.cssSelector("[data-testid='tag-conatiner']"));
+    Thread.sleep(waitTime);
     Events.click(webDriver, By.cssSelector("[data-testid='remove']"));
+    Thread.sleep(waitTime);
     Events.click(webDriver, By.cssSelector("[data-testid='remove']"));
+    Thread.sleep(waitTime);
     Events.click(webDriver, By.cssSelector("[data-testid='saveAssociatedTag']"));
   }
 
