@@ -66,7 +66,6 @@ const UserDataCard = ({ item, onClick }: Props) => {
             </span>
           )}
         </div>
-        {/* <p>{isIconVisible ? item.name : capitalize(item.name)}</p> */}
         <p className="tw-truncate">{item.email}</p>
         <p>Teams: {item.teamCount}</p>
       </div>

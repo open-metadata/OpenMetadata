@@ -94,7 +94,7 @@ const UserDetailsModal = ({
                     </p>
                   ))
                 ) : (
-                  <p>This user is not added to any team yet!</p>
+                  <p>This user is not a part of any team!</p>
                 )}
               </span>
             </p>
