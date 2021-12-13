@@ -63,7 +63,7 @@ def build():
 
         try:
             client.images.build(
-                fileobj=io.BytesIO(file.encode()), tag=f"{target}:{setup.get_version()}"
+                fileobj=io.BytesIO(file.encode()), tag=f"{target}:latest"
             )
         except Exception as exc:
             logger.error(f"Error trying to build {conn}", exc)
