@@ -10,12 +10,13 @@
 #  limitations under the License.
 
 from typing import Iterable
+from urllib.parse import quote_plus
 
 from sqlalchemy.inspection import inspect
 
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
-from .sql_source import SQLConnectionConfig, SQLSource
-from ..ometa.openmetadata_rest import MetadataServerConfig
+from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
+from metadata.ingestion.source.sql_source import SQLConnectionConfig, SQLSource
 
 
 class TrinoConfig(SQLConnectionConfig):
@@ -30,13 +31,23 @@ class TrinoConfig(SQLConnectionConfig):
         if self.username is not None:
             url += f"{self.username}"
             if self.password is not None:
-                url += f":{self.password.get_secret_value()}"
+                url += f":{quote_plus(self.password.get_secret_value())}"
             url += "@"
         url += f"{self.host_port}"
         if self.catalog is not None:
             url += f"/{self.catalog}"
             if self.database is not None:
                 url += f"/{self.database}"
+
+        if self.options is not None:
+            if self.database is None:
+                url += "/"
+            params = "&".join(
+                f"{key}={quote_plus(value)}"
+                for (key, value) in self.options.items()
+                if value
+            )
+            url = f"{url}?{params}"
         return url
 
 
