@@ -14,7 +14,7 @@
 package org.openmetadata.catalog.selenium.pages.tableDetails;
 
 import com.github.javafaker.Faker;
-import io.github.artsok.RepeatedIfExceptionsTest;
+import org.junit.jupiter.api.Test;
 import org.openmetadata.catalog.selenium.events.Events;
 import org.openmetadata.catalog.selenium.properties.Property;
 import org.openqa.selenium.By;
@@ -59,7 +59,7 @@ public class TableDetailsPageTest {
     webDriver.get(url);
   }
 
-  @RepeatedIfExceptionsTest(repeats = 2)
+  @Test
   @Order(1)
   public void openExplorePage() throws InterruptedException {
     Events.click(webDriver, By.cssSelector("[data-testid='closeWhatsNew']")); // Close What's new
@@ -67,7 +67,7 @@ public class TableDetailsPageTest {
     Thread.sleep(waitTime);
   }
 
-  @RepeatedIfExceptionsTest(repeats = 2)
+  @Test
   @Order(2)
   public void checkTabs() throws InterruptedException {
     openExplorePage();
@@ -78,7 +78,7 @@ public class TableDetailsPageTest {
     Events.click(webDriver, By.xpath("(//button[@data-testid='tab'])[4]")); // Manage
   }
 
-  @RepeatedIfExceptionsTest(repeats = 2)
+  @Test
   @Order(3)
   public void editDescription() throws InterruptedException {
     openExplorePage();
@@ -89,7 +89,7 @@ public class TableDetailsPageTest {
     Events.click(webDriver, By.cssSelector("[data-testid='save']"));
   }
 
-  @RepeatedIfExceptionsTest(repeats = 2)
+  @Test
   @Order(4)
   public void searchColumnAndEditDescription() throws InterruptedException {
     openExplorePage();
@@ -104,7 +104,7 @@ public class TableDetailsPageTest {
     Events.click(webDriver, By.cssSelector("[data-testid='save']"));
   }
 
-  @RepeatedIfExceptionsTest(repeats = 2)
+  @Test
   @Order(5)
   public void addTagsToColumn() throws InterruptedException {
     openExplorePage();
@@ -121,7 +121,7 @@ public class TableDetailsPageTest {
     Events.click(webDriver, By.cssSelector("[data-testid='saveAssociatedTag']"));
   }
 
-  @RepeatedIfExceptionsTest(repeats = 2)
+  @Test
   @Order(6)
   public void removeTagsFromColumn() throws InterruptedException {
     openExplorePage();
@@ -135,7 +135,7 @@ public class TableDetailsPageTest {
     Events.click(webDriver, By.cssSelector("[data-testid='saveAssociatedTag']"));
   }
 
-//    @RepeatedIfExceptionsTest(repeats = 2)
+//    @Test
 //    @Order(7)
 //    public void basicChecks() throws InterruptedException {
 //        openExplorePage();
@@ -149,7 +149,7 @@ public class TableDetailsPageTest {
 //        Events.click(webDriver, By.cssSelector("[data-testid='sample-data-button']"));
 //    }
 
-  @RepeatedIfExceptionsTest(repeats = 2)
+  @Test
   @Order(8)
   public void checkProfiler() throws InterruptedException {
     openExplorePage();
@@ -168,7 +168,7 @@ public class TableDetailsPageTest {
     }
   }
 
-  @RepeatedIfExceptionsTest(repeats = 2)
+  @Test
   @Order(9)
   public void checkManage() throws InterruptedException {
     openExplorePage();
@@ -186,7 +186,7 @@ public class TableDetailsPageTest {
     webDriver.navigate().refresh();
   }
 
-  @RepeatedIfExceptionsTest(repeats = 2)
+  @Test
   @Order(10)
   public void checkLineage() throws InterruptedException {
     openExplorePage();
@@ -200,7 +200,7 @@ public class TableDetailsPageTest {
     }
   }
 
-  @RepeatedIfExceptionsTest(repeats = 2)
+  @Test
   @Order(11)
   public void checkBreadCrumb() throws InterruptedException {
     openExplorePage();
@@ -221,7 +221,7 @@ public class TableDetailsPageTest {
     }
   }
 
-  @RepeatedIfExceptionsTest(repeats = 2)
+  @Test
   @Order(12)
   public void checkVersion() throws InterruptedException {
     openExplorePage();
@@ -237,7 +237,7 @@ public class TableDetailsPageTest {
     Events.click(webDriver, By.cssSelector("[data-testid='closeDrawer']"));
   }
 
-  @RepeatedIfExceptionsTest(repeats = 2)
+  @Test
   @Order(13)
   public void checkFrequentlyJoinedTables() throws InterruptedException {
     openExplorePage();
@@ -258,7 +258,7 @@ public class TableDetailsPageTest {
 //    }
   }
 
-  @RepeatedIfExceptionsTest(repeats = 2)
+  @Test
   @Order(14)
   public void checkFrequentlyJoinedColumns() throws InterruptedException {
     openExplorePage();

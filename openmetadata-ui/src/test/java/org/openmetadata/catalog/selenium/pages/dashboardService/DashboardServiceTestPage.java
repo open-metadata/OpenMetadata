@@ -14,7 +14,7 @@
 package org.openmetadata.catalog.selenium.pages.dashboardService;
 
 import com.github.javafaker.Faker;
-import io.github.artsok.RepeatedIfExceptionsTest;
+import org.junit.jupiter.api.Test;
 import org.openmetadata.catalog.selenium.events.Events;
 import org.openmetadata.catalog.selenium.properties.Property;
 import org.openqa.selenium.By;
@@ -59,7 +59,7 @@ public class DashboardServiceTestPage {
     webDriver.get(url);
   }
 
-  @RepeatedIfExceptionsTest(repeats = 2)
+  @Test
   @Order(1)
   public void openDashboardServicePage() throws InterruptedException {
     Events.click(webDriver, By.cssSelector("[data-testid='closeWhatsNew']")); // Close What's new
@@ -69,7 +69,7 @@ public class DashboardServiceTestPage {
     Thread.sleep(waitTime);
   }
 
-  @RepeatedIfExceptionsTest(repeats = 2)
+  @Test
   @Order(2)
   public void addDashboardService() throws InterruptedException {
     openDashboardServicePage();
@@ -99,7 +99,7 @@ public class DashboardServiceTestPage {
     Events.click(webDriver, By.cssSelector("[data-testid='save-button']"));
   }
 
-  @RepeatedIfExceptionsTest(repeats = 2)
+  @Test
   @Order(3)
   public void editDashboardService() throws InterruptedException {
     openDashboardServicePage();
@@ -111,7 +111,7 @@ public class DashboardServiceTestPage {
     Events.click(webDriver, By.cssSelector("[data-testid='save-button']"));
   }
 
-  @RepeatedIfExceptionsTest(repeats = 2)
+  @Test
   @Order(4)
   public void checkDashboardServiceDetails() throws InterruptedException {
     openDashboardServicePage();
@@ -125,7 +125,7 @@ public class DashboardServiceTestPage {
     Events.click(webDriver, By.cssSelector("[data-testid='save']"));
   }
 
-  @RepeatedIfExceptionsTest(repeats = 2)
+  @Test
   @Order(5)
   public void searchDashboardService() throws InterruptedException {
     openDashboardServicePage();
@@ -133,7 +133,7 @@ public class DashboardServiceTestPage {
     Events.click(webDriver, By.cssSelector("[data-testid='service-name-"+ serviceName + "']"));
   }
 
-  @RepeatedIfExceptionsTest(repeats = 2)
+  @Test
   @Order(6)
   public void deleteDashboardService() throws InterruptedException {
     openDashboardServicePage();
