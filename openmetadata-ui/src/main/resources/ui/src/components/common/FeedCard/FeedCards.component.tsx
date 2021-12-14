@@ -60,7 +60,7 @@ const FeedCards: FC<FeedCardsProp> = ({
                   <h6 className="tw-flex tw-items-center tw-m-0 tw-heading tw-pl-2">
                     {feed.updatedBy}
                     <span className="tw-pl-1 tw-font-normal">
-                      updated{' '}
+                      updated {feed.entityType}{' '}
                       <Link to={getEntityLink(feed.entityType, feed.fqn)}>
                         <span className="link-text">{feed.entityName}</span>
                       </Link>

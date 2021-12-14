@@ -72,4 +72,4 @@ This schema <u>does not</u> accept additional properties.
     - When a change did not result in change, this could be same as the current version.
     - $ref: [#/definitions/entityVersion](#entityversion)
 
-_This document was updated on: Thursday, December 9, 2021_
+_This document was updated on: Tuesday, December 14, 2021_

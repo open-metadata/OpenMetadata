@@ -9,11 +9,20 @@ Type: `object`
 This schema <u>does not</u> accept additional properties.
 
 ## Properties
-- **filters** `required` 
+- **name**
+  - Name that identifies this Rule.
+  - Type: `string`
+- **filters** `required`
   - $ref: [filters.json#/definitions/filters](filters.md#filters)
 - **actions** `required`
   - A set of access control enforcements to take on the entities.
   - Type: `array`
+  - Item Count:  &ge; 1
     - **Items**
-    
-_This document was updated on: Thursday, December 9, 2021_
+- **enabled**
+  - Is the rule enabled.
+  - Type: `boolean`
+  - Default: _true_
+
+
+_This document was updated on: Tuesday, December 14, 2021_
