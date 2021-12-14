@@ -47,4 +47,4 @@ This schema <u>does not</u> accept additional properties.
     - ID of User (regular user or a bot) posting the message.
     - $ref: [../../type/basic.json#/definitions/uuid](../types/basic.md#uuid)
 
-_This document was updated on: Thursday, December 9, 2021_
+_This document was updated on: Tuesday, December 14, 2021_

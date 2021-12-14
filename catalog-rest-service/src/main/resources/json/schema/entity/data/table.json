@@ -397,7 +397,7 @@
           "$ref" : "#/definitions/modelType"
         },
         "description" : {
-          "description": "Description of the Table from the model",
+          "description": "Description of the Table from the model.",
           "type" : "string"
         },
         "path" : {
@@ -413,7 +413,7 @@
           "$ref": "../../type/basic.json#/definitions/sqlQuery"
         },
         "upstream" : {
-          "description": "Fully qualified name of Models/tables used for in `sql` for creating this table",
+          "description": "Fully qualified name of Models/tables used for in `sql` for creating this table.",
           "type": "array",
           "items": {
             "type" : "string"

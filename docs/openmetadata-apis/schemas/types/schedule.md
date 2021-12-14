@@ -14,4 +14,4 @@ Type: `object`
   - Repeat frequency in ISO 8601 duration format. Example - 'P23DT23H'.
   - $ref: [basic.json#/definitions/duration](basic.md#duration)
 
-_This document was updated on: Thursday, December 9, 2021_
+_This document was updated on: Tuesday, December 14, 2021_
