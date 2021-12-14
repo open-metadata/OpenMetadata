@@ -87,8 +87,29 @@ TABLE_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
               "type": "long"
             },
             "change_descriptions": {
-              "type": "nested"
+              "type": "nested",
+              "properties": {
+                "updatedAt": {
+                  "type": "long"
+                },
+                "updatedBy": {
+                  "type": "text"
+                },
+                "fieldsAdded": {
+                  "type": "object",
+                  "enabled": false
+                },
+                "fieldsDeleted": {
+                   "type": "object",
+                   "enabled": false
+                },
+                "fieldsUpdated": {
+                  "type": "object",
+                  "enabled": false
+                }
             }
+          }
+         }
           }
       }
     }
@@ -144,8 +165,29 @@ TOPIC_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
               "type": "completion"
             },
             "change_descriptions": {
-              "type": "nested"
+              "type": "nested",
+              "properties": {
+                "updatedAt": {
+                  "type": "long"
+                },
+                "updatedBy": {
+                  "type": "text"
+                },
+                "fieldsAdded": {
+                  "type": "object",
+                  "enabled": false
+                },
+                "fieldsDeleted": {
+                   "type": "object",
+                   "enabled": false
+                },
+                "fieldsUpdated": {
+                  "type": "object",
+                  "enabled": false
+                }
             }
+          }
+         }
           }
         }
     }
@@ -225,8 +267,29 @@ DASHBOARD_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
               "type": "long"
             },
             "change_descriptions": {
-              "type": "nested"
+              "type": "nested",
+              "properties": {
+                "updatedAt": {
+                  "type": "long"
+                },
+                "updatedBy": {
+                  "type": "text"
+                },
+                "fieldsAdded": {
+                  "type": "object",
+                  "enabled": false
+                },
+                "fieldsDeleted": {
+                   "type": "object",
+                   "enabled": false
+                },
+                "fieldsUpdated": {
+                  "type": "object",
+                  "enabled": false
+                }
             }
+          }
+         }
           }
         }
     }
@@ -288,77 +351,30 @@ PIPELINE_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
               "type": "completion"
             },
             "change_descriptions": {
-              "type": "nested"
+              "type": "nested",
+              "properties": {
+                "updatedAt": {
+                  "type": "long"
+                },
+                "updatedBy": {
+                  "type": "text"
+                },
+                "fieldsAdded": {
+                  "type": "object",
+                  "enabled": false
+                },
+                "fieldsDeleted": {
+                   "type": "object",
+                   "enabled": false
+                },
+                "fieldsUpdated": {
+                  "type": "object",
+                  "enabled": false
+                }
             }
           }
-        }
-    }
-    """
-)
-
-
-DBT_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
-    """
-    {
-    "mappings":{
-          "properties": {
-            "name": {
-              "type":"text"
-            },
-            "display_name": {
-              "type": "text"
-            },
-            "owner": {
-              "type": "text"
-            },
-            "followers": {
-              "type": "keyword"
-            },
-            "fqdn": {
-              "type": "keyword"
-            },
-            "last_updated_timestamp": {
-              "type": "date",
-              "format": "epoch_second"
-            },
-            "description": {
-              "type": "text"
-            },
-            "tier": {
-              "type": "keyword"
-            },
-            "column_names": {
-              "type":"text"
-            },
-            "column_descriptions": {
-              "type": "text"
-            },
-            "tags": {
-              "type": "keyword"
-            },
-            "service": {
-              "type": "keyword"
-            },
-            "service_type": {
-              "type": "keyword"
-            },
-            "service_category": {
-              "type": "keyword"
-            },
-            "entity_type": {
-              "type": "keyword"
-            },
-            "database": {
-              "type": "text"
-            },
-            "suggest": {
-              "type": "completion"
-            },
-            "change_descriptions": {
-              "type": "nested"
-            }
-          }
-        }
+         }
+      }
     }
     """
 )

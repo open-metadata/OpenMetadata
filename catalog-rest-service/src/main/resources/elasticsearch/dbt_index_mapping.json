@@ -53,24 +53,7 @@
         "type": "completion"
       },
       "change_descriptions": {
-        "type": "nested",
-        "properties": {
-          "updatedAt": {
-            "type": "long"
-          },
-          "updatedBy": {
-            "type": "text"
-          },
-          "fieldsAdded": {
-            "type": "text"
-          },
-          "fieldsDeleted": {
-            "type": "text"
-          },
-          "fieldsUpdated": {
-            "type": "text"
-          }
-        }
+        "type": "nested"
       }
     }
 }
