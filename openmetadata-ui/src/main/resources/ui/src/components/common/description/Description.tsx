@@ -47,7 +47,7 @@ const Description = ({
   return (
     <div className="schema-description tw-flex tw-flex-col tw-h-full tw-min-h-12 tw-relative">
       <div className="tw-px-3 tw-py-1 tw-flex">
-        <div>
+        <Fragment>
           <div data-testid="description tw-overflow-y-auto" id="description">
             {description.trim() ? (
               <RichTextEditorPreviewer
