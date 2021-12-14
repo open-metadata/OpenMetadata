@@ -12,7 +12,7 @@
  */
 
 import classNames from 'classnames';
-import React from 'react';
+import React, { Fragment } from 'react';
 import { Table } from '../../../generated/entity/data/table';
 import { getHtmlForNonAdminAction } from '../../../utils/CommonUtils';
 import SVGIcons from '../../../utils/SvgUtils';
@@ -46,9 +46,9 @@ const Description = ({
 }: Props) => {
   return (
     <div className="schema-description tw-flex tw-flex-col tw-h-full tw-min-h-12 tw-relative">
-      <div className="tw-px-3 tw-py-1 tw-flex">
+      <div className="tw-px-3 tw-py-1 tw-flex tw-overflow-y-auto">
         <Fragment>
-          <div data-testid="description tw-overflow-y-auto" id="description">
+          <div className="description" data-testid="description">
             {description.trim() ? (
               <RichTextEditorPreviewer
                 className="tw-p-2"
@@ -69,7 +69,7 @@ const Description = ({
               onSave={onDescriptionUpdate}
             />
           )}
-        </div>
+        </Fragment>
         {!isReadOnly ? (
           <div
             className={classNames('tw-w-5 tw-min-w-max', {
