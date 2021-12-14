@@ -14,8 +14,7 @@
 //package org.openmetadata.catalog.selenium.pages.dbtModelDetails;
 //
 //import com.github.javafaker.Faker;
-//import io.github.artsok.RepeatedIfExceptionsTest;
-//import org.junit.jupiter.api.AfterEach;
+////import org.junit.jupiter.api.AfterEach;
 //import org.junit.jupiter.api.BeforeEach;
 //import org.junit.jupiter.api.MethodOrderer;
 //import org.junit.jupiter.api.Order;
@@ -57,7 +56,7 @@
 //    webDriver.get(url);
 //  }
 //
-//  @RepeatedIfExceptionsTest(repeats = 2)
+//  @Test
 //  @Order(1)
 //  public void openDbtModelPage() throws InterruptedException {
 //    Events.click(webDriver, By.cssSelector("[data-testid='closeWhatsNew']")); // Close What's new
@@ -66,7 +65,7 @@
 //    Thread.sleep(waitTime);
 //  }
 //
-//  @RepeatedIfExceptionsTest(repeats = 2)
+//  @Test
 //  @Order(2)
 //  public void editDescription() throws InterruptedException {
 //    openDbtModelPage();
@@ -78,7 +77,7 @@
 //    Events.click(webDriver, By.cssSelector("[data-testid='save']"));
 //  }
 //
-//  @RepeatedIfExceptionsTest(repeats = 2)
+//  @Test
 //  @Order(3)
 //  public void editColumnDescription() throws InterruptedException {
 //    openDbtModelPage();
@@ -92,7 +91,7 @@
 //    Events.click(webDriver, By.cssSelector("[data-testid='save']"));
 //  }
 //
-//  @RepeatedIfExceptionsTest(repeats = 2)
+//  @Test
 //  @Order(4)
 //  public void addColumnTag() throws InterruptedException {
 //    openDbtModelPage();
@@ -111,7 +110,7 @@
 //    webDriver.navigate().refresh();
 //  }
 //
-//  @RepeatedIfExceptionsTest(repeats = 2)
+//  @Test
 //  @Order(5)
 //  public void removeColumnTag() throws InterruptedException {
 //    openDbtModelPage();
@@ -124,7 +123,7 @@
 //    Events.click(webDriver, By.cssSelector("[data-testid='saveAssociatedTag']"));
 //  }
 //
-//  @RepeatedIfExceptionsTest(repeats = 2)
+//  @Test
 //  @Order(6)
 //  public void checkManage() throws InterruptedException {
 //    openDbtModelPage();
