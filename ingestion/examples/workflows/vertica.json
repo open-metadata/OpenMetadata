@@ -6,7 +6,7 @@
       "password": "openmetadata_password",
       "database": "openmetadata_db",
       "service_name": "local_vertica",
-      "filter_pattern": {
+      "table_filter_pattern": {
         "excludes": []
       }
     }

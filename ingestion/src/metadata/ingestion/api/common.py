@@ -61,6 +61,7 @@ class IncludeFilterPattern(ConfigModel):
     def included(self, string: str) -> bool:
         try:
             for exclude in self.excludes:
+                print(f"{exclude} and {string}")
                 if re.match(exclude, string):
                     return False
 
