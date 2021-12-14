@@ -23,7 +23,7 @@ const RecentSearchedTerms: FunctionComponent = () => {
   return (
     <>
       <h6 className="tw-heading tw-mb-3" data-testid="filter-heading">
-        Recently Searched Terms
+        Recent Search Terms
       </h6>
       {recentlySearchedTerms.length ? (
         recentlySearchedTerms.map((item, index) => {
@@ -48,7 +48,7 @@ const RecentSearchedTerms: FunctionComponent = () => {
                         position="top"
                         size="regular"
                         trigger="mouseenter">
-                        {item.term.slice(0, 20)}...
+                        <span>{item.term.slice(0, 20)}...</span>
                       </PopOver>
                     ) : (
                       item.term
