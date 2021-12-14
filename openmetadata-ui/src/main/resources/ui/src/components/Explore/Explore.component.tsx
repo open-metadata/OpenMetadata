@@ -298,7 +298,7 @@ const Explore: React.FC<ExploreProps> = ({
     return (
       <div className="tw-flex tw-gap-2">
         <div className="tw-mt-4">
-          <span className="tw-mr-2">Sort by :</span>
+          <span className="tw-mr-2">Sort by:</span>
           <span className="tw-relative">
             <Button
               className="tw-underline"
@@ -383,7 +383,7 @@ const Explore: React.FC<ExploreProps> = ({
   const getTabs = () => {
     return (
       <div className="tw-mb-5">
-        <nav className="tw-flex tw-flex-row tw-gh-tabs-container tw-mx-9 tw-pl-72 tw-pr-80 tw-justify-between">
+        <nav className="tw-flex tw-flex-row tw-gh-tabs-container tw-mx-9 tw-pl-72 xl:tw-pr-64 lg:tw-pr-0 tw-justify-between">
           <div>
             {tabsInfo.map((tabDetail, index) => (
               <button

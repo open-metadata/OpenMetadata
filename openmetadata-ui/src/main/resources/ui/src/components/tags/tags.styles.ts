@@ -12,11 +12,11 @@
  */
 
 export const tagStyles = {
-  base: `tw-relative tw-inline-flex tw-text-xs tw-font-normal 
+  base: `tw-relative tw-inline-flex tw-text-xs tw-font-medium 
       tw-rounded tw-whitespace-nowrap`,
-  contained: 'tw-bg-tag tw-mr-2 tw-my-0.5 tw-font-medium ',
-  outlined: 'tw-bg-transparent tw-mr-2 tw-my-0.5 tw-font-medium ',
-  label: 'tw-bg-transparent tw-border-none tw-text-grey-body tw-text-body',
+  contained: 'tw-bg-badge tw-mr-2 tw-my-0.5',
+  outlined: 'tw-bg-transparent tw-mr-2 tw-my-0.5',
+  label: 'tw-bg-transparent tw-border-none tw-text-grey-body',
 
   text: {
     base: 'tw-no-underline hover:tw-no-underline',
