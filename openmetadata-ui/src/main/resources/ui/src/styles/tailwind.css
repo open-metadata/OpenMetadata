@@ -155,10 +155,6 @@
     @apply tw-visible tw-z-50;
   }
 
-  .tw-tag {
-    @apply tw-py-1 tw-px-3 tw-text-xs tw-font-normal tw-rounded-2xl tw-bg-tag;
-  }
-
   .tw-signin-button {
     @apply tw-rounded-md tw-bg-white tw-h-9 tw-w-60 tw-mt-2 tw-px-4 tw-border tw-font-medium;
     box-shadow: 0px 0px 4px rgba(0, 0, 0, 0.2);

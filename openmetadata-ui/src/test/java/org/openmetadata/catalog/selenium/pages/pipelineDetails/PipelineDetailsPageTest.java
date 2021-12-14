@@ -14,7 +14,7 @@
 package org.openmetadata.catalog.selenium.pages.pipelineDetails;
 
 import com.github.javafaker.Faker;
-import io.github.artsok.RepeatedIfExceptionsTest;
+import org.junit.jupiter.api.Test;
 import org.openmetadata.catalog.selenium.events.Events;
 import org.openmetadata.catalog.selenium.properties.Property;
 import org.openqa.selenium.By;
@@ -58,7 +58,7 @@ public class PipelineDetailsPageTest {
     webDriver.get(url);
   }
 
-  @RepeatedIfExceptionsTest(repeats = 2)
+  @Test
   @Order(1)
   public void openExplorePage() throws InterruptedException {
     Events.click(webDriver, By.cssSelector("[data-testid='closeWhatsNew']")); // Close What's new
@@ -67,7 +67,7 @@ public class PipelineDetailsPageTest {
     Thread.sleep(waitTime);
   }
 
-  @RepeatedIfExceptionsTest(repeats = 2)
+  @Test
   @Order(2)
   public void editDescription() throws InterruptedException {
     openExplorePage();
@@ -79,7 +79,7 @@ public class PipelineDetailsPageTest {
     Events.click(webDriver, By.cssSelector("[data-testid='save']"));
   }
 
-  @RepeatedIfExceptionsTest(repeats = 2)
+  @Test
   @Order(3)
   public void addTag() throws InterruptedException {
     openExplorePage();
@@ -98,7 +98,7 @@ public class PipelineDetailsPageTest {
     webDriver.navigate().refresh();
   }
 
-  @RepeatedIfExceptionsTest(repeats = 2)
+  @Test
   @Order(4)
   public void removeTag() throws InterruptedException {
     openExplorePage();
@@ -111,7 +111,7 @@ public class PipelineDetailsPageTest {
     Events.click(webDriver, By.cssSelector("[data-testid='saveAssociatedTag']"));
   }
 
-  @RepeatedIfExceptionsTest(repeats = 2)
+  @Test
   @Order(5)
   public void editTaskDescription() throws InterruptedException {
     openExplorePage();
@@ -125,7 +125,7 @@ public class PipelineDetailsPageTest {
     Events.click(webDriver, By.cssSelector("[data-testid='save']"));
   }
 
-  @RepeatedIfExceptionsTest(repeats = 2)
+  @Test
   @Order(6)
   public void checkLineage() throws InterruptedException {
     openExplorePage();
@@ -139,7 +139,7 @@ public class PipelineDetailsPageTest {
     }
   }
 
-  @RepeatedIfExceptionsTest(repeats = 2)
+  @Test
   @Order(7)
   public void checkManage() throws InterruptedException {
     openExplorePage();
@@ -156,7 +156,7 @@ public class PipelineDetailsPageTest {
     webDriver.navigate().refresh();
   }
 
-  @RepeatedIfExceptionsTest(repeats = 2)
+  @Test
   @Order(8)
   public void checkBreadCrumb() throws InterruptedException {
     openExplorePage();

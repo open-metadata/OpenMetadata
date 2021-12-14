@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import React from 'react';
+import classNames from 'classnames';
+import React, { Fragment } from 'react';
 import { Table } from '../../../generated/entity/data/table';
 import { getHtmlForNonAdminAction } from '../../../utils/CommonUtils';
 import SVGIcons from '../../../utils/SvgUtils';
@@ -44,13 +45,38 @@ const Description = ({
   entityName,
 }: Props) => {
   return (
-    <div className="schema-description tw-flex tw-flex-col tw-h-full tw-min-h-168 tw-relative tw-border tw-border-main tw-rounded-md">
-      <div className="tw-flex tw-items-center tw-px-3 tw-py-1 tw-border-b tw-border-main">
-        <span className="tw-flex-1 tw-leading-8 tw-m-0 tw-text-sm tw-font-medium">
-          Description
-        </span>
+    <div
+      className="schema-description tw-flex tw-flex-col tw-h-full tw-overflow-y-scroll tw-max-h-40 tw-min-h-12 tw-relative"
+      id="center">
+      <div className="tw-px-3 tw-py-1 tw-flex">
+        <Fragment>
+          <div className="description" data-testid="description">
+            {description.trim() ? (
+              <RichTextEditorPreviewer
+                className="tw-p-2"
+                markdown={description}
+              />
+            ) : (
+              <span className="tw-no-description tw-p-2">
+                No description added
+              </span>
+            )}
+          </div>
+          {isEdit && (
+            <ModalWithMarkdownEditor
+              header={`Edit description for ${entityName}`}
+              placeholder="Enter Description"
+              value={description}
+              onCancel={onCancel}
+              onSave={onDescriptionUpdate}
+            />
+          )}
+        </Fragment>
         {!isReadOnly ? (
-          <div className="tw-flex-initial">
+          <div
+            className={classNames('tw-w-5 tw-min-w-max', {
+              'tw-pt-2': Boolean(description.trim()),
+            })}>
             <NonAdminAction
               html={getHtmlForNonAdminAction(Boolean(owner))}
               isOwner={hasEditAccess}>
@@ -68,27 +94,6 @@ const Description = ({
             </NonAdminAction>
           </div>
         ) : null}
-      </div>
-      <div className="tw-px-3 tw-py-2 tw-overflow-y-auto">
-        <div className="tw-pl-3" data-testid="description" id="description">
-          {description.trim() ? (
-            <RichTextEditorPreviewer
-              className="tw-p-2"
-              markdown={description}
-            />
-          ) : (
-            <span className="tw-no-description">No description added</span>
-          )}
-        </div>
-        {isEdit && (
-          <ModalWithMarkdownEditor
-            header={`Edit description for ${entityName}`}
-            placeholder="Enter Description"
-            value={description}
-            onCancel={onCancel}
-            onSave={onDescriptionUpdate}
-          />
-        )}
       </div>
     </div>
   );

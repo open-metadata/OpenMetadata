@@ -14,7 +14,7 @@
 package org.openmetadata.catalog.selenium.pages.pipelineService;
 
 import com.github.javafaker.Faker;
-import io.github.artsok.RepeatedIfExceptionsTest;
+import org.junit.jupiter.api.Test;
 import org.openmetadata.catalog.selenium.events.Events;
 import org.openmetadata.catalog.selenium.properties.Property;
 import org.openqa.selenium.By;
@@ -59,7 +59,7 @@ public class PipelineServiceTestPage {
     webDriver.get(url);
   }
 
-  @RepeatedIfExceptionsTest(repeats = 2)
+  @Test
   @Order(1)
   public void openPipelineServicePage() throws InterruptedException {
     Events.click(webDriver, By.cssSelector("[data-testid='closeWhatsNew']")); // Close What's new
@@ -69,7 +69,7 @@ public class PipelineServiceTestPage {
     Thread.sleep(waitTime);
   }
 
-  @RepeatedIfExceptionsTest(repeats = 2)
+  @Test
   @Order(2)
   public void addPipelineService() throws InterruptedException {
     openPipelineServicePage();
@@ -96,7 +96,7 @@ public class PipelineServiceTestPage {
     Events.click(webDriver, By.cssSelector("[data-testid='save-button']"));
   }
 
-  @RepeatedIfExceptionsTest(repeats = 2)
+  @Test
   @Order(3)
   public void editPipelineService() throws InterruptedException {
     openPipelineServicePage();
@@ -108,7 +108,7 @@ public class PipelineServiceTestPage {
     Events.click(webDriver, By.cssSelector("[data-testid='save-button']"));
   }
 
-  @RepeatedIfExceptionsTest(repeats = 2)
+  @Test
   @Order(4)
   public void checkPipelineServiceDetails() throws InterruptedException {
     openPipelineServicePage();
@@ -122,7 +122,7 @@ public class PipelineServiceTestPage {
     Events.click(webDriver, By.cssSelector("[data-testid='save']"));
   }
 
-  @RepeatedIfExceptionsTest(repeats = 2)
+  @Test
   @Order(5)
   public void searchPipelineService() throws InterruptedException {
     openPipelineServicePage();
@@ -130,7 +130,7 @@ public class PipelineServiceTestPage {
     Events.click(webDriver, By.cssSelector("[data-testid='service-name-" + serviceName + "']"));
   }
 
-  @RepeatedIfExceptionsTest(repeats = 2)
+  @Test
   @Order(6)
   public void deletePipelineService() throws InterruptedException {
     openPipelineServicePage();

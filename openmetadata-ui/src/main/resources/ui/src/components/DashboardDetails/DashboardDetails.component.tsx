@@ -432,7 +432,9 @@ const DashboardDetails = ({
                                     handleChartTagSelection(tags);
                                   }}>
                                   {chart.tags?.length ? (
-                                    <button className="tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none">
+                                    <button
+                                      className="tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none"
+                                      data-testid="edit-tags">
                                       <SVGIcons
                                         alt="edit"
                                         icon="icon-edit"
