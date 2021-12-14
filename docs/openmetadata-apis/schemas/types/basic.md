@@ -76,4 +76,4 @@ This schema defines basic common types that are used by other schemas.
 - SQL query statement. Example - 'select * from orders'.
 - Type: `string`
 
-_This document was updated on: Thursday, December 9, 2021_
+_This document was updated on: Tuesday, December 14, 2021_

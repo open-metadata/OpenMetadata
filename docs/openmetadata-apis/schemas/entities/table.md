@@ -9,7 +9,7 @@ Type: `object`
 This schema <u>does not</u> accept additional properties.
 
 ## Properties
-- **id** `required` 
+- **id** `required`
   - Unique identifier of this table instance.
   - $ref: [../../type/basic.json#/definitions/uuid](../types/basic.md#uuid)
 - **name** `required`
@@ -93,13 +93,15 @@ This schema <u>does not</u> accept additional properties.
   - Type: `array`
     - **Items**
     - $ref: [#/definitions/sqlQuery](#sqlquery)
+- **dataModel**
+  - This captures information about how the table is modeled. Currently only DBT model is supported.
+  - $ref: [#/definitions/dataModel](#datamodel)
 - **changeDescription**
   - Change that lead to this version of the entity.
   - $ref: [../../type/entityHistory.json#/definitions/changeDescription](../types/entityhistory.md#changedescription)
 
 
 ## Type definitions in this schema
-
 ### tableType
 
 - This schema defines the type used for describing different types of tables.
@@ -110,6 +112,7 @@ This schema <u>does not</u> accept additional properties.
   3. _"View"_
   4. _"SecureView"_
   5. _"MaterializedView"_
+
 
 ### dataType
 
@@ -122,34 +125,36 @@ This schema <u>does not</u> accept additional properties.
   4. _"INT"_
   5. _"BIGINT"_
   6. _"BYTEINT"_
-  7. _"FLOAT"_
-  8. _"DOUBLE"_
-  9. _"DECIMAL"_
-  10. _"NUMERIC"_
-  11. _"TIMESTAMP"_
-  12. _"TIME"_
-  13. _"DATE"_
-  14. _"DATETIME"_
-  15. _"INTERVAL"_
-  16. _"STRING"_
-  17. _"MEDIUMTEXT"_
-  18. _"TEXT"_
-  19. _"CHAR"_
-  20. _"VARCHAR"_
-  21. _"BOOLEAN"_
-  22. _"BINARY"_
-  23. _"VARBINARY"_
-  24. _"ARRAY"_
-  25. _"BLOB"_
-  26. _"LONGBLOB"_
-  27. _"MEDIUMBLOB"_
-  28. _"MAP"_
-  29. _"STRUCT"_
-  30. _"UNION"_
-  31. _"SET"_
-  32. _"GEOGRAPHY"_
-  33. _"ENUM"_
-  34. _"JSON"_
+  7. _"BYTES"_
+  8. _"FLOAT"_
+  9. _"DOUBLE"_
+  10. _"DECIMAL"_
+  11. _"NUMERIC"_
+  12. _"TIMESTAMP"_
+  13. _"TIME"_
+  14. _"DATE"_
+  15. _"DATETIME"_
+  16. _"INTERVAL"_
+  17. _"STRING"_
+  18. _"MEDIUMTEXT"_
+  19. _"TEXT"_
+  20. _"CHAR"_
+  21. _"VARCHAR"_
+  22. _"BOOLEAN"_
+  23. _"BINARY"_
+  24. _"VARBINARY"_
+  25. _"ARRAY"_
+  26. _"BLOB"_
+  27. _"LONGBLOB"_
+  28. _"MEDIUMBLOB"_
+  29. _"MAP"_
+  30. _"STRUCT"_
+  31. _"UNION"_
+  32. _"SET"_
+  33. _"GEOGRAPHY"_
+  34. _"ENUM"_
+  35. _"JSON"_
+
 
 ### constraint
 
@@ -160,6 +165,7 @@ This schema <u>does not</u> accept additional properties.
   2. _"NOT_NULL"_
   3. _"UNIQUE"_
   4. _"PRIMARY_KEY"_
+
 
 ### tableConstraint
 
@@ -178,12 +184,14 @@ This schema <u>does not</u> accept additional properties.
       - **Items**
       - Type: `string`
 
+
 ### columnName
 
 - Local name (not fully qualified name) of the column. ColumnName is `-` when the column is not named in struct dataType. For example, BigQuery supports struct with unnamed fields.
 - Type: `string`
 - The value must match this pattern: `^[^.]*$`
 - Length: between 1 and 128
+
 
 ### tableName
 
@@ -192,11 +200,13 @@ This schema <u>does not</u> accept additional properties.
 - The value must match this pattern: `^[^.]*$`
 - Length: between 1 and 128
 
+
 ### fullyQualifiedColumnName
 
 - Fully qualified name of the column that includes `serviceName.databaseName.tableName.columnName[.nestedColumnName]`. When columnName is null for dataType struct fields, `field_#` where `#` is field index is used. For map dataType, for key the field name `key` is used and for the value field `value` is used.
 - Type: `string`
 - Length: between 1 and 256
+
 
 ### column
 
@@ -243,6 +253,7 @@ This schema <u>does not</u> accept additional properties.
       - **Items**
       - $ref: [#/definitions/column](#column)
 
+
 ### columnJoins
 
 - This schema defines the type to capture how frequently a column is joined with columns in the other tables.
@@ -255,12 +266,13 @@ This schema <u>does not</u> accept additional properties.
     - Fully qualified names of the columns that this column is joined with.
     - Type: `array`
       - **Items**
-        - Type: `object`
+      - Type: `object`
       - **Properties**
         - **fullyQualifiedName**
           - $ref: [#/definitions/fullyQualifiedColumnName](#fullyqualifiedcolumnname)
         - **joinCount**
           - Type: `integer`
+
 
 ### tableJoins
 
@@ -279,6 +291,7 @@ This schema <u>does not</u> accept additional properties.
       - **Items**
       - $ref: [#/definitions/columnJoins](#columnjoins)
 
+
 ### tableData
 
 - This schema defines the type to capture rows of sample data for a table.
@@ -290,12 +303,13 @@ This schema <u>does not</u> accept additional properties.
     - Type: `array`
       - **Items**
       - $ref: [#/definitions/columnName](#columnname)
-    - **rows**
-      - Data for multiple rows of the table.
+  - **rows**
+    - Data for multiple rows of the table.
+    - Type: `array`
+      - **Items**
+      - Data for a single row of the table within the same order as columns fields.
       - Type: `array`
-        - **Items**
-          - Data for a single row of the table within the same order as columns fields.
-          - Type: `array`
+
 
 ### columnProfile
 
@@ -334,6 +348,7 @@ This schema <u>does not</u> accept additional properties.
     - Standard deviation of a column.
     - Type: `number`
 
+
 ### tableProfile
 
 - This schema defines the type to capture the table's data profile.
@@ -355,29 +370,72 @@ This schema <u>does not</u> accept additional properties.
       - **Items**
       - $ref: [#/definitions/columnProfile](#columnprofile)
 
+
 ### sqlQuery
 
 - This schema defines the type to capture the table's sql queries.
 - Type: `object`
 - **Properties**
   - **query**
-    - SQL Query text that matches the table name.
-    - Type: `string`
+      - SQL Query text that matches the table name.
+      - Type: `string`
   - **duration**
-    - How long did the query took to run in seconds.
-    - Type: `number`
+      - How long did the query took to run in seconds.
+      - Type: `number`
   - **user**
-    - User who ran this query.
-    - $ref: [../../type/entityReference.json](../types/entityreference.md)
+      - User who ran this query.
+      - $ref: [../../type/entityReference.json](../types/entityreference.md)
   - **vote**
-    - Users can vote up to rank the popular queries.
-    - Type: `number`
-    - Default: `1`
+      - Users can vote up to rank the popular queries.
+      - Type: `number`
+      - Default: `1`
   - **checksum**
-    - Checksum to avoid registering duplicate queries.
-    - Type: `string`
+      - Checksum to avoid registering duplicate queries.
+      - Type: `string`
   - **queryDate**
-    - Date on which the query ran.
-    - $ref: [../../type/basic.json#/definitions/date](../types/basic.md#date)
+      - Date on which the query ran.
+      - $ref: [../../type/basic.json#/definitions/date](../types/basic.md#date)
 
-_This document was updated on: Thursday, December 9, 2021_
+
+### modelType
+
+- The value is restricted to the following: 
+  1. _"DBT"_
+
+
+### dataModel
+
+- This captures information about how the table is modeled. Currently only DBT model is supported.
+- Type: `object`
+- **Properties**
+  - **modelType** `required`
+    - $ref: [#/definitions/modelType](#modeltype)
+  - **description**
+    - Description of the Table from the model.
+    - Type: `string`
+  - **path**
+    - Path to sql definition file.
+    - Type: `string`
+  - **rawSql**
+    - This corresponds to rws SQL from `<model_name>.sql` in DBT. This might be null when SQL query need not be compiled as done in DBT.
+    - $ref: [../../type/basic.json#/definitions/sqlQuery](../types/basic.md#sqlquery)
+  - **sql** `required`
+    - This corresponds to compile SQL from `<model_name>.sql` in DBT. In cases where compilation is not necessary, this corresponds to SQL that created the table.
+    - $ref: [../../type/basic.json#/definitions/sqlQuery](../types/basic.md#sqlquery)
+  - **upstream**
+    - Fully qualified name of Models/tables used for in `sql` for creating this table.
+    - Type: `array`
+      - **Items**
+      - Type: `string`
+  - **columns**
+    - Columns from the schema defined during modeling. In case of DBT, the metadata here comes from `schema.yaml`.
+    - Type: `array`
+      - **Items**
+      - $ref: [#/definitions/column](#column)
+  - **generatedAt**
+    - $ref: [../../type/basic.json#/definitions/dateTime](../types/basic.md#datetime)
+
+
+
+
+_This document was updated on: Tuesday, December 14, 2021_

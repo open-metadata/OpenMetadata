@@ -9,7 +9,7 @@ Type: `object`
 This schema <u>does not</u> accept additional properties.
 
 ## Properties
-- **id** `required`
+- **id** `required` 
   - Unique identifier that identifies this Policy.
   - $ref: [../../type/basic.json#/definitions/uuid](../types/basic.md#uuid)
 - **name** `required`
@@ -54,17 +54,16 @@ This schema <u>does not</u> accept additional properties.
   - Change that led to this version of the Policy.
   - $ref: [../../type/entityHistory.json#/definitions/changeDescription](../types/entityhistory.md#changedescription)
 - **rules**
-  - A set of rules associated with this Policy.
-  - Type: `array`
-    - **Items**
+  - $ref: [#/definitions/rules](#rules)
 
 
 ## Type definitions in this schema
 ### policyName
 
--Name that identifies this Policy.
+- Name that identifies this Policy.
 - Type: `string`
 - Length: between 1 and 128
+
 
 ### policyType
 
@@ -74,4 +73,14 @@ This schema <u>does not</u> accept additional properties.
   1. _"AccessControl"_
   2. _"Lifecycle"_
 
-_This document was updated on: Thursday, December 9, 2021_
+
+### rules
+
+- A set of rules associated with the Policy.
+- Type: `array`
+  - **Items**
+
+
+
+
+_This document was updated on: Tuesday, December 14, 2021_

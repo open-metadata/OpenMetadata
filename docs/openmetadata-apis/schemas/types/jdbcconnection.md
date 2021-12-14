@@ -45,4 +45,4 @@ This schema <u>does not</u> accept additional properties.
   - **connectionUrl** `required`
     - $ref: [#/definitions/connectionUrl](#connectionurl)
 
-    - _This document was updated on: Thursday, December 9, 2021_
+    - _This document was updated on: Tuesday, December 14, 2021_

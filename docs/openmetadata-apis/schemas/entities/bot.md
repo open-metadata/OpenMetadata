@@ -36,4 +36,4 @@ Type: `object`
   - Change that lead to this version of the entity.
   - $ref: [../type/entityHistory.json#/definitions/changeDescription](../types/entityhistory.md#changedescription)
 
-_This document was updated on: Thursday, December 9, 2021_
+_This document was updated on: Tuesday, December 14, 2021_
