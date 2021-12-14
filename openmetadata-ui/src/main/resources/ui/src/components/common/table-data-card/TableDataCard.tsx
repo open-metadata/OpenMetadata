@@ -71,7 +71,7 @@ const TableDataCard: FunctionComponent<Props> = ({
       key: 'Usage',
       value:
         indexType !== SearchIndex.DASHBOARD && usage !== undefined
-          ? getUsagePercentile(usage)
+          ? getUsagePercentile(usage, true)
           : undefined,
     });
   }
