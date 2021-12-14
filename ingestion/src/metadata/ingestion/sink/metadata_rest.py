@@ -162,6 +162,8 @@ class MetadataRestSink(Sink[Entity]):
                 location_request = CreateLocationEntityRequest(
                     name=db_and_table.location.name,
                     description=db_and_table.location.description.strip(),
+                    locationType=db_and_table.location.locationType,
+                    owner=db_and_table.location.owner,
                     service=EntityReference(
                         id=db_and_table.location.service.id,
                         type="storageService",
@@ -288,7 +290,6 @@ class MetadataRestSink(Sink[Entity]):
                 name=location.name,
                 description=location.description,
                 locationType=location.locationType,
-                tags=location.tags,
                 owner=location.owner,
                 service=location.service,
             )
