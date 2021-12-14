@@ -24,39 +24,33 @@ import {
   getDatabaseDetailsByFQN,
   patchDatabaseDetails,
 } from '../../axiosAPIs/databaseAPI';
-import { postFeed } from '../../axiosAPIs/feedsAPI';
 import { getServiceById } from '../../axiosAPIs/serviceAPI';
 import { getDatabaseTables } from '../../axiosAPIs/tableAPI';
+import Description from '../../components/common/description/Description';
 import NextPrevious from '../../components/common/next-previous/NextPrevious';
-import NonAdminAction from '../../components/common/non-admin-action/NonAdminAction';
 import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
 import TabsPane from '../../components/common/TabsPane/TabsPane';
 import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-breadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
 import PageContainer from '../../components/containers/PageContainer';
 import Loader from '../../components/Loader/Loader';
-import { ModalWithMarkdownEditor } from '../../components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import Tags from '../../components/tags/tags';
 import {
   getDatasetDetailsPath,
   getExplorePathWithSearch,
   getServiceDetailsPath,
   pagingObject,
-  TITLE_FOR_NON_ADMIN_ACTION,
 } from '../../constants/constants';
 import { ServiceCategory } from '../../enums/service.enum';
 import { Database } from '../../generated/entity/data/database';
 import { Table } from '../../generated/entity/data/table';
-import useToastContext from '../../hooks/useToastContext';
-import { getCurrentUserId, isEven } from '../../utils/CommonUtils';
+import { isEven } from '../../utils/CommonUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
-import SVGIcons from '../../utils/SvgUtils';
 import { getOwnerFromId, getUsagePercentile } from '../../utils/TableUtils';
 import { getTableTags } from '../../utils/TagsUtils';
 
 const DatabaseDetails: FunctionComponent = () => {
   // User Id for getting followers
-  const USERId = getCurrentUserId();
   const [slashedTableName, setSlashedTableName] = useState<
     TitleBreadcrumbProps['titleLinks']
   >([]);
@@ -78,7 +72,6 @@ const DatabaseDetails: FunctionComponent = () => {
   const [activeTab, setActiveTab] = useState<number>(1);
 
   const history = useHistory();
-  const showToast = useToastContext();
   const isMounting = useRef(true);
 
   const tabs = [
@@ -196,27 +189,6 @@ const DatabaseDetails: FunctionComponent = () => {
     }
   };
 
-  const onSuggest = (updatedHTML: string) => {
-    if (description !== updatedHTML) {
-      const data = {
-        message: updatedHTML,
-        from: USERId,
-        addressedToEntity: {
-          id: databaseId,
-          name: databaseName,
-          type: 'Table',
-        },
-      };
-      postFeed(data).then(() => {
-        setIsEdit(false);
-        showToast({
-          variant: 'info',
-          body: 'Suggestion posted Successfully!',
-        });
-      });
-    }
-  };
-
   const onDescriptionEdit = (): void => {
     setIsEdit(true);
   };
@@ -266,56 +238,17 @@ const DatabaseDetails: FunctionComponent = () => {
             data-testid="page-container">
             <TitleBreadcrumb titleLinks={slashedTableName} />
 
-            <div className="tw-bg-white tw-my-4">
-              <div className="tw-col-span-3">
-                <div
-                  className="schema-description tw-flex tw-flex-col tw-h-full tw-relative tw-border tw-border-main tw-rounded-md"
-                  data-testid="description-container">
-                  <div className="tw-flex tw-items-center tw-px-3 tw-py-1 tw-border-b tw-border-main">
-                    <span className="tw-flex-1 tw-leading-8 tw-m-0 tw-text-sm tw-font-medium">
-                      Description
-                    </span>
-                    <div className="tw-flex-initial">
-                      <NonAdminAction
-                        position="left"
-                        title={TITLE_FOR_NON_ADMIN_ACTION}>
-                        <button
-                          className="focus:tw-outline-none"
-                          data-testid="description-edit-button"
-                          onClick={onDescriptionEdit}>
-                          <SVGIcons
-                            alt="edit"
-                            icon="icon-edit"
-                            title="Edit"
-                            width="12px"
-                          />
-                        </button>
-                      </NonAdminAction>
-                    </div>
-                  </div>
-                  <div className="tw-px-3 tw-pl-5 tw-py-2 tw-overflow-y-auto">
-                    <div data-testid="description-data" id="description" />
-                    {description ? (
-                      <RichTextEditorPreviewer markdown={description} />
-                    ) : (
-                      <span className="tw-no-description">
-                        No description added
-                      </span>
-                    )}
-                    {isEdit && (
-                      <ModalWithMarkdownEditor
-                        header={`Edit description for ${databaseName}`}
-                        placeholder="Enter Description"
-                        value={description}
-                        onCancel={onCancel}
-                        onSave={onDescriptionUpdate}
-                        onSuggest={onSuggest}
-                      />
-                    )}
-                  </div>
-                </div>
-              </div>
+            <div data-testid="description-container">
+              <Description
+                description={description}
+                entityName={databaseName}
+                isEdit={isEdit}
+                onCancel={onCancel}
+                onDescriptionEdit={onDescriptionEdit}
+                onDescriptionUpdate={onDescriptionUpdate}
+              />
             </div>
+
             <div className="tw-mt-1 tw-flex tw-flex-col tw-flex-grow">
               <TabsPane
                 activeTab={activeTab}
