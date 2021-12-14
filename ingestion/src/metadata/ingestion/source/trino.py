@@ -31,7 +31,7 @@ class TrinoConfig(SQLConnectionConfig):
         if self.username is not None:
             url += f"{self.username}"
             if self.password is not None:
-                url += f":{self.password.get_secret_value())}"
+                url += f":{quote_plus(self.password.get_secret_value())}"
             url += "@"
         url += f"{self.host_port}"
         if self.catalog is not None:

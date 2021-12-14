@@ -52,6 +52,7 @@ base_requirements = {
     "sqlalchemy>=1.3.24",
     "sql-metadata~=2.0.0",
     "requests~=2.26",
+    "cryptography",
     "PyYAML",
 }
 

@@ -81,7 +81,7 @@ def build_sql_source_connection_url(
 
     url = f"{scheme}://"
     if username is not None:
-        url += f"{quote_plus(username)}"
+        url += f"{username}"
         if password is not None:
             url += f":{quote_plus(password.get_secret_value())}"
         url += "@"
@@ -96,7 +96,6 @@ def build_sql_source_connection_url(
             f"{key}={quote_plus(value)}" for (key, value) in options.items() if value
         )
         url = f"{url}?{params}"
-
     return url
 
 
