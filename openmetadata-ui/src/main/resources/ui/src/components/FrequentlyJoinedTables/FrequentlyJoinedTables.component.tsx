@@ -76,7 +76,7 @@ const FrequentlyJoinedTables: FunctionComponent<Props> = ({
               }>
               {table.name}
             </span>
-            {getCountBadge(table.joinCount)}
+            {getCountBadge(table.joinCount, '', false)}
           </div>
         ))}
       </div>
@@ -109,7 +109,7 @@ const FrequentlyJoinedTables: FunctionComponent<Props> = ({
                 to={getDatasetDetailsPath(table.fullyQualifiedName as string)}>
                 {table.name}
               </Link>
-              <span className="tw-tag tw-ml-2">{table.joinCount}</span>
+              {getCountBadge(table.joinCount, '', false)}
             </div>
           );
         })}
