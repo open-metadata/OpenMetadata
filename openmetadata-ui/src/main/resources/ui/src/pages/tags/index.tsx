@@ -24,6 +24,7 @@ import {
   updateTagCategory,
 } from '../../axiosAPIs/tagAPI';
 import { Button } from '../../components/buttons/Button/Button';
+import Description from '../../components/common/description/Description';
 import NonAdminAction from '../../components/common/non-admin-action/NonAdminAction';
 import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
 import PageContainer from '../../components/containers/PageContainer';
@@ -256,55 +257,15 @@ const TagsPage = () => {
                   </NonAdminAction>
                 </div>
               )}
-              <div
-                className="tw-flex tw-flex-col tw-border tw-border-main tw-rounded-md tw-mb-3 tw-min-h-32 tw-bg-white"
-                data-testid="description-container">
-                <div className="tw-flex tw-items-center tw-px-3 tw-py-1 tw-border-b tw-border-main">
-                  <span className="tw-flex-1 tw-leading-8 tw-m-0 tw-font-medium">
-                    Description
-                  </span>
-                  <div className="tw-flex-initial">
-                    <NonAdminAction
-                      position="bottom"
-                      title={TITLE_FOR_NON_ADMIN_ACTION}>
-                      <button
-                        className="focus:tw-outline-none"
-                        data-testid="add-description"
-                        onClick={() => setIsEditCategory(true)}>
-                        <SVGIcons
-                          alt="edit"
-                          icon="icon-edit"
-                          title="Edit"
-                          width="12px"
-                        />
-                      </button>
-                    </NonAdminAction>
-                  </div>
-                </div>
-                <div className="tw-px-3 tw-pl-5 tw-py-2 tw-overflow-y-auto">
-                  {currentCategory && (
-                    <div data-testid="description" id="description">
-                      {currentCategory.description ? (
-                        <RichTextEditorPreviewer
-                          markdown={currentCategory.description}
-                        />
-                      ) : (
-                        <span className="tw-no-description">
-                          No description added
-                        </span>
-                      )}
-                      {isEditCategory && (
-                        <ModalWithMarkdownEditor
-                          header={`Edit description for ${currentCategory.name}`}
-                          placeholder="Enter Description"
-                          value={currentCategory.description}
-                          onCancel={() => setIsEditCategory(false)}
-                          onSave={UpdateCategory}
-                        />
-                      )}
-                    </div>
-                  )}
-                </div>
+              <div className="tw-mb-3" data-testid="description-container">
+                <Description
+                  description={currentCategory?.description || ''}
+                  entityName={currentCategory?.displayName}
+                  isEdit={isEditCategory}
+                  onCancel={() => setIsEditCategory(false)}
+                  onDescriptionEdit={() => setIsEditCategory(true)}
+                  onDescriptionUpdate={UpdateCategory}
+                />
               </div>
               <div className="tw-bg-white">
                 <table

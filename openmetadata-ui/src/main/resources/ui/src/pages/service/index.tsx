@@ -22,20 +22,16 @@ import { getDatabases } from '../../axiosAPIs/databaseAPI';
 import { getPipelines } from '../../axiosAPIs/pipelineAPI';
 import { getServiceByFQN, updateService } from '../../axiosAPIs/serviceAPI';
 import { getTopics } from '../../axiosAPIs/topicsAPI';
+import Description from '../../components/common/description/Description';
 import NextPrevious from '../../components/common/next-previous/NextPrevious';
-import NonAdminAction from '../../components/common/non-admin-action/NonAdminAction';
 import PopOver from '../../components/common/popover/PopOver';
 import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
 import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-breadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
 import PageContainer from '../../components/containers/PageContainer';
 import Loader from '../../components/Loader/Loader';
-import { ModalWithMarkdownEditor } from '../../components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import Tags from '../../components/tags/tags';
-import {
-  pagingObject,
-  TITLE_FOR_NON_ADMIN_ACTION,
-} from '../../constants/constants';
+import { pagingObject } from '../../constants/constants';
 import { SearchIndex } from '../../enums/search.enum';
 import {
   DashboardServiceType,
@@ -672,55 +668,15 @@ const ServicePage: FunctionComponent = () => {
               </span>
             </div>
 
-            <div className="tw-bg-white tw-my-4">
-              <div className="tw-col-span-3">
-                <div
-                  className="schema-description tw-flex tw-flex-col tw-h-full tw-relative tw-border tw-border-main tw-rounded-md"
-                  data-testid="description-container">
-                  <div className="tw-flex tw-items-center tw-px-3 tw-py-1 tw-border-b tw-border-main">
-                    <span className="tw-flex-1 tw-leading-8 tw-m-0 tw-text-sm tw-font-medium">
-                      Description
-                    </span>
-                    <div className="tw-flex-initial">
-                      <NonAdminAction
-                        position="left"
-                        title={TITLE_FOR_NON_ADMIN_ACTION}>
-                        <button
-                          className="focus:tw-outline-none"
-                          data-testid="description-edit"
-                          onClick={onDescriptionEdit}>
-                          <SVGIcons
-                            alt="edit"
-                            icon="icon-edit"
-                            title="Edit"
-                            width="12px"
-                          />
-                        </button>
-                      </NonAdminAction>
-                    </div>
-                  </div>
-                  <div className="tw-px-3 tw-pl-5 tw-py-2 tw-overflow-y-auto">
-                    <div data-testid="description-data" id="description" />
-                    {description ? (
-                      <RichTextEditorPreviewer markdown={description} />
-                    ) : (
-                      <span className="tw-no-description">
-                        No description added
-                      </span>
-                    )}
-                    {isEdit && (
-                      <ModalWithMarkdownEditor
-                        header={`Edit description for ${serviceFQN}`}
-                        placeholder="Enter Description"
-                        value={description}
-                        onCancel={onCancel}
-                        onSave={onDescriptionUpdate}
-                        // onSuggest={onSuggest}
-                      />
-                    )}
-                  </div>
-                </div>
-              </div>
+            <div className="tw-my-3" data-testid="description-container">
+              <Description
+                description={description || ''}
+                entityName={serviceFQN}
+                isEdit={isEdit}
+                onCancel={onCancel}
+                onDescriptionEdit={onDescriptionEdit}
+                onDescriptionUpdate={onDescriptionUpdate}
+              />
             </div>
 
             <div className="tw-mt-4" data-testid="table-container">
