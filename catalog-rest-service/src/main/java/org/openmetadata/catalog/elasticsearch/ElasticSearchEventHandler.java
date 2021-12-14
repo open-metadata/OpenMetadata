@@ -119,7 +119,7 @@ public class ElasticSearchEventHandler implements EventHandler {
           updateRequest = applyChangeEvent(changeEvent);
         }
         if (updateRequest != null) {
-          UpdateResponse updateResponse =client.update(updateRequest, RequestOptions.DEFAULT);
+          client.updateAsync(updateRequest, RequestOptions.DEFAULT, listener);
         }
       }
     } catch (Exception e) {
