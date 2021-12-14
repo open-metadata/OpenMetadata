@@ -18,4 +18,4 @@ This schema <u>does not</u> accept additional properties.
     - **Items**
     - $ref: [usageDetails.json](usagedetails.md)
 
-_This document was updated on: Thursday, December 9, 2021_
+_This document was updated on: Tuesday, December 14, 2021_

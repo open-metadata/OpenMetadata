@@ -60,4 +60,4 @@ Definitions related to Storage Service.
   2. _"HOT"_
   3. _"COOL"_
 
-_This document was updated on: Thursday, December 9, 2021_
+_This document was updated on: Tuesday, December 14, 2021_

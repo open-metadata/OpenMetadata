@@ -39,4 +39,4 @@ This schema <u>does not</u> accept additional properties.
     - Type: `number`
     - Range: between 0 and 100
 
-_This document was updated on: Thursday, December 9, 2021_
+_This document was updated on: Tuesday, December 14, 2021_
