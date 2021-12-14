@@ -281,7 +281,7 @@ const PipelineDetails = ({
             tier={tier}
             titleLinks={slashedPipelineName}
           />
-          <div className="tw-mt-1 tw-flex tw-flex-col tw-flex-grow">
+          <div className="tw-mt-4 tw-flex tw-flex-col tw-flex-grow">
             <TabsPane
               activeTab={activeTab}
               setActiveTab={setActiveTabHandler}

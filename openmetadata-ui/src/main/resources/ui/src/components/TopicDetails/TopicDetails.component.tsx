@@ -284,7 +284,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
           tier={tier ?? ''}
           titleLinks={slashedTopicName}
         />
-        <div className="tw-mt-1 tw-flex tw-flex-col tw-flex-grow">
+        <div className="tw-mt-4 tw-flex tw-flex-col tw-flex-grow">
           <TabsPane
             activeTab={activeTab}
             setActiveTab={setActiveTabHandler}
