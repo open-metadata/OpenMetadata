@@ -15,6 +15,7 @@ import React, { FunctionComponent, useEffect, useState } from 'react';
 import { Link, useHistory } from 'react-router-dom';
 import { getDatasetDetailsPath } from '../../constants/constants';
 import { JoinedWith } from '../../generated/entity/data/table';
+import { getCountBadge } from '../../utils/CommonUtils';
 import PopOver from '../common/popover/PopOver';
 
 type Props = {
@@ -75,7 +76,7 @@ const FrequentlyJoinedTables: FunctionComponent<Props> = ({
               }>
               {table.name}
             </span>
-            <span className="tw-tag tw-ml-2">{table.joinCount}</span>
+            {getCountBadge(table.joinCount)}
           </div>
         ))}
       </div>

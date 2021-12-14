@@ -45,8 +45,10 @@ const Description = ({
   entityName,
 }: Props) => {
   return (
-    <div className="schema-description tw-flex tw-flex-col tw-h-full tw-min-h-12 tw-relative">
-      <div className="tw-px-3 tw-py-1 tw-flex tw-overflow-y-auto">
+    <div
+      className="schema-description tw-flex tw-flex-col tw-h-full tw-overflow-y-scroll tw-max-h-40 tw-min-h-12 tw-relative"
+      id="center">
+      <div className="tw-px-3 tw-py-1 tw-flex">
         <Fragment>
           <div className="description" data-testid="description">
             {description.trim() ? (
