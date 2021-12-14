@@ -29,9 +29,9 @@ class TrinoConfig(SQLConnectionConfig):
     def get_connection_url(self):
         url = f"{self.scheme}://"
         if self.username is not None:
-            url += f"{quote_plus(self.username)}"
+            url += f"{self.username}"
             if self.password is not None:
-                url += f":{quote_plus(self.password.get_secret_value())}"
+                url += f":{self.password.get_secret_value())}"
             url += "@"
         url += f"{self.host_port}"
         if self.catalog is not None:
