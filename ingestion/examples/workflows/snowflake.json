@@ -9,7 +9,7 @@
       "database": "SNOWFLAKE_SAMPLE_DATA",
       "account": "account_name",
       "service_name": "snowflake",
-      "filter_pattern": {
+      "table_filter_pattern": {
         "excludes": [
           "tpcds_sf100tcl"
         ]

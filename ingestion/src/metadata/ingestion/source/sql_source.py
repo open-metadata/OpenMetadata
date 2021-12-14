@@ -88,7 +88,8 @@ class SQLConnectionConfig(ConfigModel):
     data_profiler_date: Optional[str] = datetime.now().strftime("%Y-%m-%d")
     data_profiler_offset: Optional[int] = 0
     data_profiler_limit: Optional[int] = 50000
-    filter_pattern: IncludeFilterPattern = IncludeFilterPattern.allow_all()
+    table_filter_pattern: IncludeFilterPattern = IncludeFilterPattern.allow_all()
+    schema_filter_pattern: IncludeFilterPattern = IncludeFilterPattern.allow_all()
     dbt_manifest_file: Optional[str] = None
     dbt_catalog_file: Optional[str] = None
 
@@ -201,7 +202,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
     def next_record(self) -> Iterable[OMetaDatabaseAndTable]:
         inspector = inspect(self.engine)
         for schema in inspector.get_schema_names():
-            if not self.sql_config.filter_pattern.included(schema):
+            if not self.sql_config.schema_filter_pattern.included(schema):
                 self.status.filter(schema, "Schema pattern not allowed")
                 continue
             logger.debug("total tables {}".format(inspector.get_table_names(schema)))
@@ -218,7 +219,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                 schema, table_name = self.standardize_schema_table_names(
                     schema, table_name
                 )
-                if not self.sql_config.filter_pattern.included(table_name):
+                if not self.sql_config.table_filter_pattern.included(table_name):
                     self.status.filter(
                         "{}.{}".format(self.config.get_service_name(), table_name),
                         "Table pattern not allowed",
@@ -276,7 +277,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                     schema, view_name = self.standardize_schema_table_names(
                         schema, view_name
                     )
-                if not self.sql_config.filter_pattern.included(view_name):
+                if not self.sql_config.table_filter_pattern.included(view_name):
                     self.status.filter(
                         "{}.{}".format(self.config.get_service_name(), view_name),
                         "View pattern not allowed",

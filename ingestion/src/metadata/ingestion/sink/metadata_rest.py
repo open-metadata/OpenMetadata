@@ -170,10 +170,16 @@ class MetadataRestSink(Sink[Entity]):
                 location = self.metadata.create_or_update(location_request)
                 self.metadata.add_location(table=created_table, location=location)
             if db_and_table.table.sampleData is not None:
-                self.metadata.ingest_table_sample_data(
-                    table=created_table,
-                    sample_data=db_and_table.table.sampleData,
-                )
+                try:
+                    self.metadata.ingest_table_sample_data(
+                        table=created_table,
+                        sample_data=db_and_table.table.sampleData,
+                    )
+                except Exception as e:
+                    logging.error(
+                        f"Failed to ingest sample data for table {db_and_table.table.name}"
+                    )
+
             if db_and_table.table.tableProfile is not None:
                 for tp in db_and_table.table.tableProfile:
                     for pd in tp:
