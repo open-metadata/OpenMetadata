@@ -12,13 +12,14 @@
  */
 
 import classNames from 'classnames';
-import { isNil, isUndefined } from 'lodash';
-import { EntityTags, TableDetail } from 'Models';
+import { isUndefined } from 'lodash';
+import { EntityTags, ExtraInfo, TableDetail } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { FOLLOWERS_VIEW_CAP, LIST_SIZE } from '../../../constants/constants';
 import { User } from '../../../generated/entity/teams/user';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { getHtmlForNonAdminAction } from '../../../utils/CommonUtils';
+import { getInfoElements } from '../../../utils/EntityUtils';
 import SVGIcons from '../../../utils/SvgUtils';
 import { getFollowerDetail } from '../../../utils/TableUtils';
 import TagsContainer from '../../tags-container/tags-container';
@@ -29,14 +30,6 @@ import PopOver from '../popover/PopOver';
 import TitleBreadcrumb from '../title-breadcrumb/title-breadcrumb.component';
 import { TitleBreadcrumbProps } from '../title-breadcrumb/title-breadcrumb.interface';
 import FollowersModal from './FollowersModal';
-
-type ExtraInfo = {
-  key?: string;
-  value: string | number | React.ReactNode;
-  isLink?: boolean;
-  placeholderText?: string;
-  openInNewTab?: boolean;
-};
 
 type Props = {
   titleLinks: TitleBreadcrumbProps['titleLinks'];
@@ -253,80 +246,40 @@ const EntityPageInfo = ({
           </div>
         </div>
       </div>
-      <div className="tw-flex tw-gap-1 tw-mb-2 tw-mt-1">
+      <div className="tw-flex tw-gap-1 tw-mb-2 tw-mt-1 tw-ml-7">
         {extraInfo.map((info, index) => (
           <span className="tw-flex" key={index}>
-            {!isNil(info.key) ? (
-              <>
-                <span className="tw-text-grey-muted tw-font-normal">
-                  {info.key} :
-                </span>{' '}
-                <span className="tw-pl-1 tw-font-normal">
-                  {info.isLink ? (
-                    <a
-                      className="link-text"
-                      href={info.value as string}
-                      rel="noopener noreferrer"
-                      target={info.openInNewTab ? '_blank' : '_self'}>
-                      <>
-                        <span className="tw-mr-1">
-                          {info.placeholderText || info.value}
-                        </span>
-                        {info.openInNewTab && (
-                          <SVGIcons
-                            alt="external-link"
-                            className="tw-align-middle"
-                            icon="external-link"
-                            width="12px"
-                          />
-                        )}
-                      </>
-                    </a>
-                  ) : (
-                    info.value || '--'
-                  )}
-                </span>
-                {extraInfo.length !== 1 && index < extraInfo.length - 1 ? (
-                  <span className="tw-mx-3 tw-inline-block tw-text-gray-400">
-                    •
-                  </span>
-                ) : null}
-              </>
-            ) : !isNil(info.value) ? (
-              <>
-                <span className="tw-font-normal">{info.value}</span>
-                {extraInfo.length !== 1 && index < extraInfo.length - 1 ? (
-                  <span className="tw-mx-3 tw-inline-block tw-text-gray-400">
-                    •
-                  </span>
-                ) : null}
-              </>
+            {getInfoElements(info)}
+            {extraInfo.length !== 1 && index < extraInfo.length - 1 ? (
+              <span className="tw-mx-3 tw-inline-block tw-text-gray-400">
+                |
+              </span>
             ) : null}
           </span>
         ))}
       </div>
-      <div className="tw-flex tw-flex-wrap tw-pt-1 tw-group">
+      <div className="tw-flex tw-flex-wrap tw-pt-1 tw-ml-7 tw-group">
         {(!isEditable || !isTagEditable) && (
           <>
             {(tags.length > 0 || tier) && (
-              <i className="fas fa-tags tw-px-1 tw-mt-2 tw-text-grey-muted" />
+              <SVGIcons
+                alt="icon-tag"
+                className="tw-mx-1"
+                icon="icon-tag-grey"
+                width="16"
+              />
             )}
             {tier?.tagFQN && (
               <Tags
-                className="tw-bg-tag"
                 startWith="#"
                 tag={{ ...tier, tagFQN: tier.tagFQN.split('.')[1] }}
+                type="label"
               />
             )}
             {tags.length > 0 && (
               <>
                 {tags.slice(0, LIST_SIZE).map((tag, index) => (
-                  <Tags
-                    className="tw-bg-tag"
-                    key={index}
-                    startWith="#"
-                    tag={tag}
-                  />
+                  <Tags key={index} startWith="#" tag={tag} type="label" />
                 ))}
 
                 {tags.slice(LIST_SIZE).length > 0 && (
@@ -335,11 +288,7 @@ const EntityPageInfo = ({
                       <>
                         {tags.slice(LIST_SIZE).map((tag, index) => (
                           <p className="tw-text-left" key={index}>
-                            <Tags
-                              className="tw-bg-tag tw-px-2"
-                              startWith="#"
-                              tag={tag}
-                            />
+                            <Tags startWith="#" tag={tag} type="label" />
                           </p>
                         ))}
                       </>
@@ -386,12 +335,12 @@ const EntityPageInfo = ({
                     />
                   </button>
                 ) : (
-                  <span className="">
+                  <span>
                     <Tags
-                      className="tw-border-main tw-text-primary"
+                      className="tw-text-primary"
                       startWith="+ "
                       tag="Add tag"
-                      type="outlined"
+                      type="label"
                     />
                   </span>
                 )}

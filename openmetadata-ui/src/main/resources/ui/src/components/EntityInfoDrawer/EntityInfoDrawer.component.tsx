@@ -107,7 +107,7 @@ const EntityInfoDrawer = ({
       }
       case EntityType.PIPELINE: {
         setIsLoading(true);
-        getPipelineByFqn(selectedNode.name, ['tags', 'owner', 'service'])
+        getPipelineByFqn(selectedNode.name, ['tags', 'owner'])
           .then((res: AxiosResponse) => {
             getServiceById('pipelineServices', res.data.service?.id)
               .then((serviceRes: AxiosResponse) => {

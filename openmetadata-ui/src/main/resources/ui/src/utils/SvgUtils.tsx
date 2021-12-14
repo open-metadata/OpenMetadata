@@ -82,12 +82,14 @@ import IconSlackGrey from '../assets/svg/slack-grey.svg';
 import IconSlack from '../assets/svg/slack.svg';
 import IconTableGrey from '../assets/svg/table-grey.svg';
 import IconTable from '../assets/svg/table.svg';
+import IconTagGrey from '../assets/svg/tag-grey.svg';
 import IconTag from '../assets/svg/tag.svg';
 import IconTerns from '../assets/svg/terms.svg';
 import IconTier from '../assets/svg/tier.svg';
 import IconTopicGrey from '../assets/svg/topic-grey.svg';
 import IconTopic from '../assets/svg/topic.svg';
 import IconUser from '../assets/svg/user.svg';
+import IconVersionBlack from '../assets/svg/version-black.svg';
 import IconVersionWhite from '../assets/svg/version-white.svg';
 import IconVersion from '../assets/svg/version.svg';
 import IconWarning from '../assets/svg/warning.svg';
@@ -173,10 +175,12 @@ export const Icons = {
   DBTMODEL: 'dbtmodel',
   VERSION: 'icon-version',
   VERSION_WHITE: 'icon-version-white',
+  VERSION_BLACK: 'icon-version-black',
   ICON_DEPLOY: 'icon-deploy',
   ICON_PLUS: 'icon-plus',
   ICON_MINUS: 'icon-minus',
   TAG: 'icon-tag',
+  TAG_GREY: 'icon-tag-grey',
   TIER: 'icon-tier',
   SEARCHV1: 'icon-searchv1',
 };
@@ -473,6 +477,10 @@ const SVGIcons: FunctionComponent<Props> = ({
       IconComponent = IconVersionWhite;
 
       break;
+    case Icons.VERSION_BLACK:
+      IconComponent = IconVersionBlack;
+
+      break;
     case Icons.ICON_DEPLOY:
       IconComponent = IconDeploy;
 
@@ -499,6 +507,10 @@ const SVGIcons: FunctionComponent<Props> = ({
       break;
     case Icons.TAG:
       IconComponent = IconTag;
+
+      break;
+    case Icons.TAG_GREY:
+      IconComponent = IconTagGrey;
 
       break;
     case Icons.TIER:

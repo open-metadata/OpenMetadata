@@ -424,6 +424,7 @@ const DashboardDetails = ({
                                   editable={editChartTags?.index === index}
                                   selectedTags={chart.tags as EntityTags[]}
                                   tagList={tagList}
+                                  type="label"
                                   onCancel={() => {
                                     handleChartTagSelection();
                                   }}

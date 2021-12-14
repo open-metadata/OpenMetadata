@@ -32,6 +32,7 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
   onCancel,
   onSelectionChange,
   showTags = true,
+  type,
 }: TagsContainerProps) => {
   const [tags, setTags] = useState<Array<EntityTags>>(selectedTags);
   const [newTag, setNewTag] = useState<string>('');
@@ -129,7 +130,9 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
   const getTagsElement = (tag: EntityTags, index: number) => {
     return (
       <Tags
-        className="tw-bg-gray-200"
+        className={classNames({
+          'tw-bg-gray-200': editable || type === 'contained',
+        })}
         editable={editable}
         isRemovable={tag.isRemovable}
         key={index}
@@ -138,6 +141,7 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
         }}
         startWith="#"
         tag={tag}
+        type={editable ? 'contained' : type}
       />
     );
   };
