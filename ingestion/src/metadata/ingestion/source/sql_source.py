@@ -46,7 +46,6 @@ from metadata.ingestion.api.common import (
 )
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
-from metadata.ingestion.models.table_metadata import DatasetProfile
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.utils.column_helpers import check_column_complex_type, get_column_type
 from metadata.utils.helpers import get_database_service_or_create
@@ -72,6 +71,35 @@ class SQLSourceStatus(SourceStatus):
         logger.warning("Dropped Table {} due to {}".format(table_name, err))
 
 
+def build_sql_source_connection_url(
+    host_port: str,
+    scheme: str,
+    username: Optional[str] = None,
+    password: Optional[str] = None,
+    database: Optional[str] = None,
+    options: dict = {},
+) -> str:
+
+    url = f"{scheme}://"
+    if username is not None:
+        url += f"{username}"
+        if password is not None:
+            url += f":{quote_plus(password)}"
+        url += "@"
+    url += f"{host_port}"
+    if database:
+        url += f"/{database}"
+
+    if options is not None:
+        if database is None:
+            url += "/"
+        params = "&".join(
+            f"{key}={quote_plus(value)}" for (key, value) in options.items() if value
+        )
+        url = f"{url}?{params}"
+    return url
+
+
 class SQLConnectionConfig(ConfigModel):
     username: Optional[str] = None
     password: Optional[str] = None
@@ -93,17 +121,14 @@ class SQLConnectionConfig(ConfigModel):
 
     @abstractmethod
     def get_connection_url(self):
-        url = f"{self.scheme}://"
-        if self.username is not None:
-            url += f"{quote_plus(self.username)}"
-            if self.password is not None:
-                url += f":{quote_plus(self.password)}"
-            url += "@"
-        url += f"{self.host_port}"
-        if self.database:
-            url += f"/{self.database}"
-        logger.info(url)
-        return url
+        return build_sql_source_connection_url(
+            host_port=self.host_port,
+            scheme=self.scheme,
+            username=self.username,
+            password=self.password,
+            database=self.database,
+            options=self.options,
+        )
 
     def get_service_type(self) -> DatabaseServiceType:
         return DatabaseServiceType[self.service_type]
