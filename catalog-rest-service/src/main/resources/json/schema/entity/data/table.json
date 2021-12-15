@@ -46,6 +46,7 @@
         "INT",
         "BIGINT",
         "BYTEINT",
+        "BYTES",
         "FLOAT",
         "DOUBLE",
         "DECIMAL",

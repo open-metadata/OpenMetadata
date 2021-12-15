@@ -36,7 +36,6 @@ from metadata.ingestion.api.sink import Sink, SinkStatus
 from metadata.ingestion.models.table_metadata import (
     ChangeDescription,
     DashboardESDocument,
-    DbtModelESDocument,
     PipelineESDocument,
     TableESDocument,
     TopicESDocument,
@@ -45,7 +44,6 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.sink.elasticsearch_constants import (
     DASHBOARD_ELASTICSEARCH_INDEX_MAPPING,
-    DBT_ELASTICSEARCH_INDEX_MAPPING,
     PIPELINE_ELASTICSEARCH_INDEX_MAPPING,
     TABLE_ELASTICSEARCH_INDEX_MAPPING,
     TOPIC_ELASTICSEARCH_INDEX_MAPPING,
@@ -140,10 +138,6 @@ class ElasticsearchSink(Sink[Entity]):
             self._check_or_create_index(
                 self.config.pipeline_index_name, PIPELINE_ELASTICSEARCH_INDEX_MAPPING
             )
-        if self.config.index_dbt_models:
-            self._check_or_create_index(
-                self.config.dbt_index_name, DBT_ELASTICSEARCH_INDEX_MAPPING
-            )
 
     def _check_or_create_index(self, index_name: str, es_mapping: str):
         """
@@ -226,7 +220,7 @@ class ElasticsearchSink(Sink[Entity]):
         column_descriptions = []
         tags = set()
 
-        timestamp = time.time()
+        timestamp = int(table.updatedAt.__root__.timestamp())
         tier = None
         for table_tag in table.tags:
             if "Tier" in table_tag.tagFQN:
@@ -289,7 +283,7 @@ class ElasticsearchSink(Sink[Entity]):
             {"input": [topic_name], "weight": 10},
         ]
         tags = set()
-        timestamp = time.time()
+        timestamp = topic.updatedAt.__root__.timestamp()
         service_entity = self.metadata.get_by_id(
             entity=MessagingService, entity_id=str(topic.service.id.__root__)
         )
@@ -321,7 +315,6 @@ class ElasticsearchSink(Sink[Entity]):
             followers=topic_followers,
             change_descriptions=change_descriptions,
         )
-        print(topic_doc.json())
         return topic_doc
 
     def _create_dashboard_es_doc(self, dashboard: Dashboard):
@@ -329,7 +322,7 @@ class ElasticsearchSink(Sink[Entity]):
         dashboard_name = dashboard.name
         suggest = [{"input": [dashboard.displayName], "weight": 10}]
         tags = set()
-        timestamp = time.time()
+        timestamp = dashboard.updatedAt.__root__.timestamp()
         service_entity = self.metadata.get_by_id(
             entity=DashboardService, entity_id=str(dashboard.service.id.__root__)
         )
@@ -390,7 +383,7 @@ class ElasticsearchSink(Sink[Entity]):
         fqdn = pipeline.fullyQualifiedName
         suggest = [{"input": [pipeline.displayName], "weight": 10}]
         tags = set()
-        timestamp = time.time()
+        timestamp = pipeline.updatedAt.__root__.timestamp()
         service_entity = self.metadata.get_by_id(
             entity=PipelineService, entity_id=str(pipeline.service.id.__root__)
         )

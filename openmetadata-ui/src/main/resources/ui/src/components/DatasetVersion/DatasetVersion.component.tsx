@@ -13,6 +13,7 @@
 
 import classNames from 'classnames';
 import { cloneDeep, isEqual, isUndefined } from 'lodash';
+import { ExtraInfo } from 'Models';
 import React, { useEffect, useState } from 'react';
 import {
   ChangeDescription,
@@ -103,7 +104,7 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
       ),
     ].find((t) => (t?.tagFQN as string).startsWith('Tier'));
 
-    const extraInfo = [
+    const extraInfo: Array<ExtraInfo> = [
       {
         key: 'Owner',
         value:

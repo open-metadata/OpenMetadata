@@ -13,12 +13,14 @@
 
 import { EntityTags } from 'Models';
 import { ReactNode } from 'react';
+import { TagProps } from '../tags/tags.interface';
 
 export type TagsContainerProps = {
   children?: ReactNode;
   editable?: boolean;
   selectedTags: Array<EntityTags>;
   tagList: Array<string>;
+  type?: TagProps['type'];
   showTags?: boolean;
   onSelectionChange: (selectedTags: Array<EntityTags>) => void;
   onCancel: (event: React.MouseEvent<HTMLElement, MouseEvent>) => void;

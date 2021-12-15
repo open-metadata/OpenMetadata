@@ -21,6 +21,7 @@ from typing import Any, Dict, Iterable, List, Union
 from pydantic import ValidationError
 
 from metadata.config.common import ConfigModel
+from metadata.generated.schema.api.data.createMlModel import CreateMlModelEntityRequest
 from metadata.generated.schema.api.data.createTopic import CreateTopicEntityRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineage
 from metadata.generated.schema.entity.data.database import Database
@@ -405,7 +406,7 @@ class SampleDataSource(Source[Entity]):
             )
             yield lineage
 
-    def ingest_mlmodels(self) -> Iterable[MlModel]:
+    def ingest_mlmodels(self) -> Iterable[CreateMlModelEntityRequest]:
         """
         Convert sample model data into a Model Entity
         to feed the metastore
@@ -424,8 +425,7 @@ class SampleDataSource(Source[Entity]):
 
             dashboard_id = str(dashboard.id.__root__)
 
-            model_ev = MlModel(
-                id=uuid.uuid4(),
+            model_ev = CreateMlModelEntityRequest(
                 name=model["name"],
                 displayName=model["displayName"],
                 description=model["description"],

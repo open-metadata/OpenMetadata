@@ -529,6 +529,7 @@ const EntityTable = ({
                                     key={i}
                                     startWith="#"
                                     tag={tag}
+                                    type="label"
                                   />
                                 )
                               )}
@@ -549,6 +550,7 @@ const EntityTable = ({
                                   editable={editColumnTag?.index === row.id}
                                   selectedTags={cell.value || []}
                                   tagList={allTags}
+                                  type="label"
                                   onCancel={() => {
                                     handleTagSelection();
                                   }}
@@ -652,7 +654,8 @@ const EntityTable = ({
                                         )}>
                                         {getPartialNameFromFQN(
                                           columnJoin?.fullyQualifiedName as string,
-                                          ['database', 'table', 'column']
+                                          ['database', 'table', 'column'],
+                                          '.'
                                         )}
                                       </Link>
                                     </Fragment>

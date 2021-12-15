@@ -8,7 +8,7 @@
       "query": "select top 50 * from {}.{}",
       "username": "sa",
       "password": "test!Password",
-      "filter_pattern": {
+      "table_filter_pattern": {
         "excludes": ["catalog_test.*"]
       }
     }

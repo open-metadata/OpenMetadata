@@ -32,10 +32,10 @@ from metadata.generated.schema.api.data.createPipeline import (
 )
 from metadata.generated.schema.api.data.createTable import CreateTableEntityRequest
 from metadata.generated.schema.api.data.createTopic import CreateTopicEntityRequest
+from metadata.generated.schema.api.lineage.addLineage import AddLineage
 from metadata.generated.schema.api.policies.createPolicy import (
     CreatePolicyEntityRequest,
 )
-from metadata.generated.schema.api.lineage.addLineage import AddLineage
 from metadata.generated.schema.api.teams.createTeam import CreateTeamEntityRequest
 from metadata.generated.schema.api.teams.createUser import CreateUserEntityRequest
 from metadata.generated.schema.entity.data.chart import ChartType
@@ -127,7 +127,7 @@ class MetadataRestSink(Sink[Entity]):
             self.write_lineage(record)
         elif isinstance(record, User):
             self.write_users(record)
-        elif isinstance(record, MlModel):
+        elif isinstance(record, CreateMlModelEntityRequest):
             self.write_ml_model(record)
         else:
             logging.info(
@@ -149,10 +149,9 @@ class MetadataRestSink(Sink[Entity]):
                 name=db_and_table.table.name,
                 tableType=db_and_table.table.tableType,
                 columns=db_and_table.table.columns,
-                description=db_and_table.table.description,
+                description=db_and_table.table.description.strip(),
                 database=db.id,
             )
-
             if db_and_table.table.viewDefinition:
                 table_request.viewDefinition = (
                     db_and_table.table.viewDefinition.__root__
@@ -162,7 +161,9 @@ class MetadataRestSink(Sink[Entity]):
             if db_and_table.location is not None:
                 location_request = CreateLocationEntityRequest(
                     name=db_and_table.location.name,
-                    description=db_and_table.location.description,
+                    description=db_and_table.location.description.strip(),
+                    locationType=db_and_table.location.locationType,
+                    owner=db_and_table.location.owner,
                     service=EntityReference(
                         id=db_and_table.location.service.id,
                         type="storageService",
@@ -171,10 +172,16 @@ class MetadataRestSink(Sink[Entity]):
                 location = self.metadata.create_or_update(location_request)
                 self.metadata.add_location(table=created_table, location=location)
             if db_and_table.table.sampleData is not None:
-                self.metadata.ingest_table_sample_data(
-                    table=created_table,
-                    sample_data=db_and_table.table.sampleData,
-                )
+                try:
+                    self.metadata.ingest_table_sample_data(
+                        table=created_table,
+                        sample_data=db_and_table.table.sampleData,
+                    )
+                except Exception as e:
+                    logging.error(
+                        f"Failed to ingest sample data for table {db_and_table.table.name}"
+                    )
+
             if db_and_table.table.tableProfile is not None:
                 for tp in db_and_table.table.tableProfile:
                     for pd in tp:
@@ -283,7 +290,6 @@ class MetadataRestSink(Sink[Entity]):
                 name=location.name,
                 description=location.description,
                 locationType=location.locationType,
-                tags=location.tags,
                 owner=location.owner,
                 service=location.service,
             )
@@ -345,18 +351,11 @@ class MetadataRestSink(Sink[Entity]):
             logger.error(err)
             self.status.failure(f"Lineage: {add_lineage}")
 
-    def write_ml_model(self, model: MlModel):
+    def write_ml_model(self, model: CreateMlModelEntityRequest):
         try:
-            model_request = CreateMlModelEntityRequest(
-                name=model.name,
-                displayName=model.displayName,
-                description=model.description,
-                algorithm=model.algorithm,
-                dashboard=model.dashboard,
-            )
-            created_model = self.metadata.create_or_update(model_request)
-            logger.info(f"Successfully added Model {created_model.displayName}")
-            self.status.records_written(f"Model: {created_model.displayName}")
+            created_model = self.metadata.create_or_update(model)
+            logger.info(f"Successfully added Model {created_model.name}")
+            self.status.records_written(f"Model: {created_model.name}")
         except (APIError, ValidationError) as err:
             logger.error(f"Failed to ingest Model {model.name}")
             logger.error(err)

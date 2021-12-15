@@ -137,7 +137,17 @@ public class ElasticSearchEventHandler implements EventHandler {
     List<FieldChange> fieldsAdded = changeDescription.getFieldsAdded();
     StringBuilder scriptTxt = new StringBuilder();
     Map<String, Object> fieldAddParams = new HashMap<>();
-
+    ESChangeDescription esChangeDescription = ESChangeDescription.builder()
+        .updatedAt(event.getDateTime().getTime())
+        .updatedBy(event.getUserName())
+        .fieldsAdded(changeDescription.getFieldsAdded())
+        .fieldsUpdated(changeDescription.getFieldsUpdated())
+        .fieldsDeleted(changeDescription.getFieldsDeleted()).build();
+    Map<String, Object> esChangeDescriptionDoc = JsonUtils.getMap(esChangeDescription);
+    fieldAddParams.put("change_description", esChangeDescriptionDoc);
+    fieldAddParams.put("last_updated_timestamp", event.getDateTime().getTime());
+    scriptTxt.append("ctx._source.change_descriptions.add(params.change_description); ");
+    scriptTxt.append("ctx._source.last_updated_timestamp=params.last_updated_timestamp;");
     for (FieldChange fieldChange: fieldsAdded) {
       if (fieldChange.getName().equalsIgnoreCase("followers")) {
         List<EntityReference> entityReferences = (List<EntityReference>) fieldChange.getNewValue();
@@ -159,15 +169,7 @@ public class ElasticSearchEventHandler implements EventHandler {
         scriptTxt.append("ctx._source.followers.removeAll(Collections.singleton(params.followers));");
       }
     }
-    ESChangeDescription esChangeDescription = ESChangeDescription.builder()
-        .updatedAt(event.getDateTime().getTime())
-        .updatedBy(event.getUserName()).build();
-    esChangeDescription.setFieldsAdded(changeDescription.getFieldsAdded());
-    esChangeDescription.setFieldsDeleted(changeDescription.getFieldsDeleted());
-    esChangeDescription.setFieldsUpdated(changeDescription.getFieldsUpdated());
-    Map<String, Object> esChangeDescriptionDoc = JsonUtils.getMap(esChangeDescription);
-    fieldAddParams.put("change_description", esChangeDescriptionDoc);
-    scriptTxt.append("ctx._source.change_descriptions.add(params.change_description);");
+
     if (!scriptTxt.toString().isEmpty()) {
       Script script = new Script(ScriptType.INLINE, "painless",
           scriptTxt.toString(),

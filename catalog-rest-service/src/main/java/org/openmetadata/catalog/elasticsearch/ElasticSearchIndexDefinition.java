@@ -66,8 +66,7 @@ public class ElasticSearchIndexDefinition {
     TABLE_SEARCH_INDEX("table_search_index", "/elasticsearch/table_index_mapping.json"),
     TOPIC_SEARCH_INDEX("topic_search_index", "/elasticsearch/topic_index_mapping.json"),
     DASHBOARD_SEARCH_INDEX("dashboard_search_index", "/elasticsearch/dashboard_index_mapping.json"),
-    PIPELINE_SEARCH_INDEX("pipeline_search_index", "/elasticsearch/pipeline_index_mapping.json"),
-    DBT_MODEL_SEARCH_INDEX("dbt_model_search_index", "/elasticsearch/dbt_index_mapping.json");
+    PIPELINE_SEARCH_INDEX("pipeline_search_index", "/elasticsearch/pipeline_index_mapping.json");
 
     public final String indexName;
     public final String indexMappingFile;
@@ -212,9 +211,9 @@ class FlattenColumn {
 class ESChangeDescription {
   String updatedBy;
   Long updatedAt;
-  List<FieldChange> fieldsAdded;
-  List<FieldChange> fieldsUpdated;
-  List<FieldChange> fieldsDeleted;
+  List<FieldChange> fieldsAdded = new ArrayList<>();
+  List<FieldChange> fieldsUpdated = new ArrayList<>();
+  List<FieldChange> fieldsDeleted = new ArrayList<>();
 }
 
 class ParseTags {
@@ -351,7 +350,11 @@ class TableESIndex extends ElasticSearchIndex {
       esChangeDescription.setFieldsUpdated(table.getChangeDescription().getFieldsUpdated());
     } else if (responseCode == Response.Status.CREATED.getStatusCode()) {
       esChangeDescription = ESChangeDescription.builder().updatedAt(table.getUpdatedAt().getTime())
-          .updatedBy(table.getUpdatedBy()).build();
+          .updatedBy(table.getUpdatedBy())
+          .fieldsAdded(new ArrayList<>())
+          .fieldsUpdated(new ArrayList<>())
+          .fieldsDeleted(new ArrayList<>())
+          .build();
     }
     tableESIndexBuilder.changeDescriptions(esChangeDescription != null ? List.of(esChangeDescription) : null);
     return tableESIndexBuilder;

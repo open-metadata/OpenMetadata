@@ -25,13 +25,12 @@ import {
   patchTeamDetail,
 } from '../../axiosAPIs/teamsAPI';
 import { Button } from '../../components/buttons/Button/Button';
+import Description from '../../components/common/description/Description';
 import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
 import NonAdminAction from '../../components/common/non-admin-action/NonAdminAction';
-import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
 import PageContainer from '../../components/containers/PageContainer';
 import Loader from '../../components/Loader/Loader';
 import FormModal from '../../components/Modals/FormModal';
-import { ModalWithMarkdownEditor } from '../../components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import {
   ERROR404,
   getTeamDetailsPath,
@@ -42,7 +41,6 @@ import { User } from '../../generated/entity/teams/user';
 import { useAuth } from '../../hooks/authHooks';
 import { UserTeam } from '../../interface/team.interface';
 import { getCountBadge } from '../../utils/CommonUtils';
-import SVGIcons from '../../utils/SvgUtils';
 import AddUsersModal from './AddUsersModal';
 import Form from './Form';
 import UserCard from './UserCard';
@@ -60,22 +58,6 @@ const TeamsPage = () => {
   const [isAddingTeam, setIsAddingTeam] = useState<boolean>(false);
   const [isAddingUsers, setIsAddingUsers] = useState<boolean>(false);
   const [userList, setUserList] = useState<Array<User>>([]);
-  const fetchCurrentTeam = (name: string, update = false) => {
-    if (currentTeam?.name !== name || update) {
-      setIsLoading(true);
-      getTeamByName(name, ['users', 'owns'])
-        .then((res: AxiosResponse) => {
-          setCurrentTeam(res.data);
-          setIsLoading(false);
-        })
-        .catch((err: AxiosError) => {
-          if (err?.response?.data.code) {
-            setError(ERROR404);
-          }
-          setIsLoading(false);
-        });
-    }
-  };
 
   const fetchTeams = () => {
     setIsLoading(true);
@@ -85,14 +67,36 @@ const TeamsPage = () => {
           setCurrentTeam(res.data.data[0]);
         }
         setTeams(res.data.data);
-        setIsLoading(false);
       })
       .catch((err: AxiosError) => {
         if (err?.response?.data.code) {
           setError(ERROR404);
         }
+      })
+      .finally(() => {
         setIsLoading(false);
       });
+  };
+
+  const fetchCurrentTeam = (name: string, update = false) => {
+    if (currentTeam?.name !== name || update) {
+      setIsLoading(true);
+      getTeamByName(name, ['users', 'owns'])
+        .then((res: AxiosResponse) => {
+          setCurrentTeam(res.data);
+          if (teams.length <= 0) {
+            fetchTeams();
+          }
+        })
+        .catch((err: AxiosError) => {
+          if (err?.response?.data.code) {
+            setError(ERROR404);
+          }
+        })
+        .finally(() => {
+          setIsLoading(false);
+        });
+    }
   };
 
   const createNewTeam = (data: Team) => {
@@ -100,12 +104,9 @@ const TeamsPage = () => {
       .then((res: AxiosResponse) => {
         if (res.data) {
           fetchTeams();
-          setIsAddingTeam(false);
-        } else {
-          setIsAddingTeam(false);
         }
       })
-      .catch(() => {
+      .finally(() => {
         setIsAddingTeam(false);
       });
   };
@@ -402,54 +403,17 @@ const TeamsPage = () => {
                       </Button>
                     </NonAdminAction>
                   </div>
-                  <div
-                    className="tw-flex tw-flex-col tw-border tw-rounded-md tw-mb-3 tw-min-h-32 tw-bg-white"
-                    data-testid="description-container">
-                    <div className="tw-flex tw-items-center tw-px-3 tw-py-1 tw-border-b">
-                      <span className="tw-flex-1 tw-leading-8 tw-m-0 tw-font-normal">
-                        Description
-                      </span>
-                      <div className="tw-flex-initial">
-                        <NonAdminAction
-                          position="bottom"
-                          title={TITLE_FOR_NON_ADMIN_ACTION}>
-                          <button
-                            className="focus:tw-outline-none"
-                            data-testid="add-description"
-                            onClick={onDescriptionEdit}>
-                            <SVGIcons
-                              alt="edit"
-                              icon="icon-edit"
-                              title="Edit"
-                              width="12px"
-                            />
-                          </button>
-                        </NonAdminAction>
-                      </div>
-                    </div>
-                    <div className="tw-px-3 tw-pl-5 tw-py-2 tw-overflow-y-auto">
-                      <div data-testid="description" id="description">
-                        {currentTeam?.description ? (
-                          <RichTextEditorPreviewer
-                            markdown={currentTeam.description}
-                          />
-                        ) : (
-                          <span className="tw-no-description">
-                            No description added
-                          </span>
-                        )}
-                      </div>
-                      {isEditable && (
-                        <ModalWithMarkdownEditor
-                          header={`Edit description for ${currentTeam?.displayName}`}
-                          placeholder="Enter Description"
-                          value={currentTeam?.description || ''}
-                          onCancel={onCancel}
-                          onSave={onDescriptionUpdate}
-                        />
-                      )}
-                    </div>
+                  <div className="tw-mb-3" data-testid="description-container">
+                    <Description
+                      description={currentTeam?.description || ''}
+                      entityName={currentTeam?.displayName}
+                      isEdit={isEditable}
+                      onCancel={onCancel}
+                      onDescriptionEdit={onDescriptionEdit}
+                      onDescriptionUpdate={onDescriptionUpdate}
+                    />
                   </div>
+
                   {getTabs()}
 
                   {currentTab === 1 && getUserCards()}

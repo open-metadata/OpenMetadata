@@ -45,7 +45,6 @@ from metadata.ingestion.api.common import (
 )
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
-from metadata.ingestion.models.table_metadata import DatasetProfile
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.utils.column_helpers import check_column_complex_type, get_column_type
 from metadata.utils.helpers import get_database_service_or_create
@@ -71,6 +70,35 @@ class SQLSourceStatus(SourceStatus):
         logger.warning("Dropped Table {} due to {}".format(table_name, err))
 
 
+def build_sql_source_connection_url(
+    host_port: str,
+    scheme: str,
+    username: Optional[str] = None,
+    password: Optional[SecretStr] = None,
+    database: Optional[str] = None,
+    options: dict = {},
+) -> str:
+
+    url = f"{scheme}://"
+    if username is not None:
+        url += f"{username}"
+        if password is not None:
+            url += f":{quote_plus(password.get_secret_value())}"
+        url += "@"
+    url += f"{host_port}"
+    if database:
+        url += f"/{database}"
+
+    if options is not None:
+        if database is None:
+            url += "/"
+        params = "&".join(
+            f"{key}={quote_plus(value)}" for (key, value) in options.items() if value
+        )
+        url = f"{url}?{params}"
+    return url
+
+
 class SQLConnectionConfig(ConfigModel):
     username: Optional[str] = None
     password: Optional[SecretStr] = None
@@ -88,22 +116,21 @@ class SQLConnectionConfig(ConfigModel):
     data_profiler_date: Optional[str] = datetime.now().strftime("%Y-%m-%d")
     data_profiler_offset: Optional[int] = 0
     data_profiler_limit: Optional[int] = 50000
-    filter_pattern: IncludeFilterPattern = IncludeFilterPattern.allow_all()
+    table_filter_pattern: IncludeFilterPattern = IncludeFilterPattern.allow_all()
+    schema_filter_pattern: IncludeFilterPattern = IncludeFilterPattern.allow_all()
     dbt_manifest_file: Optional[str] = None
     dbt_catalog_file: Optional[str] = None
 
     @abstractmethod
     def get_connection_url(self):
-        url = f"{self.scheme}://"
-        if self.username is not None:
-            url += f"{quote_plus(self.username)}"
-            if self.password is not None:
-                url += f":{quote_plus(self.password.get_secret_value())}"
-            url += "@"
-        url += f"{self.host_port}"
-        if self.database:
-            url += f"/{self.database}"
-        return url
+        return build_sql_source_connection_url(
+            host_port=self.host_port,
+            scheme=self.scheme,
+            username=self.username,
+            password=self.password,
+            database=self.database,
+            options=self.options,
+        )
 
     def get_service_type(self) -> DatabaseServiceType:
         return DatabaseServiceType[self.service_type]
@@ -201,7 +228,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
     def next_record(self) -> Iterable[OMetaDatabaseAndTable]:
         inspector = inspect(self.engine)
         for schema in inspector.get_schema_names():
-            if not self.sql_config.filter_pattern.included(schema):
+            if not self.sql_config.schema_filter_pattern.included(schema):
                 self.status.filter(schema, "Schema pattern not allowed")
                 continue
             logger.debug("total tables {}".format(inspector.get_table_names(schema)))
@@ -218,7 +245,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                 schema, table_name = self.standardize_schema_table_names(
                     schema, table_name
                 )
-                if not self.sql_config.filter_pattern.included(table_name):
+                if not self.sql_config.table_filter_pattern.included(table_name):
                     self.status.filter(
                         "{}.{}".format(self.config.get_service_name(), table_name),
                         "Table pattern not allowed",
@@ -254,10 +281,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                         [profile] if profile is not None else None
                     )
                 # check if we have any model to associate with
-                table_fqn = f"{schema}.{table_name}"
-                if table_fqn in self.data_models:
-                    model = self.data_models[table_fqn]
-                    table_entity.dataModel = model
+                table_entity.dataModel = self._get_data_model(schema, table_name)
 
                 table_and_db = OMetaDatabaseAndTable(
                     table=table_entity, database=self._get_database(schema)
@@ -279,7 +303,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                     schema, view_name = self.standardize_schema_table_names(
                         schema, view_name
                     )
-                if not self.sql_config.filter_pattern.included(view_name):
+                if not self.sql_config.table_filter_pattern.included(view_name):
                     self.status.filter(
                         "{}.{}".format(self.config.get_service_name(), view_name),
                         "View pattern not allowed",
@@ -316,7 +340,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                 if self.sql_config.generate_sample_data:
                     table_data = self.fetch_sample_data(schema, view_name)
                     table.sampleData = table_data
-
+                table.dataModel = self._get_data_model(schema, view_name)
                 table_and_db = OMetaDatabaseAndTable(
                     table=table, database=self._get_database(schema)
                 )
@@ -328,7 +352,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                 )
                 continue
 
-    def _parse_data_model(self) -> DataModel:
+    def _parse_data_model(self):
         logger.info("Parsing Data Models")
         if (
             self.config.dbt_manifest_file is not None
@@ -377,6 +401,13 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                 table_fqn = f"{self.config.service_name}.{database}.{table}"
                 upstream_nodes.append(table_fqn)
         return upstream_nodes
+
+    def _get_data_model(self, schema, table_name):
+        table_fqn = f"{schema}.{table_name}"
+        if table_fqn in self.data_models:
+            model = self.data_models[table_fqn]
+            return model
+        return None
 
     def _parse_data_model_columns(
         self, model_name: str, mnode: Dict, cnode: Dict

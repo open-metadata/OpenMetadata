@@ -226,6 +226,16 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
   }
 
   @Test
+  public void put_MlModelAddInvalidDashboard_200(TestInfo test) throws IOException {
+    CreateMlModel request = create(test);
+    // Create a made up dashboard reference by picking up a random UUID
+    EntityReference dashboard = new EntityReference().withId(USER1.getId()).withType("dashboard");
+    //MlModel model = createAndCheckEntity(request, adminAuthHeaders());
+    assertResponse(() -> createMlModel(request.withDashboard(dashboard), adminAuthHeaders()), Status.NOT_FOUND,
+            String.format("dashboard instance for %s not found", USER1.getId()));
+  }
+
+  @Test
   public void put_MlModelAddServer_200(TestInfo test) throws IOException {
     CreateMlModel request = create(test);
     MlModel model = createAndCheckEntity(request, adminAuthHeaders());

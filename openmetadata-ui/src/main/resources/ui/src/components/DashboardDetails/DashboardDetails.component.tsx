@@ -310,7 +310,7 @@ const DashboardDetails = ({
             tier={tier || ''}
             titleLinks={slashedDashboardName}
           />
-          <div className="tw-mt-1 tw-flex tw-flex-col tw-flex-grow">
+          <div className="tw-mt-4 tw-flex tw-flex-col tw-flex-grow">
             <TabsPane
               activeTab={activeTab}
               className="tw-flex-initial"
@@ -424,6 +424,7 @@ const DashboardDetails = ({
                                   editable={editChartTags?.index === index}
                                   selectedTags={chart.tags as EntityTags[]}
                                   tagList={tagList}
+                                  type="label"
                                   onCancel={() => {
                                     handleChartTagSelection();
                                   }}
@@ -431,7 +432,9 @@ const DashboardDetails = ({
                                     handleChartTagSelection(tags);
                                   }}>
                                   {chart.tags?.length ? (
-                                    <button className="tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none">
+                                    <button
+                                      className="tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none"
+                                      data-testid="edit-tags">
                                       <SVGIcons
                                         alt="edit"
                                         icon="icon-edit"

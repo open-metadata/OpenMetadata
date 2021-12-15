@@ -14,16 +14,16 @@
 export const tagStyles = {
   base: `tw-relative tw-inline-flex tw-text-xs tw-font-medium 
       tw-rounded tw-whitespace-nowrap`,
-  contained: 'tw-bg-tag tw-mr-2 tw-my-0.5 tw-font-medium ',
-  outlined: 'tw-bg-transparent tw-mr-2 tw-my-0.5 tw-font-medium ',
-  label: 'tw-bg-transparent tw-border-none tw-text-primary',
+  contained: 'tw-bg-badge tw-mr-2 tw-my-0.5',
+  outlined: 'tw-bg-transparent tw-mr-2 tw-my-0.5',
+  label: 'tw-bg-transparent tw-border-none tw-text-grey-body',
 
   text: {
     base: 'tw-no-underline hover:tw-no-underline',
     default: 'tw-px-2',
     editable: 'tw-pl-2 tw-pr-1',
-    contained: 'tw-py-0.5',
-    outlined: 'tw-py-0.5',
-    label: '',
+    contained: 'tw-py-0.5 tw-px-2',
+    outlined: 'tw-py-0.5 tw-px-2',
+    label: 'tw-px-1',
   },
 };
