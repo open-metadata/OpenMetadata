@@ -17,6 +17,7 @@ from typing import Iterable
 from urllib.parse import quote
 
 import requests
+from pydantic import SecretStr
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineage
 from metadata.generated.schema.entity.data.dashboard import Dashboard as Model_Dashboard
@@ -26,13 +27,18 @@ from metadata.generated.schema.entity.services.dashboardService import (
 )
 from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.api.common import Entity, WorkflowContext
+from metadata.ingestion.api.common import (
+    ConfigModel,
+    Entity,
+    IncludeFilterPattern,
+    WorkflowContext,
+)
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.models.table_metadata import Chart, Dashboard
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.source.sql_alchemy_helper import SQLSourceStatus
-from metadata.ingestion.source.sql_source import SQLConnectionConfig, SQLSourceStatus
+from metadata.ingestion.source.sql_source import SQLSourceStatus
 from metadata.utils.helpers import get_dashboard_service_or_create
 
 HEADERS = {"Content-Type": "application/json", "Accept": "*/*"}
@@ -41,10 +47,14 @@ HEADERS = {"Content-Type": "application/json", "Accept": "*/*"}
 logger: logging.Logger = logging.getLogger(__name__)
 
 
-class MetabaseConnectionConfig(SQLConnectionConfig):
-    service_type = "MySQL"
-    session_id: str = None
-    scheme = ""
+class MetabaseSourceConfig(ConfigModel):
+    username: str
+    password: SecretStr
+    host_port: str
+    dashboard_pattern: IncludeFilterPattern = IncludeFilterPattern.allow_all()
+    chart_pattern: IncludeFilterPattern = IncludeFilterPattern.allow_all()
+    service_name: str
+    service_type: str = "Metabase"
     database_service_name: str = None
 
     def get_connection_url(self):
@@ -52,13 +62,13 @@ class MetabaseConnectionConfig(SQLConnectionConfig):
 
 
 class MetabaseSource(Source[Entity]):
-    config: MetabaseConnectionConfig
+    config: MetabaseSourceConfig
     metadata_config: MetadataServerConfig
     status: SQLSourceStatus
 
     def __init__(
         self,
-        config: MetabaseConnectionConfig,
+        config: MetabaseSourceConfig,
         metadata_config: MetadataServerConfig,
         ctx: WorkflowContext,
     ):
@@ -69,11 +79,14 @@ class MetabaseSource(Source[Entity]):
         params = {}
         params["username"] = self.config.username
         params["password"] = self.config.password.get_secret_value()
-        resp = requests.post(
-            self.config.host_port + "/api/session/",
-            data=json.dumps(params),
-            headers=HEADERS,
-        )
+        try:
+            resp = requests.post(
+                self.config.host_port + "/api/session/",
+                data=json.dumps(params),
+                headers=HEADERS,
+            )
+        except Exception as err:
+            raise ConnectionError(f"{err}")
         session_id = resp.json()["id"]
         self.metabase_session = {"X-Metabase-Session": session_id}
         self.dashboard_service = get_dashboard_service_or_create(
@@ -89,13 +102,12 @@ class MetabaseSource(Source[Entity]):
 
     @classmethod
     def create(cls, config_dict, metadata_config_dict, ctx):
-        config = MetabaseConnectionConfig.parse_obj(config_dict)
+        config = MetabaseSourceConfig.parse_obj(config_dict)
         metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
         return cls(config, metadata_config, ctx)
 
     def next_record(self) -> Iterable[Entity]:
         yield from self.get_dashboards()
-        yield from self.get_metrics()
 
     def get_charts(self, charts) -> Iterable[Chart]:
         for chart in charts:
@@ -145,50 +157,6 @@ class MetabaseSource(Source[Entity]):
                 yield from self.get_lineage(
                     dashboard_details["ordered_cards"], dashboard_details["name"]
                 )
-
-    def get_metrics(self):
-        resp_metrics = self.req_get("/api/metric")
-        if resp_metrics.status_code == 200:
-            dashboard_ev = Dashboard(
-                id=uuid.uuid4(),
-                name="metabase_metric",
-                displayName="Metrics",
-                url=self.config.host_port,
-                description="Metabase Metrics",
-                charts=self.metric_charts,
-                service=EntityReference(
-                    id=self.dashboard_service.id, type="dashboardService"
-                ),
-            )
-            self.mertic_charts = []
-            for metric in resp_metrics.json():
-                try:
-                    try:
-                        chart_type = "Other"
-                        if "type" in metric["query_description"]["aggregation"]:
-                            chart_type = metric["query_description"]["aggregation"][
-                                "type"
-                            ]
-                    except Exception as err:
-                        logger.error(repr(err))
-                    self.metric_charts.append(metric["name"])
-                    yield Chart(
-                        id=uuid.uuid4(),
-                        name=metric["name"],
-                        url=self.config.host_port,
-                        chart_type=chart_type,
-                        displayName=metric["name"],
-                        description=metric["description"]
-                        if metric["description"] is not None
-                        else "",
-                        service=EntityReference(
-                            id=self.dashboard_service.id, type="dashboardService"
-                        ),
-                    )
-                except Exception as err:
-                    logger.error(repr(err))
-            dashboard_ev.charts = self.metric_charts
-            yield dashboard_ev
 
     def get_lineage(self, chart_list, dashboard_name):
         metadata = OpenMetadata(self.metadata_config)
