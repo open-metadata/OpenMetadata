@@ -233,6 +233,19 @@ public class UserResourceTest extends EntityResourceTest<User> {
   }
 
   @Test
+  public void patch_makeAdmin_as_another_user_401(TestInfo test)
+      throws HttpResponseException, JsonProcessingException {
+    // Ensure user name can't be changed using patch
+    User user = createUser(create(test, 6).withName("test2").withDisplayName("displayName")
+        .withEmail("test2@email.com"), authHeaders("test2@email.com"));
+    String userJson = JsonUtils.pojoToJson(user);
+    user.setIsAdmin(Boolean.TRUE);
+    HttpResponseException exception = assertThrows(HttpResponseException.class, () -> patchUser(userJson, user,
+        authHeaders("test100@email.com")));
+    assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test100'} does not have permissions");
+  }
+
+  @Test
   public void patch_userNameChange_as_same_user_200_ok(TestInfo test) throws HttpResponseException,
           JsonProcessingException {
     // Ensure user name can't be changed using patch

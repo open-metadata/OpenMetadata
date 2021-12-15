@@ -281,13 +281,11 @@ public class UserResource {
   public Response createOrUpdateUser(@Context UriInfo uriInfo,
                                      @Context SecurityContext securityContext,
                                      @Valid CreateUser create) throws IOException, ParseException {
-    if (create.getIsAdmin() != null && create.getIsAdmin()) {
+    if ((create.getIsAdmin() != null && create.getIsAdmin()) ||
+        (create.getIsBot() != null && create.getIsBot())) {
       SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     }
     User user = getUser(securityContext, create);
-    if (user.getIsBot() || user.getIsAdmin()) {
-      SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    }
     SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext,
             new UserEntityInterface(user).getEntityReference());
     RestUtil.PutResponse<User> response = dao.createOrUpdate(uriInfo, user);
@@ -310,7 +308,16 @@ public class UserResource {
                                             "{op:add, path: /b, value: val}" +
                                             "]")}))
                             JsonPatch patch) throws IOException, ParseException {
-    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
+    for (JsonValue patchOp: patch.toJsonArray()) {
+      String path = patchOp.asJsonObject().get("path").toString();
+      String value = patchOp.asJsonObject().get("value").toString();
+      if(path.equals("/isAdmin") && value.equals("true")) {
+        SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
+      }
+    }
+    User user = dao.get(uriInfo, id, new Fields(FIELD_LIST, null));
+    SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext,
+        new UserEntityInterface(user).getEntityReference());
     PatchResponse<User> response = dao.patch(uriInfo, UUID.fromString(id),
             securityContext.getUserPrincipal().getName(), patch);
     addHref(uriInfo, response.getEntity());
