@@ -264,7 +264,7 @@ const Appbar: React.FC = (): JSX.Element => {
                   />
                 ))}
             </div>
-            <div className="tw-flex tw-ml-auto">
+            <div className="tw-flex tw-ml-auto tw-pl-36">
               <button
                 className="tw-nav focus:tw-no-underline hover:tw-underline"
                 data-testid="whatsnew-modal"
