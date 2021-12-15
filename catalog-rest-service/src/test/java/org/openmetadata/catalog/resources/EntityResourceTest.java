@@ -73,6 +73,7 @@ import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.BiConsumer;
+import java.util.Random;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.CONFLICT;
@@ -250,8 +251,10 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   @Test
   public void get_entityListWithPagination_200(TestInfo test) throws HttpResponseException, URISyntaxException {
-    // Create a large number of tables
-    int maxEntities = 40;
+    // Create a number of tables between 5 and 20 inclusive
+    Random rand = new Random();
+    int maxEntities = rand.nextInt(16) + 5;
+    
     for (int i = 0; i < maxEntities; i++) {
       createEntity(createRequest(getEntityName(test, i), null, null, null), adminAuthHeaders());
     }
