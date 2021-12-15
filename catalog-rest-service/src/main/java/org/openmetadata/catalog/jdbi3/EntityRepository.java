@@ -472,6 +472,9 @@ public abstract class EntityRepository<T> {
     private void updateOwner() throws JsonProcessingException {
       EntityReference origOwner = original.getOwner();
       EntityReference updatedOwner = updated.getOwner();
+      if (updatedOwner == null || (origOwner == updatedOwner)) {
+        return;
+      }
       if (recordChange("owner", origOwner, updatedOwner, true, entityReferenceMatch)) {
         EntityUtil.updateOwner(daoCollection.relationshipDAO(), origOwner,
                 updatedOwner, original.getId(), entityName);
