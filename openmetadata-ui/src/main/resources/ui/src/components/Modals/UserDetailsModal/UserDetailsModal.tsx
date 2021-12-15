@@ -78,9 +78,7 @@ const UserDetailsModal = ({
               <span className="tw-ml-1">{userData.email}</span>
             </p>
             <p className="tw-mb-4 tw-font-normal">
-              <span className="tw-italic">
-                {userData.isAdmin ? 'Admin' : 'User'}
-              </span>
+              Role: {userData.isAdmin ? 'Admin' : 'User'}
             </p>
             {userData.teams && <div className="tw-filter-seperator tw-w-5/6" />}
             <p className="tw-w-4/5 tw-mx-auto">
@@ -115,7 +113,7 @@ const UserDetailsModal = ({
             type="submit"
             variant="contained"
             onClick={onSave}>
-            {userData.isAdmin ? 'Dismiss as admin' : 'Make admin'}
+            {userData.isAdmin ? 'Revoke Admin Privileges' : 'Make Admin'}
           </Button>
         </div>
       </div>
