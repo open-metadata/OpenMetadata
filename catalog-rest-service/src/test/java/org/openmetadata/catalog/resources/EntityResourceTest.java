@@ -254,7 +254,7 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
   public void get_entityListWithPagination_200(TestInfo test) throws HttpResponseException, URISyntaxException {
     // Create a number of tables between 5 and 40 inclusive
     Random rand = new Random();
-    int maxEntities = rand.nextInt(36) + 5;
+    int maxEntities = rand.nextInt(16) + 5;
     
     for (int i = 0; i < maxEntities; i++) {
       createEntity(createRequest(getEntityName(test, i), null, null, null), adminAuthHeaders());
