@@ -316,6 +316,7 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
         alt: 'schema',
         name: 'icon-schema',
         title: 'Schema',
+        selectedName: 'icon-schemacolor',
       },
       isProtected: false,
       position: 1,

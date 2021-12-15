@@ -19,6 +19,7 @@ import IconOkta from '../assets/img/icon-okta.png';
 import IconWelcomePopper from '../assets/img/welcome-popper-icon.png';
 import IconAPI from '../assets/svg/api.svg';
 import IconSuccess from '../assets/svg/check.svg';
+import IconConfigColor from '../assets/svg/config-color.svg';
 import IconConfig from '../assets/svg/config.svg';
 import IconDashboardGrey from '../assets/svg/dashboard-grey.svg';
 import IconDashboard from '../assets/svg/dashboard.svg';
@@ -68,14 +69,19 @@ import IconNotNull from '../assets/svg/icon-notnull.svg';
 import IconUnique from '../assets/svg/icon-unique.svg';
 import IconInfo from '../assets/svg/info.svg';
 import IconIngestion from '../assets/svg/ingestion.svg';
+import IconLineageColor from '../assets/svg/lineage-color.svg';
 import LogoMonogram from '../assets/svg/logo-monogram.svg';
 import Logo from '../assets/svg/logo.svg';
+import IconManageColor from '../assets/svg/manage-color.svg';
 import IconMinus from '../assets/svg/minus.svg';
 import IconPipelineGrey from '../assets/svg/pipeline-grey.svg';
 import IconPipeline from '../assets/svg/pipeline.svg';
 import IconPlus from '../assets/svg/plus.svg';
+import IconProfilerColor from '../assets/svg/profiler-color.svg';
 import IconProfiler from '../assets/svg/profiler.svg';
 import IconHelpCircle from '../assets/svg/question-circle.svg';
+import IconSchemaColor from '../assets/svg/schema-color.svg';
+import IconSearchV1Color from '../assets/svg/search-color.svg';
 import IconSearchV1 from '../assets/svg/search.svg';
 import IconSetting from '../assets/svg/service.svg';
 import IconSlackGrey from '../assets/svg/slack-grey.svg';
@@ -183,6 +189,12 @@ export const Icons = {
   TAG_GREY: 'icon-tag-grey',
   TIER: 'icon-tier',
   SEARCHV1: 'icon-searchv1',
+  SCHEMACOLOR: 'icon-schemacolor',
+  CONFIGCOLOR: 'icon-configcolor',
+  LINEAGECOLOR: 'icon-lineagecolor',
+  PROFILERCOLOR: 'icon-profilercolor',
+  MANAGECOLOR: 'icon-managecolor',
+  SEARCHV1COLOR: 'icon-searchv1color',
 };
 
 const SVGIcons: FunctionComponent<Props> = ({
@@ -519,6 +531,30 @@ const SVGIcons: FunctionComponent<Props> = ({
       break;
     case Icons.SEARCHV1:
       IconComponent = IconSearchV1;
+
+      break;
+    case Icons.CONFIGCOLOR:
+      IconComponent = IconConfigColor;
+
+      break;
+    case Icons.LINEAGECOLOR:
+      IconComponent = IconLineageColor;
+
+      break;
+    case Icons.MANAGECOLOR:
+      IconComponent = IconManageColor;
+
+      break;
+    case Icons.PROFILERCOLOR:
+      IconComponent = IconProfilerColor;
+
+      break;
+    case Icons.SCHEMACOLOR:
+      IconComponent = IconSchemaColor;
+
+      break;
+    case Icons.SEARCHV1COLOR:
+      IconComponent = IconSearchV1Color;
 
       break;
 

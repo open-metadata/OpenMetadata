@@ -24,6 +24,7 @@ type Tab = {
     alt: string;
     name: string;
     title: string;
+    selectedName: string;
   };
   isProtected: boolean;
   isHidden?: boolean;
@@ -60,7 +61,11 @@ const TabsPane = ({ activeTab, setActiveTab, tabs, className = '' }: Props) => {
                   onClick={() => setActiveTab?.(tab.position)}>
                   <SVGIcons
                     alt={tab.icon.alt}
-                    icon={tab.icon.name}
+                    icon={
+                      tab.position === activeTab
+                        ? tab.icon.selectedName
+                        : tab.icon.name
+                    }
                     title={tab.icon.title}
                     width="16"
                   />{' '}
@@ -75,12 +80,18 @@ const TabsPane = ({ activeTab, setActiveTab, tabs, className = '' }: Props) => {
                 onClick={() => setActiveTab?.(tab.position)}>
                 <SVGIcons
                   alt={tab.icon.alt}
-                  icon={tab.icon.name}
+                  icon={
+                    tab.position === activeTab
+                      ? tab.icon.selectedName
+                      : tab.icon.name
+                  }
                   title={tab.icon.title}
                   width="16"
                 />{' '}
                 {tab.name}
-                {!isNil(tab.count) ? getCountBadge(tab.count) : null}
+                {!isNil(tab.count)
+                  ? getCountBadge(tab.count, '', tab.position === activeTab)
+                  : null}
               </button>
             )
           ) : null
