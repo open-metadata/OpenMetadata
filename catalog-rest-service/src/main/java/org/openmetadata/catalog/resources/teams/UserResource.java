@@ -42,6 +42,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.json.JsonPatch;
+import javax.json.JsonValue;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
 import javax.validation.constraints.Min;
@@ -117,7 +118,7 @@ public class UserResource {
                   "parameter to get only necessary fields. Use cursor-based pagination to limit the number " +
                   "entries in the list using `limit` and `before` or `after` query params.",
           responses = {
-                  @ApiResponse(responseCode = "200", description = "The user ",
+              @ApiResponse(responseCode = "200", description = "The user ",
                           content = @Content(mediaType = "application/json",
                           schema = @Schema(implementation = UserList.class)))
   })
@@ -173,11 +174,10 @@ public class UserResource {
   @Operation(summary = "Get a user", tags = "users",
           description = "Get a user by `id`",
           responses = {
-                  @ApiResponse(responseCode = "200", description = "The user",
+              @ApiResponse(responseCode = "200", description = "The user",
                           content = @Content(mediaType = "application/json",
                           schema = @Schema(implementation = User.class))),
-                  @ApiResponse(responseCode = "404", description = "User for instance {id} is not found")
-  })
+              @ApiResponse(responseCode = "404", description = "User for instance {id} is not found")})
   public User get(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("id") String id,
                   @Parameter(description = "Fields requested in the returned resource",
                           schema = @Schema(type = "string", example = FIELDS))
@@ -193,10 +193,10 @@ public class UserResource {
   @Operation(summary = "Get a user by name", tags = "users",
           description = "Get a user by `name`.",
           responses = {
-                  @ApiResponse(responseCode = "200", description = "The user",
+              @ApiResponse(responseCode = "200", description = "The user",
                           content = @Content(mediaType = "application/json",
                           schema = @Schema(implementation = User.class))),
-                  @ApiResponse(responseCode = "404", description = "User for instance {id} is not found")
+              @ApiResponse(responseCode = "404", description = "User for instance {id} is not found")
           })
   public User getByName(@Context UriInfo uriInfo, @Context SecurityContext securityContext,
                       @PathParam("name") String name,
@@ -214,10 +214,10 @@ public class UserResource {
   @Operation(summary = "Get current logged in user", tags = "users",
           description = "Get the user who is authenticated and is currently logged in.",
           responses = {
-                  @ApiResponse(responseCode = "200", description = "The user",
-                          content = @Content(mediaType = "application/json",
-                          schema = @Schema(implementation = User.class))),
-                  @ApiResponse(responseCode = "404", description = "User not found")
+              @ApiResponse(responseCode = "200", description = "The user",
+                      content = @Content(mediaType = "application/json",
+                      schema = @Schema(implementation = User.class))),
+              @ApiResponse(responseCode = "404", description = "User not found")
           })
   public User getCurrentLoggedInUser(@Context UriInfo uriInfo, @Context SecurityContext securityContext,
                                      @Parameter(description = "Fields requested in the returned resource",
@@ -234,10 +234,10 @@ public class UserResource {
   @Operation(summary = "Get a version of the user", tags = "users",
           description = "Get a version of the user by given `id`",
           responses = {
-                  @ApiResponse(responseCode = "200", description = "user",
+              @ApiResponse(responseCode = "200", description = "user",
                           content = @Content(mediaType = "application/json",
-                                  schema = @Schema(implementation = User.class))),
-                  @ApiResponse(responseCode = "404", description = "User for instance {id} and version {version} is " +
+                          schema = @Schema(implementation = User.class))),
+              @ApiResponse(responseCode = "404", description = "User for instance {id} and version {version} is " +
                           "not found")
           })
   public User getVersion(@Context UriInfo uriInfo,
@@ -254,10 +254,10 @@ public class UserResource {
   @Operation(summary = "Create a user", tags = "users",
           description = "Create a new user.",
           responses = {
-                  @ApiResponse(responseCode = "200", description = "The user ",
+              @ApiResponse(responseCode = "200", description = "The user ",
                           content = @Content(mediaType = "application/json",
                           schema = @Schema(implementation = CreateUser.class))),
-                  @ApiResponse(responseCode = "400", description = "Bad request")
+              @ApiResponse(responseCode = "400", description = "Bad request")
           })
   public Response createUser(@Context UriInfo uriInfo, @Context SecurityContext securityContext,
                              @Valid CreateUser create) throws IOException, ParseException {
@@ -273,10 +273,10 @@ public class UserResource {
   @Operation(summary = "Create or Update a user", tags = "users",
           description = "Create or Update a user.",
           responses = {
-                  @ApiResponse(responseCode = "200", description = "The user ",
-                          content = @Content(mediaType = "application/json",
-                                  schema = @Schema(implementation = CreateUser.class))),
-                  @ApiResponse(responseCode = "400", description = "Bad request")
+              @ApiResponse(responseCode = "200", description = "The user ",
+                           content = @Content(mediaType = "application/json",
+                           schema = @Schema(implementation = CreateUser.class))),
+              @ApiResponse(responseCode = "400", description = "Bad request")
           })
   public Response createOrUpdateUser(@Context UriInfo uriInfo,
                                      @Context SecurityContext securityContext,
@@ -285,6 +285,9 @@ public class UserResource {
       SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     }
     User user = getUser(securityContext, create);
+    if (user.getIsBot() || user.getIsAdmin()) {
+      SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
+    }
     SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext,
             new UserEntityInterface(user).getEntityReference());
     RestUtil.PutResponse<User> response = dao.createOrUpdate(uriInfo, user);
@@ -307,9 +310,7 @@ public class UserResource {
                                             "{op:add, path: /b, value: val}" +
                                             "]")}))
                             JsonPatch patch) throws IOException, ParseException {
-    User user = dao.get(uriInfo, id, new Fields(FIELD_LIST, null));
-    SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext,
-            new UserEntityInterface(user).getEntityReference());
+    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     PatchResponse<User> response = dao.patch(uriInfo, UUID.fromString(id),
             securityContext.getUserPrincipal().getName(), patch);
     addHref(uriInfo, response.getEntity());
@@ -322,8 +323,8 @@ public class UserResource {
           description = "Users can't be deleted but are deactivated. The name and display name is prefixed with " +
                   "the string `deactivated`.",
           responses = {
-                  @ApiResponse(responseCode = "200", description = "OK"),
-                  @ApiResponse(responseCode = "404", description = "User for instance {id} is not found")
+              @ApiResponse(responseCode = "200", description = "OK"),
+              @ApiResponse(responseCode = "404", description = "User for instance {id} is not found")
           })
   public Response delete(@Context UriInfo uriInfo, @Context SecurityContext securityContext,
                          @PathParam("id") String id) throws IOException {

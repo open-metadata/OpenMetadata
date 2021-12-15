@@ -185,7 +185,7 @@ class ElasticSearchIndex {
   List<String> followers;
   @JsonProperty("last_updated_timestamp")
   @Builder.Default
-  Long lastUpdatedTimestamp = System.currentTimeMillis();
+  Long lastUpdatedTimestamp;
   @JsonProperty("change_descriptions")
   List<ESChangeDescription> changeDescriptions;
 }
@@ -313,7 +313,13 @@ class TableESIndex extends ElasticSearchIndex {
         .tier(parseTags.tierTag);
 
     if (table.getDatabase() != null) {
-      tableESIndexBuilder.database(table.getDatabase().getName());
+      String databaseFQN = table.getDatabase().getName();
+      String[] databaseFQNSplit = databaseFQN.split("\\.");
+      if (databaseFQNSplit.length == 2) {
+        tableESIndexBuilder.database(databaseFQNSplit[1]);
+      } else {
+        tableESIndexBuilder.database(databaseFQNSplit[0]);
+      }
     }
 
     if (table.getService() != null) {
