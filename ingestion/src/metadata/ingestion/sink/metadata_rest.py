@@ -368,7 +368,7 @@ class MetadataRestSink(Sink[Entity]):
 
     def _create_team(self, team: EntityReference) -> None:
         metadata_team = CreateTeamEntityRequest(
-            name=team.name, displayName=team.name, description="Team Name"
+            name=team.name, displayName=team.name, description=team.description
         )
         try:
             r = self.metadata.create_or_update(metadata_team)
