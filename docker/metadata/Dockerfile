@@ -16,8 +16,8 @@ EXPOSE 8585
 RUN apt-get update -y && \
     apt-get install --no-install-recommends curl wget -y && \
     rm -rf /var/lib/apt/lists/*
-COPY openmetadata-start.sh /
-COPY openmetadata.yaml /
+COPY docker/metadata/openmetadata-start.sh /
+COPY docker/metadata/openmetadata.yaml /
 RUN wget https://github.com/open-metadata/OpenMetadata/releases/download/0.7.0/openmetadata-0.7.0.tar.gz
 RUN chmod 777 openmetadata-start.sh && tar zxvf openmetadata-*.tar.gz
 CMD ["./openmetadata-start.sh"]
