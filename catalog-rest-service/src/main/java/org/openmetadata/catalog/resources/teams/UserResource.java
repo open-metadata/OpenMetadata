@@ -128,6 +128,9 @@ public class UserResource {
                                @Parameter(description = "Fields requested in the returned resource",
                                        schema = @Schema(type = "string", example = FIELDS))
                                @QueryParam("fields") String fieldsParam,
+                               @Parameter(description = "Filter users by team",
+                                       schema = @Schema(type = "string", example = "Legal"))
+                               @QueryParam("team") String teamParam,
                                @Parameter(description = "Limit the number users returned. (1 to 1000000, default = 10)")
                                @DefaultValue("10")
                                @Min(1)
@@ -145,9 +148,9 @@ public class UserResource {
 
     ResultList<User> users;
     if (before != null) { // Reverse paging
-      users = dao.listBefore(uriInfo, fields, null, limitParam, before);
+      users = dao.listBefore(uriInfo, fields, teamParam, limitParam, before);
     } else { // Forward paging or first page
-      users = dao.listAfter(uriInfo, fields, null, limitParam, after);
+      users = dao.listAfter(uriInfo, fields, teamParam, limitParam, after);
     }
     Optional.ofNullable(users.getData()).orElse(Collections.emptyList()).forEach(u -> addHref(uriInfo, u));
     return users;

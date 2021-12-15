@@ -842,6 +842,65 @@ public interface CollectionDAO {
 
     @SqlQuery("SELECT json FROM user_entity WHERE email = :email")
     String findByEmail(@Bind("email") String email);
+
+    default int listCount(String team) {
+      return listCount(getTableName(), getNameColumn(), team, Relationship.CONTAINS.ordinal());
+    }
+
+    @Override
+    default List<String> listBefore(String team, int limit, String before) {
+      return listBefore(getTableName(), getNameColumn(), team, limit, before, Relationship.CONTAINS.ordinal());
+    }
+
+    @Override
+    default List<String> listAfter(String team, int limit, String after) {
+      return listAfter(getTableName(), getNameColumn(), team, limit, after, Relationship.CONTAINS.ordinal());
+    }
+
+    @SqlQuery("SELECT count(id) FROM (" +
+              "SELECT ue.id " +
+              "FROM user_entity ue " +
+              "LEFT JOIN entity_relationship er on ue.id = er.toId " +
+              "LEFT JOIN team_entity te on te.id = er.fromId and er.relation = :relation " +
+              "WHERE (te.name = :team OR :team IS NULL) " +
+              "GROUP BY ue.id) subquery")
+    int listCount(@Define("table") String table, @Define("nameColumn") String nameColumn,
+                  @Bind("team") String team,
+                  @Bind("relation") int relation);
+
+    @SqlQuery("SELECT json FROM (" +
+              "SELECT ue.<nameColumn>, ue.json " +
+              "FROM user_entity ue " +
+              "LEFT JOIN entity_relationship er on ue.id = er.toId " +
+              "LEFT JOIN team_entity te on te.id = er.fromId and er.relation = :relation " +
+              "WHERE (te.name = :team OR :team IS NULL) AND " +
+              "ue.<nameColumn> < :before " +
+              "GROUP BY ue.<nameColumn>, ue.json " +
+              "ORDER BY ue.<nameColumn> DESC " +
+              "LIMIT :limit" +
+              ") last_rows_subquery ORDER BY <nameColumn>")
+    List<String> listBefore(@Define("table") String table,
+                            @Define("nameColumn") String nameColumn,
+                            @Bind("team") String team,
+                            @Bind("limit") int limit,
+                            @Bind("before") String before,
+                            @Bind("relation") int relation);
+
+    @SqlQuery("SELECT ue.json " +
+              "FROM user_entity ue " +
+              "LEFT JOIN entity_relationship er on ue.id = er.toId " +
+              "LEFT JOIN team_entity te on te.id = er.fromId and er.relation = :relation " +
+              "WHERE (te.name = :team OR :team IS NULL) AND " +
+              "ue.<nameColumn> > :after " +
+              "GROUP BY ue.json " +
+              "ORDER BY ue.<nameColumn> " +
+              "LIMIT :limit")
+    List<String> listAfter(@Define("table") String table,
+                           @Define("nameColumn") String nameColumn,
+                           @Bind("team") String team,
+                           @Bind("limit") int limit,
+                           @Bind("after") String after,
+                           @Bind("relation") int relation);
   }
 
   interface ChangeEventDAO {
