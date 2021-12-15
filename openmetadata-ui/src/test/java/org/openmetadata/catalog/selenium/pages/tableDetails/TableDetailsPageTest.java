@@ -206,16 +206,19 @@ public class TableDetailsPageTest {
     openExplorePage();
     Events.click(webDriver, By.xpath("(//a[@data-testid='table-link'])[last()]"));
     Events.click(webDriver, By.cssSelector("[data-testid='breadcrumb-link']"));
-    Events.click(webDriver, By.cssSelector("[data-testid='description-edit']")); // edit description
+    Events.click(webDriver, By.cssSelector("[data-testid='edit-description']")); // edit description
     Events.sendKeys(webDriver, By.xpath(enterDescription), faker.address().toString());
     Events.click(webDriver, By.cssSelector("[data-testid='save']"));
     Events.click(webDriver, By.xpath("(//tr[@data-testid='column']//td[1]/a)[1]")); // database
-//    Events.click(webDriver, By.cssSelector("[data-testid='description-edit-button']")); // edit description
-//    Events.sendKeys(webDriver, By.xpath(enterDescription), faker.address().toString());
-//    Events.click(webDriver, By.cssSelector("[data-testid='save']"));
+    Events.click(webDriver, By.cssSelector("[data-testid='edit-description']")); // edit description
+    Events.sendKeys(webDriver, By.xpath(enterDescription), faker.address().toString());
+    Events.click(webDriver, By.cssSelector("[data-testid='save']"));
     for (int i = 1; i <= 3; i++) { //check topics in service
       Events.click(
           webDriver, By.xpath("(//tr[@data-testid='tabale-column']//td[1]/a)" + "[" + i + "]")); // tables
+      Events.click(webDriver, By.cssSelector("[data-testid='edit-description']")); // edit description
+      Events.sendKeys(webDriver, By.xpath(enterDescription), faker.address().toString());
+      Events.click(webDriver, By.cssSelector("[data-testid='save']"));
       Thread.sleep(waitTime);
       webDriver.navigate().back();
     }

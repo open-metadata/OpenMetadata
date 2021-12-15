@@ -103,7 +103,7 @@ public class TeamsPageTest {
     openTeamsPage();
     Events.click(webDriver, By.xpath("//*[text()[contains(.,'" + teamDisplayName + "')]] "));
     // Select the created listed team
-    Events.click(webDriver, By.cssSelector("[data-testid='add-description']"));
+    Events.click(webDriver, By.cssSelector("[data-testid='edit-description']"));
     wait.until(ExpectedConditions.elementToBeClickable(
         By.xpath(enterDescription)));
     Events.sendKeys(webDriver, By.xpath(enterDescription), faker.address().toString());

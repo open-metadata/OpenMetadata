@@ -164,12 +164,15 @@ public class TopicDetailsPageTest {
     Events.click(webDriver, By.xpath("(//a[@data-testid='table-link'])[last()]"));
     wait.until(ExpectedConditions.elementToBeClickable(By.cssSelector("[data-testid='breadcrumb-link']")));
     Events.click(webDriver, By.cssSelector("[data-testid='breadcrumb-link']"));
-    wait.until(ExpectedConditions.elementToBeClickable(By.cssSelector("[data-testid='description-edit']")));
-    Events.click(webDriver, By.cssSelector("[data-testid='description-edit']")); // edit description
+    wait.until(ExpectedConditions.elementToBeClickable(By.cssSelector("[data-testid='edit-description']")));
+    Events.click(webDriver, By.cssSelector("[data-testid='edit-description']")); // edit description
     Events.sendKeys(webDriver, By.xpath(enterDescription), faker.address().toString());
     Events.click(webDriver, By.cssSelector("[data-testid='save']"));
     for (int i = 1; i <= 3; i++) { //check topics in service
       Events.click(webDriver, By.xpath("(//tr[@data-testid='column']//td[1]/a)" + "[" + i + "]")); // topics
+      Events.click(webDriver, By.cssSelector("[data-testid='edit-description']")); // edit description
+      Events.sendKeys(webDriver, By.xpath(enterDescription), faker.address().toString());
+      Events.click(webDriver, By.cssSelector("[data-testid='save']"));
       Thread.sleep(waitTime);
       webDriver.navigate().back();
     }

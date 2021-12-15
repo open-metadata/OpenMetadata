@@ -94,7 +94,7 @@ public class TagsPageTest {
   public void editTagCategoryDescription() throws InterruptedException {
     openTagsPage();
     Events.click(webDriver, By.xpath("//*[text()[contains(.,'" + tagCategoryDisplayName + "')]] "));
-    Events.click(webDriver, By.cssSelector("[data-testid='add-description']"));
+    Events.click(webDriver, By.cssSelector("[data-testid='edit-description']"));
     wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath(enterDescription)));
     Events.sendKeys(webDriver, By.xpath(enterDescription), faker.address().toString());
     Events.click(webDriver, By.cssSelector("[data-testid='save']"));
