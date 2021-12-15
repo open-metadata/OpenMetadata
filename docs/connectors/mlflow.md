@@ -1,8 +1,8 @@
 ---
-description: This guide will help install the MlFlow connector and run it manually
+description: This guide will help install the MLflow connector and run it manually
 ---
 
-# MlFlow
+# MLflow
 
 {% hint style="info" %}
 **Prerequisites**
@@ -43,12 +43,12 @@ metadata ingest -c ./examples/workflows/mlflow.json
 ```
 {% endcode %}
 
-1. **tracking\_uri** - MlFlow server containing the tracking information of runs and experiments ([docs](https://mlflow.org/docs/latest/tracking.html#)).
+1. **tracking\_uri** - MLflow server containing the tracking information of runs and experiments ([docs](https://mlflow.org/docs/latest/tracking.html#)).
 2. **registry\_uri** - Backend store where the Tracking Server stores experiment and run metadata ([docs](https://mlflow.org/docs/latest/tracking.html#id14)).
 
 ## Publish to OpenMetadata
 
-Below is the configuration to publish MlFlow data into the OpenMetadata service.
+Below is the configuration to publish MLflow data into the OpenMetadata service.
 
 Add optionally `pii` processor and `metadata-rest` sink along with `metadata-server` config
 
