@@ -792,7 +792,7 @@ public interface CollectionDAO {
     int delete(@Bind("id") String id);
 
     /**
-     * Note not using in following percentile computation PERCENT_RANK function as unit tests use mysql5.7 and it does
+     * Note not using in following percentile computation PERCENT_RANK function as unit tests use mysql5.7, and it does
      * not have window function
      */
     @SqlUpdate("UPDATE entity_usage u JOIN ( " +

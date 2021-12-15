@@ -18,8 +18,6 @@ import org.openmetadata.catalog.resources.events.EventResource.ChangeEventList;
 import org.openmetadata.catalog.type.ChangeEvent;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.ResultList;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.security.GeneralSecurityException;
@@ -33,7 +31,6 @@ import static org.openmetadata.catalog.type.EventType.ENTITY_DELETED;
 import static org.openmetadata.catalog.type.EventType.ENTITY_UPDATED;
 
 public class ChangeEventRepository {
-  public static final Logger LOG = LoggerFactory.getLogger(ChangeEventRepository.class);
   private final CollectionDAO dao;
 
   public ChangeEventRepository(CollectionDAO dao) { this.dao = dao; }
@@ -53,11 +50,5 @@ public class ChangeEventRepository {
     changeEvents.sort(Comparator.comparing((ChangeEvent changeEvent)
             -> changeEvent.getDateTime().getTime()).reversed());
     return new ChangeEventList(changeEvents, null, null, changeEvents.size()); // TODO
-  }
-
-  @Transaction
-  public ChangeEvent create(ChangeEvent changeEvent) throws IOException {
-    dao.changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
-    return changeEvent;
   }
 }

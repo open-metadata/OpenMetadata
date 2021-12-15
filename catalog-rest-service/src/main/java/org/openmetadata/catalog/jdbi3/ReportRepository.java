@@ -25,7 +25,6 @@ import org.openmetadata.catalog.util.EntityUtil.Fields;
 
 import java.io.IOException;
 import java.net.URI;
-import java.text.ParseException;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
@@ -50,7 +49,7 @@ public class ReportRepository extends EntityRepository<Report> {
   }
 
   @Override
-  public void restorePatchAttributes(Report original, Report updated) throws IOException, ParseException {
+  public void restorePatchAttributes(Report original, Report updated) {
 
   }
 
@@ -73,7 +72,7 @@ public class ReportRepository extends EntityRepository<Report> {
   }
 
   @Override
-  public void storeRelationships(Report entity) throws IOException {
+  public void storeRelationships(Report entity) {
     // TODO
   }
 

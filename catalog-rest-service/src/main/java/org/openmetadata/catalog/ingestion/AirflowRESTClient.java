@@ -19,8 +19,6 @@ import org.openmetadata.catalog.exception.IngestionPipelineDeploymentException;
 import org.openmetadata.catalog.operations.workflows.Ingestion;
 import org.openmetadata.catalog.operations.workflows.IngestionStatus;
 import org.openmetadata.catalog.util.JsonUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.ws.rs.core.Response;
 import java.io.IOException;
@@ -35,15 +33,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class AirflowRESTClient {
-  private static final Logger LOG = LoggerFactory.getLogger(AirflowRESTClient.class);
   private final URL url;
   private final String username;
   private final String password;
   private final HttpClient client;
-  private final String authEndpoint = "%s/api/v1/security/login";
-  private final String deployEndPoint = "%s/rest_api/api?api=deploy_dag";
-  private final String triggerEndPoint = "%s/rest_api/api?api=trigger_dag";
-  private final String statusEndPoint = "%s/rest_api/api?api=list_run&dag_id=%s";
   private final String authHeader = "Bearer %s";
 
 
@@ -63,7 +56,8 @@ public class AirflowRESTClient {
   }
 
   private String authenticate() throws InterruptedException, IOException {
-    String url = String.format(this.authEndpoint, this.url);
+    String authEndpoint = "%s/api/v1/security/login";
+    String url = String.format(authEndpoint, this.url);
     AirflowAuthRequest authRequest = AirflowAuthRequest.builder()
         .username(this.username)
         .password(this.password).build();
@@ -86,7 +80,8 @@ public class AirflowRESTClient {
       String token = authenticate();
       String authToken = String.format(this.authHeader, token);
       String pipelinePayload = JsonUtils.pojoToJson(pipeline);
-      String url = String.format(this.deployEndPoint, this.url);
+      String deployEndPoint = "%s/rest_api/api?api=deploy_dag";
+      String url = String.format(deployEndPoint, this.url);
       HttpRequest request = HttpRequest.newBuilder(URI.create(url))
           .header("Content-Type", "application/json")
           .header("Authorization", authToken)
@@ -108,7 +103,8 @@ public class AirflowRESTClient {
     try {
       String token = authenticate();
       String authToken = String.format(this.authHeader, token);
-      String url = String.format(this.triggerEndPoint, this.url);
+      String triggerEndPoint = "%s/rest_api/api?api=trigger_dag";
+      String url = String.format(triggerEndPoint, this.url);
       JSONObject requestPayload = new JSONObject();
       requestPayload.put("workflow_name", pipelineName);
       HttpRequest request = HttpRequest.newBuilder(URI.create(url))
@@ -133,7 +129,8 @@ public class AirflowRESTClient {
     try {
       String token = authenticate();
       String authToken = String.format(this.authHeader, token);
-      String url = String.format(this.statusEndPoint, this.url, ingestion.getName());
+      String statusEndPoint = "%s/rest_api/api?api=list_run&dag_id=%s";
+      String url = String.format(statusEndPoint, this.url, ingestion.getName());
       JSONObject requestPayload = new JSONObject();
       HttpRequest request = HttpRequest.newBuilder(URI.create(url))
           .header("Content-Type", "application/json")

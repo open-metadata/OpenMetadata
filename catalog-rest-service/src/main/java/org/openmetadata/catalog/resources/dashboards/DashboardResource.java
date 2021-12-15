@@ -80,8 +80,8 @@ public class DashboardResource {
   private final DashboardRepository dao;
   private final CatalogAuthorizer authorizer;
 
-  public static List<Dashboard> addHref(UriInfo uriInfo, List<Dashboard> dashboards) {
-    Optional.ofNullable(dashboards).orElse(Collections.emptyList()).forEach(i -> addHref(uriInfo, i));
+  public static ResultList<Dashboard> addHref(UriInfo uriInfo, ResultList<Dashboard> dashboards) {
+    Optional.ofNullable(dashboards.getData()).orElse(Collections.emptyList()).forEach(i -> addHref(uriInfo, i));
     return dashboards;
   }
 
@@ -157,8 +157,7 @@ public class DashboardResource {
     } else { // Forward paging or first page
       dashboards = dao.listAfter(uriInfo, fields, serviceParam, limitParam, after);
     }
-    addHref(uriInfo, dashboards.getData());
-    return dashboards;
+    return addHref(uriInfo, dashboards);
   }
 
   @GET
@@ -173,7 +172,7 @@ public class DashboardResource {
                                     @Context SecurityContext securityContext,
                                     @Parameter(description = "Dashboard Id", schema = @Schema(type = "string"))
                                     @PathParam("id") String id)
-          throws IOException, ParseException, GeneralSecurityException {
+          throws IOException, ParseException {
     return dao.listVersions(id);
   }
 
@@ -248,7 +247,7 @@ public class DashboardResource {
                   @ApiResponse(responseCode = "400", description = "Bad request")
           })
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext,
-                         @Valid CreateDashboard create) throws IOException, ParseException {
+                         @Valid CreateDashboard create) throws IOException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Dashboard dashboard = getDashboard(securityContext, create);
     dashboard = addHref(uriInfo, dao.create(uriInfo, dashboard));
@@ -313,7 +312,7 @@ public class DashboardResource {
                               @PathParam("id") String id,
                               @Parameter(description = "Id of the user to be added as follower",
                                       schema = @Schema(type = "string"))
-                                      String userId) throws IOException, ParseException {
+                                      String userId) throws IOException {
     return dao.addFollower(securityContext.getUserPrincipal().getName(), UUID.fromString(id),
             UUID.fromString(userId)).toResponse();
   }
@@ -329,7 +328,7 @@ public class DashboardResource {
                               @PathParam("id") String id,
                               @Parameter(description = "Id of the user being removed as follower",
                                       schema = @Schema(type = "string"))
-                              @PathParam("userId") String userId) throws IOException, ParseException {
+                              @PathParam("userId") String userId) throws IOException {
     return dao.deleteFollower(securityContext.getUserPrincipal().getName(), UUID.fromString(id),
             UUID.fromString(userId)).toResponse();
   }

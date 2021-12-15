@@ -42,11 +42,11 @@
       "$ref": "../../type/basic.json#/definitions/dateTime"
     },
     "about": {
-      "description": "Data asset about which this thread is created for with format <#E/{enties}/{entityName}/{field}/{fieldValue}.",
+      "description": "Data asset about which this thread is created for with format <#E/{entities}/{entityName}/{field}/{fieldValue}.",
       "$ref" : "../../type/basic.json#/definitions/entityLink"
     },
     "addressedTo": {
-      "description": "User or team this thread is addressed to in format <#E/{enties}/{entityName}/{field}/{fieldValue}.",
+      "description": "User or team this thread is addressed to in format <#E/{entities}/{entityName}/{field}/{fieldValue}.",
       "$ref" : "../../type/basic.json#/definitions/entityLink"
     },
     "posts": {

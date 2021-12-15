@@ -21,7 +21,6 @@ import org.openmetadata.catalog.resources.services.database.DatabaseServiceResou
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.JdbcInfo;
-import org.openmetadata.catalog.type.Schedule;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
@@ -30,12 +29,9 @@ import org.openmetadata.catalog.util.JsonUtils;
 
 import java.io.IOException;
 import java.net.URI;
-import java.text.ParseException;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
-
-import static org.openmetadata.catalog.util.EntityUtil.objectMatch;
 
 
 public class DatabaseServiceRepository extends EntityRepository<DatabaseService> {
@@ -55,15 +51,12 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
   }
 
   @Override
-  public DatabaseService setFields(DatabaseService entity, Fields fields) throws IOException, ParseException {
+  public DatabaseService setFields(DatabaseService entity, Fields fields) {
     return entity;
   }
 
   @Override
-  public void restorePatchAttributes(DatabaseService original, DatabaseService updated) throws IOException,
-          ParseException {
-
-  }
+  public void restorePatchAttributes(DatabaseService original, DatabaseService updated) { }
 
   @Override
   public EntityInterface<DatabaseService> getEntityInterface(DatabaseService entity) {
@@ -71,7 +64,7 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
   }
 
   @Override
-  public void prepare(DatabaseService entity) throws IOException {
+  public void prepare(DatabaseService entity) {
     EntityUtil.validateIngestionSchedule(entity.getIngestionSchedule());
   }
 
@@ -85,11 +78,11 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
   }
 
   @Override
-  public void storeRelationships(DatabaseService entity) throws IOException {
+  public void storeRelationships(DatabaseService entity) {
   }
 
   @Override
-  public EntityUpdater getUpdater(DatabaseService original, DatabaseService updated, boolean patchOperation) throws IOException {
+  public EntityUpdater getUpdater(DatabaseService original, DatabaseService updated, boolean patchOperation) {
     return new DatabaseServiceUpdater(original, updated, patchOperation);
   }
 

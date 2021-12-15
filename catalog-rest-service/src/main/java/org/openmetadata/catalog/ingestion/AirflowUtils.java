@@ -32,7 +32,7 @@ public final class AirflowUtils {
     dbConfig.put("password", ingestion.getConnectorConfig().getPassword());
     dbConfig.put("database", ingestion.getConnectorConfig().getDatabase());
     dbConfig.put("service_name", ingestion.getService().getName());
-    Map<String, List<String>> filterPattern = new HashMap<String, List<String>>();
+    Map<String, List<String>> filterPattern = new HashMap<>();
     if (ingestion.getConnectorConfig().getIncludeFilterPattern() != null) {
       filterPattern.put("includes", ingestion.getConnectorConfig().getIncludeFilterPattern());
     }

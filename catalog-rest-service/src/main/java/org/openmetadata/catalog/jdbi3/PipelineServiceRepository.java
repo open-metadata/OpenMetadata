@@ -27,7 +27,6 @@ import org.openmetadata.catalog.util.JsonUtils;
 
 import java.io.IOException;
 import java.net.URI;
-import java.text.ParseException;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
@@ -49,15 +48,12 @@ public class PipelineServiceRepository extends EntityRepository<PipelineService>
   }
 
   @Override
-  public PipelineService setFields(PipelineService entity, Fields fields) throws IOException, ParseException {
+  public PipelineService setFields(PipelineService entity, Fields fields) {
     return entity;
   }
 
   @Override
-  public void restorePatchAttributes(PipelineService original, PipelineService updated) throws IOException,
-          ParseException {
-
-  }
+  public void restorePatchAttributes(PipelineService original, PipelineService updated) {}
 
   @Override
   public EntityInterface<PipelineService> getEntityInterface(PipelineService entity) {
@@ -65,7 +61,7 @@ public class PipelineServiceRepository extends EntityRepository<PipelineService>
   }
 
   @Override
-  public void prepare(PipelineService entity) throws IOException {
+  public void prepare(PipelineService entity) {
     EntityUtil.validateIngestionSchedule(entity.getIngestionSchedule());
   }
 
@@ -79,12 +75,12 @@ public class PipelineServiceRepository extends EntityRepository<PipelineService>
   }
 
   @Override
-  public void storeRelationships(PipelineService entity) throws IOException {
+  public void storeRelationships(PipelineService entity) {
 
   }
 
   @Override
-  public EntityUpdater getUpdater(PipelineService original, PipelineService updated, boolean patchOperation) throws IOException {
+  public EntityUpdater getUpdater(PipelineService original, PipelineService updated, boolean patchOperation) {
     return new PipelineServiceUpdater(original, updated, patchOperation);
   }
 

@@ -27,7 +27,6 @@ import org.openmetadata.catalog.util.JsonUtils;
 
 import java.io.IOException;
 import java.net.URI;
-import java.text.ParseException;
 import java.util.Date;
 import java.util.List;
 import java.util.Objects;
@@ -57,7 +56,7 @@ public class MetricsRepository extends EntityRepository<Metrics> {
   }
 
   @Override
-  public void restorePatchAttributes(Metrics original, Metrics updated) throws IOException, ParseException {
+  public void restorePatchAttributes(Metrics original, Metrics updated) {
   }
 
   @Override
@@ -94,19 +93,19 @@ public class MetricsRepository extends EntityRepository<Metrics> {
   }
 
   @Override
-  public void storeRelationships(Metrics metrics) throws IOException {
+  public void storeRelationships(Metrics metrics) {
     dao.relationshipDAO().insert(metrics.getService().getId().toString(), metrics.getId().toString(),
             metrics.getService().getType(), Entity.METRICS, Relationship.CONTAINS.ordinal());
     setOwner(metrics, metrics.getOwner());
     applyTags(metrics);
   }
 
-  private EntityReference getService(Metrics metrics) throws IOException { // Get service by metrics Id
+  private EntityReference getService(Metrics metrics) throws IOException { // Get service by metrics ID
     EntityReference ref = EntityUtil.getService(dao.relationshipDAO(), metrics.getId(), Entity.DASHBOARD_SERVICE);
     return getService(Objects.requireNonNull(ref));
   }
 
-  private EntityReference getService(EntityReference service) throws IOException { // Get service by service Id
+  private EntityReference getService(EntityReference service) throws IOException { // Get service by service ID
     if (service.getType().equalsIgnoreCase(Entity.DASHBOARD_SERVICE)) {
       return dao.dbServiceDAO().findEntityReferenceById(service.getId());
     }
@@ -124,7 +123,7 @@ public class MetricsRepository extends EntityRepository<Metrics> {
     metrics.setOwner(owner);
   }
 
-  private void applyTags(Metrics metrics) throws IOException {
+  private void applyTags(Metrics metrics) {
     // Add chart level tags by adding tag to chart relationship
     EntityUtil.applyTags(dao.tagDAO(), metrics.getTags(), metrics.getFullyQualifiedName());
     metrics.setTags(getTags(metrics.getFullyQualifiedName())); // Update tag to handle additional derived tags

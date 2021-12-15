@@ -13,8 +13,6 @@
 
 package org.openmetadata.catalog.exception;
 
-import org.apache.commons.lang.StringUtils;
-
 import java.util.UUID;
 
 public final class CatalogExceptionMessage {

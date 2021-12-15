@@ -31,7 +31,6 @@ import org.openmetadata.catalog.util.JsonUtils;
 import javax.ws.rs.core.Response.Status;
 import java.io.IOException;
 import java.net.URI;
-import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -95,7 +94,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
   }
 
   @Override
-  public void storeRelationships(Database database) throws IOException {
+  public void storeRelationships(Database database) {
     dao.relationshipDAO().insert(database.getService().getId().toString(), database.getId().toString(),
             database.getService().getType(), Entity.DATABASE, Relationship.CONTAINS.ordinal());
     EntityUtil.setOwner(dao.relationshipDAO(), database.getId(), Entity.DATABASE, database.getOwner());
@@ -130,7 +129,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
   }
 
   @Override
-  public void restorePatchAttributes(Database original, Database updated) throws IOException, ParseException {
+  public void restorePatchAttributes(Database original, Database updated) {
     // Patch can't make changes to following fields. Ignore the changes
     updated.withFullyQualifiedName(original.getFullyQualifiedName()).withName(original.getName())
             .withService(original.getService()).withId(original.getId());
@@ -157,9 +156,11 @@ public class DatabaseRepository extends EntityRepository<Database> {
 
   private EntityReference getService(Database database) throws IOException {
     EntityReference ref =  EntityUtil.getService(dao.relationshipDAO(), database.getId(), Entity.DATABASE_SERVICE);
-    DatabaseService service = getService(ref.getId(), ref.getType());
-    ref.setName(service.getName());
-    ref.setDescription(service.getDescription());
+    if (ref != null) {
+      DatabaseService service = getService(ref.getId(), ref.getType());
+      ref.setName(service.getName());
+      ref.setDescription(service.getDescription());
+    }
     return ref;
   }
 

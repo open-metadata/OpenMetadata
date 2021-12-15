@@ -208,7 +208,7 @@ public class ElasticSearchEventHandler implements EventHandler {
     if (responseCode != Response.Status.CREATED.getStatusCode()) {
       scriptedUpsert(topicESIndex, updateRequest);
     } else {
-      //only upsert if its a new entity
+      // only upsert if it is a new entity
       updateRequest.doc(JsonUtils.pojoToJson(topicESIndex), XContentType.JSON);
       updateRequest.docAsUpsert(true);
     }

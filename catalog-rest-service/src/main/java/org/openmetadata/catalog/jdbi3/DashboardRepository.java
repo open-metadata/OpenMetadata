@@ -31,7 +31,6 @@ import org.openmetadata.catalog.util.JsonUtils;
 
 import java.io.IOException;
 import java.net.URI;
-import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
@@ -89,7 +88,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
   }
 
   @Override
-  public void restorePatchAttributes(Dashboard original, Dashboard updated) throws IOException, ParseException {
+  public void restorePatchAttributes(Dashboard original, Dashboard updated) {
     // Patch can't make changes to following fields. Ignore the changes
     updated.withId(original.getId()).withFullyQualifiedName(original.getFullyQualifiedName())
             .withName(original.getName()).withService(original.getService()).withId(original.getId());
@@ -102,9 +101,11 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
 
   private EntityReference getService(Dashboard dashboard) throws IOException {
     EntityReference ref = EntityUtil.getService(dao.relationshipDAO(), dashboard.getId(), Entity.DASHBOARD_SERVICE);
-    DashboardService service = getService(ref.getId(), ref.getType());
-    ref.setName(service.getName());
-    ref.setDescription(service.getDescription());
+    if (ref != null) {
+      DashboardService service = getService(ref.getId(), ref.getType());
+      ref.setName(service.getName());
+      ref.setDescription(service.getDescription());
+    }
     return ref;
   }
 
@@ -121,7 +122,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     throw new IllegalArgumentException(CatalogExceptionMessage.invalidServiceEntity(entityType, Entity.DASHBOARD));
   }
 
-  public void setService(Dashboard dashboard, EntityReference service) throws IOException {
+  public void setService(Dashboard dashboard, EntityReference service) {
     if (service != null && dashboard != null) {
       // TODO remove this
       dao.relationshipDAO().insert(service.getId().toString(), dashboard.getId().toString(), service.getType(),
@@ -160,7 +161,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
   }
 
   @Override
-  public void storeRelationships(Dashboard dashboard) throws IOException {
+  public void storeRelationships(Dashboard dashboard) {
     setService(dashboard, dashboard.getService());
 
     // Add relationship from dashboard to chart
@@ -179,7 +180,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
   }
 
   @Override
-  public EntityUpdater getUpdater(Dashboard original, Dashboard updated, boolean patchOperation) throws IOException {
+  public EntityUpdater getUpdater(Dashboard original, Dashboard updated, boolean patchOperation) {
     return new DashboardUpdater(original, updated, patchOperation);
   }
 
@@ -193,7 +194,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     dashboard.setOwner(owner);
   }
 
-  private void applyTags(Dashboard dashboard) throws IOException {
+  private void applyTags(Dashboard dashboard) {
     // Add dashboard level tags by adding tag to dashboard relationship
     EntityUtil.applyTags(dao.tagDAO(), dashboard.getTags(), dashboard.getFullyQualifiedName());
     dashboard.setTags(getTags(dashboard.getFullyQualifiedName())); // Update tag to handle additional derived tags

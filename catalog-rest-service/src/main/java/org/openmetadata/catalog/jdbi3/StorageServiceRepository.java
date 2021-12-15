@@ -25,7 +25,6 @@ import org.openmetadata.catalog.util.JsonUtils;
 
 import java.io.IOException;
 import java.net.URI;
-import java.text.ParseException;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
@@ -48,13 +47,12 @@ public class StorageServiceRepository extends EntityRepository<StorageService> {
   }
 
   @Override
-  public StorageService setFields(StorageService entity, Fields fields) throws IOException, ParseException {
+  public StorageService setFields(StorageService entity, Fields fields) {
     return entity;
   }
 
   @Override
-  public void restorePatchAttributes(StorageService original, StorageService updated) throws IOException,
-          ParseException {
+  public void restorePatchAttributes(StorageService original, StorageService updated) {
   }
 
   @Override
@@ -63,7 +61,7 @@ public class StorageServiceRepository extends EntityRepository<StorageService> {
   }
 
   @Override
-  public void prepare(StorageService entity) throws IOException {
+  public void prepare(StorageService entity) {
   }
 
 
@@ -77,7 +75,7 @@ public class StorageServiceRepository extends EntityRepository<StorageService> {
   }
 
   @Override
-  public void storeRelationships(StorageService entity) throws IOException {
+  public void storeRelationships(StorageService entity) {
   }
 
   public static class StorageServiceEntityInterface implements EntityInterface<StorageService> {

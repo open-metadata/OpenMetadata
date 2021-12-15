@@ -34,7 +34,7 @@ import java.util.UUID;
 
 public final class Entity {
   private static final Map<String, EntityDAO<?>> DAO_MAP = new HashMap<>();
-  private static final Map<String, EntityRepository> ENTITY_REPOSITORY_MAP = new HashMap<>();
+  private static final Map<String, EntityRepository<?>> ENTITY_REPOSITORY_MAP = new HashMap<>();
   private static final Map<String, String> CANONICAL_ENTITY_NAME_MAP = new HashMap<>();
 
   //
@@ -82,8 +82,8 @@ public final class Entity {
   private Entity() {
   }
 
-  public static void registerEntity(String entity, EntityDAO<?> dao,
-                                    EntityRepository<?> entityRepository) {
+  public static <T> void registerEntity(String entity, EntityDAO<T> dao,
+                                    EntityRepository<T> entityRepository) {
     DAO_MAP.put(entity, dao);
     ENTITY_REPOSITORY_MAP.put(entity, entityRepository);
     CANONICAL_ENTITY_NAME_MAP.put(entity.toLowerCase(Locale.ROOT), entity);
@@ -106,9 +106,11 @@ public final class Entity {
     return dao.findEntityReferenceByName(fqn);
   }
 
-  public static EntityReference getEntityReference(Object entity) {
+  public static <T> EntityReference getEntityReference(T entity) {
     String entityName = getEntityNameFromObject(entity);
-    EntityRepository entityRepository = ENTITY_REPOSITORY_MAP.get(entityName);
+
+    @SuppressWarnings("unchecked")
+    EntityRepository<T> entityRepository = (EntityRepository<T>) ENTITY_REPOSITORY_MAP.get(entityName);
     if (entityRepository == null) {
       throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entityName));
     }
@@ -132,19 +134,19 @@ public final class Entity {
     return ref.withHref(href);
   }
 
-  public static EntityInterface getEntityInterface(Object entity) {
+  public static <T> EntityInterface<T> getEntityInterface(T entity) {
     if (entity == null) {
       return null;
     }
     String entityName = getEntityNameFromObject(entity);
-    EntityRepository entityRepository = ENTITY_REPOSITORY_MAP.get(entityName);
+    @SuppressWarnings("unchecked") EntityRepository<T> entityRepository = (EntityRepository<T>) ENTITY_REPOSITORY_MAP.get(entityName);
     if (entityRepository == null) {
       throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entityName));
     }
     return entityRepository.getEntityInterface(entity);
   }
 
-  public static String getEntityNameFromClass(Class clz) {
+  public static <T> String getEntityNameFromClass(Class<T> clz) {
     return CANONICAL_ENTITY_NAME_MAP.get(clz.getSimpleName().toLowerCase(Locale.ROOT));
   }
 

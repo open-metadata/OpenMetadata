@@ -33,7 +33,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.URI;
-import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -42,7 +41,6 @@ import java.util.UUID;
 import static org.openmetadata.catalog.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.catalog.util.EntityUtil.mlFeatureMatch;
 import static org.openmetadata.catalog.util.EntityUtil.mlHyperParameterMatch;
-import static org.openmetadata.catalog.util.EntityUtil.objectMatch;
 
 public class MlModelRepository extends EntityRepository<MlModel> {
   private static final Logger LOG = LoggerFactory.getLogger(MlModelRepository.class);
@@ -91,7 +89,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   }
 
   @Override
-  public void restorePatchAttributes(MlModel original, MlModel updated) throws IOException, ParseException {
+  public void restorePatchAttributes(MlModel original, MlModel updated) {
     // Patch can't make changes to following fields. Ignore the changes
     updated.withFullyQualifiedName(original.getFullyQualifiedName())
             .withName(original.getName()).withId(original.getId());
@@ -164,7 +162,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   }
 
   @Override
-  public void storeRelationships(MlModel mlModel) throws IOException {
+  public void storeRelationships(MlModel mlModel) {
 
     EntityUtil.setOwner(dao.relationshipDAO(), mlModel.getId(), Entity.MLMODEL, mlModel.getOwner());
 
@@ -181,7 +179,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   }
 
   @Override
-  public EntityUpdater getUpdater(MlModel original, MlModel updated, boolean patchOperation) throws IOException {
+  public EntityUpdater getUpdater(MlModel original, MlModel updated, boolean patchOperation) {
     return new MlModelUpdater(original, updated, patchOperation);
   }
 
@@ -215,7 +213,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
     dao.relationshipDAO().deleteFrom(mlModel.getId().toString(), Relationship.USES.ordinal(), Entity.DASHBOARD);
   }
 
-  private void applyTags(MlModel mlModel) throws IOException {
+  private void applyTags(MlModel mlModel) {
     // Add model level tags by adding tag to model relationship
     EntityUtil.applyTags(dao.tagDAO(), mlModel.getTags(), mlModel.getFullyQualifiedName());
     mlModel.setTags(getTags(mlModel.getFullyQualifiedName())); // Update tag to handle additional derived tags

@@ -18,7 +18,6 @@ import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Topic;
 import org.openmetadata.catalog.entity.services.MessagingService;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
-import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.jdbi3.MessagingServiceRepository.MessagingServiceEntityInterface;
 import org.openmetadata.catalog.resources.topics.TopicResource;
 import org.openmetadata.catalog.type.ChangeDescription;
@@ -31,12 +30,9 @@ import org.openmetadata.catalog.util.JsonUtils;
 
 import java.io.IOException;
 import java.net.URI;
-import java.text.ParseException;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
-
-import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 
 public class TopicRepository extends EntityRepository<Topic> {
   private static final Fields TOPIC_UPDATE_FIELDS = new Fields(TopicResource.FIELD_LIST, "owner,tags");
@@ -98,13 +94,13 @@ public class TopicRepository extends EntityRepository<Topic> {
   }
 
   @Override
-  public void storeRelationships(Topic topic) throws IOException {
+  public void storeRelationships(Topic topic) {
     setService(topic, topic.getService());
     setOwner(topic, topic.getOwner());
     applyTags(topic);
   }
 
-  private void applyTags(Topic topic) throws IOException {
+  private void applyTags(Topic topic) {
     // Add topic level tags by adding tag to topic relationship
     EntityUtil.applyTags(dao.tagDAO(), topic.getTags(), topic.getFullyQualifiedName());
     topic.setTags(getTags(topic.getFullyQualifiedName())); // Update tag to handle additional derived tags
@@ -129,7 +125,7 @@ public class TopicRepository extends EntityRepository<Topic> {
   }
 
   @Override
-  public void restorePatchAttributes(Topic original, Topic updated) throws IOException, ParseException {
+  public void restorePatchAttributes(Topic original, Topic updated) {
 
   }
 
@@ -162,7 +158,7 @@ public class TopicRepository extends EntityRepository<Topic> {
     throw new IllegalArgumentException(CatalogExceptionMessage.invalidServiceEntity(entityType, Entity.TOPIC));
   }
 
-  public void setService(Topic topic, EntityReference service) throws IOException {
+  public void setService(Topic topic, EntityReference service) {
     if (service != null && topic != null) {
       dao.relationshipDAO().insert(service.getId().toString(), topic.getId().toString(), service.getType(),
               Entity.TOPIC, Relationship.CONTAINS.ordinal());

@@ -13,7 +13,6 @@
 
 package org.openmetadata.catalog.jdbi3;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Location;
@@ -33,7 +32,6 @@ import org.openmetadata.common.utils.CipherText;
 import java.io.IOException;
 import java.net.URI;
 import java.security.GeneralSecurityException;
-import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -66,7 +64,7 @@ public class LocationRepository extends EntityRepository<Location> {
   }
 
   @Override
-  public void restorePatchAttributes(Location original, Location updated) throws IOException, ParseException {
+  public void restorePatchAttributes(Location original, Location updated) {
     // Patch can't make changes to following fields. Ignore the changes
     updated.withFullyQualifiedName(original.getFullyQualifiedName()).withName(original.getName())
             .withService(original.getService()).withId(original.getId());
@@ -182,7 +180,7 @@ public class LocationRepository extends EntityRepository<Location> {
   }
 
   @Override
-  public void storeRelationships(Location location) throws IOException {
+  public void storeRelationships(Location location) {
     // Add location owner relationship
     EntityUtil.setOwner(dao.relationshipDAO(), location.getId(), Entity.LOCATION, location.getOwner());
     dao.relationshipDAO().insert(location.getService().getId().toString(), location.getId().toString(),
@@ -193,7 +191,7 @@ public class LocationRepository extends EntityRepository<Location> {
   }
 
   @Override
-  public EntityUpdater getUpdater(Location original, Location updated, boolean patchOperation) throws IOException {
+  public EntityUpdater getUpdater(Location original, Location updated, boolean patchOperation) {
     return new LocationUpdater(original, updated, patchOperation);
   }
 
@@ -229,7 +227,7 @@ public class LocationRepository extends EntityRepository<Location> {
     }
   }
 
-  private void applyTags(Location location) throws IOException {
+  private void applyTags(Location location) {
     // Add location level tags by adding tag to location relationship
     EntityUtil.applyTags(dao.tagDAO(), location.getTags(), location.getFullyQualifiedName());
     location.setTags(getTags(location.getFullyQualifiedName())); // Update tag to handle additional derived tags

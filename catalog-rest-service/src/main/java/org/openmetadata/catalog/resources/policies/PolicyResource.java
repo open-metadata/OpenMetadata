@@ -80,8 +80,8 @@ public class PolicyResource {
   private final PolicyRepository dao;
   private final CatalogAuthorizer authorizer;
 
-  public static List<Policy> addHref(UriInfo uriInfo, List<Policy> policies) {
-    Optional.ofNullable(policies).orElse(Collections.emptyList()).forEach(i -> addHref(uriInfo, i));
+  public static ResultList<Policy> addHref(UriInfo uriInfo, ResultList<Policy> policies) {
+    Optional.ofNullable(policies.getData()).orElse(Collections.emptyList()).forEach(i -> addHref(uriInfo, i));
     return policies;
   }
 
@@ -151,8 +151,7 @@ public class PolicyResource {
     } else { // Forward paging or first page
       policies = dao.listAfter(uriInfo, fields, null, limitParam, after);
     }
-    addHref(uriInfo, policies.getData());
-    return policies;
+    return addHref(uriInfo, policies);
   }
 
   @GET
@@ -207,7 +206,7 @@ public class PolicyResource {
                                     @Context SecurityContext securityContext,
                                     @Parameter(description = "policy Id", schema = @Schema(type = "string"))
                                     @PathParam("id") String id)
-          throws IOException, ParseException, GeneralSecurityException {
+          throws IOException, ParseException {
     return dao.listVersions(id);
   }
 
@@ -243,7 +242,7 @@ public class PolicyResource {
                   @ApiResponse(responseCode = "400", description = "Bad request")
           })
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext,
-                         @Valid CreatePolicy create) throws IOException, ParseException {
+                         @Valid CreatePolicy create) throws IOException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Policy policy = new Policy()
             .withId(UUID.randomUUID())

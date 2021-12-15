@@ -82,8 +82,8 @@ public class DatabaseResource {
   private final DatabaseRepository dao;
   private final CatalogAuthorizer authorizer;
 
-  public static List<Database> addHref(UriInfo uriInfo, List<Database> databases) {
-    Optional.ofNullable(databases).orElse(Collections.emptyList()).forEach(i -> {
+  public static ResultList<Database> addHref(UriInfo uriInfo, ResultList<Database> databases) {
+    Optional.ofNullable(databases.getData()).orElse(Collections.emptyList()).forEach(i -> {
       addHref(uriInfo, i);
       i.setTables(null);
     });
@@ -164,8 +164,7 @@ public class DatabaseResource {
     } else { // Forward paging or first page
       databases = dao.listAfter(uriInfo, fields, serviceParam, limitParam, after);
     }
-    addHref(uriInfo, databases.getData());
-    return databases;
+    return addHref(uriInfo, databases);
   }
 
   @GET
@@ -180,7 +179,7 @@ public class DatabaseResource {
                                     @Context SecurityContext securityContext,
                                     @Parameter(description = "database Id", schema = @Schema(type = "string"))
                                     @PathParam("id") String id)
-          throws IOException, ParseException, GeneralSecurityException {
+          throws IOException, ParseException {
     return dao.listVersions(id);
   }
 
@@ -257,7 +256,7 @@ public class DatabaseResource {
                   @ApiResponse(responseCode = "400", description = "Bad request")
           })
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext,
-                         @Valid CreateDatabase create) throws IOException, ParseException {
+                         @Valid CreateDatabase create) throws IOException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Database database = getDatabase(securityContext, create);
     database = addHref(uriInfo, dao.create(uriInfo, database));

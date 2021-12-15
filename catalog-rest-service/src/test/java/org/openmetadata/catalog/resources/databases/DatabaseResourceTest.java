@@ -111,7 +111,7 @@ public class DatabaseResourceTest extends EntityResourceTest<Database> {
     for (EntityReference service : differentServices) {
       createAndCheckEntity(create(test).withService(service), adminAuthHeaders());
 
-      // List databases by filtering on service name and ensure right databases are returned in the response
+      // List databases by filtering on service name and ensure right databases in the response
       Map<String, String> queryParams = new HashMap<>(){{put("service", service.getName());}};
       ResultList<Database> list = listEntities(queryParams, adminAuthHeaders());
       for (Database db : list.getData()) {

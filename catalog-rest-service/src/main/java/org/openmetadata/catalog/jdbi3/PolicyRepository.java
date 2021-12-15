@@ -28,7 +28,6 @@ import org.openmetadata.catalog.util.JsonUtils;
 
 import java.io.IOException;
 import java.net.URI;
-import java.text.ParseException;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
@@ -77,7 +76,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
   }
 
   @Override
-  public void restorePatchAttributes(Policy original, Policy updated) throws IOException, ParseException {
+  public void restorePatchAttributes(Policy original, Policy updated) {
   }
 
   @Override
@@ -114,13 +113,13 @@ public class PolicyRepository extends EntityRepository<Policy> {
   }
 
   @Override
-  public void storeRelationships(Policy policy) throws IOException {
+  public void storeRelationships(Policy policy) {
     // Add policy owner relationship
     setOwner(policy, policy.getOwner());
   }
 
   @Override
-  public EntityUpdater getUpdater(Policy original, Policy updated, boolean patchOperation) throws IOException {
+  public EntityUpdater getUpdater(Policy original, Policy updated, boolean patchOperation) {
     return new PolicyUpdater(original, updated, patchOperation);
   }
 

@@ -162,7 +162,7 @@ public class StorageServiceResource {
                                     @Context SecurityContext securityContext,
                                     @Parameter(description = "storage service Id", schema = @Schema(type = "string"))
                                     @PathParam("id") String id)
-          throws IOException, ParseException, GeneralSecurityException {
+          throws IOException, ParseException {
     return dao.listVersions(id);
   }
 
@@ -199,7 +199,7 @@ public class StorageServiceResource {
           })
   public Response create(@Context UriInfo uriInfo,
                          @Context SecurityContext securityContext,
-                         @Valid CreateStorageService create) throws IOException, ParseException {
+                         @Valid CreateStorageService create) throws IOException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     StorageService databaseService = getService(create, securityContext);
     dao.create(uriInfo, databaseService);

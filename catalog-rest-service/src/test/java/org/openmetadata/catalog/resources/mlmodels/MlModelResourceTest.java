@@ -72,16 +72,16 @@ import static org.openmetadata.catalog.util.TestUtils.authHeaders;
 public class MlModelResourceTest extends EntityResourceTest<MlModel> {
 
   public static EntityReference SUPERSET_REFERENCE;
-  public static String ALGORITHM = "regression";
+  public static final String ALGORITHM = "regression";
   public static Dashboard DASHBOARD;
   public static EntityReference DASHBOARD_REFERENCE;
 
-  public static URI SERVER = URI.create("http://localhost.com/mlModel");
-  public static MlStore ML_STORE = new MlStore()
+  public static final URI SERVER = URI.create("http://localhost.com/mlModel");
+  public static final MlStore ML_STORE = new MlStore()
           .withStorage(URI.create("s3://my-bucket.com/mlModel"))
           .withImageRepository(URI.create("https://12345.dkr.ecr.region.amazonaws.com"));
 
-  public static List<MlFeature> ML_FEATURES = Arrays.asList(
+  public static final List<MlFeature> ML_FEATURES = Arrays.asList(
           new MlFeature()
                   .withName("age")
                   .withDataType(MlFeatureDataType.Numerical)
@@ -107,7 +107,7 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
                   )
           .withFeatureAlgorithm("PCA")
   );
-  public static List<MlHyperParameter> ML_HYPERPARAMS = Arrays.asList(
+  public static final List<MlHyperParameter> ML_HYPERPARAMS = Arrays.asList(
           new MlHyperParameter().withName("regularisation").withValue("0.5"),
           new MlHyperParameter().withName("random").withValue("hello")
   );
@@ -226,7 +226,7 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
   }
 
   @Test
-  public void put_MlModelAddInvalidDashboard_200(TestInfo test) throws IOException {
+  public void put_MlModelAddInvalidDashboard_200(TestInfo test) {
     CreateMlModel request = create(test);
     // Create a made up dashboard reference by picking up a random UUID
     EntityReference dashboard = new EntityReference().withId(USER1.getId()).withType("dashboard");
@@ -402,7 +402,7 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
     return new MlModelRepository.MlModelEntityInterface(entity);
   }
 
-  BiConsumer<MlFeature, MlFeature> assertMlFeature = (MlFeature expected, MlFeature actual) -> {
+  final BiConsumer<MlFeature, MlFeature> assertMlFeature = (MlFeature expected, MlFeature actual) -> {
     // FQN gets created on-the-fly based on the test name. Just check that it is not null
     assertNotNull(actual.getFullyQualifiedName());
     assertEquals(actual.getName(), expected.getName());
@@ -411,14 +411,14 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
     assertEquals(actual.getDataType(), expected.getDataType());
   };
 
-  BiConsumer<MlHyperParameter, MlHyperParameter> assertMlHyperParam =
+  final BiConsumer<MlHyperParameter, MlHyperParameter> assertMlHyperParam =
           (MlHyperParameter expected, MlHyperParameter actual) -> {
         assertEquals(actual.getName(), expected.getName());
         assertEquals(actual.getDescription(), expected.getDescription());
         assertEquals(actual.getValue(), expected.getValue());
       };
 
-  BiConsumer<MlFeatureSource, MlFeatureSource> assertMlFeatureSource =
+  final BiConsumer<MlFeatureSource, MlFeatureSource> assertMlFeatureSource =
           (MlFeatureSource expected, MlFeatureSource actual) -> {
         // FQN gets created on-the-fly based on the test name. Just check that it is not null
         assertNotNull(actual.getFullyQualifiedName());

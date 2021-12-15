@@ -30,7 +30,6 @@ import org.openmetadata.catalog.util.JsonUtils;
 import javax.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.net.URI;
-import java.text.ParseException;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
@@ -64,13 +63,12 @@ public class DashboardServiceRepository extends EntityRepository<DashboardServic
   }
 
   @Override
-  public DashboardService setFields(DashboardService entity, Fields fields) throws IOException, ParseException {
+  public DashboardService setFields(DashboardService entity, Fields fields) {
     return entity;
   }
 
   @Override
-  public void restorePatchAttributes(DashboardService original, DashboardService updated) throws IOException,
-          ParseException {
+  public void restorePatchAttributes(DashboardService original, DashboardService updated) {
   }
 
   @Override
@@ -79,7 +77,7 @@ public class DashboardServiceRepository extends EntityRepository<DashboardServic
   }
 
   @Override
-  public void prepare(DashboardService entity) throws IOException {
+  public void prepare(DashboardService entity) {
     EntityUtil.validateIngestionSchedule(entity.getIngestionSchedule());
   }
 
@@ -93,12 +91,11 @@ public class DashboardServiceRepository extends EntityRepository<DashboardServic
   }
 
   @Override
-  public void storeRelationships(DashboardService entity) throws IOException {
+  public void storeRelationships(DashboardService entity) {
   }
 
   @Override
-  public EntityUpdater getUpdater(DashboardService original, DashboardService updated, boolean patchOperation)
-          throws IOException {
+  public EntityUpdater getUpdater(DashboardService original, DashboardService updated, boolean patchOperation) {
     return new DashboardServiceUpdater(original, updated, patchOperation);
   }
 

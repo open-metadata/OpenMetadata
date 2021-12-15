@@ -26,7 +26,6 @@ import org.openmetadata.catalog.jdbi3.ReportRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
-import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
 
@@ -124,7 +123,7 @@ public class ReportResource {
           })
   public Response create(@Context UriInfo uriInfo,
                          @Context SecurityContext securityContext,
-                         @Valid Report report) throws IOException, ParseException {
+                         @Valid Report report) throws IOException {
     addToReport(securityContext, report);
     dao.create(uriInfo, report);
     return Response.created(report.getHref()).entity(report).build();

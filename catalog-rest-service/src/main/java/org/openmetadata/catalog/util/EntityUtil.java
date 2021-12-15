@@ -81,34 +81,34 @@ public final class EntityUtil {
   //
   // Matchers used for matching two items in a list
   //
-  public static BiPredicate<Object, Object> objectMatch = Object::equals;
+  public static final BiPredicate<Object, Object> objectMatch = Object::equals;
 
-  public static BiPredicate<EntityReference, EntityReference> entityReferenceMatch = (ref1, ref2) ->
+  public static final BiPredicate<EntityReference, EntityReference> entityReferenceMatch = (ref1, ref2) ->
           ref1.getId().equals(ref2.getId());
 
-  public static BiPredicate<TagLabel, TagLabel> tagLabelMatch = (tag1, tag2) ->
+  public static final BiPredicate<TagLabel, TagLabel> tagLabelMatch = (tag1, tag2) ->
           tag1.getTagFQN().equals(tag2.getTagFQN());
 
-  public static BiPredicate<Task, Task> taskMatch = (task1, task2) ->
+  public static final BiPredicate<Task, Task> taskMatch = (task1, task2) ->
           task1.getName().equals(task2.getName());
 
-  public static BiPredicate<String, String> stringMatch = String::equals;
+  public static final BiPredicate<String, String> stringMatch = String::equals;
 
-  public static BiPredicate<Column, Column> columnMatch = (column1, column2) ->
+  public static final BiPredicate<Column, Column> columnMatch = (column1, column2) ->
           column1.getName().equals(column2.getName()) &&
           column1.getDataType() == column2.getDataType() &&
           column1.getArrayDataType() == column2.getArrayDataType() &&
           Objects.equals(column1.getOrdinalPosition(), column2.getOrdinalPosition());
 
-  public static BiPredicate<Column, Column> columnNameMatch = (column1, column2) ->
+  public static final BiPredicate<Column, Column> columnNameMatch = (column1, column2) ->
           column1.getName().equals(column2.getName());
 
-  public static BiPredicate<TableConstraint, TableConstraint> tableConstraintMatch = (constraint1, constraint2) ->
+  public static final BiPredicate<TableConstraint, TableConstraint> tableConstraintMatch = (constraint1, constraint2) ->
           constraint1.getConstraintType() == constraint2.getConstraintType() &&
           constraint1.getColumns().equals(constraint2.getColumns());
 
-  public static BiPredicate<MlFeature, MlFeature> mlFeatureMatch = MlFeature::equals;
-  public static BiPredicate<MlHyperParameter, MlHyperParameter> mlHyperParameterMatch = MlHyperParameter::equals;
+  public static final BiPredicate<MlFeature, MlFeature> mlFeatureMatch = MlFeature::equals;
+  public static final BiPredicate<MlHyperParameter, MlHyperParameter> mlHyperParameterMatch = MlHyperParameter::equals;
 
   private EntityUtil() {
 
@@ -278,7 +278,7 @@ public final class EntityUtil {
   /**
    * Apply tags {@code tagLabels} to the entity or field identified by {@code targetFQN}
    */
-  public static void applyTags(TagDAO tagDAO, List<TagLabel> tagLabels, String targetFQN) throws IOException {
+  public static void applyTags(TagDAO tagDAO, List<TagLabel> tagLabels, String targetFQN) {
     for (TagLabel tagLabel : Optional.ofNullable(tagLabels).orElse(Collections.emptyList())) {
       String json = tagDAO.findTag(tagLabel.getTagFQN());
       if (json == null) {

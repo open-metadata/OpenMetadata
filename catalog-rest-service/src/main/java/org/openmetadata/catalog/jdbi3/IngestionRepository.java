@@ -28,7 +28,6 @@ import org.openmetadata.catalog.util.JsonUtils;
 
 import java.io.IOException;
 import java.net.URI;
-import java.text.ParseException;
 import java.util.Date;
 import java.util.List;
 import java.util.Objects;
@@ -78,7 +77,7 @@ public class IngestionRepository extends EntityRepository<Ingestion> {
   }
 
   @Override
-  public void restorePatchAttributes(Ingestion original, Ingestion updated) throws IOException, ParseException {
+  public void restorePatchAttributes(Ingestion original, Ingestion updated) {
 
   }
 
@@ -122,7 +121,7 @@ public class IngestionRepository extends EntityRepository<Ingestion> {
   }
 
   @Override
-  public void storeRelationships(Ingestion ingestion) throws IOException {
+  public void storeRelationships(Ingestion ingestion) {
     EntityReference service = ingestion.getService();
     dao.relationshipDAO().insert(service.getId().toString(), ingestion.getId().toString(), service.getType(),
             Entity.INGESTION, Relationship.CONTAINS.ordinal());
@@ -131,7 +130,7 @@ public class IngestionRepository extends EntityRepository<Ingestion> {
   }
 
   @Override
-  public EntityUpdater getUpdater(Ingestion original, Ingestion updated, boolean patchOperation) throws IOException {
+  public EntityUpdater getUpdater(Ingestion original, Ingestion updated, boolean patchOperation) {
     return new IngestionUpdater(original, updated, patchOperation);
   }
 
@@ -145,7 +144,7 @@ public class IngestionRepository extends EntityRepository<Ingestion> {
     ingestion.setOwner(owner);
   }
 
-  private void applyTags(Ingestion ingestion) throws IOException {
+  private void applyTags(Ingestion ingestion) {
     // Add ingestion level tags by adding tag to ingestion relationship
     EntityUtil.applyTags(dao.tagDAO(), ingestion.getTags(), ingestion.getFullyQualifiedName());
     ingestion.setTags(getTags(ingestion.getFullyQualifiedName())); // Update tag to handle additional derived tags

@@ -377,7 +377,7 @@ public class TableResourceTest extends EntityResourceTest<Table> {
     CreateTable request = create(test).withColumns(columns);
     Table table = createAndCheckEntity(request, adminAuthHeaders());
 
-    // Change the the column constraints and expect minor version change
+    // Change the column constraints and expect minor version change
     ChangeDescription change = getChangeDescription(table.getVersion());
     request.getColumns().get(0).withConstraint(ColumnConstraint.NOT_NULL);
     change.getFieldsUpdated().add(new FieldChange().withName("columns.c1.constraint")
@@ -663,7 +663,7 @@ public class TableResourceTest extends EntityResourceTest<Table> {
     TestUtils.assertResponseContains(exception, BAD_REQUEST, "Number of columns is 3 but row " +
             "has 4 sample values");
 
-    // Send sample data that has less samples than the number of columns
+    // Send sample data that has fewer samples than the number of columns
     columns = Arrays.asList("c1", "c2", "c3");  // Invalid column name
     rows = singletonList(Arrays.asList("c1Value1", 1 /* Missing Value */));
     tableData.withColumns(columns).withRows(rows);

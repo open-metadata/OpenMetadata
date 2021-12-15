@@ -105,7 +105,7 @@ public class TopicResourceTest extends EntityResourceTest<Topic> {
     for (EntityReference service : differentServices) {
       createAndCheckEntity(create(test).withService(service), adminAuthHeaders());
 
-      // List topics by filtering on service name and ensure right topics are returned in the response
+      // List topics by filtering on service name and ensure right topics in the response
       Map<String, String> queryParams = new HashMap<>(){{put("service", service.getName());}};
       ResultList<Topic> list = listEntities(queryParams, adminAuthHeaders());
       for (Topic topic : list.getData()) {

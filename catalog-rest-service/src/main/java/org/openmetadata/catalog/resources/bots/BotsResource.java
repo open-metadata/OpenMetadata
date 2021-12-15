@@ -135,7 +135,7 @@ public class BotsResource {
           })
   public Response create(@Context UriInfo uriInfo,
                          @Context SecurityContext securityContext,
-                         Bots bot) throws IOException, ParseException {
+                         Bots bot) throws IOException {
     SecurityUtil.checkAdminRole(authorizer, securityContext);
     bot.withId(UUID.randomUUID()).withUpdatedBy(securityContext.getUserPrincipal().getName())
             .withUpdatedAt(new Date());

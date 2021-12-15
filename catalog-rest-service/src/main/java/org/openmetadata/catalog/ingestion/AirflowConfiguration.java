@@ -32,8 +32,6 @@ public class AirflowConfiguration {
 
     private String authProvider;
 
-    private String secretKey = "";
-
     public String getApiEndpoint() {
         return apiEndpoint;
     }
@@ -75,6 +73,7 @@ public class AirflowConfiguration {
     }
 
     public String getSecretKey() {
+        String secretKey = "";
         return secretKey;
     }
 

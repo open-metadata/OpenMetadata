@@ -42,7 +42,6 @@ import java.util.List;
 import java.util.Map;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
-import static javax.ws.rs.core.Response.Status.CONFLICT;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.OK;
@@ -258,14 +257,12 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
   }
 
   @Override
-  public Object createRequest(String name, String description, String displayName, EntityReference owner)
-          throws URISyntaxException {
+  public Object createRequest(String name, String description, String displayName, EntityReference owner) {
     return create(name).withDescription(description).withIngestionSchedule(null);
   }
 
   @Override
-  public void validateCreatedEntity(MessagingService service, Object request, Map<String, String> authHeaders)
-          throws HttpResponseException {
+  public void validateCreatedEntity(MessagingService service, Object request, Map<String, String> authHeaders) {
     CreateMessagingService createRequest = (CreateMessagingService) request;
     validateCommonEntityFields(getEntityInterface(service), createRequest.getDescription(),
             TestUtils.getPrincipal(authHeaders), null);
@@ -279,14 +276,12 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
   }
 
   @Override
-  public void validateUpdatedEntity(MessagingService service, Object request, Map<String, String> authHeaders)
-          throws HttpResponseException {
+  public void validateUpdatedEntity(MessagingService service, Object request, Map<String, String> authHeaders) {
     validateCreatedEntity(service, request, authHeaders);
   }
 
   @Override
-  public void compareEntities(MessagingService expected, MessagingService updated, Map<String, String> authHeaders)
-          throws HttpResponseException {
+  public void compareEntities(MessagingService expected, MessagingService updated, Map<String, String> authHeaders) {
     // PATCH operation is not supported by this entity
   }
 
@@ -307,20 +302,25 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
 
   @Override
   public void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException {
-    if (fieldName.equals("ingestionSchedule")) {
-      Schedule expectedSchedule = (Schedule) expected;
-      Schedule actualSchedule = JsonUtils.readValue((String) actual, Schedule.class);
-      assertEquals(expectedSchedule, actualSchedule);
-    } else if (fieldName.equals("brokers")) {
-      List<String> expectedBrokers = (List<String>) expected;
-      List<String> actualBrokers = JsonUtils.readObjects((String) actual, String.class);
-      assertEquals(expectedBrokers, actualBrokers);
-    } else if (fieldName.equals("schemaRegistry")) {
-      URI expectedUri = (URI) expected;
-      URI actualUri = URI.create((String) actual);
-      assertEquals(expectedUri, actualUri);
-    } else {
-      super.assertCommonFieldChange(fieldName, expected, actual);
+    switch (fieldName) {
+      case "ingestionSchedule":
+        Schedule expectedSchedule = (Schedule) expected;
+        Schedule actualSchedule = JsonUtils.readValue((String) actual, Schedule.class);
+        assertEquals(expectedSchedule, actualSchedule);
+        break;
+      case "brokers":
+        List<String> expectedBrokers = (List<String>) expected;
+        List<String> actualBrokers = JsonUtils.readObjects((String) actual, String.class);
+        assertEquals(expectedBrokers, actualBrokers);
+        break;
+      case "schemaRegistry":
+        URI expectedUri = (URI) expected;
+        URI actualUri = URI.create((String) actual);
+        assertEquals(expectedUri, actualUri);
+        break;
+      default:
+        super.assertCommonFieldChange(fieldName, expected, actual);
+        break;
     }
   }
 }

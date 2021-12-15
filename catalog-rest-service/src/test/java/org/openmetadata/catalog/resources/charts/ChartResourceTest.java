@@ -118,7 +118,7 @@ public class ChartResourceTest extends EntityResourceTest<Chart> {
     for (EntityReference service : differentServices) {
       createAndCheckEntity(create(test).withService(service), adminAuthHeaders());
 
-      // List charts by filtering on service name and ensure right charts are returned in the response
+      // List charts by filtering on service name and ensure right charts in the response
       Map<String, String> queryParams = new HashMap<>() {{put("service", service.getName());}};
       ResultList<Chart> list = listEntities(queryParams, adminAuthHeaders());
       for (Chart chart : list.getData()) {

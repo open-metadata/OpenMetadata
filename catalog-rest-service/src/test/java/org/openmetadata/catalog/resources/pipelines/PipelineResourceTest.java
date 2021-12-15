@@ -181,7 +181,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline> {
     for (EntityReference service : differentServices) {
       createAndCheckEntity(create(test).withService(service), adminAuthHeaders());
 
-      // List Pipelines by filtering on service name and ensure right Pipelines are returned in the response
+      // List Pipelines by filtering on service name and ensure right Pipelines in the response
       Map<String, String> queryParams = new HashMap<>(){{put("service", service.getName());}};
       ResultList<Pipeline> list = listEntities(queryParams, adminAuthHeaders());
       for (Pipeline db : list.getData()) {

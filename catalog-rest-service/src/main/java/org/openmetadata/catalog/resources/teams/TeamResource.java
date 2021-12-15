@@ -155,7 +155,7 @@ public class TeamResource {
                                     @Context SecurityContext securityContext,
                                     @Parameter(description = "team Id", schema = @Schema(type = "string"))
                                     @PathParam("id") String id)
-          throws IOException, ParseException, GeneralSecurityException {
+          throws IOException, ParseException {
     return dao.listVersions(id);
   }
 
@@ -233,7 +233,7 @@ public class TeamResource {
           })
   public Response create(@Context UriInfo uriInfo,
                          @Context SecurityContext securityContext,
-                         @Valid CreateTeam ct) throws IOException, ParseException {
+                         @Valid CreateTeam ct) throws IOException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Team team = getTeam(ct, securityContext);
     addHref(uriInfo, dao.create(uriInfo, team));
@@ -300,7 +300,7 @@ public class TeamResource {
     return Response.ok().build();
   }
 
-  private Team getTeam(CreateTeam ct, SecurityContext securityContext) throws IOException {
+  private Team getTeam(CreateTeam ct, SecurityContext securityContext) {
     return new Team().withId(UUID.randomUUID()).withName(ct.getName()).withDescription(ct.getDescription())
             .withDisplayName(ct.getDisplayName()).withProfile(ct.getProfile())
             .withUpdatedBy(securityContext.getUserPrincipal().getName())

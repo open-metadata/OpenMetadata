@@ -178,7 +178,7 @@ public final class RestUtil {
   }
 
   public static class PatchResponse<T> {
-    private T entity;
+    private final T entity;
     private final Response.Status status;
     private final String changeType;
 

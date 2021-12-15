@@ -13,13 +13,11 @@
 
 package org.openmetadata.catalog.events;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.type.ChangeEvent;
-import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.EventType;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.JsonUtils;
@@ -57,8 +55,7 @@ public class ChangeEventHandler implements  EventHandler {
     return null;
   }
 
-  public static ChangeEvent getChangeEvent(String method, ContainerResponseContext responseContext)
-          throws JsonProcessingException {
+  public static ChangeEvent getChangeEvent(String method, ContainerResponseContext responseContext) {
     // GET operations don't produce change events
     if (method.equals("GET")) {
       return null;
@@ -74,7 +71,7 @@ public class ChangeEventHandler implements  EventHandler {
 
     // Entity was created by either POST .../entities or PUT .../entities
     if (responseCode == Status.CREATED.getStatusCode() && !RestUtil.ENTITY_FIELDS_CHANGED.equals(changeType)) {
-      EntityInterface entityInterface = Entity.getEntityInterface(entity);
+      var entityInterface = Entity.getEntityInterface(entity);
       String entityType = Entity.getEntityReference(entity).getType();
       return getChangeEvent(EventType.ENTITY_CREATED, entityType, entityInterface)
               .withEntity(entity);
@@ -88,7 +85,7 @@ public class ChangeEventHandler implements  EventHandler {
 
     // Entity was updated by either PUT .../entities or PATCH .../entities
     if (changeType.equals(RestUtil.ENTITY_UPDATED)) {
-      EntityInterface entityInterface = Entity.getEntityInterface(entity);
+      var entityInterface = Entity.getEntityInterface(entity);
       String entityType = Entity.getEntityReference(entity).getType();
       return getChangeEvent(EventType.ENTITY_UPDATED, entityType, entityInterface)
               .withPreviousVersion(entityInterface.getChangeDescription().getPreviousVersion());

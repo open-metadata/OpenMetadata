@@ -31,7 +31,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.URI;
-import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
@@ -64,7 +63,7 @@ public class UserRepository extends EntityRepository<User> {
 
 
   @Override
-  public void prepare(User entity) throws IOException {
+  public void prepare(User entity) {
 
   }
 
@@ -87,12 +86,12 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   @Override
-  public void storeRelationships(User user) throws IOException {
+  public void storeRelationships(User user) {
     assignTeams(user, user.getTeams());
   }
 
   @Override
-  public EntityUpdater getUpdater(User original, User updated, boolean patchOperation) throws IOException {
+  public EntityUpdater getUpdater(User original, User updated, boolean patchOperation) {
     return new UserUpdater(original, updated, patchOperation);
   }
 
@@ -124,7 +123,7 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   @Override
-  public void restorePatchAttributes(User original, User updated) throws IOException, ParseException {
+  public void restorePatchAttributes(User original, User updated) {
 
   }
 
@@ -161,7 +160,7 @@ public class UserRepository extends EntityRepository<User> {
     return validatedTeams;
   }
 
-  /* Add all the teams that user belongs to to User entity */
+  /* Add all the teams that user belongs to User entity */
   private List<EntityReference> getTeams(User user) throws IOException {
     List<String> teamIds = dao.relationshipDAO().findFrom(user.getId().toString(), CONTAINS.ordinal(), "team");
     List<EntityReference> teams = new ArrayList<>();

@@ -23,7 +23,7 @@ server:
 
 # Above configuration for running http is fine for dev and testing.
 # For production setup, where UI app will hit apis through DPS it 
-# is strongly recommended to run https instead. Note that only
+# is strongly recommended running https instead. Note that only
 # keyStorePath and keyStorePassword are mandatory properties. Values
 # for other properties are defaults
 #server:

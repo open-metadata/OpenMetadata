@@ -17,7 +17,6 @@ import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
-import org.openmetadata.catalog.CatalogApplicationTest;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.services.CreatePipelineService;
 import org.openmetadata.catalog.entity.services.PipelineService;
@@ -34,16 +33,13 @@ import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
 import org.openmetadata.catalog.util.TestUtils.UpdateType;
 
-import javax.ws.rs.client.WebTarget;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Date;
 import java.util.Map;
-import java.util.UUID;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
-import static javax.ws.rs.core.Response.Status.CONFLICT;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.OK;
@@ -248,14 +244,12 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
   }
 
   @Override
-  public Object createRequest(String name, String description, String displayName, EntityReference owner)
-          throws URISyntaxException {
+  public Object createRequest(String name, String description, String displayName, EntityReference owner) {
     return create(name).withDescription(description).withIngestionSchedule(null);
   }
 
   @Override
-  public void validateCreatedEntity(PipelineService service, Object request, Map<String, String> authHeaders)
-          throws HttpResponseException {
+  public void validateCreatedEntity(PipelineService service, Object request, Map<String, String> authHeaders) {
     CreatePipelineService createRequest = (CreatePipelineService) request;
     validateCommonEntityFields(getEntityInterface(service), createRequest.getDescription(), getPrincipal(authHeaders),
             null);
@@ -270,14 +264,12 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
   }
 
   @Override
-  public void validateUpdatedEntity(PipelineService updatedEntity, Object request, Map<String, String> authHeaders)
-          throws HttpResponseException {
+  public void validateUpdatedEntity(PipelineService updatedEntity, Object request, Map<String, String> authHeaders) {
     validateCreatedEntity(updatedEntity, request, authHeaders);
   }
 
   @Override
-  public void compareEntities(PipelineService expected, PipelineService updated, Map<String, String> authHeaders)
-          throws HttpResponseException {
+  public void compareEntities(PipelineService expected, PipelineService updated, Map<String, String> authHeaders) {
     // PATCH operation is not supported by this entity
   }
 

@@ -23,9 +23,9 @@ import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.data.CreateMlModel;
 import org.openmetadata.catalog.entity.data.MlModel;
-import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.MlModelRepository;
 import org.openmetadata.catalog.resources.Collection;
@@ -63,11 +63,9 @@ import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.UUID;
 
 @Path("/v1/mlmodels")
@@ -205,7 +203,7 @@ public class MlModelResource {
           })
   public Response create(@Context UriInfo uriInfo,
                          @Context SecurityContext securityContext,
-                         @Valid CreateMlModel create) throws IOException, ParseException {
+                         @Valid CreateMlModel create) throws IOException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     MlModel mlModel = getMlModel(securityContext, create);
     mlModel = addHref(uriInfo, dao.create(uriInfo, mlModel));
@@ -272,7 +270,7 @@ public class MlModelResource {
                               @PathParam("id") String id,
                               @Parameter(description = "Id of the user to be added as follower",
                                       schema = @Schema(type = "string"))
-                                      String userId) throws IOException, ParseException {
+                                      String userId) throws IOException {
       return dao.addFollower(securityContext.getUserPrincipal().getName(), UUID.fromString(id),
               UUID.fromString(userId)).toResponse();
   }
@@ -288,7 +286,7 @@ public class MlModelResource {
                               @PathParam("id") String id,
                                  @Parameter(description = "Id of the user being removed as follower",
                                       schema = @Schema(type = "string"))
-                              @PathParam("userId") String userId) throws IOException, ParseException {
+                              @PathParam("userId") String userId) throws IOException {
     return dao.deleteFollower(securityContext.getUserPrincipal().getName(), UUID.fromString(id),
             UUID.fromString(userId)).toResponse();
   }
@@ -305,7 +303,7 @@ public class MlModelResource {
                                     @Context SecurityContext securityContext,
                                     @Parameter(description = "ML Model Id", schema = @Schema(type = "string"))
                                     @PathParam("id") String id)
-          throws IOException, ParseException, GeneralSecurityException {
+          throws IOException, ParseException {
     return dao.listVersions(id);
   }
 

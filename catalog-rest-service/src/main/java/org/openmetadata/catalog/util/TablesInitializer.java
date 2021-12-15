@@ -129,9 +129,9 @@ public final class TablesInitializer {
         esConfig);
     try {
       execute(flyway, client, schemaMigrationOptionSpecified);
-      System.out.printf("\"%s\" option successful%n", schemaMigrationOptionSpecified.toString());
+      System.out.printf("\"%s\" option successful%n", schemaMigrationOptionSpecified);
     } catch (Exception e) {
-      System.err.printf("\"%s\" option failed : %s%n", schemaMigrationOptionSpecified.toString(), e);
+      System.err.printf("\"%s\" option failed : %s%n", schemaMigrationOptionSpecified, e);
       System.exit(1);
     }
     System.exit(0);
@@ -208,8 +208,7 @@ public final class TablesInitializer {
           esIndexDefinition.dropIndexes();
           break;
         default:
-          throw new SQLException("SchemaMigrationHelper unable to execute the option : " +
-                schemaMigrationOption.toString());
+          throw new SQLException("SchemaMigrationHelper unable to execute the option : " + schemaMigrationOption);
     }
   }
 

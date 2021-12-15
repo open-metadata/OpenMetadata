@@ -99,7 +99,7 @@ public class FeedRepository {
     dao.feedDAO().update(id, JsonUtils.pojoToJson(thread));
 
     // Query 4 - Add relation User -- repliedTo --> Thread
-    // Add relationship from thread to the from entity that is posting a reply
+    // Add relationship from thread to the user entity that is posting a reply
     boolean relationAlreadyExists = false;
     for (Post p : thread.getPosts()) {
       if (p.getFrom().equals(post.getFrom())) {

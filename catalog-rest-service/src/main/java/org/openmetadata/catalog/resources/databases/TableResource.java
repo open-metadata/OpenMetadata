@@ -62,7 +62,6 @@ import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
-import javax.ws.rs.core.Response.Status;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import java.io.IOException;
@@ -213,7 +212,7 @@ public class TableResource {
                                     @Context SecurityContext securityContext,
                                     @Parameter(description = "table Id", schema = @Schema(type = "string"))
                                     @PathParam("id") String id)
-          throws IOException, ParseException, GeneralSecurityException {
+          throws IOException, ParseException {
     return dao.listVersions(id);
   }
 
@@ -249,7 +248,7 @@ public class TableResource {
           })
   public Response create(@Context UriInfo uriInfo,
                          @Context SecurityContext securityContext,
-                         @Valid CreateTable create) throws IOException, ParseException {
+                         @Valid CreateTable create) throws IOException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Table table = getTable(securityContext, create);
     table = addHref(uriInfo, dao.create(uriInfo, validateNewTable(table)));
@@ -333,7 +332,7 @@ public class TableResource {
                               @PathParam("id") String id,
                               @Parameter(description = "Id of the user to be added as follower",
                                       schema = @Schema(type = "string"))
-                                      String userId) throws IOException, ParseException {
+                                      String userId) throws IOException {
     return dao.addFollower(securityContext.getUserPrincipal().getName(),
             UUID.fromString(id), UUID.fromString(userId)).toResponse();
   }
@@ -440,7 +439,7 @@ public class TableResource {
                                  @PathParam("id") String id,
                                  @Parameter(description = "Id of the user being removed as follower",
                                          schema = @Schema(type = "string"))
-                                 @PathParam("userId") String userId) throws IOException, ParseException {
+                                 @PathParam("userId") String userId) throws IOException {
     return dao.deleteFollower(securityContext.getUserPrincipal().getName(), UUID.fromString(id),
             UUID.fromString(userId)).toResponse();
   }

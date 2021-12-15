@@ -30,10 +30,8 @@ import org.openmetadata.catalog.util.TestUtils;
 import org.openmetadata.catalog.util.TestUtils.UpdateType;
 
 import java.io.IOException;
-import java.net.URISyntaxException;
 import java.util.Map;
 
-import static javax.ws.rs.core.Response.Status.CONFLICT;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.OK;
@@ -127,13 +125,12 @@ public class StorageServiceResourceTest extends EntityResourceTest<StorageServic
   }
 
   @Override
-  public Object createRequest(String name, String description, String displayName,
-                              EntityReference owner) throws URISyntaxException {
+  public Object createRequest(String name, String description, String displayName, EntityReference owner) {
     return create(name).withDescription(description);
   }
 
   @Override
-  public void validateCreatedEntity(StorageService service, Object request, Map<String, String> authHeaders) throws HttpResponseException {
+  public void validateCreatedEntity(StorageService service, Object request, Map<String, String> authHeaders) {
     CreateStorageService createRequest = (CreateStorageService) request;
     validateCommonEntityFields(getEntityInterface(service), createRequest.getDescription(),
             getPrincipal(authHeaders), null);
@@ -141,12 +138,12 @@ public class StorageServiceResourceTest extends EntityResourceTest<StorageServic
   }
 
   @Override
-  public void validateUpdatedEntity(StorageService service, Object request, Map<String, String> authHeaders) throws HttpResponseException {
+  public void validateUpdatedEntity(StorageService service, Object request, Map<String, String> authHeaders) {
     validateCreatedEntity(service, request, authHeaders);
   }
 
   @Override
-  public void compareEntities(StorageService expected, StorageService updated, Map<String, String> authHeaders) throws HttpResponseException {
+  public void compareEntities(StorageService expected, StorageService updated, Map<String, String> authHeaders) {
     // PATCH operation is not supported by this entity
   }
 

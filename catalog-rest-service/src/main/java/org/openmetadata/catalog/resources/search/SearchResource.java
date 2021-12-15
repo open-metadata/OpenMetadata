@@ -111,16 +111,22 @@ public class SearchResource {
       sortOrder = SortOrder.ASC;
     }
 
-    if (index.equals("topic_search_index")) {
-      searchSourceBuilder = buildTopicSearchBuilder(query, from, size);
-    } else if (index.equals("dashboard_search_index")) {
-      searchSourceBuilder = buildDashboardSearchBuilder(query, from, size);
-    } else if (index.equals("pipeline_search_index")) {
-      searchSourceBuilder = buildPipelineSearchBuilder(query, from, size);
-    } else if (index.equals("table_search_index")) {
-      searchSourceBuilder = buildTableSearchBuilder(query, from, size);
-    } else {
-      searchSourceBuilder = buildAggregateSearchBuilder(query, from, size);
+    switch (index) {
+      case "topic_search_index":
+        searchSourceBuilder = buildTopicSearchBuilder(query, from, size);
+        break;
+      case "dashboard_search_index":
+        searchSourceBuilder = buildDashboardSearchBuilder(query, from, size);
+        break;
+      case "pipeline_search_index":
+        searchSourceBuilder = buildPipelineSearchBuilder(query, from, size);
+        break;
+      case "table_search_index":
+        searchSourceBuilder = buildTableSearchBuilder(query, from, size);
+        break;
+      default:
+        searchSourceBuilder = buildAggregateSearchBuilder(query, from, size);
+        break;
     }
 
     if (sortFieldParam != null && !sortFieldParam.isEmpty()) {
