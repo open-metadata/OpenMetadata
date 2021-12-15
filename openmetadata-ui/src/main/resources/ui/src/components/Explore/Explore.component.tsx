@@ -98,6 +98,7 @@ const Explore: React.FC<ExploreProps> = ({
   const [fieldList, setFieldList] =
     useState<Array<{ name: string; value: string }>>(tableSortingFields);
   const [isEntityLoading, setIsEntityLoading] = useState(true);
+  const [isFilterSelected, setIsFilterSelected] = useState(false);
   const [connectionError] = useState(error.includes('Connection refused'));
   const isMounting = useRef(true);
   const forceSetAgg = useRef(false);
@@ -114,6 +115,7 @@ const Explore: React.FC<ExploreProps> = ({
         if (filterType.includes(selectedFilter)) {
           return { ...prevState };
         }
+        setIsFilterSelected(true);
 
         return {
           ...prevState,
@@ -127,29 +129,31 @@ const Explore: React.FC<ExploreProps> = ({
       const filter = filters[type];
       const index = filter.indexOf(selectedFilter);
       filter.splice(index, 1);
-      setFilters((prevState) => ({ ...prevState, [type]: filter }));
+      setFilters((prevState) => {
+        const selectedFilterCount = Object.values(prevState).reduce(
+          (count, currentValue) => {
+            return count + currentValue.length;
+          },
+          0
+        );
+        setIsFilterSelected(selectedFilterCount >= 1);
+
+        return { ...prevState, [type]: filter };
+      });
     }
   };
 
-  const onSelectAllFilterHandler = (
-    type: keyof FilterObject,
-    filters: Array<string>
-  ) => {
+  const onClearFilterHandler = (type: string[]) => {
     setFilters((prevFilters) => {
-      return {
-        ...prevFilters,
-        ...getQueryParam(location.search),
-        [type]: filters,
-      };
-    });
-  };
+      const updatedFilter = type.reduce((filterObj, type) => {
+        return { ...filterObj, [type]: [] };
+      }, {});
+      setIsFilterSelected(false);
 
-  const onClearFilterHandler = (type: keyof FilterObject) => {
-    setFilters((prevFilters) => {
       return {
         ...prevFilters,
         ...getQueryParam(location.search),
-        [type]: [],
+        ...updatedFilter,
       };
     });
   };
@@ -348,9 +352,7 @@ const Explore: React.FC<ExploreProps> = ({
   };
 
   const resetFilters = () => {
-    visibleFilters.forEach((type) => {
-      onClearFilterHandler(type);
-    });
+    onClearFilterHandler(visibleFilters);
   };
 
   const getTabCount = (index: string, isActive: boolean, className = '') => {
@@ -383,31 +385,42 @@ const Explore: React.FC<ExploreProps> = ({
   const getTabs = () => {
     return (
       <div className="tw-mb-5">
-        <nav className="tw-flex tw-flex-row tw-gh-tabs-container tw-mx-9 tw-pl-72 xl:tw-pr-64 lg:tw-pr-0 tw-justify-between">
-          <div>
-            {tabsInfo.map((tabDetail, index) => (
-              <button
-                className={`tw-pb-2 tw-pr-6 tw-gh-tabs ${getActiveTabClass(
-                  tabDetail.tab
-                )}`}
-                data-testid="tab"
-                key={index}
-                onClick={() => {
-                  onTabChange(tabDetail.tab);
-                }}>
-                <SVGIcons
-                  alt="icon"
-                  className="tw-h-4 tw-w-4 tw-mr-2"
-                  icon={tabDetail.icon}
-                />
-                {tabDetail.label}
-                <span className="tw-pl-2">
-                  {getTabCount(tabDetail.index, tabDetail.tab === currentTab)}
-                </span>
-              </button>
-            ))}
+        <nav className="tw-flex tw-flex-row tw-gh-tabs-container tw-mx-9 xl:tw-pr-64 lg:tw-pr-0">
+          <div className="tw-w-3/12">
+            {isFilterSelected && (
+              <p
+                className="link-text tw-text-sm tw-text-grey-body tw-text-right tw-mt-5 tw-mr-12"
+                onClick={resetFilters}>
+                Clear All
+              </p>
+            )}
           </div>
-          {getSortingElements()}
+          <div className="tw-flex tw-justify-between tw-w-9/12">
+            <div className="tw--ml-2.5">
+              {tabsInfo.map((tabDetail, index) => (
+                <button
+                  className={`tw-pb-2 tw-pr-6 tw-gh-tabs ${getActiveTabClass(
+                    tabDetail.tab
+                  )}`}
+                  data-testid="tab"
+                  key={index}
+                  onClick={() => {
+                    onTabChange(tabDetail.tab);
+                  }}>
+                  <SVGIcons
+                    alt="icon"
+                    className="tw-h-4 tw-w-4 tw-mr-2"
+                    icon={tabDetail.icon}
+                  />
+                  {tabDetail.label}
+                  <span className="tw-pl-2">
+                    {getTabCount(tabDetail.index, tabDetail.tab === currentTab)}
+                  </span>
+                </button>
+              ))}
+            </div>
+            {getSortingElements()}
+          </div>
         </nav>
       </div>
     );
@@ -520,8 +533,6 @@ const Explore: React.FC<ExploreProps> = ({
           <FacetFilter
             aggregations={getAggrWithDefaultValue(aggregations, visibleFilters)}
             filters={getFacetedFilter()}
-            onClearFilter={(value) => onClearFilterHandler(value)}
-            onSelectAllFilter={onSelectAllFilterHandler}
             onSelectHandler={handleSelectedFilter}
           />
         )}
