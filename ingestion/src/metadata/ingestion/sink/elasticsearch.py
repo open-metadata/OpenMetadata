@@ -226,7 +226,6 @@ class ElasticsearchSink(Sink[Entity]):
         tags = set()
 
         timestamp = epoch_ms(table.updatedAt.__root__)
-        print(timestamp)
         tier = None
         for table_tag in table.tags:
             if "Tier" in table_tag.tagFQN:
