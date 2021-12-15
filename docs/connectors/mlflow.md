@@ -74,6 +74,5 @@ Add optionally `pii` processor and `metadata-rest` sink along with `metadata-ser
     }
   }
 }
-
 ```
 {% endcode %}
