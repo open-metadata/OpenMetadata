@@ -185,7 +185,7 @@ class ElasticSearchIndex {
   List<String> followers;
   @JsonProperty("last_updated_timestamp")
   @Builder.Default
-  Long lastUpdatedTimestamp = System.currentTimeMillis() / 1000;
+  Long lastUpdatedTimestamp = System.currentTimeMillis();
   @JsonProperty("change_descriptions")
   List<ESChangeDescription> changeDescriptions;
 }
