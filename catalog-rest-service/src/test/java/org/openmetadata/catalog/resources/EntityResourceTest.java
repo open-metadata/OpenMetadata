@@ -165,17 +165,16 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     SNOWFLAKE_REFERENCE = new EntityReference().withName(databaseService.getName()).withId(databaseService.getId())
             .withType(Entity.DATABASE_SERVICE);
 
-    DatabaseServiceResourceTest databaseServieResourceTest = new DatabaseServiceResourceTest();
     createDatabaseService.withName("redshiftDB").withServiceType(DatabaseServiceType.Redshift);
-    databaseService = databaseServieResourceTest.createEntity(createDatabaseService, adminAuthHeaders());
+    databaseService = databaseServiceResourceTest.createEntity(createDatabaseService, adminAuthHeaders());
     REDSHIFT_REFERENCE = new DatabaseServiceEntityInterface(databaseService).getEntityReference();
 
     createDatabaseService.withName("bigQueryDB").withServiceType(DatabaseServiceType.BigQuery);
-    databaseService = databaseServieResourceTest.createEntity(createDatabaseService, adminAuthHeaders());
+    databaseService = databaseServiceResourceTest.createEntity(createDatabaseService, adminAuthHeaders());
     BIGQUERY_REFERENCE = new DatabaseServiceEntityInterface(databaseService).getEntityReference();
 
     createDatabaseService.withName("mysqlDB").withServiceType(DatabaseServiceType.MySQL);
-    databaseService = databaseServieResourceTest.createEntity(createDatabaseService, adminAuthHeaders());
+    databaseService = databaseServiceResourceTest.createEntity(createDatabaseService, adminAuthHeaders());
     MYSQL_REFERENCE = new DatabaseServiceEntityInterface(databaseService).getEntityReference();
 
     // Create Kafka messaging service
@@ -279,7 +278,7 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
         before = forwardPage.getPaging().getBefore();
         assertEntityPagination(allEntities.getData(), forwardPage, limit, indexInAllTables);
 
-        if (pageCount == 0) {  // CASE 0 - First page is being returned. There is no before cursor
+        if (pageCount == 0) {  // CASE 0 - First page is being returned. There is no before-cursor
           assertNull(before);
         } else {
           // Make sure scrolling back based on before cursor returns the correct result
@@ -466,13 +465,17 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     checkOwnerOwns(USER_OWNER1, entityInterface.getId(), true);
     checkOwnerOwns(TEAM_OWNER1, entityInterface.getId(), false);
 
-    // Remove ownership (from USER_OWNER1) using PUT request
+    // Set the owner to the existing owner. No ownership change must be recorded.
+    request = createRequest(getEntityName(test), "description", "displayName", USER_OWNER1);
+    change = getChangeDescription(entityInterface.getVersion());
+    entity = updateAndCheckEntity(request, OK, adminAuthHeaders(), NO_CHANGE, change);
+    entityInterface = getEntityInterface(entity);
+    checkOwnerOwns(USER_OWNER1, entityInterface.getId(), true);
+
+    // Remove ownership (from USER_OWNER1) using PUT request. Owner is expected to remain the same and not removed.
     request = createRequest(getEntityName(test), "description", "displayName", null);
-    fieldChange = new FieldChange().withName("owner").withOldValue(USER_OWNER1);
-    change = getChangeDescription(entityInterface.getVersion())
-            .withFieldsDeleted(Collections.singletonList(fieldChange));
-    updateAndCheckEntity(request, OK, adminAuthHeaders(), MINOR_UPDATE, change);
-    checkOwnerOwns(USER_OWNER1, entityInterface.getId(), false);
+    updateEntity(request, OK, adminAuthHeaders());
+    checkOwnerOwns(USER_OWNER1, entityInterface.getId(), true);
   }
 
   @Test
@@ -556,12 +559,12 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     T entity = createAndCheckEntity(request, adminAuthHeaders());
     UUID entityId = getEntityInterface(entity).getId();
 
-    // Add non existent user as follower to the entity
+    // Add non-existent user as follower to the entity
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
             addAndCheckFollower(entityId, NON_EXISTENT_ENTITY, CREATED, 1, adminAuthHeaders()));
     assertResponse(exception, NOT_FOUND, CatalogExceptionMessage.entityNotFound(Entity.USER, NON_EXISTENT_ENTITY));
 
-    // Delete non existent user as follower to the entity
+    // Delete non-existent user as follower to the entity
     exception = assertThrows(HttpResponseException.class, () ->
             deleteAndCheckFollower(entityId, NON_EXISTENT_ENTITY, 1, adminAuthHeaders()));
     assertResponse(exception, NOT_FOUND, CatalogExceptionMessage.entityNotFound(Entity.USER, NON_EXISTENT_ENTITY));
@@ -608,7 +611,7 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
 
     entity = patchEntityAndCheck(entity, origJson, adminAuthHeaders(), MINOR_UPDATE, change);
     entityInterface = getEntityInterface(entity);
-    entityInterface.setOwner(TEAM_OWNER1); // Get rid of href and name returned in the response for owner
+    entityInterface.setOwner(TEAM_OWNER1); // Get rid of href and name in the response for owner
 
     //
     // Replace description, add tags tier, owner
@@ -638,7 +641,7 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     entity = patchEntityAndCheck(entity, origJson, adminAuthHeaders(), MINOR_UPDATE, change);
     entityInterface = getEntityInterface(entity);
 
-    entityInterface.setOwner(USER_OWNER1); // Get rid of href and name returned in the response for owner
+    entityInterface.setOwner(USER_OWNER1); // Get rid of href and name in the response for owner
 
     //
     // Remove description, tier, owner
@@ -923,7 +926,7 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
 
     int iteration = 1;
     while (changeEvent == null && iteration < 25) {
-      // Some times change event is not returned on quickly querying with a millisecond
+      // Sometimes change event is not returned on quickly querying with a millisecond
       // Try multiple times before giving up
       if (withEventFilter) {
         // Get change event with an event filter for specific entity entityName
@@ -1028,7 +1031,7 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
       List<TagLabel> actualTags = JsonUtils.readObjects(actual.toString(), TagLabel.class);
       assertTrue(actualTags.containsAll(expectedTags));
     } else {
-      // All other fields
+      // All the other fields
       assertEquals(expected, actual, "Field name " + fieldName);
     }
   }
