@@ -207,7 +207,9 @@ const MyData: React.FC<MyDataProps> = ({
         <ErrorPlaceHolderES errorMessage={error} type="error" />
       ) : (
         <Fragment>
-          {getFilterDropDown()}
+          {feedFilter === 'all' && !getFeedsData().feeds.length
+            ? null
+            : getFilterDropDown()}
           {getFeedsData().feeds.length > 0 ? (
             <FeedCards {...getFeedsData()} />
           ) : (

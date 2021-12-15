@@ -51,7 +51,7 @@ const Description = ({
       <div className="tw-px-3 tw-py-1 tw-flex">
         <Fragment>
           <div className="description" data-testid="description">
-            {description.trim() ? (
+            {description?.trim() ? (
               <RichTextEditorPreviewer
                 className="tw-p-2"
                 markdown={description}
@@ -75,7 +75,7 @@ const Description = ({
         {!isReadOnly ? (
           <div
             className={classNames('tw-w-5 tw-min-w-max', {
-              'tw-pt-2': Boolean(description.trim()),
+              'tw-pt-2': Boolean(description?.trim()),
             })}>
             <NonAdminAction
               html={getHtmlForNonAdminAction(Boolean(owner))}
