@@ -13,6 +13,8 @@
 * **checkMyDataTab** - Assigns the ownership to a table and checks if the table-link is displayed/available 
 under 'My Data' tab.
 * **checkFollowingTab** - Follows a table and checks if the table-link is displayed/available under 'Following' tab.
+* **checkRecentlyViewed** - Click on the table and checks if that table reflects under the recently viewed.
+* **checkRecentlySearched** - Performs a search operation and looks for the searched term under recent search terms
 * **checkLogout** - Checks the logout functionality.
 
 ### [Teams Page](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/test/java/org/openmetadata/catalog/selenium/pages/teams/TeamsPageTest.java):

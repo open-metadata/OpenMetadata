@@ -13,7 +13,7 @@ version: "3.9"
 services:
   mysql:
     container_name: openmetadata_mysql
-    image: openmetadata/db:latest
+    image: openmetadata/db:0.6.0
     restart: always
     environment:
       MYSQL_ROOT_PASSWORD: password
@@ -40,7 +40,7 @@ services:
   openmetadata-server:
     container_name: openmetadata_server
     restart: always
-    image: openmetadata/server:latest
+    image: openmetadata/server:0.7.0
     expose:
       - 8585
       - 9200
@@ -59,7 +59,7 @@ services:
 
   ingestion:
     container_name: openmetadata_ingestion
-    image: openmetadata/ingestion:latest
+    image: openmetadata/ingestion:0.6.0
     depends_on:
       - mysql
     expose:

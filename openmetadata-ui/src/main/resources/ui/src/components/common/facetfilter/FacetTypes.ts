@@ -21,8 +21,11 @@ export type FacetProp = {
     type: keyof FilterObject
   ) => void;
   filters: FilterObject;
-  onClearFilter: (value: keyof FilterObject) => void;
-  onSelectAllFilter: (type: keyof FilterObject, filters: Array<string>) => void;
+  onClearFilter?: (value: keyof FilterObject) => void;
+  onSelectAllFilter?: (
+    type: keyof FilterObject,
+    filters: Array<string>
+  ) => void;
 };
 
 export type FilterContainerProp = {

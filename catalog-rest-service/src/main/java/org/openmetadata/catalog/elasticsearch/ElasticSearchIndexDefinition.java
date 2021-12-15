@@ -298,10 +298,12 @@ class TableESIndex extends ElasticSearchIndex {
       }
     }
     ParseTags parseTags = new ParseTags(tags);
+    Long updatedTimestamp = table.getUpdatedAt().getTime();
     TableESIndexBuilder tableESIndexBuilder =  internalBuilder().tableId(tableId)
         .name(tableName)
         .displayName(tableName)
         .description(description)
+        .lastUpdatedTimestamp(updatedTimestamp)
         .fqdn(table.getFullyQualifiedName())
         .suggest(suggest)
         .entityType("table")
@@ -313,7 +315,13 @@ class TableESIndex extends ElasticSearchIndex {
         .tier(parseTags.tierTag);
 
     if (table.getDatabase() != null) {
-      tableESIndexBuilder.database(table.getDatabase().getName());
+      String databaseFQN = table.getDatabase().getName();
+      String[] databaseFQNSplit = databaseFQN.split("\\.");
+      if (databaseFQNSplit.length == 2) {
+        tableESIndexBuilder.database(databaseFQNSplit[1]);
+      } else {
+        tableESIndexBuilder.database(databaseFQNSplit[0]);
+      }
     }
 
     if (table.getService() != null) {
@@ -343,13 +351,13 @@ class TableESIndex extends ElasticSearchIndex {
     ESChangeDescription esChangeDescription = null;
 
     if (table.getChangeDescription() != null) {
-      esChangeDescription = ESChangeDescription.builder().updatedAt(table.getUpdatedAt().getTime())
+      esChangeDescription = ESChangeDescription.builder().updatedAt(updatedTimestamp)
           .updatedBy(table.getUpdatedBy()).build();
       esChangeDescription.setFieldsAdded(table.getChangeDescription().getFieldsAdded());
       esChangeDescription.setFieldsDeleted(table.getChangeDescription().getFieldsDeleted());
       esChangeDescription.setFieldsUpdated(table.getChangeDescription().getFieldsUpdated());
     } else if (responseCode == Response.Status.CREATED.getStatusCode()) {
-      esChangeDescription = ESChangeDescription.builder().updatedAt(table.getUpdatedAt().getTime())
+      esChangeDescription = ESChangeDescription.builder().updatedAt(updatedTimestamp)
           .updatedBy(table.getUpdatedBy())
           .fieldsAdded(new ArrayList<>())
           .fieldsUpdated(new ArrayList<>())
@@ -410,11 +418,13 @@ class TopicESIndex extends ElasticSearchIndex {
       topic.getTags().forEach(tag -> tags.add(tag.getTagFQN()));
     }
     ParseTags parseTags = new ParseTags(tags);
+    Long updatedTimestamp = topic.getUpdatedAt().getTime();
     TopicESIndexBuilder topicESIndexBuilder =  internalBuilder().topicId(topic.getId().toString())
         .name(topic.getName())
         .displayName(topic.getDisplayName())
         .description(topic.getDescription())
         .fqdn(topic.getFullyQualifiedName())
+        .lastUpdatedTimestamp(updatedTimestamp)
         .suggest(suggest)
         .service(topic.getService().getName())
         .serviceType(topic.getServiceType().toString())
@@ -437,13 +447,13 @@ class TopicESIndex extends ElasticSearchIndex {
     ESChangeDescription esChangeDescription = null;
 
     if (topic.getChangeDescription() != null) {
-      esChangeDescription = ESChangeDescription.builder().updatedAt(topic.getUpdatedAt().getTime())
+      esChangeDescription = ESChangeDescription.builder().updatedAt(updatedTimestamp)
           .updatedBy(topic.getUpdatedBy()).build();
       esChangeDescription.setFieldsAdded(topic.getChangeDescription().getFieldsAdded());
       esChangeDescription.setFieldsDeleted(topic.getChangeDescription().getFieldsDeleted());
       esChangeDescription.setFieldsUpdated(topic.getChangeDescription().getFieldsUpdated());
     } else if (responseCode == Response.Status.CREATED.getStatusCode()) {
-      esChangeDescription = ESChangeDescription.builder().updatedAt(topic.getUpdatedAt().getTime())
+      esChangeDescription = ESChangeDescription.builder().updatedAt(updatedTimestamp)
           .updatedBy(topic.getUpdatedBy()).build();
     }
 
@@ -486,7 +496,7 @@ class DashboardESIndex extends ElasticSearchIndex {
     List<ElasticSearchSuggest> suggest = new ArrayList<>();
     suggest.add(ElasticSearchSuggest.builder().input(dashboard.getFullyQualifiedName()).weight(5).build());
     suggest.add(ElasticSearchSuggest.builder().input(dashboard.getDisplayName()).weight(10).build());
-
+    Long updatedTimestamp = dashboard.getUpdatedAt().getTime();
     if (dashboard.getTags() != null) {
       dashboard.getTags().forEach(tag -> tags.add(tag.getTagFQN()));
     }
@@ -501,6 +511,7 @@ class DashboardESIndex extends ElasticSearchIndex {
         .displayName(dashboard.getDisplayName())
         .description(dashboard.getDescription())
         .fqdn(dashboard.getFullyQualifiedName())
+        .lastUpdatedTimestamp(updatedTimestamp)
         .chartNames(chartNames)
         .chartDescriptions(chartDescriptions)
         .entityType("dashboard")
@@ -532,14 +543,14 @@ class DashboardESIndex extends ElasticSearchIndex {
     ESChangeDescription esChangeDescription = null;
     if (dashboard.getChangeDescription() != null) {
       esChangeDescription = ESChangeDescription.builder()
-          .updatedAt(dashboard.getUpdatedAt().getTime())
+          .updatedAt(updatedTimestamp)
           .updatedBy(dashboard.getUpdatedBy()).build();
       esChangeDescription.setFieldsAdded(dashboard.getChangeDescription().getFieldsAdded());
       esChangeDescription.setFieldsDeleted(dashboard.getChangeDescription().getFieldsDeleted());
       esChangeDescription.setFieldsUpdated(dashboard.getChangeDescription().getFieldsUpdated());
     }  else if (responseCode == Response.Status.CREATED.getStatusCode()) {
       esChangeDescription = ESChangeDescription.builder()
-          .updatedAt(dashboard.getUpdatedAt().getTime())
+          .updatedAt(updatedTimestamp)
           .updatedBy(dashboard.getUpdatedBy()).build();
     }
     dashboardESIndexBuilder.changeDescriptions(esChangeDescription != null ? List.of(esChangeDescription) : null);
@@ -577,12 +588,14 @@ class PipelineESIndex extends ElasticSearchIndex {
       taskNames.add(task.getDisplayName());
       taskDescriptions.add(task.getDescription());
     }
+    Long updatedTimestamp = pipeline.getUpdatedAt().getTime();
     ParseTags parseTags = new ParseTags(tags);
     PipelineESIndexBuilder pipelineESIndexBuilder = internalBuilder().pipelineId(pipeline.getId().toString())
         .name(pipeline.getDisplayName())
         .displayName(pipeline.getDisplayName())
         .description(pipeline.getDescription())
         .fqdn(pipeline.getFullyQualifiedName())
+        .lastUpdatedTimestamp(updatedTimestamp)
         .taskNames(taskNames)
         .taskDescriptions(taskDescriptions)
         .entityType("pipeline")
@@ -607,14 +620,14 @@ class PipelineESIndex extends ElasticSearchIndex {
     ESChangeDescription esChangeDescription = null;
     if (pipeline.getChangeDescription() != null) {
       esChangeDescription = ESChangeDescription.builder()
-          .updatedAt(pipeline.getUpdatedAt().getTime())
+          .updatedAt(updatedTimestamp)
           .updatedBy(pipeline.getUpdatedBy()).build();
       esChangeDescription.setFieldsAdded(pipeline.getChangeDescription().getFieldsAdded());
       esChangeDescription.setFieldsDeleted(pipeline.getChangeDescription().getFieldsDeleted());
       esChangeDescription.setFieldsUpdated(pipeline.getChangeDescription().getFieldsUpdated());
     } else if (responseCode == Response.Status.CREATED.getStatusCode()) {
       esChangeDescription = ESChangeDescription.builder()
-          .updatedAt(pipeline.getUpdatedAt().getTime())
+          .updatedAt(updatedTimestamp)
           .updatedBy(pipeline.getUpdatedBy()).build();
     }
     pipelineESIndexBuilder.changeDescriptions(esChangeDescription != null ? List.of(esChangeDescription) : null);
