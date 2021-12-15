@@ -127,6 +127,12 @@ const FrequentlyJoinedTables: FunctionComponent<Props> = ({
             </PopOver>
           </div>
         )}
+
+        {joinedTables.length <= 0 ? (
+          <div className="tw-py-1 tw-text-grey-muted">
+            No information about joined tables.
+          </div>
+        ) : null}
       </div>
     </div>
   );

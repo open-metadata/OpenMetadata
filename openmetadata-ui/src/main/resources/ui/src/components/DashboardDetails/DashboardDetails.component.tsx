@@ -320,7 +320,7 @@ const DashboardDetails = ({
               tabs={tabs}
             />
 
-            <div className="tw-bg-white tw-flex-grow">
+            <div className="tw-bg-white tw-flex-grow tw-mx-1">
               {activeTab === 1 && (
                 <>
                   <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-w-full tw-mt-4">

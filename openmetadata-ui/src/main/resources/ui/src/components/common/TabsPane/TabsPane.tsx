@@ -46,7 +46,7 @@ const TabsPane = ({ activeTab, setActiveTab, tabs, className = '' }: Props) => {
   return (
     <div className={classNames('tw-bg-transparent tw--mx-4', className)}>
       <nav
-        className="tw-flex tw-flex-row tw-gh-tabs-container tw-px-4"
+        className="tw-flex tw-flex-row tw-gh-tabs-container tw-px-5"
         id="tabs">
         {tabs.map((tab) =>
           !tab.isHidden ? (
