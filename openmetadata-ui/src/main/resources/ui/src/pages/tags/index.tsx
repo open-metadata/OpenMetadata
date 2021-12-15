@@ -331,26 +331,26 @@ const TagsPage = () => {
                                     />
                                   </button>
                                 </div>
-                                <div className="tw-mt-1">
-                                  <span className="tw-text-grey-muted tw-mr-1">
-                                    Usage:
-                                  </span>
-                                  {tag.usageCount ? (
-                                    <Link
-                                      className="link-text tw-align-middle"
-                                      data-testid="usage-count"
-                                      to={getUsageCountLink(
-                                        tag.fullyQualifiedName || ''
-                                      )}>
-                                      {tag.usageCount}
-                                    </Link>
-                                  ) : (
-                                    <span className="tw-no-description">
-                                      Not used
-                                    </span>
-                                  )}
-                                </div>
                               </NonAdminAction>
+                              <div className="tw-mt-1">
+                                <span className="tw-text-grey-muted tw-mr-1">
+                                  Usage:
+                                </span>
+                                {tag.usageCount ? (
+                                  <Link
+                                    className="link-text tw-align-middle"
+                                    data-testid="usage-count"
+                                    to={getUsageCountLink(
+                                      tag.fullyQualifiedName || ''
+                                    )}>
+                                    {tag.usageCount}
+                                  </Link>
+                                ) : (
+                                  <span className="tw-no-description">
+                                    Not used
+                                  </span>
+                                )}
+                              </div>
                             </td>
                             <td
                               className="tw-group tableBody-cell"
