@@ -53,7 +53,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.BiPredicate;
@@ -285,7 +284,7 @@ public abstract class EntityRepository<T> {
   }
 
   @Transaction
-  public final T createInternal(T entity) throws IOException, ParseException {
+  public final T createInternal(T entity) throws IOException {
     prepare(entity);
     return createNewEntity(entity);
   }
@@ -472,9 +471,12 @@ public abstract class EntityRepository<T> {
     private void updateOwner() throws JsonProcessingException {
       EntityReference origOwner = original.getOwner();
       EntityReference updatedOwner = updated.getOwner();
-      if (recordChange("owner", origOwner, updatedOwner, true, entityReferenceMatch)) {
-        EntityUtil.updateOwner(daoCollection.relationshipDAO(), origOwner,
-                updatedOwner, original.getId(), entityName);
+      if (patchOperation || updatedOwner != null) {
+        // Update owner for all PATCH operations. For PUT operations, ownership can't be removed
+        if (recordChange("owner", origOwner, updatedOwner, true, entityReferenceMatch)) {
+          EntityUtil.updateOwner(daoCollection.relationshipDAO(), origOwner,
+                  updatedOwner, original.getId(), entityName);
+        }
       }
     }
 
@@ -586,7 +588,7 @@ public abstract class EntityRepository<T> {
       return !addedItems.isEmpty() || !deletedItems.isEmpty();
     }
 
-    public final void storeUpdate() throws IOException, ParseException {
+    public final void storeUpdate() throws IOException {
       if (updateVersion(original.getVersion())) {
         // Store the old version
         String extensionName = EntityUtil.getVersionExtension(entityName, original.getVersion());
