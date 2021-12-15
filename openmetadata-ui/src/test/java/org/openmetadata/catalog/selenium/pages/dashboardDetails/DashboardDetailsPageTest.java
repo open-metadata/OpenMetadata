@@ -186,11 +186,14 @@ public class DashboardDetailsPageTest {
     Events.click(webDriver, By.cssSelector("[data-testid='data-name']"));
     Thread.sleep(waitTime);
     Events.click(webDriver, By.cssSelector("[data-testid='breadcrumb-link']"));
-    Events.click(webDriver, By.cssSelector("[data-testid='description-edit']")); // edit description
+    Events.click(webDriver, By.cssSelector("[data-testid='edit-description']")); // edit description
     Events.sendKeys(webDriver, By.xpath(enterDescription), faker.address().toString());
     Events.click(webDriver, By.cssSelector("[data-testid='save']"));
     for (int i = 1; i <= 3; i++) { //check topics in service
       Events.click(webDriver, By.xpath("(//tr[@data-testid='column']//td[1]/a)" + "[" + i + "]")); // dashboards
+      Events.click(webDriver, By.cssSelector("[data-testid='edit-description']")); // edit description
+      Events.sendKeys(webDriver, By.xpath(enterDescription), faker.address().toString());
+      Events.click(webDriver, By.cssSelector("[data-testid='save']"));
       Thread.sleep(waitTime);
       webDriver.navigate().back();
     }

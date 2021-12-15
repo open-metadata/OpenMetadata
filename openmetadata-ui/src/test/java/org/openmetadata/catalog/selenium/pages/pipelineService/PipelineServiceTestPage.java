@@ -115,7 +115,7 @@ public class PipelineServiceTestPage {
     Thread.sleep(2000);
     Events.click(webDriver, By.cssSelector("[data-testid='service-name-" + serviceName + "']"));
     Thread.sleep(waitTime);
-    Events.click(webDriver, By.cssSelector("[data-testid='description-edit']"));
+    Events.click(webDriver, By.cssSelector("[data-testid='edit-description']"));
     Events.click(webDriver, By.xpath(enterDescription));
     Events.sendEnter(webDriver, By.xpath(enterDescription));
     Events.sendKeys(webDriver, By.xpath(enterDescription), faker.address().toString());
