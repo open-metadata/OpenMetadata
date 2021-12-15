@@ -184,7 +184,7 @@ const RecentlyViewed: FunctionComponent = () => {
       ) : (
         <EntityList
           entityList={data}
-          headerText="Recently Viewed"
+          headerText="Recent Views"
           noDataPlaceholder={<>No recently viewed data!</>}
           testIDText="Recently Viewed"
         />

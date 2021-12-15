@@ -43,7 +43,7 @@ const FeedCards: FC<FeedCardsProp> = ({
           <div className="tw-relative tw-mt-3 tw-mb-3.5">
             <div className="tw-flex tw-justify-center">
               <hr className="tw-absolute tw-top-3 tw-border-b-2 tw-border-main tw-w-full tw-z-0" />
-              <span className="tw-bg-white tw-px-4 tw-py-px tw-border tw-border-main tw-rounded tw-z-10 tw-text-grey-muted tw-font-medium">
+              <span className="tw-bg-white tw-px-4 tw-py-px tw-border tw-border-primary tw-rounded tw-z-10 tw-text-primary tw-font-medium">
                 {d}
               </span>
             </div>

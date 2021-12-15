@@ -20,6 +20,7 @@ type Props = {
   toolTipPos?: { x: number; y: number };
   height?: number;
   className?: string;
+  width?: number;
 };
 const TableProfilerGraph = ({
   data,
@@ -27,6 +28,7 @@ const TableProfilerGraph = ({
   toolTipPos,
   height,
   className = '',
+  width = 150,
 }: Props) => {
   const CustomTooltip = ({
     active,
@@ -61,7 +63,7 @@ const TableProfilerGraph = ({
             bottom: 0,
           }
         }
-        width={150}>
+        width={width}>
         <Tooltip
           content={CustomTooltip}
           cursor={{ stroke: '#FF4C3B', strokeWidth: 2 }}

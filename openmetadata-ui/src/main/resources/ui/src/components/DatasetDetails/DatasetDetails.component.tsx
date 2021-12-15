@@ -229,9 +229,9 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
       key: 'Rows',
       value:
         !isUndefined(tableProfile) && tableProfile.length > 0 ? (
-          <>
+          <div className="tw-flex">
             <TableProfilerGraph
-              className="tw--mt-5"
+              className="tw--mt-4"
               data={
                 tableProfile
                   ?.map((d) => ({
@@ -246,8 +246,8 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
               height={38}
               toolTipPos={{ x: 20, y: -30 }}
             />
-            rows
-          </>
+            <span className="tw--ml-6">rows</span>
+          </div>
         ) : (
           ''
         ),
@@ -367,7 +367,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
             tabs={tabs}
           />
 
-          <div className="tw-bg-white tw-flex-grow">
+          <div className="tw-bg-white tw-flex-grow tw-mx-1">
             {activeTab === 1 && (
               <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-w-full tw-mt-4 ">
                 <div className="tw-col-span-3">

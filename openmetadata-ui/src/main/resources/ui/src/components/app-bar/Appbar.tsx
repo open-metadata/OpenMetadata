@@ -187,11 +187,11 @@ const Appbar: React.FC = (): JSX.Element => {
               <NavLink id="openmetadata_logo" to="/">
                 <SVGIcons
                   alt="OpenMetadata Logo"
-                  icon={Icons.LOGO_SMALL}
-                  width="30"
+                  icon={Icons.LOGO}
+                  width="90"
                 />
               </NavLink>
-              <div className="tw-ml-7">
+              <div className="tw-ml-5">
                 <NavLink
                   className="tw-nav focus:tw-no-underline"
                   data-testid="appbar-item"
