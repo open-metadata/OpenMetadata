@@ -410,7 +410,11 @@ const Explore: React.FC<ExploreProps> = ({
                   <SVGIcons
                     alt="icon"
                     className="tw-h-4 tw-w-4 tw-mr-2"
-                    icon={tabDetail.icon}
+                    icon={
+                      tabDetail.tab === currentTab
+                        ? tabDetail.selectedIcon
+                        : tabDetail.icon
+                    }
                   />
                   {tabDetail.label}
                   <span className="tw-pl-2">

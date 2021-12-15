@@ -81,6 +81,7 @@ const DatabaseDetails: FunctionComponent = () => {
         alt: 'tables',
         name: 'table-grey',
         title: 'Tables',
+        selectedName: 'table',
       },
       count: tableInstanceCount,
       isProtected: false,

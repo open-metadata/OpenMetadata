@@ -63,6 +63,7 @@ const Appbar: React.FC = (): JSX.Element => {
   const [searchValue, setSearchValue] = useState(searchQuery);
   const [isOpen, setIsOpen] = useState<boolean>(true);
   const [isFeatureModalOpen, setIsFeatureModalOpen] = useState<boolean>(false);
+  const [searchIcon, setSearchIcon] = useState<string>('icon-searchv1');
 
   const [version, setVersion] = useState<string>('');
 
@@ -215,7 +216,7 @@ const Appbar: React.FC = (): JSX.Element => {
               <SVGIcons
                 alt="icon-search"
                 className="tw-absolute tw-block tw-z-10 tw-w-4 tw-h-4 tw-right-2.5 tw-top-2.5 tw-leading-8 tw-text-center tw-pointer-events-none"
-                icon="icon-searchv1"
+                icon={searchIcon}
               />
               <input
                 autoComplete="off"
@@ -225,9 +226,11 @@ const Appbar: React.FC = (): JSX.Element => {
                 placeholder="Search for Table, Topics, Dashboards and Pipeline"
                 type="text"
                 value={searchValue || ''}
+                onBlur={() => setSearchIcon('icon-searchv1')}
                 onChange={(e) => {
                   setSearchValue(e.target.value);
                 }}
+                onFocus={() => setSearchIcon('icon-searchv1color')}
                 onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
                   const target = e.target as HTMLInputElement;
                   if (e.key === 'Enter') {

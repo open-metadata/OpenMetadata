@@ -165,6 +165,10 @@ a:focus {
 }
 .search-grey {
   width: 600px;
+  background: #f8f9fa;
+}
+.search-grey::placeholder {
+  color: #6b7280;
 }
 
 .search-grey.has-search {

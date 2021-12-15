@@ -113,7 +113,11 @@ const MyAssetStats: FunctionComponent<Props> = ({
           className="tw-flex tw-items-center tw-justify-between tw-mb-2"
           key={index}>
           <div className="tw-flex">
-            <SVGIcons alt="icon" className="tw-h-4 tw-w-4" icon={data.icon} />
+            <SVGIcons
+              alt="icon"
+              className="tw-h-4 tw-w-4 tw-self-center"
+              icon={data.icon}
+            />
             {data.link ? (
               <Link
                 className="tw-font-medium tw-pl-2"
