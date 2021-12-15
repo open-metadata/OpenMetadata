@@ -41,6 +41,7 @@ import org.openmetadata.catalog.util.ResultList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.json.JsonObject;
 import javax.json.JsonPatch;
 import javax.json.JsonValue;
 import javax.validation.Valid;
@@ -309,10 +310,12 @@ public class UserResource {
                                             "]")}))
                             JsonPatch patch) throws IOException, ParseException {
     for (JsonValue patchOp: patch.toJsonArray()) {
-      String path = patchOp.asJsonObject().get("path").toString();
-      String value = patchOp.asJsonObject().get("value").toString();
-      if(path.equals("/isAdmin") && value.equals("true")) {
-        SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
+      JsonObject patchOpObject = patchOp.asJsonObject();
+      if (patchOpObject.containsKey("path") && patchOpObject.containsKey("value")) {
+        String path = patchOpObject.getString("path");
+        if (path.equals("/isAdmin") || path.equals("/isBot")) {
+          SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
+        }
       }
     }
     User user = dao.get(uriInfo, id, new Fields(FIELD_LIST, null));
