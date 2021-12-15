@@ -113,6 +113,9 @@ class MetabaseSource(Source[Entity]):
         for chart in charts:
             try:
                 chart_details = chart["card"]
+                if not self.config.chart_pattern.included(chart_details["name"]):
+                    self.status.filter(chart_details["name"])
+                    continue
                 yield Chart(
                     id=uuid.uuid4(),
                     name=chart_details["name"],
@@ -140,6 +143,11 @@ class MetabaseSource(Source[Entity]):
                 resp_dashboard = self.req_get(f"/api/dashboard/{dashboard['id']}")
                 dashboard_details = resp_dashboard.json()
                 self.charts = []
+                if not self.config.dashboard_pattern.included(
+                    dashboard_details["name"]
+                ):
+                    self.status.filter(dashboard_details["name"])
+                    continue
                 yield from self.get_charts(dashboard_details["ordered_cards"])
                 yield Dashboard(
                     id=uuid.uuid4(),
