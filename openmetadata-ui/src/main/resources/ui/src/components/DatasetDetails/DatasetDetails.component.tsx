@@ -157,7 +157,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
         alt: 'dbt-model',
         name: 'dbtmodel-light-grey',
         title: 'DBT',
-        selectedName: 'icon-schemacolor',
+        selectedName: 'dbtmodel-primery',
       },
       isProtected: false,
       isHidden: !dataModel?.sql,

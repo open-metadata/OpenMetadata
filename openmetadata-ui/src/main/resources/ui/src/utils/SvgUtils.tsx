@@ -26,6 +26,7 @@ import IconDashboard from '../assets/svg/dashboard.svg';
 import IconAsstest from '../assets/svg/data-assets.svg';
 import IconDBTModelGrey from '../assets/svg/dbt-model-grey.svg';
 import IconDBTModelLightGrey from '../assets/svg/dbt-model-light-grey.svg';
+import IconDBTModelPrimeryColor from '../assets/svg/dbt-model-primery.svg';
 import IconDBTModel from '../assets/svg/dbt-model.svg';
 import IconDeploy from '../assets/svg/deploy-icon.svg';
 import IconDoc from '../assets/svg/doc.svg';
@@ -178,6 +179,7 @@ export const Icons = {
   PIPELINE_GREY: 'pipeline-grey',
   DBTMODEL_GREY: 'dbtmodel-grey',
   DBTMODEL_LIGHT_GREY: 'dbtmodel-light-grey',
+  DBTMODEL_PRIMERY: 'dbtmodel-primery',
   DBTMODEL: 'dbtmodel',
   VERSION: 'icon-version',
   VERSION_WHITE: 'icon-version-white',
@@ -515,6 +517,10 @@ const SVGIcons: FunctionComponent<Props> = ({
       break;
     case Icons.DBTMODEL:
       IconComponent = IconDBTModel;
+
+      break;
+    case Icons.DBTMODEL_PRIMERY:
+      IconComponent = IconDBTModelPrimeryColor;
 
       break;
     case Icons.TAG:
