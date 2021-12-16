@@ -235,7 +235,9 @@ const Appbar: React.FC = (): JSX.Element => {
                   const target = e.target as HTMLInputElement;
                   if (e.key === 'Enter') {
                     setIsOpen(false);
-                    addToRecentSearched(target.value);
+                    if (target.value) {
+                      addToRecentSearched(target.value);
+                    }
                     history.push(
                       getExplorePathWithSearch(
                         target.value,
