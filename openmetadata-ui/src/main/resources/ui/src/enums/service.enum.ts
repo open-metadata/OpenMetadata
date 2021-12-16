@@ -45,6 +45,7 @@ export enum DashboardServiceType {
   LOOKER = 'Looker',
   TABLEAU = 'Tableau',
   REDASH = 'Redash',
+  METABASE = 'Metabase',
 }
 
 export enum PipelineServiceType {
