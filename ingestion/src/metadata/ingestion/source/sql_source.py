@@ -109,6 +109,7 @@ class SQLConnectionConfig(ConfigModel):
     service_type: str
     query: Optional[str] = "select * from {}.{} limit 50"
     options: dict = {}
+    connect_args: dict = {}
     include_views: Optional[bool] = True
     include_tables: Optional[bool] = True
     generate_sample_data: Optional[bool] = True
