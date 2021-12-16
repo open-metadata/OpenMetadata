@@ -17,7 +17,7 @@ import sys
 import time
 import traceback
 import tempfile
-import pathlib 
+import pathlib
 from datetime import timedelta
 
 import click
@@ -201,17 +201,19 @@ def docker(start, stop, clean, type, path) -> None:
                 )
             else:
                 logger.info("Running Latest Release Docker")
-                
+
                 r = requests.get(
                     "https://raw.githubusercontent.com/open-metadata/OpenMetadata/main/docker/metadata/docker-compose.yml"
                 )
 
-                docker_compose_file_path = pathlib.Path(tempfile.gettempdir()) / "docker-compose.yml"
+                docker_compose_file_path = (
+                    pathlib.Path(tempfile.gettempdir()) / "docker-compose.yml"
+                )
                 with open(docker_compose_file_path, "wb") as docker_compose_file_handle:
                     docker_compose_file_handle.write(r.content)
 
                 start_time = time.time()
-                
+
                 logger.info(f"docker-compose -f {docker_compose_file_path} up -d")
                 subprocess.run(
                     f"docker-compose -f {docker_compose_file_path} up -d", shell=True
