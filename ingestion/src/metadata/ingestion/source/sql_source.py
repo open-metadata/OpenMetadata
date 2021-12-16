@@ -164,7 +164,11 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         self.status = SQLSourceStatus()
         self.sql_config = self.config
         self.connection_string = self.sql_config.get_connection_url()
-        self.engine = create_engine(self.connection_string, **self.sql_config.options)
+        self.engine = create_engine(
+            self.connection_string,
+            **self.sql_config.options,
+            connect_args=self.sql_config.connect_args,
+        )
         self.connection = self.engine.connect()
         self.data_profiler = None
         self.data_models = {}
