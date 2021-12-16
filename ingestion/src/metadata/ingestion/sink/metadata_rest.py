@@ -145,11 +145,14 @@ class MetadataRestSink(Sink[Entity]):
                 ),
             )
             db = self.metadata.create_or_update(db_request)
+            if db_and_table.table.description is not None:
+                db_and_table.table.description = db_and_table.table.description.strip()
+
             table_request = CreateTableEntityRequest(
                 name=db_and_table.table.name,
                 tableType=db_and_table.table.tableType,
                 columns=db_and_table.table.columns,
-                description=db_and_table.table.description.strip(),
+                description=db_and_table.table.description,
                 database=db.id,
             )
             if db_and_table.table.viewDefinition:
@@ -159,9 +162,13 @@ class MetadataRestSink(Sink[Entity]):
 
             created_table = self.metadata.create_or_update(table_request)
             if db_and_table.location is not None:
+                if db_and_table.location.description is not None:
+                    db_and_table.location.description = (
+                        db_and_table.location.description.strip()
+                    )
                 location_request = CreateLocationEntityRequest(
                     name=db_and_table.location.name,
-                    description=db_and_table.location.description.strip(),
+                    description=db_and_table.location.description,
                     locationType=db_and_table.location.locationType,
                     owner=db_and_table.location.owner,
                     service=EntityReference(
