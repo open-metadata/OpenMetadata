@@ -132,7 +132,7 @@ public class FeedResourceTest extends CatalogApplicationTest {
 
   @Test
   public void post_feedWithNonExistentFrom_404() {
-    // Create thread with non existent from
+    // Create thread with non-existent from
     CreateThread create = create().withFrom(TestUtils.NON_EXISTENT_ENTITY);
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
             createThread(create, authHeaders(USER.getEmail())));
@@ -141,7 +141,7 @@ public class FeedResourceTest extends CatalogApplicationTest {
 
   @Test
   public void post_feedWithNonExistentAbout_404() {
-    // Create thread with non existent addressed To entity
+    // Create thread with non-existent addressed To entity
     CreateThread create = create().withAbout("<#E/table/invalidTableName>");
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
             createThread(create, authHeaders(USER.getEmail())));
@@ -190,7 +190,7 @@ public class FeedResourceTest extends CatalogApplicationTest {
 
   @Test
   public void post_addPostWithNonExistentFrom_404() {
-    // Add post to a thread with non existent from user
+    // Add post to a thread with non-existent from user
     Post post = createPost().withFrom(TestUtils.NON_EXISTENT_ENTITY);
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
             addPost(THREAD.getId(), post, authHeaders(USER.getEmail())));

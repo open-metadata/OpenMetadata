@@ -90,7 +90,7 @@ import static org.openmetadata.catalog.util.EntityUtil.objectMatch;
  *
  * Json document of an entity does not store relationships. As an example, JSON document for <i>table</i> entity
  * does not store the relationship <i>database</i> which is of type <i>EntityReference</i>. This is always retrieved
- * from the the relationship table when required to ensure, the data stored is efficiently and consistently, and
+ * from the relationship table when required to ensure, the data stored is efficiently and consistently, and
  * relationship information does not become stale.
  * </p>
  *
@@ -157,7 +157,7 @@ public abstract class EntityRepository<T> {
   public abstract void prepare(T entity) throws IOException;
 
   /**
-   * An entity is stored in the backend database as JSON document. The JSON includes only some of the attributes of the
+   * An entity is stored in the backend database as JSON document. The JSON includes some attributes of the
    * entity and does not include attributes such as <i>href</i>. The relationship fields of an entity is never stored
    * in the JSON document. It is always reconstructed based on relationship edges from the backend database.
    *
@@ -177,17 +177,17 @@ public abstract class EntityRepository<T> {
    *
    * @see TableRepository#storeRelationships(Table) for an example implementation
    */
-  public abstract void storeRelationships(T entity) throws IOException;
+  public abstract void storeRelationships(T entity);
 
   /**
    * PATCH operations can't overwrite certain fields, such as entity ID, fullyQualifiedNames etc. Instead of throwing
    * an error, we take lenient approach of ignoring the user error and restore those attributes based on what is
    * already stored in the original entity.
    */
-  public abstract void restorePatchAttributes(T original, T updated) throws IOException, ParseException;
+  public abstract void restorePatchAttributes(T original, T updated);
 
 
-  public EntityUpdater getUpdater(T original, T updated, boolean patchOperation) throws IOException {
+  public EntityUpdater getUpdater(T original, T updated, boolean patchOperation) {
     return new EntityUpdater(original, updated, patchOperation);
   }
 
@@ -256,7 +256,7 @@ public abstract class EntityRepository<T> {
     if (json != null) {
       return JsonUtils.readValue(json, entityClass);
     }
-    // If requested latest version, return it from current version of the entity
+    // If requested the latest version, return it from current version of the entity
     T entity = setFields(dao.findEntityById(UUID.fromString(id)), putFields);
     EntityInterface<T> entityInterface = getEntityInterface(entity);
     if (entityInterface.getVersion().equals(requestedVersion)) {
@@ -279,7 +279,7 @@ public abstract class EntityRepository<T> {
     return new EntityHistory().withEntityType(entityName).withVersions(allVersions);
   }
 
-  public final T create(UriInfo uriInfo, T entity) throws IOException, ParseException {
+  public final T create(UriInfo uriInfo, T entity) throws IOException {
     return withHref(uriInfo, createInternal(entity));
   }
 
@@ -432,7 +432,7 @@ public abstract class EntityRepository<T> {
     /**
      * Compare original and updated entities and perform updates. Update the entity version and track changes.
      */
-    public final void update() throws IOException, ParseException {
+    public final void update() throws IOException {
       updated.setId(original.getId());
       updateDescription();
       updateDisplayName();

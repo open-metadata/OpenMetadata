@@ -28,7 +28,6 @@ import org.openmetadata.catalog.util.JsonUtils;
 
 import java.io.IOException;
 import java.net.URI;
-import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -50,15 +49,12 @@ public class MessagingServiceRepository extends EntityRepository<MessagingServic
   }
 
   @Override
-  public MessagingService setFields(MessagingService entity, Fields fields) throws IOException, ParseException {
+  public MessagingService setFields(MessagingService entity, Fields fields) {
     return entity;
   }
 
   @Override
-  public void restorePatchAttributes(MessagingService original, MessagingService updated) throws IOException,
-          ParseException {
-    // Not implemented
-  }
+  public void restorePatchAttributes(MessagingService original, MessagingService updated) {}
 
   @Override
   public EntityInterface<MessagingService> getEntityInterface(MessagingService entity) {
@@ -66,7 +62,7 @@ public class MessagingServiceRepository extends EntityRepository<MessagingServic
   }
 
   @Override
-  public void prepare(MessagingService entity) throws IOException {
+  public void prepare(MessagingService entity) {
     EntityUtil.validateIngestionSchedule(entity.getIngestionSchedule());
   }
 
@@ -80,10 +76,10 @@ public class MessagingServiceRepository extends EntityRepository<MessagingServic
   }
 
   @Override
-  public void storeRelationships(MessagingService entity) throws IOException { }
+  public void storeRelationships(MessagingService entity) { }
 
   @Override
-  public EntityUpdater getUpdater(MessagingService original, MessagingService updated, boolean patchOperation) throws IOException {
+  public EntityUpdater getUpdater(MessagingService original, MessagingService updated, boolean patchOperation) {
     return new MessagingServiceUpdater(original, updated, patchOperation);
   }
 

@@ -2,7 +2,6 @@ package org.openmetadata.catalog.elasticsearch;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import lombok.Builder;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -34,7 +33,6 @@ import org.slf4j.LoggerFactory;
 import javax.ws.rs.core.Response;
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -45,7 +43,7 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 public class ElasticSearchIndexDefinition {
-  Map<ElasticSearchIndexType, ElasticSearchIndexStatus> elasticSearchIndexes = new HashMap<>();
+  final Map<ElasticSearchIndexType, ElasticSearchIndexStatus> elasticSearchIndexes = new HashMap<>();
   private final RestHighLevelClient client;
   private static final Logger LOG = LoggerFactory.getLogger(ElasticSearchIndexDefinition.class);
 
@@ -143,7 +141,7 @@ public class ElasticSearchIndexDefinition {
   }
 
   public  String getIndexMapping(ElasticSearchIndexType elasticSearchIndexType)
-      throws URISyntaxException, IOException {
+      throws IOException {
     InputStream in = ElasticSearchIndexDefinition.class.getResourceAsStream(elasticSearchIndexType.indexMappingFile);
     return new String(in.readAllBytes());
   }
@@ -158,7 +156,7 @@ public class ElasticSearchIndexDefinition {
     } else if (type.equalsIgnoreCase(Entity.TOPIC)) {
       return ElasticSearchIndexType.TOPIC_SEARCH_INDEX;
     }
-    throw new RuntimeException("Failed to find index doc for type {}".format(type));
+    throw new RuntimeException("Failed to find index doc for type " + type);
   }
 
 }
@@ -211,14 +209,14 @@ class FlattenColumn {
 class ESChangeDescription {
   String updatedBy;
   Long updatedAt;
-  List<FieldChange> fieldsAdded = new ArrayList<>();
-  List<FieldChange> fieldsUpdated = new ArrayList<>();
-  List<FieldChange> fieldsDeleted = new ArrayList<>();
+  List<FieldChange> fieldsAdded;
+  List<FieldChange> fieldsUpdated;
+  List<FieldChange> fieldsDeleted;
 }
 
 class ParseTags {
   String tierTag;
-  List<String> tags;
+  final List<String> tags;
 
   ParseTags(List<String> tags) {
     if (!tags.isEmpty()) {
@@ -270,7 +268,7 @@ class TableESIndex extends ElasticSearchIndex {
   Integer dailyPercentileRank;
 
 
-  public static TableESIndexBuilder builder(Table table, int responseCode) throws JsonProcessingException {
+  public static TableESIndexBuilder builder(Table table, int responseCode) {
     String tableId = table.getId().toString();
     String tableName = table.getName();
     String description = table.getDescription();
@@ -408,7 +406,7 @@ class TopicESIndex extends ElasticSearchIndex {
   @JsonProperty("topic_id")
   String topicId;
 
-  public static TopicESIndexBuilder builder(Topic topic, int responseCode) throws JsonProcessingException {
+  public static TopicESIndexBuilder builder(Topic topic, int responseCode) {
     List<String> tags = new ArrayList<>();
     List<ElasticSearchSuggest> suggest = new ArrayList<>();
     suggest.add(ElasticSearchSuggest.builder().input(topic.getFullyQualifiedName()).weight(5).build());
@@ -489,7 +487,7 @@ class DashboardESIndex extends ElasticSearchIndex {
   @JsonProperty("daily_percentile_rank")
   Integer dailyPercentileRank;
 
-  public static DashboardESIndexBuilder builder(Dashboard dashboard, int responseCode) throws JsonProcessingException {
+  public static DashboardESIndexBuilder builder(Dashboard dashboard, int responseCode) {
     List<String> tags = new ArrayList<>();
     List<String> chartNames = new ArrayList<>();
     List<String> chartDescriptions = new ArrayList<>();
@@ -572,7 +570,7 @@ class PipelineESIndex extends ElasticSearchIndex {
   @JsonProperty("task_descriptions")
   List<String> taskDescriptions;
 
-  public static PipelineESIndexBuilder builder(Pipeline pipeline, int responseCode) throws JsonProcessingException {
+  public static PipelineESIndexBuilder builder(Pipeline pipeline, int responseCode) {
     List<String> tags = new ArrayList<>();
     List<String> taskNames = new ArrayList<>();
     List<String> taskDescriptions = new ArrayList<>();

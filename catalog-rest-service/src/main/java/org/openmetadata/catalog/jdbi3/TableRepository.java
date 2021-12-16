@@ -105,7 +105,7 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   @Override
-  public void restorePatchAttributes(Table original, Table updated) throws IOException, ParseException {
+  public void restorePatchAttributes(Table original, Table updated) {
     // Patch can't make changes to following fields. Ignore the changes.
     updated.withFullyQualifiedName(original.getFullyQualifiedName()).withName(original.getName())
             .withDatabase(original.getDatabase()).withService(original.getService()).withId(original.getId());
@@ -362,7 +362,7 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   @Override
-  public void storeRelationships(Table table) throws IOException {
+  public void storeRelationships(Table table) {
     // Add relationship from database to table
     String databaseId = table.getDatabase().getId().toString();
     dao.relationshipDAO().insert(databaseId, table.getId().toString(), Entity.DATABASE, Entity.TABLE,
@@ -376,7 +376,7 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   @Override
-  public EntityUpdater getUpdater(Table original, Table updated, boolean patchOperation) throws IOException {
+  public EntityUpdater getUpdater(Table original, Table updated, boolean patchOperation) {
     return new TableUpdater(original, updated, patchOperation);
   }
 
@@ -403,7 +403,7 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   // TODO remove this
-  private void applyTags(List<Column> columns) throws IOException {
+  private void applyTags(List<Column> columns) {
     // Add column level tags by adding tag to column relationship
     for (Column column : columns) {
       EntityUtil.applyTags(dao.tagDAO(), column.getTags(), column.getFullyQualifiedName());
@@ -413,7 +413,7 @@ public class TableRepository extends EntityRepository<Table> {
     }
   }
 
-  private void applyTags(Table table) throws IOException {
+  private void applyTags(Table table) {
     // Add table level tags by adding tag to table relationship
     EntityUtil.applyTags(dao.tagDAO(), table.getTags(), table.getFullyQualifiedName());
     applyTags(table.getColumns());
@@ -536,7 +536,7 @@ public class TableRepository extends EntityRepository<Table> {
       } else { // Update the existing entry
         dailyCountList = JsonUtils.readObjects(json, DailyCount.class);
         boolean foundDate = false;
-        for (DailyCount d : dailyCountList) { // If the date already exists, update the count. Otherwise add a new entry
+        for (DailyCount d : dailyCountList) { // If the date already exists, update the count. Otherwise, add a new entry
           if (d.getDate().equals(dailyCount.getDate())) {
             // Entry for date already exists. Update the count
             d.setCount(dailyCount.getCount());

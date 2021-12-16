@@ -261,7 +261,7 @@ public class UserResourceTest extends EntityResourceTest<User> {
   @Test
   public void patch_userNameChange_as_another_user_401(TestInfo test)
           throws HttpResponseException, JsonProcessingException {
-    // Ensure user name can't be changed using patch
+    // Ensure username can't be changed using patch
     User user = createUser(create(test, 7).withName("test23").withDisplayName("displayName")
             .withEmail("test23@email.com"), authHeaders("test23@email.com"));
     String userJson = JsonUtils.pojoToJson(user);
@@ -274,7 +274,7 @@ public class UserResourceTest extends EntityResourceTest<User> {
   @Test
   public void patch_makeAdmin_as_another_user_401(TestInfo test)
       throws HttpResponseException, JsonProcessingException {
-    // Ensure user name can't be changed using patch
+    // Ensure username can't be changed using patch
     User user = createUser(create(test, 6).withName("test2").withDisplayName("displayName")
         .withEmail("test2@email.com"), authHeaders("test2@email.com"));
     String userJson = JsonUtils.pojoToJson(user);
@@ -287,7 +287,7 @@ public class UserResourceTest extends EntityResourceTest<User> {
   @Test
   public void patch_userNameChange_as_same_user_200_ok(TestInfo test) throws HttpResponseException,
           JsonProcessingException {
-    // Ensure user name can't be changed using patch
+    // Ensure username can't be changed using patch
     User user = createUser(create(test, 6).withName("test").withDisplayName("displayName")
             .withEmail("test@email.com"), authHeaders("test@email.com"));
     String userJson = JsonUtils.pojoToJson(user);

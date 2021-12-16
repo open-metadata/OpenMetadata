@@ -167,7 +167,7 @@ public class PipelineServiceResource {
                                     @Context SecurityContext securityContext,
                                     @Parameter(description = "pipeline service Id", schema = @Schema(type = "string"))
                                     @PathParam("id") String id)
-          throws IOException, ParseException, GeneralSecurityException {
+          throws IOException, ParseException {
     return dao.listVersions(id);
   }
 
@@ -204,7 +204,7 @@ public class PipelineServiceResource {
           })
   public Response create(@Context UriInfo uriInfo,
                          @Context SecurityContext securityContext,
-                         @Valid CreatePipelineService create) throws IOException, ParseException {
+                         @Valid CreatePipelineService create) throws IOException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     PipelineService service = getService(create, securityContext);
     dao.create(uriInfo, service);

@@ -160,7 +160,7 @@ public class LocationResource {
                                     @Context SecurityContext securityContext,
                                     @Parameter(description = "location Id", schema = @Schema(type = "string"))
                                     @PathParam("id") String id)
-          throws IOException, ParseException, GeneralSecurityException {
+          throws IOException, ParseException {
     return dao.listVersions(id);
   }
 
@@ -212,7 +212,7 @@ public class LocationResource {
                                            @Parameter(description = "Returns list of locations after this cursor",
                                                    schema = @Schema(type = "string"))
                                            @QueryParam("after") String after
-  ) throws IOException, GeneralSecurityException, ParseException {
+  ) throws IOException, GeneralSecurityException {
     RestUtil.validateCursors(before, after);
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
 
@@ -274,7 +274,7 @@ public class LocationResource {
                        @ApiResponse(responseCode = "400", description = "Bad request")})
   public Response create(@Context UriInfo uriInfo,
                          @Context SecurityContext securityContext,
-                         @Valid CreateLocation create) throws IOException, ParseException {
+                         @Valid CreateLocation create) throws IOException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Location location = getLocation(securityContext, create);
     location = addHref(uriInfo, dao.create(uriInfo, location));
@@ -352,7 +352,7 @@ public class LocationResource {
                               @PathParam("id") String id,
                               @Parameter(description = "Id of the user to be added as follower",
                                       schema = @Schema(type = "string"))
-                                      String userId) throws IOException, ParseException {
+                                      String userId) throws IOException {
     return dao.addFollower(securityContext.getUserPrincipal().getName(), UUID.fromString(id),
             UUID.fromString(userId)).toResponse();
   }
@@ -368,7 +368,7 @@ public class LocationResource {
                                  @PathParam("id") String id,
                                  @Parameter(description = "Id of the user being removed as follower",
                                          schema = @Schema(type = "string"))
-                                 @PathParam("userId") String userId) throws IOException, ParseException {
+                                 @PathParam("userId") String userId) throws IOException {
     return dao.deleteFollower(securityContext.getUserPrincipal().getName(), UUID.fromString(id),
             UUID.fromString(userId)).toResponse();
   }

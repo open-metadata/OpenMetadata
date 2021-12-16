@@ -29,7 +29,6 @@ import org.openmetadata.catalog.util.JsonUtils;
 
 import java.io.IOException;
 import java.net.URI;
-import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
@@ -61,7 +60,7 @@ public class TeamRepository extends EntityRepository<Team> {
     dao.relationshipDAO().deleteAll(id.toString());
   }
 
-  public List<EntityReference> getUsers(List<UUID> userIds) throws IOException {
+  public List<EntityReference> getUsers(List<UUID> userIds) {
     if (userIds == null) {
       return null;
     }
@@ -92,7 +91,7 @@ public class TeamRepository extends EntityRepository<Team> {
   }
 
   @Override
-  public void restorePatchAttributes(Team original, Team updated) throws IOException, ParseException {
+  public void restorePatchAttributes(Team original, Team updated) {
     // Patch can't make changes to following fields. Ignore the changes
     updated.withName(original.getName()).withId(original.getId());
   }
@@ -126,7 +125,7 @@ public class TeamRepository extends EntityRepository<Team> {
   }
 
   @Override
-  public void storeRelationships(Team team) throws IOException {
+  public void storeRelationships(Team team) {
     for (EntityReference user : Optional.ofNullable(team.getUsers()).orElse(Collections.emptyList())) {
       dao.relationshipDAO().insert(team.getId().toString(), user.getId().toString(), "team", "user",
               Relationship.CONTAINS.ordinal());
@@ -134,7 +133,7 @@ public class TeamRepository extends EntityRepository<Team> {
   }
 
   @Override
-  public EntityUpdater getUpdater(Team original, Team updated, boolean patchOperation) throws IOException {
+  public EntityUpdater getUpdater(Team original, Team updated, boolean patchOperation) {
     return new TeamUpdater(original, updated, patchOperation);
   }
 

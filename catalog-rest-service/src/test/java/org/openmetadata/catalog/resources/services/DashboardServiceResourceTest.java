@@ -240,8 +240,7 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
   }
 
   @Override
-  public void validateCreatedEntity(DashboardService service, Object request, Map<String, String> authHeaders)
-          throws HttpResponseException {
+  public void validateCreatedEntity(DashboardService service, Object request, Map<String, String> authHeaders) {
     CreateDashboardService createRequest = (CreateDashboardService) request;
     validateCommonEntityFields(getEntityInterface(service), createRequest.getDescription(),
             getPrincipal(authHeaders), null);
@@ -255,14 +254,12 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
   }
 
   @Override
-  public void validateUpdatedEntity(DashboardService service, Object request, Map<String, String> authHeaders)
-          throws HttpResponseException {
+  public void validateUpdatedEntity(DashboardService service, Object request, Map<String, String> authHeaders) {
     validateCreatedEntity(service, request, authHeaders);
   }
 
   @Override
-  public void compareEntities(DashboardService expected, DashboardService updated, Map<String, String> authHeaders)
-          throws HttpResponseException {
+  public void compareEntities(DashboardService expected, DashboardService updated, Map<String, String> authHeaders) {
     // PATCH operation is not supported by this entity
   }
 

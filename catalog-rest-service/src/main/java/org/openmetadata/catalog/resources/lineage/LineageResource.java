@@ -28,7 +28,6 @@ import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.resources.teams.UserResource;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
 import org.openmetadata.catalog.type.EntityLineage;
-import org.openmetadata.catalog.util.EntityUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

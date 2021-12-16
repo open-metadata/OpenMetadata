@@ -81,8 +81,8 @@ public class ChartResource {
   private final ChartRepository dao;
   private final CatalogAuthorizer authorizer;
 
-  public static List<Chart> addHref(UriInfo uriInfo, List<Chart> charts) {
-    Optional.ofNullable(charts).orElse(Collections.emptyList()).forEach(i -> addHref(uriInfo, i));
+  public static ResultList<Chart> addHref(UriInfo uriInfo, ResultList<Chart> charts) {
+    Optional.ofNullable(charts.getData()).orElse(Collections.emptyList()).forEach(i -> addHref(uriInfo, i));
     return charts;
   }
 
@@ -154,8 +154,7 @@ public class ChartResource {
     } else { // Forward paging or first page
       charts = dao.listAfter(uriInfo, fields, serviceParam, limitParam, after);
     }
-    addHref(uriInfo, charts.getData());
-    return charts;
+    return addHref(uriInfo, charts);
   }
 
   @GET
@@ -170,7 +169,7 @@ public class ChartResource {
                                     @Context SecurityContext securityContext,
                                     @Parameter(description = "Chart Id", schema = @Schema(type = "string"))
                                     @PathParam("id") String id)
-          throws IOException, ParseException, GeneralSecurityException {
+          throws IOException, ParseException {
     return dao.listVersions(id);
   }
 
@@ -245,7 +244,7 @@ public class ChartResource {
                   @ApiResponse(responseCode = "400", description = "Bad request")
           })
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext,
-                         @Valid CreateChart create) throws IOException, ParseException {
+                         @Valid CreateChart create) throws IOException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Chart chart = getChart(securityContext, create);
     chart = addHref(uriInfo, dao.create(uriInfo, chart));
@@ -311,7 +310,7 @@ public class ChartResource {
                               @PathParam("id") String id,
                               @Parameter(description = "Id of the user to be added as follower",
                                       schema = @Schema(type = "string"))
-                                      String userId) throws IOException, ParseException {
+                                      String userId) throws IOException {
     return dao.addFollower(securityContext.getUserPrincipal().getName(), UUID.fromString(id),
             UUID.fromString(userId)).toResponse();
   }
@@ -327,7 +326,7 @@ public class ChartResource {
                               @PathParam("id") String id,
                               @Parameter(description = "Id of the user being removed as follower",
                                       schema = @Schema(type = "string"))
-                              @PathParam("userId") String userId) throws IOException, ParseException {
+                              @PathParam("userId") String userId) throws IOException {
     return dao.deleteFollower(securityContext.getUserPrincipal().getName(), UUID.fromString(id),
             UUID.fromString(userId)).toResponse();
   }

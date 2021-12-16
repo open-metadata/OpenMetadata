@@ -57,22 +57,18 @@ public final class TestUtils {
   public static final String LONG_ENTITY_NAME;
   static {
     // Create an entity name with length longer than the
-    StringBuilder sb = new StringBuilder();
-    for (int i = 0; i <= ENTITY_NAME_MAX_LEN; i++) {
-      sb.append("1");
-    }
-    LONG_ENTITY_NAME = sb.toString();
+    LONG_ENTITY_NAME = "1".repeat(ENTITY_NAME_MAX_LEN + 1);
   }
   public static final String ENTITY_NAME_LENGTH_ERROR = String.format("[name size must be between 1 and %d]",
           ENTITY_NAME_MAX_LEN);
 
   public static final UUID NON_EXISTENT_ENTITY = UUID.randomUUID();
-  public static JdbcInfo JDBC_INFO;
+  public static final JdbcInfo JDBC_INFO;
   public static URI DASHBOARD_URL;
   public static URI PIPELINE_URL;
 
   public enum UpdateType {
-    CREATED,      // No updated. The entity was created
+    CREATED,      // Not updated instead entity was created
     NO_CHANGE,    // PUT/PATCH made no change
     MINOR_UPDATE, // PUT/PATCH made backward compatible minor version change
     MAJOR_UPDATE  // PUT/PATCH made backward incompatible minor version change
@@ -293,7 +289,7 @@ public final class TestUtils {
   }
 
   public static String getPrincipal(Map<String, String> authHeaders) {
-    // Get user name from the email address
+    // Get username from the email address
     if (authHeaders == null) {
       return null;
     }

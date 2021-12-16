@@ -25,7 +25,6 @@ import org.openmetadata.catalog.util.EntityUtil.Fields;
 
 import java.io.IOException;
 import java.net.URI;
-import java.text.ParseException;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
@@ -45,12 +44,12 @@ public class BotsRepository extends EntityRepository<Bots>{
   }
 
   @Override
-  public Bots setFields(Bots entity, Fields fields) throws IOException, ParseException {
+  public Bots setFields(Bots entity, Fields fields) {
     return entity;
   }
 
   @Override
-  public void restorePatchAttributes(Bots original, Bots update) throws IOException, ParseException { }
+  public void restorePatchAttributes(Bots original, Bots update) { }
 
   @Override
   public EntityInterface<Bots> getEntityInterface(Bots entity) {
@@ -58,7 +57,7 @@ public class BotsRepository extends EntityRepository<Bots>{
   }
 
   @Override
-  public void prepare(Bots entity) throws IOException { }
+  public void prepare(Bots entity) { }
 
   @Override
   public void storeEntity(Bots entity, boolean update) throws IOException {
@@ -66,7 +65,7 @@ public class BotsRepository extends EntityRepository<Bots>{
   }
 
   @Override
-  public void storeRelationships(Bots entity) throws IOException { }
+  public void storeRelationships(Bots entity) { }
 
   public static class BotsEntityInterface implements EntityInterface<Bots> {
     private final Bots entity;

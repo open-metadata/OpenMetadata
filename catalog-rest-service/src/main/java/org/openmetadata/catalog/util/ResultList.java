@@ -92,7 +92,7 @@ public class ResultList<T> {
    *          afterCursor = last record in page2
    *
    * Query GET .../entities?limit=pagesize&before={first record page 2}
-   * CASE 3: Page 1 does not have limit number entries and hence partial page is returned
+   * CASE 3: Page 1 does not have {@code limit} number entries and hence partial page is returned
    * Returns: page1
    *          beforeCursor = null
    *          afterCursor = last record in page1

@@ -19,7 +19,6 @@ import org.openmetadata.catalog.api.lineage.AddLineage;
 import org.openmetadata.catalog.type.Edge;
 import org.openmetadata.catalog.type.EntityLineage;
 import org.openmetadata.catalog.type.EntityReference;
-import org.openmetadata.catalog.util.EntityUtil;
 
 import java.io.IOException;
 import java.util.ArrayList;

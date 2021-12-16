@@ -31,7 +31,6 @@ import org.openmetadata.catalog.util.JsonUtils;
 
 import java.io.IOException;
 import java.net.URI;
-import java.text.ParseException;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
@@ -90,7 +89,7 @@ public class ChartRepository extends EntityRepository<Chart> {
   }
 
   @Override
-  public void storeRelationships(Chart chart) throws IOException {
+  public void storeRelationships(Chart chart) {
     EntityReference service = chart.getService();
     dao.relationshipDAO().insert(service.getId().toString(), chart.getId().toString(), service.getType(),
             Entity.CHART, Relationship.CONTAINS.ordinal());
@@ -98,7 +97,7 @@ public class ChartRepository extends EntityRepository<Chart> {
     applyTags(chart);
   }
 
-  private void applyTags(Chart chart) throws IOException {
+  private void applyTags(Chart chart) {
     // Add chart level tags by adding tag to chart relationship
     EntityUtil.applyTags(dao.tagDAO(), chart.getTags(), chart.getFullyQualifiedName());
     chart.setTags(getTags(chart.getFullyQualifiedName())); // Update tag to handle additional derived tags
@@ -125,7 +124,7 @@ public class ChartRepository extends EntityRepository<Chart> {
   }
 
   @Override
-  public void restorePatchAttributes(Chart original, Chart updated) throws IOException, ParseException {
+  public void restorePatchAttributes(Chart original, Chart updated) {
     // Patch can't make changes to following fields. Ignore the changes
     updated.withFullyQualifiedName(original.getFullyQualifiedName()).withName(original.getName())
             .withService(original.getService()).withId(original.getId());
@@ -146,9 +145,11 @@ public class ChartRepository extends EntityRepository<Chart> {
 
   private EntityReference getService(Chart chart) throws IOException {
     EntityReference ref = EntityUtil.getService(dao.relationshipDAO(), chart.getId(), Entity.DASHBOARD_SERVICE);
-    DashboardService service = getService(ref.getId(), ref.getType());
-    ref.setName(service.getName());
-    ref.setDescription(service.getDescription());
+    if (ref != null) {
+      DashboardService service = getService(ref.getId(), ref.getType());
+      ref.setName(service.getName());
+      ref.setDescription(service.getDescription());
+    }
     return ref;
   }
 

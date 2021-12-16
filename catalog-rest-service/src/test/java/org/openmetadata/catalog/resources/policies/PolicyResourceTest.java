@@ -66,14 +66,12 @@ public class PolicyResourceTest extends EntityResourceTest<Policy> {
   }
 
   @Override
-  public Object createRequest(String name, String description, String displayName, EntityReference owner)
-          throws URISyntaxException {
+  public Object createRequest(String name, String description, String displayName, EntityReference owner) {
     return create(name).withDescription(description).withDisplayName(displayName).withOwner(owner);
   }
 
   @Override
-  public void validateCreatedEntity(Policy policy, Object request, Map<String, String> authHeaders)
-          throws HttpResponseException {
+  public void validateCreatedEntity(Policy policy, Object request, Map<String, String> authHeaders) {
     CreatePolicy createRequest = (CreatePolicy) request;
     validateCommonEntityFields(getEntityInterface(policy), createRequest.getDescription(),
             TestUtils.getPrincipal(authHeaders), createRequest.getOwner());
@@ -81,14 +79,12 @@ public class PolicyResourceTest extends EntityResourceTest<Policy> {
   }
 
   @Override
-  public void validateUpdatedEntity(Policy updatedEntity, Object request, Map<String, String> authHeaders)
-          throws HttpResponseException {
+  public void validateUpdatedEntity(Policy updatedEntity, Object request, Map<String, String> authHeaders) {
     validateCreatedEntity(updatedEntity, request, authHeaders);
   }
 
   @Override
-  public void compareEntities(Policy expected, Policy updated, Map<String, String> authHeaders)
-          throws HttpResponseException {
+  public void compareEntities(Policy expected, Policy updated, Map<String, String> authHeaders) {
 
   }
 
@@ -204,7 +200,7 @@ public class PolicyResourceTest extends EntityResourceTest<Policy> {
         before = forwardPage.getPaging().getBefore();
         assertEntityPagination(allPolicies.getData(), forwardPage, limit, indexInAllPolicies);
 
-        if (pageCount == 0) {  // CASE 0 - First page is being returned. There is no before cursor
+        if (pageCount == 0) {  // CASE 0 - First page is being returned. Therefore, before cursor is null
           assertNull(before);
         } else {
           // Make sure scrolling back based on before cursor returns the correct result

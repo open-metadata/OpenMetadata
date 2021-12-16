@@ -250,7 +250,7 @@ public class TagResourceTest extends CatalogApplicationTest {
     CreateTag create = new CreateTag().withName("AddressUpdated").withDescription("updatedDescription");
     updatePrimaryTag("User", "Address", create, adminAuthHeaders());
 
-    // Revert back to old tag name user.address from user.addressUpdated
+    // Revert to old tag name user.address from user.addressUpdated
     create.withName("Address");
     updatePrimaryTag("User", "AddressUpdated", create, adminAuthHeaders());
   }
@@ -261,7 +261,7 @@ public class TagResourceTest extends CatalogApplicationTest {
     CreateTag create = new CreateTag().withName("SecondaryTag1").withDescription("description");
     updateSecondaryTag("User", "PrimaryTag", "SecondaryTag", create, adminAuthHeaders());
 
-    // Revert back to old tag name user.primaryTag.secondaryTag from user.primaryTag.secondaryTag1
+    // Revert to old tag name user.primaryTag.secondaryTag from user.primaryTag.secondaryTag1
     create.withName("SecondaryTag");
     updateSecondaryTag("User", "PrimaryTag", "SecondaryTag1", create, adminAuthHeaders());
   }
@@ -452,7 +452,7 @@ public class TagResourceTest extends CatalogApplicationTest {
   }
 
 
-  /** Ensure the href returned in the children tags is correct */
+  /** Ensure the href in the children tags is correct */
   private void validateHRef(String parentURI, Tag actual) {
     assertNotNull(actual.getName(), actual.getFullyQualifiedName());
     String href = parentURI + "/" + actual.getName();

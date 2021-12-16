@@ -32,7 +32,6 @@ import org.openmetadata.catalog.util.JsonUtils;
 
 import java.io.IOException;
 import java.net.URI;
-import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
@@ -90,7 +89,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   }
 
   @Override
-  public void restorePatchAttributes(Pipeline original, Pipeline updated) throws IOException, ParseException {
+  public void restorePatchAttributes(Pipeline original, Pipeline updated) {
     // Patch can't make changes to following fields. Ignore the changes
     updated.withFullyQualifiedName(original.getFullyQualifiedName()).withName(original.getName())
             .withService(original.getService()).withId(original.getId());
@@ -135,7 +134,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   }
 
   @Override
-  public void storeRelationships(Pipeline pipeline) throws IOException {
+  public void storeRelationships(Pipeline pipeline) {
     EntityReference service = pipeline.getService();
     dao.relationshipDAO().insert(service.getId().toString(), pipeline.getId().toString(), service.getType(),
             Entity.PIPELINE, Relationship.CONTAINS.ordinal());
@@ -148,7 +147,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   }
 
   @Override
-  public EntityUpdater getUpdater(Pipeline original, Pipeline updated, boolean patchOperation) throws IOException {
+  public EntityUpdater getUpdater(Pipeline original, Pipeline updated, boolean patchOperation) {
     return new PipelineUpdater(original, updated, patchOperation);
   }
 
@@ -184,7 +183,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     pipeline.setOwner(owner);
   }
 
-  private void applyTags(Pipeline pipeline) throws IOException {
+  private void applyTags(Pipeline pipeline) {
     // Add pipeline level tags by adding tag to pipeline relationship
     EntityUtil.applyTags(dao.tagDAO(), pipeline.getTags(), pipeline.getFullyQualifiedName());
     pipeline.setTags(getTags(pipeline.getFullyQualifiedName())); // Update tag to handle additional derived tags
@@ -314,7 +313,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
     private void updateTasks(Pipeline origPipeline, Pipeline updatedPipeline) throws JsonProcessingException {
       // Airflow lineage backend gets executed per task in a DAG. This means we will not a get full picture of the
-      // pipeline in each call. Hence we may create a pipeline and add a single task when one task finishes in a
+      // pipeline in each call. Hence, we may create a pipeline and add a single task when one task finishes in a
       // pipeline in the next task run we may have to update. To take care of this we will merge the tasks
       List<Task> updatedTasks = Optional.ofNullable(updatedPipeline.getTasks()).orElse(Collections.emptyList());
       List<Task> origTasks = Optional.ofNullable(origPipeline.getTasks()).orElse(Collections.emptyList());

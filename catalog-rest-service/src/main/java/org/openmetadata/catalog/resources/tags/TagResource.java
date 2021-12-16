@@ -90,7 +90,7 @@ public class TagResource {
     this.authorizer = authorizer;
   }
 
-  @SuppressWarnings("unused") // Method used using reflection
+  @SuppressWarnings("unused") // Method used for reflection
   public void initialize(CatalogApplicationConfig config) throws IOException {
     // Find tag definitions and load tag categories from the json file, if necessary
     List<String> tagFiles = getTagDefinitions();

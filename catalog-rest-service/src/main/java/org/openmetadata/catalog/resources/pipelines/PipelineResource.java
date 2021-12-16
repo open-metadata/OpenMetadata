@@ -80,8 +80,8 @@ public class PipelineResource {
   private final PipelineRepository dao;
   private final CatalogAuthorizer authorizer;
 
-  public static List<Pipeline> addHref(UriInfo uriInfo, List<Pipeline> pipelines) {
-    Optional.ofNullable(pipelines).orElse(Collections.emptyList()).forEach(i -> addHref(uriInfo, i));
+  public static ResultList<Pipeline> addHref(UriInfo uriInfo, ResultList<Pipeline> pipelines) {
+    Optional.ofNullable(pipelines.getData()).orElse(Collections.emptyList()).forEach(i -> addHref(uriInfo, i));
     return pipelines;
   }
 
@@ -157,8 +157,7 @@ public class PipelineResource {
     } else { // Forward paging or first page
       pipelines = dao.listAfter(uriInfo, fields, serviceParam, limitParam, after);
     }
-    addHref(uriInfo, pipelines.getData());
-    return pipelines;
+    return addHref(uriInfo, pipelines);
   }
 
   @GET
@@ -173,7 +172,7 @@ public class PipelineResource {
                                     @Context SecurityContext securityContext,
                                     @Parameter(description = "pipeline Id", schema = @Schema(type = "string"))
                                     @PathParam("id") String id)
-          throws IOException, ParseException, GeneralSecurityException {
+          throws IOException, ParseException {
     return dao.listVersions(id);
   }
 
@@ -248,7 +247,7 @@ public class PipelineResource {
                   @ApiResponse(responseCode = "400", description = "Bad request")
           })
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext,
-                         @Valid CreatePipeline create) throws IOException, ParseException {
+                         @Valid CreatePipeline create) throws IOException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Pipeline pipeline = getPipeline(securityContext, create);
     pipeline = addHref(uriInfo, dao.create(uriInfo, pipeline));
@@ -314,7 +313,7 @@ public class PipelineResource {
                               @PathParam("id") String id,
                               @Parameter(description = "Id of the user to be added as follower",
                                       schema = @Schema(type = "string"))
-                                      String userId) throws IOException, ParseException {
+                                      String userId) throws IOException {
     return dao.addFollower(securityContext.getUserPrincipal().getName(), UUID.fromString(id),
             UUID.fromString(userId)).toResponse();
   }
@@ -330,7 +329,7 @@ public class PipelineResource {
                                   @PathParam("id") String id,
                                  @Parameter(description = "Id of the user being removed as follower",
                                           schema = @Schema(type = "string"))
-                                  @PathParam("userId") String userId) throws IOException, ParseException {
+                                  @PathParam("userId") String userId) throws IOException {
     return dao.deleteFollower(securityContext.getUserPrincipal().getName(), UUID.fromString(id),
             UUID.fromString(userId)).toResponse();
   }

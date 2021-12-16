@@ -158,7 +158,7 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard> {
     for (EntityReference service : differentServices) {
       createAndCheckEntity(create(test).withService(new EntityReference().withId(service.getId())
               .withType(service.getType())), adminAuthHeaders());
-      // List Dashboards by filtering on service name and ensure right Dashboards are returned in the response
+      // List Dashboards by filtering on service name and ensure right Dashboards in the response
       Map<String, String> queryParams = new HashMap<>() {{put("service", service.getName());}};
       ResultList<Dashboard> list = listEntities(queryParams, adminAuthHeaders());
       for (Dashboard db : list.getData()) {

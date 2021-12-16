@@ -33,7 +33,6 @@ import org.openmetadata.catalog.util.TestUtils;
 import org.openmetadata.catalog.util.TestUtils.UpdateType;
 
 import java.io.IOException;
-import java.net.URISyntaxException;
 import java.util.Date;
 import java.util.Map;
 
@@ -211,14 +210,12 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
   }
 
   @Override
-  public Object createRequest(String name, String description, String displayName, EntityReference owner)
-          throws URISyntaxException {
+  public Object createRequest(String name, String description, String displayName, EntityReference owner) {
     return create(name).withDescription(description);
   }
 
   @Override
-  public void validateCreatedEntity(DatabaseService service, Object request, Map<String, String> authHeaders)
-          throws HttpResponseException {
+  public void validateCreatedEntity(DatabaseService service, Object request, Map<String, String> authHeaders) {
     CreateDatabaseService createRequest = (CreateDatabaseService) request;
     validateCommonEntityFields(getEntityInterface(service), createRequest.getDescription(), getPrincipal(authHeaders),
             null);
@@ -235,14 +232,12 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
   }
 
   @Override
-  public void validateUpdatedEntity(DatabaseService service, Object request, Map<String, String> authHeaders)
-          throws HttpResponseException {
+  public void validateUpdatedEntity(DatabaseService service, Object request, Map<String, String> authHeaders) {
     validateCreatedEntity(service, request, authHeaders);
   }
 
   @Override
-  public void compareEntities(DatabaseService expected, DatabaseService updated, Map<String, String> authHeaders)
-          throws HttpResponseException {
+  public void compareEntities(DatabaseService expected, DatabaseService updated, Map<String, String> authHeaders) {
     // PATCH operation is not supported by this entity
   }
 

@@ -22,7 +22,6 @@ import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.EntityUsage;
 import org.openmetadata.catalog.type.UsageDetails;
 import org.openmetadata.catalog.type.UsageStats;
-import org.openmetadata.catalog.util.EntityUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

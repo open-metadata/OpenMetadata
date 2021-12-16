@@ -80,8 +80,8 @@ public class TopicResource {
   private final TopicRepository dao;
   private final CatalogAuthorizer authorizer;
 
-  public static List<Topic> addHref(UriInfo uriInfo, List<Topic> topics) {
-    Optional.ofNullable(topics).orElse(Collections.emptyList()).forEach(i -> addHref(uriInfo, i));
+  public static ResultList<Topic> addHref(UriInfo uriInfo, ResultList<Topic> topics) {
+    Optional.ofNullable(topics.getData()).orElse(Collections.emptyList()).forEach(i -> addHref(uriInfo, i));
     return topics;
   }
 
@@ -153,8 +153,7 @@ public class TopicResource {
     } else { // Forward paging or first page
       topics = dao.listAfter(uriInfo, fields, serviceParam, limitParam, after);
     }
-    addHref(uriInfo, topics.getData());
-    return topics;
+    return addHref(uriInfo, topics);
   }
 
   @GET
@@ -169,7 +168,7 @@ public class TopicResource {
                                     @Context SecurityContext securityContext,
                                     @Parameter(description = "Topic Id", schema = @Schema(type = "string"))
                                     @PathParam("id") String id)
-          throws IOException, ParseException, GeneralSecurityException {
+          throws IOException, ParseException {
     return dao.listVersions(id);
   }
 
@@ -245,7 +244,7 @@ public class TopicResource {
                   @ApiResponse(responseCode = "400", description = "Bad request")
           })
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext,
-                         @Valid CreateTopic create) throws IOException, ParseException {
+                         @Valid CreateTopic create) throws IOException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Topic topic = getTopic(securityContext, create);
 
@@ -311,7 +310,7 @@ public class TopicResource {
                               @PathParam("id") String id,
                               @Parameter(description = "Id of the user to be added as follower",
                                       schema = @Schema(type = "string"))
-                                      String userId) throws IOException, ParseException {
+                                      String userId) throws IOException {
     return dao.addFollower(securityContext.getUserPrincipal().getName(), UUID.fromString(id),
             UUID.fromString(userId)).toResponse();
   }
@@ -327,7 +326,7 @@ public class TopicResource {
                               @PathParam("id") String id,
                                  @Parameter(description = "Id of the user being removed as follower",
                                       schema = @Schema(type = "string"))
-                              @PathParam("userId") String userId) throws IOException, ParseException {
+                              @PathParam("userId") String userId) throws IOException {
     return dao.deleteFollower(securityContext.getUserPrincipal().getName(), UUID.fromString(id),
             UUID.fromString(userId)).toResponse();
   }

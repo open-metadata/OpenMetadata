@@ -168,7 +168,7 @@ public class UserResource {
                                     @Context SecurityContext securityContext,
                                     @Parameter(description = "user Id", schema = @Schema(type = "string"))
                                     @PathParam("id") String id)
-          throws IOException, ParseException, GeneralSecurityException {
+          throws IOException, ParseException {
     return dao.listVersions(id);
   }
 
@@ -264,7 +264,7 @@ public class UserResource {
               @ApiResponse(responseCode = "400", description = "Bad request")
           })
   public Response createUser(@Context UriInfo uriInfo, @Context SecurityContext securityContext,
-                             @Valid CreateUser create) throws IOException, ParseException {
+                             @Valid CreateUser create) throws IOException {
     if (create.getIsAdmin() != null && create.getIsAdmin()) {
       SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     }

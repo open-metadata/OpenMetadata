@@ -137,11 +137,11 @@ public interface EntityDAO<T> {
     return getEntityReference(findEntityByName(fqn));
   }
 
-  default String findJsonById(String fqn) throws IOException {
+  default String findJsonById(String fqn) {
     return findById(getTableName(), fqn);
   }
 
-  default String findJsonByFqn(String fqn) throws IOException {
+  default String findJsonByFqn(String fqn) {
     return findByName(getTableName(), getNameColumn(), fqn);
   }
 

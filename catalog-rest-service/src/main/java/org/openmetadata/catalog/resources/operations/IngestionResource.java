@@ -93,8 +93,8 @@ public class IngestionResource {
     ref.withHref(RestUtil.getHref(uriInfo, COLLECTION_PATH, ref.getId()));
   }
 
-  public static List<Ingestion> addHref(UriInfo uriInfo, List<Ingestion> ingestions) {
-    Optional.ofNullable(ingestions).orElse(Collections.emptyList()).forEach(i -> addHref(uriInfo, i));
+  public static ResultList<Ingestion> addHref(UriInfo uriInfo, ResultList<Ingestion> ingestions) {
+    Optional.ofNullable(ingestions.getData()).orElse(Collections.emptyList()).forEach(i -> addHref(uriInfo, i));
     return ingestions;
   }
 
@@ -111,7 +111,7 @@ public class IngestionResource {
     this.authorizer = authorizer;
   }
 
-  public void initialize(CatalogApplicationConfig config) throws IOException {
+  public void initialize(CatalogApplicationConfig config) {
     this.airflowRESTClient = new AirflowRESTClient(config);
     this.config = config;
   }
@@ -170,12 +170,10 @@ public class IngestionResource {
     } else { // Forward paging or first page
       ingestions = dao.listAfter(uriInfo, fields, null, limitParam, after);
     }
-    List<Ingestion> ingestionList = ingestions.getData();
     if (fieldsParam != null && fieldsParam.contains("status")) {
-      ingestionList = addStatus(ingestions.getData());
+      addStatus(ingestions.getData());
     }
-    addHref(uriInfo, ingestionList);
-    return ingestions;
+    return addHref(uriInfo, ingestions);
   }
 
   @GET
@@ -190,7 +188,7 @@ public class IngestionResource {
                                     @Context SecurityContext securityContext,
                                     @Parameter(description = "ingestion Id", schema = @Schema(type = "string"))
                                     @PathParam("id") String id)
-          throws IOException, ParseException, GeneralSecurityException {
+          throws IOException, ParseException {
     return dao.listVersions(id);
   }
 
@@ -273,7 +271,7 @@ public class IngestionResource {
               @ApiResponse(responseCode = "400", description = "Bad request")
           })
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext,
-                         @Valid CreateIngestion create) throws IOException, ParseException {
+                         @Valid CreateIngestion create) throws IOException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Ingestion ingestion = getIngestion(securityContext, create);
     deploy(ingestion);
@@ -388,9 +386,8 @@ public class IngestionResource {
     }
   }
 
-  public List<Ingestion> addStatus(List<Ingestion> ingestions) {
+  public void addStatus(List<Ingestion> ingestions) {
     Optional.ofNullable(ingestions).orElse(Collections.emptyList()).forEach(this::addStatus);
-    return ingestions;
   }
 
   private Ingestion addStatus(Ingestion ingestion) {

@@ -30,10 +30,10 @@ public final class MessageParser {
   // <#E/{entityType}/{entityId}/{fieldName}/{fieldValue}
   private static final Pattern ENTITY_LINK_PATTERN =
           Pattern.compile("<#E/" +  // Match initial string <#E/
-                  "([^<>]+?)" +     // Non greedy collection group 1 for {entityType}
-                  "/([^<>]+?)" +    // Non greedy collection group 2 for {entityId}
-                  "(/([^<>]+?))?" + // Non greedy collection group 3 for optional /{fieldName} and 4 for fieldName
-                  "(/([^<>]+?))?" + // Non greedy collection group 5 for optional /{fieldValue} and 6 for fieldValue
+                  "([^<>]+?)" +     // Non-greedy collection group 1 for {entityType}
+                  "/([^<>]+?)" +    // Non-greedy collection group 2 for {entityId}
+                  "(/([^<>]+?))?" + // Non-greedy collection group 3 for optional /{fieldName} and 4 for fieldName
+                  "(/([^<>]+?))?" + // Non-greedy collection group 5 for optional /{fieldValue} and 6 for fieldValue
                   ">");             // Match for end of link name
 
   public static class EntityLink {

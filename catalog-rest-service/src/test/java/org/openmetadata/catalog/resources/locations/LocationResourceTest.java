@@ -78,8 +78,7 @@ public class LocationResourceTest extends EntityResourceTest<Location> {
   }
 
   @Override
-  public Object createRequest(String name, String description, String displayName, EntityReference owner)
-          throws URISyntaxException {
+  public Object createRequest(String name, String description, String displayName, EntityReference owner) {
     return create(name).withDescription(description).withOwner(owner);
   }
 

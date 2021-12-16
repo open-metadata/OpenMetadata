@@ -147,7 +147,7 @@ public class MetricsResource {
           })
   public Response create(@Context UriInfo uriInfo,
                          @Context SecurityContext securityContext,
-                         @Valid Metrics metrics) throws IOException, ParseException {
+                         @Valid Metrics metrics) throws IOException {
     addToMetrics(securityContext, metrics);
     dao.create(uriInfo, metrics);
     return Response.created(metrics.getHref()).entity(metrics).build();

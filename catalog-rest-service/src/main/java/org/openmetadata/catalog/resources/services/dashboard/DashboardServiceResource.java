@@ -160,7 +160,7 @@ public class DashboardServiceResource {
                                     @Context SecurityContext securityContext,
                                     @Parameter(description = "dashboard service Id", schema = @Schema(type = "string"))
                                     @PathParam("id") String id)
-          throws IOException, ParseException, GeneralSecurityException {
+          throws IOException, ParseException {
     return dao.listVersions(id);
   }
 
@@ -196,7 +196,7 @@ public class DashboardServiceResource {
           })
   public Response create(@Context UriInfo uriInfo,
                          @Context SecurityContext securityContext,
-                         @Valid CreateDashboardService create) throws IOException, ParseException {
+                         @Valid CreateDashboardService create) throws IOException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     DashboardService service = getService(create, securityContext);
     dao.create(uriInfo, service);

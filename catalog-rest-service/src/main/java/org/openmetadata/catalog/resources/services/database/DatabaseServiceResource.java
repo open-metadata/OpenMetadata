@@ -158,7 +158,7 @@ public class DatabaseServiceResource {
                                     @Context SecurityContext securityContext,
                                     @Parameter(description = "database service Id", schema = @Schema(type = "string"))
                                     @PathParam("id") String id)
-          throws IOException, ParseException, GeneralSecurityException {
+          throws IOException, ParseException {
     return dao.listVersions(id);
   }
 
@@ -195,7 +195,7 @@ public class DatabaseServiceResource {
           })
   public Response create(@Context UriInfo uriInfo,
                          @Context SecurityContext securityContext,
-                         @Valid CreateDatabaseService create) throws IOException, ParseException {
+                         @Valid CreateDatabaseService create) throws IOException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     DatabaseService service = getService(create, securityContext);
     dao.create(uriInfo, service);

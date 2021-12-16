@@ -163,7 +163,7 @@ public class MessagingServiceResource {
                                     @Context SecurityContext securityContext,
                                     @Parameter(description = "messaging service Id", schema = @Schema(type = "string"))
                                     @PathParam("id") String id)
-          throws IOException, ParseException, GeneralSecurityException {
+          throws IOException, ParseException {
     return dao.listVersions(id);
   }
 
@@ -200,7 +200,7 @@ public class MessagingServiceResource {
           })
   public Response create(@Context UriInfo uriInfo,
                          @Context SecurityContext securityContext,
-                         @Valid CreateMessagingService create) throws IOException, ParseException {
+                         @Valid CreateMessagingService create) throws IOException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     MessagingService service = getService(create, securityContext);
     dao.create(uriInfo, service);

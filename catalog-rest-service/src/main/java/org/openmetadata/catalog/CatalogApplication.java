@@ -55,7 +55,6 @@ import org.slf4j.LoggerFactory;
 import javax.ws.rs.container.ContainerRequestFilter;
 import javax.ws.rs.container.ContainerResponseFilter;
 import javax.ws.rs.core.Response;
-import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 
 /**
@@ -70,8 +69,7 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
 
   @Override
   public void run(CatalogApplicationConfig catalogConfig, Environment environment) throws ClassNotFoundException,
-          IllegalAccessException, InstantiationException, NoSuchMethodException, InvocationTargetException,
-          IOException {
+          IllegalAccessException, InstantiationException, NoSuchMethodException, InvocationTargetException {
 
     final JdbiFactory factory = new JdbiFactory();
     final Jdbi jdbi = factory.build(environment, catalogConfig.getDataSourceFactory(), "mysql3");
