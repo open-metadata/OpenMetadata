@@ -22,7 +22,9 @@ import javax.ws.rs.client.WebTarget;
 import org.glassfish.jersey.client.ClientProperties;
 import org.glassfish.jersey.client.HttpUrlConnectorProvider;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.openmetadata.catalog.resources.CollectionRegistry;
 import org.openmetadata.catalog.resources.EmbeddedMySqlSupport;
+import org.openmetadata.catalog.resources.events.WebhookCallbackResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -31,11 +33,13 @@ import org.slf4j.LoggerFactory;
 public abstract class CatalogApplicationTest {
   public static final Logger LOG = LoggerFactory.getLogger(CatalogApplicationTest.class);
 
-  private static final String CONFIG_PATH;
+  protected static final String CONFIG_PATH;
   public static final DropwizardAppExtension<CatalogApplicationConfig> APP;
   private static final Client client;
+  protected static final WebhookCallbackResource webhookCallbackResource = new WebhookCallbackResource();
 
   static {
+    CollectionRegistry.addTestResource(webhookCallbackResource);
     CONFIG_PATH = ResourceHelpers.resourceFilePath("openmetadata-secure-test.yaml");
     APP = new DropwizardAppExtension<>(CatalogApplication.class, CONFIG_PATH);
     client = ClientBuilder.newClient();

@@ -1,0 +1,112 @@
+{
+  "$id": "https://open-metadata.org/schema/type/webhook.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ChangeEvent",
+  "description": "This schema defines webhook for receiving events from OpenMetadata",
+  "type": "object",
+  "javaType": "org.openmetadata.catalog.type.Webhook",
+  "properties": {
+    "id": {
+      "description": "Unique ID associated with a webhook subscription.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "description": "Unique name of the application receiving webhook events.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "description": {
+      "description": "Description of the application",
+      "type": "string"
+    },
+    "endPoint": {
+      "description": "Endpoint to receive the webhook events over POST requests.",
+      "type": "string",
+      "format": "uri"
+    },
+    "eventFilters": {
+      "description": "Endpoint to receive the webhook events over POST requests.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/changeEvent.json#/definitions/eventFilter"
+      }
+    },
+    "batchSize": {
+      "description": "Maximum number of events sent in a batch (Default 10).",
+      "type": "integer",
+      "default": 10
+    },
+    "timeout": {
+      "description": "Connection timeout in seconds. (Default 10s)",
+      "type": "integer",
+      "default": 10
+    },
+    "enabled": {
+      "description": "When set to `true`, the webhook event notification is enabled. Set it to `false` to disable the subscription. (Default `true`)",
+      "type": "boolean",
+      "default": true
+    },
+    "version" : {
+      "description": "Metadata version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
+    },
+    "updatedAt": {
+      "description": "Last update time corresponding to the new version of the entity.",
+      "$ref": "../../type/basic.json#/definitions/dateTime"
+    },
+    "updatedBy": {
+      "description": "User who made the update.",
+      "type": "string"
+    },
+    "status": {
+      "description": "Status is `success` on 200 response to notifications. Status is `error` on bad callback URL, connection failures, and `1xx`, `3xx` response. Status is `awaitingRetry` when previous attempt at delivery timed out or received `4xx`, `5xx` response. Status is `retryLimitReached` after all retries fail.",
+      "type": "string",
+      "enum": [
+        "success",
+        "error",
+        "awaitingRetry",
+        "retryLimitReached"
+      ],
+      "default": "success"
+    },
+    "failureDetails": {
+      "description": "Failure details are set only when `status` is not `success`",
+      "type": "object",
+      "properties": {
+        "lastFailedAttempt": {
+          "description": "Last non-successful callback time",
+          "$ref": "../../type/basic.json#/definitions/dateTime"
+        },
+        "lastFailedStatusCode": {
+          "description": "Last non-successful activity response code received during callback",
+          "type": "integer"
+        },
+        "lastFailedReason": {
+          "description": "Last non-successful activity response reason received during callback",
+          "type": "string"
+        },
+        "nextAttempt": {
+          "description": "Next retry will be done at this time. Only valid is `status` is `awaitingRetry`.",
+          "$ref": "../../type/basic.json#/definitions/dateTime"
+        }
+      },
+      "additionalProperties": false
+    },
+    "href": {
+      "description": "Link to this webhook resource.",
+      "$ref": "../../type/basic.json#/definitions/href"
+    },
+    "changeDescription": {
+      "description" : "Change that lead to this version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    }
+  },
+  "required": [
+    "id",
+    "name",
+    "endPoint",
+    "eventFilter"
+  ],
+  "additionalProperties": false
+}

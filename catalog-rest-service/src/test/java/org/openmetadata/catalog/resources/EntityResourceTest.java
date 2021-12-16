@@ -58,6 +58,7 @@ import javax.json.JsonPatch;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response.Status;
 import org.apache.http.client.HttpResponseException;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
@@ -74,11 +75,13 @@ import org.openmetadata.catalog.entity.services.MessagingService;
 import org.openmetadata.catalog.entity.services.PipelineService;
 import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
+import org.openmetadata.catalog.events.EventPubSub;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.jdbi3.DatabaseServiceRepository.DatabaseServiceEntityInterface;
 import org.openmetadata.catalog.jdbi3.MessagingServiceRepository.MessagingServiceEntityInterface;
 import org.openmetadata.catalog.jdbi3.PipelineServiceRepository.PipelineServiceEntityInterface;
 import org.openmetadata.catalog.resources.events.EventResource.ChangeEventList;
+import org.openmetadata.catalog.resources.events.WebhookResourceTest;
 import org.openmetadata.catalog.resources.services.DatabaseServiceResourceTest;
 import org.openmetadata.catalog.resources.services.MessagingServiceResourceTest;
 import org.openmetadata.catalog.resources.services.PipelineServiceResourceTest;
@@ -153,6 +156,10 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
 
   @BeforeAll
   public static void setup(TestInfo test) throws URISyntaxException, IOException {
+    webhookCallbackResource.clearAllEvents();
+    WebhookResourceTest webhookResourceTest = new WebhookResourceTest();
+
+    webhookResourceTest.createWebhooks();
     UserResourceTest userResourceTest = new UserResourceTest();
     USER1 = UserResourceTest.createUser(userResourceTest.create(test), authHeaders("test@open-metadata.org"));
     USER_OWNER1 = new EntityReference().withId(USER1.getId()).withType("user");
@@ -234,6 +241,14 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     TIER1_TAG_LABEL = new TagLabel().withTagFQN(tag.getFullyQualifiedName()).withDescription(tag.getDescription());
     tag = TagResourceTest.getTag("Tier.Tier2", adminAuthHeaders());
     TIER2_TAG_LABEL = new TagLabel().withTagFQN(tag.getFullyQualifiedName()).withDescription(tag.getDescription());
+  }
+
+  @AfterAll
+  public static void afterAllTests() throws Exception {
+    EventPubSub.shutdown();
+    // Ensure webhooks are in the right state
+    new WebhookResourceTest().validateWebhookEvents();
+    APP.getEnvironment().getApplicationContext().getServer().stop();
   }
 
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1002,8 +1017,6 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
       }
       iteration++;
     }
-
-    LOG.info("Did not find change event {} {} {}", updateTime.getTime(), entityInterface.getId(), expectedEventType);
 
     assertNotNull(
         changeEvent,

@@ -40,6 +40,7 @@ import org.glassfish.jersey.media.multipart.MultiPartFeature;
 import org.glassfish.jersey.server.ServerProperties;
 import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.catalog.events.EventFilter;
+import org.openmetadata.catalog.events.EventPubSub;
 import org.openmetadata.catalog.exception.CatalogGenericExceptionMapper;
 import org.openmetadata.catalog.exception.ConstraintViolationExceptionMapper;
 import org.openmetadata.catalog.exception.JsonMappingExceptionMapper;
@@ -106,6 +107,7 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
 
     // Register Event Handler
     registerEventFilter(catalogConfig, environment, jdbi);
+    EventPubSub.start();
   }
 
   @SneakyThrows

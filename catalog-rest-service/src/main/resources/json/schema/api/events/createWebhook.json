@@ -1,0 +1,47 @@
+{
+  "$id": "https://open-metadata.org/schema/type/createWebhook.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ChangeEvent",
+  "description": "This schema defines webhook for receiving events from OpenMetadata",
+  "type": "object",
+  "properties": {
+    "name": {
+      "description": "Unique name of the application receiving webhook events.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "description": {
+      "description": "Description of the application",
+      "type": "string"
+    },
+    "endPoint": {
+      "description": "Endpoint to receive the webhook events over POST requests.",
+      "type": "string",
+      "format": "uri"
+    },
+    "batchSize": {
+      "description": "Maximum number of events sent in a batch (Default 10).",
+      "type": "integer",
+      "default": 10
+    },
+    "eventFilters": {
+      "description": "Endpoint to receive the webhook events over POST requests.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/changeEvent.json#/definitions/eventFilter"
+      }
+    },
+    "timeout": {
+      "description": "Connection timeout in seconds. (Default = 10s)",
+      "type": "integer",
+      "default": 10
+    }
+  },
+  "required": [
+    "name",
+    "endPoint",
+    "eventFilter"
+  ],
+  "additionalProperties": false
+}
