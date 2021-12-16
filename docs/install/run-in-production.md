@@ -8,7 +8,7 @@ description: >-
 
 ## Requirements
 
-This guide assumes you have access to a command-line environment or shell such as bash, zsh, etc. or Linux or Mac OS X or PowerShell on Microsoft Windows.&#x20;
+This guide assumes you have access to a command-line environment or shell such as bash, zsh, etc. or Linux or Mac OS X or PowerShell on Microsoft Windows.
 
 This guide also assumes that your command-line environment has access to the `tar` utility.
 
@@ -46,7 +46,7 @@ To install or upgrade Elasticsearch to a supported version please see the instru
 
 ### Airflow (version 2.0.0 or greater) or other workflow schedulers
 
-OpenMetadata performs metadata ingestion using ingestion connectors designed to run in Airflow or another workflow scheduler.&#x20;
+OpenMetadata performs metadata ingestion using ingestion connectors designed to run in Airflow or another workflow scheduler.
 
 To install Airflow, please see the [Airflow Installation](https://airflow.apache.org/docs/apache-airflow/stable/installation/index.html) guide.
 
@@ -56,30 +56,30 @@ To install Airflow, please see the [Airflow Installation](https://airflow.apache
 
 Visit the [releases page](https://github.com/open-metadata/OpenMetadata/releases) and download the latest binary release. Release binaries follow the naming convention of `openmetadata-x.y.z.tar.gz`. Where `x`, `y`, and `z` represent the major, minor, and patch release numbers.
 
-For example, the release for version 0.6 is found in the Assets section at the link highlighted in the figure below.
+For example, the release for version 0.7 is found in the Assets section at the link highlighted in the figure below.
 
-![](../.gitbook/assets/release-binary.png)
+![](../.gitbook/assets/image.png)
 
 ### 2. Untar the release download
 
 Once the tar file has download, run the following command, updated if necessary for the version of OpenMetadata that you downloaded.
 
 ```bash
-tar -zxvf openmetadata-0.6.0.tar.gz
+tar -zxvf openmetadata-0.7.0.tar.gz
 ```
 
 ### 3. Navigate to the directory created
 
 ```
-cd openmetadata-0.6.0
+cd openmetadata-0.7.0
 ```
 
 ### 4. Start OpenMetadata
 
-OpenMetadata release ships with `./bin/openmetadata` init.d style script. Run the following command from the `openmetadata-0.6.0` directory.
+OpenMetadata release ships with `./bin/openmetadata` init.d style script. Run the following command from the `openmetadata-0.7.0` directory.
 
 ```
-./bin/openmetdata.sh start
+./bin/openmetadata.sh start
 ```
 
 We recommend configuring `serviced` to monitor the OpenMetadata command to restart in case of any failures.
