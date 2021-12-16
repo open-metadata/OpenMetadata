@@ -30,7 +30,6 @@ class SnowflakeConfig(SQLConnectionConfig):
     role: Optional[str]
     duration: Optional[int]
     service_type = "Snowflake"
-    connect_args: Optional[dict]
 
     def get_connection_url(self):
         connect_string = super().get_connection_url()
