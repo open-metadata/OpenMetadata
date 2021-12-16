@@ -27,7 +27,7 @@ description: >-
 * [One-Click Ingestion Pipelines](features.md#one-click-ingestion-pipelines)
 * [Elasticsearch Integration](features.md#elasticsearch-integration)
 
-## Features
+## Overview of Features
 
 ### All Your Data in One Place
 
