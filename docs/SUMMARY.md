@@ -125,6 +125,7 @@
   * [How to Contribute](open-source-community/developer/how-to-contribute.md)
   * [Coding Style](open-source-community/developer/coding-style.md)
   * [Build the code & run tests](open-source-community/developer/build-code-run-tests.md)
+  * [Quick Start Guide](open-source-community/developer/quick-start-guide.md)
   * [Build a Connector](open-source-community/developer/build-a-connector/README.md)
     * [Setup](open-source-community/developer/build-a-connector/setup.md)
     * [Source](open-source-community/developer/build-a-connector/source.md)
