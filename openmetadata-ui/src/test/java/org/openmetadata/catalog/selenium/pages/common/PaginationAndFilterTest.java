@@ -118,6 +118,18 @@ public class PaginationAndFilterTest {
     }
   }
 
+  @Test
+  @Order(4)
+  public void leftPanelDisappearsCheck() throws InterruptedException {
+    Events.click(webDriver, By.cssSelector("[data-testid='closeWhatsNew']")); // Close What's new
+    Thread.sleep(waitTime);
+    Events.sendKeys(webDriver, By.cssSelector("[data-testid='searchBox']"), "zzzz");
+    Events.sendEnter(webDriver, By.cssSelector("[data-testid='searchBox']"));
+    webDriver.navigate().refresh();
+    Events.click(webDriver, By.cssSelector("[data-testid='appbar-item'][id='explore']")); // Explore
+    Events.click(webDriver, By.cssSelector("[data-testid='checkbox'][id='BigQuery']")); // Tables
+  }
+
   @AfterEach
   public void closeTabs() {
     ArrayList<String> tabs = new ArrayList<>(webDriver.getWindowHandles());
