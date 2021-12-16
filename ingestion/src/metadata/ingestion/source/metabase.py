@@ -91,7 +91,7 @@ class MetabaseSource(Source[Entity]):
         self.metabase_session = {"X-Metabase-Session": session_id}
         self.dashboard_service = get_dashboard_service_or_create(
             config.service_name,
-            DashboardServiceType.Looker.name,
+            DashboardServiceType.Metabase.name,
             config.username,
             config.password.get_secret_value(),
             config.host_port,
