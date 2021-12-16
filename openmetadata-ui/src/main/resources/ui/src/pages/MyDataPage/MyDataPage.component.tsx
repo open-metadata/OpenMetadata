@@ -97,7 +97,7 @@ const MyDataPage = () => {
     const ownedEntity = searchData(
       '',
       1,
-      5,
+      8,
       getMyDataFilters(Ownership.OWNER, AppState.userDetails),
       '',
       '',
@@ -107,7 +107,7 @@ const MyDataPage = () => {
     const followedEntity = searchData(
       '',
       1,
-      5,
+      8,
       getMyDataFilters(Ownership.FOLLOWERS, AppState.userDetails),
       '',
       '',
