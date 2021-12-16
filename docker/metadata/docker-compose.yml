@@ -13,7 +13,7 @@ version: "3.9"
 services:
   mysql:
     container_name: openmetadata_mysql
-    image: openmetadata/db:0.6.0
+    image: openmetadata/db:0.7.0
     restart: always
     environment:
       MYSQL_ROOT_PASSWORD: password
