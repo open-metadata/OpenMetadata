@@ -1,10 +1,10 @@
 ---
 description: >-
-  This guide will help install Elasticsearch connector and run manually to index
+  This guide will help install ElasticSearch connector and run manually to index
   the metadata stored in OpenMetadata.
 ---
 
-# Elasticsearch
+# ElasticSearch
 
 {% hint style="info" %}
 **Prerequisites**
@@ -49,7 +49,7 @@ metadata ingest -c ./examples/workflows/metadata_to_es.json
 
 ### Publish to OpenMetadata
 
-Below is the configuration to publish Elasticsearch data into the OpenMetadata service.
+Below is the configuration to publish Elastic Search data into the OpenMetadata service.
 
 {% code title="metadata_to_es.json" %}
 ```javascript
