@@ -79,7 +79,8 @@ const Description = ({
             })}>
             <NonAdminAction
               html={getHtmlForNonAdminAction(Boolean(owner))}
-              isOwner={hasEditAccess}>
+              isOwner={hasEditAccess}
+              position="right">
               <button
                 className="focus:tw-outline-none"
                 data-testid="edit-description"
