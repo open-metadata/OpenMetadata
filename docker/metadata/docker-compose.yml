@@ -59,7 +59,7 @@ services:
 
   ingestion:
     container_name: openmetadata_ingestion
-    image: openmetadata/ingestion:0.6.0
+    image: openmetadata/ingestion:0.7.0
     depends_on:
       - mysql
     expose:
