@@ -94,6 +94,7 @@ const EntityInfoDrawer = ({
           .then((res: AxiosResponse) => {
             setEntityDetail(res.data);
             setIsLoading(false);
+            setServiceType(res.data.serviceType);
           })
           .catch((err: AxiosError) => {
             const msg = err.message;
