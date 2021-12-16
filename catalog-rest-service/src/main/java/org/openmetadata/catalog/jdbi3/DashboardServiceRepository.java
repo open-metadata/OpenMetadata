@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate 
+ *  Copyright 2021 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -14,6 +14,12 @@
 package org.openmetadata.catalog.jdbi3;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import java.io.IOException;
+import java.net.URI;
+import java.util.Date;
+import java.util.List;
+import java.util.UUID;
+import javax.ws.rs.core.UriInfo;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.services.DashboardService;
@@ -27,31 +33,39 @@ import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
 
-import javax.ws.rs.core.UriInfo;
-import java.io.IOException;
-import java.net.URI;
-import java.util.Date;
-import java.util.List;
-import java.util.UUID;
-
-
 public class DashboardServiceRepository extends EntityRepository<DashboardService> {
   private final CollectionDAO dao;
 
   public DashboardServiceRepository(CollectionDAO dao) {
-    super(DashboardServiceResource.COLLECTION_PATH, Entity.DASHBOARD_SERVICE, DashboardService.class,
-            dao.dashboardServiceDAO(), dao, Fields.EMPTY_FIELDS, Fields.EMPTY_FIELDS);
+    super(
+        DashboardServiceResource.COLLECTION_PATH,
+        Entity.DASHBOARD_SERVICE,
+        DashboardService.class,
+        dao.dashboardServiceDAO(),
+        dao,
+        Fields.EMPTY_FIELDS,
+        Fields.EMPTY_FIELDS);
     this.dao = dao;
   }
 
-  public DashboardService update(UriInfo uriInfo, UUID id, String description, URI dashboardUrl, String username,
-                                 String password, Schedule ingestionSchedule)
-          throws IOException {
+  public DashboardService update(
+      UriInfo uriInfo,
+      UUID id,
+      String description,
+      URI dashboardUrl,
+      String username,
+      String password,
+      Schedule ingestionSchedule)
+      throws IOException {
     EntityUtil.validateIngestionSchedule(ingestionSchedule);
     DashboardService dashboardService = dao.dashboardServiceDAO().findEntityById(id);
     // Update fields
-    dashboardService.withDescription(description).withDashboardUrl(dashboardUrl).withUsername(username)
-            .withPassword(password).withIngestionSchedule(ingestionSchedule);
+    dashboardService
+        .withDescription(description)
+        .withDashboardUrl(dashboardUrl)
+        .withUsername(username)
+        .withPassword(password)
+        .withIngestionSchedule(ingestionSchedule);
     dao.dashboardServiceDAO().update(id, JsonUtils.pojoToJson(dashboardService));
     return withHref(uriInfo, dashboardService);
   }
@@ -68,8 +82,7 @@ public class DashboardServiceRepository extends EntityRepository<DashboardServic
   }
 
   @Override
-  public void restorePatchAttributes(DashboardService original, DashboardService updated) {
-  }
+  public void restorePatchAttributes(DashboardService original, DashboardService updated) {}
 
   @Override
   public EntityInterface<DashboardService> getEntityInterface(DashboardService entity) {
@@ -91,8 +104,7 @@ public class DashboardServiceRepository extends EntityRepository<DashboardServic
   }
 
   @Override
-  public void storeRelationships(DashboardService entity) {
-  }
+  public void storeRelationships(DashboardService entity) {}
 
   @Override
   public EntityUpdater getUpdater(DashboardService original, DashboardService updated, boolean patchOperation) {
@@ -122,25 +134,39 @@ public class DashboardServiceRepository extends EntityRepository<DashboardServic
     }
 
     @Override
-    public EntityReference getOwner() { return null; }
+    public EntityReference getOwner() {
+      return null;
+    }
 
     @Override
-    public String getFullyQualifiedName() { return entity.getName(); }
+    public String getFullyQualifiedName() {
+      return entity.getName();
+    }
 
     @Override
-    public List<TagLabel> getTags() { return null; }
+    public List<TagLabel> getTags() {
+      return null;
+    }
 
     @Override
-    public Double getVersion() { return entity.getVersion(); }
+    public Double getVersion() {
+      return entity.getVersion();
+    }
 
     @Override
-    public String getUpdatedBy() { return entity.getUpdatedBy(); }
+    public String getUpdatedBy() {
+      return entity.getUpdatedBy();
+    }
 
     @Override
-    public Date getUpdatedAt() { return entity.getUpdatedAt(); }
+    public Date getUpdatedAt() {
+      return entity.getUpdatedAt();
+    }
 
     @Override
-    public URI getHref() { return entity.getHref(); }
+    public URI getHref() {
+      return entity.getHref();
+    }
 
     @Override
     public List<EntityReference> getFollowers() {
@@ -148,19 +174,29 @@ public class DashboardServiceRepository extends EntityRepository<DashboardServic
     }
 
     @Override
-    public ChangeDescription getChangeDescription() { return entity.getChangeDescription(); }
-
-    @Override
-    public EntityReference getEntityReference() {
-      return new EntityReference().withId(getId()).withName(getFullyQualifiedName()).withDescription(getDescription())
-              .withDisplayName(getDisplayName()).withType(Entity.DASHBOARD_SERVICE);
+    public ChangeDescription getChangeDescription() {
+      return entity.getChangeDescription();
     }
 
     @Override
-    public DashboardService getEntity() { return entity; }
+    public EntityReference getEntityReference() {
+      return new EntityReference()
+          .withId(getId())
+          .withName(getFullyQualifiedName())
+          .withDescription(getDescription())
+          .withDisplayName(getDisplayName())
+          .withType(Entity.DASHBOARD_SERVICE);
+    }
 
     @Override
-    public void setId(UUID id) { entity.setId(id); }
+    public DashboardService getEntity() {
+      return entity;
+    }
+
+    @Override
+    public void setId(UUID id) {
+      entity.setId(id);
+    }
 
     @Override
     public void setDescription(String description) {
@@ -185,13 +221,15 @@ public class DashboardServiceRepository extends EntityRepository<DashboardServic
     }
 
     @Override
-    public void setOwner(EntityReference owner) { }
+    public void setOwner(EntityReference owner) {}
 
     @Override
-    public DashboardService withHref(URI href) { return entity.withHref(href); }
+    public DashboardService withHref(URI href) {
+      return entity.withHref(href);
+    }
 
     @Override
-    public void setTags(List<TagLabel> tags) { }
+    public void setTags(List<TagLabel> tags) {}
   }
 
   public class DashboardServiceUpdater extends EntityUpdater {
@@ -205,7 +243,7 @@ public class DashboardServiceRepository extends EntityRepository<DashboardServic
       updateIngestionSchedule();
       recordChange("userName", original.getEntity().getUsername(), updated.getEntity().getUsername());
       // TODO change recorded for password
-//      recordChange("password", original.getEntity().getPassword(), updated.getEntity().getPassword());
+      //      recordChange("password", original.getEntity().getPassword(), updated.getEntity().getPassword());
     }
 
     private void updateDashboardUrl() throws JsonProcessingException {

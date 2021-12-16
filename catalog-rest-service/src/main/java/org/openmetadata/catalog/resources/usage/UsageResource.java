@@ -20,18 +20,9 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import org.openmetadata.catalog.Entity;
-import org.openmetadata.catalog.jdbi3.CollectionDAO;
-import org.openmetadata.catalog.jdbi3.UsageRepository;
-import org.openmetadata.catalog.resources.Collection;
-import org.openmetadata.catalog.resources.teams.UserResource;
-import org.openmetadata.catalog.security.CatalogAuthorizer;
-import org.openmetadata.catalog.type.DailyCount;
-import org.openmetadata.catalog.type.EntityUsage;
-import org.openmetadata.catalog.util.RestUtil;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
+import java.io.IOException;
+import java.util.Date;
+import java.util.Objects;
 import javax.validation.Valid;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.GET;
@@ -44,9 +35,17 @@ import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriInfo;
-import java.io.IOException;
-import java.util.Date;
-import java.util.Objects;
+import org.openmetadata.catalog.Entity;
+import org.openmetadata.catalog.jdbi3.CollectionDAO;
+import org.openmetadata.catalog.jdbi3.UsageRepository;
+import org.openmetadata.catalog.resources.Collection;
+import org.openmetadata.catalog.resources.teams.UserResource;
+import org.openmetadata.catalog.security.CatalogAuthorizer;
+import org.openmetadata.catalog.type.DailyCount;
+import org.openmetadata.catalog.type.EntityUsage;
+import org.openmetadata.catalog.util.RestUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Path("/v1/usage")
 @Api(value = "Usage resource", tags = "Usage resource")
@@ -66,30 +65,37 @@ public class UsageResource {
   @GET
   @Valid
   @Path("/{entity}/{id}")
-  @Operation(summary = "Get usage", tags = "usage",
-          description = "Get usage details for an entity identified by `id`.",
-          responses = {
-                  @ApiResponse(responseCode = "200", description = "Entity usage",
-                          content = @Content(mediaType = "application/json",
-                          schema = @Schema(implementation = EntityUsage.class))),
-                  @ApiResponse(responseCode = "404", description = "Entity for instance {id} is not found")
-          })
+  @Operation(
+      summary = "Get usage",
+      tags = "usage",
+      description = "Get usage details for an entity identified by `id`.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Entity usage",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = EntityUsage.class))),
+        @ApiResponse(responseCode = "404", description = "Entity for instance {id} is not found")
+      })
   public EntityUsage get(
-          @Context UriInfo uriInfo,
-          @Parameter(description = "Entity type for which usage is requested",
-                  required = true,
-                  schema = @Schema(type = "string", example = "table, report, metrics, or dashboard"))
-          @PathParam("entity") String entity,
-          @Parameter(description = "Entity id",
-                  required = true,
-                  schema = @Schema(type = "string"))
-          @PathParam("id") String id,
-          @Parameter(description = "Usage for number of days going back from the given date " +
-                  "(default=1, min=1, max=30)")
-          @QueryParam("days") int days,
-          @Parameter(description = "Usage for number of days going back from this date in ISO 8601 format. " +
-                  "(default = currentDate)")
-          @QueryParam("date") String date) throws IOException {
+      @Context UriInfo uriInfo,
+      @Parameter(
+              description = "Entity type for which usage is requested",
+              required = true,
+              schema = @Schema(type = "string", example = "table, report, metrics, or dashboard"))
+          @PathParam("entity")
+          String entity,
+      @Parameter(description = "Entity id", required = true, schema = @Schema(type = "string")) @PathParam("id")
+          String id,
+      @Parameter(
+              description = "Usage for number of days going back from the given date " + "(default=1, min=1, max=30)")
+          @QueryParam("days")
+          int days,
+      @Parameter(
+              description =
+                  "Usage for number of days going back from this date in ISO 8601 format. " + "(default = currentDate)")
+          @QueryParam("date")
+          String date)
+      throws IOException {
     // TODO add href
     int actualDays = Math.min(Math.max(days, 1), 30);
     String actualDate = date == null ? RestUtil.DATE_FORMAT.format(new Date()) : date;
@@ -99,31 +105,41 @@ public class UsageResource {
   @GET
   @Valid
   @Path("/{entity}/name/{fqn}")
-  @Operation(summary = "Get usage by name", tags = "usage",
-          description = "Get usage details for an entity identified by fully qualified name.",
-          responses = {
-                  @ApiResponse(responseCode = "200", description = "Entity usage",
-                          content = @Content(mediaType = "application/json",
-                          schema = @Schema(implementation = EntityUsage.class))),
-                  @ApiResponse(responseCode = "404", description = "Entity for instance {id} is not found")
-          })
+  @Operation(
+      summary = "Get usage by name",
+      tags = "usage",
+      description = "Get usage details for an entity identified by fully qualified name.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Entity usage",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = EntityUsage.class))),
+        @ApiResponse(responseCode = "404", description = "Entity for instance {id} is not found")
+      })
   public EntityUsage getByName(
-          @Context UriInfo uriInfo,
-          @Parameter(description = "Entity type for which usage is requested",
-                  required = true,
-                  schema = @Schema(type = "string", example = "table, report, metrics, or dashboard"))
-          @PathParam("entity") String entity,
-          @Parameter(description = "Fully qualified name of the entity that uniquely identifies an entity",
-                  required = true,
-                  schema = @Schema(type = "string"))
-          @PathParam("fqn") String fqn,
-          @Parameter(description = "Usage for number of days going back from the given date " +
-                  "(default=1, min=1, max=30)")
-          @QueryParam("days") int days,
-          @Parameter(description = "Usage for number of days going back from this date in ISO 8601 format " +
-                  "(default = currentDate)")
-          @QueryParam("date") String date
-  ) throws IOException {
+      @Context UriInfo uriInfo,
+      @Parameter(
+              description = "Entity type for which usage is requested",
+              required = true,
+              schema = @Schema(type = "string", example = "table, report, metrics, or dashboard"))
+          @PathParam("entity")
+          String entity,
+      @Parameter(
+              description = "Fully qualified name of the entity that uniquely identifies an entity",
+              required = true,
+              schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn,
+      @Parameter(
+              description = "Usage for number of days going back from the given date " + "(default=1, min=1, max=30)")
+          @QueryParam("days")
+          int days,
+      @Parameter(
+              description =
+                  "Usage for number of days going back from this date in ISO 8601 format " + "(default = currentDate)")
+          @QueryParam("date")
+          String date)
+      throws IOException {
     // TODO add href
     int actualDays = Math.min(Math.max(days, 1), 30);
     String actualDate = date == null ? RestUtil.DATE_FORMAT.format(new Date()) : date;
@@ -132,76 +148,93 @@ public class UsageResource {
 
   @POST
   @Path("/{entity}/{id}")
-  @Operation(summary = "Report usage", tags = "usage",
-          description = "Report usage information for an entity on a given date. System stores last 30 days of usage " +
-                  "information. Usage information older than 30 days is deleted.",
-          responses = {
-                  @ApiResponse(responseCode = "200", description = "Usage information",
-                          content = @Content(mediaType = "application/json",
-                          schema = @Schema(implementation = EntityUsage.class))),
-                  @ApiResponse(responseCode = "400", description = "Bad request")
-          })
+  @Operation(
+      summary = "Report usage",
+      tags = "usage",
+      description =
+          "Report usage information for an entity on a given date. System stores last 30 days of usage "
+              + "information. Usage information older than 30 days is deleted.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Usage information",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = EntityUsage.class))),
+        @ApiResponse(responseCode = "400", description = "Bad request")
+      })
   public Response create(
-          @Context UriInfo uriInfo,
-          @Parameter(description = "Entity type for which usage is reported",
-                  required = true,
-                  schema = @Schema(type = "string", example = "table, report, metrics, or dashboard"))
-          @PathParam("entity") String entity,
-          @Parameter(description = "Entity id",
-                  required = true,
-                  schema = @Schema(type = "string"))
-          @PathParam("id") String id,
-          @Parameter(description = "Usage information a given date")
-          @Valid DailyCount usage
-  ) throws IOException {
+      @Context UriInfo uriInfo,
+      @Parameter(
+              description = "Entity type for which usage is reported",
+              required = true,
+              schema = @Schema(type = "string", example = "table, report, metrics, or dashboard"))
+          @PathParam("entity")
+          String entity,
+      @Parameter(description = "Entity id", required = true, schema = @Schema(type = "string")) @PathParam("id")
+          String id,
+      @Parameter(description = "Usage information a given date") @Valid DailyCount usage)
+      throws IOException {
     dao.create(entity, id, usage);
     return Response.status(Response.Status.CREATED).build();
   }
 
   @POST
   @Path("/{entity}/name/{fqn}")
-  @Operation(summary = "Report usage by name", tags = "usage",
-          description = "Report usage information for an entity by name on a given date. System stores last 30 days " +
-                  "of usage information. Usage information older than 30 days is deleted.",
-          responses = {
-                  @ApiResponse(responseCode = "200", description = "Usage information",
-                          content = @Content(mediaType = "application/json",
-                          schema = @Schema(implementation = EntityUsage.class))),
-                  @ApiResponse(responseCode = "400", description = "Bad request")
-          })
+  @Operation(
+      summary = "Report usage by name",
+      tags = "usage",
+      description =
+          "Report usage information for an entity by name on a given date. System stores last 30 days "
+              + "of usage information. Usage information older than 30 days is deleted.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Usage information",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = EntityUsage.class))),
+        @ApiResponse(responseCode = "400", description = "Bad request")
+      })
   public Response createByName(
-          @Context UriInfo uriInfo,
-          @Parameter(description = "Entity type for which usage is reported",
-                  required = true,
-                  schema = @Schema(type = "string", example = "table, report, metrics, or dashboard"))
-          @PathParam("entity") String entity,
-          @Parameter(description = "Fully qualified name of the entity that uniquely identifies an entity",
-                  required = true,
-                  schema = @Schema(type = "string"))
-          @PathParam("fqn") String fullyQualifiedName,
-          @Parameter(description = "Usage information a given date")
-          @Valid DailyCount usage) throws IOException {
+      @Context UriInfo uriInfo,
+      @Parameter(
+              description = "Entity type for which usage is reported",
+              required = true,
+              schema = @Schema(type = "string", example = "table, report, metrics, or dashboard"))
+          @PathParam("entity")
+          String entity,
+      @Parameter(
+              description = "Fully qualified name of the entity that uniquely identifies an entity",
+              required = true,
+              schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fullyQualifiedName,
+      @Parameter(description = "Usage information a given date") @Valid DailyCount usage)
+      throws IOException {
     dao.createByName(entity, fullyQualifiedName, usage);
     return Response.status(Response.Status.CREATED).build();
   }
 
   @POST
   @Path("/compute.percentile/{entity}/{date}")
-  @Operation(summary = "Compute percentiles", tags = "usage",
-          description = "Compute percentile ranking for an entity based on last 30 days of usage.",
-          hidden = true,
-          responses = {
-                  @ApiResponse(responseCode = "201", description = "Percentiles computed"),
-                  @ApiResponse(responseCode = "400", description = "Bad request")
-          })
+  @Operation(
+      summary = "Compute percentiles",
+      tags = "usage",
+      description = "Compute percentile ranking for an entity based on last 30 days of usage.",
+      hidden = true,
+      responses = {
+        @ApiResponse(responseCode = "201", description = "Percentiles computed"),
+        @ApiResponse(responseCode = "400", description = "Bad request")
+      })
   public Response computePercentile(
-          @Context UriInfo uriInfo,
-          @Parameter(description = "Entity name for which usage is requested",
-                  schema = @Schema(type = "string", example = "table, report, metrics, or dashboard"))
-          @PathParam("entity") String entity,
-          @Parameter(description = "ISO 8601 format date to compute percentile on",
-                  schema = @Schema(type = "string", example = "2021-01-28"))
-          @PathParam("date") String date) {
+      @Context UriInfo uriInfo,
+      @Parameter(
+              description = "Entity name for which usage is requested",
+              schema = @Schema(type = "string", example = "table, report, metrics, or dashboard"))
+          @PathParam("entity")
+          String entity,
+      @Parameter(
+              description = "ISO 8601 format date to compute percentile on",
+              schema = @Schema(type = "string", example = "2021-01-28"))
+          @PathParam("date")
+          String date) {
     // TODO delete this?
     dao.computePercentile(entity, date);
     return Response.status(Response.Status.CREATED).build();

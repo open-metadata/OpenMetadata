@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate 
+ *  Copyright 2021 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -13,7 +13,32 @@
 
 package org.openmetadata.catalog.resources.teams;
 
+import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
+import static javax.ws.rs.core.Response.Status.FORBIDDEN;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.catalog.resources.teams.UserResourceTest.createUser;
+import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
+import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
+import static org.openmetadata.catalog.util.TestUtils.assertResponse;
+import static org.openmetadata.catalog.util.TestUtils.authHeaders;
+import static org.openmetadata.catalog.util.TestUtils.validateEntityReference;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
+import java.io.IOException;
+import java.net.URI;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
+import javax.json.JsonPatch;
+import javax.ws.rs.client.WebTarget;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
@@ -35,38 +60,11 @@ import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
 import org.openmetadata.common.utils.JsonSchemaUtil;
 
-import javax.json.JsonPatch;
-import javax.ws.rs.client.WebTarget;
-import java.io.IOException;
-import java.net.URI;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.UUID;
-
-import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
-import static javax.ws.rs.core.Response.Status.FORBIDDEN;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.openmetadata.catalog.resources.teams.UserResourceTest.createUser;
-import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
-import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
-import static org.openmetadata.catalog.util.TestUtils.assertResponse;
-import static org.openmetadata.catalog.util.TestUtils.authHeaders;
-import static org.openmetadata.catalog.util.TestUtils.validateEntityReference;
-
 public class TeamResourceTest extends EntityResourceTest<Team> {
   final Profile PROFILE = new Profile().withImages(new ImageList().withImage(URI.create("http://image.com")));
 
   public TeamResourceTest() {
-    super(Entity.TEAM, Team.class, TeamList.class, "teams", TeamResource.FIELDS,
-            false, false, false);
+    super(Entity.TEAM, Team.class, TeamList.class, "teams", TeamResource.FIELDS, false, false, false);
   }
 
   @Test
@@ -93,8 +91,8 @@ public class TeamResourceTest extends EntityResourceTest<Team> {
     // Create team with different optional fields
     Map<String, String> authHeaders = authHeaders("test@open-metadata.org");
     CreateTeam create = create(test, 1);
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () -> createAndCheckEntity(create,
-            authHeaders));
+    HttpResponseException exception =
+        assertThrows(HttpResponseException.class, () -> createAndCheckEntity(create, authHeaders));
     assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
   }
 
@@ -102,13 +100,15 @@ public class TeamResourceTest extends EntityResourceTest<Team> {
   public void post_teamWithUsers_200_OK(TestInfo test) throws IOException {
     // Add team to user relationships while creating a team
     UserResourceTest userResourceTest = new UserResourceTest();
-    User user1 = createUser(userResourceTest.create(test, 1),
-            authHeaders("test@open-metadata.org"));
-    User user2 = createUser(userResourceTest.create(test, 2),
-            authHeaders("test@open-metadata.org"));
+    User user1 = createUser(userResourceTest.create(test, 1), authHeaders("test@open-metadata.org"));
+    User user2 = createUser(userResourceTest.create(test, 2), authHeaders("test@open-metadata.org"));
     List<UUID> users = Arrays.asList(user1.getId(), user2.getId());
-    CreateTeam create = create(test).withDisplayName("displayName").withDescription("description")
-            .withProfile(PROFILE).withUsers(users);
+    CreateTeam create =
+        create(test)
+            .withDisplayName("displayName")
+            .withDescription("description")
+            .withProfile(PROFILE)
+            .withUsers(users);
     Team team = createAndCheckEntity(create, adminAuthHeaders());
 
     // Make sure the user entity has relationship to the team
@@ -124,21 +124,19 @@ public class TeamResourceTest extends EntityResourceTest<Team> {
     Team team = createTeam(create, adminAuthHeaders());
 
     // Empty query field .../teams?fields=
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            getTeam(team.getId(), "", adminAuthHeaders()));
+    HttpResponseException exception =
+        assertThrows(HttpResponseException.class, () -> getTeam(team.getId(), "", adminAuthHeaders()));
     assertResponse(exception, BAD_REQUEST, CatalogExceptionMessage.invalidField(""));
 
     // .../teams?fields=invalidField
-    exception = assertThrows(HttpResponseException.class, () ->
-            getTeam(team.getId(), "invalidField", adminAuthHeaders()));
+    exception =
+        assertThrows(HttpResponseException.class, () -> getTeam(team.getId(), "invalidField", adminAuthHeaders()));
     assertResponse(exception, BAD_REQUEST, CatalogExceptionMessage.invalidField("invalidField"));
   }
 
   /**
-   * @see EntityResourceTest#put_addDeleteFollower_200
-   * for tests related getting team with entities owned by the team
+   * @see EntityResourceTest#put_addDeleteFollower_200 for tests related getting team with entities owned by the team
    */
-
   @Test
   public void delete_validTeam_200_OK(TestInfo test) throws IOException {
     UserResourceTest userResourceTest = new UserResourceTest();
@@ -156,13 +154,13 @@ public class TeamResourceTest extends EntityResourceTest<Team> {
   @Test
   public void delete_validTeam_as_non_admin_401(TestInfo test) throws IOException {
     UserResourceTest userResourceTest = new UserResourceTest();
-    User user1 = createUser(userResourceTest.create(test, 1),
-            authHeaders("test@open-metadata.org"));
+    User user1 = createUser(userResourceTest.create(test, 1), authHeaders("test@open-metadata.org"));
     List<UUID> users = Collections.singletonList(user1.getId());
     CreateTeam create = create(test).withUsers(users);
     Team team = createAndCheckEntity(create, adminAuthHeaders());
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            deleteEntity(team.getId(), authHeaders("test@open-metadata.org")));
+    HttpResponseException exception =
+        assertThrows(
+            HttpResponseException.class, () -> deleteEntity(team.getId(), authHeaders("test@open-metadata.org")));
     assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
   }
 
@@ -172,72 +170,74 @@ public class TeamResourceTest extends EntityResourceTest<Team> {
     Team team = createTeam(create(test), adminAuthHeaders());
     String teamJson = JsonUtils.pojoToJson(team);
     team.setDeleted(true);
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            patchTeam(teamJson, team, adminAuthHeaders()));
+    HttpResponseException exception =
+        assertThrows(HttpResponseException.class, () -> patchTeam(teamJson, team, adminAuthHeaders()));
     assertResponse(exception, BAD_REQUEST, CatalogExceptionMessage.readOnlyAttribute("Team", "deleted"));
   }
 
-//  @Test
-//  public void patch_teamAttributes_as_admin_200_ok(TestInfo test)
-//          throws HttpResponseException, JsonProcessingException {
-//    //
-//    // Create table without any attributes
-//    //
-//    Team team = createTeam(create(test), adminAuthHeaders());
-//    assertNull(team.getDisplayName());
-//    assertNull(team.getDescription());
-//    assertNull(team.getProfile());
-//    assertNull(team.getDeleted());
-//    assertNull(team.getUsers());
-//
-//    User user1 = createUser(UserResourceTest.create(test, 1), authHeaders("test@open-metadata.org"));
-//    User user2 = createUser(UserResourceTest.create(test, 2), authHeaders("test@open-metadata.org"));
-//    User user3 = createUser(UserResourceTest.create(test, 3), authHeaders("test@open-metadata.org"));
-//
-//    List<EntityReference> users = Arrays.asList(new UserEntityInterface(user1).getEntityReference(),
-//            new UserEntityInterface(user2).getEntityReference());
-//    Profile profile = new Profile().withImages(new ImageList().withImage(URI.create("http://image.com")));
-//
-//    //
-//    // Add previously absent attributes
-//    //
-//    String originalJson = JsonUtils.pojoToJson(team);
-//    team.withDisplayName("displayName").withDescription("description").withProfile(profile).withUsers(users);
-//    ChangeDescription change = getChangeDescription(team.getVersion())
-//            .withFieldsAdded(Arrays.asList("displayName", "description", "profile", "users"));
-//    team = patchEntityAndCheck(team, originalJson, adminAuthHeaders(), MINOR_UPDATE, change);
-//
-//    //
-//    // Replace the attributes
-//    //
-//    users = Arrays.asList(new UserEntityInterface(user1).getEntityReference(),
-//            new UserEntityInterface(user3).getEntityReference()); // user2 dropped and user3 is added
-//    profile = new Profile().withImages(new ImageList().withImage(URI.create("http://image1.com")));
-//
-//    originalJson = JsonUtils.pojoToJson(team);
-//    team.withDisplayName("displayName1").withDescription("description1").withProfile(profile).withUsers(users);
-//    change = getChangeDescription(team.getVersion())
-//            .withFieldsUpdated(Arrays.asList("displayName", "description", "profile", "users"));
-//    team = patchEntityAndCheck(team, originalJson, adminAuthHeaders(), MINOR_UPDATE, change);
-//
-//    // Remove the attributes
-//    originalJson = JsonUtils.pojoToJson(team);
-//    team.withDisplayName(null).withDescription(null).withProfile(null).withUsers(null);
-//    change = getChangeDescription(team.getVersion())
-//            .withFieldsDeleted(Arrays.asList("displayName", "description", "profile", "users"));
-//    patchEntityAndCheck(team, originalJson, adminAuthHeaders(), MINOR_UPDATE, change);
-//  }
+  //  @Test
+  //  public void patch_teamAttributes_as_admin_200_ok(TestInfo test)
+  //          throws HttpResponseException, JsonProcessingException {
+  //    //
+  //    // Create table without any attributes
+  //    //
+  //    Team team = createTeam(create(test), adminAuthHeaders());
+  //    assertNull(team.getDisplayName());
+  //    assertNull(team.getDescription());
+  //    assertNull(team.getProfile());
+  //    assertNull(team.getDeleted());
+  //    assertNull(team.getUsers());
+  //
+  //    User user1 = createUser(UserResourceTest.create(test, 1), authHeaders("test@open-metadata.org"));
+  //    User user2 = createUser(UserResourceTest.create(test, 2), authHeaders("test@open-metadata.org"));
+  //    User user3 = createUser(UserResourceTest.create(test, 3), authHeaders("test@open-metadata.org"));
+  //
+  //    List<EntityReference> users = Arrays.asList(new UserEntityInterface(user1).getEntityReference(),
+  //            new UserEntityInterface(user2).getEntityReference());
+  //    Profile profile = new Profile().withImages(new ImageList().withImage(URI.create("http://image.com")));
+  //
+  //    //
+  //    // Add previously absent attributes
+  //    //
+  //    String originalJson = JsonUtils.pojoToJson(team);
+  //    team.withDisplayName("displayName").withDescription("description").withProfile(profile).withUsers(users);
+  //    ChangeDescription change = getChangeDescription(team.getVersion())
+  //            .withFieldsAdded(Arrays.asList("displayName", "description", "profile", "users"));
+  //    team = patchEntityAndCheck(team, originalJson, adminAuthHeaders(), MINOR_UPDATE, change);
+  //
+  //    //
+  //    // Replace the attributes
+  //    //
+  //    users = Arrays.asList(new UserEntityInterface(user1).getEntityReference(),
+  //            new UserEntityInterface(user3).getEntityReference()); // user2 dropped and user3 is added
+  //    profile = new Profile().withImages(new ImageList().withImage(URI.create("http://image1.com")));
+  //
+  //    originalJson = JsonUtils.pojoToJson(team);
+  //    team.withDisplayName("displayName1").withDescription("description1").withProfile(profile).withUsers(users);
+  //    change = getChangeDescription(team.getVersion())
+  //            .withFieldsUpdated(Arrays.asList("displayName", "description", "profile", "users"));
+  //    team = patchEntityAndCheck(team, originalJson, adminAuthHeaders(), MINOR_UPDATE, change);
+  //
+  //    // Remove the attributes
+  //    originalJson = JsonUtils.pojoToJson(team);
+  //    team.withDisplayName(null).withDescription(null).withProfile(null).withUsers(null);
+  //    change = getChangeDescription(team.getVersion())
+  //            .withFieldsDeleted(Arrays.asList("displayName", "description", "profile", "users"));
+  //    patchEntityAndCheck(team, originalJson, adminAuthHeaders(), MINOR_UPDATE, change);
+  //  }
 
   @Test
-  public void patch_teamAttributes_as_non_admin_403(TestInfo test) throws HttpResponseException,
-          JsonProcessingException {
+  public void patch_teamAttributes_as_non_admin_403(TestInfo test)
+      throws HttpResponseException, JsonProcessingException {
     // Create table without any attributes
     Team team = createTeam(create(test), adminAuthHeaders());
     // Patching as a non-admin should is disallowed
     String originalJson = JsonUtils.pojoToJson(team);
     team.setDisplayName("newDisplayName");
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            patchTeam(team.getId(), originalJson, team, authHeaders("test@open-metadata.org")));
+    HttpResponseException exception =
+        assertThrows(
+            HttpResponseException.class,
+            () -> patchTeam(team.getId(), originalJson, team, authHeaders("test@open-metadata.org")));
     assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
   }
 
@@ -252,15 +252,19 @@ public class TeamResourceTest extends EntityResourceTest<Team> {
   }
 
   public static Team getTeamByName(String name, String fields, Map<String, String> authHeaders)
-          throws HttpResponseException {
+      throws HttpResponseException {
     WebTarget target = CatalogApplicationTest.getResource("teams/name/" + name);
     target = fields != null ? target.queryParam("fields", fields) : target;
     return TestUtils.get(target, Team.class, authHeaders);
   }
 
-  private static void validateTeam(Team team, String expectedDescription, String expectedDisplayName,
-                                   Profile expectedProfile, List<EntityReference> expectedUsers,
-                                   String expectedUpdatedBy) {
+  private static void validateTeam(
+      Team team,
+      String expectedDescription,
+      String expectedDisplayName,
+      Profile expectedProfile,
+      List<EntityReference> expectedUsers,
+      String expectedUpdatedBy) {
     assertListNotNull(team.getId(), team.getHref());
     assertEquals(expectedDescription, team.getDescription());
     assertEquals(expectedUpdatedBy, team.getUpdatedBy());
@@ -282,31 +286,39 @@ public class TeamResourceTest extends EntityResourceTest<Team> {
     String updatedBy = TestUtils.getPrincipal(adminAuthHeaders());
     // .../teams?fields=profile
     String fields = "profile";
-    Team getTeam = byName ? getTeamByName(expectedTeam.getName(), fields, adminAuthHeaders()) :
-            getTeam(expectedTeam.getId(), fields, adminAuthHeaders());
-    validateTeam(getTeam, expectedTeam.getDescription(), expectedTeam.getDisplayName(), expectedTeam.getProfile(),
-            null, updatedBy);
+    Team getTeam =
+        byName
+            ? getTeamByName(expectedTeam.getName(), fields, adminAuthHeaders())
+            : getTeam(expectedTeam.getId(), fields, adminAuthHeaders());
+    validateTeam(
+        getTeam,
+        expectedTeam.getDescription(),
+        expectedTeam.getDisplayName(),
+        expectedTeam.getProfile(),
+        null,
+        updatedBy);
     assertNull(getTeam.getOwns());
 
     // .../teams?fields=users,owns
     fields = "users,owns,profile";
-    getTeam = byName ? getTeamByName(expectedTeam.getName(), fields, adminAuthHeaders()) :
-            getTeam(expectedTeam.getId(), fields, adminAuthHeaders());
+    getTeam =
+        byName
+            ? getTeamByName(expectedTeam.getName(), fields, adminAuthHeaders())
+            : getTeam(expectedTeam.getId(), fields, adminAuthHeaders());
     assertNotNull(getTeam.getProfile());
     validateEntityReference(getTeam.getUsers());
     validateEntityReference(getTeam.getOwns());
   }
 
   private Team patchTeam(UUID teamId, String originalJson, Team updated, Map<String, String> authHeaders)
-          throws JsonProcessingException, HttpResponseException {
+      throws JsonProcessingException, HttpResponseException {
     String updatedJson = JsonUtils.pojoToJson(updated);
     JsonPatch patch = JsonSchemaUtil.getJsonPatch(originalJson, updatedJson);
-    return TestUtils.patch(CatalogApplicationTest.getResource("teams/" + teamId), patch,
-            Team.class, authHeaders);
+    return TestUtils.patch(CatalogApplicationTest.getResource("teams/" + teamId), patch, Team.class, authHeaders);
   }
 
   private Team patchTeam(String originalJson, Team updated, Map<String, String> authHeaders)
-          throws JsonProcessingException, HttpResponseException {
+      throws JsonProcessingException, HttpResponseException {
     return patchTeam(updated.getId(), originalJson, updated, authHeaders);
   }
 
@@ -330,8 +342,8 @@ public class TeamResourceTest extends EntityResourceTest<Team> {
   @Override
   public void validateCreatedEntity(Team team, Object request, Map<String, String> authHeaders) {
     CreateTeam createRequest = (CreateTeam) request;
-    validateCommonEntityFields(getEntityInterface(team), createRequest.getDescription(),
-            TestUtils.getPrincipal(authHeaders), null);
+    validateCommonEntityFields(
+        getEntityInterface(team), createRequest.getDescription(), TestUtils.getPrincipal(authHeaders), null);
 
     assertEquals(createRequest.getDisplayName(), team.getDisplayName());
     assertEquals(createRequest.getProfile(), team.getProfile());
@@ -357,8 +369,8 @@ public class TeamResourceTest extends EntityResourceTest<Team> {
 
   @Override
   public void compareEntities(Team expected, Team updated, Map<String, String> authHeaders) {
-    validateCommonEntityFields(getEntityInterface(updated), expected.getDescription(),
-            TestUtils.getPrincipal(authHeaders), null);
+    validateCommonEntityFields(
+        getEntityInterface(updated), expected.getDescription(), TestUtils.getPrincipal(authHeaders), null);
 
     assertEquals(expected.getDisplayName(), updated.getDisplayName());
     assertEquals(expected.getProfile(), updated.getProfile());

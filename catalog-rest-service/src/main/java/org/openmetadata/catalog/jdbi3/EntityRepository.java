@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate 
+ *  Copyright 2021 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -13,7 +13,25 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import static org.openmetadata.catalog.util.EntityUtil.entityReferenceMatch;
+import static org.openmetadata.catalog.util.EntityUtil.objectMatch;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
+import java.io.IOException;
+import java.io.UnsupportedEncodingException;
+import java.net.URI;
+import java.security.GeneralSecurityException;
+import java.text.ParseException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Date;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.function.BiPredicate;
+import javax.json.JsonPatch;
+import javax.ws.rs.core.Response.Status;
+import javax.ws.rs.core.UriInfo;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Table;
@@ -41,59 +59,36 @@ import org.openmetadata.common.utils.CipherText;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.json.JsonPatch;
-import javax.ws.rs.core.Response.Status;
-import javax.ws.rs.core.UriInfo;
-import java.io.IOException;
-import java.io.UnsupportedEncodingException;
-import java.net.URI;
-import java.security.GeneralSecurityException;
-import java.text.ParseException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Date;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
-import java.util.function.BiPredicate;
-
-import static org.openmetadata.catalog.util.EntityUtil.entityReferenceMatch;
-import static org.openmetadata.catalog.util.EntityUtil.objectMatch;
-
 /**
  * This is the base class used by Entity Resources to perform READ and WRITE operations to the backend database to
  * Create, Retrieve, Update, and Delete entities.
  *
- * An entity has two types of fields - `attributes` and `relationships`.
+ * <p>An entity has two types of fields - `attributes` and `relationships`.
+ *
  * <ul>
- * <li>The `attributes` are the core properties of the entity, example - entity id, name, fullyQualifiedName, columns
- * for a table, etc.</li>
- * <li>The `relationships` are an associated between two entities, example - table belongs to a database,
- * table has a tag, user owns a table, etc. All relationships are captured using {@code EntityReference}. </li>
+ *   <li>The `attributes` are the core properties of the entity, example - entity id, name, fullyQualifiedName, columns
+ *       for a table, etc.
+ *   <li>The `relationships` are an associated between two entities, example - table belongs to a database, table has a
+ *       tag, user owns a table, etc. All relationships are captured using {@code EntityReference}.
  * </ul>
  *
  * Entities are stored as JSON documents in the database. Each entity is stored in a separate table and is accessed
  * through a <i>Data Access Object</i> or <i>DAO</i> that corresponds to each of the entity. For example,
- * <i>table_entity</i> is the database table used to store JSON docs corresponding to <i>table</i> entity and
- * {@link org.openmetadata.catalog.jdbi3.CollectionDAO.TableDAO} is used as the DAO object to access the table_entity
- * table. All DAO objects for an entity are available in {@code daoCollection}.
+ * <i>table_entity</i> is the database table used to store JSON docs corresponding to <i>table</i> entity and {@link
+ * org.openmetadata.catalog.jdbi3.CollectionDAO.TableDAO} is used as the DAO object to access the table_entity table.
+ * All DAO objects for an entity are available in {@code daoCollection}. <br>
+ * <br>
+ * Relationships between entity is stored in a separate table that captures the edge - fromEntity, toEntity, and the
+ * relationship name <i>entity_relationship</i> table and are supported by {@link
+ * org.openmetadata.catalog.jdbi3.CollectionDAO.EntityRelationshipDAO} DAO object.
  *
- * <br><br>
- * Relationships between entity is stored in a separate table that captures the edge - fromEntity, toEntity, and
- * the relationship name <i>entity_relationship</i> table and are supported by
- * {@link org.openmetadata.catalog.jdbi3.CollectionDAO.EntityRelationshipDAO} DAO object.
- *
- * JSON document of an entity stores only <i>required</i> attributes of an entity. Some attributes such as
- * <i>href</i> are not stored and are created on the fly.
- *
- * <br><br>
- *
- * Json document of an entity does not store relationships. As an example, JSON document for <i>table</i> entity
- * does not store the relationship <i>database</i> which is of type <i>EntityReference</i>. This is always retrieved
- * from the relationship table when required to ensure, the data stored is efficiently and consistently, and
- * relationship information does not become stale.
- * </p>
- *
+ * <p>JSON document of an entity stores only <i>required</i> attributes of an entity. Some attributes such as
+ * <i>href</i> are not stored and are created on the fly. <br>
+ * <br>
+ * Json document of an entity does not store relationships. As an example, JSON document for <i>table</i> entity does
+ * not store the relationship <i>database</i> which is of type <i>EntityReference</i>. This is always retrieved from the
+ * relationship table when required to ensure, the data stored is efficiently and consistently, and relationship
+ * information does not become stale.
  */
 public abstract class EntityRepository<T> {
   public static final Logger LOG = LoggerFactory.getLogger(EntityRepository.class);
@@ -109,9 +104,14 @@ public abstract class EntityRepository<T> {
   /** Fields that can be updated during PUT operation */
   private final Fields putFields;
 
-  EntityRepository(String collectionPath, String entityName, Class<T> entityClass, EntityDAO<T> entityDAO,
-                   CollectionDAO collectionDAO,
-                   Fields patchFields, Fields putFields) {
+  EntityRepository(
+      String collectionPath,
+      String entityName,
+      Class<T> entityClass,
+      EntityDAO<T> entityDAO,
+      CollectionDAO collectionDAO,
+      Fields patchFields,
+      Fields putFields) {
     this.collectionPath = collectionPath;
     this.entityClass = entityClass;
     this.dao = entityDAO;
@@ -122,9 +122,7 @@ public abstract class EntityRepository<T> {
     Entity.registerEntity(entityName, dao, this);
   }
 
-  /**
-   * Entity related operations that should be implemented or overridden by entities
-   */
+  /** Entity related operations that should be implemented or overridden by entities */
   public abstract EntityInterface<T> getEntityInterface(T entity);
 
   /**
@@ -137,35 +135,34 @@ public abstract class EntityRepository<T> {
    * This method is used for validating an entity to be created during POST, PUT, and PATCH operations and prepare the
    * entity with all the required attributes and relationships.
    *
-   * The implementation of this method must perform the following:
+   * <p>The implementation of this method must perform the following:
+   *
    * <ol>
    *   <li>Prepare the values for attributes that are not required in the request but can be derived on the server side.
-   *   Example - <i>>FullyQualifiedNames</i> of an entity can be derived from the hierarchy that an entity belongs to
-   *   .</li>
-   *   <li>Validate all the attributes of an entity.</li>
-   *   <li>Validate all the relationships of an entity. As an example - during <i>table</i> creation,
-   *   relationships such as <i>Tags</i>, <i>Owner</i>, <i>Database</i>a table belongs to are validated.
-   *   During validation additional information that is not required in the create/update request are set up
-   *   in the corresponding relationship fields.</li>
+   *       Example - <i>>FullyQualifiedNames</i> of an entity can be derived from the hierarchy that an entity belongs
+   *       to .
+   *   <li>Validate all the attributes of an entity.
+   *   <li>Validate all the relationships of an entity. As an example - during <i>table</i> creation, relationships such
+   *       as <i>Tags</i>, <i>Owner</i>, <i>Database</i>a table belongs to are validated. During validation additional
+   *       information that is not required in the create/update request are set up in the corresponding relationship
+   *       fields.
    * </ol>
    *
-   * At the end of this operation, entity is expected to be valid and fully constructed with all the fields that will
-   * be sent as payload in the POST, PUT, and PATCH operations response.
+   * At the end of this operation, entity is expected to be valid and fully constructed with all the fields that will be
+   * sent as payload in the POST, PUT, and PATCH operations response.
    *
    * @see TableRepository#prepare(Table) for an example implementation
    */
   public abstract void prepare(T entity) throws IOException;
 
   /**
-   * An entity is stored in the backend database as JSON document. The JSON includes some attributes of the
-   * entity and does not include attributes such as <i>href</i>. The relationship fields of an entity is never stored
-   * in the JSON document. It is always reconstructed based on relationship edges from the backend database.
-   *
-   * <br><br>
-   *
-   * As an example, when <i>table</i> entity is stored, the attributes such as <i>href</i> and the relationships such
-   * as <i>owner</i>, <i>database</i>, and <i>tags</i> are set to null. These attributes are restored back after the
-   * JSON document is stored to be sent as response.
+   * An entity is stored in the backend database as JSON document. The JSON includes some attributes of the entity and
+   * does not include attributes such as <i>href</i>. The relationship fields of an entity is never stored in the JSON
+   * document. It is always reconstructed based on relationship edges from the backend database. <br>
+   * <br>
+   * As an example, when <i>table</i> entity is stored, the attributes such as <i>href</i> and the relationships such as
+   * <i>owner</i>, <i>database</i>, and <i>tags</i> are set to null. These attributes are restored back after the JSON
+   * document is stored to be sent as response.
    *
    * @see TableRepository#storeEntity(Table, boolean) for an example implementation
    */
@@ -180,12 +177,11 @@ public abstract class EntityRepository<T> {
   public abstract void storeRelationships(T entity);
 
   /**
-   * PATCH operations can't overwrite certain fields, such as entity ID, fullyQualifiedNames etc. Instead of throwing
-   * an error, we take lenient approach of ignoring the user error and restore those attributes based on what is
-   * already stored in the original entity.
+   * PATCH operations can't overwrite certain fields, such as entity ID, fullyQualifiedNames etc. Instead of throwing an
+   * error, we take lenient approach of ignoring the user error and restore those attributes based on what is already
+   * stored in the original entity.
    */
   public abstract void restorePatchAttributes(T original, T updated);
-
 
   public EntityUpdater getUpdater(T original, T updated, boolean patchOperation) {
     return new EntityUpdater(original, updated, patchOperation);
@@ -203,10 +199,10 @@ public abstract class EntityRepository<T> {
 
   @Transaction
   public final ResultList<T> listAfter(UriInfo uriInfo, Fields fields, String fqnPrefix, int limitParam, String after)
-          throws GeneralSecurityException, IOException, ParseException {
+      throws GeneralSecurityException, IOException, ParseException {
     // forward scrolling, if after == null then first page is being asked
-    List<String> jsons = dao.listAfter(fqnPrefix, limitParam + 1, after == null ? "" :
-            CipherText.instance().decrypt(after));
+    List<String> jsons =
+        dao.listAfter(fqnPrefix, limitParam + 1, after == null ? "" : CipherText.instance().decrypt(after));
 
     List<T> entities = new ArrayList<>();
     for (String json : jsons) {
@@ -226,7 +222,7 @@ public abstract class EntityRepository<T> {
 
   @Transaction
   public final ResultList<T> listBefore(UriInfo uriInfo, Fields fields, String fqnPrefix, int limitParam, String before)
-          throws IOException, GeneralSecurityException, ParseException {
+      throws IOException, GeneralSecurityException, ParseException {
     // Reverse scrolling - Get one extra result used for computing before cursor
     List<String> jsons = dao.listBefore(fqnPrefix, limitParam + 1, CipherText.instance().decrypt(before));
 
@@ -263,7 +259,7 @@ public abstract class EntityRepository<T> {
       return entity;
     }
     throw EntityNotFoundException.byMessage(
-            CatalogExceptionMessage.entityVersionNotFound(entityName, id, requestedVersion));
+        CatalogExceptionMessage.entityVersionNotFound(entityName, id, requestedVersion));
   }
 
   @Transaction
@@ -307,8 +303,8 @@ public abstract class EntityRepository<T> {
   }
 
   @Transaction
-  public final PatchResponse<T> patch(UriInfo uriInfo, UUID id, String user, JsonPatch patch) throws IOException,
-          ParseException {
+  public final PatchResponse<T> patch(UriInfo uriInfo, UUID id, String user, JsonPatch patch)
+      throws IOException, ParseException {
     // Get all the fields in the original entity that can be updated during PATCH operation
     T original = setFields(dao.findEntityById(id), patchFields);
 
@@ -340,16 +336,25 @@ public abstract class EntityRepository<T> {
     }
 
     // Add relationship
-    int added = daoCollection.relationshipDAO().insert(userId.toString(), entityId.toString(), Entity.USER, entityName,
-            Relationship.FOLLOWS.ordinal());
+    int added =
+        daoCollection
+            .relationshipDAO()
+            .insert(userId.toString(), entityId.toString(), Entity.USER, entityName, Relationship.FOLLOWS.ordinal());
 
     ChangeDescription change = new ChangeDescription().withPreviousVersion(entityInterface.getVersion());
-    change.getFieldsAdded().add(new FieldChange().withName("followers")
-            .withNewValue(List.of(Entity.getEntityReference(user))));
+    change
+        .getFieldsAdded()
+        .add(new FieldChange().withName("followers").withNewValue(List.of(Entity.getEntityReference(user))));
 
-    ChangeEvent changeEvent = new ChangeEvent().withChangeDescription(change).withEventType(EventType.ENTITY_UPDATED)
-            .withEntityType(entityName).withEntityId(entityId).withUserName(updatedBy)
-            .withDateTime(new Date()).withCurrentVersion(entityInterface.getVersion())
+    ChangeEvent changeEvent =
+        new ChangeEvent()
+            .withChangeDescription(change)
+            .withEventType(EventType.ENTITY_UPDATED)
+            .withEntityType(entityName)
+            .withEntityId(entityId)
+            .withUserName(updatedBy)
+            .withDateTime(new Date())
+            .withCurrentVersion(entityInterface.getVersion())
             .withPreviousVersion(change.getPreviousVersion());
 
     return new PutResponse<>(added > 0 ? Status.CREATED : Status.OK, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
@@ -367,12 +372,19 @@ public abstract class EntityRepository<T> {
     daoCollection.relationshipDAO().delete(userId.toString(), entityId.toString(), Relationship.FOLLOWS.ordinal());
 
     ChangeDescription change = new ChangeDescription().withPreviousVersion(entityInterface.getVersion());
-    change.getFieldsDeleted().add(new FieldChange().withName("followers")
-            .withOldValue(List.of(Entity.getEntityReference(user))));
+    change
+        .getFieldsDeleted()
+        .add(new FieldChange().withName("followers").withOldValue(List.of(Entity.getEntityReference(user))));
 
-    ChangeEvent changeEvent = new ChangeEvent().withChangeDescription(change).withEventType(EventType.ENTITY_UPDATED)
-            .withEntityType(entityName).withEntityId(entityId).withUserName(updatedBy)
-            .withDateTime(new Date()).withCurrentVersion(entityInterface.getVersion())
+    ChangeEvent changeEvent =
+        new ChangeEvent()
+            .withChangeDescription(change)
+            .withEventType(EventType.ENTITY_UPDATED)
+            .withEntityType(entityName)
+            .withEntityId(entityId)
+            .withUserName(updatedBy)
+            .withDateTime(new Date())
+            .withCurrentVersion(entityInterface.getVersion())
             .withPreviousVersion(change.getPreviousVersion());
 
     return new PutResponse<>(Status.OK, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
@@ -383,7 +395,7 @@ public abstract class EntityRepository<T> {
   }
 
   public final ResultList<T> getResultList(List<T> entities, String beforeCursor, String afterCursor, int total)
-          throws GeneralSecurityException, UnsupportedEncodingException {
+      throws GeneralSecurityException, UnsupportedEncodingException {
     return new ResultList<>(entities, beforeCursor, afterCursor, total);
   }
 
@@ -408,12 +420,11 @@ public abstract class EntityRepository<T> {
   /**
    * Class that performs PUT and PATCH update operation. It takes an <i>updated</i> entity and <i>original</i> entity.
    * Performs comparison between then and updates the stored entity and also updates all the relationships. This class
-   * also tracks the changes between original and updated to version the entity and produce change events.
+   * also tracks the changes between original and updated to version the entity and produce change events. <br>
+   * <br>
+   * Common entity attributes such as description, displayName, owner, tags are handled by this class. Override {@code
+   * entitySpecificUpdate()} to add additional entity specific fields to be updated.
    *
-   * <br><br>
-   *
-   * Common entity attributes such as description, displayName, owner, tags are handled by this class.
-   * Override {@code entitySpecificUpdate()} to add additional entity specific fields to be updated.
    * @see TableUpdater#entitySpecificUpdate() for example.
    */
   public class EntityUpdater {
@@ -429,9 +440,7 @@ public abstract class EntityRepository<T> {
       this.patchOperation = patchOperation;
     }
 
-    /**
-     * Compare original and updated entities and perform updates. Update the entity version and track changes.
-     */
+    /** Compare original and updated entities and perform updates. Update the entity version and track changes. */
     public final void update() throws IOException {
       updated.setId(original.getId());
       updateDescription();
@@ -449,8 +458,7 @@ public abstract class EntityRepository<T> {
     }
 
     private void updateDescription() throws JsonProcessingException {
-      if (!patchOperation &&
-              original.getDescription() != null && !original.getDescription().isEmpty()) {
+      if (!patchOperation && original.getDescription() != null && !original.getDescription().isEmpty()) {
         // Update description only when stored is empty to retain user authored descriptions
         updated.setDescription(original.getDescription());
         return;
@@ -459,8 +467,7 @@ public abstract class EntityRepository<T> {
     }
 
     private void updateDisplayName() throws JsonProcessingException {
-      if (!patchOperation &&
-              original.getDisplayName() != null && !original.getDisplayName().isEmpty()) {
+      if (!patchOperation && original.getDisplayName() != null && !original.getDisplayName().isEmpty()) {
         // Update displayName only when stored is empty to retain user authored descriptions
         updated.setDisplayName(original.getDisplayName());
         return;
@@ -474,14 +481,14 @@ public abstract class EntityRepository<T> {
       if (patchOperation || updatedOwner != null) {
         // Update owner for all PATCH operations. For PUT operations, ownership can't be removed
         if (recordChange("owner", origOwner, updatedOwner, true, entityReferenceMatch)) {
-          EntityUtil.updateOwner(daoCollection.relationshipDAO(), origOwner,
-                  updatedOwner, original.getId(), entityName);
+          EntityUtil.updateOwner(
+              daoCollection.relationshipDAO(), origOwner, updatedOwner, original.getId(), entityName);
         }
       }
     }
 
     protected final void updateTags(String fqn, String fieldName, List<TagLabel> origTags, List<TagLabel> updatedTags)
-            throws IOException {
+        throws IOException {
       // Remove current entity tags in the database. It will be added back later from the merged tag list.
       origTags = Optional.ofNullable(origTags).orElse(Collections.emptyList());
       updatedTags = Optional.ofNullable(updatedTags).orElse(Collections.emptyList());
@@ -508,22 +515,26 @@ public abstract class EntityRepository<T> {
     public final boolean updateVersion(Double oldVersion) {
       Double newVersion = oldVersion;
       if (majorVersionChange) {
-        newVersion = Math.round((oldVersion + 1.0) * 10.0)/10.0;
+        newVersion = Math.round((oldVersion + 1.0) * 10.0) / 10.0;
       } else if (fieldsChanged()) {
-        newVersion = Math.round((oldVersion + 0.1) * 10.0)/10.0;
+        newVersion = Math.round((oldVersion + 0.1) * 10.0) / 10.0;
       }
-      LOG.info("{}->{} - Fields added {}, updated {}, deleted {}",
-              oldVersion, newVersion, changeDescription.getFieldsAdded(), changeDescription.getFieldsUpdated(),
-              changeDescription.getFieldsDeleted());
+      LOG.info(
+          "{}->{} - Fields added {}, updated {}, deleted {}",
+          oldVersion,
+          newVersion,
+          changeDescription.getFieldsAdded(),
+          changeDescription.getFieldsUpdated(),
+          changeDescription.getFieldsDeleted());
       changeDescription.withPreviousVersion(oldVersion);
       updated.setChangeDescription(newVersion, changeDescription);
       return !newVersion.equals(oldVersion);
     }
 
     private boolean fieldsChanged() {
-      return !changeDescription.getFieldsAdded().isEmpty() ||
-              !changeDescription.getFieldsUpdated().isEmpty() ||
-              !changeDescription.getFieldsDeleted().isEmpty();
+      return !changeDescription.getFieldsAdded().isEmpty()
+          || !changeDescription.getFieldsUpdated().isEmpty()
+          || !changeDescription.getFieldsDeleted().isEmpty();
     }
 
     public final <K> boolean recordChange(String field, K orig, K updated) throws JsonProcessingException {
@@ -531,17 +542,19 @@ public abstract class EntityRepository<T> {
     }
 
     public final <K> boolean recordChange(String field, K orig, K updated, boolean jsonValue)
-            throws JsonProcessingException {
+        throws JsonProcessingException {
       return recordChange(field, orig, updated, jsonValue, objectMatch);
     }
 
-    public final <K> boolean recordChange(String field, K orig, K updated, boolean jsonValue,
-                                      BiPredicate<K, K> typeMatch)
-            throws JsonProcessingException {
+    public final <K> boolean recordChange(
+        String field, K orig, K updated, boolean jsonValue, BiPredicate<K, K> typeMatch)
+        throws JsonProcessingException {
       if (orig == null && updated == null) {
         return false;
       }
-      FieldChange fieldChange = new FieldChange().withName(field)
+      FieldChange fieldChange =
+          new FieldChange()
+              .withName(field)
               .withOldValue(jsonValue ? JsonUtils.pojoToJson(orig) : orig)
               .withNewValue(jsonValue ? JsonUtils.pojoToJson(updated) : updated);
       if (orig == null) {
@@ -557,9 +570,14 @@ public abstract class EntityRepository<T> {
       return false;
     }
 
-    public final <K> boolean recordListChange(String field, List<K> origList, List<K> updatedList, List<K> addedItems,
-                                           List<K> deletedItems, BiPredicate<K, K> typeMatch)
-            throws JsonProcessingException {
+    public final <K> boolean recordListChange(
+        String field,
+        List<K> origList,
+        List<K> updatedList,
+        List<K> addedItems,
+        List<K> deletedItems,
+        BiPredicate<K, K> typeMatch)
+        throws JsonProcessingException {
       origList = Optional.ofNullable(origList).orElse(Collections.emptyList());
       updatedList = Optional.ofNullable(updatedList).orElse(Collections.emptyList());
       for (K stored : origList) {
@@ -592,8 +610,9 @@ public abstract class EntityRepository<T> {
       if (updateVersion(original.getVersion())) {
         // Store the old version
         String extensionName = EntityUtil.getVersionExtension(entityName, original.getVersion());
-        daoCollection.entityExtensionDAO().insert(original.getId().toString(), extensionName, entityName,
-                JsonUtils.pojoToJson(original.getEntity()));
+        daoCollection
+            .entityExtensionDAO()
+            .insert(original.getId().toString(), extensionName, entityName, JsonUtils.pojoToJson(original.getEntity()));
 
         // Store the new version
         EntityRepository.this.storeEntity(updated.getEntity(), true);

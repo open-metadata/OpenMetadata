@@ -13,7 +13,12 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
+import java.io.IOException;
+import java.util.List;
+import java.util.UUID;
 import org.jdbi.v3.sqlobject.customizer.Bind;
 import org.jdbi.v3.sqlobject.customizer.Define;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
@@ -24,24 +29,17 @@ import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.util.JsonUtils;
 
-import java.io.IOException;
-import java.util.List;
-import java.util.UUID;
-
-import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
-
 public interface EntityDAO<T> {
-  /**
-   * Methods that need to be overridden by interfaces extending this
-   */
+  /** Methods that need to be overridden by interfaces extending this */
   String getTableName();
+
   Class<T> getEntityClass();
+
   String getNameColumn();
+
   EntityReference getEntityReference(T entity);
 
-  /**
-   * Common queries for all entities implemented here. Do not override.
-   */
+  /** Common queries for all entities implemented here. Do not override. */
   @SqlUpdate("INSERT INTO <table> (json) VALUES (:json)")
   void insert(@Define("table") String table, @Bind("json") String json);
 
@@ -52,39 +50,44 @@ public interface EntityDAO<T> {
   String findById(@Define("table") String table, @Bind("id") String id);
 
   @SqlQuery("SELECT json FROM <table> WHERE <nameColumn> = :name")
-  String findByName(@Define("table") String table, @Define("nameColumn") String nameColumn,
-                    @Bind("name") String name);
-
-  @SqlQuery("SELECT count(*) FROM <table> WHERE " +
-          "(<nameColumn> LIKE CONCAT(:fqnPrefix, '.%') OR :fqnPrefix IS NULL)")
-  int listCount(@Define("table") String table, @Define("nameColumn") String nameColumn,
-                @Bind("fqnPrefix") String fqnPrefix);
+  String findByName(@Define("table") String table, @Define("nameColumn") String nameColumn, @Bind("name") String name);
 
   @SqlQuery(
-          "SELECT json FROM (" +
-                  "SELECT <nameColumn>, json FROM <table> WHERE " +
-                  "(<nameColumn> LIKE CONCAT(:fqnPrefix, '.%') OR :fqnPrefix IS NULL) AND " +// Filter by
-                  // service name
-                  "<nameColumn> < :before " + // Pagination by chart fullyQualifiedName
-                  "ORDER BY <nameColumn> DESC " + // Pagination ordering by chart fullyQualifiedName
-                  "LIMIT :limit" +
-                  ") last_rows_subquery ORDER BY <nameColumn>")
-  List<String> listBefore(@Define("table") String table,
-                          @Define("nameColumn") String nameColumn,
-                          @Bind("fqnPrefix") String fqnPrefix,
-                          @Bind("limit") int limit,
-                          @Bind("before") String before);
+      "SELECT count(*) FROM <table> WHERE " + "(<nameColumn> LIKE CONCAT(:fqnPrefix, '.%') OR :fqnPrefix IS NULL)")
+  int listCount(
+      @Define("table") String table, @Define("nameColumn") String nameColumn, @Bind("fqnPrefix") String fqnPrefix);
 
-  @SqlQuery("SELECT json FROM <table> WHERE " +
-          "(<nameColumn> LIKE CONCAT(:fqnPrefix, '.%') OR :fqnPrefix IS NULL) AND " +
-          "<nameColumn> > :after " +
-          "ORDER BY <nameColumn> " +
-          "LIMIT :limit")
-  List<String> listAfter(@Define("table") String table,
-                         @Define("nameColumn") String nameColumn,
-                         @Bind("fqnPrefix") String fqnPrefix,
-                         @Bind("limit") int limit,
-                         @Bind("after") String after);
+  @SqlQuery(
+      "SELECT json FROM ("
+          + "SELECT <nameColumn>, json FROM <table> WHERE "
+          + "(<nameColumn> LIKE CONCAT(:fqnPrefix, '.%') OR :fqnPrefix IS NULL) AND "
+          + // Filter by
+          // service name
+          "<nameColumn> < :before "
+          + // Pagination by chart fullyQualifiedName
+          "ORDER BY <nameColumn> DESC "
+          + // Pagination ordering by chart fullyQualifiedName
+          "LIMIT :limit"
+          + ") last_rows_subquery ORDER BY <nameColumn>")
+  List<String> listBefore(
+      @Define("table") String table,
+      @Define("nameColumn") String nameColumn,
+      @Bind("fqnPrefix") String fqnPrefix,
+      @Bind("limit") int limit,
+      @Bind("before") String before);
+
+  @SqlQuery(
+      "SELECT json FROM <table> WHERE "
+          + "(<nameColumn> LIKE CONCAT(:fqnPrefix, '.%') OR :fqnPrefix IS NULL) AND "
+          + "<nameColumn> > :after "
+          + "ORDER BY <nameColumn> "
+          + "LIMIT :limit")
+  List<String> listAfter(
+      @Define("table") String table,
+      @Define("nameColumn") String nameColumn,
+      @Bind("fqnPrefix") String fqnPrefix,
+      @Bind("limit") int limit,
+      @Bind("after") String after);
 
   @SqlQuery("SELECT EXISTS (SELECT * FROM <table> WHERE id = :id)")
   boolean exists(@Define("table") String table, @Bind("id") String id);
@@ -92,14 +95,14 @@ public interface EntityDAO<T> {
   @SqlUpdate("DELETE FROM <table> WHERE id = :id")
   int delete(@Define("table") String table, @Bind("id") String id);
 
-  /**
-   * Default methods that interfaces with implementation. Don't override
-   */
+  /** Default methods that interfaces with implementation. Don't override */
   default void insert(T entity) throws JsonProcessingException {
     insert(getTableName(), JsonUtils.pojoToJson(entity));
   }
 
-  default void update(UUID id, String json) { update(getTableName(), id.toString(), json); }
+  default void update(UUID id, String json) {
+    update(getTableName(), id.toString(), json);
+  }
 
   default T findEntityById(UUID id) throws IOException {
     Class<T> clz = getEntityClass();

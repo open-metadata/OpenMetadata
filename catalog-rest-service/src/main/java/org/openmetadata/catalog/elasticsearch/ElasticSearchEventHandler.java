@@ -16,6 +16,14 @@
 package org.openmetadata.catalog.elasticsearch;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import javax.ws.rs.container.ContainerRequestContext;
+import javax.ws.rs.container.ContainerResponseContext;
+import javax.ws.rs.core.Response;
 import org.elasticsearch.action.ActionListener;
 import org.elasticsearch.action.update.UpdateRequest;
 import org.elasticsearch.action.update.UpdateResponse;
@@ -43,32 +51,23 @@ import org.openmetadata.catalog.util.JsonUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.ws.rs.container.ContainerRequestContext;
-import javax.ws.rs.container.ContainerResponseContext;
-import javax.ws.rs.core.Response;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
-
-
 public class ElasticSearchEventHandler implements EventHandler {
   private static final Logger LOG = LoggerFactory.getLogger(ElasticSearchEventHandler.class);
   private RestHighLevelClient client;
   private ElasticSearchIndexDefinition esIndexDefinition;
 
-  private final ActionListener<UpdateResponse> listener = new ActionListener<>() {
-    @Override
-    public void onResponse(UpdateResponse updateResponse) {
-      LOG.info("Updated Elastic Search {}", updateResponse);
-    }
+  private final ActionListener<UpdateResponse> listener =
+      new ActionListener<>() {
+        @Override
+        public void onResponse(UpdateResponse updateResponse) {
+          LOG.info("Updated Elastic Search {}", updateResponse);
+        }
 
-    @Override
-    public void onFailure(Exception e) {
-      LOG.error("Failed to update Elastic Search", e);
-    }
-  };
+        @Override
+        public void onFailure(Exception e) {
+          LOG.error("Failed to update Elastic Search", e);
+        }
+      };
 
   public void init(CatalogApplicationConfig config, Jdbi jdbi) {
     ElasticSearchConfiguration esConfig = config.getElasticSearchConfiguration();
@@ -77,39 +76,33 @@ public class ElasticSearchEventHandler implements EventHandler {
     esIndexDefinition.createIndexes();
   }
 
-
-  public Void process(ContainerRequestContext requestContext,
-                      ContainerResponseContext responseContext) {
+  public Void process(ContainerRequestContext requestContext, ContainerResponseContext responseContext) {
     try {
-      LOG.info("request Context "+ requestContext.toString());
+      LOG.info("request Context " + requestContext.toString());
       if (responseContext.getEntity() != null) {
         Object entity = responseContext.getEntity();
         UpdateRequest updateRequest = null;
         String entityClass = entity.getClass().toString();
         if (entityClass.toLowerCase().endsWith(Entity.TABLE.toLowerCase())) {
-          boolean exists =
-              esIndexDefinition.checkIndexExistsOrCreate(ElasticSearchIndexType.TABLE_SEARCH_INDEX);
+          boolean exists = esIndexDefinition.checkIndexExistsOrCreate(ElasticSearchIndexType.TABLE_SEARCH_INDEX);
           if (exists) {
             Table instance = (Table) entity;
             updateRequest = updateTable(instance, responseContext);
           }
         } else if (entityClass.toLowerCase().endsWith(Entity.DASHBOARD.toLowerCase())) {
-          boolean exists =
-              esIndexDefinition.checkIndexExistsOrCreate(ElasticSearchIndexType.DASHBOARD_SEARCH_INDEX);
+          boolean exists = esIndexDefinition.checkIndexExistsOrCreate(ElasticSearchIndexType.DASHBOARD_SEARCH_INDEX);
           if (exists) {
             Dashboard instance = (Dashboard) entity;
             updateRequest = updateDashboard(instance, responseContext);
           }
         } else if (entityClass.toLowerCase().endsWith(Entity.TOPIC.toLowerCase())) {
-          boolean exists =
-              esIndexDefinition.checkIndexExistsOrCreate(ElasticSearchIndexType.TOPIC_SEARCH_INDEX);
+          boolean exists = esIndexDefinition.checkIndexExistsOrCreate(ElasticSearchIndexType.TOPIC_SEARCH_INDEX);
           if (exists) {
             Topic instance = (Topic) entity;
             updateRequest = updateTopic(instance, responseContext);
           }
         } else if (entityClass.toLowerCase().endsWith(Entity.PIPELINE.toLowerCase())) {
-          boolean exists =
-              esIndexDefinition.checkIndexExistsOrCreate(ElasticSearchIndexType.PIPELINE_SEARCH_INDEX);
+          boolean exists = esIndexDefinition.checkIndexExistsOrCreate(ElasticSearchIndexType.PIPELINE_SEARCH_INDEX);
           if (exists) {
             Pipeline instance = (Pipeline) entity;
             updateRequest = updatePipeline(instance, responseContext);
@@ -137,18 +130,20 @@ public class ElasticSearchEventHandler implements EventHandler {
     List<FieldChange> fieldsAdded = changeDescription.getFieldsAdded();
     StringBuilder scriptTxt = new StringBuilder();
     Map<String, Object> fieldAddParams = new HashMap<>();
-    ESChangeDescription esChangeDescription = ESChangeDescription.builder()
-        .updatedAt(event.getDateTime().getTime())
-        .updatedBy(event.getUserName())
-        .fieldsAdded(changeDescription.getFieldsAdded())
-        .fieldsUpdated(changeDescription.getFieldsUpdated())
-        .fieldsDeleted(changeDescription.getFieldsDeleted()).build();
+    ESChangeDescription esChangeDescription =
+        ESChangeDescription.builder()
+            .updatedAt(event.getDateTime().getTime())
+            .updatedBy(event.getUserName())
+            .fieldsAdded(changeDescription.getFieldsAdded())
+            .fieldsUpdated(changeDescription.getFieldsUpdated())
+            .fieldsDeleted(changeDescription.getFieldsDeleted())
+            .build();
     Map<String, Object> esChangeDescriptionDoc = JsonUtils.getMap(esChangeDescription);
     fieldAddParams.put("change_description", esChangeDescriptionDoc);
     fieldAddParams.put("last_updated_timestamp", event.getDateTime().getTime());
     scriptTxt.append("ctx._source.change_descriptions.add(params.change_description); ");
     scriptTxt.append("ctx._source.last_updated_timestamp=params.last_updated_timestamp;");
-    for (FieldChange fieldChange: fieldsAdded) {
+    for (FieldChange fieldChange : fieldsAdded) {
       if (fieldChange.getName().equalsIgnoreCase("followers")) {
         List<EntityReference> entityReferences = (List<EntityReference>) fieldChange.getNewValue();
         List<String> newFollowers = new ArrayList<>();
@@ -160,7 +155,7 @@ public class ElasticSearchEventHandler implements EventHandler {
       }
     }
 
-    for (FieldChange fieldChange: changeDescription.getFieldsDeleted()) {
+    for (FieldChange fieldChange : changeDescription.getFieldsDeleted()) {
       if (fieldChange.getName().equalsIgnoreCase("followers")) {
         List<EntityReference> entityReferences = (List<EntityReference>) fieldChange.getOldValue();
         for (EntityReference follower : entityReferences) {
@@ -171,9 +166,7 @@ public class ElasticSearchEventHandler implements EventHandler {
     }
 
     if (!scriptTxt.toString().isEmpty()) {
-      Script script = new Script(ScriptType.INLINE, "painless",
-          scriptTxt.toString(),
-          fieldAddParams);
+      Script script = new Script(ScriptType.INLINE, "painless", scriptTxt.toString(), fieldAddParams);
       UpdateRequest updateRequest = new UpdateRequest(esIndexType.indexName, entityId.toString());
       updateRequest.script(script);
 
@@ -187,8 +180,8 @@ public class ElasticSearchEventHandler implements EventHandler {
       throws JsonProcessingException {
     int responseCode = responseContext.getStatus();
     TableESIndex tableESIndex = TableESIndex.builder(instance, responseCode).build();
-    UpdateRequest updateRequest = new UpdateRequest(ElasticSearchIndexType.TABLE_SEARCH_INDEX.indexName,
-        instance.getId().toString());
+    UpdateRequest updateRequest =
+        new UpdateRequest(ElasticSearchIndexType.TABLE_SEARCH_INDEX.indexName, instance.getId().toString());
     if (responseCode != Response.Status.CREATED.getStatusCode()) {
       scriptedUpsert(tableESIndex, updateRequest);
     } else {
@@ -203,8 +196,8 @@ public class ElasticSearchEventHandler implements EventHandler {
       throws JsonProcessingException {
     int responseCode = responseContext.getStatus();
     TopicESIndex topicESIndex = TopicESIndex.builder(instance, responseCode).build();
-    UpdateRequest updateRequest = new UpdateRequest(ElasticSearchIndexType.TOPIC_SEARCH_INDEX.indexName,
-        instance.getId().toString());
+    UpdateRequest updateRequest =
+        new UpdateRequest(ElasticSearchIndexType.TOPIC_SEARCH_INDEX.indexName, instance.getId().toString());
     if (responseCode != Response.Status.CREATED.getStatusCode()) {
       scriptedUpsert(topicESIndex, updateRequest);
     } else {
@@ -219,8 +212,8 @@ public class ElasticSearchEventHandler implements EventHandler {
       throws JsonProcessingException {
     int responseCode = responseContext.getStatus();
     DashboardESIndex dashboardESIndex = DashboardESIndex.builder(instance, responseCode).build();
-    UpdateRequest updateRequest = new UpdateRequest(ElasticSearchIndexType.DASHBOARD_SEARCH_INDEX.indexName,
-        instance.getId().toString());
+    UpdateRequest updateRequest =
+        new UpdateRequest(ElasticSearchIndexType.DASHBOARD_SEARCH_INDEX.indexName, instance.getId().toString());
     if (responseCode != Response.Status.CREATED.getStatusCode()) {
       scriptedUpsert(dashboardESIndex, updateRequest);
     } else {
@@ -234,12 +227,12 @@ public class ElasticSearchEventHandler implements EventHandler {
       throws JsonProcessingException {
     int responseCode = responseContext.getStatus();
     PipelineESIndex pipelineESIndex = PipelineESIndex.builder(instance, responseCode).build();
-    UpdateRequest updateRequest = new UpdateRequest(ElasticSearchIndexType.PIPELINE_SEARCH_INDEX.indexName,
-        instance.getId().toString());
+    UpdateRequest updateRequest =
+        new UpdateRequest(ElasticSearchIndexType.PIPELINE_SEARCH_INDEX.indexName, instance.getId().toString());
     if (responseCode != Response.Status.CREATED.getStatusCode()) {
       scriptedUpsert(pipelineESIndex, updateRequest);
     } else {
-      //only upsert if it's a new entity
+      // only upsert if it's a new entity
       updateRequest.doc(JsonUtils.pojoToJson(pipelineESIndex), XContentType.JSON);
       updateRequest.docAsUpsert(true);
     }
@@ -247,12 +240,12 @@ public class ElasticSearchEventHandler implements EventHandler {
   }
 
   private void scriptedUpsert(Object index, UpdateRequest updateRequest) {
-    String scriptTxt= "for (k in params.keySet()) {if (k == 'change_descriptions') " +
-        "{ ctx._source.change_descriptions.addAll(params.change_descriptions) } " +
-        "else { ctx._source.put(k, params.get(k)) }}";
+    String scriptTxt =
+        "for (k in params.keySet()) {if (k == 'change_descriptions') "
+            + "{ ctx._source.change_descriptions.addAll(params.change_descriptions) } "
+            + "else { ctx._source.put(k, params.get(k)) }}";
     Map<String, Object> doc = JsonUtils.getMap(index);
-    Script script = new Script(ScriptType.INLINE, "painless", scriptTxt,
-        doc);
+    Script script = new Script(ScriptType.INLINE, "painless", scriptTxt, doc);
     updateRequest.script(script);
     updateRequest.scriptedUpsert(true);
   }
@@ -264,5 +257,4 @@ public class ElasticSearchEventHandler implements EventHandler {
       LOG.error("Failed to close elastic search", e);
     }
   }
-
 }

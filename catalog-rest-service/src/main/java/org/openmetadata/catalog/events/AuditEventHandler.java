@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate 
+ *  Copyright 2021 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -13,6 +13,9 @@
 
 package org.openmetadata.catalog.events;
 
+import java.util.Date;
+import javax.ws.rs.container.ContainerRequestContext;
+import javax.ws.rs.container.ContainerResponseContext;
 import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.Entity;
@@ -21,19 +24,14 @@ import org.openmetadata.catalog.type.EntityReference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.ws.rs.container.ContainerRequestContext;
-import javax.ws.rs.container.ContainerResponseContext;
-import java.util.Date;
-
-public class AuditEventHandler implements  EventHandler {
+public class AuditEventHandler implements EventHandler {
   private static final Logger LOG = LoggerFactory.getLogger(AuditEventHandler.class);
 
   public void init(CatalogApplicationConfig config, Jdbi jdbi) {
     // Nothing to do
   }
 
-  public Void process(ContainerRequestContext requestContext,
-                      ContainerResponseContext responseContext) {
+  public Void process(ContainerRequestContext requestContext, ContainerResponseContext responseContext) {
     int responseCode = responseContext.getStatus();
     String method = requestContext.getMethod();
     if (responseContext.getEntity() != null) {
@@ -43,7 +41,8 @@ public class AuditEventHandler implements  EventHandler {
 
       try {
         EntityReference entityReference = Entity.getEntityReference(responseContext.getEntity());
-        AuditLog auditLog = new AuditLog()
+        AuditLog auditLog =
+            new AuditLog()
                 .withPath(path)
                 .withDateTime(nowAsISO)
                 .withEntityId(entityReference.getId())
@@ -52,7 +51,7 @@ public class AuditEventHandler implements  EventHandler {
                 .withUserName(username)
                 .withResponseCode(responseCode);
         LOG.info("Added audit log entry: {}", auditLog);
-      } catch(Exception e) {
+      } catch (Exception e) {
         LOG.error("Failed to capture audit log for {} and method {} due to {}", path, method, e.getMessage());
       }
     }

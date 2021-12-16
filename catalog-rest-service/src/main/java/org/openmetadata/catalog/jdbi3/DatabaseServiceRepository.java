@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate 
+ *  Copyright 2021 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -14,6 +14,11 @@
 package org.openmetadata.catalog.jdbi3;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import java.io.IOException;
+import java.net.URI;
+import java.util.Date;
+import java.util.List;
+import java.util.UUID;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.services.DatabaseService;
@@ -27,20 +32,19 @@ import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
 
-import java.io.IOException;
-import java.net.URI;
-import java.util.Date;
-import java.util.List;
-import java.util.UUID;
-
-
 public class DatabaseServiceRepository extends EntityRepository<DatabaseService> {
   public static final String COLLECTION_PATH = "v1/services/databaseServices";
   private final CollectionDAO dao;
 
   public DatabaseServiceRepository(CollectionDAO dao) {
-    super(DatabaseServiceResource.COLLECTION_PATH, Entity.DATABASE_SERVICE, DatabaseService.class,
-            dao.dbServiceDAO(), dao, Fields.EMPTY_FIELDS, Fields.EMPTY_FIELDS);
+    super(
+        DatabaseServiceResource.COLLECTION_PATH,
+        Entity.DATABASE_SERVICE,
+        DatabaseService.class,
+        dao.dbServiceDAO(),
+        dao,
+        Fields.EMPTY_FIELDS,
+        Fields.EMPTY_FIELDS);
     this.dao = dao;
   }
 
@@ -56,7 +60,7 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
   }
 
   @Override
-  public void restorePatchAttributes(DatabaseService original, DatabaseService updated) { }
+  public void restorePatchAttributes(DatabaseService original, DatabaseService updated) {}
 
   @Override
   public EntityInterface<DatabaseService> getEntityInterface(DatabaseService entity) {
@@ -78,8 +82,7 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
   }
 
   @Override
-  public void storeRelationships(DatabaseService entity) {
-  }
+  public void storeRelationships(DatabaseService entity) {}
 
   @Override
   public EntityUpdater getUpdater(DatabaseService original, DatabaseService updated, boolean patchOperation) {
@@ -94,7 +97,9 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
     }
 
     @Override
-    public UUID getId() { return entity.getId(); }
+    public UUID getId() {
+      return entity.getId();
+    }
 
     @Override
     public String getDescription() {
@@ -107,25 +112,39 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
     }
 
     @Override
-    public EntityReference getOwner() { return null; }
+    public EntityReference getOwner() {
+      return null;
+    }
 
     @Override
-    public String getFullyQualifiedName() { return entity.getName(); }
+    public String getFullyQualifiedName() {
+      return entity.getName();
+    }
 
     @Override
-    public List<TagLabel> getTags() { return null; }
+    public List<TagLabel> getTags() {
+      return null;
+    }
 
     @Override
-    public Double getVersion() { return entity.getVersion(); }
+    public Double getVersion() {
+      return entity.getVersion();
+    }
 
     @Override
-    public String getUpdatedBy() { return entity.getUpdatedBy(); }
+    public String getUpdatedBy() {
+      return entity.getUpdatedBy();
+    }
 
     @Override
-    public Date getUpdatedAt() { return entity.getUpdatedAt(); }
+    public Date getUpdatedAt() {
+      return entity.getUpdatedAt();
+    }
 
     @Override
-    public URI getHref() { return entity.getHref(); }
+    public URI getHref() {
+      return entity.getHref();
+    }
 
     @Override
     public List<EntityReference> getFollowers() {
@@ -133,19 +152,29 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
     }
 
     @Override
-    public ChangeDescription getChangeDescription() { return entity.getChangeDescription(); }
-
-    @Override
-    public EntityReference getEntityReference() {
-      return new EntityReference().withId(getId()).withName(getFullyQualifiedName()).withDescription(getDescription())
-              .withDisplayName(getDisplayName()).withType(Entity.DATABASE_SERVICE);
+    public ChangeDescription getChangeDescription() {
+      return entity.getChangeDescription();
     }
 
     @Override
-    public DatabaseService getEntity() { return entity; }
+    public EntityReference getEntityReference() {
+      return new EntityReference()
+          .withId(getId())
+          .withName(getFullyQualifiedName())
+          .withDescription(getDescription())
+          .withDisplayName(getDisplayName())
+          .withType(Entity.DATABASE_SERVICE);
+    }
 
     @Override
-    public void setId(UUID id) { entity.setId(id); }
+    public DatabaseService getEntity() {
+      return entity;
+    }
+
+    @Override
+    public void setId(UUID id) {
+      entity.setId(id);
+    }
 
     @Override
     public void setDescription(String description) {
@@ -170,13 +199,15 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
     }
 
     @Override
-    public void setOwner(EntityReference owner) { }
+    public void setOwner(EntityReference owner) {}
 
     @Override
-    public DatabaseService withHref(URI href) { return entity.withHref(href); }
+    public DatabaseService withHref(URI href) {
+      return entity.withHref(href);
+    }
 
     @Override
-    public void setTags(List<TagLabel> tags) { }
+    public void setTags(List<TagLabel> tags) {}
   }
 
   public class DatabaseServiceUpdater extends EntityUpdater {
@@ -187,8 +218,11 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
     @Override
     public void entitySpecificUpdate() throws IOException {
       updateJdbc();
-      recordChange("ingestionSchedule", original.getEntity().getIngestionSchedule(),
-              updated.getEntity().getIngestionSchedule(), true);
+      recordChange(
+          "ingestionSchedule",
+          original.getEntity().getIngestionSchedule(),
+          updated.getEntity().getIngestionSchedule(),
+          true);
     }
 
     private void updateJdbc() throws JsonProcessingException {

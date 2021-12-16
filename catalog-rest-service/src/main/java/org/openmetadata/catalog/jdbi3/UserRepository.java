@@ -13,7 +13,19 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import static org.openmetadata.catalog.jdbi3.Relationship.CONTAINS;
+import static org.openmetadata.catalog.jdbi3.Relationship.FOLLOWS;
+import static org.openmetadata.catalog.jdbi3.Relationship.OWNS;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
+import java.io.IOException;
+import java.net.URI;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Date;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.teams.User;
@@ -29,19 +41,6 @@ import org.openmetadata.catalog.util.JsonUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
-import java.net.URI;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Date;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
-
-import static org.openmetadata.catalog.jdbi3.Relationship.CONTAINS;
-import static org.openmetadata.catalog.jdbi3.Relationship.FOLLOWS;
-import static org.openmetadata.catalog.jdbi3.Relationship.OWNS;
-
 public class UserRepository extends EntityRepository<User> {
   public static final Logger LOG = LoggerFactory.getLogger(UserRepository.class);
   static final Fields USER_PATCH_FIELDS = new Fields(UserResource.FIELD_LIST, "profile,teams");
@@ -49,10 +48,15 @@ public class UserRepository extends EntityRepository<User> {
 
   private final CollectionDAO dao;
 
-
   public UserRepository(CollectionDAO dao) {
-    super(UserResource.COLLECTION_PATH, Entity.USER, User.class, dao.userDAO(), dao, USER_PATCH_FIELDS,
-            USER_UPDATE_FIELDS);
+    super(
+        UserResource.COLLECTION_PATH,
+        Entity.USER,
+        User.class,
+        dao.userDAO(),
+        dao,
+        USER_PATCH_FIELDS,
+        USER_UPDATE_FIELDS);
     this.dao = dao;
   }
 
@@ -61,11 +65,8 @@ public class UserRepository extends EntityRepository<User> {
     return new UserEntityInterface(entity);
   }
 
-
   @Override
-  public void prepare(User entity) {
-
-  }
+  public void prepare(User entity) {}
 
   @Override
   public void storeEntity(User user, boolean update) throws IOException {
@@ -123,9 +124,7 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   @Override
-  public void restorePatchAttributes(User original, User updated) {
-
-  }
+  public void restorePatchAttributes(User original, User updated) {}
 
   private List<EntityReference> getOwns(User user) throws IOException {
     // Compile entities owned by the user
@@ -142,7 +141,7 @@ public class UserRepository extends EntityRepository<User> {
 
   private List<EntityReference> getFollows(User user) throws IOException {
     return EntityUtil.populateEntityReferences(
-            dao.relationshipDAO().findTo(user.getId().toString(), FOLLOWS.ordinal()));
+        dao.relationshipDAO().findTo(user.getId().toString(), FOLLOWS.ordinal()));
   }
 
   private User validateUser(UUID userId) throws IOException {
@@ -174,8 +173,8 @@ public class UserRepository extends EntityRepository<User> {
     // Query - add team to the user
     teams = Optional.ofNullable(teams).orElse(Collections.emptyList());
     for (EntityReference team : teams) {
-      dao.relationshipDAO().insert(team.getId().toString(), user.getId().toString(),
-              "team", "user", CONTAINS.ordinal());
+      dao.relationshipDAO()
+          .insert(team.getId().toString(), user.getId().toString(), "team", "user", CONTAINS.ordinal());
     }
   }
 
@@ -205,7 +204,9 @@ public class UserRepository extends EntityRepository<User> {
     }
 
     @Override
-    public String getDescription() { return entity.getDescription(); }
+    public String getDescription() {
+      return entity.getDescription();
+    }
 
     @Override
     public String getDisplayName() {
@@ -213,25 +214,39 @@ public class UserRepository extends EntityRepository<User> {
     }
 
     @Override
-    public EntityReference getOwner() { return null; }
+    public EntityReference getOwner() {
+      return null;
+    }
 
     @Override
-    public String getFullyQualifiedName() { return entity.getName(); }
+    public String getFullyQualifiedName() {
+      return entity.getName();
+    }
 
     @Override
-    public List<TagLabel> getTags() { return null; }
+    public List<TagLabel> getTags() {
+      return null;
+    }
 
     @Override
-    public Double getVersion() { return entity.getVersion(); }
+    public Double getVersion() {
+      return entity.getVersion();
+    }
 
     @Override
-    public String getUpdatedBy() { return entity.getUpdatedBy(); }
+    public String getUpdatedBy() {
+      return entity.getUpdatedBy();
+    }
 
     @Override
-    public Date getUpdatedAt() { return entity.getUpdatedAt(); }
+    public Date getUpdatedAt() {
+      return entity.getUpdatedAt();
+    }
 
     @Override
-    public URI getHref() { return entity.getHref(); }
+    public URI getHref() {
+      return entity.getHref();
+    }
 
     @Override
     public List<EntityReference> getFollowers() {
@@ -240,21 +255,34 @@ public class UserRepository extends EntityRepository<User> {
 
     @Override
     public EntityReference getEntityReference() {
-      return new EntityReference().withId(getId()).withName(getFullyQualifiedName()).withDescription(getDescription())
-              .withDisplayName(getDisplayName()).withType(Entity.USER).withHref(getHref());
+      return new EntityReference()
+          .withId(getId())
+          .withName(getFullyQualifiedName())
+          .withDescription(getDescription())
+          .withDisplayName(getDisplayName())
+          .withType(Entity.USER)
+          .withHref(getHref());
     }
 
     @Override
-    public User getEntity() { return entity; }
+    public User getEntity() {
+      return entity;
+    }
 
     @Override
-    public void setId(UUID id) { entity.setId(id); }
+    public void setId(UUID id) {
+      entity.setId(id);
+    }
 
     @Override
-    public void setDescription(String description) { entity.setDescription(description); }
+    public void setDescription(String description) {
+      entity.setDescription(description);
+    }
 
     @Override
-    public void setDisplayName(String displayName) { entity.setDisplayName(displayName); }
+    public void setDisplayName(String displayName) {
+      entity.setDisplayName(displayName);
+    }
 
     @Override
     public void setUpdateDetails(String updatedBy, Date updatedAt) {
@@ -269,21 +297,23 @@ public class UserRepository extends EntityRepository<User> {
     }
 
     @Override
-    public void setOwner(EntityReference owner) { }
+    public void setOwner(EntityReference owner) {}
 
     @Override
-    public User withHref(URI href) { return entity.withHref(href); }
+    public User withHref(URI href) {
+      return entity.withHref(href);
+    }
 
     @Override
-    public ChangeDescription getChangeDescription() { return entity.getChangeDescription(); }
+    public ChangeDescription getChangeDescription() {
+      return entity.getChangeDescription();
+    }
 
     @Override
-    public void setTags(List<TagLabel> tags) { }
+    public void setTags(List<TagLabel> tags) {}
   }
 
-  /**
-   * Handles entity updated from PUT and POST operation.
-   */
+  /** Handles entity updated from PUT and POST operation. */
   public class UserUpdater extends EntityUpdater {
     public UserUpdater(User original, User updated, boolean patchOperation) {
       super(original, updated, patchOperation);
@@ -293,8 +323,7 @@ public class UserRepository extends EntityRepository<User> {
     public void entitySpecificUpdate() throws IOException {
       // Update operation can't undelete a user
       if (updated.getEntity().getDeactivated() != original.getEntity().getDeactivated()) {
-        throw new IllegalArgumentException(
-                CatalogExceptionMessage.readOnlyAttribute("User", "deactivated"));
+        throw new IllegalArgumentException(CatalogExceptionMessage.readOnlyAttribute("User", "deactivated"));
       }
       updateTeams(original.getEntity(), updated.getEntity());
       recordChange("profile", original.getEntity().getProfile(), updated.getEntity().getProfile(), true);

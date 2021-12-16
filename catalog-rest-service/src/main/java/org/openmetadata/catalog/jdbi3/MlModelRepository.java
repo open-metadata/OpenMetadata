@@ -13,7 +13,17 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import static org.openmetadata.catalog.util.EntityUtil.entityReferenceMatch;
+import static org.openmetadata.catalog.util.EntityUtil.mlFeatureMatch;
+import static org.openmetadata.catalog.util.EntityUtil.mlHyperParameterMatch;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
+import java.io.IOException;
+import java.net.URI;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+import java.util.UUID;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.MlModel;
@@ -31,31 +41,26 @@ import org.openmetadata.catalog.util.JsonUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
-import java.net.URI;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
-import java.util.UUID;
-
-import static org.openmetadata.catalog.util.EntityUtil.entityReferenceMatch;
-import static org.openmetadata.catalog.util.EntityUtil.mlFeatureMatch;
-import static org.openmetadata.catalog.util.EntityUtil.mlHyperParameterMatch;
-
 public class MlModelRepository extends EntityRepository<MlModel> {
   private static final Logger LOG = LoggerFactory.getLogger(MlModelRepository.class);
-  private static final Fields MODEL_UPDATE_FIELDS = new Fields(MlModelResource.FIELD_LIST,
-          "owner,algorithm,dashboard,mlHyperParameters,mlFeatures,mlStore,server,tags");
-  private static final Fields MODEL_PATCH_FIELDS = new Fields(MlModelResource.FIELD_LIST,
-          "owner,algorithm,dashboard,mlHyperParameters,mlFeatures,tags");
+  private static final Fields MODEL_UPDATE_FIELDS =
+      new Fields(
+          MlModelResource.FIELD_LIST, "owner,algorithm,dashboard,mlHyperParameters,mlFeatures,mlStore,server,tags");
+  private static final Fields MODEL_PATCH_FIELDS =
+      new Fields(MlModelResource.FIELD_LIST, "owner,algorithm,dashboard,mlHyperParameters,mlFeatures,tags");
   private final CollectionDAO dao;
 
   public MlModelRepository(CollectionDAO dao) {
-    super(MlModelResource.COLLECTION_PATH, Entity.MLMODEL, MlModel.class, dao.mlModelDAO(), dao,
-            MODEL_PATCH_FIELDS, MODEL_UPDATE_FIELDS);
+    super(
+        MlModelResource.COLLECTION_PATH,
+        Entity.MLMODEL,
+        MlModel.class,
+        dao.mlModelDAO(),
+        dao,
+        MODEL_PATCH_FIELDS,
+        MODEL_UPDATE_FIELDS);
     this.dao = dao;
   }
-
 
   public static String getFQN(MlModel model) {
     return (model.getName());
@@ -77,22 +82,24 @@ public class MlModelRepository extends EntityRepository<MlModel> {
     mlModel.setDisplayName(mlModel.getDisplayName());
     mlModel.setOwner(fields.contains("owner") ? getOwner(mlModel) : null);
     mlModel.setDashboard(fields.contains("dashboard") ? getDashboard(mlModel) : null);
-    mlModel.setMlFeatures(fields.contains("mlFeatures") ? mlModel.getMlFeatures(): null);
-    mlModel.setMlHyperParameters(fields.contains("mlHyperParameters") ? mlModel.getMlHyperParameters(): null);
-    mlModel.setMlStore(fields.contains("mlStore") ? mlModel.getMlStore(): null);
-    mlModel.setServer(fields.contains("server") ? mlModel.getServer(): null);
+    mlModel.setMlFeatures(fields.contains("mlFeatures") ? mlModel.getMlFeatures() : null);
+    mlModel.setMlHyperParameters(fields.contains("mlHyperParameters") ? mlModel.getMlHyperParameters() : null);
+    mlModel.setMlStore(fields.contains("mlStore") ? mlModel.getMlStore() : null);
+    mlModel.setServer(fields.contains("server") ? mlModel.getServer() : null);
     mlModel.setFollowers(fields.contains("followers") ? getFollowers(mlModel) : null);
     mlModel.setTags(fields.contains("tags") ? getTags(mlModel.getFullyQualifiedName()) : null);
-    mlModel.setUsageSummary(fields.contains("usageSummary") ? EntityUtil.getLatestUsage(dao.usageDAO(),
-            mlModel.getId()) : null);
+    mlModel.setUsageSummary(
+        fields.contains("usageSummary") ? EntityUtil.getLatestUsage(dao.usageDAO(), mlModel.getId()) : null);
     return mlModel;
   }
 
   @Override
   public void restorePatchAttributes(MlModel original, MlModel updated) {
     // Patch can't make changes to following fields. Ignore the changes
-    updated.withFullyQualifiedName(original.getFullyQualifiedName())
-            .withName(original.getName()).withId(original.getId());
+    updated
+        .withFullyQualifiedName(original.getFullyQualifiedName())
+        .withName(original.getName())
+        .withId(original.getId());
   }
 
   @Override
@@ -105,22 +112,23 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   }
 
   private void setMlFeatureSourcesFQN(String parentFQN, List<MlFeatureSource> mlSources) {
-    mlSources.forEach(s -> {
-      String sourceFqn = parentFQN + "." + s.getName();
-      s.setFullyQualifiedName(sourceFqn);
-    });
+    mlSources.forEach(
+        s -> {
+          String sourceFqn = parentFQN + "." + s.getName();
+          s.setFullyQualifiedName(sourceFqn);
+        });
   }
 
   private void setMlFeatureFQN(String parentFQN, List<MlFeature> mlFeatures) {
-    mlFeatures.forEach(f -> {
-      String featureFqn = parentFQN + "." + f.getName();
-      f.setFullyQualifiedName(featureFqn);
-      if (f.getFeatureSources() != null) {
-        setMlFeatureSourcesFQN(featureFqn, f.getFeatureSources());
-      }
-    });
+    mlFeatures.forEach(
+        f -> {
+          String featureFqn = parentFQN + "." + f.getName();
+          f.setFullyQualifiedName(featureFqn);
+          if (f.getFeatureSources() != null) {
+            setMlFeatureSourcesFQN(featureFqn, f.getFeatureSources());
+          }
+        });
   }
-
 
   @Override
   public void prepare(MlModel mlModel) throws IOException {
@@ -171,8 +179,9 @@ public class MlModelRepository extends EntityRepository<MlModel> {
     if (mlModel.getDashboard() != null) {
       // Add relationship from MlModel to Dashboard
       String dashboardId = mlModel.getDashboard().getId().toString();
-      dao.relationshipDAO().insert(dashboardId, mlModel.getId().toString(), Entity.MLMODEL, Entity.DASHBOARD,
-              Relationship.USES.ordinal());
+      dao.relationshipDAO()
+          .insert(
+              dashboardId, mlModel.getId().toString(), Entity.MLMODEL, Entity.DASHBOARD, Relationship.USES.ordinal());
     }
 
     applyTags(mlModel);
@@ -184,8 +193,9 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   }
 
   private EntityReference getOwner(MlModel mlModel) throws IOException {
-    return mlModel == null ? null : EntityUtil.populateOwner(mlModel.getId(), dao.relationshipDAO(),
-            dao.userDAO(), dao.teamDAO());
+    return mlModel == null
+        ? null
+        : EntityUtil.populateOwner(mlModel.getId(), dao.relationshipDAO(), dao.userDAO(), dao.teamDAO());
   }
 
   private EntityReference getDashboard(MlModel mlModel) throws IOException {
@@ -204,8 +214,13 @@ public class MlModelRepository extends EntityRepository<MlModel> {
 
   public void setDashboard(MlModel mlModel, EntityReference dashboard) {
     if (dashboard != null) {
-      dao.relationshipDAO().insert(mlModel.getId().toString(), mlModel.getDashboard().getId().toString(),
-              Entity.MLMODEL, Entity.DASHBOARD, Relationship.USES.ordinal());
+      dao.relationshipDAO()
+          .insert(
+              mlModel.getId().toString(),
+              mlModel.getDashboard().getId().toString(),
+              Entity.MLMODEL,
+              Entity.DASHBOARD,
+              Relationship.USES.ordinal());
     }
   }
 
@@ -261,34 +276,54 @@ public class MlModelRepository extends EntityRepository<MlModel> {
     }
 
     @Override
-    public Double getVersion() { return entity.getVersion(); }
-
-    @Override
-    public String getUpdatedBy() { return entity.getUpdatedBy(); }
-
-    @Override
-    public Date getUpdatedAt() { return entity.getUpdatedAt(); }
-
-    @Override
-    public URI getHref() { return entity.getHref(); }
-
-    @Override
-    public List<EntityReference> getFollowers() { return entity.getFollowers(); }
-
-    @Override
-    public ChangeDescription getChangeDescription() { return entity.getChangeDescription(); }
-
-    @Override
-    public EntityReference getEntityReference() {
-      return new EntityReference().withId(getId()).withName(getFullyQualifiedName()).withDescription(getDescription())
-              .withDisplayName(getDisplayName()).withType(Entity.MLMODEL);
+    public Double getVersion() {
+      return entity.getVersion();
     }
 
     @Override
-    public MlModel getEntity() { return entity; }
+    public String getUpdatedBy() {
+      return entity.getUpdatedBy();
+    }
 
     @Override
-    public void setId(UUID id) { entity.setId(id); }
+    public Date getUpdatedAt() {
+      return entity.getUpdatedAt();
+    }
+
+    @Override
+    public URI getHref() {
+      return entity.getHref();
+    }
+
+    @Override
+    public List<EntityReference> getFollowers() {
+      return entity.getFollowers();
+    }
+
+    @Override
+    public ChangeDescription getChangeDescription() {
+      return entity.getChangeDescription();
+    }
+
+    @Override
+    public EntityReference getEntityReference() {
+      return new EntityReference()
+          .withId(getId())
+          .withName(getFullyQualifiedName())
+          .withDescription(getDescription())
+          .withDisplayName(getDisplayName())
+          .withType(Entity.MLMODEL);
+    }
+
+    @Override
+    public MlModel getEntity() {
+      return entity;
+    }
+
+    @Override
+    public void setId(UUID id) {
+      entity.setId(id);
+    }
 
     @Override
     public void setDescription(String description) {
@@ -313,10 +348,14 @@ public class MlModelRepository extends EntityRepository<MlModel> {
     }
 
     @Override
-    public void setOwner(EntityReference owner) { entity.setOwner(owner); }
+    public void setOwner(EntityReference owner) {
+      entity.setOwner(owner);
+    }
 
     @Override
-    public MlModel withHref(URI href) { return entity.withHref(href); }
+    public MlModel withHref(URI href) {
+      return entity.withHref(href);
+    }
 
     @Override
     public void setTags(List<TagLabel> tags) {
@@ -324,9 +363,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
     }
   }
 
-  /**
-   * Handles entity updated from PUT and POST operation.
-   */
+  /** Handles entity updated from PUT and POST operation. */
   public class MlModelUpdater extends EntityUpdater {
     public MlModelUpdater(MlModel original, MlModel updated, boolean patchOperation) {
       super(original, updated, patchOperation);
@@ -355,15 +392,25 @@ public class MlModelRepository extends EntityRepository<MlModel> {
     private void updateMlFeatures(MlModel origModel, MlModel updatedModel) throws JsonProcessingException {
       List<MlFeature> addedList = new ArrayList<>();
       List<MlFeature> deletedList = new ArrayList<>();
-      recordListChange("mlFeatures", origModel.getMlFeatures(), updatedModel.getMlFeatures(), addedList,
-              deletedList, mlFeatureMatch);
+      recordListChange(
+          "mlFeatures",
+          origModel.getMlFeatures(),
+          updatedModel.getMlFeatures(),
+          addedList,
+          deletedList,
+          mlFeatureMatch);
     }
 
     private void updateMlHyperParameters(MlModel origModel, MlModel updatedModel) throws JsonProcessingException {
       List<MlHyperParameter> addedList = new ArrayList<>();
       List<MlHyperParameter> deletedList = new ArrayList<>();
-      recordListChange("mlHyperParameters", origModel.getMlHyperParameters(), updatedModel.getMlHyperParameters(),
-              addedList, deletedList, mlHyperParameterMatch);
+      recordListChange(
+          "mlHyperParameters",
+          origModel.getMlHyperParameters(),
+          updatedModel.getMlHyperParameters(),
+          addedList,
+          deletedList,
+          mlHyperParameterMatch);
     }
 
     private void updateMlStore(MlModel origModel, MlModel updatedModel) throws JsonProcessingException {
@@ -391,8 +438,13 @@ public class MlModelRepository extends EntityRepository<MlModel> {
 
         // Add relationship from model to dashboard
         if (updatedDashboard != null) {
-          dao.relationshipDAO().insert(modelId, updatedDashboard.getId().toString(),
-                  Entity.MLMODEL, Entity.DASHBOARD, Relationship.USES.ordinal());
+          dao.relationshipDAO()
+              .insert(
+                  modelId,
+                  updatedDashboard.getId().toString(),
+                  Entity.MLMODEL,
+                  Entity.DASHBOARD,
+                  Relationship.USES.ordinal());
         }
       }
     }

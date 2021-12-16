@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate 
+ *  Copyright 2021 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -13,15 +13,12 @@
 
 package org.openmetadata.catalog.security.auth;
 
+import java.security.Principal;
+import javax.ws.rs.core.SecurityContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.ws.rs.core.SecurityContext;
-import java.security.Principal;
-
-/**
- * Holds authenticated principal and security context which is passed to the JAX-RS request methods
- */
+/** Holds authenticated principal and security context which is passed to the JAX-RS request methods */
 public class CatalogSecurityContext implements SecurityContext {
   private static final Logger LOG = LoggerFactory.getLogger(CatalogSecurityContext.class);
 
@@ -65,11 +62,17 @@ public class CatalogSecurityContext implements SecurityContext {
 
   @Override
   public String toString() {
-    return "catalogSecurityContext{" +
-            "principal=" + principal +
-            ", scheme='" + scheme + '\'' +
-            ", authenticationScheme='" + authenticationScheme + '\'' +
-            ", isSecure=" + isSecure() +
-            '}';
+    return "catalogSecurityContext{"
+        + "principal="
+        + principal
+        + ", scheme='"
+        + scheme
+        + '\''
+        + ", authenticationScheme='"
+        + authenticationScheme
+        + '\''
+        + ", isSecure="
+        + isSecure()
+        + '}';
   }
 }

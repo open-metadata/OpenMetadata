@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate 
+ *  Copyright 2021 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -18,14 +18,12 @@ import org.openmetadata.catalog.type.EntityReference;
 
 public interface CatalogAuthorizer {
 
-  /**
-   * Initialize the authorizer
-   */
+  /** Initialize the authorizer */
   void init(AuthorizerConfiguration config, Jdbi jdbi);
 
   /**
-   * Check if the authenticated user has given permission on the target entity
-   * identified by the given resourceType and resourceName
+   * Check if the authenticated user has given permission on the target entity identified by the given resourceType and
+   * resourceName
    */
   boolean hasPermissions(AuthenticationContext ctx, EntityReference entityReference);
 

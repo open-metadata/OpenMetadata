@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate 
+ *  Copyright 2021 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -13,6 +13,26 @@
 
 package org.openmetadata.catalog.resources.usage;
 
+import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
+import static javax.ws.rs.core.Response.Status.NOT_FOUND;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.openmetadata.catalog.Entity.TABLE;
+import static org.openmetadata.catalog.util.TestUtils.NON_EXISTENT_ENTITY;
+import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
+import static org.openmetadata.catalog.util.TestUtils.assertResponse;
+import static org.openmetadata.common.utils.CommonUtil.getDateStringByOffset;
+
+import java.io.IOException;
+import java.net.URISyntaxException;
+import java.text.ParseException;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
+import java.util.Random;
+import java.util.UUID;
+import javax.ws.rs.client.WebTarget;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
@@ -35,27 +55,6 @@ import org.openmetadata.catalog.type.UsageDetails;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.TestUtils;
 
-import javax.ws.rs.client.WebTarget;
-import java.io.IOException;
-import java.net.URISyntaxException;
-import java.text.ParseException;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
-import java.util.Random;
-import java.util.UUID;
-
-import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
-import static javax.ws.rs.core.Response.Status.NOT_FOUND;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.openmetadata.catalog.Entity.TABLE;
-import static org.openmetadata.catalog.util.TestUtils.NON_EXISTENT_ENTITY;
-import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
-import static org.openmetadata.catalog.util.TestUtils.assertResponse;
-import static org.openmetadata.common.utils.CommonUtil.getDateStringByOffset;
-
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class UsageResourceTest extends CatalogApplicationTest {
   public static final List<Table> TABLES = new ArrayList<>();
@@ -75,32 +74,38 @@ public class UsageResourceTest extends CatalogApplicationTest {
 
   @Test
   public void post_usageWithNonExistentEntityId_4xx() {
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-                    reportUsage(TABLE, NON_EXISTENT_ENTITY, usageReport(), adminAuthHeaders()));
+    HttpResponseException exception =
+        assertThrows(
+            HttpResponseException.class,
+            () -> reportUsage(TABLE, NON_EXISTENT_ENTITY, usageReport(), adminAuthHeaders()));
     assertResponse(exception, NOT_FOUND, CatalogExceptionMessage.entityNotFound(TABLE, NON_EXISTENT_ENTITY));
   }
 
   @Test
   public void post_usageInvalidEntityName_4xx() {
     String invalidEntityType = "invalid";
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            reportUsage(invalidEntityType, UUID.randomUUID(), usageReport(), adminAuthHeaders()));
+    HttpResponseException exception =
+        assertThrows(
+            HttpResponseException.class,
+            () -> reportUsage(invalidEntityType, UUID.randomUUID(), usageReport(), adminAuthHeaders()));
     assertResponse(exception, NOT_FOUND, CatalogExceptionMessage.entityTypeNotFound(invalidEntityType));
   }
 
   @Test
   public void post_usageWithNegativeCountName_4xx() {
     DailyCount dailyCount = usageReport().withCount(-1); // Negative usage count
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            reportUsage(TABLE, UUID.randomUUID(), dailyCount, adminAuthHeaders()));
+    HttpResponseException exception =
+        assertThrows(
+            HttpResponseException.class, () -> reportUsage(TABLE, UUID.randomUUID(), dailyCount, adminAuthHeaders()));
     assertResponse(exception, BAD_REQUEST, "[count must be greater than or equal to 0]");
   }
 
   @Test
   public void post_usageWithoutDate_4xx() {
     DailyCount usageReport = usageReport().withDate(null); // Negative usage count
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-                    reportUsage(TABLE, UUID.randomUUID(), usageReport, adminAuthHeaders()));
+    HttpResponseException exception =
+        assertThrows(
+            HttpResponseException.class, () -> reportUsage(TABLE, UUID.randomUUID(), usageReport, adminAuthHeaders()));
     assertResponse(exception, BAD_REQUEST, "[date must not be null]");
   }
 
@@ -109,8 +114,7 @@ public class UsageResourceTest extends CatalogApplicationTest {
     TableResourceTest tableResourceTest = new TableResourceTest();
     Table table = tableResourceTest.createEntity(tableResourceTest.create(test), adminAuthHeaders());
     DailyCount usageReport = usageReport().withCount(100).withDate(RestUtil.DATE_FORMAT.format(new Date()));
-    reportUsageByNameAndCheck(TABLE, table.getFullyQualifiedName(), usageReport, 100, 100,
-            adminAuthHeaders());
+    reportUsageByNameAndCheck(TABLE, table.getFullyQualifiedName(), usageReport, 100, 100, adminAuthHeaders());
   }
 
   @Order(1) // Run this method first before other usage records are created
@@ -126,7 +130,7 @@ public class UsageResourceTest extends CatalogApplicationTest {
     String today = RestUtil.DATE_FORMAT.format(new Date()); // today
 
     // Add table usages of each table - 0, 1 to TABLE_COUNT - 1 to get database usage
-    final int dailyDatabaseUsageCount = TABLE_COUNT * (TABLE_COUNT - 1)/2;
+    final int dailyDatabaseUsageCount = TABLE_COUNT * (TABLE_COUNT - 1) / 2;
     UUID databaseId = TABLES.get(0).getDatabase().getId();
     for (int day = 0; day < DAYS_OF_USAGE; day++) {
       String date = getDateStringByOffset(RestUtil.DATE_FORMAT, today, day);
@@ -154,10 +158,20 @@ public class UsageResourceTest extends CatalogApplicationTest {
         databaseWeeklyCount = Math.min(day, 6) * dailyDatabaseUsageCount + databaseDailyCount;
         // Cumulative monthly count for database
         databaseMonthlyCount = Math.min(day, 29) * dailyDatabaseUsageCount + databaseDailyCount;
-        LOG.info("dailyDatabaseUsageCount {}, databaseDailyCount {} weekly {} monthly {}",
-                dailyDatabaseUsageCount, databaseDailyCount, databaseWeeklyCount, databaseMonthlyCount);
-        checkUsage(date, Entity.DATABASE, databaseId, databaseDailyCount, databaseWeeklyCount, databaseMonthlyCount,
-                adminAuthHeaders());
+        LOG.info(
+            "dailyDatabaseUsageCount {}, databaseDailyCount {} weekly {} monthly {}",
+            dailyDatabaseUsageCount,
+            databaseDailyCount,
+            databaseWeeklyCount,
+            databaseMonthlyCount);
+        checkUsage(
+            date,
+            Entity.DATABASE,
+            databaseId,
+            databaseDailyCount,
+            databaseWeeklyCount,
+            databaseMonthlyCount,
+            adminAuthHeaders());
       }
 
       // Compute daily percentiles now that all table usage have been published for a given date
@@ -167,7 +181,7 @@ public class UsageResourceTest extends CatalogApplicationTest {
 
       // For each day check percentile
       for (int tableIndex = 0; tableIndex < TABLES.size(); tableIndex++) {
-        int expectedPercentile = 100*(tableIndex)/TABLES.size();
+        int expectedPercentile = 100 * (tableIndex) / TABLES.size();
         EntityUsage usage = getUsage(TABLE, TABLES.get(tableIndex).getId(), date, 1, adminAuthHeaders());
         assertEquals(expectedPercentile, usage.getUsage().get(0).getDailyStats().getPercentileRank());
         assertEquals(expectedPercentile, usage.getUsage().get(0).getWeeklyStats().getPercentileRank());
@@ -220,76 +234,92 @@ public class UsageResourceTest extends CatalogApplicationTest {
     return new DailyCount().withCount(random.nextInt(100)).withDate(today);
   }
 
-  public static void reportUsageByNameAndCheck(String entity, String fqn, DailyCount usage, int weeklyCount,
-                                               int monthlyCount, Map<String, String> authHeaders)
-          throws HttpResponseException {
+  public static void reportUsageByNameAndCheck(
+      String entity, String fqn, DailyCount usage, int weeklyCount, int monthlyCount, Map<String, String> authHeaders)
+      throws HttpResponseException {
     reportUsageByName(entity, fqn, usage, authHeaders);
     checkUsageByName(usage.getDate(), entity, fqn, usage.getCount(), weeklyCount, monthlyCount, authHeaders);
   }
 
-  public static void reportUsageAndCheck(String entity, UUID id, DailyCount usage, int weeklyCount, int monthlyCount,
-                                         Map<String, String> authHeaders) throws HttpResponseException {
+  public static void reportUsageAndCheck(
+      String entity, UUID id, DailyCount usage, int weeklyCount, int monthlyCount, Map<String, String> authHeaders)
+      throws HttpResponseException {
     reportUsage(entity, id, usage, authHeaders);
     checkUsage(usage.getDate(), entity, id, usage.getCount(), weeklyCount, monthlyCount, authHeaders);
   }
 
   public static void reportUsageByName(String entity, String name, DailyCount usage, Map<String, String> authHeaders)
-          throws HttpResponseException {
+      throws HttpResponseException {
     WebTarget target = getResource("usage/" + entity + "/name/" + name);
     TestUtils.post(target, usage, authHeaders);
   }
 
   public static void reportUsage(String entity, UUID id, DailyCount usage, Map<String, String> authHeaders)
-          throws HttpResponseException {
+      throws HttpResponseException {
     WebTarget target = getResource("usage/" + entity + "/" + id);
     TestUtils.post(target, usage, authHeaders);
   }
 
   public static void computePercentile(String entity, String date, Map<String, String> authHeaders)
-          throws HttpResponseException {
+      throws HttpResponseException {
     WebTarget target = getResource("usage/compute.percentile/" + entity + "/" + date);
     TestUtils.post(target, authHeaders);
   }
 
-  public static void getAndCheckUsage(String entity, UUID id, String date, Integer days, int expectedRecords,
-                                      Map<String, String> authHeaders) throws HttpResponseException {
+  public static void getAndCheckUsage(
+      String entity, UUID id, String date, Integer days, int expectedRecords, Map<String, String> authHeaders)
+      throws HttpResponseException {
     EntityUsage usage = getUsage(entity, id, date, days, authHeaders);
     assertEquals(expectedRecords, usage.getUsage().size());
   }
 
-  public static EntityUsage getUsageByName(String entity, String fqn, String date, Integer days,
-                                           Map<String, String> authHeaders) throws HttpResponseException {
-    return getUsage(getResource("usage/" + entity +"/name/" + fqn), date, days, authHeaders);
+  public static EntityUsage getUsageByName(
+      String entity, String fqn, String date, Integer days, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    return getUsage(getResource("usage/" + entity + "/name/" + fqn), date, days, authHeaders);
   }
 
-  public static EntityUsage getUsage(String entity, UUID id, String date, Integer days,
-                                     Map<String, String> authHeaders) throws HttpResponseException {
+  public static EntityUsage getUsage(String entity, UUID id, String date, Integer days, Map<String, String> authHeaders)
+      throws HttpResponseException {
     return getUsage(getResource("usage/" + entity + "/" + id), date, days, authHeaders);
   }
 
-  public static EntityUsage getUsage(WebTarget target, String date, Integer days,
-                                     Map<String, String> authHeaders) throws HttpResponseException {
+  public static EntityUsage getUsage(WebTarget target, String date, Integer days, Map<String, String> authHeaders)
+      throws HttpResponseException {
     target = date != null ? target.queryParam("date", date) : target;
     target = days != null ? target.queryParam("days", days) : target;
     return TestUtils.get(target, EntityUsage.class, authHeaders);
   }
 
-
-  public static void checkUsage(String date, String entity, UUID id, int dailyCount, int weeklyCount,
-                                int monthlyCount, Map<String, String> authHeaders) throws HttpResponseException {
+  public static void checkUsage(
+      String date,
+      String entity,
+      UUID id,
+      int dailyCount,
+      int weeklyCount,
+      int monthlyCount,
+      Map<String, String> authHeaders)
+      throws HttpResponseException {
     EntityUsage usage = getUsage(entity, id, date, 1, authHeaders);
     assertEquals(id, usage.getEntity().getId());
     checkUsage(usage, date, entity, dailyCount, weeklyCount, monthlyCount);
   }
 
-  public static void checkUsageByName(String date, String entity, String name, int dailyCount, int weeklyCount,
-                                      int monthlyCount, Map<String, String> authHeaders) throws HttpResponseException {
+  public static void checkUsageByName(
+      String date,
+      String entity,
+      String name,
+      int dailyCount,
+      int weeklyCount,
+      int monthlyCount,
+      Map<String, String> authHeaders)
+      throws HttpResponseException {
     EntityUsage usage = getUsageByName(entity, name, date, 1, authHeaders);
     checkUsage(usage, date, entity, dailyCount, weeklyCount, monthlyCount);
   }
 
-  public static void checkUsage(EntityUsage usage, String date, String entity, int dailyCount, int weeklyCount,
-                                int monthlyCount) {
+  public static void checkUsage(
+      EntityUsage usage, String date, String entity, int dailyCount, int weeklyCount, int monthlyCount) {
     assertEquals(entity, usage.getEntity().getType());
     UsageDetails usageDetails = usage.getUsage().get(0);
     assertEquals(date, usageDetails.getDate());

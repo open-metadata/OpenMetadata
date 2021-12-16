@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate 
+ *  Copyright 2021 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -17,28 +17,27 @@ import javax.ws.rs.core.Response;
 
 public class IngestionPipelineDeploymentException extends WebServiceException {
 
-    private static final String BY_NAME_MESSAGE = "Failed to deploy pipeline [%s] due to [%s].";
+  private static final String BY_NAME_MESSAGE = "Failed to deploy pipeline [%s] due to [%s].";
 
-    public IngestionPipelineDeploymentException(String message) {
-        super(Response.Status.BAD_REQUEST, message);
-    }
+  public IngestionPipelineDeploymentException(String message) {
+    super(Response.Status.BAD_REQUEST, message);
+  }
 
-    private IngestionPipelineDeploymentException(Response.Status status, String message) {
-        super(status, message);
-    }
+  private IngestionPipelineDeploymentException(Response.Status status, String message) {
+    super(status, message);
+  }
 
-    public static IngestionPipelineDeploymentException byMessage(String name, String errorMessage,
-                                                                 Response.Status status) {
-        return new IngestionPipelineDeploymentException(status, buildMessageByName(name, errorMessage));
-    }
+  public static IngestionPipelineDeploymentException byMessage(
+      String name, String errorMessage, Response.Status status) {
+    return new IngestionPipelineDeploymentException(status, buildMessageByName(name, errorMessage));
+  }
 
-    public static IngestionPipelineDeploymentException byMessage(String name, String errorMessage) {
-        return new IngestionPipelineDeploymentException(Response.Status.BAD_REQUEST, buildMessageByName(name,
-                errorMessage));
-    }
+  public static IngestionPipelineDeploymentException byMessage(String name, String errorMessage) {
+    return new IngestionPipelineDeploymentException(
+        Response.Status.BAD_REQUEST, buildMessageByName(name, errorMessage));
+  }
 
-    private static String buildMessageByName(String name, String errorMessage) {
-        return String.format(BY_NAME_MESSAGE, name, errorMessage);
-    }
-
+  private static String buildMessageByName(String name, String errorMessage) {
+    return String.format(BY_NAME_MESSAGE, name, errorMessage);
+  }
 }

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate 
+ *  Copyright 2021 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -21,20 +21,25 @@ import java.util.regex.Pattern;
 
 public final class MessageParser {
 
-  private MessageParser() {
+  private MessageParser() {}
 
-  }
   // Pattern to match the following markdown entity links:
   // <#E/{entityType}/{entityId}
   // <#E/{entityType}/{entityId}/{fieldName}
   // <#E/{entityType}/{entityId}/{fieldName}/{fieldValue}
   private static final Pattern ENTITY_LINK_PATTERN =
-          Pattern.compile("<#E/" +  // Match initial string <#E/
-                  "([^<>]+?)" +     // Non-greedy collection group 1 for {entityType}
-                  "/([^<>]+?)" +    // Non-greedy collection group 2 for {entityId}
-                  "(/([^<>]+?))?" + // Non-greedy collection group 3 for optional /{fieldName} and 4 for fieldName
-                  "(/([^<>]+?))?" + // Non-greedy collection group 5 for optional /{fieldValue} and 6 for fieldValue
-                  ">");             // Match for end of link name
+      Pattern.compile(
+          "<#E/"
+              + // Match initial string <#E/
+              "([^<>]+?)"
+              + // Non-greedy collection group 1 for {entityType}
+              "/([^<>]+?)"
+              + // Non-greedy collection group 2 for {entityId}
+              "(/([^<>]+?))?"
+              + // Non-greedy collection group 3 for optional /{fieldName} and 4 for fieldName
+              "(/([^<>]+?))?"
+              + // Non-greedy collection group 5 for optional /{fieldValue} and 6 for fieldValue
+              ">"); // Match for end of link name
 
   public static class EntityLink {
     private final LinkType linkType;
@@ -121,8 +126,9 @@ public final class MessageParser {
 
     @Override
     public String toString() {
-      return String.format("EntityLink { type = %s, entityType = %s, entityId = %s, fieldName = %s, fieldValue = %s}",
-              linkType, entityType, entityType, fieldName, fieldName);
+      return String.format(
+          "EntityLink { type = %s, entityType = %s, entityId = %s, fieldName = %s, fieldValue = %s}",
+          linkType, entityType, entityType, fieldName, fieldName);
     }
 
     @Override
@@ -134,9 +140,11 @@ public final class MessageParser {
         return false;
       }
       EntityLink that = (EntityLink) o;
-      return linkType == that.linkType && Objects.equals(entityType, that.entityType) && Objects.equals(entityId,
-              that.entityId) && Objects.equals(fieldName, that.fieldName) && Objects.equals(fieldValue,
-              that.fieldValue);
+      return linkType == that.linkType
+          && Objects.equals(entityType, that.entityType)
+          && Objects.equals(entityId, that.entityId)
+          && Objects.equals(fieldName, that.fieldName)
+          && Objects.equals(fieldValue, that.fieldValue);
     }
 
     @Override
@@ -145,9 +153,7 @@ public final class MessageParser {
     }
   }
 
-  /**
-   * Parse the message and get the mentions
-   */
+  /** Parse the message and get the mentions */
   public static List<EntityLink> getEntityLinks(String message) {
     List<EntityLink> links = new ArrayList<>();
     Matcher matcher = ENTITY_LINK_PATTERN.matcher(message);

@@ -15,34 +15,34 @@ package org.openmetadata.catalog.exception;
 
 import com.google.common.collect.Iterables;
 import io.dropwizard.jersey.errors.ErrorMessage;
-
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 import javax.validation.ConstraintViolation;
 import javax.validation.ConstraintViolationException;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.ext.ExceptionMapper;
 import javax.ws.rs.ext.Provider;
-import java.util.List;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 /**
- * Dropwizard by default maps the JSON constraint violations to 422 Response code. This overrides
- * that behavior by mapping the response code to 400 bad request.
+ * Dropwizard by default maps the JSON constraint violations to 422 Response code. This overrides that behavior by
+ * mapping the response code to 400 bad request.
  */
 @Provider
 public class ConstraintViolationExceptionMapper implements ExceptionMapper<ConstraintViolationException> {
   @Override
   public Response toResponse(ConstraintViolationException exception) {
     Set<ConstraintViolation<?>> constraintViolations = exception.getConstraintViolations();
-    List<String> errorMessages = constraintViolations.stream()
-            .map(constraintViolation -> {
-              String name = Iterables.getLast(constraintViolation.getPropertyPath()).getName();
-              return name + " " + constraintViolation.getMessage();
-            })
+    List<String> errorMessages =
+        constraintViolations.stream()
+            .map(
+                constraintViolation -> {
+                  String name = Iterables.getLast(constraintViolation.getPropertyPath()).getName();
+                  return name + " " + constraintViolation.getMessage();
+                })
             .collect(Collectors.toList());
     return Response.status(Response.Status.BAD_REQUEST)
-            .entity(new ErrorMessage(Response.Status.BAD_REQUEST.getStatusCode(), errorMessages.toString()))
-            .build();
+        .entity(new ErrorMessage(Response.Status.BAD_REQUEST.getStatusCode(), errorMessages.toString()))
+        .build();
   }
 }
-

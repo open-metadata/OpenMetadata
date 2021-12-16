@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate 
+ *  Copyright 2021 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -13,23 +13,27 @@
 
 package org.openmetadata.catalog.resources.feeds;
 
-import org.junit.jupiter.api.Test;
-import org.openmetadata.catalog.resources.feeds.MessageParser.EntityLink;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.util.List;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import org.junit.jupiter.api.Test;
+import org.openmetadata.catalog.resources.feeds.MessageParser.EntityLink;
 
 public class MessageParserTest {
   @Test
   public void parseMessage() {
-    String s = "abcd <angle1> <angle2> <angle3> " +  // Text in angled brackets that are not entity links
-            "<#E> " +                                // Invalid entity link
-            "<#E/table/ " +                         // Invalid entity link
-            "<#E/table/tableFQN " +                 // Invalid entity link
-            "<#E/table/tableFQN> " +
-            "<#E/table/tableFQN/description> " +
-            "<#E/table/tableFQN/columns/c1> ";
+    String s =
+        "abcd <angle1> <angle2> <angle3> "
+            + // Text in angled brackets that are not entity links
+            "<#E> "
+            + // Invalid entity link
+            "<#E/table/ "
+            + // Invalid entity link
+            "<#E/table/tableFQN "
+            + // Invalid entity link
+            "<#E/table/tableFQN> "
+            + "<#E/table/tableFQN/description> "
+            + "<#E/table/tableFQN/columns/c1> ";
     List<EntityLink> links = MessageParser.getEntityLinks(s);
     assertEquals(3, links.size());
     assertEquals(new EntityLink("table", "tableFQN", null, null), links.get(0));

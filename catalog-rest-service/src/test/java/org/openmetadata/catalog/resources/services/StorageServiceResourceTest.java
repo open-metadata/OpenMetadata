@@ -13,6 +13,17 @@
 
 package org.openmetadata.catalog.resources.services;
 
+import static javax.ws.rs.core.Response.Status.FORBIDDEN;
+import static javax.ws.rs.core.Response.Status.NOT_FOUND;
+import static javax.ws.rs.core.Response.Status.OK;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
+import static org.openmetadata.catalog.util.TestUtils.authHeaders;
+import static org.openmetadata.catalog.util.TestUtils.getPrincipal;
+
+import java.io.IOException;
+import java.util.Map;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
@@ -29,22 +40,17 @@ import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.TestUtils;
 import org.openmetadata.catalog.util.TestUtils.UpdateType;
 
-import java.io.IOException;
-import java.util.Map;
-
-import static javax.ws.rs.core.Response.Status.FORBIDDEN;
-import static javax.ws.rs.core.Response.Status.NOT_FOUND;
-import static javax.ws.rs.core.Response.Status.OK;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
-import static org.openmetadata.catalog.util.TestUtils.authHeaders;
-import static org.openmetadata.catalog.util.TestUtils.getPrincipal;
-
 public class StorageServiceResourceTest extends EntityResourceTest<StorageService> {
   public StorageServiceResourceTest() {
-    super(Entity.STORAGE_SERVICE, StorageService.class, StorageServiceList.class,
-            "services/storageServices", "", false, false, false);
+    super(
+        Entity.STORAGE_SERVICE,
+        StorageService.class,
+        StorageServiceList.class,
+        "services/storageServices",
+        "",
+        false,
+        false,
+        false);
     this.supportsPatch = false;
   }
 
@@ -61,10 +67,11 @@ public class StorageServiceResourceTest extends EntityResourceTest<StorageServic
     // Create storage service with different optional fields
     Map<String, String> authHeaders = authHeaders("test@open-metadata.org");
 
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            createAndCheckEntity(create(test, 1).withDescription(null), authHeaders));
-    TestUtils.assertResponse(exception, FORBIDDEN,
-            "Principal: CatalogPrincipal{name='test'} is not admin");
+    HttpResponseException exception =
+        assertThrows(
+            HttpResponseException.class,
+            () -> createAndCheckEntity(create(test, 1).withDescription(null), authHeaders));
+    TestUtils.assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
   }
 
   @Test
@@ -80,11 +87,13 @@ public class StorageServiceResourceTest extends EntityResourceTest<StorageServic
     createAndCheckEntity(create(test).withDescription(null), authHeaders);
 
     // Update storage description and ingestion service that are null
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            updateAndCheckEntity(create(test), OK, authHeaders("test@open-metadata.org"),
-                    UpdateType.NO_CHANGE, null));
-    TestUtils.assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} " +
-            "is not admin");
+    HttpResponseException exception =
+        assertThrows(
+            HttpResponseException.class,
+            () ->
+                updateAndCheckEntity(
+                    create(test), OK, authHeaders("test@open-metadata.org"), UpdateType.NO_CHANGE, null));
+    TestUtils.assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} " + "is not admin");
   }
 
   @Test
@@ -98,18 +107,21 @@ public class StorageServiceResourceTest extends EntityResourceTest<StorageServic
   public void delete_as_user_401(TestInfo test) throws HttpResponseException {
     Map<String, String> authHeaders = adminAuthHeaders();
     StorageService storageService = createEntity(create(test), authHeaders);
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            deleteEntity(storageService.getId(), authHeaders("test@open-metadata.org")));
-    TestUtils.assertResponse(exception, FORBIDDEN,
-            "Principal: CatalogPrincipal{name='test'} is not admin");
+    HttpResponseException exception =
+        assertThrows(
+            HttpResponseException.class,
+            () -> deleteEntity(storageService.getId(), authHeaders("test@open-metadata.org")));
+    TestUtils.assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
   }
 
   @Test
   public void delete_notExistentStorageService() {
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            getEntity(TestUtils.NON_EXISTENT_ENTITY, adminAuthHeaders()));
-    TestUtils.assertResponse(exception, NOT_FOUND,
-            CatalogExceptionMessage.entityNotFound(Entity.STORAGE_SERVICE, TestUtils.NON_EXISTENT_ENTITY));
+    HttpResponseException exception =
+        assertThrows(HttpResponseException.class, () -> getEntity(TestUtils.NON_EXISTENT_ENTITY, adminAuthHeaders()));
+    TestUtils.assertResponse(
+        exception,
+        NOT_FOUND,
+        CatalogExceptionMessage.entityNotFound(Entity.STORAGE_SERVICE, TestUtils.NON_EXISTENT_ENTITY));
   }
 
   private CreateStorageService create(TestInfo test) {
@@ -132,8 +144,8 @@ public class StorageServiceResourceTest extends EntityResourceTest<StorageServic
   @Override
   public void validateCreatedEntity(StorageService service, Object request, Map<String, String> authHeaders) {
     CreateStorageService createRequest = (CreateStorageService) request;
-    validateCommonEntityFields(getEntityInterface(service), createRequest.getDescription(),
-            getPrincipal(authHeaders), null);
+    validateCommonEntityFields(
+        getEntityInterface(service), createRequest.getDescription(), getPrincipal(authHeaders), null);
     assertEquals(createRequest.getName(), service.getName());
   }
 
@@ -156,10 +168,16 @@ public class StorageServiceResourceTest extends EntityResourceTest<StorageServic
   public void validateGetWithDifferentFields(StorageService service, boolean byName) throws HttpResponseException {
     // No fields support
     String fields = "";
-    service = byName ? getEntityByName(service.getName(), fields, adminAuthHeaders()) :
-            getEntity(service.getId(), fields, adminAuthHeaders());
-    TestUtils.assertListNotNull(service.getHref(), service.getVersion(), service.getUpdatedBy(),
-            service.getServiceType(), service.getUpdatedAt());
+    service =
+        byName
+            ? getEntityByName(service.getName(), fields, adminAuthHeaders())
+            : getEntity(service.getId(), fields, adminAuthHeaders());
+    TestUtils.assertListNotNull(
+        service.getHref(),
+        service.getVersion(),
+        service.getUpdatedBy(),
+        service.getServiceType(),
+        service.getUpdatedAt());
   }
 
   @Override

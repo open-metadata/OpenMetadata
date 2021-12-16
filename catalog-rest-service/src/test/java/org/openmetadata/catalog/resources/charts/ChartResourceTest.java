@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate 
+ *  Copyright 2021 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -13,6 +13,20 @@
 
 package org.openmetadata.catalog.resources.charts;
 
+import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
+import static javax.ws.rs.core.Response.Status.FORBIDDEN;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
+import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
+import static org.openmetadata.catalog.util.TestUtils.assertResponse;
+import static org.openmetadata.catalog.util.TestUtils.authHeaders;
+
+import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.HashMap;
+import java.util.Map;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -34,41 +48,30 @@ import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.TestUtils;
 
-import java.io.IOException;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.util.HashMap;
-import java.util.Map;
-
-import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
-import static javax.ws.rs.core.Response.Status.FORBIDDEN;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
-import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
-import static org.openmetadata.catalog.util.TestUtils.assertResponse;
-import static org.openmetadata.catalog.util.TestUtils.authHeaders;
-
 public class ChartResourceTest extends EntityResourceTest<Chart> {
   public static EntityReference SUPERSET_REFERENCE;
   public static EntityReference LOOKER_REFERENCE;
 
   public ChartResourceTest() {
-    super(Entity.CHART, Chart.class, ChartList.class, "charts", ChartResource.FIELDS,
-            true, true, true);
+    super(Entity.CHART, Chart.class, ChartList.class, "charts", ChartResource.FIELDS, true, true, true);
   }
 
   @BeforeAll
   public static void setup(TestInfo test) throws IOException, URISyntaxException {
     EntityResourceTest.setup(test);
 
-    CreateDashboardService createService = new CreateDashboardService().withName("superset")
-            .withServiceType(DashboardServiceType.Superset).withDashboardUrl(new URI("http://localhost:0"));
+    CreateDashboardService createService =
+        new CreateDashboardService()
+            .withName("superset")
+            .withServiceType(DashboardServiceType.Superset)
+            .withDashboardUrl(new URI("http://localhost:0"));
     DashboardService service = new DashboardServiceResourceTest().createEntity(createService, adminAuthHeaders());
     SUPERSET_REFERENCE = new DashboardServiceEntityInterface(service).getEntityReference();
 
-    createService.withName("looker").withServiceType(DashboardServiceType.Looker)
-            .withDashboardUrl(new URI("http://localhost:0"));
+    createService
+        .withName("looker")
+        .withServiceType(DashboardServiceType.Looker)
+        .withDashboardUrl(new URI("http://localhost:0"));
     service = new DashboardServiceResourceTest().createEntity(createService, adminAuthHeaders());
     LOOKER_REFERENCE = new DashboardServiceEntityInterface(service).getEntityReference();
   }
@@ -76,8 +79,10 @@ public class ChartResourceTest extends EntityResourceTest<Chart> {
   @Test
   public void post_validCharts_as_admin_200_OK(TestInfo test) throws IOException {
     // Create team with different optional fields
-    CreateChart create = create(test).withService(new EntityReference().
-            withId(SUPERSET_REFERENCE.getId()).withType(SUPERSET_REFERENCE.getType()));
+    CreateChart create =
+        create(test)
+            .withService(
+                new EntityReference().withId(SUPERSET_REFERENCE.getId()).withType(SUPERSET_REFERENCE.getType()));
     createAndCheckEntity(create, adminAuthHeaders());
 
     create.withName(getEntityName(test, 1)).withDescription("description");
@@ -99,15 +104,19 @@ public class ChartResourceTest extends EntityResourceTest<Chart> {
   @Test
   public void post_chart_as_non_admin_401(TestInfo test) {
     CreateChart create = create(test);
-    assertResponse(() -> createEntity(create, authHeaders("test@open-metadata.org")),
-            FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
+    assertResponse(
+        () -> createEntity(create, authHeaders("test@open-metadata.org")),
+        FORBIDDEN,
+        "Principal: CatalogPrincipal{name='test'} is not admin");
   }
 
   @Test
   public void post_chartWithoutRequiredFields_4xx(TestInfo test) {
     // Service is required field
-    assertResponse(() -> createEntity(create(test).withService(null), adminAuthHeaders()), BAD_REQUEST,
-            "[service must not be null]");
+    assertResponse(
+        () -> createEntity(create(test).withService(null), adminAuthHeaders()),
+        BAD_REQUEST,
+        "[service must not be null]");
   }
 
   @Test
@@ -119,7 +128,12 @@ public class ChartResourceTest extends EntityResourceTest<Chart> {
       createAndCheckEntity(create(test).withService(service), adminAuthHeaders());
 
       // List charts by filtering on service name and ensure right charts in the response
-      Map<String, String> queryParams = new HashMap<>() {{put("service", service.getName());}};
+      Map<String, String> queryParams =
+          new HashMap<>() {
+            {
+              put("service", service.getName());
+            }
+          };
       ResultList<Chart> list = listEntities(queryParams, adminAuthHeaders());
       for (Chart chart : list.getData()) {
         assertEquals(service.getName(), chart.getService().getName());
@@ -138,15 +152,15 @@ public class ChartResourceTest extends EntityResourceTest<Chart> {
     // TODO
   }
 
-  /**
-   * Validate returned fields GET .../charts/{id}?fields="..." or GET .../charts/name/{fqn}?fields="..."
-   */
+  /** Validate returned fields GET .../charts/{id}?fields="..." or GET .../charts/name/{fqn}?fields="..." */
   @Override
   public void validateGetWithDifferentFields(Chart chart, boolean byName) throws HttpResponseException {
     // .../charts?fields=owner
     String fields = "owner";
-    chart = byName ? getEntityByName(chart.getFullyQualifiedName(), fields, adminAuthHeaders()) :
-            getEntity(chart.getId(), fields, adminAuthHeaders());
+    chart =
+        byName
+            ? getEntityByName(chart.getFullyQualifiedName(), fields, adminAuthHeaders())
+            : getEntity(chart.getId(), fields, adminAuthHeaders());
     assertListNotNull(chart.getOwner(), chart.getService(), chart.getServiceType());
   }
 
@@ -170,8 +184,11 @@ public class ChartResourceTest extends EntityResourceTest<Chart> {
   @Override
   public void validateCreatedEntity(Chart chart, Object request, Map<String, String> authHeaders) {
     CreateChart createRequest = (CreateChart) request;
-    validateCommonEntityFields(getEntityInterface(chart), createRequest.getDescription(),
-            TestUtils.getPrincipal(authHeaders), createRequest.getOwner());
+    validateCommonEntityFields(
+        getEntityInterface(chart),
+        createRequest.getDescription(),
+        TestUtils.getPrincipal(authHeaders),
+        createRequest.getOwner());
     assertNotNull(chart.getServiceType());
     assertService(createRequest.getService(), chart.getService());
   }
@@ -183,8 +200,11 @@ public class ChartResourceTest extends EntityResourceTest<Chart> {
 
   @Override
   public void compareEntities(Chart expected, Chart patched, Map<String, String> authHeaders) {
-    validateCommonEntityFields(getEntityInterface(patched), expected.getDescription(),
-            TestUtils.getPrincipal(authHeaders), expected.getOwner());
+    validateCommonEntityFields(
+        getEntityInterface(patched),
+        expected.getDescription(),
+        TestUtils.getPrincipal(authHeaders),
+        expected.getOwner());
     assertService(expected.getService(), patched.getService());
   }
 

@@ -13,6 +13,11 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import java.io.IOException;
+import java.net.URI;
+import java.util.Date;
+import java.util.List;
+import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
@@ -26,23 +31,23 @@ import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
 
-import java.io.IOException;
-import java.net.URI;
-import java.util.Date;
-import java.util.List;
-import java.util.UUID;
-
 @Slf4j
 public class PolicyRepository extends EntityRepository<Policy> {
-  private static final Fields POLICY_UPDATE_FIELDS = new Fields(PolicyResource.FIELD_LIST,
-          "displayName,description,owner,policyUrl,enabled,rules");
-  private static final Fields POLICY_PATCH_FIELDS = new Fields(PolicyResource.FIELD_LIST,
-          "displayName,description,owner,policyUrl,enabled,rules");
+  private static final Fields POLICY_UPDATE_FIELDS =
+      new Fields(PolicyResource.FIELD_LIST, "displayName,description,owner,policyUrl,enabled,rules");
+  private static final Fields POLICY_PATCH_FIELDS =
+      new Fields(PolicyResource.FIELD_LIST, "displayName,description,owner,policyUrl,enabled,rules");
   private final CollectionDAO dao;
 
   public PolicyRepository(CollectionDAO dao) {
-    super(PolicyResource.COLLECTION_PATH, Entity.POLICY, Policy.class, dao.policyDAO(), dao, POLICY_PATCH_FIELDS,
-            POLICY_UPDATE_FIELDS);
+    super(
+        PolicyResource.COLLECTION_PATH,
+        Entity.POLICY,
+        Policy.class,
+        dao.policyDAO(),
+        dao,
+        POLICY_PATCH_FIELDS,
+        POLICY_UPDATE_FIELDS);
     this.dao = dao;
   }
 
@@ -76,14 +81,12 @@ public class PolicyRepository extends EntityRepository<Policy> {
   }
 
   @Override
-  public void restorePatchAttributes(Policy original, Policy updated) {
-  }
+  public void restorePatchAttributes(Policy original, Policy updated) {}
 
   @Override
   public EntityInterface<Policy> getEntityInterface(Policy entity) {
     return new PolicyEntityInterface(entity);
   }
-
 
   @Override
   public void prepare(Policy policy) throws IOException {
@@ -124,8 +127,9 @@ public class PolicyRepository extends EntityRepository<Policy> {
   }
 
   private EntityReference getOwner(Policy policy) throws IOException {
-    return policy == null ? null : EntityUtil.populateOwner(policy.getId(), dao.relationshipDAO(), dao.userDAO(),
-            dao.teamDAO());
+    return policy == null
+        ? null
+        : EntityUtil.populateOwner(policy.getId(), dao.relationshipDAO(), dao.userDAO(), dao.teamDAO());
   }
 
   public void setOwner(Policy policy, EntityReference owner) {
@@ -203,8 +207,12 @@ public class PolicyRepository extends EntityRepository<Policy> {
 
     @Override
     public EntityReference getEntityReference() {
-      return new EntityReference().withId(getId()).withName(getFullyQualifiedName())
-              .withDescription(getDescription()).withDisplayName(getDisplayName()).withType(Entity.POLICY);
+      return new EntityReference()
+          .withId(getId())
+          .withName(getFullyQualifiedName())
+          .withDescription(getDescription())
+          .withDisplayName(getDisplayName())
+          .withType(Entity.POLICY);
     }
 
     @Override
@@ -254,7 +262,9 @@ public class PolicyRepository extends EntityRepository<Policy> {
     }
 
     @Override
-    public Policy withHref(URI href) { return entity.withHref(href); }
+    public Policy withHref(URI href) {
+      return entity.withHref(href);
+    }
 
     @Override
     public ChangeDescription getChangeDescription() {
@@ -262,9 +272,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
     }
   }
 
-  /**
-   * Handles entity updated from PUT and POST operation.
-   */
+  /** Handles entity updated from PUT and POST operation. */
   public class PolicyUpdater extends EntityUpdater {
     public PolicyUpdater(Policy original, Policy updated, boolean patchOperation) {
       super(original, updated, patchOperation);

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate 
+ *  Copyright 2021 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -13,12 +13,11 @@
 
 package org.openmetadata.catalog.jdbi3;
 
-import org.jdbi.v3.core.mapper.RowMapper;
-import org.openmetadata.catalog.type.EntityReference;
-
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.UUID;
+import org.jdbi.v3.core.mapper.RowMapper;
+import org.openmetadata.catalog.type.EntityReference;
 
 public class ToEntityReferenceMapper implements RowMapper<EntityReference> {
   @Override

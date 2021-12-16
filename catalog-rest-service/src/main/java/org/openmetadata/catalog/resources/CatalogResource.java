@@ -13,14 +13,13 @@
 
 package org.openmetadata.catalog.resources;
 
-import org.openmetadata.catalog.type.CollectionDescriptor;
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import org.openmetadata.catalog.util.ResultList;
-
+import java.util.Arrays;
+import java.util.List;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
@@ -28,8 +27,8 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.UriInfo;
-import java.util.Arrays;
-import java.util.List;
+import org.openmetadata.catalog.type.CollectionDescriptor;
+import org.openmetadata.catalog.util.ResultList;
 
 @Path("/v1")
 @Api(value = "All collections in the catalog application", tags = "All collections in the Catalog")
@@ -40,6 +39,7 @@ public class CatalogResource {
   public static class CollectionList extends ResultList<CollectionDescriptor> {
     @SuppressWarnings("unused") /* Required for tests */
     public CollectionList() {}
+
     public CollectionList(List<CollectionDescriptor> data) {
       super(data);
     }
@@ -49,22 +49,26 @@ public class CatalogResource {
 
   public static CollectionList getCollectionList(UriInfo uriInfo) {
     if (collectionList == null) {
-      CollectionDescriptor[] collections = CollectionRegistry.getInstance()
-              .getCollectionForPath("/v1", uriInfo);
+      CollectionDescriptor[] collections = CollectionRegistry.getInstance().getCollectionForPath("/v1", uriInfo);
       collectionList = new CollectionList(Arrays.asList(collections));
     }
     return collectionList;
   }
 
   @GET
-  @Operation(summary = "List all collections", tags = "general",
-          description = "List all the collections supported by OpenMetadata. This list provides all the collections " +
-                  "and resource REST endpoints.",
-          responses = {
-                  @ApiResponse(responseCode = "200", description = "All collections",
-                          content = @Content(mediaType = "application/json",
-                          schema = @Schema(implementation = CollectionDescriptor.class)))
-          })
+  @Operation(
+      summary = "List all collections",
+      tags = "general",
+      description =
+          "List all the collections supported by OpenMetadata. This list provides all the collections "
+              + "and resource REST endpoints.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "All collections",
+            content =
+                @Content(mediaType = "application/json", schema = @Schema(implementation = CollectionDescriptor.class)))
+      })
   public CollectionList getCollections(@Context UriInfo uriInfo) {
     return getCollectionList(uriInfo);
   }

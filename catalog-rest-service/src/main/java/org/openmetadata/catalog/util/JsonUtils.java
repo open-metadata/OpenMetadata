@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate 
+ *  Copyright 2021 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -24,9 +24,17 @@ import com.networknt.schema.JsonSchema;
 import com.networknt.schema.JsonSchemaFactory;
 import com.networknt.schema.ValidationMessage;
 import com.networknt.schema.urn.URNFactory;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.StringReader;
+import java.io.StringWriter;
+import java.io.Writer;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import javax.json.Json;
 import javax.json.JsonArray;
 import javax.json.JsonArrayBuilder;
@@ -39,17 +47,8 @@ import javax.json.JsonWriterFactory;
 import javax.json.stream.JsonGenerator;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.MediaType;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.StringReader;
-import java.io.StringWriter;
-import java.io.Writer;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public final class JsonUtils {
   public static final MediaType DEFAULT_MEDIA_TYPE = MediaType.APPLICATION_JSON_TYPE;
@@ -64,16 +63,14 @@ public final class JsonUtils {
     OBJECT_MAPPER.registerModule(new JSR353Module());
   }
 
-  private JsonUtils() {
-
-  }
+  private JsonUtils() {}
 
   public static Set<ValidationMessage> validate(InputStream schemaStream, String jsonPayload) throws IOException {
     return validate(schemaStream, jsonPayload, null);
   }
 
   public static Set<ValidationMessage> validate(InputStream schemaStream, String jsonPayload, URNFactory urnFactory)
-          throws IOException {
+      throws IOException {
     JsonSchemaFactory.Builder builder = new JsonSchemaFactory.Builder();
     JsonMetaSchema metaSchema = JsonMetaSchema.getV7();
     builder.defaultMetaSchemaURI(metaSchema.getUri()).addMetaSchema(metaSchema);
@@ -134,8 +131,9 @@ public final class JsonUtils {
   }
 
   public static String pojoToJson(Object o, boolean prettyPrint) throws JsonProcessingException {
-    return prettyPrint ? OBJECT_MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(o) :
-            OBJECT_MAPPER.writeValueAsString(o);
+    return prettyPrint
+        ? OBJECT_MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(o)
+        : OBJECT_MAPPER.writeValueAsString(o);
   }
 
   public static JsonStructure getJsonStructure(Object o) {
@@ -174,9 +172,7 @@ public final class JsonUtils {
     return list;
   }
 
-  /**
-   * Applies the patch on original object and returns the updated object
-   */
+  /** Applies the patch on original object and returns the updated object */
   public static <T> T applyPatch(T original, JsonPatch patch, Class<T> clz) {
     JsonStructure targetJson = JsonUtils.getJsonStructure(original);
 
@@ -204,14 +200,15 @@ public final class JsonUtils {
     List<JsonObject> removeOperations = new ArrayList<>();
     List<JsonObject> otherOperations = new ArrayList<>();
 
-    array.forEach(entry -> {
-      JsonObject jsonObject = entry.asJsonObject();
-      if (jsonObject.getString("op").equals("remove")) {
-        removeOperations.add(jsonObject);
-      } else {
-        otherOperations.add(jsonObject);
-      }
-    });
+    array.forEach(
+        entry -> {
+          JsonObject jsonObject = entry.asJsonObject();
+          if (jsonObject.getString("op").equals("remove")) {
+            removeOperations.add(jsonObject);
+          } else {
+            otherOperations.add(jsonObject);
+          }
+        });
 
     // sort the operations by path
     if (!otherOperations.isEmpty()) {
@@ -238,4 +235,3 @@ public final class JsonUtils {
     return OBJECT_MAPPER.convertValue(patched, clz);
   }
 }
-

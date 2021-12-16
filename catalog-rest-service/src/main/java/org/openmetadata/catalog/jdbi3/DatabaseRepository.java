@@ -13,6 +13,15 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import static javax.ws.rs.core.Response.Status.CREATED;
+
+import java.io.IOException;
+import java.net.URI;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+import java.util.UUID;
+import javax.ws.rs.core.Response.Status;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Database;
@@ -28,24 +37,20 @@ import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
 
-import javax.ws.rs.core.Response.Status;
-import java.io.IOException;
-import java.net.URI;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
-import java.util.UUID;
-
-import static javax.ws.rs.core.Response.Status.CREATED;
-
 public class DatabaseRepository extends EntityRepository<Database> {
   private static final Fields DATABASE_UPDATE_FIELDS = new Fields(DatabaseResource.FIELD_LIST, "owner");
-  private static final Fields DATABASE_PATCH_FIELDS = new Fields(DatabaseResource.FIELD_LIST,"owner,usageSummary");
+  private static final Fields DATABASE_PATCH_FIELDS = new Fields(DatabaseResource.FIELD_LIST, "owner,usageSummary");
   private final CollectionDAO dao;
 
   public DatabaseRepository(CollectionDAO dao) {
-    super(DatabaseResource.COLLECTION_PATH, Entity.DATABASE, Database.class, dao.databaseDAO(), dao,
-            DATABASE_PATCH_FIELDS, DATABASE_UPDATE_FIELDS);
+    super(
+        DatabaseResource.COLLECTION_PATH,
+        Entity.DATABASE,
+        Database.class,
+        dao.databaseDAO(),
+        dao,
+        DATABASE_PATCH_FIELDS,
+        DATABASE_UPDATE_FIELDS);
     this.dao = dao;
   }
 
@@ -95,14 +100,20 @@ public class DatabaseRepository extends EntityRepository<Database> {
 
   @Override
   public void storeRelationships(Database database) {
-    dao.relationshipDAO().insert(database.getService().getId().toString(), database.getId().toString(),
-            database.getService().getType(), Entity.DATABASE, Relationship.CONTAINS.ordinal());
+    dao.relationshipDAO()
+        .insert(
+            database.getService().getId().toString(),
+            database.getId().toString(),
+            database.getService().getType(),
+            Entity.DATABASE,
+            Relationship.CONTAINS.ordinal());
     EntityUtil.setOwner(dao.relationshipDAO(), database.getId(), Entity.DATABASE, database.getOwner());
   }
 
   public EntityReference getOwner(Database database) throws IOException {
-    return database != null ? EntityUtil.populateOwner(database.getId(), dao.relationshipDAO(), dao.userDAO(),
-            dao.teamDAO()) : null;
+    return database != null
+        ? EntityUtil.populateOwner(database.getId(), dao.relationshipDAO(), dao.userDAO(), dao.teamDAO())
+        : null;
   }
 
   private List<EntityReference> getTables(Database database) throws IOException {
@@ -122,22 +133,25 @@ public class DatabaseRepository extends EntityRepository<Database> {
     database.setService(getService(database));
     database.setOwner(fields.contains("owner") ? getOwner(database) : null);
     database.setTables(fields.contains("tables") ? getTables(database) : null);
-    database.setUsageSummary(fields.contains("usageSummary") ? EntityUtil.getLatestUsage(dao.usageDAO(),
-            database.getId()) : null);
-    database.setLocation(fields.contains("location") ? getLocation(database): null);
+    database.setUsageSummary(
+        fields.contains("usageSummary") ? EntityUtil.getLatestUsage(dao.usageDAO(), database.getId()) : null);
+    database.setLocation(fields.contains("location") ? getLocation(database) : null);
     return database;
   }
 
   @Override
   public void restorePatchAttributes(Database original, Database updated) {
     // Patch can't make changes to following fields. Ignore the changes
-    updated.withFullyQualifiedName(original.getFullyQualifiedName()).withName(original.getName())
-            .withService(original.getService()).withId(original.getId());
+    updated
+        .withFullyQualifiedName(original.getFullyQualifiedName())
+        .withName(original.getName())
+        .withService(original.getService())
+        .withId(original.getId());
   }
 
   @Override
   public EntityInterface<Database> getEntityInterface(Database entity) {
-      return new DatabaseEntityInterface(entity);
+    return new DatabaseEntityInterface(entity);
   }
 
   private EntityReference getLocation(Database database) throws IOException {
@@ -147,7 +161,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
     String databaseId = database.getId().toString();
     List<String> result = dao.relationshipDAO().findTo(databaseId, Relationship.HAS.ordinal(), Entity.LOCATION);
     if (result.size() == 1) {
-      String locationId= result.get(0);
+      String locationId = result.get(0);
       return dao.locationDAO().findEntityReferenceById(UUID.fromString(locationId));
     } else {
       return null;
@@ -155,7 +169,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
   }
 
   private EntityReference getService(Database database) throws IOException {
-    EntityReference ref =  EntityUtil.getService(dao.relationshipDAO(), database.getId(), Entity.DATABASE_SERVICE);
+    EntityReference ref = EntityUtil.getService(dao.relationshipDAO(), database.getId(), Entity.DATABASE_SERVICE);
     if (ref != null) {
       DatabaseService service = getService(ref.getId(), ref.getType());
       ref.setName(service.getName());
@@ -183,7 +197,9 @@ public class DatabaseRepository extends EntityRepository<Database> {
     dao.locationDAO().findEntityById(locationId);
     // A database has only one location.
     dao.relationshipDAO().deleteFrom(databaseId.toString(), Relationship.HAS.ordinal(), Entity.LOCATION);
-    dao.relationshipDAO().insert(databaseId.toString(), locationId.toString(), Entity.DATABASE, Entity.LOCATION, Relationship.HAS.ordinal());
+    dao.relationshipDAO()
+        .insert(
+            databaseId.toString(), locationId.toString(), Entity.DATABASE, Entity.LOCATION, Relationship.HAS.ordinal());
     return CREATED;
   }
 
@@ -220,16 +236,24 @@ public class DatabaseRepository extends EntityRepository<Database> {
     }
 
     @Override
-    public List<TagLabel> getTags() { return null; }
+    public List<TagLabel> getTags() {
+      return null;
+    }
 
     @Override
-    public Double getVersion() { return entity.getVersion(); }
+    public Double getVersion() {
+      return entity.getVersion();
+    }
 
     @Override
-    public String getUpdatedBy() { return entity.getUpdatedBy(); }
+    public String getUpdatedBy() {
+      return entity.getUpdatedBy();
+    }
 
     @Override
-    public Date getUpdatedAt() { return entity.getUpdatedAt(); }
+    public Date getUpdatedAt() {
+      return entity.getUpdatedAt();
+    }
 
     @Override
     public URI getHref() {
@@ -243,15 +267,23 @@ public class DatabaseRepository extends EntityRepository<Database> {
 
     @Override
     public EntityReference getEntityReference() {
-      return new EntityReference().withId(getId()).withName(getFullyQualifiedName()).withDescription(getDescription())
-              .withDisplayName(getDisplayName()).withType(Entity.DATABASE);
+      return new EntityReference()
+          .withId(getId())
+          .withName(getFullyQualifiedName())
+          .withDescription(getDescription())
+          .withDisplayName(getDisplayName())
+          .withType(Entity.DATABASE);
     }
 
     @Override
-    public Database getEntity() { return entity; }
+    public Database getEntity() {
+      return entity;
+    }
 
     @Override
-    public void setId(UUID id) { entity.setId(id); }
+    public void setId(UUID id) {
+      entity.setId(id);
+    }
 
     @Override
     public void setDescription(String description) {
@@ -276,15 +308,21 @@ public class DatabaseRepository extends EntityRepository<Database> {
     }
 
     @Override
-    public void setOwner(EntityReference owner) { entity.setOwner(owner); }
+    public void setOwner(EntityReference owner) {
+      entity.setOwner(owner);
+    }
 
     @Override
-    public Database withHref(URI href) { return entity.withHref(href); }
+    public Database withHref(URI href) {
+      return entity.withHref(href);
+    }
 
     @Override
-    public ChangeDescription getChangeDescription() { return entity.getChangeDescription(); }
+    public ChangeDescription getChangeDescription() {
+      return entity.getChangeDescription();
+    }
 
     @Override
-    public void setTags(List<TagLabel> tags) { }
+    public void setTags(List<TagLabel> tags) {}
   }
 }

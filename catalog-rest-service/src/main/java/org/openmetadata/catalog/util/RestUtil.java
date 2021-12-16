@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate 
+ *  Copyright 2021 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -14,13 +14,6 @@
 package org.openmetadata.catalog.util;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import org.openmetadata.catalog.type.ChangeEvent;
-import org.openmetadata.common.utils.CommonUtil;
-import org.reflections.ReflectionUtils;
-
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.Response.ResponseBuilder;
-import javax.ws.rs.core.UriInfo;
 import java.lang.reflect.Field;
 import java.net.URI;
 import java.text.DateFormat;
@@ -31,6 +24,12 @@ import java.util.Date;
 import java.util.List;
 import java.util.TimeZone;
 import java.util.UUID;
+import javax.ws.rs.core.Response;
+import javax.ws.rs.core.Response.ResponseBuilder;
+import javax.ws.rs.core.UriInfo;
+import org.openmetadata.catalog.type.ChangeEvent;
+import org.openmetadata.common.utils.CommonUtil;
+import org.reflections.ReflectionUtils;
 
 public final class RestUtil {
   public static final String CHANGE_CUSTOM_HEADER = "X-OpenMetadata-Change";
@@ -52,13 +51,9 @@ public final class RestUtil {
     DATE_FORMAT.setTimeZone(TimeZone.getTimeZone("UTC"));
   }
 
-  private RestUtil() {
+  private RestUtil() {}
 
-  }
-
-  /**
-   * Remove leading and trailing slashes
-   */
+  /** Remove leading and trailing slashes */
   public static String removeSlashes(String s) {
     s = s.startsWith("/") ? s.substring(1) : s;
     s = s.endsWith("/") ? s.substring(0, s.length() - 1) : s;
@@ -96,9 +91,7 @@ public final class RestUtil {
     return URI.create(parent.toString() + "/" + child);
   }
 
-  /**
-   * Get list of attributes for an entity based on JsonProperty annotation
-   */
+  /** Get list of attributes for an entity based on JsonProperty annotation */
   public static <T> List<String> getAttributes(Class<T> clz) {
     List<String> attributes = new ArrayList<>();
     for (Field field : ReflectionUtils.getFields(clz, ReflectionUtils.withAnnotation(JsonProperty.class))) {
@@ -110,9 +103,7 @@ public final class RestUtil {
     return attributes;
   }
 
-  /**
-   * Get list of relationships for an entity based on JsonProperty annotation
-   */
+  /** Get list of relationships for an entity based on JsonProperty annotation */
   public static <T> List<String> getRelationships(Class<T> clz) {
     List<String> relationships = new ArrayList<>();
     for (Field field : ReflectionUtils.getFields(clz, ReflectionUtils.withAnnotation(JsonProperty.class))) {
@@ -146,8 +137,8 @@ public final class RestUtil {
     private final String changeType;
 
     /**
-     * Response.Status.CREATED when PUT operation creates a new entity
-     * or Response.Status.OK when PUT operation updates a new entity
+     * Response.Status.CREATED when PUT operation creates a new entity or Response.Status.OK when PUT operation updates
+     * a new entity
      */
     public PutResponse(Response.Status status, T entity, String changeType) {
       this.entity = entity;
@@ -155,21 +146,22 @@ public final class RestUtil {
       this.changeType = changeType;
     }
 
-    /**
-     * When PUT response updates an entity
-     */
+    /** When PUT response updates an entity */
     public PutResponse(Response.Status status, ChangeEvent changeEvent, String changeType) {
       this.changeEvent = changeEvent;
       this.status = status;
       this.changeType = changeType;
     }
 
-    public T getEntity() { return entity; }
+    public T getEntity() {
+      return entity;
+    }
 
     public Response toResponse() {
       ResponseBuilder responseBuilder = Response.status(status).header(CHANGE_CUSTOM_HEADER, changeType);
-      if (changeType.equals(RestUtil.ENTITY_CREATED) || changeType.equals(RestUtil.ENTITY_UPDATED) ||
-              changeType.equals(RestUtil.ENTITY_NO_CHANGE)) {
+      if (changeType.equals(RestUtil.ENTITY_CREATED)
+          || changeType.equals(RestUtil.ENTITY_UPDATED)
+          || changeType.equals(RestUtil.ENTITY_NO_CHANGE)) {
         return responseBuilder.entity(entity).build();
       } else {
         return responseBuilder.entity(changeEvent).build();
@@ -183,8 +175,8 @@ public final class RestUtil {
     private final String changeType;
 
     /**
-     * Response.Status.CREATED when PUT operation creates a new entity
-     * or Response.Status.OK when PUT operation updates a new entity
+     * Response.Status.CREATED when PUT operation creates a new entity or Response.Status.OK when PUT operation updates
+     * a new entity
      */
     public PatchResponse(Response.Status status, T entity, String changeType) {
       this.entity = entity;
@@ -192,7 +184,9 @@ public final class RestUtil {
       this.changeType = changeType;
     }
 
-    public T getEntity() { return entity; }
+    public T getEntity() {
+      return entity;
+    }
 
     public Response toResponse() {
       return Response.status(status).header(CHANGE_CUSTOM_HEADER, changeType).entity(entity).build();

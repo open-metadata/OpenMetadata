@@ -13,6 +13,13 @@
 
 package org.openmetadata.catalog.resources.metrics;
 
+import com.google.inject.Inject;
+import io.swagger.annotations.Api;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
@@ -21,7 +28,6 @@ import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
-
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
 import javax.validation.constraints.Min;
@@ -39,9 +45,6 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
-
-import com.google.inject.Inject;
-
 import org.openmetadata.catalog.entity.data.Metrics;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.MetricsRepository;
@@ -51,13 +54,6 @@ import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
-
-import io.swagger.annotations.Api;
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.media.Content;
-import io.swagger.v3.oas.annotations.media.Schema;
-import io.swagger.v3.oas.annotations.responses.ApiResponse;
 
 @Path("/v1/metrics")
 @Api(value = "Metrics collection", tags = "Metrics collection")
@@ -80,33 +76,35 @@ public class MetricsResource {
     }
   }
 
-  static final String FIELDS ="owner,usageSummary";
-  public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replaceAll(" ", "")
-          .split(","));
+  static final String FIELDS = "owner,usageSummary";
+  public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replaceAll(" ", "").split(","));
 
   @GET
-  @Operation(summary = "List metrics", tags = "metrics",
-          description = "Get a list of metrics. Use `fields` parameter to get only necessary fields.",
-          responses = {
-                  @ApiResponse(responseCode = "200", description = "List of metrics",
-                          content = @Content(mediaType = "application/json",
-                          schema = @Schema(implementation = MetricsList.class)))
-          })
-  public ResultList<Metrics> list(@Context UriInfo uriInfo,
-                                  @Parameter(description = "Fields requested in the returned resource",
-                                  schema = @Schema(type = "string", example = FIELDS))
-                          @QueryParam("fields") String fieldsParam,
-                          @DefaultValue("10")
-                          @Min(1)
-                          @Max(1000000)
-                          @QueryParam("limit") int limitParam,
-                                  @Parameter(description = "Returns list of metrics before this cursor",
-                                  schema = @Schema(type = "string"))
-                          @QueryParam("before") String before,
-                                  @Parameter(description = "Returns list of metrics after this cursor",
-                                  schema = @Schema(type = "string"))
-                          @QueryParam("after") String after) 
-            throws IOException, GeneralSecurityException, ParseException {
+  @Operation(
+      summary = "List metrics",
+      tags = "metrics",
+      description = "Get a list of metrics. Use `fields` parameter to get only necessary fields.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of metrics",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = MetricsList.class)))
+      })
+  public ResultList<Metrics> list(
+      @Context UriInfo uriInfo,
+      @Parameter(
+              description = "Fields requested in the returned resource",
+              schema = @Schema(type = "string", example = FIELDS))
+          @QueryParam("fields")
+          String fieldsParam,
+      @DefaultValue("10") @Min(1) @Max(1000000) @QueryParam("limit") int limitParam,
+      @Parameter(description = "Returns list of metrics before this cursor", schema = @Schema(type = "string"))
+          @QueryParam("before")
+          String before,
+      @Parameter(description = "Returns list of metrics after this cursor", schema = @Schema(type = "string"))
+          @QueryParam("after")
+          String after)
+      throws IOException, GeneralSecurityException, ParseException {
     RestUtil.validateCursors(before, after);
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
 
@@ -119,58 +117,73 @@ public class MetricsResource {
 
   @GET
   @Path("/{id}")
-  @Operation(summary = "Get a metric", tags = "metrics",
-          description = "Get a metric by `id`.",
-          responses = {
-                  @ApiResponse(responseCode = "200", description = "The metrics",
-                          content = @Content(mediaType = "application/json",
-                          schema = @Schema(implementation = Metrics.class))),
-                  @ApiResponse(responseCode = "404", description = "Metrics for instance {id} is not found")
-          })
-  public Metrics get(@Context UriInfo uriInfo,
-                     @PathParam("id") String id,
-                     @Parameter(description = "Fields requested in the returned resource",
-                             schema = @Schema(type = "string", example = FIELDS))
-                       @QueryParam("fields") String fieldsParam) throws IOException, ParseException {
+  @Operation(
+      summary = "Get a metric",
+      tags = "metrics",
+      description = "Get a metric by `id`.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The metrics",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Metrics.class))),
+        @ApiResponse(responseCode = "404", description = "Metrics for instance {id} is not found")
+      })
+  public Metrics get(
+      @Context UriInfo uriInfo,
+      @PathParam("id") String id,
+      @Parameter(
+              description = "Fields requested in the returned resource",
+              schema = @Schema(type = "string", example = FIELDS))
+          @QueryParam("fields")
+          String fieldsParam)
+      throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
     return dao.get(uriInfo, id, fields);
   }
 
   @POST
-  @Operation(summary = "Create a metric", tags = "metrics",
-          description = "Create a new metric.",
-          responses = {
-                  @ApiResponse(responseCode = "200", description = "The metric",
-                          content = @Content(mediaType = "application/json",
-                          schema = @Schema(implementation = Metrics.class))),
-                  @ApiResponse(responseCode = "400", description = "Bad request")
-          })
-  public Response create(@Context UriInfo uriInfo,
-                         @Context SecurityContext securityContext,
-                         @Valid Metrics metrics) throws IOException {
+  @Operation(
+      summary = "Create a metric",
+      tags = "metrics",
+      description = "Create a new metric.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The metric",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Metrics.class))),
+        @ApiResponse(responseCode = "400", description = "Bad request")
+      })
+  public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid Metrics metrics)
+      throws IOException {
     addToMetrics(securityContext, metrics);
     dao.create(uriInfo, metrics);
     return Response.created(metrics.getHref()).entity(metrics).build();
   }
 
   @PUT
-  @Operation(summary = "Create or update a metric", tags = "metrics",
-          description = "Create a new metric, if it does not exist or update an existing metric.",
-          responses = {
-                  @ApiResponse(responseCode = "200", description = "The metric",
-                          content = @Content(mediaType = "application/json",
-                          schema = @Schema(implementation = Metrics.class))),
-                  @ApiResponse(responseCode = "400", description = "Bad request")
-          })
-  public Response createOrUpdate(@Context UriInfo uriInfo,
-                                 @Context SecurityContext securityContext,
-                                 @Valid Metrics metrics) throws IOException, ParseException {
+  @Operation(
+      summary = "Create or update a metric",
+      tags = "metrics",
+      description = "Create a new metric, if it does not exist or update an existing metric.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The metric",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Metrics.class))),
+        @ApiResponse(responseCode = "400", description = "Bad request")
+      })
+  public Response createOrUpdate(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid Metrics metrics)
+      throws IOException, ParseException {
     addToMetrics(securityContext, metrics);
     PutResponse<Metrics> response = dao.createOrUpdate(uriInfo, metrics);
     return response.toResponse();
   }
 
   private void addToMetrics(SecurityContext securityContext, Metrics metrics) {
-    metrics.withId(UUID.randomUUID()).withUpdatedBy(securityContext.getUserPrincipal().getName()).withUpdatedAt(new Date());
+    metrics
+        .withId(UUID.randomUUID())
+        .withUpdatedBy(securityContext.getUserPrincipal().getName())
+        .withUpdatedAt(new Date());
   }
 }

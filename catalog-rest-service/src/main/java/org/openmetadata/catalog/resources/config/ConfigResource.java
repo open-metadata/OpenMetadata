@@ -18,10 +18,6 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import org.openmetadata.catalog.CatalogApplicationConfig;
-import org.openmetadata.catalog.resources.Collection;
-import org.openmetadata.catalog.security.AuthenticationConfiguration;
-
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
@@ -29,6 +25,9 @@ import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
+import org.openmetadata.catalog.CatalogApplicationConfig;
+import org.openmetadata.catalog.resources.Collection;
+import org.openmetadata.catalog.security.AuthenticationConfiguration;
 
 @Path("/v1/config")
 @Api(value = "Get configuration")
@@ -38,17 +37,23 @@ public class ConfigResource {
   private final CatalogApplicationConfig catalogApplicationConfig;
 
   public ConfigResource(CatalogApplicationConfig catalogApplicationConfig) {
-      this.catalogApplicationConfig = catalogApplicationConfig;
+    this.catalogApplicationConfig = catalogApplicationConfig;
   }
 
   @GET
   @Path(("/auth"))
-  @Operation(summary = "Get auth configuration", tags = "general",
-          responses = {
-                  @ApiResponse(responseCode = "200", description = "Auth configuration",
-                          content = @Content(mediaType = "application/json",
-                                  schema = @Schema(implementation = AuthenticationConfiguration.class)))
-          })
+  @Operation(
+      summary = "Get auth configuration",
+      tags = "general",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Auth configuration",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = AuthenticationConfiguration.class)))
+      })
   public AuthenticationConfiguration getAuthConfig(@Context UriInfo uriInfo, @Context SecurityContext securityContext) {
     AuthenticationConfiguration authenticationConfiguration = new AuthenticationConfiguration();
     if (catalogApplicationConfig.getAuthenticationConfiguration() != null) {

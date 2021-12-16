@@ -18,9 +18,11 @@ import javax.ws.rs.core.Response;
 
 public class AuthenticationException extends RuntimeException {
   private final Response response;
+
   public AuthenticationException(String msg) {
     super(msg);
-    response = Response.status(Response.Status.UNAUTHORIZED)
+    response =
+        Response.status(Response.Status.UNAUTHORIZED)
             .entity(convertToErrorResponseMessage(msg))
             .type(MediaType.APPLICATION_JSON_TYPE)
             .build();
@@ -28,7 +30,8 @@ public class AuthenticationException extends RuntimeException {
 
   public AuthenticationException(String msg, Throwable cause) {
     super(msg, cause);
-    response = Response.status(Response.Status.UNAUTHORIZED)
+    response =
+        Response.status(Response.Status.UNAUTHORIZED)
             .entity(convertToErrorResponseMessage(msg))
             .type(MediaType.APPLICATION_JSON_TYPE)
             .build();
@@ -43,9 +46,7 @@ public class AuthenticationException extends RuntimeException {
   }
 
   private static class ErrorResponse {
-    /**
-     * Response message.
-     */
+    /** Response message. */
     private final String responseMessage;
 
     ErrorResponse(String responseMessage) {

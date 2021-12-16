@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate 
+ *  Copyright 2021 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -14,6 +14,16 @@
 package org.openmetadata.catalog.jdbi3;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import java.io.IOException;
+import java.net.URI;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Date;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Pipeline;
@@ -30,27 +40,20 @@ import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
 
-import java.io.IOException;
-import java.net.URI;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Date;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
-
 public class PipelineRepository extends EntityRepository<Pipeline> {
-  private static final Fields PIPELINE_UPDATE_FIELDS = new Fields(PipelineResource.FIELD_LIST,
-          "owner,tags,tasks");
-  private static final Fields PIPELINE_PATCH_FIELDS = new Fields(PipelineResource.FIELD_LIST,
-          "owner,tags,tasks");
+  private static final Fields PIPELINE_UPDATE_FIELDS = new Fields(PipelineResource.FIELD_LIST, "owner,tags,tasks");
+  private static final Fields PIPELINE_PATCH_FIELDS = new Fields(PipelineResource.FIELD_LIST, "owner,tags,tasks");
   private final CollectionDAO dao;
 
   public PipelineRepository(CollectionDAO dao) {
-    super(PipelineResource.COLLECTION_PATH, Entity.PIPELINE, Pipeline.class, dao.pipelineDAO(), dao,
-            PIPELINE_PATCH_FIELDS, PIPELINE_UPDATE_FIELDS);
+    super(
+        PipelineResource.COLLECTION_PATH,
+        Entity.PIPELINE,
+        Pipeline.class,
+        dao.pipelineDAO(),
+        dao,
+        PIPELINE_PATCH_FIELDS,
+        PIPELINE_UPDATE_FIELDS);
     this.dao = dao;
   }
 
@@ -91,8 +94,11 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   @Override
   public void restorePatchAttributes(Pipeline original, Pipeline updated) {
     // Patch can't make changes to following fields. Ignore the changes
-    updated.withFullyQualifiedName(original.getFullyQualifiedName()).withName(original.getName())
-            .withService(original.getService()).withId(original.getId());
+    updated
+        .withFullyQualifiedName(original.getFullyQualifiedName())
+        .withName(original.getName())
+        .withService(original.getService())
+        .withId(original.getId());
   }
 
   @Override
@@ -103,7 +109,6 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   private List<TagLabel> getTags(String fqn) {
     return dao.tagDAO().getTags(fqn);
   }
-
 
   @Override
   public void prepare(Pipeline pipeline) throws IOException {
@@ -136,8 +141,13 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   @Override
   public void storeRelationships(Pipeline pipeline) {
     EntityReference service = pipeline.getService();
-    dao.relationshipDAO().insert(service.getId().toString(), pipeline.getId().toString(), service.getType(),
-            Entity.PIPELINE, Relationship.CONTAINS.ordinal());
+    dao.relationshipDAO()
+        .insert(
+            service.getId().toString(),
+            pipeline.getId().toString(),
+            service.getType(),
+            Entity.PIPELINE,
+            Relationship.CONTAINS.ordinal());
 
     // Add owner relationship
     EntityUtil.setOwner(dao.relationshipDAO(), pipeline.getId(), Entity.PIPELINE, pipeline.getOwner());
@@ -152,8 +162,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   }
 
   private EntityReference getService(Pipeline pipeline) throws IOException {
-    EntityReference ref = EntityUtil.getService(dao.relationshipDAO(), pipeline.getId(),
-            Entity.PIPELINE_SERVICE);
+    EntityReference ref = EntityUtil.getService(dao.relationshipDAO(), pipeline.getId(), Entity.PIPELINE_SERVICE);
     PipelineService service = getService(ref.getId(), ref.getType());
     ref.setName(service.getName());
     ref.setDescription(service.getDescription());
@@ -174,8 +183,9 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   }
 
   private EntityReference getOwner(Pipeline pipeline) throws IOException {
-    return pipeline == null ? null : EntityUtil.populateOwner(pipeline.getId(), dao.relationshipDAO(),
-            dao.userDAO(), dao.teamDAO());
+    return pipeline == null
+        ? null
+        : EntityUtil.populateOwner(pipeline.getId(), dao.relationshipDAO(), dao.userDAO(), dao.teamDAO());
   }
 
   public void setOwner(Pipeline pipeline, EntityReference owner) {
@@ -231,31 +241,49 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     }
 
     @Override
-    public Double getVersion() { return entity.getVersion(); }
-
-    @Override
-    public String getUpdatedBy() { return entity.getUpdatedBy(); }
-
-    @Override
-    public Date getUpdatedAt() { return entity.getUpdatedAt(); }
-
-    @Override
-    public URI getHref() { return entity.getHref(); }
-
-    @Override
-    public List<EntityReference> getFollowers() { return entity.getFollowers(); }
-
-    @Override
-    public EntityReference getEntityReference() {
-      return new EntityReference().withId(getId()).withName(getFullyQualifiedName()).withDescription(getDescription())
-              .withDisplayName(getDisplayName()).withType(Entity.PIPELINE);
+    public Double getVersion() {
+      return entity.getVersion();
     }
 
     @Override
-    public Pipeline getEntity() { return entity; }
+    public String getUpdatedBy() {
+      return entity.getUpdatedBy();
+    }
 
     @Override
-    public void setId(UUID id) { entity.setId(id); }
+    public Date getUpdatedAt() {
+      return entity.getUpdatedAt();
+    }
+
+    @Override
+    public URI getHref() {
+      return entity.getHref();
+    }
+
+    @Override
+    public List<EntityReference> getFollowers() {
+      return entity.getFollowers();
+    }
+
+    @Override
+    public EntityReference getEntityReference() {
+      return new EntityReference()
+          .withId(getId())
+          .withName(getFullyQualifiedName())
+          .withDescription(getDescription())
+          .withDisplayName(getDisplayName())
+          .withType(Entity.PIPELINE);
+    }
+
+    @Override
+    public Pipeline getEntity() {
+      return entity;
+    }
+
+    @Override
+    public void setId(UUID id) {
+      entity.setId(id);
+    }
 
     @Override
     public void setDescription(String description) {
@@ -280,21 +308,27 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     }
 
     @Override
-    public void setOwner(EntityReference owner) { entity.setOwner(owner); }
+    public void setOwner(EntityReference owner) {
+      entity.setOwner(owner);
+    }
 
     @Override
-    public Pipeline withHref(URI href) { return entity.withHref(href); }
+    public Pipeline withHref(URI href) {
+      return entity.withHref(href);
+    }
 
     @Override
-    public ChangeDescription getChangeDescription() { return entity.getChangeDescription(); }
+    public ChangeDescription getChangeDescription() {
+      return entity.getChangeDescription();
+    }
 
     @Override
-    public void setTags(List<TagLabel> tags) { entity.setTags(tags); }
+    public void setTags(List<TagLabel> tags) {
+      entity.setTags(tags);
+    }
   }
 
-  /**
-   * Handles entity updated from PUT and POST operation.
-   */
+  /** Handles entity updated from PUT and POST operation. */
   public class PipelineUpdater extends EntityUpdater {
     public PipelineUpdater(Pipeline original, Pipeline updated, boolean patchOperation) {
       super(original, updated, patchOperation);

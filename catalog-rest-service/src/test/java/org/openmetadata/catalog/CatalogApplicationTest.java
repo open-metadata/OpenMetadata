@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate 
+ *  Copyright 2021 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -13,20 +13,18 @@
 
 package org.openmetadata.catalog;
 
-
 import io.dropwizard.testing.ResourceHelpers;
 import io.dropwizard.testing.junit5.DropwizardAppExtension;
 import io.dropwizard.testing.junit5.DropwizardExtensionsSupport;
+import javax.ws.rs.client.Client;
+import javax.ws.rs.client.ClientBuilder;
+import javax.ws.rs.client.WebTarget;
 import org.glassfish.jersey.client.ClientProperties;
 import org.glassfish.jersey.client.HttpUrlConnectorProvider;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.openmetadata.catalog.resources.EmbeddedMySqlSupport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import javax.ws.rs.client.Client;
-import javax.ws.rs.client.ClientBuilder;
-import javax.ws.rs.client.WebTarget;
 
 @ExtendWith(EmbeddedMySqlSupport.class)
 @ExtendWith(DropwizardExtensionsSupport.class)
@@ -45,7 +43,6 @@ public abstract class CatalogApplicationTest {
     client.property(ClientProperties.READ_TIMEOUT, 0);
     client.property(HttpUrlConnectorProvider.SET_METHOD_WORKAROUND, true);
   }
-
 
   public static WebTarget getResource(String collection) {
     String targetURI = "http://localhost:" + APP.getLocalPort() + "/api/v1/" + collection;

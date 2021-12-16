@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate 
+ *  Copyright 2021 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -13,14 +13,6 @@
 
 package org.openmetadata.catalog;
 
-import org.openmetadata.catalog.exception.CatalogExceptionMessage;
-import org.openmetadata.catalog.exception.EntityNotFoundException;
-import org.openmetadata.catalog.jdbi3.EntityDAO;
-import org.openmetadata.catalog.jdbi3.EntityRepository;
-import org.openmetadata.catalog.type.EntityReference;
-import org.openmetadata.catalog.util.EntityInterface;
-
-import javax.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.net.URI;
 import java.util.Arrays;
@@ -31,6 +23,13 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import javax.ws.rs.core.UriInfo;
+import org.openmetadata.catalog.exception.CatalogExceptionMessage;
+import org.openmetadata.catalog.exception.EntityNotFoundException;
+import org.openmetadata.catalog.jdbi3.EntityDAO;
+import org.openmetadata.catalog.jdbi3.EntityRepository;
+import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.util.EntityInterface;
 
 public final class Entity {
   private static final Map<String, EntityDAO<?>> DAO_MAP = new HashMap<>();
@@ -59,7 +58,7 @@ public final class Entity {
   public static final String TOPIC = "topic";
   public static final String MLMODEL = "mlmodel";
   // Not deleted to ensure the ordinal value of the entities after this remains the same
-  public static final String UNUSED   = "unused";
+  public static final String UNUSED = "unused";
   public static final String BOTS = "bots";
   public static final String LOCATION = "location";
 
@@ -79,11 +78,9 @@ public final class Entity {
   //
   public static final String INGESTION = "ingestion";
 
-  private Entity() {
-  }
+  private Entity() {}
 
-  public static <T> void registerEntity(String entity, EntityDAO<T> dao,
-                                    EntityRepository<T> entityRepository) {
+  public static <T> void registerEntity(String entity, EntityDAO<T> dao, EntityRepository<T> entityRepository) {
     DAO_MAP.put(entity, dao);
     ENTITY_REPOSITORY_MAP.put(entity, entityRepository);
     CANONICAL_ENTITY_NAME_MAP.put(entity.toLowerCase(Locale.ROOT), entity);
@@ -139,7 +136,8 @@ public final class Entity {
       return null;
     }
     String entityName = getEntityNameFromObject(entity);
-    @SuppressWarnings("unchecked") EntityRepository<T> entityRepository = (EntityRepository<T>) ENTITY_REPOSITORY_MAP.get(entityName);
+    @SuppressWarnings("unchecked")
+    EntityRepository<T> entityRepository = (EntityRepository<T>) ENTITY_REPOSITORY_MAP.get(entityName);
     if (entityRepository == null) {
       throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entityName));
     }
@@ -174,4 +172,3 @@ public final class Entity {
     }
   }
 }
-

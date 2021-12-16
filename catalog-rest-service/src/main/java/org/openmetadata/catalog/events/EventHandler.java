@@ -13,14 +13,15 @@
 
 package org.openmetadata.catalog.events;
 
+import javax.ws.rs.container.ContainerRequestContext;
+import javax.ws.rs.container.ContainerResponseContext;
 import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.catalog.CatalogApplicationConfig;
 
-import javax.ws.rs.container.ContainerRequestContext;
-import javax.ws.rs.container.ContainerResponseContext;
-
 public interface EventHandler {
   void init(CatalogApplicationConfig config, Jdbi jdbi);
+
   Void process(ContainerRequestContext requestContext, ContainerResponseContext responseContext);
+
   void close();
 }

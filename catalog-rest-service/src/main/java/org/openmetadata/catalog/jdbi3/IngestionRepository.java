@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate 
+ *  Copyright 2021 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -13,6 +13,12 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import java.io.IOException;
+import java.net.URI;
+import java.util.Date;
+import java.util.List;
+import java.util.Objects;
+import java.util.UUID;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
@@ -26,26 +32,24 @@ import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
 
-import java.io.IOException;
-import java.net.URI;
-import java.util.Date;
-import java.util.List;
-import java.util.Objects;
-import java.util.UUID;
-
 public class IngestionRepository extends EntityRepository<Ingestion> {
-  private static final Fields INGESTION_UPDATE_FIELDS = new Fields(IngestionResource.FIELD_LIST,
-          "scheduleInterval,owner,tags");
-  private static final Fields INGESTION_PATCH_FIELDS = new Fields(IngestionResource.FIELD_LIST,
-          "scheduleInterval,owner,tags");
+  private static final Fields INGESTION_UPDATE_FIELDS =
+      new Fields(IngestionResource.FIELD_LIST, "scheduleInterval,owner,tags");
+  private static final Fields INGESTION_PATCH_FIELDS =
+      new Fields(IngestionResource.FIELD_LIST, "scheduleInterval,owner,tags");
   private final CollectionDAO dao;
 
   public IngestionRepository(CollectionDAO dao) {
-    super(IngestionResource.COLLECTION_PATH, Entity.INGESTION, Ingestion.class, dao.ingestionDAO(), dao,
-            INGESTION_PATCH_FIELDS, INGESTION_UPDATE_FIELDS);
+    super(
+        IngestionResource.COLLECTION_PATH,
+        Entity.INGESTION,
+        Ingestion.class,
+        dao.ingestionDAO(),
+        dao,
+        INGESTION_PATCH_FIELDS,
+        INGESTION_UPDATE_FIELDS);
     this.dao = dao;
   }
-
 
   public static String getFQN(Ingestion ingestion) {
     return (ingestion.getService().getName() + "." + ingestion.getName());
@@ -77,9 +81,7 @@ public class IngestionRepository extends EntityRepository<Ingestion> {
   }
 
   @Override
-  public void restorePatchAttributes(Ingestion original, Ingestion updated) {
-
-  }
+  public void restorePatchAttributes(Ingestion original, Ingestion updated) {}
 
   @Override
   public EntityInterface<Ingestion> getEntityInterface(Ingestion entity) {
@@ -89,7 +91,6 @@ public class IngestionRepository extends EntityRepository<Ingestion> {
   private List<TagLabel> getTags(String fqn) {
     return dao.tagDAO().getTags(fqn);
   }
-
 
   @Override
   public void prepare(Ingestion ingestion) throws IOException {
@@ -123,8 +124,13 @@ public class IngestionRepository extends EntityRepository<Ingestion> {
   @Override
   public void storeRelationships(Ingestion ingestion) {
     EntityReference service = ingestion.getService();
-    dao.relationshipDAO().insert(service.getId().toString(), ingestion.getId().toString(), service.getType(),
-            Entity.INGESTION, Relationship.CONTAINS.ordinal());
+    dao.relationshipDAO()
+        .insert(
+            service.getId().toString(),
+            ingestion.getId().toString(),
+            service.getType(),
+            Entity.INGESTION,
+            Relationship.CONTAINS.ordinal());
     setOwner(ingestion, ingestion.getOwner());
     applyTags(ingestion);
   }
@@ -135,8 +141,9 @@ public class IngestionRepository extends EntityRepository<Ingestion> {
   }
 
   private EntityReference getOwner(Ingestion ingestion) throws IOException {
-    return ingestion == null ? null : EntityUtil.populateOwner(ingestion.getId(), dao.relationshipDAO(),
-            dao.userDAO(), dao.teamDAO());
+    return ingestion == null
+        ? null
+        : EntityUtil.populateOwner(ingestion.getId(), dao.relationshipDAO(), dao.userDAO(), dao.teamDAO());
   }
 
   public void setOwner(Ingestion ingestion, EntityReference owner) {
@@ -151,7 +158,7 @@ public class IngestionRepository extends EntityRepository<Ingestion> {
   }
 
   private EntityReference getService(Ingestion ingestion) throws IOException {
-    EntityReference ref =  EntityUtil.getService(dao.relationshipDAO(), ingestion.getId());
+    EntityReference ref = EntityUtil.getService(dao.relationshipDAO(), ingestion.getId());
     return getService(Objects.requireNonNull(ref));
   }
 
@@ -161,8 +168,8 @@ public class IngestionRepository extends EntityRepository<Ingestion> {
     } else if (service.getType().equalsIgnoreCase(Entity.DASHBOARD_SERVICE)) {
       return dao.dashboardServiceDAO().findEntityReferenceById(service.getId());
     }
-    throw new IllegalArgumentException(CatalogExceptionMessage.invalidServiceEntity(service.getType(),
-            Entity.INGESTION));
+    throw new IllegalArgumentException(
+        CatalogExceptionMessage.invalidServiceEntity(service.getType(), Entity.INGESTION));
   }
 
   public static class IngestionEntityInterface implements EntityInterface<Ingestion> {
@@ -203,28 +210,44 @@ public class IngestionRepository extends EntityRepository<Ingestion> {
     }
 
     @Override
-    public Double getVersion() { return entity.getVersion(); }
-
-    @Override
-    public String getUpdatedBy() { return entity.getUpdatedBy(); }
-
-    @Override
-    public Date getUpdatedAt() { return entity.getUpdatedAt(); }
-
-    @Override
-    public URI getHref() { return entity.getHref(); }
-
-    @Override
-    public ChangeDescription getChangeDescription() { return entity.getChangeDescription(); }
-
-    @Override
-    public EntityReference getEntityReference() {
-      return new EntityReference().withId(getId()).withName(getFullyQualifiedName()).withDescription(getDescription())
-              .withDisplayName(getDisplayName()).withType(Entity.INGESTION);
+    public Double getVersion() {
+      return entity.getVersion();
     }
 
     @Override
-    public Ingestion getEntity() { return entity; }
+    public String getUpdatedBy() {
+      return entity.getUpdatedBy();
+    }
+
+    @Override
+    public Date getUpdatedAt() {
+      return entity.getUpdatedAt();
+    }
+
+    @Override
+    public URI getHref() {
+      return entity.getHref();
+    }
+
+    @Override
+    public ChangeDescription getChangeDescription() {
+      return entity.getChangeDescription();
+    }
+
+    @Override
+    public EntityReference getEntityReference() {
+      return new EntityReference()
+          .withId(getId())
+          .withName(getFullyQualifiedName())
+          .withDescription(getDescription())
+          .withDisplayName(getDisplayName())
+          .withType(Entity.INGESTION);
+    }
+
+    @Override
+    public Ingestion getEntity() {
+      return entity;
+    }
 
     @Override
     public List<EntityReference> getFollowers() {
@@ -233,7 +256,9 @@ public class IngestionRepository extends EntityRepository<Ingestion> {
     }
 
     @Override
-    public void setId(UUID id) { entity.setId(id); }
+    public void setId(UUID id) {
+      entity.setId(id);
+    }
 
     @Override
     public void setDescription(String description) {
@@ -244,7 +269,6 @@ public class IngestionRepository extends EntityRepository<Ingestion> {
     public void setDisplayName(String displayName) {
       entity.setDisplayName(displayName);
     }
-
 
     @Override
     public void setUpdateDetails(String updatedBy, Date updatedAt) {
@@ -259,10 +283,14 @@ public class IngestionRepository extends EntityRepository<Ingestion> {
     }
 
     @Override
-    public void setOwner(EntityReference owner) { entity.setOwner(owner); }
+    public void setOwner(EntityReference owner) {
+      entity.setOwner(owner);
+    }
 
     @Override
-    public Ingestion withHref(URI href) { return entity.withHref(href); }
+    public Ingestion withHref(URI href) {
+      return entity.withHref(href);
+    }
 
     @Override
     public void setTags(List<TagLabel> tags) {
@@ -270,9 +298,7 @@ public class IngestionRepository extends EntityRepository<Ingestion> {
     }
   }
 
-  /**
-   * Handles entity updated from PUT and POST operation.
-   */
+  /** Handles entity updated from PUT and POST operation. */
   public class IngestionUpdater extends EntityUpdater {
     public IngestionUpdater(Ingestion original, Ingestion updated, boolean patchOperation) {
       super(original, updated, patchOperation);

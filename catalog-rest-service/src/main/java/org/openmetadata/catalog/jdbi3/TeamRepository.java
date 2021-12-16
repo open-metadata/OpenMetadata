@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate 
+ *  Copyright 2021 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -13,7 +13,18 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import static org.openmetadata.catalog.jdbi3.Relationship.OWNS;
+import static org.openmetadata.catalog.util.EntityUtil.entityReferenceMatch;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
+import java.io.IOException;
+import java.net.URI;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Date;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.teams.Team;
@@ -27,26 +38,20 @@ import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
 
-import java.io.IOException;
-import java.net.URI;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Date;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
-
-import static org.openmetadata.catalog.jdbi3.Relationship.OWNS;
-import static org.openmetadata.catalog.util.EntityUtil.entityReferenceMatch;
-
 public class TeamRepository extends EntityRepository<Team> {
   static final Fields TEAM_UPDATE_FIELDS = new Fields(TeamResource.FIELD_LIST, "profile,users");
   static final Fields TEAM_PATCH_FIELDS = new Fields(TeamResource.FIELD_LIST, "profile,users");
   private final CollectionDAO dao;
 
   public TeamRepository(CollectionDAO dao) {
-    super(TeamResource.COLLECTION_PATH, Entity.TEAM, Team.class, dao.teamDAO(), dao, TEAM_PATCH_FIELDS,
-            TEAM_UPDATE_FIELDS);
+    super(
+        TeamResource.COLLECTION_PATH,
+        Entity.TEAM,
+        Team.class,
+        dao.teamDAO(),
+        dao,
+        TEAM_PATCH_FIELDS,
+        TEAM_UPDATE_FIELDS);
     this.dao = dao;
   }
 
@@ -127,8 +132,8 @@ public class TeamRepository extends EntityRepository<Team> {
   @Override
   public void storeRelationships(Team team) {
     for (EntityReference user : Optional.ofNullable(team.getUsers()).orElse(Collections.emptyList())) {
-      dao.relationshipDAO().insert(team.getId().toString(), user.getId().toString(), "team", "user",
-              Relationship.CONTAINS.ordinal());
+      dao.relationshipDAO()
+          .insert(team.getId().toString(), user.getId().toString(), "team", "user", Relationship.CONTAINS.ordinal());
     }
   }
 
@@ -174,25 +179,39 @@ public class TeamRepository extends EntityRepository<Team> {
     }
 
     @Override
-    public EntityReference getOwner() { return null; }
+    public EntityReference getOwner() {
+      return null;
+    }
 
     @Override
-    public String getFullyQualifiedName() { return entity.getName(); }
+    public String getFullyQualifiedName() {
+      return entity.getName();
+    }
 
     @Override
-    public List<TagLabel> getTags() { return null; }
+    public List<TagLabel> getTags() {
+      return null;
+    }
 
     @Override
-    public Double getVersion() { return entity.getVersion(); }
+    public Double getVersion() {
+      return entity.getVersion();
+    }
 
     @Override
-    public String getUpdatedBy() { return entity.getUpdatedBy(); }
+    public String getUpdatedBy() {
+      return entity.getUpdatedBy();
+    }
 
     @Override
-    public Date getUpdatedAt() { return entity.getUpdatedAt(); }
+    public Date getUpdatedAt() {
+      return entity.getUpdatedAt();
+    }
 
     @Override
-    public URI getHref() { return entity.getHref(); }
+    public URI getHref() {
+      return entity.getHref();
+    }
 
     @Override
     public List<EntityReference> getFollowers() {
@@ -201,18 +220,29 @@ public class TeamRepository extends EntityRepository<Team> {
 
     @Override
     public EntityReference getEntityReference() {
-      return new EntityReference().withId(getId()).withName(getFullyQualifiedName()).withDescription(getDescription())
-              .withDisplayName(getDisplayName()).withType(Entity.TEAM).withHref(getHref());
+      return new EntityReference()
+          .withId(getId())
+          .withName(getFullyQualifiedName())
+          .withDescription(getDescription())
+          .withDisplayName(getDisplayName())
+          .withType(Entity.TEAM)
+          .withHref(getHref());
     }
 
     @Override
-    public Team getEntity() { return entity; }
+    public Team getEntity() {
+      return entity;
+    }
 
     @Override
-    public void setId(UUID id) { entity.setId(id); }
+    public void setId(UUID id) {
+      entity.setId(id);
+    }
 
     @Override
-    public void setDescription(String description) { entity.setDescription(description); }
+    public void setDescription(String description) {
+      entity.setDescription(description);
+    }
 
     @Override
     public void setDisplayName(String displayName) {
@@ -232,21 +262,23 @@ public class TeamRepository extends EntityRepository<Team> {
     }
 
     @Override
-    public void setOwner(EntityReference owner) { }
+    public void setOwner(EntityReference owner) {}
 
     @Override
-    public Team withHref(URI href) { return entity.withHref(href); }
+    public Team withHref(URI href) {
+      return entity.withHref(href);
+    }
 
     @Override
-    public ChangeDescription getChangeDescription() { return entity.getChangeDescription(); }
+    public ChangeDescription getChangeDescription() {
+      return entity.getChangeDescription();
+    }
 
     @Override
-    public void setTags(List<TagLabel> tags) { }
+    public void setTags(List<TagLabel> tags) {}
   }
 
-  /**
-   * Handles entity updated from PUT and POST operation.
-   */
+  /** Handles entity updated from PUT and POST operation. */
   public class TeamUpdater extends EntityUpdater {
     public TeamUpdater(Team original, Team updated, boolean patchOperation) {
       super(original, updated, patchOperation);
@@ -273,8 +305,13 @@ public class TeamRepository extends EntityRepository<Team> {
         dao.relationshipDAO().deleteFrom(origTeam.getId().toString(), Relationship.CONTAINS.ordinal(), "user");
         // Add relationships
         for (EntityReference user : updatedUsers) {
-          dao.relationshipDAO().insert(updatedTeam.getId().toString(), user.getId().toString(),
-                  "team", "user", Relationship.CONTAINS.ordinal());
+          dao.relationshipDAO()
+              .insert(
+                  updatedTeam.getId().toString(),
+                  user.getId().toString(),
+                  "team",
+                  "user",
+                  Relationship.CONTAINS.ordinal());
         }
 
         updatedUsers.sort(EntityUtil.compareEntityReference);

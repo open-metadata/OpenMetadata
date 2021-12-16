@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate 
+ *  Copyright 2021 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -14,22 +14,19 @@
 package org.openmetadata.catalog.util;
 
 import com.google.common.base.Stopwatch;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public final class ParallelStreamUtil {
   private static final Logger LOG = LoggerFactory.getLogger(ParallelStreamUtil.class);
 
-  private ParallelStreamUtil() {
-
-  }
+  private ParallelStreamUtil() {}
 
   public static <T> T execute(Supplier<T> supplier, Executor executor) {
     Stopwatch stopwatch = Stopwatch.createStarted();
@@ -72,22 +69,26 @@ public final class ParallelStreamUtil {
   public static void runAsync(Callable<Void> callable, Executor executor) {
     Stopwatch stopwatch = Stopwatch.createStarted();
     LOG.debug("runAsync start");
-    CompletableFuture<Void> res = CompletableFuture.supplyAsync(() -> {
-      try {
-        return callable.call();
-      } catch (Exception ex) {
-        throw new RuntimeException(ex);
-      }
-    }, executor);
+    CompletableFuture<Void> res =
+        CompletableFuture.supplyAsync(
+            () -> {
+              try {
+                return callable.call();
+              } catch (Exception ex) {
+                throw new RuntimeException(ex);
+              }
+            },
+            executor);
 
-    res.whenComplete((r, th) -> {
-      // LOG any exceptions
-      if (th != null) {
-        LOG.error("Got exception while running async task", th.getCause());
-      }
-      LOG.debug("runAsync complete - elapsed: {} ms", stopwatch.elapsed(TimeUnit.MILLISECONDS));
-      stopwatch.stop();
-    });
+    res.whenComplete(
+        (r, th) -> {
+          // LOG any exceptions
+          if (th != null) {
+            LOG.error("Got exception while running async task", th.getCause());
+          }
+          LOG.debug("runAsync complete - elapsed: {} ms", stopwatch.elapsed(TimeUnit.MILLISECONDS));
+          stopwatch.stop();
+        });
   }
 
   private static void handleExecutionException(ExecutionException e) {
@@ -102,6 +103,4 @@ public final class ParallelStreamUtil {
       throw new RuntimeException(e);
     }
   }
-
-
 }

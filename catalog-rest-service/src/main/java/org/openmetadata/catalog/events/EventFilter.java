@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate 
+ *  Copyright 2021 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -13,21 +13,20 @@
 
 package org.openmetadata.catalog.events;
 
-import org.jdbi.v3.core.Jdbi;
-import org.openmetadata.catalog.CatalogApplicationConfig;
-import org.openmetadata.catalog.util.ParallelStreamUtil;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import javax.ws.rs.container.ContainerRequestContext;
-import javax.ws.rs.container.ContainerResponseContext;
-import javax.ws.rs.container.ContainerResponseFilter;
-import javax.ws.rs.ext.Provider;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ForkJoinPool;
+import javax.ws.rs.container.ContainerRequestContext;
+import javax.ws.rs.container.ContainerResponseContext;
+import javax.ws.rs.container.ContainerResponseFilter;
+import javax.ws.rs.ext.Provider;
+import org.jdbi.v3.core.Jdbi;
+import org.openmetadata.catalog.CatalogApplicationConfig;
+import org.openmetadata.catalog.util.ParallelStreamUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Provider
 public class EventFilter implements ContainerResponseFilter {
@@ -48,19 +47,18 @@ public class EventFilter implements ContainerResponseFilter {
     try {
       Set<String> eventHandlerClassNames = config.getEventHandlerConfiguration().getEventHandlerClassNames();
       for (String eventHandlerClassName : eventHandlerClassNames) {
-        EventHandler eventHandler = ((Class<EventHandler>) Class.forName(eventHandlerClassName))
-                .getConstructor().newInstance();
+        EventHandler eventHandler =
+            ((Class<EventHandler>) Class.forName(eventHandlerClassName)).getConstructor().newInstance();
         eventHandler.init(config, jdbi);
         eventHandlers.add(eventHandler);
       }
     } catch (Exception e) {
-        LOG.info(e.getMessage());
+      LOG.info(e.getMessage());
     }
   }
 
   @Override
-  public void filter(ContainerRequestContext requestContext,
-                     ContainerResponseContext responseContext) {
+  public void filter(ContainerRequestContext requestContext, ContainerResponseContext responseContext) {
 
     int responseCode = responseContext.getStatus();
     String method = requestContext.getMethod();
@@ -68,10 +66,10 @@ public class EventFilter implements ContainerResponseFilter {
       return;
     }
 
-    eventHandlers.parallelStream().forEach(eventHandler -> ParallelStreamUtil.runAsync(() ->
-            eventHandler.process(requestContext, responseContext), forkJoinPool));
-
+    eventHandlers
+        .parallelStream()
+        .forEach(
+            eventHandler ->
+                ParallelStreamUtil.runAsync(() -> eventHandler.process(requestContext, responseContext), forkJoinPool));
   }
-
-
 }

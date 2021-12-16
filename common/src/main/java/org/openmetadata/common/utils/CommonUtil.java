@@ -13,9 +13,6 @@
 
 package org.openmetadata.common.utils;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -33,16 +30,15 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public final class CommonUtil {
   public static final Logger LOG = LoggerFactory.getLogger(CommonUtil.class);
 
-  private CommonUtil() {
+  private CommonUtil() {}
 
-  }
-  /**
-   * Get resources from jar file or directories in the class path matching pattern
-   */
+  /** Get resources from jar file or directories in the class path matching pattern */
   public static List<String> getResources(Pattern pattern) throws IOException {
     ArrayList<String> resources = new ArrayList<>();
     String classPath = System.getProperty("java.class.path", ".");
@@ -50,8 +46,8 @@ public final class CommonUtil {
 
     for (String element : classPathElements) {
       File file = new File(element);
-      resources.addAll(file.isDirectory() ? getResourcesFromDirectory(file, pattern)
-              : getResourcesFromJarFile(file, pattern));
+      resources.addAll(
+          file.isDirectory() ? getResourcesFromDirectory(file, pattern) : getResourcesFromJarFile(file, pattern));
     }
     return resources;
   }
@@ -76,14 +72,15 @@ public final class CommonUtil {
   public static Collection<String> getResourcesFromDirectory(File file, Pattern pattern) throws IOException {
     final Path root = Path.of(file.getPath());
     return Files.walk(Paths.get(file.getPath()))
-            .filter(Files::isRegularFile)
-            .filter(path -> pattern.matcher(path.toString()).matches())
-            .map(path -> {
+        .filter(Files::isRegularFile)
+        .filter(path -> pattern.matcher(path.toString()).matches())
+        .map(
+            path -> {
               String relativePath = root.relativize(path).toString();
               LOG.info("Adding directory file {}", relativePath);
               return relativePath;
             })
-            .collect(Collectors.toSet());
+        .collect(Collectors.toSet());
   }
 
   /** Get date after {@code days} from the given date or before i{@code days} when it is negative */
@@ -107,7 +104,7 @@ public final class CommonUtil {
 
   /** Check if given date is with in today - pastDays and today + futureDays */
   public static boolean dateInRange(DateFormat dateFormat, String date, int futureDays, int pastDays)
-          throws ParseException {
+      throws ParseException {
     Date today = new Date();
     Date startDate = getDateByOffset(today, -pastDays);
     Date endDate = getDateByOffset(today, futureDays);
@@ -118,9 +115,8 @@ public final class CommonUtil {
   public static Date parseDate(String date, DateFormat dateFormat) {
     try {
       return dateFormat.parse(date);
-    } catch(ParseException e) {
+    } catch (ParseException e) {
       throw new RuntimeException(e);
     }
   }
-
 }

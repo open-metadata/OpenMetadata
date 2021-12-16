@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate 
+ *  Copyright 2021 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -14,27 +14,25 @@
 package org.openmetadata.catalog.ingestion;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.Builder;
-import lombok.Getter;
-
 import java.util.List;
 import java.util.Map;
+import lombok.Builder;
+import lombok.Getter;
 
 @Getter
 @Builder
 class AirflowAuthRequest {
   String username;
   String password;
-  @Builder.Default
-  String provider = "db";
-  @Builder.Default
-  Boolean refresh = true;
+  @Builder.Default String provider = "db";
+  @Builder.Default Boolean refresh = true;
 }
 
 @Getter
 class AirflowAuthResponse {
   @JsonProperty("access_token")
   String accessToken;
+
   @JsonProperty("refresh_token")
   String refreshToken;
 }
@@ -50,8 +48,10 @@ class AirflowDagRun {
 class AirflowListResponse {
   @JsonProperty("status")
   String status;
+
   @JsonProperty("next_run")
   String nextRun;
+
   @JsonProperty("dag_runs")
   List<AirflowDagRun> dagRuns;
 }
@@ -68,6 +68,7 @@ class OpenMetadataIngestionComponent {
 class OpenMetadataIngestionConfig {
   OpenMetadataIngestionComponent source;
   OpenMetadataIngestionComponent sink;
+
   @JsonProperty("metadata_server")
   OpenMetadataIngestionComponent metadataServer;
 }
@@ -87,13 +88,11 @@ class IngestionTaskConfig {
   Map<String, Object> opKwargs;
 }
 
-
 @Builder
 @Getter
 class OpenMetadataIngestionTask {
   String name;
-  @Builder.Default
-  String operator = "airflow.operators.python_operator.PythonOperator";
+  @Builder.Default String operator = "airflow.operators.python_operator.PythonOperator";
   IngestionTaskConfig config;
 }
 
@@ -101,27 +100,18 @@ class OpenMetadataIngestionTask {
 @Getter
 class IngestionPipeline {
   String name;
-  @Builder.Default
-  Boolean forceDeploy = true;
-  @Builder.Default
-  Boolean pauseWorkflow = false;
+  @Builder.Default Boolean forceDeploy = true;
+  @Builder.Default Boolean pauseWorkflow = false;
   String description;
-  @Builder.Default
-  Integer concurrency = 1;
-  @Builder.Default
-  Integer maxActiveRuns = 1;
-  @Builder.Default
-  Integer workflowTimeout = 60;
-  @Builder.Default
-  String workflowDefaultView = "tree";
-  @Builder.Default
-  String orientation = "LR";
+  @Builder.Default Integer concurrency = 1;
+  @Builder.Default Integer maxActiveRuns = 1;
+  @Builder.Default Integer workflowTimeout = 60;
+  @Builder.Default String workflowDefaultView = "tree";
+  @Builder.Default String orientation = "LR";
   String owner;
   String startDate;
-  @Builder.Default
-  Integer retries = 3;
-  @Builder.Default
-  Integer retryDelay = 300;
+  @Builder.Default Integer retries = 3;
+  @Builder.Default Integer retryDelay = 300;
   String scheduleInterval;
   List<OpenMetadataIngestionTask> tasks;
 }

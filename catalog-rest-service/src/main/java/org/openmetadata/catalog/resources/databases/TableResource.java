@@ -23,27 +23,15 @@ import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import org.openmetadata.catalog.Entity;
-import org.openmetadata.catalog.api.data.CreateTable;
-import org.openmetadata.catalog.entity.data.Table;
-import org.openmetadata.catalog.jdbi3.CollectionDAO;
-import org.openmetadata.catalog.jdbi3.TableRepository;
-import org.openmetadata.catalog.resources.Collection;
-import org.openmetadata.catalog.security.CatalogAuthorizer;
-import org.openmetadata.catalog.security.SecurityUtil;
-import org.openmetadata.catalog.type.DataModel;
-import org.openmetadata.catalog.type.EntityHistory;
-import org.openmetadata.catalog.type.EntityReference;
-import org.openmetadata.catalog.type.SQLQuery;
-import org.openmetadata.catalog.type.TableData;
-import org.openmetadata.catalog.type.TableJoins;
-import org.openmetadata.catalog.type.TableProfile;
-import org.openmetadata.catalog.util.EntityUtil.Fields;
-import org.openmetadata.catalog.util.RestUtil;
-import org.openmetadata.catalog.util.RestUtil.PatchResponse;
-import org.openmetadata.catalog.util.RestUtil.PutResponse;
-import org.openmetadata.catalog.util.ResultList;
-
+import java.io.IOException;
+import java.io.UnsupportedEncodingException;
+import java.security.GeneralSecurityException;
+import java.text.ParseException;
+import java.util.Arrays;
+import java.util.Date;
+import java.util.List;
+import java.util.Objects;
+import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
@@ -64,15 +52,26 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
-import java.io.IOException;
-import java.io.UnsupportedEncodingException;
-import java.security.GeneralSecurityException;
-import java.text.ParseException;
-import java.util.Arrays;
-import java.util.Date;
-import java.util.List;
-import java.util.Objects;
-import java.util.UUID;
+import org.openmetadata.catalog.Entity;
+import org.openmetadata.catalog.api.data.CreateTable;
+import org.openmetadata.catalog.entity.data.Table;
+import org.openmetadata.catalog.jdbi3.CollectionDAO;
+import org.openmetadata.catalog.jdbi3.TableRepository;
+import org.openmetadata.catalog.resources.Collection;
+import org.openmetadata.catalog.security.CatalogAuthorizer;
+import org.openmetadata.catalog.security.SecurityUtil;
+import org.openmetadata.catalog.type.DataModel;
+import org.openmetadata.catalog.type.EntityHistory;
+import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.SQLQuery;
+import org.openmetadata.catalog.type.TableData;
+import org.openmetadata.catalog.type.TableJoins;
+import org.openmetadata.catalog.type.TableProfile;
+import org.openmetadata.catalog.util.EntityUtil.Fields;
+import org.openmetadata.catalog.util.RestUtil;
+import org.openmetadata.catalog.util.RestUtil.PatchResponse;
+import org.openmetadata.catalog.util.RestUtil.PutResponse;
+import org.openmetadata.catalog.util.ResultList;
 
 @Path("/v1/tables")
 @Api(value = "Tables collection", tags = "Tables collection")
@@ -104,46 +103,56 @@ public class TableResource {
     public TableList() {}
 
     public TableList(List<Table> data, String beforeCursor, String afterCursor, int total)
-            throws GeneralSecurityException, UnsupportedEncodingException {
+        throws GeneralSecurityException, UnsupportedEncodingException {
       super(data, beforeCursor, afterCursor, total);
     }
   }
 
-  static final String FIELDS = "columns,tableConstraints,usageSummary,owner," +
-          "tags,followers,joins,sampleData,viewDefinition,tableProfile,location,tableQueries,dataModel";
-  public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replaceAll(" ", "")
-          .split(","));
+  static final String FIELDS =
+      "columns,tableConstraints,usageSummary,owner,"
+          + "tags,followers,joins,sampleData,viewDefinition,tableProfile,location,tableQueries,dataModel";
+  public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replaceAll(" ", "").split(","));
 
   @GET
-  @Operation(summary = "List tables", tags = "tables",
-          description = "Get a list of tables, optionally filtered by `database` it belongs to. Use `fields` " +
-                  "parameter to get only necessary fields. Use cursor-based pagination to limit the number " +
-                  "entries in the list using `limit` and `before` or `after` query params.",
-          responses = {@ApiResponse(responseCode = "200", description = "List of tables",
-                  content = @Content(mediaType = "application/json",
-                          schema = @Schema(implementation = TableList.class)))
-          })
-  public ResultList<Table> list(@Context UriInfo uriInfo,
-                                @Context SecurityContext securityContext,
-                                @Parameter(description = "Fields requested in the returned resource",
-                                        schema = @Schema(type = "string", example = FIELDS))
-                                @QueryParam("fields") String fieldsParam,
-                                @Parameter(description = "Filter tables by database fully qualified name",
-                                        schema = @Schema(type = "string", example = "snowflakeWestCoast.financeDB"))
-                                @QueryParam("database") String databaseParam,
-                                @Parameter(description = "Limit the number tables returned. (1 to 1000000, default = " +
-                                        "10) ")
-                                @DefaultValue("10")
-                                @Min(1)
-                                @Max(1000000)
-                                @QueryParam("limit") int limitParam,
-                                @Parameter(description = "Returns list of tables before this cursor",
-                                        schema = @Schema(type = "string"))
-                                @QueryParam("before") String before,
-                                @Parameter(description = "Returns list of tables after this cursor",
-                                        schema = @Schema(type = "string"))
-                                @QueryParam("after") String after)
-          throws IOException, ParseException, GeneralSecurityException {
+  @Operation(
+      summary = "List tables",
+      tags = "tables",
+      description =
+          "Get a list of tables, optionally filtered by `database` it belongs to. Use `fields` "
+              + "parameter to get only necessary fields. Use cursor-based pagination to limit the number "
+              + "entries in the list using `limit` and `before` or `after` query params.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of tables",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = TableList.class)))
+      })
+  public ResultList<Table> list(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Fields requested in the returned resource",
+              schema = @Schema(type = "string", example = FIELDS))
+          @QueryParam("fields")
+          String fieldsParam,
+      @Parameter(
+              description = "Filter tables by database fully qualified name",
+              schema = @Schema(type = "string", example = "snowflakeWestCoast.financeDB"))
+          @QueryParam("database")
+          String databaseParam,
+      @Parameter(description = "Limit the number tables returned. (1 to 1000000, default = " + "10) ")
+          @DefaultValue("10")
+          @Min(1)
+          @Max(1000000)
+          @QueryParam("limit")
+          int limitParam,
+      @Parameter(description = "Returns list of tables before this cursor", schema = @Schema(type = "string"))
+          @QueryParam("before")
+          String before,
+      @Parameter(description = "Returns list of tables after this cursor", schema = @Schema(type = "string"))
+          @QueryParam("after")
+          String after)
+      throws IOException, ParseException, GeneralSecurityException {
     RestUtil.validateCursors(before, after);
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
 
@@ -159,96 +168,121 @@ public class TableResource {
 
   @GET
   @Path("/{id}")
-  @Operation(summary = "Get a table", tags = "tables",
-          description = "Get a table by `id`",
-          responses = {
-                  @ApiResponse(responseCode = "200", description = "table",
-                          content = @Content(mediaType = "application/json",
-                          schema = @Schema(implementation = Table.class))),
-                  @ApiResponse(responseCode = "404", description = "Table for instance {id} is not found")
-          })
-  public Table get(@Context UriInfo uriInfo,
-                   @Context SecurityContext securityContext,
-                   @Parameter(description = "table Id", schema = @Schema(type = "string"))
-                   @PathParam("id") String id,
-                   @Parameter(description = "Fields requested in the returned resource",
-                           schema = @Schema(type = "string", example = FIELDS))
-                   @QueryParam("fields") String fieldsParam) throws IOException, ParseException {
+  @Operation(
+      summary = "Get a table",
+      tags = "tables",
+      description = "Get a table by `id`",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "table",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Table.class))),
+        @ApiResponse(responseCode = "404", description = "Table for instance {id} is not found")
+      })
+  public Table get(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "table Id", schema = @Schema(type = "string")) @PathParam("id") String id,
+      @Parameter(
+              description = "Fields requested in the returned resource",
+              schema = @Schema(type = "string", example = FIELDS))
+          @QueryParam("fields")
+          String fieldsParam)
+      throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
     return addHref(uriInfo, dao.get(uriInfo, id, fields));
   }
-  
+
   @GET
   @Path("/name/{fqn}")
-  @Operation(summary = "Get a table by name", tags = "tables",
-          description = "Get a table by fully qualified table name.",
-          responses = {
-                  @ApiResponse(responseCode = "200", description = "table",
-                          content = @Content(mediaType = "application/json",
-                          schema = @Schema(implementation = Table.class))),
-                  @ApiResponse(responseCode = "404", description = "Table for instance {id} is not found")
-          })
-  public Table getByName(@Context UriInfo uriInfo,
-                         @Context SecurityContext securityContext,
-                         @Parameter(description = "Fully qualified name of the table",
-                                    schema = @Schema(type = "string"))
-                         @PathParam("fqn") String fqn,
-                         @Parameter(description = "Fields requested in the returned resource",
-                                    schema = @Schema(type = "string", example = FIELDS))
-                         @QueryParam("fields") String fieldsParam) throws IOException, ParseException {
+  @Operation(
+      summary = "Get a table by name",
+      tags = "tables",
+      description = "Get a table by fully qualified table name.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "table",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Table.class))),
+        @ApiResponse(responseCode = "404", description = "Table for instance {id} is not found")
+      })
+  public Table getByName(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Fully qualified name of the table", schema = @Schema(type = "string")) @PathParam("fqn")
+          String fqn,
+      @Parameter(
+              description = "Fields requested in the returned resource",
+              schema = @Schema(type = "string", example = FIELDS))
+          @QueryParam("fields")
+          String fieldsParam)
+      throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
     return addHref(uriInfo, dao.getByName(uriInfo, fqn, fields));
   }
 
   @GET
   @Path("/{id}/versions")
-  @Operation(summary = "List table versions", tags = "tables",
-          description = "Get a list of all the versions of a table identified by `id`",
-          responses = {@ApiResponse(responseCode = "200", description = "List of table versions",
-                  content = @Content(mediaType = "application/json",
-                          schema = @Schema(implementation = EntityHistory.class)))
-          })
-  public EntityHistory listVersions(@Context UriInfo uriInfo,
-                                    @Context SecurityContext securityContext,
-                                    @Parameter(description = "table Id", schema = @Schema(type = "string"))
-                                    @PathParam("id") String id)
-          throws IOException, ParseException {
+  @Operation(
+      summary = "List table versions",
+      tags = "tables",
+      description = "Get a list of all the versions of a table identified by `id`",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of table versions",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = EntityHistory.class)))
+      })
+  public EntityHistory listVersions(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "table Id", schema = @Schema(type = "string")) @PathParam("id") String id)
+      throws IOException, ParseException {
     return dao.listVersions(id);
   }
 
   @GET
   @Path("/{id}/versions/{version}")
-  @Operation(summary = "Get a version of the table", tags = "tables",
-          description = "Get a version of the table by given `id`",
-          responses = {
-                  @ApiResponse(responseCode = "200", description = "table",
-                          content = @Content(mediaType = "application/json",
-                                  schema = @Schema(implementation = Table.class))),
-                  @ApiResponse(responseCode = "404", description = "Table for instance {id} and version {version} is " +
-                          "not found")
-          })
-  public Table getVersion(@Context UriInfo uriInfo,
-                          @Context SecurityContext securityContext,
-                          @Parameter(description = "table Id", schema = @Schema(type = "string"))
-                          @PathParam("id") String id,
-                          @Parameter(description = "table version number in the form `major`.`minor`",
-                                  schema = @Schema(type = "string", example = "0.1 or 1.1"))
-                          @PathParam("version") String version) throws IOException, ParseException {
+  @Operation(
+      summary = "Get a version of the table",
+      tags = "tables",
+      description = "Get a version of the table by given `id`",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "table",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Table.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Table for instance {id} and version {version} is " + "not found")
+      })
+  public Table getVersion(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "table Id", schema = @Schema(type = "string")) @PathParam("id") String id,
+      @Parameter(
+              description = "table version number in the form `major`.`minor`",
+              schema = @Schema(type = "string", example = "0.1 or 1.1"))
+          @PathParam("version")
+          String version)
+      throws IOException, ParseException {
     return dao.getVersion(id, version);
   }
 
   @POST
-  @Operation(summary = "Create a table", tags = "tables",
-          description = "Create a new table under an existing `database`.",
-          responses = {
-                  @ApiResponse(responseCode = "200", description = "table",
-                          content = @Content(mediaType = "application/json",
-                          schema = @Schema(implementation = CreateTable.class))),
-                  @ApiResponse(responseCode = "400", description = "Bad request")
-          })
-  public Response create(@Context UriInfo uriInfo,
-                         @Context SecurityContext securityContext,
-                         @Valid CreateTable create) throws IOException {
+  @Operation(
+      summary = "Create a table",
+      tags = "tables",
+      description = "Create a new table under an existing `database`.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "table",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = CreateTable.class))),
+        @ApiResponse(responseCode = "400", description = "Bad request")
+      })
+  public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTable create)
+      throws IOException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Table table = getTable(securityContext, create);
     table = addHref(uriInfo, dao.create(uriInfo, validateNewTable(table)));
@@ -256,17 +290,20 @@ public class TableResource {
   }
 
   @PUT
-  @Operation(summary = "Create or update a table", tags = "tables",
-          description = "Create a table, if it does not exist. If a table already exists, update the table.",
-          responses = {
-                  @ApiResponse(responseCode = "200", description = "The table",
-                          content = @Content(mediaType = "application/json",
-                          schema = @Schema(implementation = CreateTable.class))),
-                  @ApiResponse(responseCode = "400", description = "Bad request")
-          })
-  public Response createOrUpdate(@Context UriInfo uriInfo,
-                                 @Context SecurityContext securityContext,
-                                 @Valid CreateTable create) throws IOException, ParseException {
+  @Operation(
+      summary = "Create or update a table",
+      tags = "tables",
+      description = "Create a table, if it does not exist. If a table already exists, update the table.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The table",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = CreateTable.class))),
+        @ApiResponse(responseCode = "400", description = "Bad request")
+      })
+  public Response createOrUpdate(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTable create)
+      throws IOException, ParseException {
     Table table = getTable(securityContext, create);
     SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, dao.getOwnerReference(table));
     PutResponse<Table> response = dao.createOrUpdate(uriInfo, validateNewTable(table));
@@ -276,43 +313,49 @@ public class TableResource {
 
   @PATCH
   @Path("/{id}")
-  @Operation(summary = "Update a table", tags = "tables",
-          description = "Update an existing table using JsonPatch.",
-          externalDocs = @ExternalDocumentation(description = "JsonPatch RFC",
-                  url = "https://tools.ietf.org/html/rfc6902"))
+  @Operation(
+      summary = "Update a table",
+      tags = "tables",
+      description = "Update an existing table using JsonPatch.",
+      externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
-  public Response patch(@Context UriInfo uriInfo,
-                        @Context SecurityContext securityContext,
-                        @Parameter(description = "Id of the table", schema = @Schema(type = "string"))
-                     @PathParam("id") String id,
-                        @RequestBody(description = "JsonPatch with array of operations",
-                             content = @Content(mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
-                                     examples = {@ExampleObject("[" +
-                                             "{op:remove, path:/a}," +
-                                             "{op:add, path: /b, value: val}" +
-                                             "]")}))
-                             JsonPatch patch) throws IOException, ParseException {
+  public Response patch(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the table", schema = @Schema(type = "string")) @PathParam("id") String id,
+      @RequestBody(
+              description = "JsonPatch with array of operations",
+              content =
+                  @Content(
+                      mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
+                      examples = {
+                        @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
+                      }))
+          JsonPatch patch)
+      throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, FIELDS);
     Table table = dao.get(uriInfo, id, fields);
     SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, dao.getOwnerReference(table));
-    PatchResponse<Table> response = dao.patch(uriInfo, UUID.fromString(id),
-            securityContext.getUserPrincipal().getName(), patch);
+    PatchResponse<Table> response =
+        dao.patch(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
     addHref(uriInfo, response.getEntity());
     return response.toResponse();
   }
 
   @DELETE
   @Path("/{id}")
-  @Operation(summary = "Delete a table", tags = "tables",
-          description = "Delete a table by `id`. Table is not immediately deleted and is only marked as deleted.",
-          responses = {
-                  @ApiResponse(responseCode = "200", description = "OK"),
-                  @ApiResponse(responseCode = "404", description = "Table for instance {id} is not found")
-          })
-  public Response delete(@Context UriInfo uriInfo,
-                         @Context SecurityContext securityContext,
-                         @Parameter(description = "Id of the table", schema = @Schema(type = "string"))
-                         @PathParam("id") String id) {
+  @Operation(
+      summary = "Delete a table",
+      tags = "tables",
+      description = "Delete a table by `id`. Table is not immediately deleted and is only marked as deleted.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(responseCode = "404", description = "Table for instance {id} is not found")
+      })
+  public Response delete(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the table", schema = @Schema(type = "string")) @PathParam("id") String id) {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     dao.delete(UUID.fromString(id));
     return Response.ok().build();
@@ -320,38 +363,44 @@ public class TableResource {
 
   @PUT
   @Path("/{id}/followers")
-  @Operation(summary = "Add a follower", tags = "tables",
-          description = "Add a user identified by `userId` as followed of this table",
-          responses = {
-                  @ApiResponse(responseCode = "200", description = "OK"),
-                  @ApiResponse(responseCode = "404", description = "Table for instance {id} is not found")
-          })
-  public Response addFollower(@Context UriInfo uriInfo,
-                              @Context SecurityContext securityContext,
-                              @Parameter(description = "Id of the table", schema = @Schema(type = "string"))
-                              @PathParam("id") String id,
-                              @Parameter(description = "Id of the user to be added as follower",
-                                      schema = @Schema(type = "string"))
-                                      String userId) throws IOException {
-    return dao.addFollower(securityContext.getUserPrincipal().getName(),
-            UUID.fromString(id), UUID.fromString(userId)).toResponse();
+  @Operation(
+      summary = "Add a follower",
+      tags = "tables",
+      description = "Add a user identified by `userId` as followed of this table",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(responseCode = "404", description = "Table for instance {id} is not found")
+      })
+  public Response addFollower(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the table", schema = @Schema(type = "string")) @PathParam("id") String id,
+      @Parameter(description = "Id of the user to be added as follower", schema = @Schema(type = "string"))
+          String userId)
+      throws IOException {
+    return dao.addFollower(securityContext.getUserPrincipal().getName(), UUID.fromString(id), UUID.fromString(userId))
+        .toResponse();
   }
 
   @PUT
   @Path("/{id}/joins")
-  @Operation(summary = "Add table join information",
-          description = "Add information about other tables that this table is joined with. Join information can only" +
-                  " be added for the last 30 days starting today.", tags = "tables",
-          responses = {
-                  @ApiResponse(responseCode = "200", description = "OK"),
-                  @ApiResponse(responseCode = "404", description = "Table for instance {id} is not found"),
-                  @ApiResponse(responseCode = "400", description = "Date range can only include past 30 days starting" +
-                          " today")
-          })
-  public Table addJoins(@Context UriInfo uriInfo,
-                           @Context SecurityContext securityContext,
-                           @Parameter(description = "Id of the table", schema = @Schema(type = "string"))
-                           @PathParam("id") String id, TableJoins joins) throws IOException, ParseException {
+  @Operation(
+      summary = "Add table join information",
+      description =
+          "Add information about other tables that this table is joined with. Join information can only"
+              + " be added for the last 30 days starting today.",
+      tags = "tables",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(responseCode = "404", description = "Table for instance {id} is not found"),
+        @ApiResponse(responseCode = "400", description = "Date range can only include past 30 days starting" + " today")
+      })
+  public Table addJoins(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the table", schema = @Schema(type = "string")) @PathParam("id") String id,
+      TableJoins joins)
+      throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Table table = dao.addJoins(UUID.fromString(id), joins);
     return addHref(uriInfo, table);
@@ -359,12 +408,13 @@ public class TableResource {
 
   @PUT
   @Path("/{id}/sampleData")
-  @Operation(summary = "Add sample data", tags = "tables",
-          description = "Add sample data to the table.")
-  public Table addSampleData(@Context UriInfo uriInfo,
-                                @Context SecurityContext securityContext,
-                                @Parameter(description = "Id of the table", schema = @Schema(type = "string"))
-                                @PathParam("id") String id, TableData tableData) throws IOException, ParseException {
+  @Operation(summary = "Add sample data", tags = "tables", description = "Add sample data to the table.")
+  public Table addSampleData(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the table", schema = @Schema(type = "string")) @PathParam("id") String id,
+      TableData tableData)
+      throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Table table = dao.addSampleData(UUID.fromString(id), tableData);
     return addHref(uriInfo, table);
@@ -372,12 +422,13 @@ public class TableResource {
 
   @PUT
   @Path("/{id}/tableProfile")
-  @Operation(summary = "Add table profile data", tags = "tables",
-          description = "Add table profile data to the table.")
-  public Table addDataProfiler(@Context UriInfo uriInfo,
-                             @Context SecurityContext securityContext,
-                             @Parameter(description = "Id of the table", schema = @Schema(type = "string"))
-                             @PathParam("id") String id, TableProfile tableProfile) throws IOException, ParseException {
+  @Operation(summary = "Add table profile data", tags = "tables", description = "Add table profile data to the table.")
+  public Table addDataProfiler(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the table", schema = @Schema(type = "string")) @PathParam("id") String id,
+      TableProfile tableProfile)
+      throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Table table = dao.addTableProfileData(UUID.fromString(id), tableProfile);
     return addHref(uriInfo, table);
@@ -385,31 +436,33 @@ public class TableResource {
 
   @PUT
   @Path("/{id}/location")
-  @Operation(summary = "Add a location", tags = "tables",
-          description = "Add a location identified by `locationId` to this table",
-          responses = {
-                  @ApiResponse(responseCode = "200", description = "OK"),
-                  @ApiResponse(responseCode = "404", description = "Table for instance {id} is not found")
-          })
-  public Response addLocation(@Context UriInfo uriInfo,
-                              @Context SecurityContext securityContext,
-                              @Parameter(description = "Id of the table", schema = @Schema(type = "string"))
-                              @PathParam("id") String id,
-                              @Parameter(description = "Id of the location to be added",
-                                      schema = @Schema(type = "string"))
-                                      String locationId) throws IOException, ParseException {
+  @Operation(
+      summary = "Add a location",
+      tags = "tables",
+      description = "Add a location identified by `locationId` to this table",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(responseCode = "404", description = "Table for instance {id} is not found")
+      })
+  public Response addLocation(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the table", schema = @Schema(type = "string")) @PathParam("id") String id,
+      @Parameter(description = "Id of the location to be added", schema = @Schema(type = "string")) String locationId)
+      throws IOException, ParseException {
     Table table = dao.addLocation(UUID.fromString(id), UUID.fromString(locationId));
     return Response.ok().entity(table).build();
   }
 
   @PUT
   @Path("/{id}/tableQuery")
-  @Operation(summary = "Add table query data", tags = "tables",
-          description = "Add table query data to the table.")
-  public Table addQuery(@Context UriInfo uriInfo,
-                               @Context SecurityContext securityContext,
-                               @Parameter(description = "Id of the table", schema = @Schema(type = "string"))
-                               @PathParam("id") String id, SQLQuery sqlQuery) throws IOException, ParseException {
+  @Operation(summary = "Add table query data", tags = "tables", description = "Add table query data to the table.")
+  public Table addQuery(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the table", schema = @Schema(type = "string")) @PathParam("id") String id,
+      SQLQuery sqlQuery)
+      throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Table table = dao.addQuery(UUID.fromString(id), sqlQuery);
     return addHref(uriInfo, table);
@@ -417,12 +470,16 @@ public class TableResource {
 
   @PUT
   @Path("/{id}/dataModel")
-  @Operation(summary = "Add data modeling information to a table", tags = "tables",
-          description = "Add data modeling (such as DBT model) information on how the table was created to the table.")
-  public Table addDataModel(@Context UriInfo uriInfo,
-                        @Context SecurityContext securityContext,
-                        @Parameter(description = "Id of the table", schema = @Schema(type = "string"))
-                        @PathParam("id") String id, DataModel dataModel) throws IOException, ParseException {
+  @Operation(
+      summary = "Add data modeling information to a table",
+      tags = "tables",
+      description = "Add data modeling (such as DBT model) information on how the table was created to the table.")
+  public Table addDataModel(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the table", schema = @Schema(type = "string")) @PathParam("id") String id,
+      DataModel dataModel)
+      throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Table table = dao.addDataModel(UUID.fromString(id), dataModel);
     return addHref(uriInfo, table);
@@ -430,29 +487,31 @@ public class TableResource {
 
   @DELETE
   @Path("/{id}/followers/{userId}")
-  @Operation(summary = "Remove a follower", tags = "tables",
-          description = "Remove the user identified `userId` as a follower of the table.")
-  public Response deleteFollower(@Context UriInfo uriInfo,
-                                 @Context SecurityContext securityContext,
-                                 @Parameter(description = "Id of the table",
-                                         schema = @Schema(type = "string"))
-                                 @PathParam("id") String id,
-                                 @Parameter(description = "Id of the user being removed as follower",
-                                         schema = @Schema(type = "string"))
-                                 @PathParam("userId") String userId) throws IOException {
-    return dao.deleteFollower(securityContext.getUserPrincipal().getName(), UUID.fromString(id),
-            UUID.fromString(userId)).toResponse();
+  @Operation(
+      summary = "Remove a follower",
+      tags = "tables",
+      description = "Remove the user identified `userId` as a follower of the table.")
+  public Response deleteFollower(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the table", schema = @Schema(type = "string")) @PathParam("id") String id,
+      @Parameter(description = "Id of the user being removed as follower", schema = @Schema(type = "string"))
+          @PathParam("userId")
+          String userId)
+      throws IOException {
+    return dao.deleteFollower(
+            securityContext.getUserPrincipal().getName(), UUID.fromString(id), UUID.fromString(userId))
+        .toResponse();
   }
 
   @DELETE
   @Path("/{id}/location")
-  @Operation(summary = "Remove the location", tags = "tables",
-          description = "Remove the location")
-  public Table deleteLocation(@Context UriInfo uriInfo,
-                              @Context SecurityContext securityContext,
-                              @Parameter(description = "Id of the table",
-                                      schema = @Schema(type = "string"))
-                              @PathParam("id") String id) throws IOException, ParseException {
+  @Operation(summary = "Remove the location", tags = "tables", description = "Remove the location")
+  public Table deleteLocation(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the table", schema = @Schema(type = "string")) @PathParam("id") String id)
+      throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, "location");
     dao.deleteLocation(id);
     Table table = dao.get(uriInfo, id, fields);
@@ -468,13 +527,18 @@ public class TableResource {
   }
 
   private Table getTable(SecurityContext securityContext, CreateTable create) {
-    return new Table().withId(UUID.randomUUID()).withName(create.getName())
-            .withColumns(create.getColumns()).withDescription(create.getDescription())
-            .withTableConstraints(create.getTableConstraints()).withTableType(create.getTableType())
-            .withTags(create.getTags()).withViewDefinition(create.getViewDefinition())
-            .withUpdatedBy(securityContext.getUserPrincipal().getName())
-            .withOwner(create.getOwner())
-            .withUpdatedAt(new Date())
-            .withDatabase(new EntityReference().withId(create.getDatabase()));
+    return new Table()
+        .withId(UUID.randomUUID())
+        .withName(create.getName())
+        .withColumns(create.getColumns())
+        .withDescription(create.getDescription())
+        .withTableConstraints(create.getTableConstraints())
+        .withTableType(create.getTableType())
+        .withTags(create.getTags())
+        .withViewDefinition(create.getViewDefinition())
+        .withUpdatedBy(securityContext.getUserPrincipal().getName())
+        .withOwner(create.getOwner())
+        .withUpdatedAt(new Date())
+        .withDatabase(new EntityReference().withId(create.getDatabase()));
   }
 }

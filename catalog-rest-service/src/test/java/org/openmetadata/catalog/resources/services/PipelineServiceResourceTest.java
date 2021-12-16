@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate 
+ *  Copyright 2021 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -13,6 +13,21 @@
 
 package org.openmetadata.catalog.resources.services;
 
+import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
+import static javax.ws.rs.core.Response.Status.FORBIDDEN;
+import static javax.ws.rs.core.Response.Status.NOT_FOUND;
+import static javax.ws.rs.core.Response.Status.OK;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
+import static org.openmetadata.catalog.util.TestUtils.authHeaders;
+import static org.openmetadata.catalog.util.TestUtils.getPrincipal;
+
+import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.Date;
+import java.util.Map;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -33,29 +48,20 @@ import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
 import org.openmetadata.catalog.util.TestUtils.UpdateType;
 
-import java.io.IOException;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.util.Date;
-import java.util.Map;
-
-import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
-import static javax.ws.rs.core.Response.Status.FORBIDDEN;
-import static javax.ws.rs.core.Response.Status.NOT_FOUND;
-import static javax.ws.rs.core.Response.Status.OK;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
-import static org.openmetadata.catalog.util.TestUtils.authHeaders;
-import static org.openmetadata.catalog.util.TestUtils.getPrincipal;
-
 public class PipelineServiceResourceTest extends EntityResourceTest<PipelineService> {
 
   public static URI PIPELINE_SERVICE_URL;
 
   public PipelineServiceResourceTest() {
-    super(Entity.PIPELINE_SERVICE, PipelineService.class, PipelineServiceList.class,
-            "services/pipelineServices", "", false, false, false);
+    super(
+        Entity.PIPELINE_SERVICE,
+        PipelineService.class,
+        PipelineServiceList.class,
+        "services/pipelineServices",
+        "",
+        false,
+        false,
+        false);
     this.supportsPatch = false;
   }
 
@@ -68,13 +74,15 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
   @Test
   public void post_withoutRequiredFields_400_badRequest(TestInfo test) {
     // Create pipeline with mandatory serviceType field empty
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            createEntity(create(test).withServiceType(null), adminAuthHeaders()));
+    HttpResponseException exception =
+        assertThrows(
+            HttpResponseException.class, () -> createEntity(create(test).withServiceType(null), adminAuthHeaders()));
     TestUtils.assertResponse(exception, BAD_REQUEST, "[serviceType must not be null]");
 
     // Create pipeline with mandatory brokers field empty
-    exception = assertThrows(HttpResponseException.class, () ->
-            createEntity(create(test).withPipelineUrl(null), adminAuthHeaders()));
+    exception =
+        assertThrows(
+            HttpResponseException.class, () -> createEntity(create(test).withPipelineUrl(null), adminAuthHeaders()));
     TestUtils.assertResponse(exception, BAD_REQUEST, "[pipelineUrl must not be null]");
   }
 
@@ -88,14 +96,15 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
   }
 
   @Test
-  public void post_validService_as_non_admin_401(TestInfo test)  {
+  public void post_validService_as_non_admin_401(TestInfo test) {
     // Create pipeline service with different optional fields
     Map<String, String> authHeaders = authHeaders("test@open-metadata.org");
 
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            createAndCheckEntity(create(test, 1).withDescription(null), authHeaders));
-    TestUtils.assertResponse(exception, FORBIDDEN,
-            "Principal: CatalogPrincipal{name='test'} is not admin");
+    HttpResponseException exception =
+        assertThrows(
+            HttpResponseException.class,
+            () -> createAndCheckEntity(create(test, 1).withDescription(null), authHeaders));
+    TestUtils.assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
   }
 
   @Test
@@ -106,34 +115,37 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
 
     // Invalid format
     create.withIngestionSchedule(schedule.withRepeatFrequency("INVALID"));
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            createEntity(create, adminAuthHeaders()));
+    HttpResponseException exception =
+        assertThrows(HttpResponseException.class, () -> createEntity(create, adminAuthHeaders()));
     TestUtils.assertResponse(exception, BAD_REQUEST, "Invalid ingestion repeatFrequency INVALID");
 
     // Duration that contains years, months and seconds are not allowed
     create.withIngestionSchedule(schedule.withRepeatFrequency("P1Y"));
     exception = assertThrows(HttpResponseException.class, () -> createEntity(create, adminAuthHeaders()));
-    TestUtils.assertResponse(exception, BAD_REQUEST,
-            "Ingestion repeatFrequency can only contain Days, Hours, " +
-                    "and Minutes - example P{d}DT{h}H{m}M");
+    TestUtils.assertResponse(
+        exception,
+        BAD_REQUEST,
+        "Ingestion repeatFrequency can only contain Days, Hours, " + "and Minutes - example P{d}DT{h}H{m}M");
 
     create.withIngestionSchedule(schedule.withRepeatFrequency("P1M"));
     exception = assertThrows(HttpResponseException.class, () -> createEntity(create, adminAuthHeaders()));
-    TestUtils.assertResponse(exception, BAD_REQUEST,
-            "Ingestion repeatFrequency can only contain Days, Hours, " +
-                    "and Minutes - example P{d}DT{h}H{m}M");
+    TestUtils.assertResponse(
+        exception,
+        BAD_REQUEST,
+        "Ingestion repeatFrequency can only contain Days, Hours, " + "and Minutes - example P{d}DT{h}H{m}M");
 
     create.withIngestionSchedule(schedule.withRepeatFrequency("PT1S"));
     exception = assertThrows(HttpResponseException.class, () -> createEntity(create, adminAuthHeaders()));
-    TestUtils.assertResponse(exception, BAD_REQUEST,
-            "Ingestion repeatFrequency can only contain Days, Hours, " +
-                    "and Minutes - example P{d}DT{h}H{m}M");
+    TestUtils.assertResponse(
+        exception,
+        BAD_REQUEST,
+        "Ingestion repeatFrequency can only contain Days, Hours, " + "and Minutes - example P{d}DT{h}H{m}M");
   }
 
   @Test
   public void post_validIngestionSchedules_as_admin_200(TestInfo test) throws IOException {
     Schedule schedule = new Schedule().withStartDate(new Date());
-    schedule.withRepeatFrequency("PT60M");  // Repeat every 60M should be valid
+    schedule.withRepeatFrequency("PT60M"); // Repeat every 60M should be valid
     createAndCheckEntity(create(test, 1).withIngestionSchedule(schedule), adminAuthHeaders());
 
     schedule.withRepeatFrequency("PT1H49M");
@@ -148,22 +160,24 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
     // No jdbc connection set
     CreatePipelineService create = create(test);
     Schedule schedule = create.getIngestionSchedule();
-    create.withIngestionSchedule(schedule.withRepeatFrequency("PT1M"));  // Repeat every 0 seconds
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            createEntity(create, adminAuthHeaders()));
-    TestUtils.assertResponseContains(exception, BAD_REQUEST,
-            "Ingestion repeatFrequency is too short and must be more than 60 minutes");
+    create.withIngestionSchedule(schedule.withRepeatFrequency("PT1M")); // Repeat every 0 seconds
+    HttpResponseException exception =
+        assertThrows(HttpResponseException.class, () -> createEntity(create, adminAuthHeaders()));
+    TestUtils.assertResponseContains(
+        exception, BAD_REQUEST, "Ingestion repeatFrequency is too short and must be more than 60 minutes");
 
-    create.withIngestionSchedule(schedule.withRepeatFrequency("PT59M"));  // Repeat every 50 minutes 59 seconds
+    create.withIngestionSchedule(schedule.withRepeatFrequency("PT59M")); // Repeat every 50 minutes 59 seconds
     exception = assertThrows(HttpResponseException.class, () -> createEntity(create, adminAuthHeaders()));
-    TestUtils.assertResponse(exception, BAD_REQUEST, "Ingestion repeatFrequency is too short and must " +
-            "be more than 60 minutes");
+    TestUtils.assertResponse(
+        exception, BAD_REQUEST, "Ingestion repeatFrequency is too short and must " + "be more than 60 minutes");
   }
 
   @Test
   public void put_updateService_as_admin_2xx(TestInfo test) throws IOException, URISyntaxException {
-    PipelineService service = createAndCheckEntity(create(test).withDescription(null).withIngestionSchedule(null)
-            .withPipelineUrl(PIPELINE_SERVICE_URL), adminAuthHeaders());
+    PipelineService service =
+        createAndCheckEntity(
+            create(test).withDescription(null).withIngestionSchedule(null).withPipelineUrl(PIPELINE_SERVICE_URL),
+            adminAuthHeaders());
 
     // Update pipeline description and ingestion service that are null
     CreatePipelineService update = create(test).withDescription("description1");
@@ -177,30 +191,34 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
     Schedule schedule1 = new Schedule().withStartDate(new Date()).withRepeatFrequency("PT1H");
     update.withIngestionSchedule(schedule1);
     change = getChangeDescription(service.getVersion());
-    change.getFieldsUpdated().add(new FieldChange().withName("ingestionSchedule").withOldValue(schedule)
-            .withNewValue(schedule1));
+    change
+        .getFieldsUpdated()
+        .add(new FieldChange().withName("ingestionSchedule").withOldValue(schedule).withNewValue(schedule1));
     service = updateAndCheckEntity(update, OK, adminAuthHeaders(), UpdateType.MINOR_UPDATE, change);
 
     // update pipeline Url
     URI pipelineUrl = new URI("http://localhost:9000");
     update.withPipelineUrl(pipelineUrl);
     change = getChangeDescription(service.getVersion());
-    change.getFieldsUpdated().add(new FieldChange().withName("pipelineUrl")
-            .withOldValue(PIPELINE_SERVICE_URL).withNewValue(pipelineUrl));
+    change
+        .getFieldsUpdated()
+        .add(new FieldChange().withName("pipelineUrl").withOldValue(PIPELINE_SERVICE_URL).withNewValue(pipelineUrl));
     updateAndCheckEntity(update, OK, adminAuthHeaders(), UpdateType.MINOR_UPDATE, change);
   }
 
   @Test
   public void put_update_as_non_admin_401(TestInfo test) throws IOException {
     Map<String, String> authHeaders = adminAuthHeaders();
-    createAndCheckEntity(create(test).withDescription(null) .withIngestionSchedule(null), authHeaders);
+    createAndCheckEntity(create(test).withDescription(null).withIngestionSchedule(null), authHeaders);
 
     // Update pipeline description and ingestion service that are null
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            updateAndCheckEntity(create(test), OK, authHeaders("test@open-metadata.org"),
-                    UpdateType.NO_CHANGE, null));
-    TestUtils.assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} " +
-            "is not admin");
+    HttpResponseException exception =
+        assertThrows(
+            HttpResponseException.class,
+            () ->
+                updateAndCheckEntity(
+                    create(test), OK, authHeaders("test@open-metadata.org"), UpdateType.NO_CHANGE, null));
+    TestUtils.assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} " + "is not admin");
   }
 
   @Test
@@ -214,18 +232,21 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
   public void delete_as_user_401(TestInfo test) throws HttpResponseException {
     Map<String, String> authHeaders = adminAuthHeaders();
     PipelineService pipelineService = createEntity(create(test), authHeaders);
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            deleteEntity(pipelineService.getId(), authHeaders("test@open-metadata.org")));
-    TestUtils.assertResponse(exception, FORBIDDEN,
-            "Principal: CatalogPrincipal{name='test'} is not admin");
+    HttpResponseException exception =
+        assertThrows(
+            HttpResponseException.class,
+            () -> deleteEntity(pipelineService.getId(), authHeaders("test@open-metadata.org")));
+    TestUtils.assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
   }
 
   @Test
   public void delete_notExistentPipelineService() {
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            getEntity(TestUtils.NON_EXISTENT_ENTITY, adminAuthHeaders()));
-    TestUtils.assertResponse(exception, NOT_FOUND,
-            CatalogExceptionMessage.entityNotFound(Entity.PIPELINE_SERVICE, TestUtils.NON_EXISTENT_ENTITY));
+    HttpResponseException exception =
+        assertThrows(HttpResponseException.class, () -> getEntity(TestUtils.NON_EXISTENT_ENTITY, adminAuthHeaders()));
+    TestUtils.assertResponse(
+        exception,
+        NOT_FOUND,
+        CatalogExceptionMessage.entityNotFound(Entity.PIPELINE_SERVICE, TestUtils.NON_EXISTENT_ENTITY));
   }
 
   private CreatePipelineService create(TestInfo test) {
@@ -237,10 +258,11 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
   }
 
   private CreatePipelineService create(String entityName) {
-    return new CreatePipelineService().withName(entityName)
-            .withServiceType(CreatePipelineService.PipelineServiceType.Airflow)
-            .withPipelineUrl(PIPELINE_SERVICE_URL)
-            .withIngestionSchedule(new Schedule().withStartDate(new Date()).withRepeatFrequency("P1D"));
+    return new CreatePipelineService()
+        .withName(entityName)
+        .withServiceType(CreatePipelineService.PipelineServiceType.Airflow)
+        .withPipelineUrl(PIPELINE_SERVICE_URL)
+        .withIngestionSchedule(new Schedule().withStartDate(new Date()).withRepeatFrequency("P1D"));
   }
 
   @Override
@@ -251,8 +273,8 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
   @Override
   public void validateCreatedEntity(PipelineService service, Object request, Map<String, String> authHeaders) {
     CreatePipelineService createRequest = (CreatePipelineService) request;
-    validateCommonEntityFields(getEntityInterface(service), createRequest.getDescription(), getPrincipal(authHeaders),
-            null);
+    validateCommonEntityFields(
+        getEntityInterface(service), createRequest.getDescription(), getPrincipal(authHeaders), null);
     assertEquals(createRequest.getName(), service.getName());
 
     Schedule expectedIngestion = createRequest.getIngestionSchedule();
@@ -282,10 +304,16 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
   public void validateGetWithDifferentFields(PipelineService service, boolean byName) throws HttpResponseException {
     // No fields support
     String fields = "";
-    service = byName ? getEntityByName(service.getName(), fields, adminAuthHeaders()) :
-            getEntity(service.getId(), fields, adminAuthHeaders());
-    TestUtils.assertListNotNull(service.getHref(), service.getVersion(), service.getUpdatedBy(),
-            service.getServiceType(), service.getUpdatedAt());
+    service =
+        byName
+            ? getEntityByName(service.getName(), fields, adminAuthHeaders())
+            : getEntity(service.getId(), fields, adminAuthHeaders());
+    TestUtils.assertListNotNull(
+        service.getHref(),
+        service.getVersion(),
+        service.getUpdatedBy(),
+        service.getServiceType(),
+        service.getUpdatedAt());
   }
 
   @Override

@@ -13,12 +13,11 @@
 
 package org.openmetadata.common.utils;
 
-import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import org.junit.jupiter.api.Test;
 
 public class CipherTextTest {
   @Test
