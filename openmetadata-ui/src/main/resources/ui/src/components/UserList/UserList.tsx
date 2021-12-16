@@ -195,12 +195,13 @@ const UserList: FunctionComponent<Props> = ({
   const getLeftPanel = () => {
     return (
       <div className="tw-mt-5">
-        <div className="tw-flex tw-items-center tw-justify-between tw-mb-2">
+        <div
+          className="tw-flex tw-items-center tw-justify-between tw-mb-2 tw-cursor-pointer"
+          onClick={() => {
+            selectTeam();
+          }}>
           <div
-            className={`tw-group tw-text-grey-body tw-cursor-pointer tw-text-body tw-flex tw-justify-between ${getCurrentTeamClass()}`}
-            onClick={() => {
-              selectTeam();
-            }}>
+            className={`tw-group tw-text-grey-body tw-text-body tw-flex tw-justify-between ${getCurrentTeamClass()}`}>
             <p className="tw-text-center tag-category tw-self-center">
               All Users
             </p>
@@ -210,16 +211,16 @@ const UserList: FunctionComponent<Props> = ({
         {teams &&
           teams.map((team: Team) => (
             <div
-              className="tw-flex tw-items-center tw-justify-between tw-mb-2"
-              key={team.name}>
+              className="tw-flex tw-items-center tw-justify-between tw-mb-2 tw-cursor-pointer"
+              key={team.name}
+              onClick={() => {
+                selectTeam(team);
+                setSearchText('');
+              }}>
               <div
-                className={`tw-group tw-text-grey-body tw-cursor-pointer tw-text-body tw-flex tw-justify-between ${getCurrentTeamClass(
+                className={`tw-group tw-text-grey-body tw-text-body tw-flex tw-justify-between ${getCurrentTeamClass(
                   team.name
-                )}`}
-                onClick={() => {
-                  selectTeam(team);
-                  setSearchText('');
-                }}>
+                )}`}>
                 <p className="tw-text-center tag-category tw-self-center">
                   {team.displayName}
                 </p>

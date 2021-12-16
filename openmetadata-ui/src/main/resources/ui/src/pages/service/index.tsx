@@ -644,7 +644,7 @@ const ServicePage: FunctionComponent = () => {
           <div className="tw-px-4" data-testid="service-page">
             <TitleBreadcrumb titleLinks={slashedTableName} />
 
-            <div className="tw-flex tw-gap-1 tw-mb-2 tw-mt-1">
+            <div className="tw-flex tw-gap-1 tw-mb-2 tw-mt-1 tw-ml-7">
               {getOptionalFields()}
               <span>
                 <span className="tw-text-grey-muted tw-font-normal">
@@ -668,7 +668,9 @@ const ServicePage: FunctionComponent = () => {
               </span>
             </div>
 
-            <div className="tw-my-3" data-testid="description-container">
+            <div
+              className="tw-my-3 tw-ml-2"
+              data-testid="description-container">
               <Description
                 description={description || ''}
                 entityName={serviceFQN}
@@ -679,7 +681,7 @@ const ServicePage: FunctionComponent = () => {
               />
             </div>
 
-            <div className="tw-mt-4" data-testid="table-container">
+            <div className="tw-mt-4 tw-px-1" data-testid="table-container">
               <table
                 className="tw-bg-white tw-w-full tw-mb-4"
                 data-testid="database-tables">
