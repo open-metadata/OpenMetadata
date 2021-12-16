@@ -42,10 +42,11 @@ public class PostIngestionTests {
   }
 
   public void ingestSampleDataPostTests() throws IOException {
-    String[] sampleData = {"bash","-c", "cd ../ && pip install ingestion/"};
-    String[] sampleData1 = {"bash","-c", "cd ../ingestion && metadata ingest -c ./pipelines/sample_data.json"};
-    Runtime.getRuntime().exec(sampleData);
-    Runtime.getRuntime().exec(sampleData1);
+    String[] installIngestion = {"bash","-c", "cd ../ && pip install ingestion/"}; // install openmetadata ingestion
+    String[] ingestSampleData = {"bash","-c",
+        "cd ../ingestion && metadata ingest -c ./pipelines/sample_data.json"}; // ingest sample data
+    Runtime.getRuntime().exec(installIngestion);
+    Runtime.getRuntime().exec(ingestSampleData);
   }
 
   @Test
