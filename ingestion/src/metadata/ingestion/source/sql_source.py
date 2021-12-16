@@ -530,8 +530,9 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                         )
                     if col_type == "NULL":
                         col_type = "VARCHAR"
+                        data_type_display = "varchar"
                         logger.warning(
-                            f"Unknown type mapped to VARCHAR: {column['name']}"
+                            f"Unknown type {column['type']} mapped to VARCHAR: {column['name']}"
                         )
                     om_column = Column(
                         name=column["name"],
@@ -549,7 +550,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                 except Exception as err:
                     logger.error(traceback.format_exc())
                     logger.error(traceback.print_exc())
-                    logger.error(err)
+                    logger.error(f"{err} : {column}")
                     continue
                 table_columns.append(om_column)
                 row_order = row_order + 1
