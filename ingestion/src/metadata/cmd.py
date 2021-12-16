@@ -202,10 +202,6 @@ def docker(start, stop, clean, type, path) -> None:
             else:
                 logger.info("Running Latest Release Docker")
                 
-<<<<<<< HEAD
-=======
-                tmp_folder = tempfile.gettempdir()
->>>>>>> ced45b9d7c1d1209d8512cdf3439f6ffec4f7ed6
                 r = requests.get(
                     "https://raw.githubusercontent.com/open-metadata/OpenMetadata/main/docker/metadata/docker-compose.yml"
                 )
