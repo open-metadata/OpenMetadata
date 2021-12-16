@@ -199,7 +199,7 @@ const Appbar: React.FC = (): JSX.Element => {
                   id="explore"
                   style={navStyle(location.pathname.startsWith('/explore'))}
                   to={{
-                    pathname: '/explore',
+                    pathname: '/explore/tables',
                   }}>
                   Explore
                 </NavLink>
