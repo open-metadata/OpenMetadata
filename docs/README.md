@@ -20,18 +20,6 @@ OpenMetadata provides connectors that enable you to perform metadata ingestion f
 | [Elasticsearch](openmetadata/connectors/elastic-search.md)  | [MSSQL](openmetadata/connectors/mssql.md)   | [Redshift Usage](openmetadata/connectors/redshift-usage.md) | [Trino](openmetadata/connectors/trino.md)                     |
 | [Glue Catalog](connectors/glue-catalog.md)                  | [MySQL](openmetadata/connectors/mysql.md)   |                                                             | [Vertica](openmetadata/connectors/vertica.md)                 |
 | [Hive](openmetadata/connectors/hive.md)                     |                                             |                                                             |                                                               |
-|                                                             |                                             |                                                             |                                                               |
-|                                                             |                                             |                                                             |                                                               |
-|                                                             |                                             |                                                             |                                                               |
-|                                                             |                                             |                                                             |                                                               |
-|                                                             |                                             |                                                             |                                                               |
-|                                                             |                                             |                                                             |                                                               |
-|                                                             |                                             |                                                             |                                                               |
-|                                                             |                                             |                                                             |                                                               |
-|                                                             |                                             |                                                             |                                                               |
-|                                                             |                                             |                                                             |                                                               |
-|                                                             |                                             |                                                             |                                                               |
-|                                                             |                                             |                                                             |                                                               |
 
 ## OpenMetadata Components
 
