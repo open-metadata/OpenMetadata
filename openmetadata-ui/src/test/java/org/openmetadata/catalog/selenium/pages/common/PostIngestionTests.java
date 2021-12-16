@@ -42,8 +42,8 @@ public class PostIngestionTests {
   }
 
   public void ingestSampleDataPostTests() throws IOException {
-    String[] installIngestion = {"bash","-c", "cd ../ && pip install ingestion/"}; // install openmetadata ingestion
-    String[] ingestSampleData = {"bash","-c",
+    String[] installIngestion = {"bash", "-c", "cd ../ && pip install ingestion/"}; // install openmetadata ingestion
+    String[] ingestSampleData = {"bash", "-c",
         "cd ../ingestion && metadata ingest -c ./pipelines/sample_data.json"}; // ingest sample data
     Runtime.getRuntime().exec(installIngestion);
     Runtime.getRuntime().exec(ingestSampleData);
