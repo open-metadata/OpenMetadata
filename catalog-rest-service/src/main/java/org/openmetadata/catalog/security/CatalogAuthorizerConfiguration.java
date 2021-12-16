@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate 
+ *  Copyright 2021 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -14,13 +14,11 @@
 package org.openmetadata.catalog.security;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-
-import javax.validation.constraints.NotEmpty;
 import java.util.Map;
+import javax.validation.constraints.NotEmpty;
 
 public class CatalogAuthorizerConfiguration {
-  @NotEmpty
-  private String className;
+  @NotEmpty private String className;
 
   @JsonProperty("properties")
   private Map<String, Object> properties;
@@ -43,9 +41,6 @@ public class CatalogAuthorizerConfiguration {
 
   @Override
   public String toString() {
-    return "CatalogAuthorizerConfiguration{" +
-            "className='" + className + '\'' +
-            ", properties=" + properties +
-            '}';
+    return "CatalogAuthorizerConfiguration{" + "className='" + className + '\'' + ", properties=" + properties + '}';
   }
 }

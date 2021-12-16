@@ -114,4 +114,13 @@
       <artifactId>jackson-datatype-jsr353</artifactId>
     </dependency>
   </dependencies>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>com.theoryinpractise</groupId>
+        <artifactId>googleformatter-maven-plugin</artifactId>
+      </plugin>
+    </plugins>
+  </build>
 </project>

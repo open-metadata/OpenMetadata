@@ -20,15 +20,14 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import org.openmetadata.catalog.entity.data.Report;
-import org.openmetadata.catalog.jdbi3.CollectionDAO;
-import org.openmetadata.catalog.jdbi3.ReportRepository;
-import org.openmetadata.catalog.resources.Collection;
-import org.openmetadata.catalog.security.CatalogAuthorizer;
-import org.openmetadata.catalog.util.EntityUtil.Fields;
-import org.openmetadata.catalog.util.RestUtil.PutResponse;
-import org.openmetadata.catalog.util.ResultList;
-
+import java.io.IOException;
+import java.security.GeneralSecurityException;
+import java.text.ParseException;
+import java.util.Arrays;
+import java.util.Date;
+import java.util.List;
+import java.util.Objects;
+import java.util.UUID;
 import javax.validation.Valid;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.GET;
@@ -43,14 +42,14 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
-import java.io.IOException;
-import java.security.GeneralSecurityException;
-import java.text.ParseException;
-import java.util.Arrays;
-import java.util.Date;
-import java.util.List;
-import java.util.Objects;
-import java.util.UUID;
+import org.openmetadata.catalog.entity.data.Report;
+import org.openmetadata.catalog.jdbi3.CollectionDAO;
+import org.openmetadata.catalog.jdbi3.ReportRepository;
+import org.openmetadata.catalog.resources.Collection;
+import org.openmetadata.catalog.security.CatalogAuthorizer;
+import org.openmetadata.catalog.util.EntityUtil.Fields;
+import org.openmetadata.catalog.util.RestUtil.PutResponse;
+import org.openmetadata.catalog.util.ResultList;
 
 @Path("/v1/reports")
 @Api(value = "Reports collection", tags = "Reports collection")
@@ -73,81 +72,101 @@ public class ReportResource {
     }
   }
 
-  static final String FIELDS ="owner,usageSummary";
-  public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replaceAll(" ", "")
-          .split(","));
+  static final String FIELDS = "owner,usageSummary";
+  public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replaceAll(" ", "").split(","));
 
   @GET
-  @Operation(summary = "List reports", tags = "reports",
-          description = "Get a list of reports. Use `fields` parameter to get only necessary fields.",
-          responses = {
-                  @ApiResponse(responseCode = "200", description = "List of reports",
-                          content = @Content(mediaType = "application/json",
-                          schema = @Schema(implementation = ReportList.class)))
-          })
-  public ResultList<Report> list(@Context UriInfo uriInfo,
-                         @Parameter(description = "Fields requested in the returned resource",
-                                 schema = @Schema(type = "string", example = FIELDS))
-                         @QueryParam("fields") String fieldsParam) throws IOException, GeneralSecurityException,
-          ParseException {
+  @Operation(
+      summary = "List reports",
+      tags = "reports",
+      description = "Get a list of reports. Use `fields` parameter to get only necessary fields.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of reports",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ReportList.class)))
+      })
+  public ResultList<Report> list(
+      @Context UriInfo uriInfo,
+      @Parameter(
+              description = "Fields requested in the returned resource",
+              schema = @Schema(type = "string", example = FIELDS))
+          @QueryParam("fields")
+          String fieldsParam)
+      throws IOException, GeneralSecurityException, ParseException {
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
     return dao.listAfter(uriInfo, fields, null, 10000, null);
   }
 
   @GET
   @Path("/{id}")
-  @Operation(summary = "Get a report", tags = "reports",
-          description = "Get a report by `id`.",
-          responses = {
-                  @ApiResponse(responseCode = "200", description = "The report",
-                          content = @Content(mediaType = "application/json",
-                          schema = @Schema(implementation = Report.class))),
-                  @ApiResponse(responseCode = "404", description = "Report for instance {id} is not found")
-          })
-  public Report get(@Context UriInfo uriInfo, @PathParam("id") String id,
-                     @Parameter(description = "Fields requested in the returned resource",
-                             schema = @Schema(type = "string", example = FIELDS))
-                     @QueryParam("fields") String fieldsParam) throws IOException, ParseException {
+  @Operation(
+      summary = "Get a report",
+      tags = "reports",
+      description = "Get a report by `id`.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The report",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Report.class))),
+        @ApiResponse(responseCode = "404", description = "Report for instance {id} is not found")
+      })
+  public Report get(
+      @Context UriInfo uriInfo,
+      @PathParam("id") String id,
+      @Parameter(
+              description = "Fields requested in the returned resource",
+              schema = @Schema(type = "string", example = FIELDS))
+          @QueryParam("fields")
+          String fieldsParam)
+      throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
     return dao.get(uriInfo, id, fields);
   }
 
   @POST
-  @Operation(summary = "Create a report", tags = "reports",
-          description = "Create a new report.",
-          responses = {
-                  @ApiResponse(responseCode = "200", description = "The report",
-                          content = @Content(mediaType = "application/json",
-                          schema = @Schema(implementation = Report.class))),
-                  @ApiResponse(responseCode = "400", description = "Bad request")
-          })
-  public Response create(@Context UriInfo uriInfo,
-                         @Context SecurityContext securityContext,
-                         @Valid Report report) throws IOException {
+  @Operation(
+      summary = "Create a report",
+      tags = "reports",
+      description = "Create a new report.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The report",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Report.class))),
+        @ApiResponse(responseCode = "400", description = "Bad request")
+      })
+  public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid Report report)
+      throws IOException {
     addToReport(securityContext, report);
     dao.create(uriInfo, report);
     return Response.created(report.getHref()).entity(report).build();
   }
 
   @PUT
-  @Operation(summary = "Create or update a report", tags = "reports",
-          description = "Create a new report, it it does not exist or update an existing report.",
-          responses = {
-                  @ApiResponse(responseCode = "200", description = "The report",
-                          content = @Content(mediaType = "application/json",
-                          schema = @Schema(implementation = Report.class))),
-                  @ApiResponse(responseCode = "400", description = "Bad request")
-          })
-  public Response createOrUpdate(@Context UriInfo uriInfo,
-                                 @Context SecurityContext securityContext,
-                                 @Valid Report report) throws IOException, ParseException {
+  @Operation(
+      summary = "Create or update a report",
+      tags = "reports",
+      description = "Create a new report, it it does not exist or update an existing report.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The report",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Report.class))),
+        @ApiResponse(responseCode = "400", description = "Bad request")
+      })
+  public Response createOrUpdate(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid Report report)
+      throws IOException, ParseException {
     addToReport(securityContext, report);
     PutResponse<Report> response = dao.createOrUpdate(uriInfo, report);
     return response.toResponse();
   }
 
   private void addToReport(SecurityContext securityContext, Report report) {
-    report.withId(UUID.randomUUID()).withUpdatedBy(securityContext.getUserPrincipal().getName())
-            .withUpdatedAt(new Date());
+    report
+        .withId(UUID.randomUUID())
+        .withUpdatedBy(securityContext.getUserPrincipal().getName())
+        .withUpdatedAt(new Date());
   }
 }

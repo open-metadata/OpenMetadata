@@ -23,21 +23,17 @@ import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import org.openmetadata.catalog.Entity;
-import org.openmetadata.catalog.api.policies.CreatePolicy;
-import org.openmetadata.catalog.entity.policies.Policy;
-import org.openmetadata.catalog.jdbi3.CollectionDAO;
-import org.openmetadata.catalog.jdbi3.PolicyRepository;
-import org.openmetadata.catalog.resources.Collection;
-import org.openmetadata.catalog.security.CatalogAuthorizer;
-import org.openmetadata.catalog.security.SecurityUtil;
-import org.openmetadata.catalog.type.EntityHistory;
-import org.openmetadata.catalog.util.EntityUtil.Fields;
-import org.openmetadata.catalog.util.RestUtil;
-import org.openmetadata.catalog.util.RestUtil.PatchResponse;
-import org.openmetadata.catalog.util.RestUtil.PutResponse;
-import org.openmetadata.catalog.util.ResultList;
-
+import java.io.IOException;
+import java.io.UnsupportedEncodingException;
+import java.security.GeneralSecurityException;
+import java.text.ParseException;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Date;
+import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
@@ -58,17 +54,20 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
-import java.io.IOException;
-import java.io.UnsupportedEncodingException;
-import java.security.GeneralSecurityException;
-import java.text.ParseException;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Date;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.UUID;
+import org.openmetadata.catalog.Entity;
+import org.openmetadata.catalog.api.policies.CreatePolicy;
+import org.openmetadata.catalog.entity.policies.Policy;
+import org.openmetadata.catalog.jdbi3.CollectionDAO;
+import org.openmetadata.catalog.jdbi3.PolicyRepository;
+import org.openmetadata.catalog.resources.Collection;
+import org.openmetadata.catalog.security.CatalogAuthorizer;
+import org.openmetadata.catalog.security.SecurityUtil;
+import org.openmetadata.catalog.type.EntityHistory;
+import org.openmetadata.catalog.util.EntityUtil.Fields;
+import org.openmetadata.catalog.util.RestUtil;
+import org.openmetadata.catalog.util.RestUtil.PatchResponse;
+import org.openmetadata.catalog.util.RestUtil.PutResponse;
+import org.openmetadata.catalog.util.ResultList;
 
 @Path("/v1/policies")
 @Api(value = "Policies collection", tags = "Policies collection")
@@ -104,44 +103,50 @@ public class PolicyResource {
     }
 
     public PolicyList(List<Policy> data, String beforeCursor, String afterCursor, int total)
-            throws GeneralSecurityException, UnsupportedEncodingException {
+        throws GeneralSecurityException, UnsupportedEncodingException {
       super(data, beforeCursor, afterCursor, total);
     }
   }
 
   static final String FIELDS = "displayName,description,owner,policyUrl,enabled,rules";
-  public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replaceAll(" ", "")
-          .split(","));
+  public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replaceAll(" ", "").split(","));
 
   @GET
   @Valid
-  @Operation(summary = "List Policies", tags = "policies",
-          description = "Get a list of policies. Use `fields` parameter to get only necessary fields. " +
-                  "Use cursor-based pagination to limit the number " +
-                  "entries in the list using `limit` and `before` or `after` query params.",
-          responses = {
-                  @ApiResponse(responseCode = "200", description = "List of policies",
-                          content = @Content(mediaType = "application/json",
-                                  schema = @Schema(implementation = PolicyList.class)))
-          })
-  public ResultList<Policy> list(@Context UriInfo uriInfo,
-                                 @Context SecurityContext securityContext,
-                                 @Parameter(description = "Fields requested in the returned resource",
-                                         schema = @Schema(type = "string", example = FIELDS))
-                                 @QueryParam("fields") String fieldsParam,
-                                 @Parameter(description = "Limit the number policies returned. (1 to 1000000, " +
-                                         "default = 10)")
-                                 @DefaultValue("10")
-                                 @Min(1)
-                                 @Max(1000000)
-                                 @QueryParam("limit") int limitParam,
-                                 @Parameter(description = "Returns list of policies before this cursor",
-                                         schema = @Schema(type = "string"))
-                                 @QueryParam("before") String before,
-                                 @Parameter(description = "Returns list of policies after this cursor",
-                                         schema = @Schema(type = "string"))
-                                 @QueryParam("after") String after
-  ) throws IOException, GeneralSecurityException, ParseException {
+  @Operation(
+      summary = "List Policies",
+      tags = "policies",
+      description =
+          "Get a list of policies. Use `fields` parameter to get only necessary fields. "
+              + "Use cursor-based pagination to limit the number "
+              + "entries in the list using `limit` and `before` or `after` query params.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of policies",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = PolicyList.class)))
+      })
+  public ResultList<Policy> list(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Fields requested in the returned resource",
+              schema = @Schema(type = "string", example = FIELDS))
+          @QueryParam("fields")
+          String fieldsParam,
+      @Parameter(description = "Limit the number policies returned. (1 to 1000000, " + "default = 10)")
+          @DefaultValue("10")
+          @Min(1)
+          @Max(1000000)
+          @QueryParam("limit")
+          int limitParam,
+      @Parameter(description = "Returns list of policies before this cursor", schema = @Schema(type = "string"))
+          @QueryParam("before")
+          String before,
+      @Parameter(description = "Returns list of policies after this cursor", schema = @Schema(type = "string"))
+          @QueryParam("after")
+          String after)
+      throws IOException, GeneralSecurityException, ParseException {
     RestUtil.validateCursors(before, after);
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
 
@@ -156,39 +161,54 @@ public class PolicyResource {
 
   @GET
   @Path("/{id}")
-  @Operation(summary = "Get a policy", tags = "policies",
-          description = "Get a policy by `id`.",
-          responses = {
-                  @ApiResponse(responseCode = "200", description = "The policy",
-                          content = @Content(mediaType = "application/json",
-                                  schema = @Schema(implementation = Policy.class))),
-                  @ApiResponse(responseCode = "404", description = "Policy for instance {id} is not found")
-          })
-  public Policy get(@Context UriInfo uriInfo,
-                    @Context SecurityContext securityContext,
-                    @PathParam("id") String id,
-                    @Parameter(description = "Fields requested in the returned resource",
-                            schema = @Schema(type = "string", example = FIELDS))
-                    @QueryParam("fields") String fieldsParam) throws IOException, ParseException {
+  @Operation(
+      summary = "Get a policy",
+      tags = "policies",
+      description = "Get a policy by `id`.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The policy",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Policy.class))),
+        @ApiResponse(responseCode = "404", description = "Policy for instance {id} is not found")
+      })
+  public Policy get(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @PathParam("id") String id,
+      @Parameter(
+              description = "Fields requested in the returned resource",
+              schema = @Schema(type = "string", example = FIELDS))
+          @QueryParam("fields")
+          String fieldsParam)
+      throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
     return addHref(uriInfo, dao.get(uriInfo, id, fields));
   }
 
   @GET
   @Path("/name/{fqn}")
-  @Operation(summary = "Get a policy by name", tags = "policies",
-          description = "Get a policy by fully qualified name.",
-          responses = {
-                  @ApiResponse(responseCode = "200", description = "The policy",
-                          content = @Content(mediaType = "application/json",
-                                  schema = @Schema(implementation = Policy.class))),
-                  @ApiResponse(responseCode = "404", description = "Policy for instance {id} is not found")
-          })
-  public Policy getByName(@Context UriInfo uriInfo, @PathParam("fqn") String fqn,
-                          @Context SecurityContext securityContext,
-                          @Parameter(description = "Fields requested in the returned resource",
-                                  schema = @Schema(type = "string", example = FIELDS))
-                          @QueryParam("fields") String fieldsParam) throws IOException, ParseException {
+  @Operation(
+      summary = "Get a policy by name",
+      tags = "policies",
+      description = "Get a policy by fully qualified name.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The policy",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Policy.class))),
+        @ApiResponse(responseCode = "404", description = "Policy for instance {id} is not found")
+      })
+  public Policy getByName(
+      @Context UriInfo uriInfo,
+      @PathParam("fqn") String fqn,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Fields requested in the returned resource",
+              schema = @Schema(type = "string", example = FIELDS))
+          @QueryParam("fields")
+          String fieldsParam)
+      throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
     Policy policy = dao.getByName(uriInfo, fqn, fields);
     return addHref(uriInfo, policy);
@@ -196,55 +216,69 @@ public class PolicyResource {
 
   @GET
   @Path("/{id}/versions")
-  @Operation(summary = "List policy versions", tags = "policies",
-          description = "Get a list of all the versions of a policy identified by `id`",
-          responses = {@ApiResponse(responseCode = "200", description = "List of policy versions",
-                  content = @Content(mediaType = "application/json",
-                          schema = @Schema(implementation = EntityHistory.class)))
-          })
-  public EntityHistory listVersions(@Context UriInfo uriInfo,
-                                    @Context SecurityContext securityContext,
-                                    @Parameter(description = "policy Id", schema = @Schema(type = "string"))
-                                    @PathParam("id") String id)
-          throws IOException, ParseException {
+  @Operation(
+      summary = "List policy versions",
+      tags = "policies",
+      description = "Get a list of all the versions of a policy identified by `id`",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of policy versions",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = EntityHistory.class)))
+      })
+  public EntityHistory listVersions(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "policy Id", schema = @Schema(type = "string")) @PathParam("id") String id)
+      throws IOException, ParseException {
     return dao.listVersions(id);
   }
 
   @GET
   @Path("/{id}/versions/{version}")
-  @Operation(summary = "Get a version of the policy", tags = "policies",
-          description = "Get a version of the policy by given `id`",
-          responses = {
-                  @ApiResponse(responseCode = "200", description = "policy",
-                          content = @Content(mediaType = "application/json",
-                                  schema = @Schema(implementation = Policy.class))),
-                  @ApiResponse(responseCode = "404", description = "Policy for instance {id} and version {version} is" +
-                          " " +
-                          "not found")
-          })
-  public Policy getVersion(@Context UriInfo uriInfo,
-                          @Context SecurityContext securityContext,
-                          @Parameter(description = "policy Id", schema = @Schema(type = "string"))
-                          @PathParam("id") String id,
-                          @Parameter(description = "policy version number in the form `major`.`minor`",
-                                  schema = @Schema(type = "string", example = "0.1 or 1.1"))
-                          @PathParam("version") String version) throws IOException, ParseException {
+  @Operation(
+      summary = "Get a version of the policy",
+      tags = "policies",
+      description = "Get a version of the policy by given `id`",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "policy",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Policy.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Policy for instance {id} and version {version} is" + " " + "not found")
+      })
+  public Policy getVersion(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "policy Id", schema = @Schema(type = "string")) @PathParam("id") String id,
+      @Parameter(
+              description = "policy version number in the form `major`.`minor`",
+              schema = @Schema(type = "string", example = "0.1 or 1.1"))
+          @PathParam("version")
+          String version)
+      throws IOException, ParseException {
     return dao.getVersion(id, version);
   }
 
   @POST
-  @Operation(summary = "Create a policy", tags = "policies",
-          description = "Create a new policy.",
-          responses = {
-                  @ApiResponse(responseCode = "200", description = "The policy",
-                          content = @Content(mediaType = "application/json",
-                                  schema = @Schema(implementation = CreatePolicy.class))),
-                  @ApiResponse(responseCode = "400", description = "Bad request")
-          })
-  public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext,
-                         @Valid CreatePolicy create) throws IOException {
+  @Operation(
+      summary = "Create a policy",
+      tags = "policies",
+      description = "Create a new policy.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The policy",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = CreatePolicy.class))),
+        @ApiResponse(responseCode = "400", description = "Bad request")
+      })
+  public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreatePolicy create)
+      throws IOException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    Policy policy = new Policy()
+    Policy policy =
+        new Policy()
             .withId(UUID.randomUUID())
             .withName(create.getName())
             .withDisplayName(create.getDisplayName())
@@ -262,43 +296,53 @@ public class PolicyResource {
 
   @PATCH
   @Path("/{id}")
-  @Operation(summary = "Update a policy", tags = "policies",
-          description = "Update an existing policy using JsonPatch.",
-          externalDocs = @ExternalDocumentation(description = "JsonPatch RFC",
-                  url = "https://tools.ietf.org/html/rfc6902"))
+  @Operation(
+      summary = "Update a policy",
+      tags = "policies",
+      description = "Update an existing policy using JsonPatch.",
+      externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
-  public Response updateDescription(@Context UriInfo uriInfo,
-                                    @Context SecurityContext securityContext,
-                                    @PathParam("id") String id,
-                                    @RequestBody(description = "JsonPatch with array of operations",
-                                          content = @Content(mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
-                                                  examples = {@ExampleObject("[" +
-                                                          "{op:remove, path:/a}," +
-                                                          "{op:add, path: /b, value: val}" +
-                                                          "]")}))
-                                          JsonPatch patch) throws IOException, ParseException {
+  public Response updateDescription(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @PathParam("id") String id,
+      @RequestBody(
+              description = "JsonPatch with array of operations",
+              content =
+                  @Content(
+                      mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
+                      examples = {
+                        @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
+                      }))
+          JsonPatch patch)
+      throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, FIELDS);
     Policy policy = dao.get(uriInfo, id, fields);
     SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, dao.getOwnerReference(policy));
 
     PatchResponse<Policy> response =
-            dao.patch(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
+        dao.patch(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
     addHref(uriInfo, response.getEntity());
     return response.toResponse();
   }
 
   @PUT
-  @Operation(summary = "Create or update a policy", tags = "policies",
-          description = "Create a new policy, if it does not exist or update an existing policy.",
-          responses = {@ApiResponse(responseCode = "200", description = "The policy",
-                  content = @Content(mediaType = "application/json",
-                          schema = @Schema(implementation = Policy.class))),
-                  @ApiResponse(responseCode = "400", description = "Bad request")
-          })
-  public Response createOrUpdate(@Context UriInfo uriInfo,
-                                 @Context SecurityContext securityContext,
-                                 @Valid CreatePolicy create) throws IOException, ParseException {
-    Policy policy = new Policy()
+  @Operation(
+      summary = "Create or update a policy",
+      tags = "policies",
+      description = "Create a new policy, if it does not exist or update an existing policy.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The policy",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Policy.class))),
+        @ApiResponse(responseCode = "400", description = "Bad request")
+      })
+  public Response createOrUpdate(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreatePolicy create)
+      throws IOException, ParseException {
+    Policy policy =
+        new Policy()
             .withId(UUID.randomUUID())
             .withName(create.getName())
             .withDisplayName(create.getDisplayName())
@@ -317,11 +361,14 @@ public class PolicyResource {
 
   @DELETE
   @Path("/{id}")
-  @Operation(summary = "Delete a Policy", tags = "policy",
-          description = "Delete a policy by `id`.",
-          responses = { @ApiResponse(responseCode = "200", description = "OK"),
-                  @ApiResponse(responseCode = "404", description = "policy for instance {id} is not found")
-          })
+  @Operation(
+      summary = "Delete a Policy",
+      tags = "policy",
+      description = "Delete a policy by `id`.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(responseCode = "404", description = "policy for instance {id} is not found")
+      })
   public Response delete(@Context UriInfo uriInfo, @PathParam("id") String id) {
     dao.delete(UUID.fromString(id));
     return Response.ok().build();

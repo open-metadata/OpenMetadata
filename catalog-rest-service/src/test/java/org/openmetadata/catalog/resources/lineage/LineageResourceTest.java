@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate 
+ *  Copyright 2021 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -13,6 +13,19 @@
 
 package org.openmetadata.catalog.resources.lineage;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
+
+import java.io.IOException;
+import java.net.URISyntaxException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import javax.ws.rs.client.WebTarget;
+import javax.ws.rs.core.Response.Status;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.MethodOrderer;
@@ -31,20 +44,6 @@ import org.openmetadata.catalog.type.EntitiesEdge;
 import org.openmetadata.catalog.type.EntityLineage;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.util.TestUtils;
-
-import javax.ws.rs.client.WebTarget;
-import javax.ws.rs.core.Response.Status;
-import java.io.IOException;
-import java.net.URISyntaxException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class LineageResourceTest extends CatalogApplicationTest {
@@ -87,11 +86,19 @@ public class LineageResourceTest extends CatalogApplicationTest {
     addEdge(TABLES.get(6), TABLES.get(7));
 
     // Test table4 lineage
-    Edge[] expectedUpstreamEdges = {getEdge(TABLES.get(2), TABLES.get(4)), getEdge(TABLES.get(3), TABLES.get(4)),
-            getEdge(TABLES.get(1), TABLES.get(4)), getEdge(TABLES.get(0), TABLES.get(3))};
-    Edge[] expectedDownstreamEdges = {getEdge(TABLES.get(4), TABLES.get(9)), getEdge(TABLES.get(4),
-            TABLES.get(5)), getEdge(TABLES.get(4), TABLES.get(8)), getEdge(TABLES.get(5), TABLES.get(6)),
-            getEdge(TABLES.get(6), TABLES.get(7))};
+    Edge[] expectedUpstreamEdges = {
+      getEdge(TABLES.get(2), TABLES.get(4)),
+      getEdge(TABLES.get(3), TABLES.get(4)),
+      getEdge(TABLES.get(1), TABLES.get(4)),
+      getEdge(TABLES.get(0), TABLES.get(3))
+    };
+    Edge[] expectedDownstreamEdges = {
+      getEdge(TABLES.get(4), TABLES.get(9)),
+      getEdge(TABLES.get(4), TABLES.get(5)),
+      getEdge(TABLES.get(4), TABLES.get(8)),
+      getEdge(TABLES.get(5), TABLES.get(6)),
+      getEdge(TABLES.get(6), TABLES.get(7))
+    };
 
     // GET lineage by id
     EntityLineage lineage = getLineage(Entity.TABLE, TABLES.get(4).getId(), 3, 3, adminAuthHeaders());
@@ -103,14 +110,14 @@ public class LineageResourceTest extends CatalogApplicationTest {
 
     // Test table4 partial lineage with various upstream and downstream depths
     lineage = getLineage(Entity.TABLE, TABLES.get(4).getId(), 0, 0, adminAuthHeaders());
-    assertEdges(lineage, Arrays.copyOfRange(expectedUpstreamEdges, 0, 0),
-            Arrays.copyOfRange(expectedDownstreamEdges, 0, 0));
+    assertEdges(
+        lineage, Arrays.copyOfRange(expectedUpstreamEdges, 0, 0), Arrays.copyOfRange(expectedDownstreamEdges, 0, 0));
     lineage = getLineage(Entity.TABLE, TABLES.get(4).getId(), 1, 1, adminAuthHeaders());
-    assertEdges(lineage, Arrays.copyOfRange(expectedUpstreamEdges, 0, 3),
-            Arrays.copyOfRange(expectedDownstreamEdges, 0, 3));
+    assertEdges(
+        lineage, Arrays.copyOfRange(expectedUpstreamEdges, 0, 3), Arrays.copyOfRange(expectedDownstreamEdges, 0, 3));
     lineage = getLineage(Entity.TABLE, TABLES.get(4).getId(), 2, 2, adminAuthHeaders());
-    assertEdges(lineage, Arrays.copyOfRange(expectedUpstreamEdges, 0, 4),
-            Arrays.copyOfRange(expectedDownstreamEdges, 0, 4));
+    assertEdges(
+        lineage, Arrays.copyOfRange(expectedUpstreamEdges, 0, 4), Arrays.copyOfRange(expectedDownstreamEdges, 0, 4));
   }
 
   public Edge getEdge(Table from, Table to) {
@@ -122,25 +129,26 @@ public class LineageResourceTest extends CatalogApplicationTest {
   }
 
   public void addEdge(Table from, Table to) throws HttpResponseException {
-    EntitiesEdge edge = new EntitiesEdge().withFromEntity(new TableEntityInterface(from).getEntityReference())
+    EntitiesEdge edge =
+        new EntitiesEdge()
+            .withFromEntity(new TableEntityInterface(from).getEntityReference())
             .withToEntity(new TableEntityInterface(to).getEntityReference());
     AddLineage addLineage = new AddLineage().withEdge(edge);
     addLineageAndCheck(addLineage, adminAuthHeaders());
   }
 
   public static void addLineageAndCheck(AddLineage addLineage, Map<String, String> authHeaders)
-          throws HttpResponseException {
+      throws HttpResponseException {
     addLineage(addLineage, authHeaders);
     validateLineage(addLineage, authHeaders);
   }
 
-  public static void addLineage(AddLineage addLineage, Map<String, String> authHeaders)
-          throws HttpResponseException {
+  public static void addLineage(AddLineage addLineage, Map<String, String> authHeaders) throws HttpResponseException {
     TestUtils.put(CatalogApplicationTest.getResource("lineage"), addLineage, Status.OK, authHeaders);
   }
 
   private static void validateLineage(AddLineage addLineage, Map<String, String> authHeaders)
-          throws HttpResponseException {
+      throws HttpResponseException {
     EntityReference from = addLineage.getEdge().getFromEntity();
     EntityReference to = addLineage.getEdge().getToEntity();
     Edge expectedEdge = getEdge(from.getId(), to.getId());
@@ -160,22 +168,28 @@ public class LineageResourceTest extends CatalogApplicationTest {
 
     // Total number of from and to points in an edge must be equal to the number of nodes
     List<UUID> ids = new ArrayList<>();
-    lineage.getUpstreamEdges().forEach(edge -> {
-      ids.add(edge.getFromEntity());
-      ids.add(edge.getToEntity());
-    });
-    lineage.getDownstreamEdges().forEach(edge -> {
-      ids.add(edge.getFromEntity());
-      ids.add(edge.getToEntity());
-    });
+    lineage
+        .getUpstreamEdges()
+        .forEach(
+            edge -> {
+              ids.add(edge.getFromEntity());
+              ids.add(edge.getToEntity());
+            });
+    lineage
+        .getDownstreamEdges()
+        .forEach(
+            edge -> {
+              ids.add(edge.getFromEntity());
+              ids.add(edge.getToEntity());
+            });
     if (lineage.getNodes().size() != 0) {
       assertEquals((int) ids.stream().distinct().count(), lineage.getNodes().size() + 1);
     }
   }
 
-  public static EntityLineage getLineage(String entity, UUID id, Integer upstreamDepth,
-                                         Integer downStreamDepth, Map<String, String> authHeaders)
-          throws HttpResponseException {
+  public static EntityLineage getLineage(
+      String entity, UUID id, Integer upstreamDepth, Integer downStreamDepth, Map<String, String> authHeaders)
+      throws HttpResponseException {
     WebTarget target = getResource("lineage/" + entity + "/" + id);
     target = upstreamDepth != null ? target.queryParam("upstreamDepth", upstreamDepth) : target;
     target = downStreamDepth != null ? target.queryParam("downstreamDepth", downStreamDepth) : target;
@@ -184,9 +198,9 @@ public class LineageResourceTest extends CatalogApplicationTest {
     return lineage;
   }
 
-  public static EntityLineage getLineageByName(String entity, String fqn, Integer upstreamDepth,
-                                         Integer downStreamDepth, Map<String, String> authHeaders)
-          throws HttpResponseException {
+  public static EntityLineage getLineageByName(
+      String entity, String fqn, Integer upstreamDepth, Integer downStreamDepth, Map<String, String> authHeaders)
+      throws HttpResponseException {
     WebTarget target = getResource("lineage/" + entity + "/name/" + fqn);
     target = upstreamDepth != null ? target.queryParam("upstreamDepth", upstreamDepth) : target;
     target = downStreamDepth != null ? target.queryParam("downstreamDepth", downStreamDepth) : target;

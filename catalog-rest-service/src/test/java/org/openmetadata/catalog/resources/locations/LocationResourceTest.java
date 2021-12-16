@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate 
+ *  Copyright 2021 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -13,6 +13,26 @@
 
 package org.openmetadata.catalog.resources.locations;
 
+import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
+import static javax.ws.rs.core.Response.Status.FORBIDDEN;
+import static javax.ws.rs.core.Response.Status.OK;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
+import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
+import static org.openmetadata.catalog.util.TestUtils.assertResponse;
+import static org.openmetadata.catalog.util.TestUtils.authHeaders;
+
+import java.io.IOException;
+import java.net.URISyntaxException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import javax.ws.rs.client.WebTarget;
+import javax.ws.rs.core.Response.Status;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -32,49 +52,27 @@ import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.TestUtils;
 
-import javax.ws.rs.client.WebTarget;
-import javax.ws.rs.core.Response.Status;
-import java.io.IOException;
-import java.net.URISyntaxException;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
-import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
-import static javax.ws.rs.core.Response.Status.FORBIDDEN;
-import static javax.ws.rs.core.Response.Status.OK;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
-import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
-import static org.openmetadata.catalog.util.TestUtils.assertResponse;
-import static org.openmetadata.catalog.util.TestUtils.authHeaders;
-
 public class LocationResourceTest extends EntityResourceTest<Location> {
   public static EntityReference AWS_REFERENCE;
   public static EntityReference GCP_REFERENCE;
 
   public LocationResourceTest() {
-    super(Entity.LOCATION, Location.class, LocationList.class, "locations", LocationResource.FIELDS,
-            true, true, true);
+    super(Entity.LOCATION, Location.class, LocationList.class, "locations", LocationResource.FIELDS, true, true, true);
   }
 
   @BeforeAll
   public static void setup(TestInfo test) throws IOException, URISyntaxException {
     EntityResourceTest.setup(test);
-    CreateStorageService createService = new CreateStorageService().withName("s3")
-            .withServiceType(StorageServiceType.S3);
+    CreateStorageService createService =
+        new CreateStorageService().withName("s3").withServiceType(StorageServiceType.S3);
     StorageService service = new StorageServiceResourceTest().createEntity(createService, adminAuthHeaders());
-    AWS_REFERENCE = new EntityReference().withName(service.getName()).withId(service.getId())
-            .withType(Entity.STORAGE_SERVICE);
+    AWS_REFERENCE =
+        new EntityReference().withName(service.getName()).withId(service.getId()).withType(Entity.STORAGE_SERVICE);
 
     createService.withName("gs").withServiceType(StorageServiceType.GCS);
     service = new StorageServiceResourceTest().createEntity(createService, adminAuthHeaders());
-    GCP_REFERENCE = new EntityReference().withName(service.getName()).withId(service.getId())
-            .withType(Entity.STORAGE_SERVICE);
+    GCP_REFERENCE =
+        new EntityReference().withName(service.getName()).withId(service.getId()).withType(Entity.STORAGE_SERVICE);
   }
 
   @Override
@@ -84,10 +82,13 @@ public class LocationResourceTest extends EntityResourceTest<Location> {
 
   @Override
   public void validateCreatedEntity(Location location, Object request, Map<String, String> authHeaders)
-          throws HttpResponseException {
+      throws HttpResponseException {
     CreateLocation createRequest = (CreateLocation) request;
-    validateCommonEntityFields(getEntityInterface(location), createRequest.getDescription(),
-            TestUtils.getPrincipal(authHeaders), createRequest.getOwner());
+    validateCommonEntityFields(
+        getEntityInterface(location),
+        createRequest.getDescription(),
+        TestUtils.getPrincipal(authHeaders),
+        createRequest.getOwner());
 
     // Validate service
     EntityReference expectedService = createRequest.getService();
@@ -101,15 +102,18 @@ public class LocationResourceTest extends EntityResourceTest<Location> {
 
   @Override
   public void validateUpdatedEntity(Location location, Object request, Map<String, String> authHeaders)
-          throws HttpResponseException {
+      throws HttpResponseException {
     validateCreatedEntity(location, request, authHeaders);
   }
 
   @Override
   public void compareEntities(Location expected, Location patched, Map<String, String> authHeaders)
-          throws HttpResponseException {
-    validateCommonEntityFields(getEntityInterface(patched), expected.getDescription(),
-            TestUtils.getPrincipal(authHeaders), expected.getOwner());
+      throws HttpResponseException {
+    validateCommonEntityFields(
+        getEntityInterface(patched),
+        expected.getDescription(),
+        TestUtils.getPrincipal(authHeaders),
+        expected.getOwner());
     // Entity specific validation
     assertEquals(expected.getDisplayName(), patched.getDisplayName());
     assertEquals(expected.getFullyQualifiedName(), patched.getFullyQualifiedName());
@@ -134,20 +138,24 @@ public class LocationResourceTest extends EntityResourceTest<Location> {
   public void get_locationListWithPrefix_2xx(TestInfo test) throws HttpResponseException {
     // Create some nested locations.
     List<String> paths = Arrays.asList("/" + test.getDisplayName(), "/dwh", "/catalog", "/schema", "/table");
-    String locationName = paths.stream()
-            .reduce("", (subtotal, element) -> {
-              try {
-                CreateLocation create = new CreateLocation().withName(subtotal + element).withService(AWS_REFERENCE);
-                createLocation(create, adminAuthHeaders());
-              } catch (HttpResponseException e) {
-                throw new RuntimeException(e);
-              }
-              return subtotal + element;
-            });
+    String locationName =
+        paths.stream()
+            .reduce(
+                "",
+                (subtotal, element) -> {
+                  try {
+                    CreateLocation create =
+                        new CreateLocation().withName(subtotal + element).withService(AWS_REFERENCE);
+                    createLocation(create, adminAuthHeaders());
+                  } catch (HttpResponseException e) {
+                    throw new RuntimeException(e);
+                  }
+                  return subtotal + element;
+                });
 
     // List all locations
-    LocationList allLocations = listPrefixes(null, AWS_REFERENCE.getName() + "." + locationName, 1000000, null,
-            null, adminAuthHeaders());
+    LocationList allLocations =
+        listPrefixes(null, AWS_REFERENCE.getName() + "." + locationName, 1000000, null, null, adminAuthHeaders());
     assertEquals(5, allLocations.getData().size(), "Wrong number of prefix locations");
   }
 
@@ -174,8 +182,8 @@ public class LocationResourceTest extends EntityResourceTest<Location> {
   @Test
   public void post_location_as_non_admin_401(TestInfo test) {
     CreateLocation create = create(test);
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            createLocation(create, authHeaders("test@open-metadata.org")));
+    HttpResponseException exception =
+        assertThrows(HttpResponseException.class, () -> createLocation(create, authHeaders("test@open-metadata.org")));
     assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
   }
 
@@ -188,20 +196,23 @@ public class LocationResourceTest extends EntityResourceTest<Location> {
   @Test
   public void delete_location_as_non_admin_401(TestInfo test) throws HttpResponseException {
     Location location = createLocation(create(test), adminAuthHeaders());
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            deleteEntity(location.getId(), authHeaders("test@open-metadata.org")));
+    HttpResponseException exception =
+        assertThrows(
+            HttpResponseException.class, () -> deleteEntity(location.getId(), authHeaders("test@open-metadata.org")));
     assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
   }
 
   @Test
   public void post_locationWithoutRequiredFields_4xx(TestInfo test) {
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            createLocation(create(test).withName(null), adminAuthHeaders()));
+    HttpResponseException exception =
+        assertThrows(
+            HttpResponseException.class, () -> createLocation(create(test).withName(null), adminAuthHeaders()));
     assertResponse(exception, BAD_REQUEST, "[name must not be null]");
 
     // Service is required field
-    exception = assertThrows(HttpResponseException.class, () ->
-            createLocation(create(test).withService(null), adminAuthHeaders()));
+    exception =
+        assertThrows(
+            HttpResponseException.class, () -> createLocation(create(test).withService(null), adminAuthHeaders()));
     assertResponse(exception, BAD_REQUEST, "[service must not be null]");
   }
 
@@ -214,7 +225,12 @@ public class LocationResourceTest extends EntityResourceTest<Location> {
       createAndCheckEntity(create(test).withService(service), adminAuthHeaders());
 
       // List locations by filtering on service name and ensure right locations are returned
-      Map<String, String> queryParams = new HashMap<>(){{put("service", service.getName());}};
+      Map<String, String> queryParams =
+          new HashMap<>() {
+            {
+              put("service", service.getName());
+            }
+          };
       ResultList<Location> list = listEntities(queryParams, adminAuthHeaders());
       for (Location location : list.getData()) {
         assertEquals(service.getName(), location.getService().getName());
@@ -232,33 +248,32 @@ public class LocationResourceTest extends EntityResourceTest<Location> {
     assertEquals("description", location.getDescription());
   }
 
-  public static Location updateLocation(CreateLocation create,
-                                        Status status,
-                                        Map<String, String> authHeaders) throws HttpResponseException {
+  public static Location updateLocation(CreateLocation create, Status status, Map<String, String> authHeaders)
+      throws HttpResponseException {
     return TestUtils.put(getResource("locations"), create, Location.class, status, authHeaders);
   }
 
-  public static Location createLocation(CreateLocation create,
-                                        Map<String, String> authHeaders) throws HttpResponseException {
+  public static Location createLocation(CreateLocation create, Map<String, String> authHeaders)
+      throws HttpResponseException {
     return TestUtils.post(getResource("locations"), create, Location.class, authHeaders);
   }
 
-  /**
-   * Validate returned fields GET .../locations/{id}?fields="..." or GET .../locations/name/{fqn}?fields="..."
-   */
+  /** Validate returned fields GET .../locations/{id}?fields="..." or GET .../locations/name/{fqn}?fields="..." */
   @Override
   public void validateGetWithDifferentFields(Location location, boolean byName) throws HttpResponseException {
     // .../locations?fields=owner
     String fields = "owner";
-    location = byName ? getEntityByName(location.getFullyQualifiedName(), fields, adminAuthHeaders()) :
-            getEntity(location.getId(), fields, adminAuthHeaders());
+    location =
+        byName
+            ? getEntityByName(location.getFullyQualifiedName(), fields, adminAuthHeaders())
+            : getEntity(location.getId(), fields, adminAuthHeaders());
     assertListNotNull(location.getOwner(), location.getService(), location.getServiceType());
     // TODO add other fields
   }
 
-  public static LocationList listPrefixes(String fields, String fqn, Integer limitParam,
-                                          String before, String after, Map<String, String> authHeaders)
-          throws HttpResponseException {
+  public static LocationList listPrefixes(
+      String fields, String fqn, Integer limitParam, String before, String after, Map<String, String> authHeaders)
+      throws HttpResponseException {
     String encodedFqn = URLEncoder.encode(fqn, StandardCharsets.UTF_8);
     WebTarget target = getResource("locations/prefixes/" + encodedFqn);
     target = fields != null ? target.queryParam("fields", fields) : target;

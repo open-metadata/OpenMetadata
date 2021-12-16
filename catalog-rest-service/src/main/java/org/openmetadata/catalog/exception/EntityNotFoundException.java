@@ -13,7 +13,6 @@
 
 package org.openmetadata.catalog.exception;
 
-
 import javax.ws.rs.core.Response;
 
 public class EntityNotFoundException extends WebServiceException {

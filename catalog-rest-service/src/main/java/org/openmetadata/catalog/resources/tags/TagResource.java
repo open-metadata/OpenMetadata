@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate 
+ *  Copyright 2021 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -21,6 +21,28 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import java.io.IOException;
+import java.net.URI;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Date;
+import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.regex.Pattern;
+import javax.validation.Valid;
+import javax.ws.rs.GET;
+import javax.ws.rs.POST;
+import javax.ws.rs.PUT;
+import javax.ws.rs.Path;
+import javax.ws.rs.PathParam;
+import javax.ws.rs.Produces;
+import javax.ws.rs.QueryParam;
+import javax.ws.rs.core.Context;
+import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.Response;
+import javax.ws.rs.core.SecurityContext;
+import javax.ws.rs.core.UriInfo;
 import org.apache.maven.shared.utils.io.IOUtil;
 import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
@@ -40,29 +62,6 @@ import org.openmetadata.common.utils.CommonUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.validation.Valid;
-import javax.ws.rs.GET;
-import javax.ws.rs.POST;
-import javax.ws.rs.PUT;
-import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.Produces;
-import javax.ws.rs.QueryParam;
-import javax.ws.rs.core.Context;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.SecurityContext;
-import javax.ws.rs.core.UriInfo;
-import java.io.IOException;
-import java.net.URI;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Date;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.regex.Pattern;
-
 @Path("/v1/tags")
 @Api(value = "Tags resources collection", tags = "Tags resources collection")
 @Produces(MediaType.APPLICATION_JSON)
@@ -75,8 +74,7 @@ public class TagResource {
 
   static class CategoryList extends ResultList<TagCategory> {
     @SuppressWarnings("unused") // Empty constructor needed for deserialization
-    CategoryList() {
-    }
+    CategoryList() {}
 
     CategoryList(List<TagCategory> data) {
       super(data);
@@ -94,23 +92,27 @@ public class TagResource {
   public void initialize(CatalogApplicationConfig config) throws IOException {
     // Find tag definitions and load tag categories from the json file, if necessary
     List<String> tagFiles = getTagDefinitions();
-    tagFiles.forEach(tagFile -> {
-      try {
-        LOG.info("Loading tag definitions from file {}", tagFile);
-        String tagJson = IOUtil.toString(getClass().getClassLoader().getResourceAsStream(tagFile));
-        TagCategory tagCategory = JsonUtils.readValue(tagJson, TagCategory.class);
-        // TODO hack for now
-        Date now = new Date();
-        tagCategory.withUpdatedBy("admin").withUpdatedAt(now);
-        tagCategory.getChildren().forEach(t -> {
-          t.withUpdatedBy("admin").withUpdatedAt(now);
-          t.getChildren().forEach(c -> c.withUpdatedBy("admin").withUpdatedAt(now));
+    tagFiles.forEach(
+        tagFile -> {
+          try {
+            LOG.info("Loading tag definitions from file {}", tagFile);
+            String tagJson = IOUtil.toString(getClass().getClassLoader().getResourceAsStream(tagFile));
+            TagCategory tagCategory = JsonUtils.readValue(tagJson, TagCategory.class);
+            // TODO hack for now
+            Date now = new Date();
+            tagCategory.withUpdatedBy("admin").withUpdatedAt(now);
+            tagCategory
+                .getChildren()
+                .forEach(
+                    t -> {
+                      t.withUpdatedBy("admin").withUpdatedAt(now);
+                      t.getChildren().forEach(c -> c.withUpdatedBy("admin").withUpdatedAt(now));
+                    });
+            dao.initCategory(tagCategory);
+          } catch (Exception e) {
+            LOG.warn("Failed to initialize the tag files {} {}", tagFile, e.getMessage());
+          }
         });
-        dao.initCategory(tagCategory);
-      } catch (Exception e) {
-        LOG.warn("Failed to initialize the tag files {} {}", tagFile, e.getMessage());
-      }
-    });
   }
 
   public static List<String> getTagDefinitions() throws IOException {
@@ -123,18 +125,25 @@ public class TagResource {
   public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replaceAll(" ", "").split(","));
 
   @GET
-  @Operation(summary = "List tag categories", tags = "tags",
-          description = "Get a list of tag categories.",
-          responses = {
-                  @ApiResponse(responseCode = "200", description = "The user ",
-                          content = @Content(mediaType = "application/json", schema = @Schema(implementation =
-                                  CategoryList.class)))
-          })
-  public CategoryList getCategories(@Context UriInfo uriInfo,
-                                    @Context SecurityContext securityContext,
-                                    @Parameter(description = "Fields requested in the returned resource",
-                                            schema = @Schema(type = "string", example = FIELDS))
-                                    @QueryParam("fields") String fieldsParam) throws IOException {
+  @Operation(
+      summary = "List tag categories",
+      tags = "tags",
+      description = "Get a list of tag categories.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The user ",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = CategoryList.class)))
+      })
+  public CategoryList getCategories(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Fields requested in the returned resource",
+              schema = @Schema(type = "string", example = FIELDS))
+          @QueryParam("fields")
+          String fieldsParam)
+      throws IOException {
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
     List<TagCategory> list = dao.listCategories(fields);
     list.forEach(category -> addHref(uriInfo, category));
@@ -143,52 +152,68 @@ public class TagResource {
 
   @GET
   @Path("{category}")
-  @Operation(summary = "Get a tag category", tags = "tags",
-          description = "Get a tag category identified by name. The response includes tag category information along " +
-                  "with the entire hierarchy of all the children tags.",
-          responses = {
-                  @ApiResponse(responseCode = "200", description = "The user ",
-                          content = @Content(mediaType = "application/json", schema = @Schema(implementation =
-                                  TagCategory.class))),
-                  @ApiResponse(responseCode = "404", description = "TagCategory for instance {category} is not found")
-          })
-  public TagCategory getCategory(@Context UriInfo uriInfo,
-                                 @Context SecurityContext securityContext,
-                                 @Parameter(description = "Tag category name",
-                                         schema = @Schema(type = "string"))
-                                 @PathParam("category") String category,
-                                 @Parameter(description = "Fields requested in the returned resource",
-                                         schema = @Schema(type = "string", example = FIELDS))
-                                 @QueryParam("fields") String fieldsParam) throws IOException {
+  @Operation(
+      summary = "Get a tag category",
+      tags = "tags",
+      description =
+          "Get a tag category identified by name. The response includes tag category information along "
+              + "with the entire hierarchy of all the children tags.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The user ",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = TagCategory.class))),
+        @ApiResponse(responseCode = "404", description = "TagCategory for instance {category} is not found")
+      })
+  public TagCategory getCategory(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Tag category name", schema = @Schema(type = "string")) @PathParam("category")
+          String category,
+      @Parameter(
+              description = "Fields requested in the returned resource",
+              schema = @Schema(type = "string", example = FIELDS))
+          @QueryParam("fields")
+          String fieldsParam)
+      throws IOException {
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
     return addHref(uriInfo, dao.getCategory(category, fields));
   }
 
   @GET
-  @Operation(summary = "Get a primary tag", tags = "tags",
-          description = "Get a primary tag identified by name. The response includes with the entire hierarchy of all" +
-                  " the children tags.",
-          responses = {
-                  @ApiResponse(responseCode = "200", description = "The user ",
-                          content = @Content(mediaType = "application/json", schema = @Schema(implementation =
-                                  Tag.class))),
-                  @ApiResponse(responseCode = "404", description = "TagCategory for instance {category} is not found"),
-                  @ApiResponse(responseCode = "404", description = "Tag for instance {primaryTag} is not found")
-          })
+  @Operation(
+      summary = "Get a primary tag",
+      tags = "tags",
+      description =
+          "Get a primary tag identified by name. The response includes with the entire hierarchy of all"
+              + " the children tags.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The user ",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Tag.class))),
+        @ApiResponse(responseCode = "404", description = "TagCategory for instance {category} is not found"),
+        @ApiResponse(responseCode = "404", description = "Tag for instance {primaryTag} is not found")
+      })
   @Path("{category}/{primaryTag}")
   @ApiOperation(value = "Returns tag groups under the given category.", response = Tag.class)
-  public Tag getPrimaryTag(@Context UriInfo uriInfo,
-                           @Context SecurityContext securityContext,
-                           @Parameter(description = "Tag category name",
-                                   schema = @Schema(type = "string"))
-                           @PathParam("category") String category,
-                           @Parameter(description = "Primary tag name",
-                                   schema = @Schema(type = "string",
-                                           example = "<primaryTag> fully qualified name <categoryName>.<primaryTag>"))
-                           @PathParam("primaryTag") String primaryTag,
-                           @Parameter(description = "Fields requested in the returned resource",
-                                   schema = @Schema(type = "string", example = FIELDS))
-                           @QueryParam("fields") String fieldsParam) throws IOException {
+  public Tag getPrimaryTag(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Tag category name", schema = @Schema(type = "string")) @PathParam("category")
+          String category,
+      @Parameter(
+              description = "Primary tag name",
+              schema =
+                  @Schema(type = "string", example = "<primaryTag> fully qualified name <categoryName>.<primaryTag>"))
+          @PathParam("primaryTag")
+          String primaryTag,
+      @Parameter(
+              description = "Fields requested in the returned resource",
+              schema = @Schema(type = "string", example = FIELDS))
+          @QueryParam("fields")
+          String fieldsParam)
+      throws IOException {
     String fqn = category + "." + primaryTag;
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
     Tag tag = dao.getTag(category, fqn, fields);
@@ -198,33 +223,44 @@ public class TagResource {
 
   @GET
   @Path("{category}/{primaryTag}/{secondaryTag}")
-  @Operation(summary = "Get a secondary tag", tags = "tags",
-          description = "Get a secondary tag identified by name.",
-          responses = {
-                  @ApiResponse(responseCode = "200", description = "The user ",
-                          content = @Content(mediaType = "application/json", schema = @Schema(implementation =
-                                  Tag.class))),
-                  @ApiResponse(responseCode = "404", description = "TagCategory for instance {category} is not found"),
-                  @ApiResponse(responseCode = "404", description = "Tag for instance {primaryTag} is not found"),
-                  @ApiResponse(responseCode = "404", description = "Tag for instance {secondaryTag} is not found")
-          })
-  public Tag getSecondaryTag(@Context UriInfo uriInfo,
-                             @Context SecurityContext securityContext,
-                             @Parameter(description = "Tag category name",
-                                     schema = @Schema(type = "string"))
-                             @PathParam("category") String category,
-                             @Parameter(description = "Primary tag name",
-                                     schema = @Schema(type = "string",
-                                             example = "<primaryTag> fully qualified name <categoryName>.<primaryTag>"))
-                             @PathParam("primaryTag") String primaryTag,
-                             @Parameter(description = "Secondary tag name",
-                                     schema = @Schema(type = "string",
-                                             example = "<secondaryTag> fully qualified name <categoryName>" +
-                                                     ".<primaryTag>.<SecondaryTag>"))
-                             @PathParam("secondaryTag") String secondaryTag,
-                             @Parameter(description = "Fields requested in the returned resource",
-                                     schema = @Schema(type = "string", example = FIELDS))
-                             @QueryParam("fields") String fieldsParam) throws IOException {
+  @Operation(
+      summary = "Get a secondary tag",
+      tags = "tags",
+      description = "Get a secondary tag identified by name.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The user ",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Tag.class))),
+        @ApiResponse(responseCode = "404", description = "TagCategory for instance {category} is not found"),
+        @ApiResponse(responseCode = "404", description = "Tag for instance {primaryTag} is not found"),
+        @ApiResponse(responseCode = "404", description = "Tag for instance {secondaryTag} is not found")
+      })
+  public Tag getSecondaryTag(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Tag category name", schema = @Schema(type = "string")) @PathParam("category")
+          String category,
+      @Parameter(
+              description = "Primary tag name",
+              schema =
+                  @Schema(type = "string", example = "<primaryTag> fully qualified name <categoryName>.<primaryTag>"))
+          @PathParam("primaryTag")
+          String primaryTag,
+      @Parameter(
+              description = "Secondary tag name",
+              schema =
+                  @Schema(
+                      type = "string",
+                      example = "<secondaryTag> fully qualified name <categoryName>" + ".<primaryTag>.<SecondaryTag>"))
+          @PathParam("secondaryTag")
+          String secondaryTag,
+      @Parameter(
+              description = "Fields requested in the returned resource",
+              schema = @Schema(type = "string", example = FIELDS))
+          @QueryParam("fields")
+          String fieldsParam)
+      throws IOException {
     String fqn = category + "." + primaryTag + "." + secondaryTag;
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
     Tag tag = dao.getTag(category, fqn, fields);
@@ -233,20 +269,28 @@ public class TagResource {
   }
 
   @POST
-  @Operation(summary = "Create a tag category", tags = "tags",
-          description = "Create a new tag category. The request can include the children tags to be created along " +
-                  "with the tag category.",
-          responses = {
-                  @ApiResponse(responseCode = "200", description = "The user ",
-                          content = @Content(mediaType = "application/json", schema = @Schema(implementation =
-                                  CreateTagCategory.class))),
-                  @ApiResponse(responseCode = "400", description = "Bad request")
-          })
-  public Response createCategory(@Context UriInfo uriInfo,
-                                 @Context SecurityContext securityContext,
-                                 @Valid CreateTagCategory create) throws IOException {
+  @Operation(
+      summary = "Create a tag category",
+      tags = "tags",
+      description =
+          "Create a new tag category. The request can include the children tags to be created along "
+              + "with the tag category.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The user ",
+            content =
+                @Content(mediaType = "application/json", schema = @Schema(implementation = CreateTagCategory.class))),
+        @ApiResponse(responseCode = "400", description = "Bad request")
+      })
+  public Response createCategory(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTagCategory create)
+      throws IOException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    TagCategory category = new TagCategory().withName(create.getName()).withCategoryType(create.getCategoryType())
+    TagCategory category =
+        new TagCategory()
+            .withName(create.getName())
+            .withCategoryType(create.getCategoryType())
             .withDescription(create.getDescription())
             .withUpdatedBy(securityContext.getUserPrincipal().getName())
             .withUpdatedAt(new Date());
@@ -256,22 +300,29 @@ public class TagResource {
 
   @POST
   @Path("{category}")
-  @Operation(summary = "Create a primary tag", tags = "tags",
-          description = "Create a primary tag in the given tag category.",
-          responses = {
-                  @ApiResponse(responseCode = "200", description = "The user ",
-                          content = @Content(mediaType = "application/json", schema = @Schema(implementation =
-                                  CreateTag.class))),
-                  @ApiResponse(responseCode = "400", description = "Bad request")
-          })
-  public Response createPrimaryTag(@Context UriInfo uriInfo,
-                                   @Context SecurityContext securityContext,
-                                   @Parameter(description = "Tag category name",
-                                           schema = @Schema(type = "string"))
-                                   @PathParam("category") String category,
-                                   @Valid  CreateTag create) throws IOException {
+  @Operation(
+      summary = "Create a primary tag",
+      tags = "tags",
+      description = "Create a primary tag in the given tag category.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The user ",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = CreateTag.class))),
+        @ApiResponse(responseCode = "400", description = "Bad request")
+      })
+  public Response createPrimaryTag(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Tag category name", schema = @Schema(type = "string")) @PathParam("category")
+          String category,
+      @Valid CreateTag create)
+      throws IOException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    Tag tag = new Tag().withName(create.getName()).withDescription(create.getDescription())
+    Tag tag =
+        new Tag()
+            .withName(create.getName())
+            .withDescription(create.getDescription())
             .withAssociatedTags(create.getAssociatedTags())
             .withUpdatedBy(securityContext.getUserPrincipal().getName())
             .withUpdatedAt(new Date());
@@ -282,27 +333,37 @@ public class TagResource {
 
   @POST
   @Path("{category}/{primaryTag}")
-  @Operation(summary = "Create a secondary tag", tags = "tags",
-          description = "Create a secondary tag under the given primary tag.",
-          responses = {
-                  @ApiResponse(responseCode = "200", description = "The user ",
-                          content = @Content(mediaType = "application/json", schema = @Schema(implementation =
-                                  CreateTag.class))),
-                  @ApiResponse(responseCode = "400", description = "Bad request")
-          })
-  public Response createSecondaryTag(@Context UriInfo uriInfo,
-                                     @Context SecurityContext securityContext,
-                                     @Parameter(description = "Tag category name",
-                                             schema = @Schema(type = "string"))
-                                     @PathParam("category") String category,
-                                     @Parameter(description = "Primary tag name",
-                                             schema = @Schema(type = "string",
-                                                     example = "<primaryTag> fully qualified name <categoryName>" +
-                                                             ".<primaryTag>"))
-                                     @PathParam("primaryTag") String primaryTag,
-                                     @Valid CreateTag create) throws IOException {
+  @Operation(
+      summary = "Create a secondary tag",
+      tags = "tags",
+      description = "Create a secondary tag under the given primary tag.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The user ",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = CreateTag.class))),
+        @ApiResponse(responseCode = "400", description = "Bad request")
+      })
+  public Response createSecondaryTag(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Tag category name", schema = @Schema(type = "string")) @PathParam("category")
+          String category,
+      @Parameter(
+              description = "Primary tag name",
+              schema =
+                  @Schema(
+                      type = "string",
+                      example = "<primaryTag> fully qualified name <categoryName>" + ".<primaryTag>"))
+          @PathParam("primaryTag")
+          String primaryTag,
+      @Valid CreateTag create)
+      throws IOException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    Tag tag = new Tag().withName(create.getName()).withDescription(create.getDescription())
+    Tag tag =
+        new Tag()
+            .withName(create.getName())
+            .withDescription(create.getDescription())
             .withAssociatedTags(create.getAssociatedTags())
             .withUpdatedBy(securityContext.getUserPrincipal().getName())
             .withUpdatedAt(new Date());
@@ -314,16 +375,22 @@ public class TagResource {
 
   @PUT
   @Path("{category}")
-  @Operation(summary = "Update a tag category", tags = "tags",
-          description = "Update an existing category identify by category name")
-  public Response updateCategory(@Context UriInfo uriInfo,
-                                 @Context SecurityContext securityContext,
-                                 @Parameter(description = "Tag category name",
-                                         schema = @Schema(type = "string"))
-                                 @PathParam("category") String categoryName,
-                                 @Valid CreateTagCategory create) throws IOException {
+  @Operation(
+      summary = "Update a tag category",
+      tags = "tags",
+      description = "Update an existing category identify by category name")
+  public Response updateCategory(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Tag category name", schema = @Schema(type = "string")) @PathParam("category")
+          String categoryName,
+      @Valid CreateTagCategory create)
+      throws IOException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    TagCategory category = new TagCategory().withName(create.getName()).withCategoryType(create.getCategoryType())
+    TagCategory category =
+        new TagCategory()
+            .withName(create.getName())
+            .withCategoryType(create.getCategoryType())
             .withDescription(create.getDescription());
     category = addHref(uriInfo, dao.updateCategory(categoryName, category));
     // TODO also create
@@ -332,21 +399,30 @@ public class TagResource {
 
   @PUT
   @Path("{category}/{primaryTag}")
-  @Operation(summary = "Update a primaryTag", tags = "tags",
-          description = "Update an existing primaryTag identify by name")
-  public Response updatePrimaryTag(@Context UriInfo uriInfo,
-                                   @Context SecurityContext securityContext,
-                                   @Parameter(description = "Tag category name",
-                                           schema = @Schema(type = "string"))
-                                   @PathParam("category") String categoryName,
-                                   @Parameter(description = "Primary tag name",
-                                           schema = @Schema(type = "string",
-                                                   example = "<primaryTag> fully qualified name <categoryName>" +
-                                                           ".<primaryTag>"))
-                                   @PathParam("primaryTag") String primaryTag,
-                                   @Valid CreateTag create) throws IOException {
+  @Operation(
+      summary = "Update a primaryTag",
+      tags = "tags",
+      description = "Update an existing primaryTag identify by name")
+  public Response updatePrimaryTag(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Tag category name", schema = @Schema(type = "string")) @PathParam("category")
+          String categoryName,
+      @Parameter(
+              description = "Primary tag name",
+              schema =
+                  @Schema(
+                      type = "string",
+                      example = "<primaryTag> fully qualified name <categoryName>" + ".<primaryTag>"))
+          @PathParam("primaryTag")
+          String primaryTag,
+      @Valid CreateTag create)
+      throws IOException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    Tag tag = new Tag().withName(create.getName()).withDescription(create.getDescription())
+    Tag tag =
+        new Tag()
+            .withName(create.getName())
+            .withDescription(create.getDescription())
             .withAssociatedTags(create.getAssociatedTags());
     URI categoryHref = RestUtil.getHref(uriInfo, TAG_COLLECTION_PATH, categoryName);
     tag = addHref(categoryHref, dao.updatePrimaryTag(categoryName, primaryTag, tag));
@@ -355,26 +431,38 @@ public class TagResource {
 
   @PUT
   @Path("{category}/{primaryTag}/{secondaryTag}")
-  @Operation(summary = "Update a secondaryTag", tags = "tags",
-          description = "Update an existing secondaryTag identify by name")
-  public Response updateSecondaryTag(@Context UriInfo uriInfo,
-                                     @Context SecurityContext securityContext,
-                                     @Parameter(description = "Tag category name",
-                                             schema = @Schema(type = "string"))
-                                     @PathParam("category") String categoryName,
-                                     @Parameter(description = "Primary tag name",
-                                             schema = @Schema(type = "string",
-                                                     example = "<primaryTag> fully qualified name <categoryName>" +
-                                                             ".<primaryTag>"))
-                                     @PathParam("primaryTag") String primaryTag,
-                                     @Parameter(description = "SecondaryTag tag name",
-                                             schema = @Schema(type = "string",
-                                                     example = "<secondaryTag> fully qualified name <categoryName>" +
-                                                             ".<primaryTag>.<secondaryTag>"))
-                                     @PathParam("secondaryTag") String secondaryTag,
-                                     @Valid CreateTag create) throws IOException {
+  @Operation(
+      summary = "Update a secondaryTag",
+      tags = "tags",
+      description = "Update an existing secondaryTag identify by name")
+  public Response updateSecondaryTag(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Tag category name", schema = @Schema(type = "string")) @PathParam("category")
+          String categoryName,
+      @Parameter(
+              description = "Primary tag name",
+              schema =
+                  @Schema(
+                      type = "string",
+                      example = "<primaryTag> fully qualified name <categoryName>" + ".<primaryTag>"))
+          @PathParam("primaryTag")
+          String primaryTag,
+      @Parameter(
+              description = "SecondaryTag tag name",
+              schema =
+                  @Schema(
+                      type = "string",
+                      example = "<secondaryTag> fully qualified name <categoryName>" + ".<primaryTag>.<secondaryTag>"))
+          @PathParam("secondaryTag")
+          String secondaryTag,
+      @Valid CreateTag create)
+      throws IOException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    Tag tag = new Tag().withName(create.getName()).withDescription(create.getDescription())
+    Tag tag =
+        new Tag()
+            .withName(create.getName())
+            .withDescription(create.getDescription())
             .withAssociatedTags(create.getAssociatedTags());
     URI categoryHref = RestUtil.getHref(uriInfo, TAG_COLLECTION_PATH, categoryName);
     URI parentHRef = RestUtil.getHref(categoryHref, primaryTag);

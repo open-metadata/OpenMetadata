@@ -13,6 +13,25 @@
 
 package org.openmetadata.catalog.resources.policies;
 
+import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
+import static javax.ws.rs.core.Response.Status.FORBIDDEN;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.fail;
+import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
+import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
+import static org.openmetadata.catalog.util.TestUtils.assertEntityPagination;
+import static org.openmetadata.catalog.util.TestUtils.assertResponse;
+import static org.openmetadata.catalog.util.TestUtils.authHeaders;
+
+import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.Map;
+import java.util.UUID;
+import javax.ws.rs.client.WebTarget;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.BeforeAll;
@@ -32,32 +51,11 @@ import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
 
-import javax.ws.rs.client.WebTarget;
-import java.io.IOException;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.util.Map;
-import java.util.UUID;
-
-import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
-import static javax.ws.rs.core.Response.Status.FORBIDDEN;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.fail;
-import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
-import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
-import static org.openmetadata.catalog.util.TestUtils.assertEntityPagination;
-import static org.openmetadata.catalog.util.TestUtils.assertResponse;
-import static org.openmetadata.catalog.util.TestUtils.authHeaders;
-
 @Slf4j
 public class PolicyResourceTest extends EntityResourceTest<Policy> {
 
   public PolicyResourceTest() {
-    super(Entity.POLICY, Policy.class, PolicyList.class, "policies", PolicyResource.FIELDS,
-            false, true, false);
+    super(Entity.POLICY, Policy.class, PolicyList.class, "policies", PolicyResource.FIELDS, false, true, false);
   }
 
   @BeforeAll
@@ -73,8 +71,11 @@ public class PolicyResourceTest extends EntityResourceTest<Policy> {
   @Override
   public void validateCreatedEntity(Policy policy, Object request, Map<String, String> authHeaders) {
     CreatePolicy createRequest = (CreatePolicy) request;
-    validateCommonEntityFields(getEntityInterface(policy), createRequest.getDescription(),
-            TestUtils.getPrincipal(authHeaders), createRequest.getOwner());
+    validateCommonEntityFields(
+        getEntityInterface(policy),
+        createRequest.getDescription(),
+        TestUtils.getPrincipal(authHeaders),
+        createRequest.getOwner());
     assertEquals(createRequest.getPolicyUrl(), policy.getPolicyUrl());
   }
 
@@ -84,9 +85,7 @@ public class PolicyResourceTest extends EntityResourceTest<Policy> {
   }
 
   @Override
-  public void compareEntities(Policy expected, Policy updated, Map<String, String> authHeaders) {
-
-  }
+  public void compareEntities(Policy expected, Policy updated, Map<String, String> authHeaders) {}
 
   @Override
   public EntityInterface<Policy> getEntityInterface(Policy entity) {
@@ -112,8 +111,8 @@ public class PolicyResourceTest extends EntityResourceTest<Policy> {
   @Test
   public void post_PolicyWithoutPolicyType_400_badRequest(TestInfo test) {
     CreatePolicy create = create(test).withPolicyType(null);
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            createPolicy(create, adminAuthHeaders()));
+    HttpResponseException exception =
+        assertThrows(HttpResponseException.class, () -> createPolicy(create, adminAuthHeaders()));
     assertResponse(exception, BAD_REQUEST, "[policyType must not be null]");
   }
 
@@ -141,32 +140,31 @@ public class PolicyResourceTest extends EntityResourceTest<Policy> {
   @Test
   public void post_Policy_as_non_admin_401(TestInfo test) {
     CreatePolicy create = create(test);
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            createPolicy(create, authHeaders("test@open-metadata.org")));
+    HttpResponseException exception =
+        assertThrows(HttpResponseException.class, () -> createPolicy(create, authHeaders("test@open-metadata.org")));
     assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
   }
 
   @Test
   public void get_PolicyListWithInvalidLimitOffset_4xx() {
     // Limit must be >= 1 and <= 1000,000
-    HttpResponseException exception = assertThrows(HttpResponseException.class, ()
-            -> listPolicies(null, -1, null, null, adminAuthHeaders()));
+    HttpResponseException exception =
+        assertThrows(HttpResponseException.class, () -> listPolicies(null, -1, null, null, adminAuthHeaders()));
     assertResponse(exception, BAD_REQUEST, "[query param limit must be greater than or equal to 1]");
 
-    exception = assertThrows(HttpResponseException.class, ()
-            -> listPolicies(null, 0, null, null, adminAuthHeaders()));
+    exception = assertThrows(HttpResponseException.class, () -> listPolicies(null, 0, null, null, adminAuthHeaders()));
     assertResponse(exception, BAD_REQUEST, "[query param limit must be greater than or equal to 1]");
 
-    exception = assertThrows(HttpResponseException.class, ()
-            -> listPolicies(null, 1000001, null, null, adminAuthHeaders()));
+    exception =
+        assertThrows(HttpResponseException.class, () -> listPolicies(null, 1000001, null, null, adminAuthHeaders()));
     assertResponse(exception, BAD_REQUEST, "[query param limit must be less than or equal to 1000000]");
   }
 
   @Test
   public void get_PolicyListWithInvalidPaginationCursors_4xx() {
     // Passing both before and after cursors is invalid
-    HttpResponseException exception = assertThrows(HttpResponseException.class, ()
-            -> listPolicies(null, 1, "", "", adminAuthHeaders()));
+    HttpResponseException exception =
+        assertThrows(HttpResponseException.class, () -> listPolicies(null, 1, "", "", adminAuthHeaders()));
     assertResponse(exception, BAD_REQUEST, "Only one of before or after query parameter allowed");
   }
 
@@ -179,8 +177,7 @@ public class PolicyResourceTest extends EntityResourceTest<Policy> {
     }
 
     // List all Policies
-    PolicyList allPolicies = listPolicies(null, 1000000, null,
-            null, adminAuthHeaders());
+    PolicyList allPolicies = listPolicies(null, 1000000, null, null, adminAuthHeaders());
     int totalRecords = allPolicies.getData().size();
     printPolicies(allPolicies);
 
@@ -200,7 +197,7 @@ public class PolicyResourceTest extends EntityResourceTest<Policy> {
         before = forwardPage.getPaging().getBefore();
         assertEntityPagination(allPolicies.getData(), forwardPage, limit, indexInAllPolicies);
 
-        if (pageCount == 0) {  // CASE 0 - First page is being returned. Therefore, before cursor is null
+        if (pageCount == 0) { // CASE 0 - First page is being returned. Therefore, before cursor is null
           assertNull(before);
         } else {
           // Make sure scrolling back based on before cursor returns the correct result
@@ -271,52 +268,54 @@ public class PolicyResourceTest extends EntityResourceTest<Policy> {
     // TODO
   }
 
-  public static Policy createPolicy(CreatePolicy create, Map<String, String> authHeaders) throws
-          HttpResponseException {
+  public static Policy createPolicy(CreatePolicy create, Map<String, String> authHeaders) throws HttpResponseException {
     return TestUtils.post(getResource("policies"), create, Policy.class, authHeaders);
   }
 
-  /**
-   * Validate returned fields GET .../policies/{id}?fields="..." or GET .../policies/name/{fqn}?fields="..."
-   */
+  /** Validate returned fields GET .../policies/{id}?fields="..." or GET .../policies/name/{fqn}?fields="..." */
   @Override
   public void validateGetWithDifferentFields(Policy policy, boolean byName) throws HttpResponseException {
     // .../policies?fields=owner
     String fields = "owner";
-    policy = byName ? getPolicyByName(policy.getFullyQualifiedName(), fields, adminAuthHeaders()) :
-            getPolicy(policy.getId(), fields, adminAuthHeaders());
+    policy =
+        byName
+            ? getPolicyByName(policy.getFullyQualifiedName(), fields, adminAuthHeaders())
+            : getPolicy(policy.getId(), fields, adminAuthHeaders());
     assertNotNull(policy.getOwner());
 
     // .../policies?fields=owner,displayName
     fields = "owner,displayName";
-    policy = byName ? getPolicyByName(policy.getFullyQualifiedName(), fields, adminAuthHeaders()) :
-            getPolicy(policy.getId(), fields, adminAuthHeaders());
+    policy =
+        byName
+            ? getPolicyByName(policy.getFullyQualifiedName(), fields, adminAuthHeaders())
+            : getPolicy(policy.getId(), fields, adminAuthHeaders());
     assertNotNull(policy.getOwner());
 
     // .../policies?fields=owner,displayName,policyUrl
     fields = "owner,displayName,policyUrl";
-    policy = byName ? getPolicyByName(policy.getFullyQualifiedName(), fields, adminAuthHeaders()) :
-            getPolicy(policy.getId(), fields, adminAuthHeaders());
+    policy =
+        byName
+            ? getPolicyByName(policy.getFullyQualifiedName(), fields, adminAuthHeaders())
+            : getPolicy(policy.getId(), fields, adminAuthHeaders());
     assertNotNull(policy.getOwner());
   }
 
-  public static Policy getPolicy(UUID id, String fields, Map<String, String> authHeaders)
-          throws HttpResponseException {
+  public static Policy getPolicy(UUID id, String fields, Map<String, String> authHeaders) throws HttpResponseException {
     WebTarget target = getResource("policies/" + id);
     target = fields != null ? target.queryParam("fields", fields) : target;
     return TestUtils.get(target, Policy.class, authHeaders);
   }
 
   public static Policy getPolicyByName(String fqn, String fields, Map<String, String> authHeaders)
-          throws HttpResponseException {
+      throws HttpResponseException {
     WebTarget target = getResource("policies/name/" + fqn);
     target = fields != null ? target.queryParam("fields", fields) : target;
     return TestUtils.get(target, Policy.class, authHeaders);
   }
 
-  public static PolicyList listPolicies(String fields, Integer limitParam,
-                                        String before, String after, Map<String, String> authHeaders)
-          throws HttpResponseException {
+  public static PolicyList listPolicies(
+      String fields, Integer limitParam, String before, String after, Map<String, String> authHeaders)
+      throws HttpResponseException {
     WebTarget target = getResource("policies");
     target = fields != null ? target.queryParam("fields", fields) : target;
     target = limitParam != null ? target.queryParam("limit", limitParam) : target;
@@ -334,7 +333,10 @@ public class PolicyResourceTest extends EntityResourceTest<Policy> {
   }
 
   private CreatePolicy create(String name) {
-    return new CreatePolicy().withName(name).withDescription("description")
-            .withPolicyType(PolicyType.AccessControl).withOwner(USER_OWNER1);
+    return new CreatePolicy()
+        .withName(name)
+        .withDescription("description")
+        .withPolicyType(PolicyType.AccessControl)
+        .withOwner(USER_OWNER1);
   }
 }

@@ -13,6 +13,11 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import java.io.IOException;
+import java.net.URI;
+import java.util.Date;
+import java.util.List;
+import java.util.UUID;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Report;
 import org.openmetadata.catalog.resources.reports.ReportResource;
@@ -23,19 +28,19 @@ import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 
-import java.io.IOException;
-import java.net.URI;
-import java.util.Date;
-import java.util.List;
-import java.util.UUID;
-
 public class ReportRepository extends EntityRepository<Report> {
   private static final Fields REPORT_UPDATE_FIELDS = new Fields(ReportResource.FIELD_LIST, "owner");
   private final CollectionDAO dao;
 
   public ReportRepository(CollectionDAO dao) {
-    super(ReportResource.COLLECTION_PATH, Entity.REPORT, Report.class, dao.reportDAO(), dao, Fields.EMPTY_FIELDS,
-            REPORT_UPDATE_FIELDS);
+    super(
+        ReportResource.COLLECTION_PATH,
+        Entity.REPORT,
+        Report.class,
+        dao.reportDAO(),
+        dao,
+        Fields.EMPTY_FIELDS,
+        REPORT_UPDATE_FIELDS);
     this.dao = dao;
   }
 
@@ -43,15 +48,13 @@ public class ReportRepository extends EntityRepository<Report> {
   public Report setFields(Report report, Fields fields) throws IOException {
     report.setService(getService(report)); // service is a default field
     report.setOwner(fields.contains("owner") ? getOwner(report) : null);
-    report.setUsageSummary(fields.contains("usageSummary") ? EntityUtil.getLatestUsage(dao.usageDAO(),
-            report.getId()) : null);
+    report.setUsageSummary(
+        fields.contains("usageSummary") ? EntityUtil.getLatestUsage(dao.usageDAO(), report.getId()) : null);
     return report;
   }
 
   @Override
-  public void restorePatchAttributes(Report original, Report updated) {
-
-  }
+  public void restorePatchAttributes(Report original, Report updated) {}
 
   @Override
   public EntityInterface<Report> getEntityInterface(Report entity) {
@@ -88,15 +91,21 @@ public class ReportRepository extends EntityRepository<Report> {
   public void setService(Report report, EntityReference service) {
     if (service != null && report != null) {
       getService(service); // Populate service details
-      dao.relationshipDAO().insert(service.getId().toString(), report.getId().toString(), service.getType(),
-              Entity.REPORT, Relationship.CONTAINS.ordinal());
+      dao.relationshipDAO()
+          .insert(
+              service.getId().toString(),
+              report.getId().toString(),
+              service.getType(),
+              Entity.REPORT,
+              Relationship.CONTAINS.ordinal());
       report.setService(service);
     }
   }
 
   private EntityReference getOwner(Report report) throws IOException {
-    return report == null ? null : EntityUtil.populateOwner(report.getId(), dao.relationshipDAO(), dao.userDAO(),
-            dao.teamDAO());
+    return report == null
+        ? null
+        : EntityUtil.populateOwner(report.getId(), dao.relationshipDAO(), dao.userDAO(), dao.teamDAO());
   }
 
   public void setOwner(Report report, EntityReference owner) {
@@ -137,19 +146,29 @@ public class ReportRepository extends EntityRepository<Report> {
     }
 
     @Override
-    public List<TagLabel> getTags() { return null; }
+    public List<TagLabel> getTags() {
+      return null;
+    }
 
     @Override
-    public Double getVersion() { return entity.getVersion(); }
+    public Double getVersion() {
+      return entity.getVersion();
+    }
 
     @Override
-    public String getUpdatedBy() { return entity.getUpdatedBy(); }
+    public String getUpdatedBy() {
+      return entity.getUpdatedBy();
+    }
 
     @Override
-    public Date getUpdatedAt() { return entity.getUpdatedAt(); }
+    public Date getUpdatedAt() {
+      return entity.getUpdatedAt();
+    }
 
     @Override
-    public URI getHref() { return entity.getHref(); }
+    public URI getHref() {
+      return entity.getHref();
+    }
 
     @Override
     public List<EntityReference> getFollowers() {
@@ -157,19 +176,29 @@ public class ReportRepository extends EntityRepository<Report> {
     }
 
     @Override
-    public ChangeDescription getChangeDescription() { return entity.getChangeDescription(); }
-
-    @Override
-    public EntityReference getEntityReference() {
-      return new EntityReference().withId(getId()).withName(getFullyQualifiedName()).withDescription(getDescription())
-              .withDisplayName(getDisplayName()).withType(Entity.REPORT);
+    public ChangeDescription getChangeDescription() {
+      return entity.getChangeDescription();
     }
 
     @Override
-    public Report getEntity() { return entity; }
+    public EntityReference getEntityReference() {
+      return new EntityReference()
+          .withId(getId())
+          .withName(getFullyQualifiedName())
+          .withDescription(getDescription())
+          .withDisplayName(getDisplayName())
+          .withType(Entity.REPORT);
+    }
 
     @Override
-    public void setId(UUID id) { entity.setId(id); }
+    public Report getEntity() {
+      return entity;
+    }
+
+    @Override
+    public void setId(UUID id) {
+      entity.setId(id);
+    }
 
     @Override
     public void setDescription(String description) {
@@ -194,12 +223,16 @@ public class ReportRepository extends EntityRepository<Report> {
     }
 
     @Override
-    public void setOwner(EntityReference owner) { entity.setOwner(owner); }
+    public void setOwner(EntityReference owner) {
+      entity.setOwner(owner);
+    }
 
     @Override
-    public Report withHref(URI href) { return entity.withHref(href); }
+    public Report withHref(URI href) {
+      return entity.withHref(href);
+    }
 
     @Override
-    public void setTags(List<TagLabel> tags) { }
+    public void setTags(List<TagLabel> tags) {}
   }
 }

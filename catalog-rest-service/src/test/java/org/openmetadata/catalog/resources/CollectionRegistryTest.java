@@ -13,12 +13,11 @@
 
 package org.openmetadata.catalog.resources;
 
-import org.junit.jupiter.api.Test;
-import org.openmetadata.catalog.type.CollectionDescriptor;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
 import java.util.Map;
-
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import org.junit.jupiter.api.Test;
+import org.openmetadata.catalog.type.CollectionDescriptor;
 
 public class CollectionRegistryTest {
   @Test

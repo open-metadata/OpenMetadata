@@ -13,6 +13,7 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import java.util.List;
 import org.jdbi.v3.sqlobject.config.RegisterRowMapper;
 import org.jdbi.v3.sqlobject.customizer.Bind;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
@@ -20,14 +21,12 @@ import org.jdbi.v3.sqlobject.statement.SqlUpdate;
 import org.openmetadata.catalog.jdbi3.TagRepository.TagLabelMapper;
 import org.openmetadata.catalog.type.TagLabel;
 
-import java.util.List;
-
 /**
- * Tag categories are stored as JSON in {@code tag_category} table. All the attributes are stored as JSON
- * document except href, usageCount and children tags which are constructed on the fly as needed.
- * <p>
- * Tags are stored as JSON in {@code tag} table. All the attributes of tags are stored as JSON document except
- * href, usageCount and children tags which are constructed on the fly as needed.
+ * Tag categories are stored as JSON in {@code tag_category} table. All the attributes are stored as JSON document
+ * except href, usageCount and children tags which are constructed on the fly as needed.
+ *
+ * <p>Tags are stored as JSON in {@code tag} table. All the attributes of tags are stored as JSON document except href,
+ * usageCount and children tags which are constructed on the fly as needed.
  */
 @RegisterRowMapper(TagLabelMapper.class)
 public interface TagDAO {
@@ -58,10 +57,14 @@ public interface TagDAO {
   @SqlQuery("SELECT json FROM tag WHERE fullyQualifiedName = :fqn")
   String findTag(@Bind("fqn") String fqn);
 
-  @SqlUpdate("INSERT IGNORE INTO tag_usage (tagFQN, targetFQN, labelType, state) VALUES (:tagFQN, :targetFQN, " +
-          ":labelType, :state)")
-  void applyTag(@Bind("tagFQN") String tagFQN, @Bind("targetFQN") String targetFQN,
-                @Bind("labelType") int labelType, @Bind("state") int state);
+  @SqlUpdate(
+      "INSERT IGNORE INTO tag_usage (tagFQN, targetFQN, labelType, state) VALUES (:tagFQN, :targetFQN, "
+          + ":labelType, :state)")
+  void applyTag(
+      @Bind("tagFQN") String tagFQN,
+      @Bind("targetFQN") String targetFQN,
+      @Bind("labelType") int labelType,
+      @Bind("state") int state);
 
   @SqlQuery("SELECT tagFQN, labelType, state FROM tag_usage WHERE targetFQN = :targetFQN ORDER BY tagFQN")
   List<TagLabel> getTags(@Bind("targetFQN") String targetFQN);

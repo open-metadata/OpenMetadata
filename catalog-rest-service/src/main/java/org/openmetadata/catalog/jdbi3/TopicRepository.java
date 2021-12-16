@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate 
+ *  Copyright 2021 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -13,6 +13,11 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import java.io.IOException;
+import java.net.URI;
+import java.util.Date;
+import java.util.List;
+import java.util.UUID;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Topic;
@@ -28,12 +33,6 @@ import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
 
-import java.io.IOException;
-import java.net.URI;
-import java.util.Date;
-import java.util.List;
-import java.util.UUID;
-
 public class TopicRepository extends EntityRepository<Topic> {
   private static final Fields TOPIC_UPDATE_FIELDS = new Fields(TopicResource.FIELD_LIST, "owner,tags");
   private static final Fields TOPIC_PATCH_FIELDS = new Fields(TopicResource.FIELD_LIST, "owner,tags");
@@ -44,8 +43,14 @@ public class TopicRepository extends EntityRepository<Topic> {
   }
 
   public TopicRepository(CollectionDAO dao) {
-    super(TopicResource.COLLECTION_PATH, Entity.TOPIC, Topic.class, dao.topicDAO(), dao, TOPIC_PATCH_FIELDS,
-            TOPIC_UPDATE_FIELDS);
+    super(
+        TopicResource.COLLECTION_PATH,
+        Entity.TOPIC,
+        Topic.class,
+        dao.topicDAO(),
+        dao,
+        TOPIC_PATCH_FIELDS,
+        TOPIC_UPDATE_FIELDS);
     this.dao = dao;
   }
 
@@ -107,8 +112,9 @@ public class TopicRepository extends EntityRepository<Topic> {
   }
 
   public EntityReference getOwner(Topic topic) throws IOException {
-    return topic != null ? EntityUtil.populateOwner(topic.getId(), dao.relationshipDAO(), dao.userDAO(),
-            dao.teamDAO()) : null;
+    return topic != null
+        ? EntityUtil.populateOwner(topic.getId(), dao.relationshipDAO(), dao.userDAO(), dao.teamDAO())
+        : null;
   }
 
   private void setOwner(Topic topic, EntityReference owner) {
@@ -125,9 +131,7 @@ public class TopicRepository extends EntityRepository<Topic> {
   }
 
   @Override
-  public void restorePatchAttributes(Topic original, Topic updated) {
-
-  }
+  public void restorePatchAttributes(Topic original, Topic updated) {}
 
   @Override
   public EntityInterface<Topic> getEntityInterface(Topic entity) {
@@ -160,8 +164,13 @@ public class TopicRepository extends EntityRepository<Topic> {
 
   public void setService(Topic topic, EntityReference service) {
     if (service != null && topic != null) {
-      dao.relationshipDAO().insert(service.getId().toString(), topic.getId().toString(), service.getType(),
-              Entity.TOPIC, Relationship.CONTAINS.ordinal());
+      dao.relationshipDAO()
+          .insert(
+              service.getId().toString(),
+              topic.getId().toString(),
+              service.getType(),
+              Entity.TOPIC,
+              Relationship.CONTAINS.ordinal());
       topic.setService(service);
     }
   }
@@ -204,31 +213,49 @@ public class TopicRepository extends EntityRepository<Topic> {
     }
 
     @Override
-    public Double getVersion() { return entity.getVersion(); }
-
-    @Override
-    public String getUpdatedBy() { return entity.getUpdatedBy(); }
-
-    @Override
-    public Date getUpdatedAt() { return entity.getUpdatedAt(); }
-
-    @Override
-    public URI getHref() { return entity.getHref(); }
-
-    @Override
-    public List<EntityReference> getFollowers() { return entity.getFollowers(); }
-
-    @Override
-    public EntityReference getEntityReference() {
-      return new EntityReference().withId(getId()).withName(getFullyQualifiedName()).withDescription(getDescription())
-              .withDisplayName(getDisplayName()).withType(Entity.TOPIC);
+    public Double getVersion() {
+      return entity.getVersion();
     }
 
     @Override
-    public Topic getEntity() { return entity; }
+    public String getUpdatedBy() {
+      return entity.getUpdatedBy();
+    }
 
     @Override
-    public void setId(UUID id) { entity.setId(id); }
+    public Date getUpdatedAt() {
+      return entity.getUpdatedAt();
+    }
+
+    @Override
+    public URI getHref() {
+      return entity.getHref();
+    }
+
+    @Override
+    public List<EntityReference> getFollowers() {
+      return entity.getFollowers();
+    }
+
+    @Override
+    public EntityReference getEntityReference() {
+      return new EntityReference()
+          .withId(getId())
+          .withName(getFullyQualifiedName())
+          .withDescription(getDescription())
+          .withDisplayName(getDisplayName())
+          .withType(Entity.TOPIC);
+    }
+
+    @Override
+    public Topic getEntity() {
+      return entity;
+    }
+
+    @Override
+    public void setId(UUID id) {
+      entity.setId(id);
+    }
 
     @Override
     public void setDescription(String description) {
@@ -253,13 +280,19 @@ public class TopicRepository extends EntityRepository<Topic> {
     }
 
     @Override
-    public void setOwner(EntityReference owner) { entity.setOwner(owner); }
+    public void setOwner(EntityReference owner) {
+      entity.setOwner(owner);
+    }
 
     @Override
-    public Topic withHref(URI href) { return entity.withHref(href); }
+    public Topic withHref(URI href) {
+      return entity.withHref(href);
+    }
 
     @Override
-    public ChangeDescription getChangeDescription() { return entity.getChangeDescription(); }
+    public ChangeDescription getChangeDescription() {
+      return entity.getChangeDescription();
+    }
 
     @Override
     public void setTags(List<TagLabel> tags) {

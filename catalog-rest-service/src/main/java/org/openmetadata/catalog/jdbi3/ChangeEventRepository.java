@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate 
+ *  Copyright 2021 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -13,11 +13,9 @@
 
 package org.openmetadata.catalog.jdbi3;
 
-import org.jdbi.v3.sqlobject.transaction.Transaction;
-import org.openmetadata.catalog.resources.events.EventResource.ChangeEventList;
-import org.openmetadata.catalog.type.ChangeEvent;
-import org.openmetadata.catalog.util.JsonUtils;
-import org.openmetadata.catalog.util.ResultList;
+import static org.openmetadata.catalog.type.EventType.ENTITY_CREATED;
+import static org.openmetadata.catalog.type.EventType.ENTITY_DELETED;
+import static org.openmetadata.catalog.type.EventType.ENTITY_UPDATED;
 
 import java.io.IOException;
 import java.security.GeneralSecurityException;
@@ -25,20 +23,23 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
-
-import static org.openmetadata.catalog.type.EventType.ENTITY_CREATED;
-import static org.openmetadata.catalog.type.EventType.ENTITY_DELETED;
-import static org.openmetadata.catalog.type.EventType.ENTITY_UPDATED;
+import org.jdbi.v3.sqlobject.transaction.Transaction;
+import org.openmetadata.catalog.resources.events.EventResource.ChangeEventList;
+import org.openmetadata.catalog.type.ChangeEvent;
+import org.openmetadata.catalog.util.JsonUtils;
+import org.openmetadata.catalog.util.ResultList;
 
 public class ChangeEventRepository {
   private final CollectionDAO dao;
 
-  public ChangeEventRepository(CollectionDAO dao) { this.dao = dao; }
+  public ChangeEventRepository(CollectionDAO dao) {
+    this.dao = dao;
+  }
 
   @Transaction
-  public ResultList<ChangeEvent> list(Date date, List<String> entityCreatedList,
-                                      List<String> entityUpdatedList, List<String> entityDeletedList) throws IOException,
-          GeneralSecurityException {
+  public ResultList<ChangeEvent> list(
+      Date date, List<String> entityCreatedList, List<String> entityUpdatedList, List<String> entityDeletedList)
+      throws IOException, GeneralSecurityException {
     List<String> jsons = new ArrayList<>();
     jsons.addAll(dao.changeEventDAO().list(ENTITY_CREATED.value(), entityCreatedList, date.getTime()));
     jsons.addAll(dao.changeEventDAO().list(ENTITY_UPDATED.value(), entityUpdatedList, date.getTime()));
@@ -47,8 +48,8 @@ public class ChangeEventRepository {
     for (String json : jsons) {
       changeEvents.add(JsonUtils.readValue(json, ChangeEvent.class));
     }
-    changeEvents.sort(Comparator.comparing((ChangeEvent changeEvent)
-            -> changeEvent.getDateTime().getTime()).reversed());
+    changeEvents.sort(
+        Comparator.comparing((ChangeEvent changeEvent) -> changeEvent.getDateTime().getTime()).reversed());
     return new ChangeEventList(changeEvents, null, null, changeEvents.size()); // TODO
   }
 }

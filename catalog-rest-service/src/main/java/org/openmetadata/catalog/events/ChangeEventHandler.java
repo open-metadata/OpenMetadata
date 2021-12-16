@@ -13,6 +13,9 @@
 
 package org.openmetadata.catalog.events;
 
+import javax.ws.rs.container.ContainerRequestContext;
+import javax.ws.rs.container.ContainerResponseContext;
+import javax.ws.rs.core.Response.Status;
 import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.Entity;
@@ -25,11 +28,7 @@ import org.openmetadata.catalog.util.RestUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.ws.rs.container.ContainerRequestContext;
-import javax.ws.rs.container.ContainerResponseContext;
-import javax.ws.rs.core.Response.Status;
-
-public class ChangeEventHandler implements  EventHandler {
+public class ChangeEventHandler implements EventHandler {
   private static final Logger LOG = LoggerFactory.getLogger(ChangeEventHandler.class);
   private CollectionDAO dao;
 
@@ -37,8 +36,7 @@ public class ChangeEventHandler implements  EventHandler {
     this.dao = jdbi.onDemand(CollectionDAO.class);
   }
 
-  public Void process(ContainerRequestContext requestContext,
-                      ContainerResponseContext responseContext) {
+  public Void process(ContainerRequestContext requestContext, ContainerResponseContext responseContext) {
     String method = requestContext.getMethod();
     try {
       ChangeEvent changeEvent = getChangeEvent(method, responseContext);
@@ -49,7 +47,7 @@ public class ChangeEventHandler implements  EventHandler {
         }
         dao.changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
       }
-    } catch(Exception e) {
+    } catch (Exception e) {
       LOG.error("Failed to capture change event for method {} due to {}", method, e);
     }
     return null;
@@ -73,9 +71,7 @@ public class ChangeEventHandler implements  EventHandler {
     if (responseCode == Status.CREATED.getStatusCode() && !RestUtil.ENTITY_FIELDS_CHANGED.equals(changeType)) {
       var entityInterface = Entity.getEntityInterface(entity);
       String entityType = Entity.getEntityReference(entity).getType();
-      return getChangeEvent(EventType.ENTITY_CREATED, entityType, entityInterface)
-              .withEntity(entity);
-
+      return getChangeEvent(EventType.ENTITY_CREATED, entityType, entityInterface).withEntity(entity);
     }
 
     // PUT or PATCH operation didn't result in any change
@@ -88,11 +84,11 @@ public class ChangeEventHandler implements  EventHandler {
       var entityInterface = Entity.getEntityInterface(entity);
       String entityType = Entity.getEntityReference(entity).getType();
       return getChangeEvent(EventType.ENTITY_UPDATED, entityType, entityInterface)
-              .withPreviousVersion(entityInterface.getChangeDescription().getPreviousVersion());
+          .withPreviousVersion(entityInterface.getChangeDescription().getPreviousVersion());
     }
 
     // Entity field was updated by PUT .../entities/{id}/fieldName - Example PUT ../tables/{id}/follower
-    if (changeType.equals(RestUtil.ENTITY_FIELDS_CHANGED)){
+    if (changeType.equals(RestUtil.ENTITY_FIELDS_CHANGED)) {
       return (ChangeEvent) entity;
     }
 
@@ -105,13 +101,13 @@ public class ChangeEventHandler implements  EventHandler {
 
   private static ChangeEvent getChangeEvent(EventType eventType, String entityType, EntityInterface entityInterface) {
     return new ChangeEvent()
-            .withEventType(eventType)
-            .withEntityId(entityInterface.getId())
-            .withEntityType(entityType)
-            .withUserName(entityInterface.getUpdatedBy())
-            .withDateTime(entityInterface.getUpdatedAt())
-            .withChangeDescription(entityInterface.getChangeDescription())
-            .withCurrentVersion(entityInterface.getVersion());
+        .withEventType(eventType)
+        .withEntityId(entityInterface.getId())
+        .withEntityType(entityType)
+        .withUserName(entityInterface.getUpdatedBy())
+        .withDateTime(entityInterface.getUpdatedAt())
+        .withChangeDescription(entityInterface.getChangeDescription())
+        .withCurrentVersion(entityInterface.getVersion());
   }
 
   public void close() {}

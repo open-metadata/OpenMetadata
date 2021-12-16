@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate 
+ *  Copyright 2021 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -14,6 +14,11 @@
 package org.openmetadata.catalog.jdbi3;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import java.io.IOException;
+import java.net.URI;
+import java.util.Date;
+import java.util.List;
+import java.util.UUID;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Chart;
@@ -29,21 +34,20 @@ import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
 
-import java.io.IOException;
-import java.net.URI;
-import java.util.Date;
-import java.util.List;
-import java.util.UUID;
-
-
 public class ChartRepository extends EntityRepository<Chart> {
   private static final Fields CHART_UPDATE_FIELDS = new Fields(ChartResource.FIELD_LIST, "owner");
   private static final Fields CHART_PATCH_FIELDS = new Fields(ChartResource.FIELD_LIST, "owner,tags");
   private final CollectionDAO dao;
 
   public ChartRepository(CollectionDAO dao) {
-    super(ChartResource.COLLECTION_PATH, Entity.CHART, Chart.class, dao.chartDAO(), dao, CHART_PATCH_FIELDS,
-            CHART_UPDATE_FIELDS);
+    super(
+        ChartResource.COLLECTION_PATH,
+        Entity.CHART,
+        Chart.class,
+        dao.chartDAO(),
+        dao,
+        CHART_PATCH_FIELDS,
+        CHART_UPDATE_FIELDS);
     this.dao = dao;
   }
 
@@ -91,8 +95,13 @@ public class ChartRepository extends EntityRepository<Chart> {
   @Override
   public void storeRelationships(Chart chart) {
     EntityReference service = chart.getService();
-    dao.relationshipDAO().insert(service.getId().toString(), chart.getId().toString(), service.getType(),
-            Entity.CHART, Relationship.CONTAINS.ordinal());
+    dao.relationshipDAO()
+        .insert(
+            service.getId().toString(),
+            chart.getId().toString(),
+            service.getType(),
+            Entity.CHART,
+            Relationship.CONTAINS.ordinal());
     setOwner(chart, chart.getOwner());
     applyTags(chart);
   }
@@ -104,8 +113,9 @@ public class ChartRepository extends EntityRepository<Chart> {
   }
 
   public EntityReference getOwner(Chart chart) throws IOException {
-    return chart != null ? EntityUtil.populateOwner(chart.getId(), dao.relationshipDAO(), dao.userDAO(),
-            dao.teamDAO()) : null;
+    return chart != null
+        ? EntityUtil.populateOwner(chart.getId(), dao.relationshipDAO(), dao.userDAO(), dao.teamDAO())
+        : null;
   }
 
   private void setOwner(Chart chart, EntityReference owner) {
@@ -126,8 +136,11 @@ public class ChartRepository extends EntityRepository<Chart> {
   @Override
   public void restorePatchAttributes(Chart original, Chart updated) {
     // Patch can't make changes to following fields. Ignore the changes
-    updated.withFullyQualifiedName(original.getFullyQualifiedName()).withName(original.getName())
-            .withService(original.getService()).withId(original.getId());
+    updated
+        .withFullyQualifiedName(original.getFullyQualifiedName())
+        .withName(original.getName())
+        .withService(original.getService())
+        .withId(original.getId());
   }
 
   @Override
@@ -163,8 +176,8 @@ public class ChartRepository extends EntityRepository<Chart> {
     if (serviceType.equalsIgnoreCase(Entity.DASHBOARD_SERVICE)) {
       return dao.dashboardServiceDAO().findEntityById(serviceId);
     }
-    throw new IllegalArgumentException(CatalogExceptionMessage.invalidServiceEntity(serviceType,
-            Entity.DASHBOARD_SERVICE));
+    throw new IllegalArgumentException(
+        CatalogExceptionMessage.invalidServiceEntity(serviceType, Entity.DASHBOARD_SERVICE));
   }
 
   public static class ChartEntityInterface implements EntityInterface<Chart> {
@@ -180,7 +193,9 @@ public class ChartRepository extends EntityRepository<Chart> {
     }
 
     @Override
-    public String getDescription() { return entity.getDescription(); }
+    public String getDescription() {
+      return entity.getDescription();
+    }
 
     @Override
     public String getDisplayName() {
@@ -203,13 +218,19 @@ public class ChartRepository extends EntityRepository<Chart> {
     }
 
     @Override
-    public Double getVersion() { return entity.getVersion(); }
+    public Double getVersion() {
+      return entity.getVersion();
+    }
 
     @Override
-    public String getUpdatedBy() { return entity.getUpdatedBy(); }
+    public String getUpdatedBy() {
+      return entity.getUpdatedBy();
+    }
 
     @Override
-    public Date getUpdatedAt() { return entity.getUpdatedAt(); }
+    public Date getUpdatedAt() {
+      return entity.getUpdatedAt();
+    }
 
     @Override
     public URI getHref() {
@@ -217,19 +238,29 @@ public class ChartRepository extends EntityRepository<Chart> {
     }
 
     @Override
-    public List<EntityReference> getFollowers() { return entity.getFollowers(); }
-
-    @Override
-    public EntityReference getEntityReference() {
-      return new EntityReference().withId(getId()).withName(getFullyQualifiedName()).withDescription(getDescription())
-              .withDisplayName(getDisplayName()).withType(Entity.CHART);
+    public List<EntityReference> getFollowers() {
+      return entity.getFollowers();
     }
 
     @Override
-    public Chart getEntity() { return entity; }
+    public EntityReference getEntityReference() {
+      return new EntityReference()
+          .withId(getId())
+          .withName(getFullyQualifiedName())
+          .withDescription(getDescription())
+          .withDisplayName(getDisplayName())
+          .withType(Entity.CHART);
+    }
 
     @Override
-    public void setId(UUID id) { entity.setId(id); }
+    public Chart getEntity() {
+      return entity;
+    }
+
+    @Override
+    public void setId(UUID id) {
+      entity.setId(id);
+    }
 
     @Override
     public void setDescription(String description) {
@@ -254,13 +285,19 @@ public class ChartRepository extends EntityRepository<Chart> {
     }
 
     @Override
-    public void setOwner(EntityReference owner) { entity.setOwner(owner); }
+    public void setOwner(EntityReference owner) {
+      entity.setOwner(owner);
+    }
 
     @Override
-    public Chart withHref(URI href) { return entity.withHref(href); }
+    public Chart withHref(URI href) {
+      return entity.withHref(href);
+    }
 
     @Override
-    public ChangeDescription getChangeDescription() { return entity.getChangeDescription(); }
+    public ChangeDescription getChangeDescription() {
+      return entity.getChangeDescription();
+    }
 
     @Override
     public void setTags(List<TagLabel> tags) {

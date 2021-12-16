@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate 
+ *  Copyright 2021 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -13,6 +13,11 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+import java.util.stream.Collectors;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.lineage.AddLineage;
@@ -20,16 +25,12 @@ import org.openmetadata.catalog.type.Edge;
 import org.openmetadata.catalog.type.EntityLineage;
 import org.openmetadata.catalog.type.EntityReference;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
-import java.util.stream.Collectors;
-
 public class LineageRepository {
   private final CollectionDAO dao;
 
-  public LineageRepository(CollectionDAO dao) { this.dao = dao; }
+  public LineageRepository(CollectionDAO dao) {
+    this.dao = dao;
+  }
 
   @Transaction
   public EntityLineage get(String entityType, String id, int upstreamDepth, int downstreamDepth) throws IOException {
@@ -39,7 +40,7 @@ public class LineageRepository {
 
   @Transaction
   public EntityLineage getByName(String entityType, String fqn, int upstreamDepth, int downstreamDepth)
-          throws IOException {
+      throws IOException {
     EntityReference ref = Entity.getEntityReferenceByName(entityType, fqn);
     return getLineage(ref, upstreamDepth, downstreamDepth);
   }
@@ -55,14 +56,23 @@ public class LineageRepository {
     to = Entity.getEntityReference(to.getType(), to.getId());
 
     // Finally, add lineage relationship
-    dao.relationshipDAO().insert(from.getId().toString(), to.getId().toString(), from.getType(), to.getType(),
+    dao.relationshipDAO()
+        .insert(
+            from.getId().toString(),
+            to.getId().toString(),
+            from.getType(),
+            to.getType(),
             Relationship.UPSTREAM.ordinal());
   }
 
   private EntityLineage getLineage(EntityReference primary, int upstreamDepth, int downstreamDepth) throws IOException {
     List<EntityReference> entities = new ArrayList<>();
-    EntityLineage lineage = new EntityLineage().withEntity(primary).withNodes(entities)
-            .withUpstreamEdges(new ArrayList<>()).withDownstreamEdges(new ArrayList<>());
+    EntityLineage lineage =
+        new EntityLineage()
+            .withEntity(primary)
+            .withNodes(entities)
+            .withUpstreamEdges(new ArrayList<>())
+            .withDownstreamEdges(new ArrayList<>());
     addUpstreamLineage(primary.getId(), lineage, upstreamDepth);
     addDownstreamLineage(primary.getId(), lineage, downstreamDepth);
 
@@ -83,8 +93,8 @@ public class LineageRepository {
       return;
     }
     // from this id ---> find other ids
-    List<EntityReference> upstreamEntities = dao.relationshipDAO().findFrom(id.toString(),
-            Relationship.UPSTREAM.ordinal());
+    List<EntityReference> upstreamEntities =
+        dao.relationshipDAO().findFrom(id.toString(), Relationship.UPSTREAM.ordinal());
     lineage.getNodes().addAll(upstreamEntities);
 
     upstreamDepth--;
@@ -99,8 +109,8 @@ public class LineageRepository {
       return;
     }
     // from other ids ---> to this id
-    List<EntityReference> downStreamEntities = dao.relationshipDAO().findTo(id.toString(),
-            Relationship.UPSTREAM.ordinal());
+    List<EntityReference> downStreamEntities =
+        dao.relationshipDAO().findTo(id.toString(), Relationship.UPSTREAM.ordinal());
     lineage.getNodes().addAll(downStreamEntities);
 
     downstreamDepth--;

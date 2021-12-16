@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate 
+ *  Copyright 2021 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -13,6 +13,11 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import java.io.IOException;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.List;
+import java.util.UUID;
 import org.jdbi.v3.core.mapper.RowMapper;
 import org.jdbi.v3.core.statement.StatementContext;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
@@ -25,17 +30,13 @@ import org.openmetadata.catalog.type.UsageStats;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.util.List;
-import java.util.UUID;
-
 public class UsageRepository {
   private static final Logger LOG = LoggerFactory.getLogger(UsageRepository.class);
   private final CollectionDAO dao;
 
-  public UsageRepository(CollectionDAO dao) { this.dao = dao; }
+  public UsageRepository(CollectionDAO dao) {
+    this.dao = dao;
+  }
 
   @Transaction
   public EntityUsage get(String entityType, String id, String date, int days) throws IOException {
@@ -76,8 +77,8 @@ public class UsageRepository {
 
     // If table usage was reported, add the usage count to database
     if (entityType.equalsIgnoreCase(Entity.TABLE)) {
-      List<String> databaseIds = dao.relationshipDAO().findFrom(entityId, Relationship.CONTAINS.ordinal(),
-              Entity.DATABASE);
+      List<String> databaseIds =
+          dao.relationshipDAO().findFrom(entityId, Relationship.CONTAINS.ordinal(), Entity.DATABASE);
       dao.usageDAO().insertOrUpdateCount(usage.getDate(), databaseIds.get(0), Entity.DATABASE, usage.getCount());
     }
   }
@@ -85,14 +86,17 @@ public class UsageRepository {
   public static class UsageDetailsMapper implements RowMapper<UsageDetails> {
     @Override
     public UsageDetails map(ResultSet r, StatementContext ctx) throws SQLException {
-      UsageStats dailyStats = new UsageStats().withCount(r.getInt("count1")).withPercentileRank(r.getDouble(
-              "percentile1"));
-      UsageStats weeklyStats = new UsageStats().withCount(r.getInt("count7")).withPercentileRank(r.getDouble(
-              "percentile7"));
-      UsageStats monthlyStats = new UsageStats().withCount(r.getInt("count30")).withPercentileRank(r.getDouble(
-              "percentile30"));
-      return new UsageDetails().withDate(r.getString("usageDate")).withDailyStats(dailyStats)
-              .withWeeklyStats(weeklyStats).withMonthlyStats(monthlyStats);
+      UsageStats dailyStats =
+          new UsageStats().withCount(r.getInt("count1")).withPercentileRank(r.getDouble("percentile1"));
+      UsageStats weeklyStats =
+          new UsageStats().withCount(r.getInt("count7")).withPercentileRank(r.getDouble("percentile7"));
+      UsageStats monthlyStats =
+          new UsageStats().withCount(r.getInt("count30")).withPercentileRank(r.getDouble("percentile30"));
+      return new UsageDetails()
+          .withDate(r.getString("usageDate"))
+          .withDailyStats(dailyStats)
+          .withWeeklyStats(weeklyStats)
+          .withMonthlyStats(monthlyStats);
     }
   }
 }

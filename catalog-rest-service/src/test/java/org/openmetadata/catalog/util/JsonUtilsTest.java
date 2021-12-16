@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate 
+ *  Copyright 2021 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -13,29 +13,24 @@
 
 package org.openmetadata.catalog.util;
 
-import org.openmetadata.catalog.entity.teams.Team;
-import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.IOException;
+import java.util.UUID;
 import javax.json.Json;
 import javax.json.JsonArrayBuilder;
 import javax.json.JsonException;
 import javax.json.JsonObject;
 import javax.json.JsonObjectBuilder;
 import javax.json.JsonPatchBuilder;
-import java.io.IOException;
-import java.util.UUID;
+import org.junit.jupiter.api.Test;
+import org.openmetadata.catalog.entity.teams.Team;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-
-/**
- * This test provides examples of how to use applyPatch
- */
+/** This test provides examples of how to use applyPatch */
 public class JsonUtilsTest {
-  /**
-   * Test apply patch method with different operations.
-   */
+  /** Test apply patch method with different operations. */
   @Test
   public void applyPatch() throws IOException {
     JsonObjectBuilder teamJson = Json.createObjectBuilder();
@@ -47,8 +42,7 @@ public class JsonUtilsTest {
     JsonArrayBuilder users = Json.createArrayBuilder();
     users.add(user1);
     users.add(user2);
-    teamJson.add("id", teamId).add("name", "finance")
-            .add("users", users);
+    teamJson.add("id", teamId).add("name", "finance").add("users", users);
 
     Team original = EntityUtil.validate(teamId, teamJson.build().toString(), Team.class);
     JsonPatchBuilder patchBuilder = Json.createPatchBuilder();
@@ -68,16 +62,22 @@ public class JsonUtilsTest {
     Team updated = JsonUtils.applyPatch(original, patchBuilder.build(), Team.class);
 
     assertEquals(4, updated.getUsers().size());
-    assertTrue(updated.getUsers().stream().anyMatch(entry ->
-            entry.getName().equals(newUser1.getString("name")) && entry.getId().toString().equals(newUserId1)));
-    assertTrue(updated.getUsers().stream().anyMatch(entry ->
-            entry.getName().equals(newUser2.getString("name")) && entry.getId().toString().equals(newUserId2)));
+    assertTrue(
+        updated.getUsers().stream()
+            .anyMatch(
+                entry ->
+                    entry.getName().equals(newUser1.getString("name")) && entry.getId().toString().equals(newUserId1)));
+    assertTrue(
+        updated.getUsers().stream()
+            .anyMatch(
+                entry ->
+                    entry.getName().equals(newUser2.getString("name")) && entry.getId().toString().equals(newUserId2)));
 
     // Add a user with an out of index path
     final JsonPatchBuilder jsonPatchBuilder = Json.createPatchBuilder();
     jsonPatchBuilder.add("/users/4", newUser1);
-    JsonException jsonException = assertThrows(JsonException.class,
-            () -> JsonUtils.applyPatch(original, jsonPatchBuilder.build(), Team.class));
+    JsonException jsonException =
+        assertThrows(JsonException.class, () -> JsonUtils.applyPatch(original, jsonPatchBuilder.build(), Team.class));
     assertTrue(jsonException.getMessage().contains("contains no element for index 4"));
 
     // Delete the two users from the team
@@ -91,8 +91,8 @@ public class JsonUtilsTest {
     // Delete a non-existent user
     final JsonPatchBuilder jsonPatchBuilder2 = Json.createPatchBuilder();
     jsonPatchBuilder2.remove("/users/3");
-    jsonException = assertThrows(JsonException.class,
-            () -> JsonUtils.applyPatch(original, jsonPatchBuilder2.build(), Team.class));
+    jsonException =
+        assertThrows(JsonException.class, () -> JsonUtils.applyPatch(original, jsonPatchBuilder2.build(), Team.class));
     assertTrue(jsonException.getMessage().contains("contains no element for index 3"));
   }
 }

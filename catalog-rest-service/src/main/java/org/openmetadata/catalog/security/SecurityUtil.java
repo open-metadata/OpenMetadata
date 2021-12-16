@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate 
+ *  Copyright 2021 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -13,20 +13,16 @@
 
 package org.openmetadata.catalog.security;
 
+import java.security.Principal;
+import javax.ws.rs.core.SecurityContext;
 import org.openmetadata.catalog.type.EntityReference;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import javax.ws.rs.core.SecurityContext;
-import java.security.Principal;
 
 public final class SecurityUtil {
   private static final Logger LOG = LoggerFactory.getLogger(SecurityUtil.class);
 
-  private SecurityUtil() {
-
-  }
+  private SecurityUtil() {}
 
   public static void checkAdminRole(CatalogAuthorizer authorizer, SecurityContext securityContext) {
     Principal principal = securityContext.getUserPrincipal();
@@ -44,12 +40,13 @@ public final class SecurityUtil {
     }
   }
 
-  public static void checkAdminRoleOrPermissions(CatalogAuthorizer authorizer, SecurityContext securityContext,
-                                                 EntityReference entityReference) {
+  public static void checkAdminRoleOrPermissions(
+      CatalogAuthorizer authorizer, SecurityContext securityContext, EntityReference entityReference) {
     Principal principal = securityContext.getUserPrincipal();
     AuthenticationContext authenticationCtx = SecurityUtil.getAuthenticationContext(principal);
-    if (!authorizer.isAdmin(authenticationCtx)  && !authorizer.isBot(authenticationCtx)
-            && !authorizer.hasPermissions(authenticationCtx, entityReference)) {
+    if (!authorizer.isAdmin(authenticationCtx)
+        && !authorizer.isBot(authenticationCtx)
+        && !authorizer.hasPermissions(authenticationCtx, entityReference)) {
       throw new AuthorizationException("Principal: " + principal + " does not have permissions");
     }
   }

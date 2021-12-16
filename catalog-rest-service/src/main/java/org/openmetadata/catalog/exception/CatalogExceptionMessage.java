@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate 
+ *  Copyright 2021 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -19,9 +19,7 @@ public final class CatalogExceptionMessage {
   public static final String ENTITY_ALREADY_EXISTS = "Entity already exists";
   public static final String ENTITY_NAME_EMPTY = "Entity name can't be empty";
 
-  private CatalogExceptionMessage() {
-
-  }
+  private CatalogExceptionMessage() {}
 
   public static String entityNotFound(String entity, String id) {
     return String.format("%s instance for %s not found", entity, id);

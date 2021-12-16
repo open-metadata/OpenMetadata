@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate 
+ *  Copyright 2021 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -13,17 +13,14 @@
 
 package org.openmetadata.catalog.resources.feeds;
 
+import java.util.Collections;
+import java.util.Date;
 import org.openmetadata.catalog.entity.feed.Thread;
 import org.openmetadata.catalog.type.Post;
 
-import java.util.Collections;
-import java.util.Date;
-
 public final class FeedUtil {
 
-  private FeedUtil() {
-
-  }
+  private FeedUtil() {}
 
   public static void addPost(Thread thread, Post post) {
     if (thread.getPosts() == null || thread.getPosts().isEmpty()) {

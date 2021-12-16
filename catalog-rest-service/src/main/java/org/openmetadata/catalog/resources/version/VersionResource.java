@@ -15,18 +15,17 @@ package org.openmetadata.catalog.resources.version;
 
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.Operation;
+import java.io.InputStream;
+import java.util.Properties;
+import javax.ws.rs.GET;
+import javax.ws.rs.Path;
+import javax.ws.rs.Produces;
+import javax.ws.rs.core.MediaType;
 import org.openmetadata.catalog.CatalogApplication;
 import org.openmetadata.catalog.api.CatalogVersion;
 import org.openmetadata.catalog.resources.Collection;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import javax.ws.rs.GET;
-import javax.ws.rs.Path;
-import javax.ws.rs.Produces;
-import javax.ws.rs.core.MediaType;
-import java.io.InputStream;
-import java.util.Properties;
 
 @Path("/v1/version")
 @Api(value = "Catalog version", tags = "Catalog version related operations")
@@ -56,8 +55,10 @@ public class VersionResource {
   public VersionResource() {}
 
   @GET
-  @Operation(summary = "Get version of metadata service", tags = "general",
-          description = "Get the build version of OpenMetadata service and build timestamp.")
+  @Operation(
+      summary = "Get version of metadata service",
+      tags = "general",
+      description = "Get the build version of OpenMetadata service and build timestamp.")
   public CatalogVersion getCatalogVersion() {
     return CATALOG_VERSION;
   }

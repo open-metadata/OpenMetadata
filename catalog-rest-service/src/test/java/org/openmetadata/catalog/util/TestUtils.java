@@ -13,6 +13,30 @@
 
 package org.openmetadata.catalog.util;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.stream.Collectors;
+import javax.json.JsonObject;
+import javax.json.JsonPatch;
+import javax.ws.rs.client.Entity;
+import javax.ws.rs.client.Invocation.Builder;
+import javax.ws.rs.client.WebTarget;
+import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.Response;
+import javax.ws.rs.core.Response.Status;
 import org.apache.http.client.HttpResponseException;
 import org.eclipse.jetty.http.HttpStatus;
 import org.junit.jupiter.api.Assertions;
@@ -26,41 +50,18 @@ import org.openmetadata.catalog.type.JdbcInfo;
 import org.openmetadata.catalog.type.Tag;
 import org.openmetadata.catalog.type.TagLabel;
 
-import javax.json.JsonObject;
-import javax.json.JsonPatch;
-import javax.ws.rs.client.Entity;
-import javax.ws.rs.client.Invocation.Builder;
-import javax.ws.rs.client.WebTarget;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.Response.Status;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.UUID;
-import java.util.stream.Collectors;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-
 public final class TestUtils {
   // Entity name length allowed is 64 characters. This is a 65 char length invalid entity name
   public static final int ENTITY_NAME_MAX_LEN = 128;
   public static final String LONG_ENTITY_NAME;
+
   static {
     // Create an entity name with length longer than the
     LONG_ENTITY_NAME = "1".repeat(ENTITY_NAME_MAX_LEN + 1);
   }
-  public static final String ENTITY_NAME_LENGTH_ERROR = String.format("[name size must be between 1 and %d]",
-          ENTITY_NAME_MAX_LEN);
+
+  public static final String ENTITY_NAME_LENGTH_ERROR =
+      String.format("[name size must be between 1 and %d]", ENTITY_NAME_MAX_LEN);
 
   public static final UUID NON_EXISTENT_ENTITY = UUID.randomUUID();
   public static final JdbcInfo JDBC_INFO;
@@ -68,14 +69,16 @@ public final class TestUtils {
   public static URI PIPELINE_URL;
 
   public enum UpdateType {
-    CREATED,      // Not updated instead entity was created
-    NO_CHANGE,    // PUT/PATCH made no change
+    CREATED, // Not updated instead entity was created
+    NO_CHANGE, // PUT/PATCH made no change
     MINOR_UPDATE, // PUT/PATCH made backward compatible minor version change
-    MAJOR_UPDATE  // PUT/PATCH made backward incompatible minor version change
+    MAJOR_UPDATE // PUT/PATCH made backward incompatible minor version change
   }
 
   static {
-    JDBC_INFO = new JdbcInfo().withConnectionUrl("scheme://user_name:password#_@%:localhost:1000/test")
+    JDBC_INFO =
+        new JdbcInfo()
+            .withConnectionUrl("scheme://user_name:password#_@%:localhost:1000/test")
             .withDriverClass("driverClass");
   }
 
@@ -97,12 +100,14 @@ public final class TestUtils {
     }
   }
 
-  private TestUtils() {
-  }
+  private TestUtils() {}
 
   public static Builder addHeaders(WebTarget target, Map<String, String> headers) {
     if (headers != null) {
-      return target.request().header(CatalogOpenIdAuthorizationRequestFilter.X_AUTH_PARAMS_EMAIL_HEADER,
+      return target
+          .request()
+          .header(
+              CatalogOpenIdAuthorizationRequestFilter.X_AUTH_PARAMS_EMAIL_HEADER,
               headers.get(CatalogOpenIdAuthorizationRequestFilter.X_AUTH_PARAMS_EMAIL_HEADER));
     }
     return target.request();
@@ -134,12 +139,13 @@ public final class TestUtils {
     assertEquals(expectedReason, exception.getReasonPhrase());
   }
 
-  public static void assertResponseContains(Executable executable, Response.Status expectedStatus,
-                                          String expectedReason) {
+  public static void assertResponseContains(
+      Executable executable, Response.Status expectedStatus, String expectedReason) {
     HttpResponseException exception = assertThrows(HttpResponseException.class, executable);
     assertEquals(expectedStatus.getStatusCode(), exception.getStatusCode());
-    assertTrue(exception.getReasonPhrase().contains(expectedReason),
-            expectedReason + " not in actual " + exception.getReasonPhrase());
+    assertTrue(
+        exception.getReasonPhrase().contains(expectedReason),
+        expectedReason + " not in actual " + exception.getReasonPhrase());
   }
 
   public static void assertResponse(HttpResponseException exception, Status expectedCode, String expectedReason) {
@@ -147,11 +153,12 @@ public final class TestUtils {
     assertEquals(expectedReason, exception.getReasonPhrase());
   }
 
-  public static void assertResponseContains(HttpResponseException exception, Status expectedCode,
-                                            String expectedReason) {
+  public static void assertResponseContains(
+      HttpResponseException exception, Status expectedCode, String expectedReason) {
     assertEquals(expectedCode.getStatusCode(), exception.getStatusCode());
-    assertTrue(exception.getReasonPhrase().contains(expectedReason),
-            expectedReason + " not in actual " + exception.getReasonPhrase());
+    assertTrue(
+        exception.getReasonPhrase().contains(expectedReason),
+        expectedReason + " not in actual " + exception.getReasonPhrase());
   }
 
   public static <T> void assertEntityPagination(List<T> allEntities, ResultList<T> actual, int limit, int offset) {
@@ -178,30 +185,29 @@ public final class TestUtils {
   }
 
   public static <T, K> T post(WebTarget target, K request, Class<T> clz, Map<String, String> headers)
-          throws HttpResponseException {
+      throws HttpResponseException {
     Response response = addHeaders(target, headers).post(Entity.entity(request, MediaType.APPLICATION_JSON));
     return readResponse(response, clz, Status.CREATED.getStatusCode());
   }
 
   public static <T> T patch(WebTarget target, JsonPatch patch, Class<T> clz, Map<String, String> headers)
-          throws HttpResponseException {
-    Response response = addHeaders(target, headers).method("PATCH",
-            Entity.entity(patch.toJsonArray().toString(), MediaType.APPLICATION_JSON_PATCH_JSON_TYPE));
+      throws HttpResponseException {
+    Response response =
+        addHeaders(target, headers)
+            .method("PATCH", Entity.entity(patch.toJsonArray().toString(), MediaType.APPLICATION_JSON_PATCH_JSON_TYPE));
     return readResponse(response, clz, Status.OK.getStatusCode());
   }
 
-  public static <K> void put(WebTarget target, K request, Status expectedStatus,  Map<String, String> headers)
-          throws HttpResponseException {
-    Response response = addHeaders(target, headers).method("PUT", Entity.entity(request,
-            MediaType.APPLICATION_JSON));
+  public static <K> void put(WebTarget target, K request, Status expectedStatus, Map<String, String> headers)
+      throws HttpResponseException {
+    Response response = addHeaders(target, headers).method("PUT", Entity.entity(request, MediaType.APPLICATION_JSON));
     readResponse(response, expectedStatus.getStatusCode());
   }
 
-  public static <T, K> T put(WebTarget target, K request, Class<T> clz, Status expectedStatus,
-                             Map<String, String> headers)
-          throws HttpResponseException {
-    Response response = addHeaders(target, headers).method("PUT", Entity.entity(request,
-            MediaType.APPLICATION_JSON));
+  public static <T, K> T put(
+      WebTarget target, K request, Class<T> clz, Status expectedStatus, Map<String, String> headers)
+      throws HttpResponseException {
+    Response response = addHeaders(target, headers).method("PUT", Entity.entity(request, MediaType.APPLICATION_JSON));
     return readResponse(response, clz, expectedStatus.getStatusCode());
   }
 
@@ -230,7 +236,7 @@ public final class TestUtils {
     assertNotNull(ref.getType());
     // Ensure data entities use fully qualified name
     if (List.of("table", "database", "metrics", "dashboard", "pipeline", "report", "topic", "chart", "location")
-            .contains(ref.getType())) {
+        .contains(ref.getType())) {
       // FullyQualifiedName has "." as separator
       assertTrue(ref.getName().contains("."), "entity name is not fully qualified - " + ref.getName());
     }
@@ -248,8 +254,7 @@ public final class TestUtils {
     return headers;
   }
 
-  public static void validateTags(List<TagLabel> expectedList, List<TagLabel> actualList)
-          throws HttpResponseException {
+  public static void validateTags(List<TagLabel> expectedList, List<TagLabel> actualList) throws HttpResponseException {
     if (expectedList == null) {
       return;
     }
@@ -262,8 +267,12 @@ public final class TestUtils {
       List<TagLabel> derived = new ArrayList<>();
       for (String fqn : Optional.ofNullable(tag.getAssociatedTags()).orElse(Collections.emptyList())) {
         Tag associatedTag = TagResourceTest.getTag(fqn, adminAuthHeaders());
-        derived.add(new TagLabel().withTagFQN(fqn).withState(expected.getState())
-                .withDescription(associatedTag.getDescription()).withLabelType(TagLabel.LabelType.DERIVED));
+        derived.add(
+            new TagLabel()
+                .withTagFQN(fqn)
+                .withState(expected.getState())
+                .withDescription(associatedTag.getDescription())
+                .withLabelType(TagLabel.LabelType.DERIVED));
       }
       updatedExpectedList.addAll(derived);
     }
@@ -281,8 +290,9 @@ public final class TestUtils {
     return authHeaders("test@open-metadata.org");
   }
 
-  public static void checkUserFollowing(UUID userId, UUID entityId, boolean expectedFollowing,
-                                         Map<String, String> authHeaders) throws HttpResponseException {
+  public static void checkUserFollowing(
+      UUID userId, UUID entityId, boolean expectedFollowing, Map<String, String> authHeaders)
+      throws HttpResponseException {
     // GET .../users/{userId} shows user as following table
     User user = UserResourceTest.getUser(userId, "follows", authHeaders);
     existsInEntityReferenceList(user.getFollows(), entityId, expectedFollowing);
@@ -304,9 +314,9 @@ public final class TestUtils {
     } else if (updateType == UpdateType.NO_CHANGE) {
       assertEquals(previousVersion, newVersion); // No change in the version
     } else if (updateType == UpdateType.MINOR_UPDATE) {
-      assertEquals(Math.round((previousVersion + 0.1) * 10.0)/10.0, newVersion); // Minor version change
+      assertEquals(Math.round((previousVersion + 0.1) * 10.0) / 10.0, newVersion); // Minor version change
     } else if (updateType == UpdateType.MAJOR_UPDATE) {
-      assertEquals(Math.round((previousVersion + 1.0) * 10.0)/10.0, newVersion); // Major version change
+      assertEquals(Math.round((previousVersion + 1.0) * 10.0) / 10.0, newVersion); // Major version change
     }
   }
 
@@ -319,8 +329,8 @@ public final class TestUtils {
         break;
       }
     }
-    assertEquals(expectedExistsInList, exists,
-            "Entry exists in list - expected:" + expectedExistsInList + " actual:" + exists);
+    assertEquals(
+        expectedExistsInList, exists, "Entry exists in list - expected:" + expectedExistsInList + " actual:" + exists);
   }
 
   public static void assertListNull(Object... values) {
