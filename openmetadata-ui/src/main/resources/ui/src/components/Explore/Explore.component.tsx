@@ -385,18 +385,21 @@ const Explore: React.FC<ExploreProps> = ({
   const getTabs = () => {
     return (
       <div className="tw-mb-5">
-        <nav className="tw-flex tw-flex-row tw-gh-tabs-container tw-mx-9 xl:tw-pr-64 lg:tw-pr-0">
-          <div className="tw-w-3/12">
-            {isFilterSelected && (
-              <p
-                className="link-text tw-text-sm tw-text-grey-body tw-text-right tw-mt-5 tw-mr-12"
+        <nav className="tw-flex tw-flex-row tw-gh-tabs-container tw-mx-9 xl:tw-pr-64 lg:tw-pr-0 tw-justify-between">
+          <div className="tw-flex">
+            <div className="tw-w-72 tw-flex-shrink-0">
+              <Button
+                className={classNames('tw-underline tw-mt-5 tw-ml-5', {
+                  'tw-invisible': !isFilterSelected,
+                })}
+                size="custom"
+                theme="primary"
+                variant="link"
                 onClick={resetFilters}>
                 Clear All
-              </p>
-            )}
-          </div>
-          <div className="tw-flex tw-justify-between tw-w-9/12">
-            <div className="tw--ml-2.5">
+              </Button>
+            </div>
+            <div>
               {tabsInfo.map((tabDetail, index) => (
                 <button
                   className={`tw-pb-2 tw-pr-6 tw-gh-tabs ${getActiveTabClass(
@@ -423,8 +426,8 @@ const Explore: React.FC<ExploreProps> = ({
                 </button>
               ))}
             </div>
-            {getSortingElements()}
           </div>
+          {getSortingElements()}
         </nav>
       </div>
     );
