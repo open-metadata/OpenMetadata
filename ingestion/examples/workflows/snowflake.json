@@ -2,11 +2,11 @@
   "source": {
     "type": "snowflake",
     "config": {
-      
       "host_port": "account.region.service.snowflakecomputing.com",
       "username": "username",
       "password": "strong_password",
       "database": "SNOWFLAKE_SAMPLE_DATA",
+      "warehouse": "warehouse_name",
       "account": "account_name",
       "service_name": "snowflake",
       "table_filter_pattern": {

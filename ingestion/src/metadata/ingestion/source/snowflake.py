@@ -25,12 +25,11 @@ register_custom_type(custom_types.TIMESTAMP_NTZ, "TIME")
 class SnowflakeConfig(SQLConnectionConfig):
     scheme = "snowflake"
     account: str
-    database: Optional[str]
-    warehouse: Optional[str]
+    database: str
+    warehouse: str
     role: Optional[str]
     duration: Optional[int]
     service_type = "Snowflake"
-    connect_args: Optional[dict]
 
     def get_connection_url(self):
         connect_string = super().get_connection_url()
