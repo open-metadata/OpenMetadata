@@ -22,6 +22,7 @@ import hive from '../assets/img/service-icon-hive.png';
 import kafka from '../assets/img/service-icon-kafka.png';
 import looker from '../assets/img/service-icon-looker.png';
 import mariadb from '../assets/img/service-icon-mariadb.png';
+import metabase from '../assets/img/service-icon-metabase.png';
 import mssql from '../assets/img/service-icon-mssql.png';
 import oracle from '../assets/img/service-icon-oracle.png';
 import postgres from '../assets/img/service-icon-post.png';
@@ -60,6 +61,7 @@ export const SUPERSET = superset;
 export const LOOKER = looker;
 export const TABLEAU = tableau;
 export const REDASH = redash;
+export const METABASE = metabase;
 
 export const AIRFLOW = airflow;
 export const PREFECT = prefect;
@@ -86,7 +88,7 @@ export const serviceTypes: Record<ServiceTypes, Array<string>> = {
     'Vertica',
   ],
   messagingServices: ['Kafka'],
-  dashboardServices: ['Superset', 'Looker', 'Tableau', 'Redash'],
+  dashboardServices: ['Superset', 'Looker', 'Tableau', 'Redash', 'Metabase'],
   pipelineServices: ['Airflow', 'Prefect', 'Glue'],
 };
 
