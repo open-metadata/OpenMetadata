@@ -17,6 +17,7 @@
   * [Kafka](openmetadata/connectors/kafka.md)
   * [Looker](openmetadata/connectors/looker.md)
   * [MariaDB](connectors/mariadb.md)
+  * [Metabase](openmetadata/connectors/metabase.md)
   * [MlFlow](connectors/mlflow.md)
   * [MsSQL](openmetadata/connectors/mssql.md)
   * [MySQL](openmetadata/connectors/mysql.md)
