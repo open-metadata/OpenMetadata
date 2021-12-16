@@ -53,7 +53,7 @@ metadata ingest -c ./examples/workflows/redash.json
 
 Below is the configuration to publish Redash data into the OpenMetadata service.
 
-Add Optionally`pii` processor and `metadata-rest` sink along with `metadata-server` config
+Add `metadata-rest` sink along with `metadata-server` config
 
 {% code title="redash.json" %}
 ```javascript
