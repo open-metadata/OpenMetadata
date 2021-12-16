@@ -6,13 +6,36 @@ description: >-
 
 # Features
 
+## List of Supported Features
+
+* [All Your Data in One Place](features.md#all-your-data-in-one-place)
+* [Data Discovery](features.md#data-discovery)
+  * [Keyword Search](features.md#keyword-search)
+  * [Discover Data Through Association](features.md#discover-data-through-association)
+  * [Advanced Search](features.md#advanced-search)
+* [Change Activity Feeds](features.md#change-activity-feeds)
+* [Add Descriptive Metadata](features.md#add-descriptive-metadata)
+* [Complex Data Types](features.md#complex-data-types)
+* [Importance & Owners](features.md#importance-and-owners)
+  * [Filter Assets by Importance](features.md#filter-assets-by-importance)
+  * [Identify Asset Owners](features.md#identify-asset-owners)
+* [Data Lineage](features.md#data-lineage)
+* [DBT Integration](features.md#dbt-integration)
+* [Data Reliability (Data Profiler)](features.md#data-reliability)
+* [Service Connectors](features.md#service-connectors)
+* [Metadata Versioning & Events API](features.md#metadata-versioning)
+* [One-Click Ingestion Pipelines](features.md#one-click-ingestion-pipelines)
+* [Elasticsearch Integration](features.md#elasticsearch-integration)
+
+## Features
+
 ### All Your Data in One Place
 
 OpenMetadata provides all the data context you need for different use cases in a single place.
 
 ![](.gitbook/assets/home-screen.gif)
 
-### Discover Your Data
+### Data Discovery
 
 OpenMetadata enables you to discover your data using a variety of strategies, including: keyword search, data associations (e.g., frequently joined tables, lineage), and complex queries. Using OpenMetadata you can search across tables, topics, dashboards, pipelines, and services. The OpenMetadata standard and discovery UI provides for fine-grained and detailed metadata for assets and a their components (e.g., columns, charts), including support for complex data types such as arrays and structs.
 
@@ -44,7 +67,7 @@ The OpenMetadata home screen features a change activity feed that enables you vi
 
 ![](.gitbook/assets/activity-feed.gif)
 
-### Know Your Data
+### Add Descriptive Metadata
 
 Add descriptions and tags to tables, columns, and other assets. OpenMetadata indexes assets based on descriptions, tags, names, and other metadata to enable keyword, advanced search, and filtering to enable you and others in your organization to discover your data.
 
