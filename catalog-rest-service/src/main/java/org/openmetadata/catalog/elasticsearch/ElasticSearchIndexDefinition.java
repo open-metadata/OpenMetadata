@@ -310,7 +310,7 @@ class TableESIndex extends ElasticSearchIndex {
   public static TableESIndexBuilder builder(Table table, int responseCode) throws JsonProcessingException {
     String tableId = table.getId().toString();
     String tableName = table.getName();
-    String description = table.getDescription();
+    String description = table.getDescription() != null ? table.getDescription() : "";
     List<String> tags = new ArrayList<>();
     List<String> columnNames = new ArrayList<>();
     List<String> columnDescriptions = new ArrayList<>();
@@ -456,19 +456,21 @@ class TopicESIndex extends ElasticSearchIndex {
     }
     ParseTags parseTags = new ParseTags(tags);
     Long updatedTimestamp = topic.getUpdatedAt().getTime();
+    String description = topic.getDescription() != null ? topic.getDescription() : "";
+    String displayName = topic.getDisplayName() != null ? topic.getDisplayName() : "";
     TopicESIndexBuilder topicESIndexBuilder =  internalBuilder().topicId(topic.getId().toString())
-        .name(topic.getName())
-        .displayName(topic.getDisplayName())
-        .description(topic.getDescription())
-        .fqdn(topic.getFullyQualifiedName())
-        .lastUpdatedTimestamp(updatedTimestamp)
-        .suggest(suggest)
-        .service(topic.getService().getName())
-        .serviceType(topic.getServiceType().toString())
-        .serviceCategory("messagingService")
-        .entityType("topic")
-        .tags(parseTags.tags)
-        .tier(parseTags.tierTag);
+            .name(topic.getName())
+            .displayName(displayName)
+            .description(description)
+            .fqdn(topic.getFullyQualifiedName())
+            .lastUpdatedTimestamp(updatedTimestamp)
+            .suggest(suggest)
+            .service(topic.getService().getName())
+            .serviceType(topic.getServiceType().toString())
+            .serviceCategory("messagingService")
+            .entityType("topic")
+            .tags(parseTags.tags)
+            .tier(parseTags.tierTag);
 
     if (topic.getFollowers() != null) {
       topicESIndexBuilder.followers(topic.getFollowers().stream().map(item ->
@@ -543,21 +545,23 @@ class DashboardESIndex extends ElasticSearchIndex {
       chartDescriptions.add(chart.getDescription());
     }
     ParseTags parseTags = new ParseTags(tags);
+    String description = dashboard.getDescription() != null ? dashboard.getDescription() : "";
+    String displayName = dashboard.getDisplayName() != null ? dashboard.getDisplayName() : "";
     DashboardESIndexBuilder dashboardESIndexBuilder =  internalBuilder().dashboardId(dashboard.getId().toString())
-        .name(dashboard.getDisplayName())
-        .displayName(dashboard.getDisplayName())
-        .description(dashboard.getDescription())
-        .fqdn(dashboard.getFullyQualifiedName())
-        .lastUpdatedTimestamp(updatedTimestamp)
-        .chartNames(chartNames)
-        .chartDescriptions(chartDescriptions)
-        .entityType("dashboard")
-        .suggest(suggest)
-        .service(dashboard.getService().getName())
-        .serviceType(dashboard.getServiceType().toString())
-        .serviceCategory("dashboardService")
-        .tags(parseTags.tags)
-        .tier(parseTags.tierTag);
+            .name(dashboard.getDisplayName())
+            .displayName(displayName)
+            .description(description)
+            .fqdn(dashboard.getFullyQualifiedName())
+            .lastUpdatedTimestamp(updatedTimestamp)
+            .chartNames(chartNames)
+            .chartDescriptions(chartDescriptions)
+            .entityType("dashboard")
+            .suggest(suggest)
+            .service(dashboard.getService().getName())
+            .serviceType(dashboard.getServiceType().toString())
+            .serviceCategory("dashboardService")
+            .tags(parseTags.tags)
+            .tier(parseTags.tierTag);
 
     if (dashboard.getUsageSummary() != null) {
       dashboardESIndexBuilder.weeklyStats(dashboard.getUsageSummary().getWeeklyStats().getCount())
@@ -627,21 +631,23 @@ class PipelineESIndex extends ElasticSearchIndex {
     }
     Long updatedTimestamp = pipeline.getUpdatedAt().getTime();
     ParseTags parseTags = new ParseTags(tags);
+    String description = pipeline.getDescription() != null ? pipeline.getDescription() : "";
+    String displayName = pipeline.getDisplayName() != null ? pipeline.getDisplayName() : "";
     PipelineESIndexBuilder pipelineESIndexBuilder = internalBuilder().pipelineId(pipeline.getId().toString())
-        .name(pipeline.getDisplayName())
-        .displayName(pipeline.getDisplayName())
-        .description(pipeline.getDescription())
-        .fqdn(pipeline.getFullyQualifiedName())
-        .lastUpdatedTimestamp(updatedTimestamp)
-        .taskNames(taskNames)
-        .taskDescriptions(taskDescriptions)
-        .entityType("pipeline")
-        .suggest(suggest)
-        .service(pipeline.getService().getName())
-        .serviceType(pipeline.getServiceType().toString())
-        .serviceCategory("pipelineService")
-        .tags(parseTags.tags)
-        .tier(parseTags.tierTag);
+            .name(pipeline.getDisplayName())
+            .displayName(description)
+            .description(displayName)
+            .fqdn(pipeline.getFullyQualifiedName())
+            .lastUpdatedTimestamp(updatedTimestamp)
+            .taskNames(taskNames)
+            .taskDescriptions(taskDescriptions)
+            .entityType("pipeline")
+            .suggest(suggest)
+            .service(pipeline.getService().getName())
+            .serviceType(pipeline.getServiceType().toString())
+            .serviceCategory("pipelineService")
+            .tags(parseTags.tags)
+            .tier(parseTags.tierTag);
 
     if (pipeline.getFollowers() != null) {
       pipelineESIndexBuilder.followers(pipeline.getFollowers().stream().map(item ->
