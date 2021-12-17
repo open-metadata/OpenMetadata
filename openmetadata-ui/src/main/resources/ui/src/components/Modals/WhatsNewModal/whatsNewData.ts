@@ -13,9 +13,9 @@
 
 /* eslint-disable max-len */
 
-export const LATEST_VERSION_ID = 2;
+export const LATEST_VERSION_ID = 3;
 
-export const COOKIE_VERSION = 'VERSION_0_6_0'; // To be changed with each release.
+export const COOKIE_VERSION = 'VERSION_0_7_0'; // To be changed with each release.
 
 export const dummyImg = 'https://via.placeholder.com/725x278';
 
@@ -139,6 +139,58 @@ export const WHATS_NEW = [
       'Helm Charts': `- Installing OpenMetadata in your cloud provider or on-premise got easier.\n- We worked on Helm charts to get the OpenMetadata and dependencies up and running on Kubernetes.`,
       'Other Features':
         '- Upgraded from JDBI 2 to JDBI 3, which will support newer versions.',
+    },
+  },
+  {
+    id: 3,
+    version: 'v0.7.0',
+    description: 'Released on 15 Dec 2021.',
+    features: [
+      {
+        title: 'New Home Screen',
+        description:
+          'New and improved UX has been implemented for search and its resulting landing pages.',
+        isImage: false,
+        path: 'https://www.youtube.com/embed/PMc7huRR5HQ',
+      },
+      {
+        title: 'Change Activity Feeds',
+        description:
+          'Enables users to view a summary of the metadata change events. The most recent changes are listed at the top.',
+        isImage: false,
+        path: 'https://www.youtube.com/embed/xOQMvn3iPhM',
+      },
+      {
+        title: 'Lineage Updates',
+        description:
+          'Improved discoverability. Implemented incremental loading to lineage.',
+        isImage: false,
+        path: 'https://www.youtube.com/embed/dWc73gWryDw',
+      },
+      {
+        title: 'DBT Integration',
+        description:
+          'DBT integration enables users to see what models are being used to generate tables.',
+        isImage: false,
+        path: 'https://www.youtube.com/embed/tQ6iBBnzpGc',
+      },
+      {
+        title: 'Automatic Indexing',
+        description:
+          'SSL-enabled Elasticsearch (including self-signed certs) is supported. Automatically runs an indexing workflow as new entities are added or updated through ingestion workflows.',
+        isImage: false,
+        path: 'https://www.youtube.com/embed/Znr2UsbKAPk',
+      },
+    ],
+    changeLogs: {
+      'Activity Feeds': `- Enables users to view a summary of the metadata change events.\n- The most recent changes are listed at the top.\n- Entities (tables, dashboards, team names) are clickable.\n- Displays 'All Changes' and 'My Changes'.\n- A feed has been provided for data you are 'Following'.`,
+      'UX Improvements': `- New and improved UX has been implemented for search and its resulting landing pages.\n- The Explore page has an updated UI. Introduced a 3-column layout to present the search results and several visual element improvements to promote readability and navigation of the search results.\n- Users can filter by database name on the Explore page.\n- Support has been added to view the recent search terms.\n- Major version changes for backward incompatible changes are prominently displayed.`,
+      'DBT Integration': `- DBT integration enables users to see what models are being used to generate tables.\n- DBT models have been associated with Tables and are no longer treated as a separate Entity on the UI.\n- Each DBT model can produce a Table, and all the logic and metadata is now being captured as part of it.\n- DBT model is accessible from a tab in the table view.`,
+      'Storage Location': `- UI supports StorageLocation.\n- Can extract the location information from Glue.\n- The ingestion framework gets the details from Glue to publish the location information (such as S3 bucket, HDFS) for the external tables.\n- The table results view now displays the table location in addition to the service.`,
+      Elasticsearch: `- SSL-enabled Elasticsearch (including self-signed certs) is supported.\n- Automatically runs an indexing workflow as new entities are added or updated through ingestion workflows.\n- Metadata indexing workflow is still available; in case indexes need to be cleanly created from the ground up.`,
+      'New Connectors': `- *Metabase*, an open-source BI solution\n- *Apache Druid* has been added to integrate Druid metadata.\n- *MLflow*, an open-source platform for the machine learning lifecycle\n- *Apache Atlas import connector*, imports metadata from Atlas installations into OpenMetadata.\n- *Amundsen import connector*, imports metadata from Amundsen into OpenMetadata.\n- *AWS Glue* - improved to extract metadata for tables and pipelines. Now uses the AWS boto session to get the credentials from the different credential providers, and also allows the common approach to provide credentials. Glue ingestion now supports Location.\n- *MSSQL* now has SSL support.`,
+      'Lineage View Improvements': `- Improved discoverability\n- Implemented incremental loading to lineage.\n- Users can inspect the Table’s columns.\n- Users can expand entity nodes to view more upstream or downstream lineage.\n- Helps data consumers and producers to assess the impact of changes to the data sources.`,
+      'Other Features': `- Admins can now access the user listing page, filter users by team, and manage admin privileges\n- Updated the Redoc version to support search in the API, as well as to add query parameter fields fixes.\n- 'Entity Name' character size has been increased to 256.`,
     },
   },
 ];
