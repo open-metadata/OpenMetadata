@@ -15,6 +15,7 @@ import React, { FunctionComponent, useEffect, useState } from 'react';
 import { Link, useHistory } from 'react-router-dom';
 import { getDatasetDetailsPath } from '../../constants/constants';
 import { JoinedWith } from '../../generated/entity/data/table';
+import { getCountBadge } from '../../utils/CommonUtils';
 import PopOver from '../common/popover/PopOver';
 
 type Props = {
@@ -75,7 +76,7 @@ const FrequentlyJoinedTables: FunctionComponent<Props> = ({
               }>
               {table.name}
             </span>
-            <span className="tw-tag tw-ml-2">{table.joinCount}</span>
+            {getCountBadge(table.joinCount, '', false)}
           </div>
         ))}
       </div>
@@ -108,7 +109,7 @@ const FrequentlyJoinedTables: FunctionComponent<Props> = ({
                 to={getDatasetDetailsPath(table.fullyQualifiedName as string)}>
                 {table.name}
               </Link>
-              <span className="tw-tag tw-ml-2">{table.joinCount}</span>
+              {getCountBadge(table.joinCount, '', false)}
             </div>
           );
         })}
@@ -126,6 +127,12 @@ const FrequentlyJoinedTables: FunctionComponent<Props> = ({
             </PopOver>
           </div>
         )}
+
+        {joinedTables.length <= 0 ? (
+          <div className="tw-py-1 tw-text-grey-muted">
+            No information about joined tables.
+          </div>
+        ) : null}
       </div>
     </div>
   );

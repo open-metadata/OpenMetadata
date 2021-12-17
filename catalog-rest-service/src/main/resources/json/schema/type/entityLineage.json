@@ -57,7 +57,7 @@
       "default" : null
     },
     "upstreamEdges": {
-      "descriptions" : "All the edges in the lineage graph that are upstream from the primiary entity.",
+      "descriptions" : "All the edges in the lineage graph that are upstream from the primary entity.",
       "type": "array",
       "items": {
         "$ref": "#/definitions/edge"
@@ -65,7 +65,7 @@
       "default" : null
     },
     "downstreamEdges": {
-      "descriptions" : "All the edges in the lineage graph that are downstream from the primiary entity.",
+      "descriptions" : "All the edges in the lineage graph that are downstream from the primary entity.",
       "type": "array",
       "items": {
         "$ref": "#/definitions/edge"

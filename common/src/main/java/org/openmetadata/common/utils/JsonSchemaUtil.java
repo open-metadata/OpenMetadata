@@ -25,13 +25,6 @@ import com.networknt.schema.JsonSchemaFactory;
 import com.networknt.schema.ValidationMessage;
 import com.networknt.schema.uri.ClasspathURLFactory;
 import com.networknt.schema.urn.URNFactory;
-
-import javax.json.Json;
-import javax.json.JsonPatch;
-import javax.json.JsonValue;
-import javax.json.JsonWriter;
-import javax.json.JsonWriterFactory;
-import javax.json.stream.JsonGenerator;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.StringReader;
@@ -41,16 +34,18 @@ import java.net.URL;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
+import javax.json.Json;
+import javax.json.JsonPatch;
+import javax.json.JsonValue;
+import javax.json.JsonWriter;
+import javax.json.JsonWriterFactory;
+import javax.json.stream.JsonGenerator;
 
 public final class JsonSchemaUtil {
 
-  private JsonSchemaUtil() {
+  private JsonSchemaUtil() {}
 
-  }
-
-  /**
-   * Return JSON schema from a POJO annotated appropriately
-   */
+  /** Return JSON schema from a POJO annotated appropriately */
   public static <T> String jsonSchemaForClass(Class<T> c) throws JsonProcessingException {
     ObjectMapper mapper = new ObjectMapper();
     JsonSchemaConfig config = JsonSchemaConfig.vanillaJsonSchemaDraft4().withJsonSchemaDraft(JsonSchemaDraft.DRAFT_07);
@@ -59,16 +54,14 @@ public final class JsonSchemaUtil {
     return mapper.writeValueAsString(jsonSchema);
   }
 
-  /**
-   * URN factory that maps the json schema URL to internal resource based URL to be used for testing purposes
-   */
+  /** URN factory that maps the json schema URL to internal resource based URL to be used for testing purposes */
   public static URNFactory getUrnFactory() {
     return urn -> {
       try {
         // Turn urn in relative path format "../type/common.json into absolute path /json/type/common.json
         urn = urn.replace("../type", "json/type");
-        URL absoluteURL = ClasspathURLFactory.convert(new ClasspathURLFactory().create(String.format("resource:/%s",
-                urn)));
+        URL absoluteURL =
+            ClasspathURLFactory.convert(new ClasspathURLFactory().create(String.format("resource:/%s", urn)));
         return absoluteURL.toURI();
       } catch (Exception ex) {
         return null;
@@ -81,7 +74,7 @@ public final class JsonSchemaUtil {
   }
 
   public static Set<ValidationMessage> validate(InputStream schemaStream, String jsonPayload, URNFactory urnFactory)
-          throws IOException {
+      throws IOException {
     JsonSchemaFactory.Builder builder = new JsonSchemaFactory.Builder();
     JsonMetaSchema metaSchema = JsonMetaSchema.getV7();
     builder.defaultMetaSchemaURI(metaSchema.getUri()).addMetaSchema(metaSchema);

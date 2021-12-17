@@ -15,10 +15,9 @@ package org.openmetadata.common.module;
 
 import java.util.Map;
 
-
 /**
- * Used to define start() and stop() methods for a guice module that expects to start and stop services
- * with creation and destruction of a injector
+ * Used to define start() and stop() methods for a guice module that expects to start and stop services with creation
+ * and destruction of a injector
  */
 public interface StartableModule {
 

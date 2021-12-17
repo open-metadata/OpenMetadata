@@ -148,6 +148,7 @@ export const tabsInfo = [
     tab: 1,
     path: 'tables',
     icon: Icons.TABLE_GREY,
+    selectedIcon: Icons.TABLE,
   },
   {
     label: 'Topics',
@@ -157,6 +158,7 @@ export const tabsInfo = [
     tab: 2,
     path: 'topics',
     icon: Icons.TOPIC_GREY,
+    selectedIcon: Icons.TOPIC,
   },
   {
     label: 'Dashboards',
@@ -166,6 +168,7 @@ export const tabsInfo = [
     tab: 3,
     path: 'dashboards',
     icon: Icons.DASHBOARD_GREY,
+    selectedIcon: Icons.DASHBOARD,
   },
   {
     label: 'Pipelines',
@@ -175,5 +178,6 @@ export const tabsInfo = [
     tab: 4,
     path: 'pipelines',
     icon: Icons.PIPELINE_GREY,
+    selectedIcon: Icons.PIPELINE,
   },
 ];

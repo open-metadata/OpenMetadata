@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate 
+ *  Copyright 2021 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -13,6 +13,9 @@
 
 package org.openmetadata.common.utils;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
@@ -21,23 +24,18 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.networknt.schema.ValidationMessage;
 import com.networknt.schema.urn.URNFactory;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 /**
- * This test provides examples of how to use:
- * - JSON schema to validate the JSON payload
- * - Generate JSON schema from POJO
+ * This test provides examples of how to use: - JSON schema to validate the JSON payload - Generate JSON schema from
+ * POJO
  */
 public class JsonSchemaTest {
   private final UUID TEST_UUID = UUID.randomUUID();
@@ -50,24 +48,24 @@ public class JsonSchemaTest {
   }
 
   private java.util.Set<com.networknt.schema.ValidationMessage> validate(InputStream in, String jsonPayload)
-          throws IOException {
+      throws IOException {
     System.out.println("Validating " + jsonPayload);
     Set<ValidationMessage> errors = JsonSchemaUtil.validate(in, jsonPayload, urnFactory);
     System.out.println("Errors " + errors);
     return errors;
   }
 
-  /**
-   * Validate a conforming JSON payload using JSON schema
-   */
+  /** Validate a conforming JSON payload using JSON schema */
   @Test
   public void validJson() throws IOException {
     // Valid jsonPayload
     InputStream in = JsonSchemaTest.class.getClassLoader().getResourceAsStream("json/entity/testEntity.json");
-    Map<String, Object> objectTypeMap = Map.of(
+    Map<String, Object> objectTypeMap =
+        Map.of(
             "ot1", "ot1",
             "ot2", "ot2");
-    Map<String, Object> map = Map.of(
+    Map<String, Object> map =
+        Map.of(
             "stringProperty", "property1",
             "uriProperty", TEST_URI,
             "uuidProperty", TEST_UUID,
@@ -76,17 +74,17 @@ public class JsonSchemaTest {
     assertEquals(0, validate(in, jsonPayload).size());
   }
 
-  /**
-   * Validate a non-conforming JSON payload that is missing a required field using JSON schema
-   */
+  /** Validate a non-conforming JSON payload that is missing a required field using JSON schema */
   @Test
   public void missingField() throws IOException {
     InputStream in = JsonSchemaTest.class.getClassLoader().getResourceAsStream("json/entity/testEntity.json");
     // No mandatory field "stringProperty"
-    Map<String, Object> objectTypeMap = Map.of(
+    Map<String, Object> objectTypeMap =
+        Map.of(
             "ot1", "ot1",
             "ot2", "ot2");
-    Map<String, Object> map = Map.of(
+    Map<String, Object> map =
+        Map.of(
             // Missing stringProperty1
             "uriProperty", TEST_URI,
             "uuidProperty", TEST_UUID,
@@ -97,17 +95,17 @@ public class JsonSchemaTest {
     assertTrue(errors.iterator().next().getMessage().contains("stringProperty: is missing"));
   }
 
-  /**
-   * Validate a non-conforming JSON payload that is missing a required inner field using JSON schema
-   */
+  /** Validate a non-conforming JSON payload that is missing a required inner field using JSON schema */
   @Test
   public void missingInnerField() throws IOException {
     // No mandatory inner field "objectType.ot1"
     InputStream in = JsonSchemaTest.class.getClassLoader().getResourceAsStream("json/entity/testEntity.json");
-    Map<String, Object> objectTypeMap = Map.of(
+    Map<String, Object> objectTypeMap =
+        Map.of(
             // Missing inner field ot1
             "ot2", "ot2");
-    Map<String, Object> map = Map.of(
+    Map<String, Object> map =
+        Map.of(
             "stringProperty", "property1",
             "uriProperty", TEST_URI,
             "uuidProperty", TEST_UUID,
@@ -120,25 +118,24 @@ public class JsonSchemaTest {
   }
 
   @JsonInclude(JsonInclude.Include.NON_NULL)
-  @JsonPropertyOrder({
-          "name",
-          "id",
-          "connection"
-  })
+  @JsonPropertyOrder({"name", "id", "connection"})
 
-  /**
-   * Validate a non-conforming JSON payload that has invalid data
-   */
+  /** Validate a non-conforming JSON payload that has invalid data */
   @Test
   public void invalidJsonData() throws IOException {
     // Invalid value that is not a URI
     InputStream in = JsonSchemaTest.class.getClassLoader().getResourceAsStream("json/entity/testEntity.json");
     Map<String, Object> objectTypeMap = Map.of("ot1", "ot2", "ot2", "ot2");
-    Map<String, Object> map = Map.of(
-            "stringProperty", "property1",
-            "uriProperty", "invalidUri", // Invalid URI
-            "uuidProperty", TEST_UUID,
-            "objectTypeProperty", objectTypeMap);
+    Map<String, Object> map =
+        Map.of(
+            "stringProperty",
+            "property1",
+            "uriProperty",
+            "invalidUri", // Invalid URI
+            "uuidProperty",
+            TEST_UUID,
+            "objectTypeProperty",
+            objectTypeMap);
     String jsonPayload = new ObjectMapper().writeValueAsString(map);
 
     Set<ValidationMessage> errors = validate(in, jsonPayload);
@@ -146,9 +143,7 @@ public class JsonSchemaTest {
     assertTrue(errors.iterator().next().getMessage().contains("uriProperty: does not match the uri pattern"));
   }
 
-  /**
-   * Test POJO to JSON schema
-   */
+  /** Test POJO to JSON schema */
   @Test
   public void pojoToJsonSchema() throws IOException {
     // From POJO class generate json schema

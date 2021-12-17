@@ -54,5 +54,5 @@ export const getFilters = (
 export const filterList = [
   { name: 'All Activity', value: 'all' },
   { name: 'My Data', value: 'owner' },
-  { name: 'Following Data', value: 'followers' },
+  { name: 'Following', value: 'followers' },
 ];

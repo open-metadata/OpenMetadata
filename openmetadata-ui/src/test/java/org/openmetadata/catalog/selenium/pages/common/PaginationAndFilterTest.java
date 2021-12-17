@@ -13,11 +13,11 @@
 
 package org.openmetadata.catalog.selenium.pages.common;
 
-import io.github.artsok.RepeatedIfExceptionsTest;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.catalog.selenium.events.Events;
 import org.openmetadata.catalog.selenium.properties.Property;
@@ -60,7 +60,7 @@ public class PaginationAndFilterTest {
     webDriver.get(url);
   }
 
-  @RepeatedIfExceptionsTest(repeats = 2)
+  @Test
   @Order(1)
   public void checkFlikerInFilter() throws Exception {
     Events.click(webDriver, By.cssSelector("[data-testid='closeWhatsNew']")); // Close What's new
@@ -81,7 +81,7 @@ public class PaginationAndFilterTest {
     }
   }
 
-  @RepeatedIfExceptionsTest(repeats = 2)
+  @Test
   @Order(2)
   public void noDataPresentWithFilter() throws Exception {
     Events.click(webDriver, By.cssSelector("[data-testid='closeWhatsNew']")); // Close What's new
@@ -99,7 +99,7 @@ public class PaginationAndFilterTest {
     }
   }
 
-  @RepeatedIfExceptionsTest(repeats = 2)
+  @Test
   @Order(3)
   public void dataPresentWithFilter() throws Exception {
     Events.click(webDriver, By.cssSelector("[data-testid='closeWhatsNew']")); // Close What's new
@@ -116,6 +116,18 @@ public class PaginationAndFilterTest {
     } catch(TimeoutException exception) {
       LOG.info("Success");
     }
+  }
+
+  @Test
+  @Order(4)
+  public void leftPanelDisappearsCheck() throws InterruptedException {
+    Events.click(webDriver, By.cssSelector("[data-testid='closeWhatsNew']")); // Close What's new
+    Thread.sleep(waitTime);
+    Events.sendKeys(webDriver, By.cssSelector("[data-testid='searchBox']"), "zzzz");
+    Events.sendEnter(webDriver, By.cssSelector("[data-testid='searchBox']"));
+    webDriver.navigate().refresh();
+    Events.click(webDriver, By.cssSelector("[data-testid='appbar-item'][id='explore']")); // Explore
+    Events.click(webDriver, By.cssSelector("[data-testid='checkbox'][id='BigQuery']")); // Tables
   }
 
   @AfterEach

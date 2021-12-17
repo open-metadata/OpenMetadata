@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate 
+ *  Copyright 2021 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -13,34 +13,34 @@
 
 package org.openmetadata.catalog.util;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-import org.openmetadata.catalog.entity.data.Table;
-import org.openmetadata.catalog.entity.teams.User;
-import org.junit.jupiter.api.Test;
-
-import java.util.Arrays;
-import java.util.List;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import com.fasterxml.jackson.annotation.JsonProperty;
+import java.util.Arrays;
+import java.util.List;
+import org.junit.jupiter.api.Test;
+import org.openmetadata.catalog.entity.data.Table;
+import org.openmetadata.catalog.entity.teams.User;
 
 public class RestUtilTest {
   @Test
   public void testFields() {
     // Anonymous class with JsonProperties to extract
-    Object entity = new Object() {
-      @JsonProperty("attribute1")
-      public int attribute1;
+    Object entity =
+        new Object() {
+          @JsonProperty("attribute1")
+          public int attribute1;
 
-      @JsonProperty("attribute2")
-      public String attribute2;
+          @JsonProperty("attribute2")
+          public String attribute2;
 
-      @JsonProperty("relationship1")
-      public User relationship1; // User is an entity class
+          @JsonProperty("relationship1")
+          public User relationship1; // User is an entity class
 
-      @JsonProperty("relationship2")
-      public Table relationship2; // Table is an entity class
-    };
+          @JsonProperty("relationship2")
+          public Table relationship2; // Table is an entity class
+        };
 
     // Get attributes (that are fields with types that are not entity classes)
     List<String> attributes = RestUtil.getAttributes(entity.getClass());
@@ -52,7 +52,6 @@ public class RestUtilTest {
     List<String> relationships = RestUtil.getRelationships(entity.getClass());
     List<String> expectedRelationships = Arrays.asList("relationship1", "relationship2");
     assertEquals(expectedRelationships.size(), relationships.size());
-    assertTrue(relationships.containsAll(expectedRelationships) &&
-            expectedRelationships.containsAll(relationships));
+    assertTrue(relationships.containsAll(expectedRelationships) && expectedRelationships.containsAll(relationships));
   }
 }

@@ -94,6 +94,7 @@ const PipelineDetails = ({
         alt: 'schema',
         name: 'icon-schema',
         title: 'Details',
+        selectedName: 'icon-schemacolor',
       },
       isProtected: false,
       position: 1,
@@ -104,6 +105,7 @@ const PipelineDetails = ({
         alt: 'lineage',
         name: 'icon-lineage',
         title: 'Lineage',
+        selectedName: 'icon-lineagecolor',
       },
       isProtected: false,
       position: 2,
@@ -114,6 +116,7 @@ const PipelineDetails = ({
         alt: 'manage',
         name: 'icon-manage',
         title: 'Manage',
+        selectedName: 'icon-managecolor',
       },
       isProtected: true,
       protectedState: !owner || hasEditAccess(),
@@ -281,14 +284,14 @@ const PipelineDetails = ({
             tier={tier}
             titleLinks={slashedPipelineName}
           />
-          <div className="tw-mt-1 tw-flex tw-flex-col tw-flex-grow">
+          <div className="tw-mt-4 tw-flex tw-flex-col tw-flex-grow">
             <TabsPane
               activeTab={activeTab}
               setActiveTab={setActiveTabHandler}
               tabs={tabs}
             />
 
-            <div className="tw-bg-white tw-flex-grow ">
+            <div className="tw-bg-white tw-flex-grow tw-mx-1">
               {activeTab === 1 && (
                 <>
                   <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-w-full tw-mt-4">

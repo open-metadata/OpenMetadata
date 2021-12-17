@@ -13,15 +13,12 @@
 
 package org.openmetadata.catalog;
 
-
 import javax.validation.constraints.NotEmpty;
 
 public class ElasticSearchConfiguration {
-  @NotEmpty
-  private String host;
+  @NotEmpty private String host;
 
-  @NotEmpty
-  private Integer port;
+  @NotEmpty private Integer port;
 
   private String username;
 
@@ -111,10 +108,15 @@ public class ElasticSearchConfiguration {
 
   @Override
   public String toString() {
-    return "ElasticSearchConfiguration{" +
-        "host='" + host + '\'' +
-        ", port=" + port +
-        ", username='" + username + '\'' +
-        '}';
+    return "ElasticSearchConfiguration{"
+        + "host='"
+        + host
+        + '\''
+        + ", port="
+        + port
+        + ", username='"
+        + username
+        + '\''
+        + '}';
   }
 }

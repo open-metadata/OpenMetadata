@@ -14,7 +14,7 @@
 package org.openmetadata.catalog.selenium.pages.teams;
 
 import com.github.javafaker.Faker;
-import io.github.artsok.RepeatedIfExceptionsTest;
+import org.junit.jupiter.api.Test;
 import org.openmetadata.catalog.selenium.events.Events;
 import org.openmetadata.catalog.selenium.properties.Property;
 import org.openqa.selenium.By;
@@ -60,7 +60,7 @@ public class TeamsPageTest {
     webDriver.get(URL);
   }
 
-  @RepeatedIfExceptionsTest(repeats = 2)
+  @Test
   @Order(1)
   public void openTeamsPage() throws InterruptedException {
     Events.click(webDriver, By.cssSelector("[data-testid='closeWhatsNew']")); // Close What's new
@@ -69,7 +69,7 @@ public class TeamsPageTest {
     Thread.sleep(waitTime);
   }
 
-  @RepeatedIfExceptionsTest(repeats = 2)
+  @Test
   @Order(2)
   public void createTeam() throws InterruptedException {
     openTeamsPage();
@@ -83,7 +83,7 @@ public class TeamsPageTest {
     Events.click(webDriver, By.cssSelector("[data-testid='saveButton']"));
   }
 
-  @RepeatedIfExceptionsTest(repeats = 2)
+  @Test
   @Order(3)
   public void addUser() throws InterruptedException {
     openTeamsPage();
@@ -97,20 +97,20 @@ public class TeamsPageTest {
     }
   }
 
-  @RepeatedIfExceptionsTest(repeats = 2)
+  @Test
   @Order(4)
   public void editDescription() throws InterruptedException {
     openTeamsPage();
     Events.click(webDriver, By.xpath("//*[text()[contains(.,'" + teamDisplayName + "')]] "));
     // Select the created listed team
-    Events.click(webDriver, By.cssSelector("[data-testid='add-description']"));
+    Events.click(webDriver, By.cssSelector("[data-testid='edit-description']"));
     wait.until(ExpectedConditions.elementToBeClickable(
         By.xpath(enterDescription)));
     Events.sendKeys(webDriver, By.xpath(enterDescription), faker.address().toString());
     Events.click(webDriver, By.cssSelector("[data-testid='save']"));
   }
 
-  @RepeatedIfExceptionsTest(repeats = 2)
+  @Test
   @Order(5)
   public void addAsset() throws InterruptedException {
     openTeamsPage();

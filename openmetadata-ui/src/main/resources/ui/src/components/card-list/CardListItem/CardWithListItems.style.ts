@@ -13,11 +13,11 @@
 
 export const cardStyle = {
   base: 'tw-flex tw-flex-col tw-rounded-md tw-border tw-mb-4',
-  default: 'tw-border-primary-lite',
+  default: 'tw-border-main',
   active: 'tw-border-primary',
   header: {
     base: 'tw-flex tw-px-5 tw-py-3 tw-cursor-pointer tw-justify-between tw-items-center',
-    default: 'tw-bg-tag',
+    default: 'tw-bg-badge',
     active: 'tw-bg-primary tw-rounded-t-md tw-text-white',
     title: 'tw-text-base tw-mb-0',
     description: 'tw-font-medium tw-pr-2',

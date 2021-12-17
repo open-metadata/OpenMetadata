@@ -14,7 +14,7 @@
 package org.openmetadata.catalog.selenium.pages.messagingService;
 
 import com.github.javafaker.Faker;
-import io.github.artsok.RepeatedIfExceptionsTest;
+import org.junit.jupiter.api.Test;
 import org.openmetadata.catalog.selenium.events.Events;
 import org.openmetadata.catalog.selenium.properties.Property;
 import org.openqa.selenium.By;
@@ -23,7 +23,6 @@ import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.interactions.Actions;
-import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.AfterEach;
@@ -59,7 +58,7 @@ public class MessagingServicePageTest {
     webDriver.get(url);
   }
 
-  @RepeatedIfExceptionsTest(repeats = 2)
+  @Test
   @Order(1)
   public void openMessagingServicePage() throws InterruptedException {
     Events.click(webDriver, By.cssSelector("[data-testid='closeWhatsNew']")); // Close What's new
@@ -69,7 +68,7 @@ public class MessagingServicePageTest {
     Thread.sleep(waitTime);
   }
 
-  @RepeatedIfExceptionsTest(repeats = 2)
+  @Test
   @Order(2)
   public void addMessagingService() throws InterruptedException {
     openMessagingServicePage();
@@ -98,7 +97,7 @@ public class MessagingServicePageTest {
     Events.click(webDriver, By.cssSelector("[data-testid='save-button']"));
   }
 
-  @RepeatedIfExceptionsTest(repeats = 2)
+  @Test
   @Order(3)
   public void editMessagingService() throws InterruptedException {
     openMessagingServicePage();
@@ -110,21 +109,21 @@ public class MessagingServicePageTest {
     Events.click(webDriver, By.cssSelector("[data-testid='save-button']"));
   }
 
-  @RepeatedIfExceptionsTest(repeats = 2)
+  @Test
   @Order(4)
   public void checkMessagingServiceDetails() throws InterruptedException {
     openMessagingServicePage();
     Thread.sleep(2000);
     Events.click(webDriver, By.cssSelector("[data-testid='service-name-" + serviceName + "']"));
     Thread.sleep(waitTime);
-    Events.click(webDriver, By.cssSelector("[data-testid='description-edit']"));
+    Events.click(webDriver, By.cssSelector("[data-testid='edit-description']"));
     Events.click(webDriver, By.xpath(enterDescription));
     Events.sendEnter(webDriver, By.xpath(enterDescription));
     Events.sendKeys(webDriver, By.xpath(enterDescription), faker.address().toString());
     Events.click(webDriver, By.cssSelector("[data-testid='save']"));
   }
 
-  @RepeatedIfExceptionsTest(repeats = 2)
+  @Test
   @Order(5)
   public void searchMessagingService() throws InterruptedException {
     openMessagingServicePage();
@@ -132,7 +131,7 @@ public class MessagingServicePageTest {
     Events.click(webDriver, By.cssSelector("[data-testid='service-name-" + serviceName + "']"));
   }
 
-  @RepeatedIfExceptionsTest(repeats = 2)
+  @Test
   @Order(6)
   public void deleteMessagingService() throws InterruptedException {
     openMessagingServicePage();

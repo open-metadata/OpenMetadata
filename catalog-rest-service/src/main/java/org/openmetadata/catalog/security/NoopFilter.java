@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate 
+ *  Copyright 2021 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -13,26 +13,24 @@
 
 package org.openmetadata.catalog.security;
 
-import org.openmetadata.catalog.security.auth.CatalogSecurityContext;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.container.ContainerRequestFilter;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.UriInfo;
+import org.openmetadata.catalog.security.auth.CatalogSecurityContext;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class NoopFilter implements ContainerRequestFilter {
-  @Context
-  private UriInfo uriInfo;
+  @Context private UriInfo uriInfo;
 
   private static final Logger LOG = LoggerFactory.getLogger(NoopFilter.class);
 
   public void filter(ContainerRequestContext containerRequestContext) {
     CatalogPrincipal catalogPrincipal = new CatalogPrincipal("anonymous");
     String scheme = containerRequestContext.getUriInfo().getRequestUri().getScheme();
-    CatalogSecurityContext catalogSecurityContext = new CatalogSecurityContext(catalogPrincipal, scheme,
-                                                              CatalogSecurityContext.BASIC_AUTH);
+    CatalogSecurityContext catalogSecurityContext =
+        new CatalogSecurityContext(catalogPrincipal, scheme, CatalogSecurityContext.BASIC_AUTH);
     LOG.debug("SecurityContext {}", catalogSecurityContext);
     containerRequestContext.setSecurityContext(catalogSecurityContext);
   }

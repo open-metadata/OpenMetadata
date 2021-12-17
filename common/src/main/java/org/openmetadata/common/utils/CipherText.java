@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate 
+ *  Copyright 2021 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -13,9 +13,6 @@
 
 package org.openmetadata.common.utils;
 
-import javax.crypto.Cipher;
-import javax.crypto.NoSuchPaddingException;
-import javax.crypto.spec.SecretKeySpec;
 import java.io.UnsupportedEncodingException;
 import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
@@ -25,10 +22,11 @@ import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.Random;
+import javax.crypto.Cipher;
+import javax.crypto.NoSuchPaddingException;
+import javax.crypto.spec.SecretKeySpec;
 
-/**
- * Class that uses AEC encryption to encrypt and decrypt plain text
- */
+/** Class that uses AEC encryption to encrypt and decrypt plain text */
 public final class CipherText {
   private static CipherText instance = null;
   private static SecretKeySpec secretKey;
@@ -49,7 +47,6 @@ public final class CipherText {
     }
     return instance;
   }
-
 
   public String encrypt(String strToEncrypt) throws GeneralSecurityException, UnsupportedEncodingException {
     if (strToEncrypt == null) {

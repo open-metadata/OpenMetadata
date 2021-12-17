@@ -63,6 +63,7 @@ const Appbar: React.FC = (): JSX.Element => {
   const [searchValue, setSearchValue] = useState(searchQuery);
   const [isOpen, setIsOpen] = useState<boolean>(true);
   const [isFeatureModalOpen, setIsFeatureModalOpen] = useState<boolean>(false);
+  const [searchIcon, setSearchIcon] = useState<string>('icon-searchv1');
 
   const [version, setVersion] = useState<string>('');
 
@@ -77,6 +78,25 @@ const Appbar: React.FC = (): JSX.Element => {
   };
 
   const supportLinks = [
+    {
+      name: (
+        <span>
+          <SVGIcons
+            alt="API icon"
+            className="tw-align-middle tw--mt-0.5 tw-mr-0.5"
+            icon={Icons.VERSION_BLACK}
+            width="12"
+          />{' '}
+          <span className="tw-text-grey-muted">{`Version ${
+            (version ? version : '?').split('-')[0]
+          }`}</span>
+        </span>
+      ),
+      to: '',
+      disabled: false,
+      icon: <></>,
+      isText: true,
+    },
     {
       name: `Docs`,
       to: urlGitbookDocs,
@@ -130,7 +150,6 @@ const Appbar: React.FC = (): JSX.Element => {
     return (
       <span data-testid="greeting-text">
         <span className="tw-font-medium">{name}</span>
-        <hr className="tw--mr-2 tw--ml-2 tw-mt-1.5" />
       </span>
     );
   };
@@ -169,18 +188,18 @@ const Appbar: React.FC = (): JSX.Element => {
               <NavLink id="openmetadata_logo" to="/">
                 <SVGIcons
                   alt="OpenMetadata Logo"
-                  icon={Icons.LOGO_SMALL}
-                  width="30"
+                  icon={Icons.LOGO}
+                  width="90"
                 />
               </NavLink>
-              <div className="tw-ml-7">
+              <div className="tw-ml-5">
                 <NavLink
                   className="tw-nav focus:tw-no-underline"
                   data-testid="appbar-item"
                   id="explore"
                   style={navStyle(location.pathname.startsWith('/explore'))}
                   to={{
-                    pathname: '/explore',
+                    pathname: '/explore/tables',
                   }}>
                   Explore
                 </NavLink>
@@ -197,7 +216,7 @@ const Appbar: React.FC = (): JSX.Element => {
               <SVGIcons
                 alt="icon-search"
                 className="tw-absolute tw-block tw-z-10 tw-w-4 tw-h-4 tw-right-2.5 tw-top-2.5 tw-leading-8 tw-text-center tw-pointer-events-none"
-                icon="icon-searchv1"
+                icon={searchIcon}
               />
               <input
                 autoComplete="off"
@@ -207,14 +226,18 @@ const Appbar: React.FC = (): JSX.Element => {
                 placeholder="Search for Table, Topics, Dashboards and Pipeline"
                 type="text"
                 value={searchValue || ''}
+                onBlur={() => setSearchIcon('icon-searchv1')}
                 onChange={(e) => {
                   setSearchValue(e.target.value);
                 }}
+                onFocus={() => setSearchIcon('icon-searchv1color')}
                 onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
                   const target = e.target as HTMLInputElement;
                   if (e.key === 'Enter') {
                     setIsOpen(false);
-                    addToRecentSearched(target.value);
+                    if (target.value) {
+                      addToRecentSearched(target.value);
+                    }
                     history.push(
                       getExplorePathWithSearch(
                         target.value,
@@ -246,7 +269,7 @@ const Appbar: React.FC = (): JSX.Element => {
                   />
                 ))}
             </div>
-            <div className="tw-flex tw-ml-auto">
+            <div className="tw-flex tw-ml-auto tw-pl-36">
               <button
                 className="tw-nav focus:tw-no-underline hover:tw-underline"
                 data-testid="whatsnew-modal"
@@ -296,24 +319,7 @@ const Appbar: React.FC = (): JSX.Element => {
               <DropDown
                 dropDownList={[
                   {
-                    name: (
-                      <p className="tw-flex tw-flex-col">
-                        <span>Signed in as</span>
-                        {getUserDisplayName()}
-                      </p>
-                    ),
-                    to: '',
-                    disabled: false,
-                    icon: <></>,
-                    isText: true,
-                  },
-                  {
-                    name: (
-                      <span className="tw-text-grey-muted tw-cursor-text tw-text-xs">
-                        {`Version ${(version ? version : '?').split('-')[0]}`}
-                        <hr className="tw--mr-2 tw--ml-2 tw-mt-2" />
-                      </span>
-                    ),
+                    name: getUserDisplayName(),
                     to: '',
                     disabled: false,
                     icon: <></>,
@@ -347,6 +353,7 @@ const Appbar: React.FC = (): JSX.Element => {
                     )}
                   </>
                 }
+                isDropDownIconVisible={false}
                 type="link"
               />
             </div>

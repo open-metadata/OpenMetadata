@@ -66,12 +66,13 @@ const MyData: React.FC<MyDataProps> = ({
       <Fragment>
         <div className="tw-relative tw-mt-5">
           <Button
+            className="tw-underline"
             data-testid="feeds"
             size="custom"
-            theme="default"
-            variant="text"
+            theme="primary"
+            variant="link"
             onClick={() => setFieldListVisible((visible) => !visible)}>
-            <span className="tw-text-grey-body tw-font-medium">
+            <span className="tw-font-medium">
               {filterList.find((f) => f.value === feedFilter)?.name}
             </span>
             <DropDownIcon />
@@ -206,7 +207,9 @@ const MyData: React.FC<MyDataProps> = ({
         <ErrorPlaceHolderES errorMessage={error} type="error" />
       ) : (
         <Fragment>
-          {getFilterDropDown()}
+          {feedFilter === 'all' && !getFeedsData().feeds.length
+            ? null
+            : getFilterDropDown()}
           {getFeedsData().feeds.length > 0 ? (
             <FeedCards {...getFeedsData()} />
           ) : (

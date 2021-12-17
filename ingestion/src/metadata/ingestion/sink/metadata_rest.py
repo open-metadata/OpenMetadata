@@ -32,10 +32,10 @@ from metadata.generated.schema.api.data.createPipeline import (
 )
 from metadata.generated.schema.api.data.createTable import CreateTableEntityRequest
 from metadata.generated.schema.api.data.createTopic import CreateTopicEntityRequest
+from metadata.generated.schema.api.lineage.addLineage import AddLineage
 from metadata.generated.schema.api.policies.createPolicy import (
     CreatePolicyEntityRequest,
 )
-from metadata.generated.schema.api.lineage.addLineage import AddLineage
 from metadata.generated.schema.api.teams.createTeam import CreateTeamEntityRequest
 from metadata.generated.schema.api.teams.createUser import CreateUserEntityRequest
 from metadata.generated.schema.entity.data.chart import ChartType
@@ -145,6 +145,9 @@ class MetadataRestSink(Sink[Entity]):
                 ),
             )
             db = self.metadata.create_or_update(db_request)
+            if db_and_table.table.description is not None:
+                db_and_table.table.description = db_and_table.table.description.strip()
+
             table_request = CreateTableEntityRequest(
                 name=db_and_table.table.name,
                 tableType=db_and_table.table.tableType,
@@ -152,7 +155,6 @@ class MetadataRestSink(Sink[Entity]):
                 description=db_and_table.table.description,
                 database=db.id,
             )
-
             if db_and_table.table.viewDefinition:
                 table_request.viewDefinition = (
                     db_and_table.table.viewDefinition.__root__
@@ -160,9 +162,15 @@ class MetadataRestSink(Sink[Entity]):
 
             created_table = self.metadata.create_or_update(table_request)
             if db_and_table.location is not None:
+                if db_and_table.location.description is not None:
+                    db_and_table.location.description = (
+                        db_and_table.location.description.strip()
+                    )
                 location_request = CreateLocationEntityRequest(
                     name=db_and_table.location.name,
                     description=db_and_table.location.description,
+                    locationType=db_and_table.location.locationType,
+                    owner=db_and_table.location.owner,
                     service=EntityReference(
                         id=db_and_table.location.service.id,
                         type="storageService",
@@ -171,10 +179,16 @@ class MetadataRestSink(Sink[Entity]):
                 location = self.metadata.create_or_update(location_request)
                 self.metadata.add_location(table=created_table, location=location)
             if db_and_table.table.sampleData is not None:
-                self.metadata.ingest_table_sample_data(
-                    table=created_table,
-                    sample_data=db_and_table.table.sampleData,
-                )
+                try:
+                    self.metadata.ingest_table_sample_data(
+                        table=created_table,
+                        sample_data=db_and_table.table.sampleData,
+                    )
+                except Exception as e:
+                    logging.error(
+                        f"Failed to ingest sample data for table {db_and_table.table.name}"
+                    )
+
             if db_and_table.table.tableProfile is not None:
                 for tp in db_and_table.table.tableProfile:
                     for pd in tp:
@@ -283,7 +297,6 @@ class MetadataRestSink(Sink[Entity]):
                 name=location.name,
                 description=location.description,
                 locationType=location.locationType,
-                tags=location.tags,
                 owner=location.owner,
                 service=location.service,
             )
@@ -362,7 +375,7 @@ class MetadataRestSink(Sink[Entity]):
 
     def _create_team(self, team: EntityReference) -> None:
         metadata_team = CreateTeamEntityRequest(
-            name=team.name, displayName=team.name, description="Team Name"
+            name=team.name, displayName=team.name, description=team.description
         )
         try:
             r = self.metadata.create_or_update(metadata_team)

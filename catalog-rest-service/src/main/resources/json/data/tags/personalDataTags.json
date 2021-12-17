@@ -5,7 +5,6 @@
   "children": [
     {
       "name": "Personal",
-      "description": "todo",
       "description": "Data that can be used to directly or indirectly identify a person."
     },
     {

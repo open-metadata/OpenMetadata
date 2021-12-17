@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate 
+ *  Copyright 2021 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -14,16 +14,15 @@
 package org.openmetadata.catalog.jdbi3;
 
 /**
- * This enum captures all the relationships between Catalog entities
- * Note that the relationship from is a Strong entity and to is Weak entity
- * when possible.
+ * This enum captures all the relationships between Catalog entities Note that the relationship from is a Strong entity
+ * and to is Weak entity when possible.
  */
 public enum Relationship {
 
   /**
-   * Rules for changing enums since the ordinal position is stored in the database.
-   * - Don't remove an enum, since the database might have stored the enum ordinal number
-   * - When adding a new enum, add it as the last enum to preserve the ordinal positions of the existing enums
+   * Rules for changing enums since the ordinal position is stored in the database. - Don't remove an enum, since the
+   * database might have stored the enum ordinal number - When adding a new enum, add it as the last enum to preserve
+   * the ordinal positions of the existing enums
    */
   // Database --- contains --> Table
   // Organization --- contains --> Team
@@ -76,8 +75,7 @@ public enum Relationship {
   // {Pipeline} --- upstream ---> {Table2} (Pipeline creates Table2)
   // {Table} --- upstream ---> {Dashboard} (Table was used to  create Dashboard)
   UPSTREAM("upstream"); // 13
-  /*** Add new enums to the end of the list **/
-
+  /** * Add new enums to the end of the list * */
   private final String value;
 
   Relationship(String value) {

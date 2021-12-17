@@ -42,6 +42,7 @@ base_requirements = {
     "sqlalchemy>=1.3.24",
     "sql-metadata~=2.0.0",
     "requests~=2.26",
+    "cryptography",
     "PyYAML",
 }
 
@@ -96,8 +97,8 @@ plugins: Dict[str, Set[str]] = {
         "GeoAlchemy2",
     },
     "data-profiler": {"openmetadata-data-profiler"},
-    "snowflake": {"snowflake-sqlalchemy<=1.2.4"},
-    "snowflake-usage": {"snowflake-sqlalchemy<=1.2.4"},
+    "snowflake": {"snowflake-sqlalchemy<=1.3.2"},
+    "snowflake-usage": {"snowflake-sqlalchemy<=1.3.2"},
     "sample-entity": {"faker~=8.1.1"},
     "superset": {},
     "tableau": {"tableau-api-lib==0.1.22"},

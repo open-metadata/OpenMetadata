@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate 
+ *  Copyright 2021 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -21,10 +21,8 @@ import org.slf4j.LoggerFactory;
 public class NoopAuthorizer implements CatalogAuthorizer {
   private static final Logger LOG = LoggerFactory.getLogger(NoopAuthorizer.class);
 
-
   @Override
-  public void init(AuthorizerConfiguration config, Jdbi jdbi) {
-  }
+  public void init(AuthorizerConfiguration config, Jdbi jdbi) {}
 
   @Override
   public boolean hasPermissions(AuthenticationContext ctx, EntityReference entityOwnership) {

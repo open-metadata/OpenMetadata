@@ -20,7 +20,7 @@
     "partitions" : {
       "description" : "Number of partitions into which the topic is divided.",
       "type" : "integer",
-      "minimum": "1"
+      "minimum": 1
     },
     "schemaText" : {
       "description" : "Schema used for message serialization. Optional as some topics may not have associated schemas.",

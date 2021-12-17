@@ -16,6 +16,8 @@ import subprocess
 import sys
 import time
 import traceback
+import tempfile
+import pathlib
 from datetime import timedelta
 
 import click
@@ -31,8 +33,6 @@ logger = logging.getLogger(__name__)
 logging.getLogger("urllib3").setLevel(logging.WARN)
 min_memory_limit = 3 * 1024 * 1024 * 1000
 calc_gb = 1024 * 1024 * 1000
-local_metadata = "com.docker.compose.project=local-metadata"
-release = "com.docker.compose.project=tmp"
 # Configure logger.
 BASE_LOGGING_FORMAT = (
     "[%(asctime)s] %(levelname)-8s {%(name)s:%(lineno)d} - %(message)s"
@@ -129,19 +129,6 @@ def report(config: str) -> None:
         ) from exc
 
 
-def get_list(docker_type, all_check: bool = None):
-    filter_kwargs = {
-        "filters": {"label": local_metadata},
-    }
-    if all_check:
-        filter_kwargs["all"] = all_check
-    stop_containers = docker_type.list(**filter_kwargs)
-    if len(stop_containers) == 0:
-        filter_kwargs["filters"] = {"label": release}
-        return docker_type.list(**filter_kwargs)
-    return stop_containers
-
-
 @metadata.command()
 @click.option("--start", help="Start release Docker containers", is_flag=True)
 @click.option("--stop", help="Stop Docker containers (local and release)", is_flag=True)
@@ -170,14 +157,15 @@ def docker(start, stop, clean, type, path) -> None:
     Run Latest Release Docker - metadata docker --start
     Run Local Docker - metadata docker --start -t local -p path/to/docker-compose.yml
     """
+
     try:
         import docker as sys_docker
-
         from metadata.ingestion.ometa.ometa_api import OpenMetadata
         from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 
         client = sys_docker.from_env()
         docker_info = client.info()
+
         if docker_info["MemTotal"] < min_memory_limit:
             raise MemoryError
         if start:
@@ -198,18 +186,30 @@ def docker(start, stop, clean, type, path) -> None:
                 )
             else:
                 logger.info("Running Latest Release Docker")
+
                 r = requests.get(
                     "https://raw.githubusercontent.com/open-metadata/OpenMetadata/main/docker/metadata/docker-compose.yml"
                 )
-                open("/tmp/docker-compose.yml", "wb").write(r.content)
+
+                docker_compose_file_path = (
+                    pathlib.Path(tempfile.gettempdir()) / "docker-compose.yml"
+                )
+                with open(docker_compose_file_path, "wb") as docker_compose_file_handle:
+                    docker_compose_file_handle.write(r.content)
+
                 start_time = time.time()
+
+                logger.info(f"docker-compose -f {docker_compose_file_path} up -d")
                 subprocess.run(
-                    f"docker-compose -f /tmp/docker-compose.yml up -d", shell=True
+                    f"docker-compose -f {docker_compose_file_path} up -d", shell=True
                 )
                 elapsed = time.time() - start_time
                 logger.info(
                     f"Time took to get containers running: {str(timedelta(seconds=elapsed))}"
                 )
+
+                docker_compose_file_path.unlink(missing_ok=True)
+
             metadata_config = MetadataServerConfig.parse_obj(
                 {
                     "api_endpoint": "http://localhost:8585/api",
@@ -245,19 +245,20 @@ def docker(start, stop, clean, type, path) -> None:
                 fg="bright_magenta",
             )
         elif stop:
-            for container in get_list(client.containers):
-                logger.info(f"Stopping {container.name}")
-                container.stop()
+            for container in client.containers.list():
+                if "openmetadata_" in container.name:
+                    logger.info(f"Stopping {container.name}")
+                    container.stop()
         elif clean:
             logger.info("Removing Containers")
-            for container in get_list(client.containers, True):
-                container.remove(v=True, force=True)
-            logger.info("Removing Volumes")
-            for volume in get_list(client.volumes):
-                volume.remove(force=True)
+
+            for container in client.containers.list({all: True}):
+                if "openmetadata_" in container.name:
+                    container.remove(v=True, force=True)
             logger.info("Removing Networks")
-            for network in get_list(client.networks):
-                network.remove()
+            for network in client.networks.list():
+                if "app_net" in network.name:
+                    network.remove()
     except (ImportError, ModuleNotFoundError):
         click.secho(
             "Docker package not found, can you try `pip install 'openmetadata-ingestion[docker]'`",

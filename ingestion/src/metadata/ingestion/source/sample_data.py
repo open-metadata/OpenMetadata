@@ -438,7 +438,12 @@ class SampleDataSource(Source[Entity]):
         try:
             for user in self.users["users"]:
                 teams = [
-                    EntityReference(id=uuid.uuid4(), name=user["teams"], type="team")
+                    EntityReference(
+                        id=uuid.uuid4(),
+                        name=user["teams"],
+                        type="team",
+                        description=f"This is {user['teams']} description.",
+                    )
                 ]
                 user_metadata = User(
                     id=uuid.uuid4(),

@@ -76,11 +76,23 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
 
   const getConfigDetails = () => {
     return [
-      { key: 'Partitions', value: partitions },
-      { key: 'Replication Factor', value: replicationFactor },
-      { key: 'Retention Size', value: bytesToSize(retentionSize) },
-      { key: 'CleanUp Policies', value: cleanupPolicies.join(',') },
-      { key: 'Max Message Size', value: bytesToSize(maximumMessageSize) },
+      { key: 'Partitions', value: `${partitions} partitions` },
+      {
+        key: 'Replication Factor',
+        value: `${replicationFactor} replication factor`,
+      },
+      {
+        key: 'Retention Size',
+        value: `${bytesToSize(retentionSize)} retention size`,
+      },
+      {
+        key: 'Clean-up Policies',
+        value: `${cleanupPolicies.join(', ')} clean-up policies`,
+      },
+      {
+        key: 'Max Message Size',
+        value: `${bytesToSize(maximumMessageSize)} maximum size`,
+      },
     ];
   };
 
@@ -100,6 +112,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
         alt: 'schema',
         name: 'icon-schema',
         title: 'Schema',
+        selectedName: 'icon-schemacolor',
       },
       isProtected: false,
       position: 1,
@@ -110,6 +123,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
         alt: 'config',
         name: 'icon-config',
         title: 'Config',
+        selectedName: 'icon-configcolor',
       },
       isProtected: false,
       position: 2,
@@ -120,6 +134,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
         alt: 'manage',
         name: 'icon-manage',
         title: 'Manage',
+        selectedName: 'icon-managecolor',
       },
       isProtected: true,
       protectedState: !owner || hasEditAccess(),
@@ -272,14 +287,14 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
           tier={tier ?? ''}
           titleLinks={slashedTopicName}
         />
-        <div className="tw-mt-1 tw-flex tw-flex-col tw-flex-grow">
+        <div className="tw-mt-4 tw-flex tw-flex-col tw-flex-grow">
           <TabsPane
             activeTab={activeTab}
             setActiveTab={setActiveTabHandler}
             tabs={tabs}
           />
 
-          <div className="tw-bg-white tw-flex-grow">
+          <div className="tw-bg-white tw-flex-grow tw-mx-1">
             {activeTab === 1 && (
               <>
                 <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-w-full tw-mt-4">

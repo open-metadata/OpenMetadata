@@ -9,7 +9,7 @@
       "options": {
         "credentials_path": "examples/creds/bigquery-cred.json"
       },
-      "filter_pattern": {
+      "table_filter_pattern": {
         "excludes": [
           "[\\w]*cloudaudit.*",
           "[\\w]*logging_googleapis_com.*",

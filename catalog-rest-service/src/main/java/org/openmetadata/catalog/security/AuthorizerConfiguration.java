@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate 
+ *  Copyright 2021 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -13,25 +13,19 @@
 
 package org.openmetadata.catalog.security;
 
-import javax.validation.constraints.NotEmpty;
 import java.util.Set;
+import javax.validation.constraints.NotEmpty;
 
 public class AuthorizerConfiguration {
-  @NotEmpty
-  private String className;
+  @NotEmpty private String className;
 
-  @NotEmpty
-  private String containerRequestFilter;
+  @NotEmpty private String containerRequestFilter;
 
-  @NotEmpty
-  private Set<String> adminPrincipals;
+  @NotEmpty private Set<String> adminPrincipals;
 
-  @NotEmpty
-  private Set<String> botPrincipals;
+  @NotEmpty private Set<String> botPrincipals;
 
-  @NotEmpty
-  private String principalDomain;
-
+  @NotEmpty private String principalDomain;
 
   private CatalogAuthorizerConfiguration catalogAuthorizerConfiguration;
 
@@ -85,9 +79,13 @@ public class AuthorizerConfiguration {
 
   @Override
   public String toString() {
-    return "AuthorizerConfiguration{" +
-            "className='" + className + '\'' +
-            ", containerRequestFilter='" + containerRequestFilter + '\'' +
-            '}';
+    return "AuthorizerConfiguration{"
+        + "className='"
+        + className
+        + '\''
+        + ", containerRequestFilter='"
+        + containerRequestFilter
+        + '\''
+        + '}';
   }
 }

@@ -31,6 +31,7 @@ OpenMetadata supports connectors to some popular services. We will continue as a
 #### Dashboard Services
 
 * [Looker](../../../openmetadata/connectors/looker.md)
+* [Metabase](../../../openmetadata/connectors/metabase.md)
 * [Redash](../../../openmetadata/connectors/redash.md)
 * [Superset](../../../openmetadata/connectors/superset.md)
 * [Tableau](../../../openmetadata/connectors/tableau.md)
@@ -45,3 +46,7 @@ OpenMetadata supports connectors to some popular services. We will continue as a
 * Airflow
 * Prefect
 * Glue
+
+**ML Services**
+
+* [MlFlow](../../../connectors/mlflow.md)

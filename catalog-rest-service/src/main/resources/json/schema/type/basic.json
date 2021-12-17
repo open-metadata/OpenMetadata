@@ -57,7 +57,7 @@
       "format": "date-time"
     },
     "entityLink": {
-      "description": "Link to an entity or field within an entity using this format `<#E/{enties}/{entityName}/{field}/{fieldValue}`.",
+      "description": "Link to an entity or field within an entity using this format `<#E/{entities}/{entityName}/{field}/{fieldValue}`.",
       "type": "string",
       "pattern": "^<#E/\\S+/\\S+>$"
     },

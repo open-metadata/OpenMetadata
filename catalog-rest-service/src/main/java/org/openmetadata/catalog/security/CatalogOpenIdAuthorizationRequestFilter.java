@@ -22,32 +22,24 @@ import javax.ws.rs.container.ContainerRequestFilter;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.core.UriInfo;
-
 import org.openmetadata.catalog.security.auth.CatalogSecurityContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 @Priority(100)
 public class CatalogOpenIdAuthorizationRequestFilter implements ContainerRequestFilter {
-  private static final Logger LOG = LoggerFactory
-          .getLogger(MethodHandles.lookup().lookupClass());
+  private static final Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
   public static final String X_AUTH_PARAMS_EMAIL_HEADER = "X-Auth-Params-Email";
   public static final String EMAIL_ADDRESS = "emailAddress";
   private static final String HEALTH_AGENT = "health-agent";
   private static final String HEALTH_END_POINT = "health";
 
-
-  @Context
-  private HttpServletRequest httpRequest;
-
+  @Context private HttpServletRequest httpRequest;
 
   @SuppressWarnings("unused")
-  private CatalogOpenIdAuthorizationRequestFilter() {
-  }
+  private CatalogOpenIdAuthorizationRequestFilter() {}
 
-  public CatalogOpenIdAuthorizationRequestFilter(AuthenticationConfiguration config) {
-
-  }
+  public CatalogOpenIdAuthorizationRequestFilter(AuthenticationConfiguration config) {}
 
   public void filter(ContainerRequestContext containerRequestContext) {
     if (isHealthEndpoint(containerRequestContext)) {
@@ -59,8 +51,8 @@ public class CatalogOpenIdAuthorizationRequestFilter implements ContainerRequest
     LOG.debug("AuthorizedUserName:{}", principal);
     CatalogPrincipal catalogPrincipal = new CatalogPrincipal(principal);
     String scheme = containerRequestContext.getUriInfo().getRequestUri().getScheme();
-    CatalogSecurityContext catalogSecurityContext = new CatalogSecurityContext(catalogPrincipal, scheme,
-                                                                                CatalogSecurityContext.OPENID_AUTH);
+    CatalogSecurityContext catalogSecurityContext =
+        new CatalogSecurityContext(catalogPrincipal, scheme, CatalogSecurityContext.OPENID_AUTH);
     LOG.debug("SecurityContext {}", catalogSecurityContext);
     containerRequestContext.setSecurityContext(catalogSecurityContext);
   }

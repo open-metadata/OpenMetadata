@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate 
+ *  Copyright 2021 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -14,6 +14,13 @@
 package org.openmetadata.catalog.jdbi3;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import java.io.IOException;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Optional;
 import org.jdbi.v3.core.mapper.RowMapper;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.resources.tags.TagResource;
@@ -26,24 +33,15 @@ import org.openmetadata.catalog.util.JsonUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
-
 public class TagRepository {
   public static final Logger LOG = LoggerFactory.getLogger(TagRepository.class);
   private final CollectionDAO dao;
 
-  public TagRepository(CollectionDAO dao) { this.dao = dao; }
+  public TagRepository(CollectionDAO dao) {
+    this.dao = dao;
+  }
 
-
-  /**
-   * Initialize a category one time when the service comes up for the first time
-   */
+  /** Initialize a category one time when the service comes up for the first time */
   @Transaction
   public void initCategory(TagCategory category) throws JsonProcessingException {
     String json = dao.tagDAO().findCategory(category.getName());
@@ -96,8 +94,8 @@ public class TagRepository {
 
   @Transaction
   public TagCategory getCategory(String categoryName, Fields fields) throws IOException {
-    TagCategory category = EntityUtil.validate(categoryName, dao.tagDAO().findCategory(categoryName),
-            TagCategory.class);
+    TagCategory category =
+        EntityUtil.validate(categoryName, dao.tagDAO().findCategory(categoryName), TagCategory.class);
     category = setFields(category, fields);
     return populateCategoryTags(category, fields);
   }
@@ -139,7 +137,7 @@ public class TagRepository {
 
   @Transaction
   public Tag updateSecondaryTag(String categoryName, String primaryTag, String secondaryTag, Tag updated)
-          throws IOException {
+      throws IOException {
     // Validate categoryName
     EntityUtil.validate(categoryName, dao.tagDAO().findCategory(categoryName), TagCategory.class);
     String fqnPrefix = categoryName + "." + primaryTag;
@@ -166,13 +164,11 @@ public class TagRepository {
   }
 
   /**
-   * Replace category name:
-   * prefix = cat1 and newPrefix = cat2 replaces the FQN of all the children tags of a category
+   * Replace category name: prefix = cat1 and newPrefix = cat2 replaces the FQN of all the children tags of a category
    * from cat1.primaryTag1.secondaryTag1 to cat2.primaryTag1.secondaryTag1
-   * <p>
-   * Replace primary tag name:
-   * Prefix = cat1.primaryTag1 and newPrefix = cat1.primaryTag2 replaces the FQN of all the children tags
-   * from cat1.primaryTag1.secondaryTag1 to cat2.primaryTag2.secondaryTag1
+   *
+   * <p>Replace primary tag name: Prefix = cat1.primaryTag1 and newPrefix = cat1.primaryTag2 replaces the FQN of all the
+   * children tags from cat1.primaryTag1.secondaryTag1 to cat2.primaryTag2.secondaryTag1
    */
   private void updateChildrenTagNames(String prefix, String newPrefix) throws IOException {
     // Update the fully qualified names of all the primary and secondary tags
@@ -267,9 +263,10 @@ public class TagRepository {
   public static class TagLabelMapper implements RowMapper<TagLabel> {
     @Override
     public TagLabel map(ResultSet r, org.jdbi.v3.core.statement.StatementContext ctx) throws SQLException {
-      return new TagLabel().withLabelType(TagLabel.LabelType.values()[r.getInt("labelType")])
-              .withState(TagLabel.State.values()[r.getInt("state")])
-              .withTagFQN(r.getString("tagFQN"));
+      return new TagLabel()
+          .withLabelType(TagLabel.LabelType.values()[r.getInt("labelType")])
+          .withState(TagLabel.State.values()[r.getInt("state")])
+          .withTagFQN(r.getString("tagFQN"));
     }
   }
 }

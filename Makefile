@@ -8,13 +8,13 @@ clean_env37:
 	rm -rf env38
 
 install:
-	pip install ingestion/
+	python3 -m pip install ingestion/
 
 install_test:
-	pip install -r ingestion/requirements-test.txt
+	python3 -m pip install -r ingestion/requirements-test.txt
 
 install_dev:
-	pip install -r ingestion/requirements-dev.txt
+	python3 -m pip install -r ingestion/requirements-dev.txt
 
 precommit_install:
 	@echo "Installing pre-commit hooks"

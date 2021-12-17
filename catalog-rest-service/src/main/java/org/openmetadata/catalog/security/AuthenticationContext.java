@@ -15,10 +15,7 @@ package org.openmetadata.catalog.security;
 
 import java.security.Principal;
 
-/**
- * Holds context information of authenticated user, which will be used
- * for authorization.
- */
+/** Holds context information of authenticated user, which will be used for authorization. */
 public final class AuthenticationContext {
   private Principal principal;
 
@@ -32,8 +29,6 @@ public final class AuthenticationContext {
 
   @Override
   public String toString() {
-    return "AuthenticationContext{" +
-            ", principal=" + principal +
-            '}';
+    return "AuthenticationContext{" + ", principal=" + principal + '}';
   }
 }
