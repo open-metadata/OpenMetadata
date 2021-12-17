@@ -53,18 +53,19 @@ execute() {
 
 printUsage() {
     cat <<-EOF
-USAGE: $0 [create|migrate|info|validate|drop|drop-create|repair|check-connection]
+USAGE: $0 [create|migrate|info|validate|drop|drop-create|es-drop|es-create|drop-create-all|migrate-all|repair|check-connection]
    create           : Creates the tables. The target database should be empty
    migrate          : Migrates the database to the latest version or creates the tables if the database is empty. Use "info" to see the current version and the pending migrations
    info             : Shows the list of migrations applied and the pending migration waiting to be applied on the target database
    validate         : Checks if the all the migrations haven been applied on the target database
    drop             : Drops all the tables in the target database
-   drop-create      : Drops and recreates all the tables in the target database.
+   drop-create      : Drops and recreates all the tables in the target database
    es-drop          : Drops the indexes in ElasticSearch
    es-create        : Creates the indexes in ElasticSearch
-   drop-create-all  : Drops and recreates all the tables in the database. Drops and creates all the indexes in ElasticSearch.
-   repair           : Repairs the DATABASE_CHANGE_LOG table which is used to track all the migrations on the target database.
-                      This involves removing entries for the failed migrations and update the checksum of migrations already applied on the target databsase.
+   drop-create-all  : Drops and recreates all the tables in the database. Drops and creates all the indexes in ElasticSearch
+   migrate-all      : Migrates the database to the latest version and migrates the indexes in ElasticSearch
+   repair           : Repairs the DATABASE_CHANGE_LOG table which is used to track all the migrations on the target database
+                      This involves removing entries for the failed migrations and update the checksum of migrations already applied on the target databsase
    check-connection : Checks if a connection can be sucessfully obtained for the target database
 EOF
 }
