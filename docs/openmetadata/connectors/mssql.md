@@ -42,7 +42,7 @@ metadata ingest -c ./examples/workflows/mssql.json
       "query": "select top 50 * from {}.{}",
       "username": "sa",
       "password": "test!Password",
-      "filter_pattern": {
+      "schema_filter_pattern": {
         "excludes": ["catalog_test.*"]
       }
     }
@@ -76,7 +76,7 @@ Add `metadata-rest` sink along with `metadata-server` config
       "query": "select top 50 * from {}.{}",
       "username": "sa",
       "password": "test!Password",
-      "filter_pattern": {
+      "schema_filter_pattern": {
         "excludes": ["catalog_test.*"]
       }
     }
