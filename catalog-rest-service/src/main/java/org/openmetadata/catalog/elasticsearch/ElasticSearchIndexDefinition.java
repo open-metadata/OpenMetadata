@@ -287,6 +287,8 @@ class ParseTags {
 @Value
 @JsonInclude(JsonInclude.Include.NON_NULL)
 class TableESIndex extends ElasticSearchIndex {
+  private static final Logger LOG = LoggerFactory.getLogger(TableESIndex.class);
+
   @JsonProperty("table_id")
   String tableId;
 
@@ -320,9 +322,11 @@ class TableESIndex extends ElasticSearchIndex {
   Integer dailyPercentileRank;
 
   public static TableESIndexBuilder builder(Table table, int responseCode) {
+    LOG.info("table {}", table);
     String tableId = table.getId().toString();
     String tableName = table.getName();
     String description = table.getDescription() != null ? table.getDescription() : "";
+    String tableType = table.getTableType() != null ? table.getTableType().toString(): "Regular";
     List<String> tags = new ArrayList<>();
     List<String> columnNames = new ArrayList<>();
     List<String> columnDescriptions = new ArrayList<>();
@@ -351,19 +355,19 @@ class TableESIndex extends ElasticSearchIndex {
     TableESIndexBuilder tableESIndexBuilder =
         internalBuilder()
             .tableId(tableId)
-            .name(tableName)
-            .displayName(tableName)
-            .description(description)
-            .lastUpdatedTimestamp(updatedTimestamp)
-            .fqdn(table.getFullyQualifiedName())
-            .suggest(suggest)
-            .entityType("table")
-            .serviceCategory("databaseService")
-            .columnNames(columnNames)
-            .columnDescriptions(columnDescriptions)
-            .tableType(table.getTableType().toString())
-            .tags(parseTags.tags)
-            .tier(parseTags.tierTag);
+        .name(tableName)
+        .displayName(tableName)
+        .description(description)
+        .lastUpdatedTimestamp(updatedTimestamp)
+        .fqdn(table.getFullyQualifiedName())
+        .suggest(suggest)
+        .entityType("table")
+        .serviceCategory("databaseService")
+        .columnNames(columnNames)
+        .columnDescriptions(columnDescriptions)
+        .tableType(tableType)
+        .tags(parseTags.tags)
+        .tier(parseTags.tierTag);
 
     if (table.getDatabase() != null) {
       String databaseFQN = table.getDatabase().getName();
