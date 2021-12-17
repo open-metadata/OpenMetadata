@@ -30,8 +30,6 @@ jobs:
       with:
         java-version: '11'
         distribution: 'adopt'
-    - name: Generate Data Models & Base Connector Image
-      run: make install_dev build_docker_base
     - name: Start Server and Ingest Sample Data
       run: ./docker/run_local_docker.sh
     - name: Set up Python 3.9
