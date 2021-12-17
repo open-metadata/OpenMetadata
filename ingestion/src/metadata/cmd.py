@@ -16,6 +16,8 @@ import subprocess
 import sys
 import time
 import traceback
+import tempfile
+import pathlib
 from datetime import timedelta
 
 import click
@@ -155,14 +157,15 @@ def docker(start, stop, clean, type, path) -> None:
     Run Latest Release Docker - metadata docker --start
     Run Local Docker - metadata docker --start -t local -p path/to/docker-compose.yml
     """
+
     try:
         import docker as sys_docker
-
         from metadata.ingestion.ometa.ometa_api import OpenMetadata
         from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 
         client = sys_docker.from_env()
         docker_info = client.info()
+
         if docker_info["MemTotal"] < min_memory_limit:
             raise MemoryError
         if start:
@@ -183,18 +186,30 @@ def docker(start, stop, clean, type, path) -> None:
                 )
             else:
                 logger.info("Running Latest Release Docker")
+
                 r = requests.get(
                     "https://raw.githubusercontent.com/open-metadata/OpenMetadata/main/docker/metadata/docker-compose.yml"
                 )
-                open("/tmp/docker-compose.yml", "wb").write(r.content)
+
+                docker_compose_file_path = (
+                    pathlib.Path(tempfile.gettempdir()) / "docker-compose.yml"
+                )
+                with open(docker_compose_file_path, "wb") as docker_compose_file_handle:
+                    docker_compose_file_handle.write(r.content)
+
                 start_time = time.time()
+
+                logger.info(f"docker-compose -f {docker_compose_file_path} up -d")
                 subprocess.run(
-                    f"docker-compose -f /tmp/docker-compose.yml up -d", shell=True
+                    f"docker-compose -f {docker_compose_file_path} up -d", shell=True
                 )
                 elapsed = time.time() - start_time
                 logger.info(
                     f"Time took to get containers running: {str(timedelta(seconds=elapsed))}"
                 )
+
+                docker_compose_file_path.unlink(missing_ok=True)
+
             metadata_config = MetadataServerConfig.parse_obj(
                 {
                     "api_endpoint": "http://localhost:8585/api",
