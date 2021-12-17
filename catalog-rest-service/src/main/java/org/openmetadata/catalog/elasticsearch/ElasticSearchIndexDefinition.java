@@ -284,6 +284,7 @@ class ParseTags {
 @Value
 @JsonInclude(JsonInclude.Include.NON_NULL)
 class TableESIndex extends ElasticSearchIndex {
+
   @JsonProperty("table_id")
   String tableId;
   String database;
@@ -311,6 +312,7 @@ class TableESIndex extends ElasticSearchIndex {
     String tableId = table.getId().toString();
     String tableName = table.getName();
     String description = table.getDescription() != null ? table.getDescription() : "";
+    String tableType = table.getTableType() != null ? table.getTableType().toString(): "Regular";
     List<String> tags = new ArrayList<>();
     List<String> columnNames = new ArrayList<>();
     List<String> columnDescriptions = new ArrayList<>();
@@ -337,19 +339,19 @@ class TableESIndex extends ElasticSearchIndex {
     ParseTags parseTags = new ParseTags(tags);
     Long updatedTimestamp = table.getUpdatedAt().getTime();
     TableESIndexBuilder tableESIndexBuilder =  internalBuilder().tableId(tableId)
-        .name(tableName)
-        .displayName(tableName)
-        .description(description)
-        .lastUpdatedTimestamp(updatedTimestamp)
-        .fqdn(table.getFullyQualifiedName())
-        .suggest(suggest)
-        .entityType("table")
-        .serviceCategory("databaseService")
-        .columnNames(columnNames)
-        .columnDescriptions(columnDescriptions)
-        .tableType(table.getTableType().toString())
-        .tags(parseTags.tags)
-        .tier(parseTags.tierTag);
+            .name(tableName)
+            .displayName(tableName)
+            .description(description)
+            .lastUpdatedTimestamp(updatedTimestamp)
+            .fqdn(table.getFullyQualifiedName())
+            .suggest(suggest)
+            .entityType("table")
+            .serviceCategory("databaseService")
+            .columnNames(columnNames)
+            .columnDescriptions(columnDescriptions)
+            .tableType(tableType)
+            .tags(parseTags.tags)
+            .tier(parseTags.tierTag);
 
     if (table.getDatabase() != null) {
       String databaseFQN = table.getDatabase().getName();
