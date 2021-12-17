@@ -24,6 +24,10 @@ public class AuthenticationConfiguration {
 
   private String callbackUrl;
 
+  private String authEmailHeader;
+
+  private String sourceHeader;
+
   public String getProvider() {
     return provider;
   }
@@ -62,5 +66,21 @@ public class AuthenticationConfiguration {
 
   public void setCallbackUrl(String callbackUrl) {
     this.callbackUrl = callbackUrl;
+  }
+
+  public String getAuthEmailHeader() {
+    return authEmailHeader;
+  }
+
+  public void setAuthParamsHeader(String authEmailHeader) {
+    this.authEmailHeader = authEmailHeader;
+  }
+
+  public String getSourceHeader() {
+    return sourceHeader;
+  }
+
+  public void setSourceHeader(String sourceHeader) {
+    this.sourceHeader = sourceHeader;
   }
 }
