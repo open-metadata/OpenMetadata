@@ -26,7 +26,7 @@ OpenMetadata supports connectors to some popular services. We will continue as a
 
 **Data Model**
 
-* [DBT](../../../connectors/dbt.md)
+* [DBT](broken-reference)
 
 #### Dashboard Services
 

@@ -63,7 +63,7 @@ metadata ingest -c ./examples/workflows/bigquery.json
       "options": {
         "credentials_path": "examples/creds/bigquery-cred.json"
       },
-      "filter_pattern": {
+      "schema_filter_pattern": {
         "excludes": [
           "[\\w]*cloudaudit.*",
           "[\\w]*logging_googleapis_com.*",
@@ -106,7 +106,7 @@ Add `metadata-rest` sink along with `metadata-server` config
       "options": {
         "credentials_path": "examples/creds/bigquery-cred.json"
       },
-      "filter_pattern": {
+      "schema_filter_pattern": {
         "excludes": [
           "[\\w]*cloudaudit.*",
           "[\\w]*logging_googleapis_com.*",

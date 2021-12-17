@@ -11,16 +11,15 @@ OpenMetadata is built using Java, DropWizard, Jetty, and MySQL.
 
 1. Python 3.7 or above
 2. OpenMetadata Server up and running
-
 {% endhint %}
 
-## Install from PyPI <a href="install-from-pypi-or-source" id="install-from-pypi-or-source"></a>
+## Install from PyPI <a href="#install-from-pypi-or-source" id="install-from-pypi-or-source"></a>
 
 ```bash
 pip install 'openmetadata-ingestion[redshift]'
 ```
 
-## Run Manually <a href="run-manually" id="run-manually"></a>
+## Run Manually <a href="#run-manually" id="run-manually"></a>
 
 ```bash
 metadata ingest -c ./examples/workflows/redshift.json
@@ -42,8 +41,11 @@ metadata ingest -c ./examples/workflows/redshift.json
       "data_profiler_enabled": "true",
       "data_profiler_offset": "0",
       "data_profiler_limit": "50000",
-      "filter_pattern": {
-        "excludes": ["information_schema.*", "[\\w]*event_vw.*"]
+      "schema_filter_pattern": {
+        "excludes": ["information_schema.*"]
+      },
+      "table_filter_pattern": {
+         "excludes": ["[\\w]*event_vw.*"]
       }
     },
 ...
@@ -59,7 +61,7 @@ metadata ingest -c ./examples/workflows/redshift.json
 7. **data\_profiler\_offset** - Specify offset.
 8. **data\_profiler\_limit** - Specify limit.
 
-## Publish to OpenMetadata <a href="publish-to-openmetadata" id="publish-to-openmetadata"></a>
+## Publish to OpenMetadata <a href="#publish-to-openmetadata" id="publish-to-openmetadata"></a>
 
 Below is the configuration to publish Redshift data into the OpenMetadata service.‌
 

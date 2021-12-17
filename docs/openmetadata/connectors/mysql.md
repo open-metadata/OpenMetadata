@@ -43,7 +43,7 @@ metadata ingest -c ./examples/workflows/mysql.json
       "data_profiler_enabled": "true",
       "data_profiler_offset": "0",
       "data_profiler_limit": "50000",
-      "filter_pattern": {
+      "schema_filter_pattern": {
         "excludes": ["mysql.*", "information_schema.*", "performance_schema.*", "sys.*"]
       }
     }
@@ -79,7 +79,7 @@ Add `metadata-rest` sink along with `metadata-server` config
       "data_profiler_enabled": "true",
       "data_profiler_offset": "0",
       "data_profiler_limit": "50000",
-      "filter_pattern": {
+      "schema_filter_pattern": {
         "excludes": ["mysql.*", "information_schema.*", "performance_schema.*", "sys.*"]
       }
     }
