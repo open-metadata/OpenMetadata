@@ -17,6 +17,7 @@ import org.elasticsearch.client.RestHighLevelClient;
 import org.elasticsearch.client.indices.CreateIndexRequest;
 import org.elasticsearch.client.indices.CreateIndexResponse;
 import org.elasticsearch.client.indices.GetIndexRequest;
+import org.elasticsearch.client.indices.PutMappingRequest;
 import org.elasticsearch.common.xcontent.XContentType;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Dashboard;
@@ -87,6 +88,16 @@ public class ElasticSearchIndexDefinition {
     }
   }
 
+  public void updateIndexes() {
+    try {
+      for (ElasticSearchIndexType elasticSearchIndexType : ElasticSearchIndexType.values()) {
+        updateIndex(elasticSearchIndexType);
+      }
+    } catch (Exception e) {
+      LOG.error("Failed to created Elastic Search indexes due to", e);
+    }
+  }
+
   public void dropIndexes() {
     try {
       for (ElasticSearchIndexType elasticSearchIndexType : ElasticSearchIndexType.values()) {
@@ -119,6 +130,32 @@ public class ElasticSearchIndexDefinition {
       }
       setIndexStatus(elasticSearchIndexType, ElasticSearchIndexStatus.CREATED);
     } catch(Exception e) {
+      setIndexStatus(elasticSearchIndexType, ElasticSearchIndexStatus.FAILED);
+      LOG.error("Failed to created Elastic Search indexes due to", e);
+      return false;
+    }
+    return true;
+  }
+
+  private boolean updateIndex(ElasticSearchIndexType elasticSearchIndexType) {
+    try {
+      GetIndexRequest gRequest = new GetIndexRequest(elasticSearchIndexType.indexName);
+      gRequest.local(false);
+      boolean exists = client.indices().exists(gRequest, RequestOptions.DEFAULT);
+      String elasticSearchIndexMapping = getIndexMapping(elasticSearchIndexType);
+      if (exists) {
+        PutMappingRequest request = new PutMappingRequest(elasticSearchIndexType.indexName);
+        request.source(elasticSearchIndexMapping, XContentType.JSON);
+        AcknowledgedResponse putMappingResponse = client.indices().putMapping(request, RequestOptions.DEFAULT);
+        LOG.info(elasticSearchIndexType.indexName + " Updated " + putMappingResponse.isAcknowledged());
+      } else {
+        CreateIndexRequest request = new CreateIndexRequest(elasticSearchIndexType.indexName);
+        request.mapping(elasticSearchIndexMapping, XContentType.JSON);
+        CreateIndexResponse createIndexResponse = client.indices().create(request, RequestOptions.DEFAULT);
+        LOG.info(elasticSearchIndexType.indexName + " Created " + createIndexResponse.isAcknowledged());
+      }
+      setIndexStatus(elasticSearchIndexType, ElasticSearchIndexStatus.CREATED);
+    } catch (Exception e) {
       setIndexStatus(elasticSearchIndexType, ElasticSearchIndexStatus.FAILED);
       LOG.error("Failed to created Elastic Search indexes due to", e);
       return false;

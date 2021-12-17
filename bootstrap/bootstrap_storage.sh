@@ -88,6 +88,9 @@ drop-create )
 drop-create-all )
     execute "drop" && execute "create" && execute "es-drop" && execute "es-create"
     ;;
+migrate-all )
+    execute "migrate" && execute "es-migrate"
+    ;;
 *)
     printUsage
     exit 1

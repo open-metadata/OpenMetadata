@@ -203,6 +203,10 @@ public final class TablesInitializer {
           esIndexDefinition = new ElasticSearchIndexDefinition(client);
           esIndexDefinition.createIndexes();
           break;
+        case ES_MIGRATE:
+          esIndexDefinition = new ElasticSearchIndexDefinition(client);
+          esIndexDefinition.updateIndexes();
+          break;
         case ES_DROP:
           esIndexDefinition = new ElasticSearchIndexDefinition(client);
           esIndexDefinition.dropIndexes();
@@ -227,7 +231,8 @@ public final class TablesInitializer {
     DROP("drop"),
     REPAIR("repair"),
     ES_DROP("es-drop"),
-    ES_CREATE("es-create");
+    ES_CREATE("es-create"),
+    ES_MIGRATE("es-migrate");
 
     private final String value;
 
