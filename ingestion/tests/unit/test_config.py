@@ -14,7 +14,7 @@ Test module for loading configs
 import json
 import os
 from pathlib import Path
-from unittest import TestCase
+from unittest import TestCase, mock
 
 from metadata.config.common import ConfigurationError, load_config_file
 
@@ -42,7 +42,6 @@ class TestConfig(TestCase):
         """
         Fail with non existent file
         """
-
         no_file = Path(os.path.join(self.basedir, "random.json"))
 
         with self.assertRaises(ConfigurationError):
@@ -56,3 +55,22 @@ class TestConfig(TestCase):
 
         with self.assertRaises(ConfigurationError):
             load_config_file(bad_suffix)
+
+    @mock.patch.dict(os.environ, {"PASSWORD": "super_safe"})
+    def test_env(self):
+        """
+        We can load env vars correctly
+        """
+        pwd_file = Path(os.path.join(self.basedir, "env_ok.json"))
+        loaded = load_config_file(pwd_file)
+
+        assert loaded["source"]["config"]["secret"] == "super_safe"
+
+    def test_dollar_string(self):
+        """
+        String with $ should not be expanded
+        """
+        dollar_file = Path(os.path.join(self.basedir, "dollar.json"))
+        loaded = load_config_file(dollar_file)
+
+        assert loaded["source"]["config"]["secret"] == "te$t"
