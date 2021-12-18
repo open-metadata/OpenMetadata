@@ -324,7 +324,7 @@ class TableESIndex extends ElasticSearchIndex {
     String tableId = table.getId().toString();
     String tableName = table.getName();
     String description = table.getDescription() != null ? table.getDescription() : "";
-    String tableType = table.getTableType() != null ? table.getTableType().toString(): "Regular";
+    String tableType = table.getTableType() != null ? table.getTableType().toString() : "Regular";
     List<String> tags = new ArrayList<>();
     List<String> columnNames = new ArrayList<>();
     List<String> columnDescriptions = new ArrayList<>();
