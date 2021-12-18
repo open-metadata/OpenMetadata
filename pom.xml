@@ -75,7 +75,7 @@
     <spring-security-kerberos-core.version>1.0.1.RELEASE</spring-security-kerberos-core.version>
     <httpclient.version>4.5.13</httpclient.version>
     <spring.version>5.3.13</spring.version>
-    <log4j.version>2.16.0</log4j.version>
+    <log4j.version>2.17.0</log4j.version>
     <org.junit.jupiter.version>5.8.1</org.junit.jupiter.version>
     <dropwizard-health.version>1.7.1</dropwizard-health.version>
   </properties>
