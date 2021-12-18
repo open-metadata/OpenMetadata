@@ -149,7 +149,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
 
   private void validateMlDataSource(MlFeatureSource source) throws IOException {
     if (source.getDataSource() != null) {
-      dao.tableDAO().findEntityReferenceById(source.getDataSource().getId());
+      Entity.getEntityReference(source.getDataSource().getType(), source.getDataSource().getId());
     }
   }
 
