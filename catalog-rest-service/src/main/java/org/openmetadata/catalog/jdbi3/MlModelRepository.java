@@ -133,10 +133,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
         });
   }
 
-  /**
-   * Make sure that all the MlFeatureSources are pointing to correct
-   * EntityReferences in tha Table DAO.
-   */
+  /** Make sure that all the MlFeatureSources are pointing to correct EntityReferences in tha Table DAO. */
   private void validateReferences(List<MlFeature> mlFeatures) throws IOException {
     for (MlFeature feature : mlFeatures) {
       if (feature.getFeatureSources() != null && !feature.getFeatureSources().isEmpty()) {

@@ -142,17 +142,9 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
     CreateDatabase create = databaseResourceTest.create(test).withService(SNOWFLAKE_REFERENCE);
     DATABASE = databaseResourceTest.createAndCheckEntity(create, adminAuthHeaders());
 
-    COLUMNS =
-            Collections.singletonList(
-                    new Column()
-                            .withName("age")
-                            .withDataType(ColumnDataType.INT)
-            );
+    COLUMNS = Collections.singletonList(new Column().withName("age").withDataType(ColumnDataType.INT));
 
-    CreateTable createTable = new CreateTable()
-            .withName("myTable")
-            .withDatabase(DATABASE.getId())
-            .withColumns(COLUMNS);
+    CreateTable createTable = new CreateTable().withName("myTable").withDatabase(DATABASE.getId()).withColumns(COLUMNS);
 
     TableResourceTest tableResourceTest = new TableResourceTest();
     TABLE = tableResourceTest.createAndCheckEntity(createTable, adminAuthHeaders());
@@ -260,8 +252,7 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
     assertResponse(
         () -> createMlModel(request.withDashboard(dashboard), adminAuthHeaders()),
         Status.NOT_FOUND,
-        String.format("dashboard instance for %s not found", USER1.getId())
-    );
+        String.format("dashboard instance for %s not found", USER1.getId()));
   }
 
   @Test
@@ -329,16 +320,16 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
     CreateMlModel request = create(test);
     MlModel model = createAndCheckEntity(request, adminAuthHeaders());
 
-    MlFeature newMlFeature = new MlFeature()
+    MlFeature newMlFeature =
+        new MlFeature()
             .withName("color")
             .withDataType(MlFeatureDataType.Categorical)
             .withFeatureSources(
-                    Collections.singletonList(
-                            new MlFeatureSource()
-                                    .withName("age")
-                                    .withDataType(FeatureSourceDataType.INTEGER)
-                                    .withDataSource(TABLE_REFERENCE)
-                    ));
+                Collections.singletonList(
+                    new MlFeatureSource()
+                        .withName("age")
+                        .withDataType(FeatureSourceDataType.INTEGER)
+                        .withDataSource(TABLE_REFERENCE)));
     List<MlFeature> newFeatures = Collections.singletonList(newMlFeature);
 
     ChangeDescription change = getChangeDescription(model.getVersion());
@@ -355,23 +346,22 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
     // Create a made up table reference by picking up a random UUID
     EntityReference invalid_table = new EntityReference().withId(USER1.getId()).withType("table");
 
-    MlFeature newMlFeature = new MlFeature()
+    MlFeature newMlFeature =
+        new MlFeature()
             .withName("color")
             .withDataType(MlFeatureDataType.Categorical)
             .withFeatureSources(
-                    Collections.singletonList(
-                            new MlFeatureSource()
-                                    .withName("age")
-                                    .withDataType(FeatureSourceDataType.INTEGER)
-                                    .withDataSource(invalid_table)
-                    ));
+                Collections.singletonList(
+                    new MlFeatureSource()
+                        .withName("age")
+                        .withDataType(FeatureSourceDataType.INTEGER)
+                        .withDataSource(invalid_table)));
     List<MlFeature> newFeatures = Collections.singletonList(newMlFeature);
 
     assertResponse(
-            () -> createMlModel(request.withMlFeatures(newFeatures), adminAuthHeaders()),
-            Status.NOT_FOUND,
-            String.format("table instance for %s not found", USER1.getId())
-    );
+        () -> createMlModel(request.withMlFeatures(newFeatures), adminAuthHeaders()),
+        Status.NOT_FOUND,
+        String.format("table instance for %s not found", USER1.getId()));
   }
 
   @Test
