@@ -38,11 +38,11 @@ base_requirements = {
     "click>=7.1.2, <8.0",
     "cryptography==3.3.2",
     "pyyaml>=5.4.1, <6.0",
-    "requests>=2.23.0, <3.0" "idna<3,>=2.5",
+    "requests>=2.23.0, <3.0",
+    "idna<3,>=2.5",
     "click<7.2.0,>=7.1.1",
-    "expandvars>=0.6.5"
-    "dataclasses>=0.8"
-    "typing_extensions>=3.7.4"
+    "dataclasses>=0.8",
+    "typing_extensions>=3.7.4",
     "mypy_extensions>=0.4.3",
     "typing-inspect",
     "pydantic==1.7.4",

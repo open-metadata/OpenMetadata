@@ -10,5 +10,4 @@ setuptools~=58.2.0
 SQLAlchemy~=1.4.26
 click~=8.0.3
 Jinja2~=3.0.2
-expandvars~=0.7.0
 pydantic~=1.8.2
