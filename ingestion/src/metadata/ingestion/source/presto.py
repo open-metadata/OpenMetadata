@@ -19,6 +19,8 @@ class PrestoConfig(SQLConnectionConfig):
     host_port = "localhost:8080"
     scheme = "presto"
     service_type = "Presto"
+    catalog: str
+    include_views = False
 
     def get_connection_url(self):
         url = f"{self.scheme}://"
@@ -27,6 +29,7 @@ class PrestoConfig(SQLConnectionConfig):
             if self.password:
                 url += f":{quote_plus(self.password.get_secret_value())}"
         url += f"{self.host_port}"
+        url += f"/{self.catalog}"
         if self.database:
             url += f"?schema={quote_plus(self.database)}"
         return url
