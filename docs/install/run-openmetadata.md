@@ -6,7 +6,7 @@ description: >-
 
 # Run OpenMetadata
 
-## Requirements
+## Requirements (OSX and Linux)
 
 Please ensure your host system meets the requirements listed below. Then continue to the Procedure for installing OpenMetadata.
 
@@ -51,7 +51,7 @@ Preferences -> Resources -> Advanced
 Create a new directory for OpenMetadata and navigate into that directory.
 
 ```
-mkdir openmetadata-docker; cd openmetadata-docker
+mkdir openmetadata-docker && cd openmetadata-docker
 ```
 
 ### 2. Create a Python virtual environment
@@ -70,10 +70,16 @@ python3 -m venv env
 source env/bin/activate
 ```
 
+### 3.1 Upgrade pip and setuptools
+
+```
+pip install --upgrade pip setuptools
+```
+
 ### 4. Install the OpenMetadata Python module using pip
 
-```bash
-pip3 install 'openmetadata-ingestion[docker]'
+```
+pip3 install --upgrade 'openmetadata-ingestion[docker]'
 ```
 
 ### 5. Ensure the module is installed and ready for use&#x20;
@@ -206,3 +212,21 @@ If you see the above when attempting to install OpenMetadata, this can be due to
 
 
 If you need support please get in touch on Slack: [https://slack.open-metadata.org/](https://slack.open-metadata.org).&#x20;
+
+## Requirements (Windows)
+
+### WSL2, Ubuntu 20.04, and Docker for Windows
+1. Install [WSL2](https://ubuntu.com/wsl)
+2. Install [Ubuntu 20.04](https://www.microsoft.com/en-us/p/ubuntu-2004-lts)
+3. Install [Docker for Windows](https://www.docker.com/products/docker-desktop)
+
+### In the Ubuntu terminal
+
+```
+cd ~
+sudo apt update
+sudo apt upgrade
+sudo apt install python3-pip  python3-venv
+```
+
+Follow the [OSX instructions](run-openmetadata.md#1.-create-a-directory-for-openmetadata)
