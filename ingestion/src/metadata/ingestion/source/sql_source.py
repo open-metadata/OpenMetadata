@@ -360,11 +360,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
 
     def _parse_data_model(self):
 
-        if (
-            self.config.dbt_manifest_file is not None
-            and self.config.dbt_catalog_file is not None
-        ):
-
+        if self.config.dbt_manifest_file and self.config.dbt_catalog_file:
             logger.info("Parsing Data Models")
             manifest_nodes = self.dbt_manifest["nodes"]
             manifest_sources = self.dbt_manifest["sources"]
