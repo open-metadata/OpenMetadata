@@ -141,7 +141,6 @@ public class MessagingServiceResource {
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("id") String id)
       throws IOException, ParseException {
     MessagingService service = dao.get(uriInfo, id, null);
-    System.out.println("Ingestion schedule in request " + service.getIngestionSchedule());
     return service;
   }
 
@@ -287,7 +286,6 @@ public class MessagingServiceResource {
   }
 
   private MessagingService getService(CreateMessagingService create, SecurityContext securityContext) {
-    System.out.println("Ingestion schedule in request " + create.getIngestionSchedule());
     return new MessagingService()
         .withId(UUID.randomUUID())
         .withName(create.getName())

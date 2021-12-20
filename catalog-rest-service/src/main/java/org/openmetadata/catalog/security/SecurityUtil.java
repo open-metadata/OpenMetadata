@@ -14,6 +14,10 @@
 package org.openmetadata.catalog.security;
 
 import java.security.Principal;
+import java.util.HashMap;
+import java.util.Map;
+import javax.ws.rs.client.Invocation;
+import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.SecurityContext;
 import org.openmetadata.catalog.type.EntityReference;
 import org.slf4j.Logger;
@@ -63,5 +67,24 @@ public final class SecurityUtil {
     AuthenticationContext context = new AuthenticationContext();
     context.setPrincipal(principal);
     return context;
+  }
+
+  public static Map<String, String> authHeaders(String username) {
+    Map<String, String> headers = new HashMap<>();
+    if (username != null) {
+      headers.put(CatalogOpenIdAuthorizationRequestFilter.X_AUTH_PARAMS_EMAIL_HEADER, username);
+    }
+    return headers;
+  }
+
+  public static Invocation.Builder addHeaders(WebTarget target, Map<String, String> headers) {
+    if (headers != null) {
+      return target
+          .request()
+          .header(
+              CatalogOpenIdAuthorizationRequestFilter.X_AUTH_PARAMS_EMAIL_HEADER,
+              headers.get(CatalogOpenIdAuthorizationRequestFilter.X_AUTH_PARAMS_EMAIL_HEADER));
+    }
+    return target.request();
   }
 }
