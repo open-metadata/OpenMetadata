@@ -64,7 +64,7 @@ const SearchedData: React.FC<SearchedDataProp> = ({
       let tDesc = table.description;
       const highLightedTexts = table.highlight?.description || [];
 
-      if (highLightedTexts) {
+      if (highLightedTexts.length > 0) {
         const matchTextArr = highLightedTexts.map((val) =>
           val.replace(/<\/?span(.*?)>/g, '')
         );
