@@ -37,7 +37,7 @@ OpenMetadata provides all the data context you need for different use cases in a
 
 ### Data Discovery
 
-OpenMetadata enables you to discover your data using a variety of strategies, including: keyword search, data associations (e.g., frequently joined tables, lineage), and complex queries. Using OpenMetadata you can search across tables, topics, dashboards, pipelines, and services. The OpenMetadata standard and discovery UI provides for fine-grained and detailed metadata for assets and a their components (e.g., columns, charts), including support for complex data types such as arrays and structs.
+OpenMetadata enables you to discover your data using a variety of strategies, including: keyword search, data associations (e.g., frequently joined tables, lineage), and complex queries. Using OpenMetadata you can search across tables, topics, dashboards, pipelines, and services. OpenMetadata supports detailed metadata for assets and a their components (e.g., columns, charts), including support for complex data types such as arrays and structs.
 
 #### Keyword Search
 
