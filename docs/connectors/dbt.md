@@ -1,5 +1,5 @@
 ---
-description: This guide will help install DBT connector and run manually
+description: This guide will help you install the DBT connector and run manually.
 ---
 
 # DBT
