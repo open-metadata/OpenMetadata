@@ -706,7 +706,7 @@ a:focus {
 
 .text-highlighter {
   background-color: #ffc34e40;
-  padding: 0.25rem;
+  padding: 0 0.25rem;
 }
 
 body .profiler-graph .recharts-active-dot circle {
