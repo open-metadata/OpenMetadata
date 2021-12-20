@@ -386,17 +386,13 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                 description = mnode.get("description", "")
                 schema = mnode["schema"]
                 path = f"{mnode['root_path']}/{mnode['original_file_path']}"
-                raw_sql = mnode["raw_sql"] if "raw_sql" in mnode else ""
-                compiled_sql = (
-                    mnode["compiled_sql"] if "compiled_sql" in mnode else raw_sql
-                )
-
+                raw_sql = mnode.get("raw_sql", "")
                 model = DataModel(
                     modelType=ModelType.DBT,
                     description=description,
                     path=path,
                     rawSql=raw_sql,
-                    sql=compiled_sql,
+                    sql=mnode.get("compiled_sql", raw_sql),
                     columns=columns,
                     upstream=upstream_nodes,
                 )
