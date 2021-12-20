@@ -1,6 +1,6 @@
 # Try OpenMetadata
 
-We want our users to get the experience of OpenMetadata with the least effort 😁. That is why we have set up a [sandbox](https://sandbox.open-metadata.org) that mimics a real production setup. Please take it for a spin and let us know your feedback on our [mailing list](mailto:openmetadata-user@googlegroups.com), or join our [slack community](https://slack.open-metadata.org) and post a message in the [user](https://openmetadata.slack.com/archives/C02B38JFDDK) channel.
+We want our users to get the experience of OpenMetadata with the least effort 😁. That is why we have set up a [sandbox](https://sandbox.open-metadata.org) that mimics a real production setup. Please take it for a spin and let us know your feedback in the [general](https://openmetadata.slack.com/archives/C02AZGN0WKY) channel on [Slack](https://slack.open-metadata.org).
 
 ## To set up your sandbox account:
 
