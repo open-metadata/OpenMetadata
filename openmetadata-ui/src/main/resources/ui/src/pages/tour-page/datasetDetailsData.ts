@@ -1,5 +1,45 @@
 /* eslint-disable */
 
+export const mockFeedData = [
+  {
+    index: 'table_search_index',
+    id: '7f87ab6a-10eb-4ac6-bc3c-0620ac72b151',
+    name: 'dim_address',
+    description:
+      'This dimension table contains the billing and shipping addresses of customers. You can join this table with the sales table to generate lists of the billing and shipping addresses. Customers can enter their addresses more than once, so the same address can appear in more than one row in this table. This table contains one row per customer address.',
+    fullyQualifiedName: 'bigquery_gcp.shopify.dim_address',
+    tableType: 'Regular',
+    tags: [],
+    service: 'bigquery_gcp',
+    serviceType: 'BigQuery',
+    tier: 'Tier.Tier1',
+    database: 'shopify',
+    entityType: 'table',
+    changeDescriptions: [
+      {
+        updatedBy: 'anonymous',
+        updatedAt: 1639979584633,
+        fieldsAdded: [],
+        fieldsUpdated: [],
+        fieldsDeleted: [],
+      },
+      {
+        updatedBy: 'anonymous',
+        fieldsAdded: [
+          {
+            newValue:
+              '[{"tagFQN":"Tier.Tier1","labelType":"Manual","state":"Confirmed"}]',
+            name: 'tags',
+          },
+        ],
+        fieldsUpdated: [],
+        fieldsDeleted: [],
+        updatedAt: 1639989530436,
+      },
+    ],
+  },
+];
+
 export const datasetData = {
   entityName: 'dim_address',
   datasetFQN: 'bigquery.shopify.dim_address',

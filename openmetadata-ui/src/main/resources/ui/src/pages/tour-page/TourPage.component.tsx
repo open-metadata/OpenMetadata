@@ -7,6 +7,7 @@ import { DatasetOwner } from '../../components/DatasetDetails/DatasetDetails.int
 import Explore from '../../components/Explore/Explore.component';
 import { ExploreSearchData } from '../../components/Explore/explore.interface';
 import MyData from '../../components/MyData/MyData.component';
+import { MyDataProps } from '../../components/MyData/MyData.interface';
 import Tour from '../../components/tour/Tour';
 import {
   Table,
@@ -15,7 +16,7 @@ import {
 } from '../../generated/entity/data/table';
 import { TagLabel } from '../../generated/type/tagLabel';
 import { useTour } from '../../hooks/useTour';
-import { datasetData } from './datasetDetailsData';
+import { datasetData, mockFeedData } from './datasetDetailsData';
 import data from './mockData.json';
 
 const mockData = {
@@ -76,8 +77,8 @@ const TourPage = () => {
               pipelineCount: 8,
             }}
             error=""
-            feedData={[]}
-            feedFilter=""
+            feedData={mockFeedData as unknown as MyDataProps['feedData']}
+            feedFilter="all"
             feedFilterHandler={() => {
               setMyDataSearchResult(mockData);
             }}

@@ -33,13 +33,18 @@ const getSteps = (value: string) => {
     {
       content: `OpenMetadata is a Centralized Metadata Store. Discover all your data assets in a single place, collaborate with your co-workers.
          Understand your data assets and contribute to make it richer.`,
-      position: [600, 233],
-      selector: '#statesHeader',
+      position: [15, 345],
+      selector: '#assetStatsCount',
+    },
+    {
+      content: `Feed Data`,
+      position: [640, 285],
+      selector: '#feedData',
     },
     {
       content: `This is a search box where you can type "name", "description", "column name", etc. to find any matching data asset. For example, type "${modifiedValue}". Hit Enter.`,
       actionType: 'enter',
-      position: [25, 78],
+      position: [600, 85],
       selector: '#searchBox',
       beforeNext: () => {
         AppState.currentTourPage = 'explorePage';
@@ -52,7 +57,7 @@ const getSteps = (value: string) => {
       content: 'Click on the assets title for more details.',
       actionType: 'click',
       selector: '#tabledatacard0',
-      position: [600, 300],
+      position: [600, 320],
       beforeNext: () => {
         AppState.currentTourPage = 'datasetPage';
       },
@@ -65,7 +70,7 @@ const getSteps = (value: string) => {
         AppState.activeTabforTourDatasetPage = 2;
       },
       content: 'Understand the schema of the table and add description.',
-      position: [5, 235],
+      position: [5, 255],
       selector: '#schema',
     },
     {
@@ -76,7 +81,7 @@ const getSteps = (value: string) => {
         AppState.activeTabforTourDatasetPage = 3;
       },
       content: 'Understand the profiler tab.',
-      position: [75, 235],
+      position: [75, 255],
       selector: '#profiler',
     },
     {
@@ -84,10 +89,10 @@ const getSteps = (value: string) => {
         AppState.activeTabforTourDatasetPage = 2;
       },
       beforeNext: () => {
-        AppState.activeTabforTourDatasetPage = 4;
+        AppState.activeTabforTourDatasetPage = 5;
       },
       content: 'Understand lineage.',
-      position: [200, 235],
+      position: [200, 255],
       selector: '#lineage',
     },
     {
@@ -95,13 +100,13 @@ const getSteps = (value: string) => {
         AppState.activeTabforTourDatasetPage = 3;
       },
       content: 'You can claim ownership from here.',
-      position: [300, 235],
+      position: [300, 255],
       selector: '#manage',
     },
     {
       content: 'Click on explore to access all the assests.',
       actionType: 'click',
-      position: [220, 70],
+      position: [10, 70],
       selector: '#explore',
     },
   ];

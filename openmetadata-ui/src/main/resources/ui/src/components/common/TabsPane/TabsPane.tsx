@@ -58,6 +58,7 @@ const TabsPane = ({ activeTab, setActiveTab, tabs, className = '' }: Props) => {
                 <button
                   className={getTabClasses(tab.position, activeTab)}
                   data-testid="tab"
+                  id={lowerCase(tab.name)}
                   onClick={() => setActiveTab?.(tab.position)}>
                   <SVGIcons
                     alt={tab.icon.alt}
