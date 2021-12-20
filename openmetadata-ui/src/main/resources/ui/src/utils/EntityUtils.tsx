@@ -11,9 +11,10 @@
  *  limitations under the License.
  */
 
-import { isEmpty, isNil } from 'lodash';
-import { Bucket, LeafNodes, LineagePos } from 'Models';
+import { isEmpty, isNil, isString } from 'lodash';
+import { Bucket, ExtraInfo, LeafNodes, LineagePos } from 'Models';
 import React from 'react';
+import Avatar from '../components/common/avatar/Avatar';
 import TableProfilerGraph from '../components/TableProfiler/TableProfilerGraph.component';
 import {
   getDatabaseDetailsPath,
@@ -30,6 +31,7 @@ import { Edge, EntityLineage } from '../generated/type/entityLineage';
 import { EntityReference } from '../generated/type/entityUsage';
 import { TagLabel } from '../generated/type/tagLabel';
 import { getPartialNameFromFQN } from './CommonUtils';
+import SVGIcons from './SvgUtils';
 import {
   getOwnerFromId,
   getTierFromTableTags,
@@ -323,4 +325,82 @@ export const isLeafNode = (
   } else {
     return false;
   }
+};
+
+export const getInfoElements = (data: ExtraInfo) => {
+  let retVal = <></>;
+  const displayVal = data.placeholderText || data.value;
+
+  switch (data.key) {
+    case 'Owner':
+      {
+        retVal =
+          displayVal && displayVal !== '--' ? (
+            isString(displayVal) ? (
+              <div className="tw-inline-block tw-mr-2">
+                <Avatar name={displayVal} textClass="tw-text-xs" width="22" />
+              </div>
+            ) : (
+              <></>
+            )
+          ) : (
+            <>No Owner</>
+          );
+      }
+
+      break;
+    case 'Tier':
+      {
+        retVal = !displayVal || displayVal === '--' ? <>No Tier</> : <></>;
+      }
+
+      break;
+    default:
+      {
+        retVal = (
+          <>
+            {data.key
+              ? displayVal
+                ? data.showLabel
+                  ? `${data.key}: `
+                  : null
+                : `No ${data.key}`
+              : null}
+          </>
+        );
+      }
+
+      break;
+  }
+
+  return (
+    <>
+      <span className="tw-text-grey-muted">{retVal}</span>
+      {displayVal ? (
+        <span>
+          {data.isLink ? (
+            <a
+              className="link-text"
+              href={data.value as string}
+              rel="noopener noreferrer"
+              target={data.openInNewTab ? '_blank' : '_self'}>
+              <>
+                <span className="tw-mr-1">{displayVal}</span>
+                {data.openInNewTab && (
+                  <SVGIcons
+                    alt="external-link"
+                    className="tw-align-middle"
+                    icon="external-link"
+                    width="12px"
+                  />
+                )}
+              </>
+            </a>
+          ) : (
+            displayVal
+          )}
+        </span>
+      ) : null}
+    </>
+  );
 };

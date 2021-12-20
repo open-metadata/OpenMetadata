@@ -14,7 +14,7 @@
 package org.openmetadata.catalog.selenium.pages.databaseService;
 
 import com.github.javafaker.Faker;
-import io.github.artsok.RepeatedIfExceptionsTest;
+import org.junit.jupiter.api.Test;
 import org.openmetadata.catalog.selenium.events.Events;
 import org.openmetadata.catalog.selenium.properties.Property;
 import org.openqa.selenium.By;
@@ -60,7 +60,7 @@ public class DatabaseServicePageTest {
     webDriver.get(url);
   }
 
-  @RepeatedIfExceptionsTest(repeats = 2)
+  @Test
   @Order(1)
   public void openDatabaseServicePage() throws InterruptedException {
     Events.click(webDriver, By.cssSelector("[data-testid='closeWhatsNew']")); // Close What's new
@@ -71,7 +71,7 @@ public class DatabaseServicePageTest {
     Thread.sleep(waitTime);
   }
 
-  @RepeatedIfExceptionsTest(repeats = 2)
+  @Test
   @Order(2)
   public void addDatabaseService() throws InterruptedException {
     openDatabaseServicePage();
@@ -101,7 +101,7 @@ public class DatabaseServicePageTest {
     Events.click(webDriver, By.cssSelector("[data-testid='save-button']"));
   }
 
-  @RepeatedIfExceptionsTest(repeats = 2)
+  @Test
   @Order(3)
   public void editDatabaseService() throws InterruptedException {
     openDatabaseServicePage();
@@ -113,21 +113,21 @@ public class DatabaseServicePageTest {
     Events.click(webDriver, By.cssSelector("[data-testid='save-button']"));
   }
 
-  @RepeatedIfExceptionsTest(repeats = 2)
+  @Test
   @Order(4)
   public void checkDatabaseServiceDetails() throws InterruptedException {
     openDatabaseServicePage();
     Thread.sleep(2000);
     Events.click(webDriver, By.cssSelector("[data-testid='service-name-" + serviceName + "']"));
     Thread.sleep(waitTime);
-    Events.click(webDriver, By.cssSelector("[data-testid='description-edit']"));
+    Events.click(webDriver, By.cssSelector("[data-testid='edit-description']"));
     Events.click(webDriver, By.xpath(enterDescription));
     Events.sendEnter(webDriver, By.xpath(enterDescription));
     Events.sendKeys(webDriver, By.xpath(enterDescription), faker.address().toString());
     Events.click(webDriver, By.cssSelector("[data-testid='save']"));
   }
 
-  @RepeatedIfExceptionsTest(repeats = 2)
+  @Test
   @Order(5)
   public void searchDatabaseService() throws InterruptedException {
     openDatabaseServicePage();
@@ -135,7 +135,7 @@ public class DatabaseServicePageTest {
     Events.click(webDriver, By.cssSelector("[data-testid='service-name-" + serviceName + "']"));
   }
 
-  @RepeatedIfExceptionsTest(repeats = 2)
+  @Test
   @Order(6)
   public void deleteDatabaseService() throws InterruptedException {
     openDatabaseServicePage();

@@ -24,6 +24,7 @@ import {
   KAFKA,
   LOOKER,
   MARIADB,
+  METABASE,
   MSSQL,
   MYSQL,
   ORACLE,
@@ -111,6 +112,9 @@ export const serviceTypeLogo = (type: string) => {
 
     case DashboardServiceType.REDASH:
       return REDASH;
+
+    case DashboardServiceType.METABASE:
+      return METABASE;
 
     case PipelineServiceType.AIRFLOW:
       return AIRFLOW;
@@ -255,6 +259,7 @@ export const getEntityCountByService = (buckets: Array<Bucket>) => {
       case DashboardServiceType.LOOKER:
       case DashboardServiceType.TABLEAU:
       case DashboardServiceType.REDASH:
+      case DashboardServiceType.METABASE:
         entityCounts.dashboardCount += bucket.doc_count;
 
         break;

@@ -13,20 +13,19 @@
 
 package org.openmetadata.catalog.resources;
 
+import static com.wix.mysql.distribution.Version.v8_latest;
+
 import com.wix.mysql.EmbeddedMysql;
 import com.wix.mysql.config.MysqldConfig;
 import com.wix.mysql.config.SchemaConfig;
+import java.time.ZoneId;
+import java.util.TimeZone;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.extension.AfterAllCallback;
 import org.junit.jupiter.api.extension.BeforeAllCallback;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.time.ZoneId;
-import java.util.TimeZone;
-
-import static com.wix.mysql.distribution.Version.v8_latest;
 
 public class EmbeddedMySqlSupport implements BeforeAllCallback, AfterAllCallback {
   public static final Logger LOG = LoggerFactory.getLogger(EmbeddedMySqlSupport.class);
@@ -35,7 +34,8 @@ public class EmbeddedMySqlSupport implements BeforeAllCallback, AfterAllCallback
   @Override
   public void beforeAll(ExtensionContext extensionContext) {
     if (embeddedMysql == null) {
-      MysqldConfig config = MysqldConfig.aMysqldConfig(v8_latest)
+      MysqldConfig config =
+          MysqldConfig.aMysqldConfig(v8_latest)
               .withPort(3307)
               .withTimeZone(TimeZone.getTimeZone(ZoneId.of("UTC")))
               .withUser("test", "")
@@ -46,10 +46,11 @@ public class EmbeddedMySqlSupport implements BeforeAllCallback, AfterAllCallback
       embeddedMysql = EmbeddedMysql.anEmbeddedMysql(config).addSchema(schemaConfig).start();
       LOG.info("Embedded MySQL is started");
 
-      Flyway flyway = Flyway.configure()
+      Flyway flyway =
+          Flyway.configure()
               // TODO Remove hardcoding
-              .dataSource("jdbc:mysql://localhost:3307/openmetadata_test_db?useSSL=false&serverTimezone=UTC",
-                      "test", "")
+              .dataSource(
+                  "jdbc:mysql://localhost:3307/openmetadata_test_db?useSSL=false&serverTimezone=UTC", "test", "")
               .sqlMigrationPrefix("v")
               .load();
       flyway.clean();
@@ -58,7 +59,6 @@ public class EmbeddedMySqlSupport implements BeforeAllCallback, AfterAllCallback
     } else {
       LOG.info("Embedded MySQL is already running");
     }
-
   }
 
   @Override

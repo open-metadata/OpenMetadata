@@ -12,7 +12,7 @@
  */
 
 import { isEqual, isNil, isUndefined } from 'lodash';
-import { ColumnJoins, EntityTags } from 'Models';
+import { ColumnJoins, EntityTags, ExtraInfo } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { getTeamDetailsPath } from '../../constants/constants';
 import { CSMode } from '../../enums/codemirror.enum';
@@ -93,7 +93,8 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   ) => {
     if (!isNil(usageSummary?.weeklyStats?.percentileRank)) {
       const percentile = getUsagePercentile(
-        usageSummary?.weeklyStats?.percentileRank || 0
+        usageSummary?.weeklyStats?.percentileRank || 0,
+        true
       );
       setUsage(percentile);
     } else {
@@ -123,6 +124,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
         alt: 'schema',
         name: 'icon-schema',
         title: 'Schema',
+        selectedName: 'icon-schemacolor',
       },
       isProtected: false,
       position: 1,
@@ -133,6 +135,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
         alt: 'profiler',
         name: 'icon-profiler',
         title: 'Profiler',
+        selectedName: 'icon-profilercolor',
       },
       isProtected: false,
       position: 2,
@@ -143,6 +146,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
         alt: 'lineage',
         name: 'icon-lineage',
         title: 'Lineage',
+        selectedName: 'icon-lineagecolor',
       },
       isProtected: false,
       position: 3,
@@ -153,6 +157,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
         alt: 'dbt-model',
         name: 'dbtmodel-light-grey',
         title: 'DBT',
+        selectedName: 'dbtmodel-primery',
       },
       isProtected: false,
       isHidden: !dataModel?.sql,
@@ -164,6 +169,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
         alt: 'manage',
         name: 'icon-manage',
         title: 'Manage',
+        selectedName: 'icon-managecolor',
       },
       isProtected: true,
       protectedState: !owner || hasEditAccess(),
@@ -184,7 +190,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
           );
 
           return {
-            name: getPartialNameFromFQN(tableFQN, ['database', 'table']),
+            name: getPartialNameFromFQN(tableFQN, ['database', 'table'], '.'),
             fullyQualifiedName: tableFQN,
             joinCount: joinedCol.joinCount,
           };
@@ -201,13 +207,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
     return freqJoin;
   };
 
-  const extraInfo: Array<{
-    key?: string;
-    value: string | number | React.ReactNode;
-    isLink?: boolean;
-    placeholderText?: string;
-    openInNewTab?: boolean;
-  }> = [
+  const extraInfo: Array<ExtraInfo> = [
     {
       key: 'Owner',
       value:
@@ -219,37 +219,42 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
       openInNewTab: false,
     },
     { key: 'Tier', value: tier?.tagFQN ? tier.tagFQN.split('.')[1] : '' },
-    { key: 'Usage', value: usage },
-    { key: 'Queries', value: `${weeklyUsageCount} past week` },
+    { value: usage },
+    { value: `${weeklyUsageCount} queries past week` },
     {
       key: 'Columns',
       value:
         tableProfile && tableProfile[0]?.columnCount
-          ? tableProfile[0].columnCount
-          : '--',
+          ? `${tableProfile[0].columnCount} columns`
+          : columns.length
+          ? `${columns.length} columns`
+          : '',
     },
     {
       key: 'Rows',
       value:
         !isUndefined(tableProfile) && tableProfile.length > 0 ? (
-          <TableProfilerGraph
-            className="tw--mt-5"
-            data={
-              tableProfile
-                ?.map((d) => ({
-                  date: d.profileDate,
-                  value: d.rowCount ?? 0,
-                }))
-                .reverse() as Array<{
-                date: Date;
-                value: number;
-              }>
-            }
-            height={38}
-            toolTipPos={{ x: 20, y: -30 }}
-          />
+          <div className="tw-flex">
+            <TableProfilerGraph
+              className="tw--mt-4"
+              data={
+                tableProfile
+                  ?.map((d) => ({
+                    date: d.profileDate,
+                    value: d.rowCount ?? 0,
+                  }))
+                  .reverse() as Array<{
+                  date: Date;
+                  value: number;
+                }>
+              }
+              height={38}
+              toolTipPos={{ x: 20, y: -30 }}
+            />
+            <span className="tw--ml-6">rows</span>
+          </div>
         ) : (
-          '--'
+          ''
         ),
     },
   ];
@@ -359,7 +364,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
           versionHandler={versionHandler}
         />
 
-        <div className="tw-mt-1 tw-flex tw-flex-col tw-flex-grow">
+        <div className="tw-mt-4 tw-flex tw-flex-col tw-flex-grow">
           <TabsPane
             activeTab={activeTab}
             className="tw-flex-initial"
@@ -367,7 +372,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
             tabs={tabs}
           />
 
-          <div className="tw-bg-white tw-flex-grow">
+          <div className="tw-bg-white tw-flex-grow tw-mx-1">
             {activeTab === 1 && (
               <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-w-full tw-mt-4 ">
                 <div className="tw-col-span-3">

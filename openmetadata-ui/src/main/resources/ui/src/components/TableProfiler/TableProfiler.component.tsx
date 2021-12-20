@@ -180,9 +180,6 @@ const TableProfiler = ({ tableProfiles, columns }: Props) => {
                             </span>
                           </td>
                           <td className="tw-relative tableBody-cell">
-                            <span className="tw-pl-6">{colData.rows}</span>
-                          </td>
-                          <td className="tw-relative tableBody-cell">
                             {colData.uniqueProportion ?? 0}
                           </td>
                           <td className="tw-relative tableBody-cell">
@@ -220,7 +217,7 @@ const TableProfiler = ({ tableProfiles, columns }: Props) => {
             to={{
               pathname: 'https://docs.open-metadata.org/connectors',
             }}>
-            here
+            here.
           </Link>
         </div>
       )}

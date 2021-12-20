@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate 
+ *  Copyright 2021 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -13,33 +13,35 @@
 
 package org.openmetadata.catalog.security.auth;
 
-import org.openmetadata.catalog.security.AuthenticationException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
+import java.security.Principal;
 import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.container.ContainerRequestFilter;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.ext.Provider;
-import java.security.Principal;
+import org.openmetadata.catalog.security.AuthenticationException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Provider
 public class CatalogSecurityContextRequestFilter implements ContainerRequestFilter {
   private static final Logger LOG = LoggerFactory.getLogger(CatalogSecurityContextRequestFilter.class);
 
-  @Context
-  private HttpServletRequest httpRequest;
+  @Context private HttpServletRequest httpRequest;
 
   @Override
   public void filter(ContainerRequestContext requestContext) {
     Principal principal = httpRequest.getUserPrincipal();
     String scheme = requestContext.getUriInfo().getRequestUri().getScheme();
 
-    LOG.debug("Method: {}, AuthType: {}, RemoteUser: {}, UserPrincipal: {}, Scheme: {}",
-            httpRequest.getMethod(), httpRequest.getAuthType(),
-            httpRequest.getRemoteUser(), principal, scheme);
+    LOG.debug(
+        "Method: {}, AuthType: {}, RemoteUser: {}, UserPrincipal: {}, Scheme: {}",
+        httpRequest.getMethod(),
+        httpRequest.getAuthType(),
+        httpRequest.getRemoteUser(),
+        principal,
+        scheme);
 
     if (principal == null) {
       throw new AuthenticationException("Not authorized. Principal is not available");

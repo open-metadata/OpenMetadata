@@ -21,7 +21,8 @@ public abstract class WebServiceException extends RuntimeException {
 
   protected WebServiceException(Response.Status status, String msg) {
     super(msg);
-    response = Response.status(status)
+    response =
+        Response.status(status)
             .entity(convertToErrorResponseMessage(msg))
             .type(MediaType.APPLICATION_JSON_TYPE)
             .build();
@@ -29,7 +30,8 @@ public abstract class WebServiceException extends RuntimeException {
 
   protected WebServiceException(Response.Status status, String msg, Throwable cause) {
     super(msg, cause);
-    response = Response.status(status)
+    response =
+        Response.status(status)
             .entity(convertToErrorResponseMessage(msg))
             .type(MediaType.APPLICATION_JSON_TYPE)
             .build();
@@ -44,9 +46,7 @@ public abstract class WebServiceException extends RuntimeException {
   }
 
   private static class ErrorResponse {
-    /**
-     * Response message.
-     */
+    /** Response message. */
     private final String responseMessage;
 
     ErrorResponse(String responseMessage) {
@@ -58,4 +58,3 @@ public abstract class WebServiceException extends RuntimeException {
     }
   }
 }
-

@@ -42,7 +42,7 @@ const Avatar = ({
   return (
     <div
       className={classNames(
-        'tw-flex tw-justify-center tw-items-center tw-align-middle',
+        'tw-flex tw-flex-shrink-0 tw-justify-center tw-items-center tw-align-middle',
         className
       )}
       style={{

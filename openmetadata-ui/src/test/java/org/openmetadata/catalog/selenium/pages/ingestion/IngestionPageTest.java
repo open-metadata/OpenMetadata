@@ -14,7 +14,7 @@
 package org.openmetadata.catalog.selenium.pages.ingestion;
 
 import com.github.javafaker.Faker;
-import io.github.artsok.RepeatedIfExceptionsTest;
+import org.junit.jupiter.api.Test;
 import org.openmetadata.catalog.selenium.events.Events;
 import org.openmetadata.catalog.selenium.properties.Property;
 import org.openqa.selenium.By;
@@ -56,7 +56,7 @@ public class IngestionPageTest {
     webDriver.get(url);
   }
 
-  @RepeatedIfExceptionsTest(repeats = 2)
+  @Test
   @Order(1)
   public void openIngestionPage() throws InterruptedException {
     Events.click(webDriver, By.cssSelector("[data-testid='closeWhatsNew']")); // Close What's new
@@ -67,7 +67,7 @@ public class IngestionPageTest {
     Thread.sleep(waitTime);
   }
 
-  @RepeatedIfExceptionsTest(repeats = 2)
+  @Test
   @Order(2)
   public void addIngestionService() throws InterruptedException {
     openIngestionPage();
@@ -89,7 +89,7 @@ public class IngestionPageTest {
     Events.click(webDriver, By.cssSelector("[data-testid='deploy-button']"));
   }
 
-  @RepeatedIfExceptionsTest(repeats = 2)
+  @Test
   @Order(3)
   public void runIngestionService() throws InterruptedException{
     openIngestionPage();
@@ -97,7 +97,7 @@ public class IngestionPageTest {
     webDriver.navigate().refresh();
   }
 
-  @RepeatedIfExceptionsTest(repeats = 2)
+  @Test
   @Order(4)
   public void editIngestionService() throws InterruptedException{
     openIngestionPage();
@@ -110,7 +110,7 @@ public class IngestionPageTest {
     Events.click(webDriver, By.cssSelector("[data-testid='deploy-button']"));
   }
 
-  @RepeatedIfExceptionsTest(repeats = 2)
+  @Test
   @Order(5)
   public void deleteIngestionService() throws InterruptedException {
     openIngestionPage();

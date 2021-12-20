@@ -1,6 +1,5 @@
 click~=7.1.2
 pydantic~=1.7.4
-expandvars~=0.6.5
 requests~=2.25.1
 python-dateutil~=2.8.1
 SQLAlchemy~=1.4.5

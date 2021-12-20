@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate 
+ *  Copyright 2021 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -20,35 +20,31 @@ import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.fasterxml.jackson.databind.node.TextNode;
 import io.dropwizard.util.Strings;
-import lombok.SneakyThrows;
-import org.openmetadata.catalog.security.auth.CatalogSecurityContext;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
+import java.lang.invoke.MethodHandles;
+import java.net.URI;
+import java.security.interfaces.RSAPublicKey;
+import java.util.Calendar;
 import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.container.ContainerRequestFilter;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.core.UriInfo;
 import javax.ws.rs.ext.Provider;
-import java.lang.invoke.MethodHandles;
-import java.net.URI;
-import java.security.interfaces.RSAPublicKey;
-import java.util.Calendar;
+import lombok.SneakyThrows;
+import org.openmetadata.catalog.security.auth.CatalogSecurityContext;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Provider
 public class JwtFilter implements ContainerRequestFilter {
-  private static final Logger LOG = LoggerFactory
-          .getLogger(MethodHandles.lookup().lookupClass());
-  @Context
-  private UriInfo uriInfo;
+  private static final Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
+  @Context private UriInfo uriInfo;
 
   public static final String TOKEN_HEADER = "X-Catalog-Source";
   private String publicKeyUri;
 
   @SuppressWarnings("unused")
-  private JwtFilter() {
-  }
+  private JwtFilter() {}
 
   public JwtFilter(AuthenticationConfiguration authenticationConfiguration) {
     this.publicKeyUri = authenticationConfiguration.getPublicKey();
@@ -62,19 +58,19 @@ public class JwtFilter implements ContainerRequestFilter {
       return;
     }
 
-    //Extract token from the header
+    // Extract token from the header
     MultivaluedMap<String, String> headers = requestContext.getHeaders();
     String tokenFromHeader = extractToken(headers);
     LOG.debug("Token from header:{}", tokenFromHeader);
 
-    //Decode JWT Token
+    // Decode JWT Token
     DecodedJWT jwt = JWT.decode(tokenFromHeader);
 
-    //Check if expired
+    // Check if expired
     if (jwt.getExpiresAt().before(Calendar.getInstance().getTime())) {
       throw new AuthenticationException("Expired token!");
     }
-    //Validate JWT with public key
+    // Validate JWT with public key
     final URI uri = new URI(publicKeyUri).normalize();
     UrlJwkProvider urlJwkProvider = new UrlJwkProvider(uri.toURL());
     Jwk jwk = urlJwkProvider.get(jwt.getKeyId());
@@ -86,8 +82,8 @@ public class JwtFilter implements ContainerRequestFilter {
     }
     String authorizedEmail;
     if (jwt.getClaims().get("email") != null) {
-       authorizedEmail = jwt.getClaim("email").as(TextNode.class).asText();
-    } else if (jwt.getClaim("sub") != null){
+      authorizedEmail = jwt.getClaim("email").as(TextNode.class).asText();
+    } else if (jwt.getClaim("sub") != null) {
       authorizedEmail = jwt.getClaim("sub").as(TextNode.class).asText();
     } else {
       throw new AuthenticationException("Invalid JWT token, \"email\" or \"subject\" not present.");
@@ -98,11 +94,11 @@ public class JwtFilter implements ContainerRequestFilter {
     } else {
       userName = authorizedEmail;
     }
-    //Setting Security Context
+    // Setting Security Context
     CatalogPrincipal catalogPrincipal = new CatalogPrincipal(userName);
     String scheme = requestContext.getUriInfo().getRequestUri().getScheme();
-    CatalogSecurityContext catalogSecurityContext = new CatalogSecurityContext(catalogPrincipal, scheme,
-            CatalogSecurityContext.DIGEST_AUTH);
+    CatalogSecurityContext catalogSecurityContext =
+        new CatalogSecurityContext(catalogPrincipal, scheme, CatalogSecurityContext.DIGEST_AUTH);
     LOG.debug("SecurityContext {}", catalogSecurityContext);
     requestContext.setSecurityContext(catalogSecurityContext);
   }

@@ -13,5 +13,5 @@
 while ! wget -O /dev/null -o /dev/null mysql:3306; do sleep 5; done
 cp /openmetadata.yaml /openmetadata-*/conf/openmetadata.yaml
 cd /openmetadata-*/
-./bootstrap/bootstrap_storage.sh drop-create-all
+./bootstrap/bootstrap_storage.sh migrate-all
 ./bin/openmetadata-server-start.sh conf/openmetadata.yaml

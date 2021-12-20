@@ -88,7 +88,7 @@ metadata ingest -c ./examples/workflows/bigquery.json
 
 Below is the configuration to publish Bigquery data into the OpenMetadata service.
 
-Add Optionally`pii` processor and `metadata-rest` sink along with `metadata-server` config
+Add `metadata-rest` sink along with `metadata-server` config
 
 {% code title="bigquery.json" %}
 ```javascript

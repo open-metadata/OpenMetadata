@@ -15,20 +15,10 @@ from typing import Dict, Set
 from setuptools import find_namespace_packages, setup
 
 
-def get_version():
-    root = os.path.dirname(__file__)
-    changelog = os.path.join(root, "CHANGELOG")
-    with open(changelog) as f:
-        return f.readline().strip()
-
-
 def get_long_description():
     root = os.path.dirname(__file__)
     with open(os.path.join(root, "README.md")) as f:
         description = f.read()
-    description += "\n\nChangelog\n=========\n\n"
-    with open(os.path.join(root, "CHANGELOG")) as f:
-        description += f.read()
     return description
 
 
@@ -36,9 +26,7 @@ base_requirements = {
     "commonregex",
     "idna<3,>=2.5",
     "click>=7.1.1",
-    "expandvars>=0.6.5"
-    "dataclasses>=0.8"
-    "typing_extensions>=3.7.4"
+    "typing_extensions>=3.7.4",
     "mypy_extensions>=0.4.3",
     "typing-inspect",
     "pydantic>=1.7.4",
@@ -52,6 +40,7 @@ base_requirements = {
     "sqlalchemy>=1.3.24",
     "sql-metadata~=2.0.0",
     "requests~=2.26",
+    "cryptography",
     "PyYAML",
 }
 

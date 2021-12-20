@@ -148,30 +148,40 @@ const FacetFilter: FunctionComponent<FacetProp> = ({
                     }
                   </h6>
                   <div className="tw-flex tw-mt-1.5">
-                    <span
-                      className="link-text tw-text-xs"
-                      onClick={() => {
-                        if (isSelectAllFilter(aggregation)) {
-                          onSelectAllFilter(
-                            lowerCase(aggregation.title) as keyof FilterObject,
-                            aggregation.buckets.map((b) => b.key)
-                          );
-                        }
-                      }}>
-                      Select All
-                    </span>
-                    <span className="tw-text-xs tw-px-2">|</span>
-                    <span
-                      className="link-text tw-text-xs tw-text-grey-muted"
-                      onClick={() => {
-                        if (isClearFilter(aggregation)) {
-                          onClearFilter(
-                            lowerCase(aggregation.title) as keyof FilterObject
-                          );
-                        }
-                      }}>
-                      Deselect All
-                    </span>
+                    {onSelectAllFilter && (
+                      <span
+                        className="link-text tw-text-xs"
+                        onClick={() => {
+                          if (isSelectAllFilter(aggregation)) {
+                            onSelectAllFilter(
+                              lowerCase(
+                                aggregation.title
+                              ) as keyof FilterObject,
+                              aggregation.buckets.map((b) => b.key)
+                            );
+                          }
+                        }}>
+                        Select All
+                      </span>
+                    )}
+                    {onClearFilter && (
+                      <>
+                        <span className="tw-text-xs tw-px-2">|</span>
+                        <span
+                          className="link-text tw-text-xs tw-text-grey-muted"
+                          onClick={() => {
+                            if (isClearFilter(aggregation)) {
+                              onClearFilter(
+                                lowerCase(
+                                  aggregation.title
+                                ) as keyof FilterObject
+                              );
+                            }
+                          }}>
+                          Deselect All
+                        </span>
+                      </>
+                    )}
                   </div>
                 </div>
                 <div className="sidebar-my-data-holder mt-2 mb-3">

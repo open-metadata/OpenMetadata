@@ -1,0 +1,23 @@
+{
+  "source": {
+    "type": "metabase",
+    "config": {
+      "username": "username",
+      "password": "password",
+      "host_port": "host:port",
+      "service_name": "local_metabase",
+      "database_service_name": "Optional - Create Lineage by adding relevant Database Service Name"
+    }
+  },
+  "sink": {
+    "type": "metadata-rest",
+    "config": {}
+  },
+  "metadata_server": {
+    "type": "metadata-server",
+    "config": {
+      "api_endpoint": "http://localhost:8585/api",
+      "auth_provider_type": "no-auth"
+    }
+  }
+}

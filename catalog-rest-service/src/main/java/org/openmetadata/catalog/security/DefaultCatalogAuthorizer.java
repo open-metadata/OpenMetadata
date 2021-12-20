@@ -13,6 +13,14 @@
 
 package org.openmetadata.catalog.security;
 
+import static org.openmetadata.catalog.resources.teams.UserResource.FIELD_LIST;
+
+import java.io.IOException;
+import java.text.ParseException;
+import java.util.Date;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.UUID;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.catalog.Entity;
@@ -26,15 +34,6 @@ import org.openmetadata.catalog.util.EntityUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
-import java.text.ParseException;
-import java.util.Date;
-import java.util.HashSet;
-import java.util.Set;
-import java.util.UUID;
-
-import static org.openmetadata.catalog.resources.teams.UserResource.FIELD_LIST;
-
 public class DefaultCatalogAuthorizer implements CatalogAuthorizer {
   private static final Logger LOG = LoggerFactory.getLogger(DefaultCatalogAuthorizer.class);
 
@@ -44,7 +43,6 @@ public class DefaultCatalogAuthorizer implements CatalogAuthorizer {
   private String principalDomain;
   private UserRepository userRepository;
   private final String fieldsParam = "teams";
-
 
   @Override
   public void init(AuthorizerConfiguration config, Jdbi dbi) {
@@ -63,7 +61,8 @@ public class DefaultCatalogAuthorizer implements CatalogAuthorizer {
     LOG.debug("Checking user entries for admin users");
     EntityUtil.Fields fields = new EntityUtil.Fields(FIELD_LIST, fieldsParam);
     adminUsers.stream()
-            .filter(name -> {
+        .filter(
+            name -> {
               try {
                 User user = userRepository.getByName(null, name, fields);
                 if (user != null) {
@@ -75,14 +74,15 @@ public class DefaultCatalogAuthorizer implements CatalogAuthorizer {
                 return true;
               }
             })
-            .forEach(this::addUser);
+        .forEach(this::addAdmin);
   }
 
   private void mayBeAddBotUsers() {
     LOG.debug("Checking user entries for bot users");
     EntityUtil.Fields fields = new EntityUtil.Fields(FIELD_LIST, fieldsParam);
     botUsers.stream()
-            .filter(name -> {
+        .filter(
+            name -> {
               try {
                 User user = userRepository.getByName(null, name, fields);
                 if (user != null) {
@@ -94,15 +94,14 @@ public class DefaultCatalogAuthorizer implements CatalogAuthorizer {
                 return true;
               }
             })
-            .forEach(this::addUser);
+        .forEach(this::addBot);
   }
 
-
   @Override
-  public boolean hasPermissions(AuthenticationContext ctx,  EntityReference owner) {
+  public boolean hasPermissions(AuthenticationContext ctx, EntityReference owner) {
     validateAuthenticationContext(ctx);
     // To encourage users to claim or update changes to tables when a non-owner or un-claimed datasets.
-    if (owner == null)  {
+    if (owner == null) {
       return true;
     }
     String userName = SecurityUtil.getUserName(ctx);
@@ -110,12 +109,12 @@ public class DefaultCatalogAuthorizer implements CatalogAuthorizer {
     try {
       User user = userRepository.getByName(null, userName, fields);
       if (owner.getType().equals(Entity.TEAM)) {
-        for (EntityReference team: user.getTeams()) {
+        for (EntityReference team : user.getTeams()) {
           if (team.getName().equals(owner.getName())) {
             return true;
           }
         }
-      } else if(owner.getType().equals(Entity.USER)) {
+      } else if (owner.getType().equals(Entity.USER)) {
         return user.getName().equals(owner.getName());
       }
       return false;
@@ -162,8 +161,10 @@ public class DefaultCatalogAuthorizer implements CatalogAuthorizer {
     }
   }
 
-  private void addUser(String name) {
-    User user = new User().withId(UUID.randomUUID())
+  private void addAdmin(String name) {
+    User user =
+        new User()
+            .withId(UUID.randomUUID())
             .withName(name)
             .withEmail(name + "@" + principalDomain)
             .withIsAdmin(true)
@@ -172,12 +173,31 @@ public class DefaultCatalogAuthorizer implements CatalogAuthorizer {
 
     try {
       User addedUser = userRepository.create(null, user);
+      LOG.debug("Added admin user entry: {}", addedUser);
+    } catch (DuplicateEntityException | IOException exception) {
+      // In HA set up the other server may have already added the user.
+      LOG.debug("Caught exception: " + ExceptionUtils.getStackTrace(exception));
+      LOG.debug("Admin user entry: {} already exists.", user);
+    }
+  }
+
+  private void addBot(String name) {
+    User user =
+        new User()
+            .withId(UUID.randomUUID())
+            .withName(name)
+            .withEmail(name + "@" + principalDomain)
+            .withIsBot(true)
+            .withUpdatedBy(name)
+            .withUpdatedAt(new Date());
+
+    try {
+      User addedUser = userRepository.create(null, user);
       LOG.debug("Added bot user entry: {}", addedUser);
-    } catch (DuplicateEntityException | IOException | ParseException exception) {
-      // In HA setup the other server may have already added the user.
+    } catch (DuplicateEntityException | IOException exception) {
+      // In HA se tup the other server may have already added the user.
       LOG.debug("Caught exception: " + ExceptionUtils.getStackTrace(exception));
       LOG.debug("Bot user entry: {} already exists.", user);
     }
   }
 }
-

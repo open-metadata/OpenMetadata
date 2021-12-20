@@ -418,4 +418,13 @@ declare module 'Models' {
     | 'myDataPage'
     | 'explorePage'
     | 'datasetPage';
+
+  export type ExtraInfo = {
+    key?: string;
+    value: string | number | React.ReactNode;
+    isLink?: boolean;
+    placeholderText?: string;
+    openInNewTab?: boolean;
+    showLabel?: boolean;
+  };
 }

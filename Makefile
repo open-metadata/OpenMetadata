@@ -8,13 +8,13 @@ clean_env37:
 	rm -rf env38
 
 install:
-	pip install ingestion/
+	python3 -m pip install ingestion/
 
 install_test:
-	pip install -r ingestion/requirements-test.txt
+	python3 -m pip install -r ingestion/requirements-test.txt
 
 install_dev:
-	pip install -r ingestion/requirements-dev.txt
+	python3 -m pip install -r ingestion/requirements-dev.txt
 
 precommit_install:
 	@echo "Installing pre-commit hooks"
@@ -48,3 +48,15 @@ publish:
 	  python setup.py install sdist bdist_wheel; \
 	  twine check dist/*; \
 	  twine upload dist/*
+
+build_docker_base:
+	make install_dev generate
+	docker build -f ingestion/connectors/Dockerfile-base ingestion/ -t openmetadata/ingestion-connector-base
+
+build_docker_connectors:
+	@echo "Building Docker connectors. Make sure to run build_docker_base first"
+	python ingestion/connectors/docker-cli.py build
+
+push_docker_connectors:
+	@echo "Pushing Docker connectors. Make sure to run build_docker_connectors first"
+	python ingestion/connectors/docker-cli.py push

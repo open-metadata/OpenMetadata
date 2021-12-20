@@ -5,6 +5,5 @@
     <file url="file://$PROJECT_DIR$/catalog-rest-service/src/main/resources" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/catalog-rest-service/src/main/resources/json/data" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/common/src/main/java" charset="UTF-8" />
-    <file url="file://$PROJECT_DIR$/openmetadata-ui/src/main/resources/ui/dist" charset="UTF-8" />
   </component>
 </project>

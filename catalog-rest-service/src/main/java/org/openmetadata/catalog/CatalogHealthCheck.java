@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate 
+ *  Copyright 2021 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -13,16 +13,15 @@
 
 package org.openmetadata.catalog;
 
+import static org.openmetadata.catalog.resources.teams.UserResource.FIELD_LIST;
+import static org.openmetadata.catalog.resources.teams.UserResource.LOG;
+
 import com.codahale.metrics.health.HealthCheck;
+import java.io.IOException;
 import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.UserRepository;
 import org.openmetadata.catalog.util.EntityUtil;
-
-import java.io.IOException;
-
-import static org.openmetadata.catalog.resources.teams.UserResource.FIELD_LIST;
-import static org.openmetadata.catalog.resources.teams.UserResource.LOG;
 
 public class CatalogHealthCheck extends HealthCheck {
   private final UserRepository userRepository;

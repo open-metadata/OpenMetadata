@@ -130,9 +130,11 @@ const ErrorPlaceHolderES = ({ type, errorMessage, query = '' }: Props) => {
 
   return (
     <div className="tw-mt-10 tw-text-base tw-font-medium">
-      <p className="tw-text-center tw-text-lg tw-font-bold tw-mb-1 tw-text-primary">
-        {`Hi, ${getUserDisplayName()}!`}
-      </p>
+      {type !== 'noData' && (
+        <p className="tw-text-center tw-text-lg tw-font-bold tw-mb-1 tw-text-primary">
+          {`Hi, ${getUserDisplayName()}!`}
+        </p>
+      )}
       {type === 'noData' && noRecordForES()}
       {type === 'error' && elasticSearchError()}
     </div>

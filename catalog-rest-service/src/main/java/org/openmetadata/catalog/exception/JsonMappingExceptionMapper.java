@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate 
+ *  Copyright 2021 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -15,7 +15,6 @@ package org.openmetadata.catalog.exception;
 
 import com.fasterxml.jackson.databind.JsonMappingException;
 import io.dropwizard.jersey.errors.ErrorMessage;
-
 import javax.annotation.Priority;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
@@ -23,9 +22,9 @@ import javax.ws.rs.ext.ExceptionMapper;
 import javax.ws.rs.ext.Provider;
 
 /**
- * Dropwizard by default maps the JSON payload format issues (invalid URI etc.) violations to 400 Response
- * with no error message. This exception mapper overrides that behavior by including ErrorMessage json in the
- * response along with the error code.
+ * Dropwizard by default maps the JSON payload format issues (invalid URI etc.) violations to 400 Response with no error
+ * message. This exception mapper overrides that behavior by including ErrorMessage json in the response along with the
+ * error code.
  */
 @Provider
 @Priority(1) // Override the default JsonMappingExceptionMapper by setting the priority higher
@@ -34,9 +33,8 @@ public class JsonMappingExceptionMapper implements ExceptionMapper<JsonMappingEx
   public Response toResponse(JsonMappingException exception) {
     final Response response = BadRequestException.of().getResponse();
     return Response.fromResponse(response)
-            .type(MediaType.APPLICATION_JSON_TYPE)
-            .entity(new ErrorMessage(response.getStatus(), exception.getLocalizedMessage()))
-            .build();
+        .type(MediaType.APPLICATION_JSON_TYPE)
+        .entity(new ErrorMessage(response.getStatus(), exception.getLocalizedMessage()))
+        .build();
   }
 }
-

@@ -3,8 +3,8 @@
     "type": "presto",
     "config": {
       "service_name": "local_presto",
-      "host_port": "192.168.1.32:8080",
-      "database": "default"
+      "host_port": "localhost:8080",
+      "catalog": "tpcds"
     }
   },
   "sink": {

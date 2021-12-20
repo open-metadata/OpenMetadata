@@ -13,18 +13,32 @@
 
 package org.openmetadata.catalog.resources;
 
+import javax.ws.rs.client.WebTarget;
 import org.openmetadata.catalog.util.ResultList;
 
-import javax.ws.rs.client.WebTarget;
-
 public abstract class EntityOperationsResourceTest<T> extends EntityResourceTest<T> {
-  public EntityOperationsResourceTest(String entityName,
-                                      Class<T> entityClass, Class<? extends ResultList<T>> entityListClass,
-                                      String collectionName, String fields, boolean supportsFollowers,
-                                      boolean supportsOwner, boolean supportsTags) {
-    super(entityName, entityClass, entityListClass, collectionName, fields, supportsFollowers, supportsOwner, supportsTags);
+  public EntityOperationsResourceTest(
+      String entityName,
+      Class<T> entityClass,
+      Class<? extends ResultList<T>> entityListClass,
+      String collectionName,
+      String fields,
+      boolean supportsFollowers,
+      boolean supportsOwner,
+      boolean supportsTags) {
+    super(
+        entityName,
+        entityClass,
+        entityListClass,
+        collectionName,
+        fields,
+        supportsFollowers,
+        supportsOwner,
+        supportsTags);
   }
 
   // Override the resource path name of regular entities api/v1/<entities> to api/operations/v1/<operations>
-  protected WebTarget getCollection() { return getOperationsResource(collectionName); }
+  protected WebTarget getCollection() {
+    return getOperationsResource(collectionName);
+  }
 }

@@ -9,7 +9,7 @@ Type: `object`
 This schema <u>does not</u> accept additional properties.
 
 ## Properties
-- **daysAfterCreation** 
+- **daysAfterCreation**
   - Number of days after creation of the entity that the move should be triggered.
   - Type: `integer`
   - Range:  &ge; 1
@@ -23,12 +23,13 @@ This schema <u>does not</u> accept additional properties.
   - **Properties**
     - **storageServiceType**
       - The storage service to move this entity to.
-      - $ref: [storageService.json](storageservice.md)
+      - $ref: [../../services/storageService.json](../services/storageservice.md)
     - **storageClassType**
       - The storage class to move this entity to.
-      - $ref: [../type/storage.json#/definitions/storageClassType](../types/storage.md#storageclasstype)
+      - $ref: [../../../type/storage.json#/definitions/storageClassType](../../types/storage.md#storageclasstype)
     - **location**
       - The location where to move this entity to.
-      - $ref: [location.json](location.md)
+      - $ref: [../../data/location.json](../data/location.md)
 
-_This document was updated on: Thursday, December 9, 2021_
+
+_This document was updated on: Tuesday, December 14, 2021_

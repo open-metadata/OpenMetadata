@@ -12,18 +12,16 @@
  */
 
 import { isString, isUndefined, startCase, uniqueId } from 'lodash';
+import { ExtraInfo } from 'Models';
 import React, { FunctionComponent } from 'react';
 import { useHistory, useLocation } from 'react-router-dom';
 import AppState from '../../../AppState';
 import { ROUTES } from '../../../constants/constants';
 import { SearchIndex } from '../../../enums/search.enum';
 import { TagLabel } from '../../../generated/type/tagLabel';
+import { serviceTypeLogo } from '../../../utils/ServiceUtils';
 import { stringToHTML } from '../../../utils/StringsUtils';
-import {
-  getEntityIcon,
-  getEntityLink,
-  getUsagePercentile,
-} from '../../../utils/TableUtils';
+import { getEntityLink, getUsagePercentile } from '../../../utils/TableUtils';
 import TableDataCardBody from './TableDataCardBody';
 
 type Props = {
@@ -47,7 +45,7 @@ type Props = {
 
 const TableDataCard: FunctionComponent<Props> = ({
   name,
-  owner = '--',
+  owner = '',
   description,
   id,
   tier = '',
@@ -66,12 +64,12 @@ const TableDataCard: FunctionComponent<Props> = ({
       return isString(tier) ? tier : tier.tagFQN.split('.')[1];
     }
 
-    return 'No Tier';
+    return '';
   };
 
-  const OtherDetails = [
+  const OtherDetails: Array<ExtraInfo> = [
     { key: 'Owner', value: owner },
-    { key: 'Service', value: serviceType },
+    // { key: 'Service', value: serviceType },
     { key: 'Tier', value: getTier() },
   ];
   if (indexType !== SearchIndex.DASHBOARD && usage !== undefined) {
@@ -79,7 +77,7 @@ const TableDataCard: FunctionComponent<Props> = ({
       key: 'Usage',
       value:
         indexType !== SearchIndex.DASHBOARD && usage !== undefined
-          ? getUsagePercentile(usage)
+          ? getUsagePercentile(usage, true)
           : undefined,
     });
   }
@@ -87,6 +85,7 @@ const TableDataCard: FunctionComponent<Props> = ({
     OtherDetails.push({
       key: 'Database',
       value: database,
+      showLabel: true,
     });
   }
   const getAssetTags = () => {
@@ -122,7 +121,12 @@ const TableDataCard: FunctionComponent<Props> = ({
       onClickCapture={handleCardClick}>
       <div>
         <div className="tw-flex">
-          {getEntityIcon(indexType)}
+          {/* {getEntityIcon(indexType)} */}
+          <img
+            alt=""
+            className="tw-inline tw-h-5 tw-w-5"
+            src={serviceTypeLogo(serviceType || '')}
+          />
           <h6 className="tw-flex tw-items-center tw-m-0 tw-heading tw-pl-2">
             <button
               className="tw-text-grey-body tw-font-medium"

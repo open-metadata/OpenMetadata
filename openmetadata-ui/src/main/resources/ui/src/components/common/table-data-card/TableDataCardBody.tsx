@@ -12,20 +12,17 @@
  */
 
 import { isNil, isString } from 'lodash';
+import { ExtraInfo } from 'Models';
 import React, { FunctionComponent } from 'react';
 import { TagLabel } from '../../../generated/type/tagLabel';
-import { serviceTypeLogo } from '../../../utils/ServiceUtils';
+import { getInfoElements } from '../../../utils/EntityUtils';
 import SVGIcons from '../../../utils/SvgUtils';
 import Tag from '../../tags/tags';
-import Avatar from '../avatar/Avatar';
 import RichTextEditorPreviewer from '../rich-text-editor/RichTextEditorPreviewer';
 
 type Props = {
   description: string;
-  extraInfo: {
-    key: string;
-    value?: string;
-  }[];
+  extraInfo: Array<ExtraInfo>;
   tags?: string[] | TagLabel[];
 };
 
@@ -46,42 +43,14 @@ const TableDataCardBody: FunctionComponent<Props> = ({
       };
     }
   };
-  const getInfoLabel = (data: { key: string; value: string }) => {
-    switch (data.key) {
-      case 'Owner':
-        return data.value !== '--' ? (
-          <div className="tw-inline-block">
-            <Avatar name={data.value} textClass="tw-text-xs" width="22" />
-          </div>
-        ) : (
-          `${data.key} : `
-        );
-      case 'Service':
-        return (
-          <img
-            alt=""
-            className="tw-inline tw-h-5 tw-w-5"
-            src={serviceTypeLogo(data.value)}
-          />
-        );
-      case 'Tier':
-        return <SVGIcons alt="icon-tier" icon="icon-tier" width="16px" />;
-
-      default:
-        return `${data.key} : `;
-    }
-  };
 
   return (
     <div data-testid="table-body">
       <div className="tw-mb-4">
-        {extraInfo.map(({ key, value }, i) =>
-          !isNil(value) ? (
+        {extraInfo.map((info, i) =>
+          !isNil(info.value) ? (
             <span key={i}>
-              <span className="tw-text-grey-muted">
-                {getInfoLabel({ key, value })}
-              </span>{' '}
-              <span className="tw-pl-1 ">{value}</span>
+              {getInfoElements(info)}
               {i !== extraInfo.length - 1 && (
                 <span className="tw-mx-3 tw-inline-block tw-text-gray-400">
                   |
@@ -105,9 +74,10 @@ const TableDataCardBody: FunctionComponent<Props> = ({
             <SVGIcons
               alt="icon-tag"
               className="tw-absolute tw-top-1.5"
-              icon="icon-tag"
+              icon="icon-tag-grey"
+              width="14"
             />
-            <div className="tw-ml-2">
+            <div className="tw-ml-4">
               {tags?.map((tag, index) => (
                 <Tag
                   key={index}

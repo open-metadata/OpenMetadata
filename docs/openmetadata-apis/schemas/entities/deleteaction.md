@@ -17,3 +17,6 @@ This schema <u>does not</u> accept additional properties.
   - Number of days after last modification of the entity that the deletion should be triggered.
   - Type: `integer`
   - Range:  &ge; 1
+
+
+_This document was updated on: Tuesday, December 14, 2021_

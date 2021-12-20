@@ -660,7 +660,7 @@
   text-overflow: ellipsis;
   display: -webkit-box;
   line-height: 18px;
-  max-height: 50px;
+  max-height: 54px;
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
 }

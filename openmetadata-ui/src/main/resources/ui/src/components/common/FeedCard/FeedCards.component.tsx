@@ -43,7 +43,7 @@ const FeedCards: FC<FeedCardsProp> = ({
           <div className="tw-relative tw-mt-3 tw-mb-3.5">
             <div className="tw-flex tw-justify-center">
               <hr className="tw-absolute tw-top-3 tw-border-b-2 tw-border-main tw-w-full tw-z-0" />
-              <span className="tw-bg-white tw-px-4 tw-py-px tw-border tw-border-main tw-rounded tw-z-10 tw-text-grey-muted tw-font-medium">
+              <span className="tw-bg-white tw-px-4 tw-py-px tw-border tw-border-primary tw-rounded tw-z-10 tw-text-primary tw-font-medium">
                 {d}
               </span>
             </div>
@@ -60,7 +60,7 @@ const FeedCards: FC<FeedCardsProp> = ({
                   <h6 className="tw-flex tw-items-center tw-m-0 tw-heading tw-pl-2">
                     {feed.updatedBy}
                     <span className="tw-pl-1 tw-font-normal">
-                      updated{' '}
+                      updated {feed.entityType}{' '}
                       <Link to={getEntityLink(feed.entityType, feed.fqn)}>
                         <span className="link-text">{feed.entityName}</span>
                       </Link>

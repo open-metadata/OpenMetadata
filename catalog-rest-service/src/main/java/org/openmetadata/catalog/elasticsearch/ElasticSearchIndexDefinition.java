@@ -2,7 +2,17 @@ package org.openmetadata.catalog.elasticsearch;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.core.JsonProcessingException;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
+import javax.ws.rs.core.Response;
 import lombok.Builder;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -17,6 +27,7 @@ import org.elasticsearch.client.RestHighLevelClient;
 import org.elasticsearch.client.indices.CreateIndexRequest;
 import org.elasticsearch.client.indices.CreateIndexResponse;
 import org.elasticsearch.client.indices.GetIndexRequest;
+import org.elasticsearch.client.indices.PutMappingRequest;
 import org.elasticsearch.common.xcontent.XContentType;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Dashboard;
@@ -31,21 +42,8 @@ import org.openmetadata.catalog.type.Task;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.ws.rs.core.Response;
-import java.io.IOException;
-import java.io.InputStream;
-import java.net.URISyntaxException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.function.Predicate;
-import java.util.stream.Collectors;
-
 public class ElasticSearchIndexDefinition {
-  Map<ElasticSearchIndexType, ElasticSearchIndexStatus> elasticSearchIndexes = new HashMap<>();
+  final Map<ElasticSearchIndexType, ElasticSearchIndexStatus> elasticSearchIndexes = new HashMap<>();
   private final RestHighLevelClient client;
   private static final Logger LOG = LoggerFactory.getLogger(ElasticSearchIndexDefinition.class);
 
@@ -66,8 +64,7 @@ public class ElasticSearchIndexDefinition {
     TABLE_SEARCH_INDEX("table_search_index", "/elasticsearch/table_index_mapping.json"),
     TOPIC_SEARCH_INDEX("topic_search_index", "/elasticsearch/topic_index_mapping.json"),
     DASHBOARD_SEARCH_INDEX("dashboard_search_index", "/elasticsearch/dashboard_index_mapping.json"),
-    PIPELINE_SEARCH_INDEX("pipeline_search_index", "/elasticsearch/pipeline_index_mapping.json"),
-    DBT_MODEL_SEARCH_INDEX("dbt_model_search_index", "/elasticsearch/dbt_index_mapping.json");
+    PIPELINE_SEARCH_INDEX("pipeline_search_index", "/elasticsearch/pipeline_index_mapping.json");
 
     public final String indexName;
     public final String indexMappingFile;
@@ -83,7 +80,17 @@ public class ElasticSearchIndexDefinition {
       for (ElasticSearchIndexType elasticSearchIndexType : ElasticSearchIndexType.values()) {
         createIndex(elasticSearchIndexType);
       }
-    } catch(Exception e) {
+    } catch (Exception e) {
+      LOG.error("Failed to created Elastic Search indexes due to", e);
+    }
+  }
+
+  public void updateIndexes() {
+    try {
+      for (ElasticSearchIndexType elasticSearchIndexType : ElasticSearchIndexType.values()) {
+        updateIndex(elasticSearchIndexType);
+      }
+    } catch (Exception e) {
       LOG.error("Failed to created Elastic Search indexes due to", e);
     }
   }
@@ -93,7 +100,7 @@ public class ElasticSearchIndexDefinition {
       for (ElasticSearchIndexType elasticSearchIndexType : ElasticSearchIndexType.values()) {
         deleteIndex(elasticSearchIndexType);
       }
-    } catch(Exception e) {
+    } catch (Exception e) {
       LOG.error("Failed to delete Elastic Search indexes due to", e);
     }
   }
@@ -119,7 +126,33 @@ public class ElasticSearchIndexDefinition {
         LOG.info(elasticSearchIndexType.indexName + " Created " + createIndexResponse.isAcknowledged());
       }
       setIndexStatus(elasticSearchIndexType, ElasticSearchIndexStatus.CREATED);
-    } catch(Exception e) {
+    } catch (Exception e) {
+      setIndexStatus(elasticSearchIndexType, ElasticSearchIndexStatus.FAILED);
+      LOG.error("Failed to created Elastic Search indexes due to", e);
+      return false;
+    }
+    return true;
+  }
+
+  private boolean updateIndex(ElasticSearchIndexType elasticSearchIndexType) {
+    try {
+      GetIndexRequest gRequest = new GetIndexRequest(elasticSearchIndexType.indexName);
+      gRequest.local(false);
+      boolean exists = client.indices().exists(gRequest, RequestOptions.DEFAULT);
+      String elasticSearchIndexMapping = getIndexMapping(elasticSearchIndexType);
+      if (exists) {
+        PutMappingRequest request = new PutMappingRequest(elasticSearchIndexType.indexName);
+        request.source(elasticSearchIndexMapping, XContentType.JSON);
+        AcknowledgedResponse putMappingResponse = client.indices().putMapping(request, RequestOptions.DEFAULT);
+        LOG.info(elasticSearchIndexType.indexName + " Updated " + putMappingResponse.isAcknowledged());
+      } else {
+        CreateIndexRequest request = new CreateIndexRequest(elasticSearchIndexType.indexName);
+        request.mapping(elasticSearchIndexMapping, XContentType.JSON);
+        CreateIndexResponse createIndexResponse = client.indices().create(request, RequestOptions.DEFAULT);
+        LOG.info(elasticSearchIndexType.indexName + " Created " + createIndexResponse.isAcknowledged());
+      }
+      setIndexStatus(elasticSearchIndexType, ElasticSearchIndexStatus.CREATED);
+    } catch (Exception e) {
       setIndexStatus(elasticSearchIndexType, ElasticSearchIndexStatus.FAILED);
       LOG.error("Failed to created Elastic Search indexes due to", e);
       return false;
@@ -143,8 +176,7 @@ public class ElasticSearchIndexDefinition {
     elasticSearchIndexes.put(indexType, elasticSearchIndexStatus);
   }
 
-  public  String getIndexMapping(ElasticSearchIndexType elasticSearchIndexType)
-      throws URISyntaxException, IOException {
+  public String getIndexMapping(ElasticSearchIndexType elasticSearchIndexType) throws IOException {
     InputStream in = ElasticSearchIndexDefinition.class.getResourceAsStream(elasticSearchIndexType.indexMappingFile);
     return new String(in.readAllBytes());
   }
@@ -159,34 +191,41 @@ public class ElasticSearchIndexDefinition {
     } else if (type.equalsIgnoreCase(Entity.TOPIC)) {
       return ElasticSearchIndexType.TOPIC_SEARCH_INDEX;
     }
-    throw new RuntimeException("Failed to find index doc for type {}".format(type));
+    throw new RuntimeException("Failed to find index doc for type " + type);
   }
-
 }
 
 @SuperBuilder
 @Data
 class ElasticSearchIndex {
   String name;
+
   @JsonProperty("display_name")
   String displayName;
+
   String fqdn;
   String service;
+
   @JsonProperty("service_type")
   String serviceType;
+
   @JsonProperty("service_category")
   String serviceCategory;
+
   @JsonProperty("entity_type")
   String entityType;
+
   List<ElasticSearchSuggest> suggest;
   String description;
   String tier;
   List<String> tags;
   String owner;
   List<String> followers;
+
   @JsonProperty("last_updated_timestamp")
   @Builder.Default
   Long lastUpdatedTimestamp = System.currentTimeMillis();
+
   @JsonProperty("change_descriptions")
   List<ESChangeDescription> changeDescriptions;
 }
@@ -219,7 +258,7 @@ class ESChangeDescription {
 
 class ParseTags {
   String tierTag;
-  List<String> tags;
+  final List<String> tags;
 
   ParseTags(List<String> tags) {
     if (!tags.isEmpty()) {
@@ -248,33 +287,44 @@ class ParseTags {
 @Value
 @JsonInclude(JsonInclude.Include.NON_NULL)
 class TableESIndex extends ElasticSearchIndex {
+
   @JsonProperty("table_id")
   String tableId;
+
   String database;
+
   @JsonProperty("table_type")
   String tableType;
+
   @JsonProperty("column_names")
   List<String> columnNames;
+
   @JsonProperty("column_descriptions")
   List<String> columnDescriptions;
+
   @JsonProperty("monthly_stats")
   Integer monthlyStats;
+
   @JsonProperty("monthly_percentile_rank")
   Integer monthlyPercentileRank;
+
   @JsonProperty("weekly_stats")
   Integer weeklyStats;
+
   @JsonProperty("weekly_percentile_rank")
   Integer weeklyPercentileRank;
+
   @JsonProperty("daily_stats")
   Integer dailyStats;
+
   @JsonProperty("daily_percentile_rank")
   Integer dailyPercentileRank;
 
-
-  public static TableESIndexBuilder builder(Table table, int responseCode) throws JsonProcessingException {
+  public static TableESIndexBuilder builder(Table table, int responseCode) {
     String tableId = table.getId().toString();
     String tableName = table.getName();
-    String description = table.getDescription();
+    String description = table.getDescription() != null ? table.getDescription() : "";
+    String tableType = table.getTableType() != null ? table.getTableType().toString() : "Regular";
     List<String> tags = new ArrayList<>();
     List<String> columnNames = new ArrayList<>();
     List<String> columnDescriptions = new ArrayList<>();
@@ -299,22 +349,32 @@ class TableESIndex extends ElasticSearchIndex {
       }
     }
     ParseTags parseTags = new ParseTags(tags);
-    TableESIndexBuilder tableESIndexBuilder =  internalBuilder().tableId(tableId)
-        .name(tableName)
-        .displayName(tableName)
-        .description(description)
-        .fqdn(table.getFullyQualifiedName())
-        .suggest(suggest)
-        .entityType("table")
-        .serviceCategory("databaseService")
-        .columnNames(columnNames)
-        .columnDescriptions(columnDescriptions)
-        .tableType(table.getTableType().toString())
-        .tags(parseTags.tags)
-        .tier(parseTags.tierTag);
+    Long updatedTimestamp = table.getUpdatedAt().getTime();
+    TableESIndexBuilder tableESIndexBuilder =
+        internalBuilder()
+            .tableId(tableId)
+            .name(tableName)
+            .displayName(tableName)
+            .description(description)
+            .lastUpdatedTimestamp(updatedTimestamp)
+            .fqdn(table.getFullyQualifiedName())
+            .suggest(suggest)
+            .entityType("table")
+            .serviceCategory("databaseService")
+            .columnNames(columnNames)
+            .columnDescriptions(columnDescriptions)
+            .tableType(tableType)
+            .tags(parseTags.tags)
+            .tier(parseTags.tierTag);
 
     if (table.getDatabase() != null) {
-      tableESIndexBuilder.database(table.getDatabase().getName());
+      String databaseFQN = table.getDatabase().getName();
+      String[] databaseFQNSplit = databaseFQN.split("\\.");
+      if (databaseFQNSplit.length == 2) {
+        tableESIndexBuilder.database(databaseFQNSplit[1]);
+      } else {
+        tableESIndexBuilder.database(databaseFQNSplit[0]);
+      }
     }
 
     if (table.getService() != null) {
@@ -323,7 +383,8 @@ class TableESIndex extends ElasticSearchIndex {
     }
 
     if (table.getUsageSummary() != null) {
-      tableESIndexBuilder.weeklyStats(table.getUsageSummary().getWeeklyStats().getCount())
+      tableESIndexBuilder
+          .weeklyStats(table.getUsageSummary().getWeeklyStats().getCount())
           .weeklyPercentileRank(table.getUsageSummary().getWeeklyStats().getPercentileRank().intValue())
           .dailyStats(table.getUsageSummary().getDailyStats().getCount())
           .dailyPercentileRank(table.getUsageSummary().getDailyStats().getPercentileRank().intValue())
@@ -331,8 +392,8 @@ class TableESIndex extends ElasticSearchIndex {
           .monthlyPercentileRank(table.getUsageSummary().getMonthlyStats().getPercentileRank().intValue());
     }
     if (table.getFollowers() != null) {
-      tableESIndexBuilder.followers(table.getFollowers().stream().map(item ->
-           item.getId().toString()).collect(Collectors.toList()));
+      tableESIndexBuilder.followers(
+          table.getFollowers().stream().map(item -> item.getId().toString()).collect(Collectors.toList()));
     } else if (responseCode == Response.Status.CREATED.getStatusCode()) {
       tableESIndexBuilder.followers(Collections.emptyList());
     }
@@ -344,25 +405,30 @@ class TableESIndex extends ElasticSearchIndex {
     ESChangeDescription esChangeDescription = null;
 
     if (table.getChangeDescription() != null) {
-      esChangeDescription = ESChangeDescription.builder().updatedAt(table.getUpdatedAt().getTime())
-          .updatedBy(table.getUpdatedBy()).build();
+      esChangeDescription =
+          ESChangeDescription.builder().updatedAt(updatedTimestamp).updatedBy(table.getUpdatedBy()).build();
       esChangeDescription.setFieldsAdded(table.getChangeDescription().getFieldsAdded());
       esChangeDescription.setFieldsDeleted(table.getChangeDescription().getFieldsDeleted());
       esChangeDescription.setFieldsUpdated(table.getChangeDescription().getFieldsUpdated());
     } else if (responseCode == Response.Status.CREATED.getStatusCode()) {
-      esChangeDescription = ESChangeDescription.builder().updatedAt(table.getUpdatedAt().getTime())
-          .updatedBy(table.getUpdatedBy()).build();
+      esChangeDescription =
+          ESChangeDescription.builder()
+              .updatedAt(updatedTimestamp)
+              .updatedBy(table.getUpdatedBy())
+              .fieldsAdded(new ArrayList<>())
+              .fieldsUpdated(new ArrayList<>())
+              .fieldsDeleted(new ArrayList<>())
+              .build();
     }
     tableESIndexBuilder.changeDescriptions(esChangeDescription != null ? List.of(esChangeDescription) : null);
     return tableESIndexBuilder;
   }
 
-
-  private static List<FlattenColumn> parseColumns(List<Column> columns, List<FlattenColumn> flattenColumns,
-                                           String parentColumn) {
+  private static List<FlattenColumn> parseColumns(
+      List<Column> columns, List<FlattenColumn> flattenColumns, String parentColumn) {
     Optional<String> optParentColumn = Optional.ofNullable(parentColumn).filter(Predicate.not(String::isEmpty));
     List<String> tags = new ArrayList<>();
-    for (Column col: columns) {
+    for (Column col : columns) {
       String columnName = col.getName();
       if (optParentColumn.isPresent()) {
         columnName = optParentColumn.get() + "." + columnName;
@@ -371,9 +437,7 @@ class TableESIndex extends ElasticSearchIndex {
         tags = col.getTags().stream().map(TagLabel::getTagFQN).collect(Collectors.toList());
       }
 
-      FlattenColumn flattenColumn = FlattenColumn.builder()
-          .name(columnName)
-          .description(col.getDescription()).build();
+      FlattenColumn flattenColumn = FlattenColumn.builder().name(columnName).description(col.getDescription()).build();
 
       if (!tags.isEmpty()) {
         flattenColumn.tags = tags;
@@ -387,7 +451,6 @@ class TableESIndex extends ElasticSearchIndex {
   }
 }
 
-
 @EqualsAndHashCode(callSuper = true)
 @Getter
 @SuperBuilder(builderMethodName = "internalBuilder")
@@ -397,7 +460,7 @@ class TopicESIndex extends ElasticSearchIndex {
   @JsonProperty("topic_id")
   String topicId;
 
-  public static TopicESIndexBuilder builder(Topic topic, int responseCode) throws JsonProcessingException {
+  public static TopicESIndexBuilder builder(Topic topic, int responseCode) {
     List<String> tags = new ArrayList<>();
     List<ElasticSearchSuggest> suggest = new ArrayList<>();
     suggest.add(ElasticSearchSuggest.builder().input(topic.getFullyQualifiedName()).weight(5).build());
@@ -407,22 +470,28 @@ class TopicESIndex extends ElasticSearchIndex {
       topic.getTags().forEach(tag -> tags.add(tag.getTagFQN()));
     }
     ParseTags parseTags = new ParseTags(tags);
-    TopicESIndexBuilder topicESIndexBuilder =  internalBuilder().topicId(topic.getId().toString())
-        .name(topic.getName())
-        .displayName(topic.getDisplayName())
-        .description(topic.getDescription())
-        .fqdn(topic.getFullyQualifiedName())
-        .suggest(suggest)
-        .service(topic.getService().getName())
-        .serviceType(topic.getServiceType().toString())
-        .serviceCategory("messagingService")
-        .entityType("topic")
-        .tags(parseTags.tags)
-        .tier(parseTags.tierTag);
+    Long updatedTimestamp = topic.getUpdatedAt().getTime();
+    String description = topic.getDescription() != null ? topic.getDescription() : "";
+    String displayName = topic.getDisplayName() != null ? topic.getDisplayName() : "";
+    TopicESIndexBuilder topicESIndexBuilder =
+        internalBuilder()
+            .topicId(topic.getId().toString())
+            .name(topic.getName())
+            .displayName(displayName)
+            .description(description)
+            .fqdn(topic.getFullyQualifiedName())
+            .lastUpdatedTimestamp(updatedTimestamp)
+            .suggest(suggest)
+            .service(topic.getService().getName())
+            .serviceType(topic.getServiceType().toString())
+            .serviceCategory("messagingService")
+            .entityType("topic")
+            .tags(parseTags.tags)
+            .tier(parseTags.tierTag);
 
     if (topic.getFollowers() != null) {
-      topicESIndexBuilder.followers(topic.getFollowers().stream().map(item ->
-          item.getId().toString()).collect(Collectors.toList()));
+      topicESIndexBuilder.followers(
+          topic.getFollowers().stream().map(item -> item.getId().toString()).collect(Collectors.toList()));
     } else if (responseCode == Response.Status.CREATED.getStatusCode()) {
       topicESIndexBuilder.followers(Collections.emptyList());
     }
@@ -434,14 +503,14 @@ class TopicESIndex extends ElasticSearchIndex {
     ESChangeDescription esChangeDescription = null;
 
     if (topic.getChangeDescription() != null) {
-      esChangeDescription = ESChangeDescription.builder().updatedAt(topic.getUpdatedAt().getTime())
-          .updatedBy(topic.getUpdatedBy()).build();
+      esChangeDescription =
+          ESChangeDescription.builder().updatedAt(updatedTimestamp).updatedBy(topic.getUpdatedBy()).build();
       esChangeDescription.setFieldsAdded(topic.getChangeDescription().getFieldsAdded());
       esChangeDescription.setFieldsDeleted(topic.getChangeDescription().getFieldsDeleted());
       esChangeDescription.setFieldsUpdated(topic.getChangeDescription().getFieldsUpdated());
     } else if (responseCode == Response.Status.CREATED.getStatusCode()) {
-      esChangeDescription = ESChangeDescription.builder().updatedAt(topic.getUpdatedAt().getTime())
-          .updatedBy(topic.getUpdatedBy()).build();
+      esChangeDescription =
+          ESChangeDescription.builder().updatedAt(updatedTimestamp).updatedBy(topic.getUpdatedBy()).build();
     }
 
     topicESIndexBuilder.changeDescriptions(esChangeDescription != null ? List.of(esChangeDescription) : null);
@@ -449,7 +518,6 @@ class TopicESIndex extends ElasticSearchIndex {
     return topicESIndexBuilder;
   }
 }
-
 
 @EqualsAndHashCode(callSuper = true)
 @Getter
@@ -459,57 +527,71 @@ class TopicESIndex extends ElasticSearchIndex {
 class DashboardESIndex extends ElasticSearchIndex {
   @JsonProperty("dashboard_id")
   String dashboardId;
+
   @JsonProperty("chart_names")
   List<String> chartNames;
+
   @JsonProperty("chart_descriptions")
   List<String> chartDescriptions;
+
   @JsonProperty("monthly_stats")
   Integer monthlyStats;
+
   @JsonProperty("monthly_percentile_rank")
   Integer monthlyPercentileRank;
+
   @JsonProperty("weekly_stats")
   Integer weeklyStats;
+
   @JsonProperty("weekly_percentile_rank")
   Integer weeklyPercentileRank;
+
   @JsonProperty("daily_stats")
   Integer dailyStats;
+
   @JsonProperty("daily_percentile_rank")
   Integer dailyPercentileRank;
 
-  public static DashboardESIndexBuilder builder(Dashboard dashboard, int responseCode) throws JsonProcessingException {
+  public static DashboardESIndexBuilder builder(Dashboard dashboard, int responseCode) {
     List<String> tags = new ArrayList<>();
     List<String> chartNames = new ArrayList<>();
     List<String> chartDescriptions = new ArrayList<>();
     List<ElasticSearchSuggest> suggest = new ArrayList<>();
     suggest.add(ElasticSearchSuggest.builder().input(dashboard.getFullyQualifiedName()).weight(5).build());
     suggest.add(ElasticSearchSuggest.builder().input(dashboard.getDisplayName()).weight(10).build());
-
+    Long updatedTimestamp = dashboard.getUpdatedAt().getTime();
     if (dashboard.getTags() != null) {
       dashboard.getTags().forEach(tag -> tags.add(tag.getTagFQN()));
     }
 
-    for (EntityReference chart: dashboard.getCharts()) {
+    for (EntityReference chart : dashboard.getCharts()) {
       chartNames.add(chart.getDisplayName());
       chartDescriptions.add(chart.getDescription());
     }
     ParseTags parseTags = new ParseTags(tags);
-    DashboardESIndexBuilder dashboardESIndexBuilder =  internalBuilder().dashboardId(dashboard.getId().toString())
-        .name(dashboard.getDisplayName())
-        .displayName(dashboard.getDisplayName())
-        .description(dashboard.getDescription())
-        .fqdn(dashboard.getFullyQualifiedName())
-        .chartNames(chartNames)
-        .chartDescriptions(chartDescriptions)
-        .entityType("dashboard")
-        .suggest(suggest)
-        .service(dashboard.getService().getName())
-        .serviceType(dashboard.getServiceType().toString())
-        .serviceCategory("dashboardService")
-        .tags(parseTags.tags)
-        .tier(parseTags.tierTag);
+    String description = dashboard.getDescription() != null ? dashboard.getDescription() : "";
+    String displayName = dashboard.getDisplayName() != null ? dashboard.getDisplayName() : "";
+    DashboardESIndexBuilder dashboardESIndexBuilder =
+        internalBuilder()
+            .dashboardId(dashboard.getId().toString())
+            .name(dashboard.getDisplayName())
+            .displayName(displayName)
+            .description(description)
+            .fqdn(dashboard.getFullyQualifiedName())
+            .lastUpdatedTimestamp(updatedTimestamp)
+            .chartNames(chartNames)
+            .chartDescriptions(chartDescriptions)
+            .entityType("dashboard")
+            .suggest(suggest)
+            .service(dashboard.getService().getName())
+            .serviceType(dashboard.getServiceType().toString())
+            .serviceCategory("dashboardService")
+            .tags(parseTags.tags)
+            .tier(parseTags.tierTag);
 
     if (dashboard.getUsageSummary() != null) {
-      dashboardESIndexBuilder.weeklyStats(dashboard.getUsageSummary().getWeeklyStats().getCount())
+      dashboardESIndexBuilder
+          .weeklyStats(dashboard.getUsageSummary().getWeeklyStats().getCount())
           .weeklyPercentileRank(dashboard.getUsageSummary().getWeeklyStats().getPercentileRank().intValue())
           .dailyStats(dashboard.getUsageSummary().getDailyStats().getCount())
           .dailyPercentileRank(dashboard.getUsageSummary().getDailyStats().getPercentileRank().intValue())
@@ -518,8 +600,8 @@ class DashboardESIndex extends ElasticSearchIndex {
     }
 
     if (dashboard.getFollowers() != null) {
-      dashboardESIndexBuilder.followers(dashboard.getFollowers().stream().map(item ->
-          item.getId().toString()).collect(Collectors.toList()));
+      dashboardESIndexBuilder.followers(
+          dashboard.getFollowers().stream().map(item -> item.getId().toString()).collect(Collectors.toList()));
     } else if (responseCode == Response.Status.CREATED.getStatusCode()) {
       dashboardESIndexBuilder.followers(Collections.emptyList());
     }
@@ -528,22 +610,19 @@ class DashboardESIndex extends ElasticSearchIndex {
     }
     ESChangeDescription esChangeDescription = null;
     if (dashboard.getChangeDescription() != null) {
-      esChangeDescription = ESChangeDescription.builder()
-          .updatedAt(dashboard.getUpdatedAt().getTime())
-          .updatedBy(dashboard.getUpdatedBy()).build();
+      esChangeDescription =
+          ESChangeDescription.builder().updatedAt(updatedTimestamp).updatedBy(dashboard.getUpdatedBy()).build();
       esChangeDescription.setFieldsAdded(dashboard.getChangeDescription().getFieldsAdded());
       esChangeDescription.setFieldsDeleted(dashboard.getChangeDescription().getFieldsDeleted());
       esChangeDescription.setFieldsUpdated(dashboard.getChangeDescription().getFieldsUpdated());
-    }  else if (responseCode == Response.Status.CREATED.getStatusCode()) {
-      esChangeDescription = ESChangeDescription.builder()
-          .updatedAt(dashboard.getUpdatedAt().getTime())
-          .updatedBy(dashboard.getUpdatedBy()).build();
+    } else if (responseCode == Response.Status.CREATED.getStatusCode()) {
+      esChangeDescription =
+          ESChangeDescription.builder().updatedAt(updatedTimestamp).updatedBy(dashboard.getUpdatedBy()).build();
     }
     dashboardESIndexBuilder.changeDescriptions(esChangeDescription != null ? List.of(esChangeDescription) : null);
     return dashboardESIndexBuilder;
   }
 }
-
 
 @EqualsAndHashCode(callSuper = true)
 @Getter
@@ -553,12 +632,14 @@ class DashboardESIndex extends ElasticSearchIndex {
 class PipelineESIndex extends ElasticSearchIndex {
   @JsonProperty("pipeine_id")
   String pipelineId;
+
   @JsonProperty("task_names")
   List<String> taskNames;
+
   @JsonProperty("task_descriptions")
   List<String> taskDescriptions;
 
-  public static PipelineESIndexBuilder builder(Pipeline pipeline, int responseCode) throws JsonProcessingException {
+  public static PipelineESIndexBuilder builder(Pipeline pipeline, int responseCode) {
     List<String> tags = new ArrayList<>();
     List<String> taskNames = new ArrayList<>();
     List<String> taskDescriptions = new ArrayList<>();
@@ -570,29 +651,35 @@ class PipelineESIndex extends ElasticSearchIndex {
       pipeline.getTags().forEach(tag -> tags.add(tag.getTagFQN()));
     }
 
-    for (Task task: pipeline.getTasks()) {
+    for (Task task : pipeline.getTasks()) {
       taskNames.add(task.getDisplayName());
       taskDescriptions.add(task.getDescription());
     }
+    Long updatedTimestamp = pipeline.getUpdatedAt().getTime();
     ParseTags parseTags = new ParseTags(tags);
-    PipelineESIndexBuilder pipelineESIndexBuilder = internalBuilder().pipelineId(pipeline.getId().toString())
-        .name(pipeline.getDisplayName())
-        .displayName(pipeline.getDisplayName())
-        .description(pipeline.getDescription())
-        .fqdn(pipeline.getFullyQualifiedName())
-        .taskNames(taskNames)
-        .taskDescriptions(taskDescriptions)
-        .entityType("pipeline")
-        .suggest(suggest)
-        .service(pipeline.getService().getName())
-        .serviceType(pipeline.getServiceType().toString())
-        .serviceCategory("pipelineService")
-        .tags(parseTags.tags)
-        .tier(parseTags.tierTag);
+    String description = pipeline.getDescription() != null ? pipeline.getDescription() : "";
+    String displayName = pipeline.getDisplayName() != null ? pipeline.getDisplayName() : "";
+    PipelineESIndexBuilder pipelineESIndexBuilder =
+        internalBuilder()
+            .pipelineId(pipeline.getId().toString())
+            .name(pipeline.getDisplayName())
+            .displayName(description)
+            .description(displayName)
+            .fqdn(pipeline.getFullyQualifiedName())
+            .lastUpdatedTimestamp(updatedTimestamp)
+            .taskNames(taskNames)
+            .taskDescriptions(taskDescriptions)
+            .entityType("pipeline")
+            .suggest(suggest)
+            .service(pipeline.getService().getName())
+            .serviceType(pipeline.getServiceType().toString())
+            .serviceCategory("pipelineService")
+            .tags(parseTags.tags)
+            .tier(parseTags.tierTag);
 
     if (pipeline.getFollowers() != null) {
-      pipelineESIndexBuilder.followers(pipeline.getFollowers().stream().map(item ->
-              item.getId().toString()).collect(Collectors.toList()));
+      pipelineESIndexBuilder.followers(
+          pipeline.getFollowers().stream().map(item -> item.getId().toString()).collect(Collectors.toList()));
     } else if (responseCode == Response.Status.CREATED.getStatusCode()) {
       pipelineESIndexBuilder.followers(Collections.emptyList());
     }
@@ -603,16 +690,14 @@ class PipelineESIndex extends ElasticSearchIndex {
 
     ESChangeDescription esChangeDescription = null;
     if (pipeline.getChangeDescription() != null) {
-      esChangeDescription = ESChangeDescription.builder()
-          .updatedAt(pipeline.getUpdatedAt().getTime())
-          .updatedBy(pipeline.getUpdatedBy()).build();
+      esChangeDescription =
+          ESChangeDescription.builder().updatedAt(updatedTimestamp).updatedBy(pipeline.getUpdatedBy()).build();
       esChangeDescription.setFieldsAdded(pipeline.getChangeDescription().getFieldsAdded());
       esChangeDescription.setFieldsDeleted(pipeline.getChangeDescription().getFieldsDeleted());
       esChangeDescription.setFieldsUpdated(pipeline.getChangeDescription().getFieldsUpdated());
     } else if (responseCode == Response.Status.CREATED.getStatusCode()) {
-      esChangeDescription = ESChangeDescription.builder()
-          .updatedAt(pipeline.getUpdatedAt().getTime())
-          .updatedBy(pipeline.getUpdatedBy()).build();
+      esChangeDescription =
+          ESChangeDescription.builder().updatedAt(updatedTimestamp).updatedBy(pipeline.getUpdatedBy()).build();
     }
     pipelineESIndexBuilder.changeDescriptions(esChangeDescription != null ? List.of(esChangeDescription) : null);
     return pipelineESIndexBuilder;

@@ -19,12 +19,14 @@ import IconOkta from '../assets/img/icon-okta.png';
 import IconWelcomePopper from '../assets/img/welcome-popper-icon.png';
 import IconAPI from '../assets/svg/api.svg';
 import IconSuccess from '../assets/svg/check.svg';
+import IconConfigColor from '../assets/svg/config-color.svg';
 import IconConfig from '../assets/svg/config.svg';
 import IconDashboardGrey from '../assets/svg/dashboard-grey.svg';
 import IconDashboard from '../assets/svg/dashboard.svg';
 import IconAsstest from '../assets/svg/data-assets.svg';
 import IconDBTModelGrey from '../assets/svg/dbt-model-grey.svg';
 import IconDBTModelLightGrey from '../assets/svg/dbt-model-light-grey.svg';
+import IconDBTModelPrimeryColor from '../assets/svg/dbt-model-primery.svg';
 import IconDBTModel from '../assets/svg/dbt-model.svg';
 import IconDeploy from '../assets/svg/deploy-icon.svg';
 import IconDoc from '../assets/svg/doc.svg';
@@ -69,26 +71,33 @@ import IconTour from '../assets/svg/icon-tour.svg';
 import IconUnique from '../assets/svg/icon-unique.svg';
 import IconInfo from '../assets/svg/info.svg';
 import IconIngestion from '../assets/svg/ingestion.svg';
+import IconLineageColor from '../assets/svg/lineage-color.svg';
 import LogoMonogram from '../assets/svg/logo-monogram.svg';
 import Logo from '../assets/svg/logo.svg';
+import IconManageColor from '../assets/svg/manage-color.svg';
 import IconMinus from '../assets/svg/minus.svg';
 import IconPipelineGrey from '../assets/svg/pipeline-grey.svg';
 import IconPipeline from '../assets/svg/pipeline.svg';
 import IconPlus from '../assets/svg/plus.svg';
+import IconProfilerColor from '../assets/svg/profiler-color.svg';
 import IconProfiler from '../assets/svg/profiler.svg';
 import IconHelpCircle from '../assets/svg/question-circle.svg';
+import IconSchemaColor from '../assets/svg/schema-color.svg';
+import IconSearchV1Color from '../assets/svg/search-color.svg';
 import IconSearchV1 from '../assets/svg/search.svg';
 import IconSetting from '../assets/svg/service.svg';
 import IconSlackGrey from '../assets/svg/slack-grey.svg';
 import IconSlack from '../assets/svg/slack.svg';
 import IconTableGrey from '../assets/svg/table-grey.svg';
 import IconTable from '../assets/svg/table.svg';
+import IconTagGrey from '../assets/svg/tag-grey.svg';
 import IconTag from '../assets/svg/tag.svg';
 import IconTerns from '../assets/svg/terms.svg';
 import IconTier from '../assets/svg/tier.svg';
 import IconTopicGrey from '../assets/svg/topic-grey.svg';
 import IconTopic from '../assets/svg/topic.svg';
 import IconUser from '../assets/svg/user.svg';
+import IconVersionBlack from '../assets/svg/version-black.svg';
 import IconVersionWhite from '../assets/svg/version-white.svg';
 import IconVersion from '../assets/svg/version.svg';
 import IconWarning from '../assets/svg/warning.svg';
@@ -171,16 +180,25 @@ export const Icons = {
   PIPELINE_GREY: 'pipeline-grey',
   DBTMODEL_GREY: 'dbtmodel-grey',
   DBTMODEL_LIGHT_GREY: 'dbtmodel-light-grey',
+  DBTMODEL_PRIMERY: 'dbtmodel-primery',
   DBTMODEL: 'dbtmodel',
   VERSION: 'icon-version',
   VERSION_WHITE: 'icon-version-white',
+  VERSION_BLACK: 'icon-version-black',
   ICON_DEPLOY: 'icon-deploy',
   TOUR: 'tour',
   ICON_PLUS: 'icon-plus',
   ICON_MINUS: 'icon-minus',
   TAG: 'icon-tag',
+  TAG_GREY: 'icon-tag-grey',
   TIER: 'icon-tier',
   SEARCHV1: 'icon-searchv1',
+  SCHEMACOLOR: 'icon-schemacolor',
+  CONFIGCOLOR: 'icon-configcolor',
+  LINEAGECOLOR: 'icon-lineagecolor',
+  PROFILERCOLOR: 'icon-profilercolor',
+  MANAGECOLOR: 'icon-managecolor',
+  SEARCHV1COLOR: 'icon-searchv1color',
 };
 
 const SVGIcons: FunctionComponent<Props> = ({
@@ -479,6 +497,10 @@ const SVGIcons: FunctionComponent<Props> = ({
       IconComponent = IconVersionWhite;
 
       break;
+    case Icons.VERSION_BLACK:
+      IconComponent = IconVersionBlack;
+
+      break;
     case Icons.ICON_DEPLOY:
       IconComponent = IconDeploy;
 
@@ -503,8 +525,16 @@ const SVGIcons: FunctionComponent<Props> = ({
       IconComponent = IconDBTModel;
 
       break;
+    case Icons.DBTMODEL_PRIMERY:
+      IconComponent = IconDBTModelPrimeryColor;
+
+      break;
     case Icons.TAG:
       IconComponent = IconTag;
+
+      break;
+    case Icons.TAG_GREY:
+      IconComponent = IconTagGrey;
 
       break;
     case Icons.TIER:
@@ -513,6 +543,30 @@ const SVGIcons: FunctionComponent<Props> = ({
       break;
     case Icons.SEARCHV1:
       IconComponent = IconSearchV1;
+
+      break;
+    case Icons.CONFIGCOLOR:
+      IconComponent = IconConfigColor;
+
+      break;
+    case Icons.LINEAGECOLOR:
+      IconComponent = IconLineageColor;
+
+      break;
+    case Icons.MANAGECOLOR:
+      IconComponent = IconManageColor;
+
+      break;
+    case Icons.PROFILERCOLOR:
+      IconComponent = IconProfilerColor;
+
+      break;
+    case Icons.SCHEMACOLOR:
+      IconComponent = IconSchemaColor;
+
+      break;
+    case Icons.SEARCHV1COLOR:
+      IconComponent = IconSearchV1Color;
 
       break;
 

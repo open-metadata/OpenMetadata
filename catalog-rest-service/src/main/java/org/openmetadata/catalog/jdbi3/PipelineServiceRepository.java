@@ -13,6 +13,11 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import java.io.IOException;
+import java.net.URI;
+import java.util.Date;
+import java.util.List;
+import java.util.UUID;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.services.PipelineService;
@@ -25,20 +30,18 @@ import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
 
-import java.io.IOException;
-import java.net.URI;
-import java.text.ParseException;
-import java.util.Date;
-import java.util.List;
-import java.util.UUID;
-
-
 public class PipelineServiceRepository extends EntityRepository<PipelineService> {
   private final CollectionDAO dao;
 
   public PipelineServiceRepository(CollectionDAO dao) {
-    super(PipelineServiceResource.COLLECTION_PATH, Entity.PIPELINE_SERVICE, PipelineService.class,
-            dao.pipelineServiceDAO(), dao, Fields.EMPTY_FIELDS, Fields.EMPTY_FIELDS);
+    super(
+        PipelineServiceResource.COLLECTION_PATH,
+        Entity.PIPELINE_SERVICE,
+        PipelineService.class,
+        dao.pipelineServiceDAO(),
+        dao,
+        Fields.EMPTY_FIELDS,
+        Fields.EMPTY_FIELDS);
     this.dao = dao;
   }
 
@@ -49,15 +52,12 @@ public class PipelineServiceRepository extends EntityRepository<PipelineService>
   }
 
   @Override
-  public PipelineService setFields(PipelineService entity, Fields fields) throws IOException, ParseException {
+  public PipelineService setFields(PipelineService entity, Fields fields) {
     return entity;
   }
 
   @Override
-  public void restorePatchAttributes(PipelineService original, PipelineService updated) throws IOException,
-          ParseException {
-
-  }
+  public void restorePatchAttributes(PipelineService original, PipelineService updated) {}
 
   @Override
   public EntityInterface<PipelineService> getEntityInterface(PipelineService entity) {
@@ -65,7 +65,7 @@ public class PipelineServiceRepository extends EntityRepository<PipelineService>
   }
 
   @Override
-  public void prepare(PipelineService entity) throws IOException {
+  public void prepare(PipelineService entity) {
     EntityUtil.validateIngestionSchedule(entity.getIngestionSchedule());
   }
 
@@ -79,12 +79,10 @@ public class PipelineServiceRepository extends EntityRepository<PipelineService>
   }
 
   @Override
-  public void storeRelationships(PipelineService entity) throws IOException {
-
-  }
+  public void storeRelationships(PipelineService entity) {}
 
   @Override
-  public EntityUpdater getUpdater(PipelineService original, PipelineService updated, boolean patchOperation) throws IOException {
+  public EntityUpdater getUpdater(PipelineService original, PipelineService updated, boolean patchOperation) {
     return new PipelineServiceUpdater(original, updated, patchOperation);
   }
 
@@ -111,25 +109,39 @@ public class PipelineServiceRepository extends EntityRepository<PipelineService>
     }
 
     @Override
-    public EntityReference getOwner() { return null; }
+    public EntityReference getOwner() {
+      return null;
+    }
 
     @Override
-    public String getFullyQualifiedName() { return entity.getName(); }
+    public String getFullyQualifiedName() {
+      return entity.getName();
+    }
 
     @Override
-    public List<TagLabel> getTags() { return null; }
+    public List<TagLabel> getTags() {
+      return null;
+    }
 
     @Override
-    public Double getVersion() { return entity.getVersion(); }
+    public Double getVersion() {
+      return entity.getVersion();
+    }
 
     @Override
-    public String getUpdatedBy() { return entity.getUpdatedBy(); }
+    public String getUpdatedBy() {
+      return entity.getUpdatedBy();
+    }
 
     @Override
-    public Date getUpdatedAt() { return entity.getUpdatedAt(); }
+    public Date getUpdatedAt() {
+      return entity.getUpdatedAt();
+    }
 
     @Override
-    public URI getHref() { return entity.getHref(); }
+    public URI getHref() {
+      return entity.getHref();
+    }
 
     @Override
     public List<EntityReference> getFollowers() {
@@ -137,19 +149,29 @@ public class PipelineServiceRepository extends EntityRepository<PipelineService>
     }
 
     @Override
-    public ChangeDescription getChangeDescription() { return entity.getChangeDescription(); }
-
-    @Override
-    public EntityReference getEntityReference() {
-      return new EntityReference().withId(getId()).withName(getFullyQualifiedName()).withDescription(getDescription())
-              .withDisplayName(getDisplayName()).withType(Entity.PIPELINE_SERVICE);
+    public ChangeDescription getChangeDescription() {
+      return entity.getChangeDescription();
     }
 
     @Override
-    public PipelineService getEntity() { return entity; }
+    public EntityReference getEntityReference() {
+      return new EntityReference()
+          .withId(getId())
+          .withName(getFullyQualifiedName())
+          .withDescription(getDescription())
+          .withDisplayName(getDisplayName())
+          .withType(Entity.PIPELINE_SERVICE);
+    }
 
     @Override
-    public void setId(UUID id) { entity.setId(id); }
+    public PipelineService getEntity() {
+      return entity;
+    }
+
+    @Override
+    public void setId(UUID id) {
+      entity.setId(id);
+    }
 
     @Override
     public void setDescription(String description) {
@@ -174,13 +196,15 @@ public class PipelineServiceRepository extends EntityRepository<PipelineService>
     }
 
     @Override
-    public void setOwner(EntityReference owner) { }
+    public void setOwner(EntityReference owner) {}
 
     @Override
-    public PipelineService withHref(URI href) { return entity.withHref(href); }
+    public PipelineService withHref(URI href) {
+      return entity.withHref(href);
+    }
 
     @Override
-    public void setTags(List<TagLabel> tags) { }
+    public void setTags(List<TagLabel> tags) {}
   }
 
   public class PipelineServiceUpdater extends EntityUpdater {
@@ -191,8 +215,11 @@ public class PipelineServiceRepository extends EntityRepository<PipelineService>
     @Override
     public void entitySpecificUpdate() throws IOException {
       recordChange("pipelineUrl", original.getEntity().getPipelineUrl(), updated.getEntity().getPipelineUrl());
-      recordChange("ingestionSchedule", original.getEntity().getIngestionSchedule(),
-              updated.getEntity().getIngestionSchedule(), true);
+      recordChange(
+          "ingestionSchedule",
+          original.getEntity().getIngestionSchedule(),
+          updated.getEntity().getIngestionSchedule(),
+          true);
     }
   }
 }

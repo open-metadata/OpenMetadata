@@ -68,7 +68,27 @@
         "type": "long"
       },
       "change_descriptions": {
-        "type": "nested"
+        "type": "nested",
+        "properties": {
+          "updatedAt": {
+            "type": "long"
+          },
+          "updatedBy": {
+            "type": "text"
+          },
+          "fieldsAdded": {
+            "type": "object",
+            "enabled": false
+          },
+          "fieldsDeleted": {
+            "type": "object",
+            "enabled": false
+          },
+          "fieldsUpdated": {
+            "type": "object",
+            "enabled": false
+          }
+        }
       }
     }
 }

@@ -71,7 +71,7 @@
     @apply tw-border tw-border-main tw-leading-normal;
   }
   .tableHead-cell {
-    @apply tw-py-3 tw-px-6 tw-text-left tw-font-normal tw-whitespace-nowrap;
+    @apply tw-py-3 tw-px-6 tw-font-medium tw-text-left tw-whitespace-nowrap;
   }
   .tableBody {
     @apply tw-text-grey-body;
@@ -94,7 +94,7 @@
     @apply tw-text-grey-body tw-font-normal tw-pt-4 tw-pb-2 tw-px-6 tw-border-b-2 tw-border-transparent hover:tw-border-main focus:tw-outline-none;
   }
   .tw-gh-tabs.active {
-    @apply tw-text-grey-dark tw-border-b-2 tw-border-primary;
+    @apply tw-border-b-2 tw-border-primary tw-text-primary tw-font-medium;
   }
   .tw-gh-tabs:disabled {
     @apply tw-opacity-50 tw-pointer-events-none hover:tw-border-none;
@@ -153,10 +153,6 @@
   }
   .tw-has-tooltip:hover .tw-tooltip {
     @apply tw-visible tw-z-50;
-  }
-
-  .tw-tag {
-    @apply tw-py-1 tw-px-3 tw-text-xs tw-font-normal tw-rounded-2xl tw-bg-tag;
   }
 
   .tw-signin-button {
