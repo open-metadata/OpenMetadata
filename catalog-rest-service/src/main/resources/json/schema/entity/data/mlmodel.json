@@ -84,6 +84,10 @@
         "fullyQualifiedName": {
           "$ref": "#/definitions/fullyQualifiedFeatureSourceName"
         },
+        "dataSource": {
+          "description": "Description of the Data Source (e.g., a Table)",
+          "$ref" : "../../type/entityReference.json"
+        },
         "tags": {
           "description": "Tags associated with the feature source.",
           "type": "array",
