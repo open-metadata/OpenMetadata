@@ -62,22 +62,15 @@ const SearchedData: React.FC<SearchedDataProp> = ({
   const highlightSearchResult = () => {
     return data.map((table, index) => {
       let tDesc = table.description;
-      const highLightedTexts = !isEmpty(table.highlight?.description)
-        ? table.highlight?.description.join(' ') || ''
-        : '';
-      const highlightTxtMatch = highLightedTexts.match(
-        /<span(.*?)>(.*?)<\/span>/g
-      );
-      if (highlightTxtMatch) {
-        const matchTextArr = highlightTxtMatch.map((val) =>
+      const highLightedTexts = table.highlight?.description || [];
+
+      if (highLightedTexts) {
+        const matchTextArr = highLightedTexts.map((val) =>
           val.replace(/<\/?span(.*?)>/g, '')
         );
-        matchTextArr.forEach((text) => {
-          const regEx = new RegExp(`\\b${text}\\b`, 'g');
-          tDesc = tDesc.replace(
-            regEx,
-            `<span class="text-highlighter">${text}</span>`
-          );
+
+        matchTextArr.forEach((text, i) => {
+          tDesc = tDesc.replace(text, highLightedTexts[i]);
         });
       }
 
