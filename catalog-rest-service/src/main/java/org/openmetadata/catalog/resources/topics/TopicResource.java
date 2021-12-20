@@ -31,7 +31,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import javax.json.JsonPatch;
@@ -93,7 +92,6 @@ public class TopicResource {
 
   @Inject
   public TopicResource(CollectionDAO dao, CatalogAuthorizer authorizer) {
-    Objects.requireNonNull(dao, "CollectionDAO must not be null");
     this.dao = new TopicRepository(dao);
     this.authorizer = authorizer;
   }

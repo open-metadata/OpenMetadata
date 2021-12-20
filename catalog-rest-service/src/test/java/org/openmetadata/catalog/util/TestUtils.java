@@ -18,12 +18,12 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.catalog.security.SecurityUtil.addHeaders;
 
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -32,7 +32,6 @@ import java.util.stream.Collectors;
 import javax.json.JsonObject;
 import javax.json.JsonPatch;
 import javax.ws.rs.client.Entity;
-import javax.ws.rs.client.Invocation.Builder;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
@@ -45,6 +44,7 @@ import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.resources.tags.TagResourceTest;
 import org.openmetadata.catalog.resources.teams.UserResourceTest;
 import org.openmetadata.catalog.security.CatalogOpenIdAuthorizationRequestFilter;
+import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.JdbcInfo;
 import org.openmetadata.catalog.type.Tag;
@@ -101,17 +101,6 @@ public final class TestUtils {
   }
 
   private TestUtils() {}
-
-  public static Builder addHeaders(WebTarget target, Map<String, String> headers) {
-    if (headers != null) {
-      return target
-          .request()
-          .header(
-              CatalogOpenIdAuthorizationRequestFilter.X_AUTH_PARAMS_EMAIL_HEADER,
-              headers.get(CatalogOpenIdAuthorizationRequestFilter.X_AUTH_PARAMS_EMAIL_HEADER));
-    }
-    return target.request();
-  }
 
   public static void readResponseError(Response response) throws HttpResponseException {
     JsonObject error = response.readEntity(JsonObject.class);
@@ -246,14 +235,6 @@ public final class TestUtils {
     Optional.ofNullable(list).orElse(Collections.emptyList()).forEach(TestUtils::validateEntityReference);
   }
 
-  public static Map<String, String> authHeaders(String username) {
-    Map<String, String> headers = new HashMap<>();
-    if (username != null) {
-      headers.put(CatalogOpenIdAuthorizationRequestFilter.X_AUTH_PARAMS_EMAIL_HEADER, username);
-    }
-    return headers;
-  }
-
   public static void validateTags(List<TagLabel> expectedList, List<TagLabel> actualList) throws HttpResponseException {
     if (expectedList == null) {
       return;
@@ -283,11 +264,11 @@ public final class TestUtils {
   }
 
   public static Map<String, String> adminAuthHeaders() {
-    return authHeaders("admin@open-metadata.org");
+    return SecurityUtil.authHeaders("admin@open-metadata.org");
   }
 
   public static Map<String, String> userAuthHeaders() {
-    return authHeaders("test@open-metadata.org");
+    return SecurityUtil.authHeaders("test@open-metadata.org");
   }
 
   public static void checkUserFollowing(

@@ -30,7 +30,6 @@ import java.text.ParseException;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
-import java.util.Objects;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -93,7 +92,6 @@ public class TableResource {
 
   @Inject
   public TableResource(CollectionDAO dao, CatalogAuthorizer authorizer) {
-    Objects.requireNonNull(dao, "CollectionDAO must not be null");
     this.dao = new TableRepository(dao);
     this.authorizer = authorizer;
   }

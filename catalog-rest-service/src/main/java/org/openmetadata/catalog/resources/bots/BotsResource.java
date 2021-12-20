@@ -25,7 +25,6 @@ import java.security.GeneralSecurityException;
 import java.text.ParseException;
 import java.util.Date;
 import java.util.List;
-import java.util.Objects;
 import java.util.UUID;
 import javax.validation.constraints.Max;
 import javax.validation.constraints.Min;
@@ -64,7 +63,6 @@ public class BotsResource {
 
   @Inject
   public BotsResource(CollectionDAO dao, CatalogAuthorizer authorizer) {
-    Objects.requireNonNull(dao, "CollectionDAO must not be null");
     this.dao = new BotsRepository(dao);
     this.authorizer = authorizer;
   }

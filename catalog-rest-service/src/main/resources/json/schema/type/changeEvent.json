@@ -33,7 +33,8 @@
           }
         }
       },
-      "required": ["eventType"]
+      "required": ["eventType"],
+      "additionalProperties": false
     }
   },
   "properties" : {
