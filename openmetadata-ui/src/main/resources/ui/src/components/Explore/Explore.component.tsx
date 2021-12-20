@@ -385,7 +385,7 @@ const Explore: React.FC<ExploreProps> = ({
   const getTabs = () => {
     return (
       <div className="tw-mb-5">
-        <nav className="tw-flex tw-flex-row tw-gh-tabs-container tw-mx-9 xl:tw-pr-64 lg:tw-pr-0 tw-justify-between">
+        <nav className="tw-flex tw-flex-row tw-gh-tabs-container tw-mx-9 lg:tw-pr-0 tw-justify-between">
           <div className="tw-flex">
             <div className="tw-w-72 tw-flex-shrink-0">
               <Button
