@@ -1,6 +1,8 @@
 # Run Integration Tests
 
 {% hint style="info" %}
+**The integration tests don't work at the moment.**
+
 Make sure OpenMetadata is up and running. Refer to instructions [building and running](build-code-run-tests.md).
 {% endhint %}
 

@@ -77,6 +77,8 @@ openmetadata-ui/src/main/resources/ui/tsconfig.tsbuildinfo
 
 # Python generated sources
 ingestion/src/metadata/generated/**
+ingestion/requirements.txt
+ingestion/.python-version
 
 # MLFlow
 mlruns/
