@@ -278,7 +278,7 @@ const Appbar: React.FC = (): JSX.Element => {
                   alt="Doc icon"
                   className="tw-align-middle tw-mr-1"
                   icon={Icons.WHATS_NEW}
-                  width="16"
+                  width="20"
                 />
                 {/* <span>What&#39;s new</span> */}
               </button>
@@ -305,7 +305,7 @@ const Appbar: React.FC = (): JSX.Element => {
                       alt="Doc icon"
                       className="tw-align-middle tw-mt-0.5 tw-mr-1"
                       icon={Icons.HELP_CIRCLE}
-                      width="16"
+                      width="20"
                     />
                   }
                   isDropDownIconVisible={false}
