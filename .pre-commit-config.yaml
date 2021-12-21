@@ -20,3 +20,12 @@ repos:
         language: script
         files: \.java$ # We don't technically need this, as the script will filter for us, but this will allow the hook to be skipped if no Java is changed.
         require_serial: true
+  - repo: local
+    hooks:
+      - id: lint-staged
+        name: lint-staged
+        description: Formats TS and JS code.
+        entry: scripts/lint-staged.sh
+        language: script
+        files: \.(js|jsx|ts|tsx)$
+        require_serial: true
