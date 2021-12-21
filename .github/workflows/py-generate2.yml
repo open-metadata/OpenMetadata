@@ -24,7 +24,7 @@ jobs:
     defaults:
       run:
         shell: bash
-        working-directory: ingestion-generated
+        working-directory: ingestion-core
     steps:
       - uses: actions/checkout@v2
       - name: Set up Python 3.9
