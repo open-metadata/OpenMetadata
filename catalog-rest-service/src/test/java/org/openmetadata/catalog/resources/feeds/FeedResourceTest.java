@@ -19,8 +19,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
+import static org.openmetadata.catalog.security.SecurityUtil.authHeaders;
 import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
-import static org.openmetadata.catalog.util.TestUtils.authHeaders;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
@@ -85,7 +85,7 @@ public class FeedResourceTest extends CatalogApplicationTest {
     // Create thread without addressed to entity in the request
     CreateThread create = create().withFrom(USER.getId()).withAbout(null);
     HttpResponseException exception =
-        assertThrows(HttpResponseException.class, () -> createThread(create, TestUtils.authHeaders(USER.getEmail())));
+        assertThrows(HttpResponseException.class, () -> createThread(create, authHeaders(USER.getEmail())));
     TestUtils.assertResponse(exception, BAD_REQUEST, "[about must not be null]");
   }
 
@@ -93,7 +93,7 @@ public class FeedResourceTest extends CatalogApplicationTest {
   public void post_feedWithInvalidAbout_4xx() {
     // Create thread without addressed to entity in the request
     CreateThread create = create().withFrom(USER.getId()).withAbout("<>"); // Invalid EntityLink
-    Map<String, String> authHeaders = TestUtils.authHeaders(USER.getEmail());
+    Map<String, String> authHeaders = authHeaders(USER.getEmail());
     HttpResponseException exception =
         assertThrows(HttpResponseException.class, () -> createThread(create, authHeaders));
     TestUtils.assertResponseContains(exception, BAD_REQUEST, "[about must match \"^<#E/\\S+/\\S+>$\"]");

@@ -111,11 +111,14 @@ public class MlModelRepository extends EntityRepository<MlModel> {
     return dao.tagDAO().getTags(fqn);
   }
 
-  private void setMlFeatureSourcesFQN(String parentFQN, List<MlFeatureSource> mlSources) {
+  private void setMlFeatureSourcesFQN(List<MlFeatureSource> mlSources) {
     mlSources.forEach(
         s -> {
-          String sourceFqn = parentFQN + "." + s.getName();
-          s.setFullyQualifiedName(sourceFqn);
+          if (s.getDataSource() != null) {
+            s.setFullyQualifiedName(s.getDataSource().getName() + "." + s.getName());
+          } else {
+            s.setFullyQualifiedName(s.getName());
+          }
         });
   }
 
@@ -125,9 +128,26 @@ public class MlModelRepository extends EntityRepository<MlModel> {
           String featureFqn = parentFQN + "." + f.getName();
           f.setFullyQualifiedName(featureFqn);
           if (f.getFeatureSources() != null) {
-            setMlFeatureSourcesFQN(featureFqn, f.getFeatureSources());
+            setMlFeatureSourcesFQN(f.getFeatureSources());
           }
         });
+  }
+
+  /** Make sure that all the MlFeatureSources are pointing to correct EntityReferences in tha Table DAO. */
+  private void validateReferences(List<MlFeature> mlFeatures) throws IOException {
+    for (MlFeature feature : mlFeatures) {
+      if (feature.getFeatureSources() != null && !feature.getFeatureSources().isEmpty()) {
+        for (MlFeatureSource source : feature.getFeatureSources()) {
+          validateMlDataSource(source);
+        }
+      }
+    }
+  }
+
+  private void validateMlDataSource(MlFeatureSource source) throws IOException {
+    if (source.getDataSource() != null) {
+      Entity.getEntityReference(source.getDataSource().getType(), source.getDataSource().getId());
+    }
   }
 
   @Override
@@ -135,6 +155,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
     mlModel.setFullyQualifiedName(getFQN(mlModel));
 
     if (mlModel.getMlFeatures() != null && !mlModel.getMlFeatures().isEmpty()) {
+      validateReferences(mlModel.getMlFeatures());
       setMlFeatureFQN(mlModel.getFullyQualifiedName(), mlModel.getMlFeatures());
     }
 

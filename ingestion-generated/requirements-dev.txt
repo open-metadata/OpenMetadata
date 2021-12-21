@@ -1,0 +1,3 @@
+datamodel-code-generator==0.11.14
+twine
+wheel

@@ -332,6 +332,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
 
                 description = _get_table_description(schema, view_name, inspector)
                 table_columns = self._get_columns(schema, view_name, inspector)
+                view_name = view_name.replace(".", "_DOT_")
                 fqn = f"{self.config.service_name}.{self.config.database}.{schema}.{view_name}"
                 table = Table(
                     id=uuid.uuid4(),
@@ -358,11 +359,9 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                 continue
 
     def _parse_data_model(self):
-        logger.info("Parsing Data Models")
-        if (
-            self.config.dbt_manifest_file is not None
-            and self.config.dbt_catalog_file is not None
-        ):
+
+        if self.config.dbt_manifest_file and self.config.dbt_catalog_file:
+            logger.info("Parsing Data Models")
             manifest_nodes = self.dbt_manifest["nodes"]
             manifest_sources = self.dbt_manifest["sources"]
             manifest_entities = {**manifest_nodes, **manifest_sources}
@@ -383,15 +382,17 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                 model_name = (
                     mnode["alias"] if "alias" in mnode.keys() else mnode["name"]
                 )
+                model_name = model_name.replace(".", "_DOT_")
                 description = mnode.get("description", "")
                 schema = mnode["schema"]
                 path = f"{mnode['root_path']}/{mnode['original_file_path']}"
+                raw_sql = mnode.get("raw_sql", "")
                 model = DataModel(
                     modelType=ModelType.DBT,
                     description=description,
                     path=path,
-                    rawSql=mnode["raw_sql"] if "raw_sql" in mnode else None,
-                    sql=mnode["compiled_sql"] if "compiled_sql" in mnode else None,
+                    rawSql=raw_sql,
+                    sql=mnode.get("compiled_sql", raw_sql),
                     columns=columns,
                     upstream=upstream_nodes,
                 )
@@ -402,9 +403,14 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         upstream_nodes = []
         if "depends_on" in mnode and "nodes" in mnode["depends_on"]:
             for node in mnode["depends_on"]["nodes"]:
-                node_type, database, table = node.split(".")
-                table_fqn = f"{self.config.service_name}.{database}.{table}"
-                upstream_nodes.append(table_fqn)
+                try:
+                    node_type, database, table = node.split(".", 2)
+                    table = table.replace(".", "_DOT_")
+                    table_fqn = f"{self.config.service_name}.{database}.{table}"
+                    upstream_nodes.append(table_fqn)
+                except Exception as e:
+                    logger.error(f"Failed to parse the node {node} to capture lineage")
+                    continue
         return upstream_nodes
 
     def _get_data_model(self, schema, table_name):

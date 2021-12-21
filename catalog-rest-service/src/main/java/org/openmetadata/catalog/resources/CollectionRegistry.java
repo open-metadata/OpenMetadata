@@ -25,6 +25,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import javax.ws.rs.Path;
 import javax.ws.rs.core.UriInfo;
@@ -144,6 +145,7 @@ public final class CollectionRegistry {
       String resourceClass = details.resourceClass;
       try {
         CollectionDAO daoObject = jdbi.onDemand(CollectionDAO.class);
+        Objects.requireNonNull(daoObject);
         Object resource = createResource(daoObject, resourceClass, config, authorizer);
         environment.jersey().register(resource);
         LOG.info("Registering {}", resourceClass);

@@ -210,7 +210,7 @@ const TeamsPage = () => {
     return (
       <>
         <div
-          className="tw-grid xl:tw-grid-cols-4 md:tw-grid-cols-3 tw-gap-4"
+          className="tw-grid xxl:tw-grid-cols-4 lg:tw-grid-cols-3 md:tw-grid-cols-2 tw-gap-4"
           data-testid="user-card-container">
           {currentTeam?.users?.map((user, index) => {
             const User = {
@@ -255,7 +255,7 @@ const TeamsPage = () => {
     return (
       <>
         <div
-          className="tw-grid xl:tw-grid-cols-4 md:tw-grid-cols-3 tw-gap-4"
+          className="tw-grid xxl:tw-grid-cols-4 md:tw-grid-cols-3 tw-gap-4"
           data-testid="dataset-card">
           {' '}
           {currentTeam?.owns?.map((dataset, index) => {
