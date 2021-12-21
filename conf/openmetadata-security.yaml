@@ -23,7 +23,7 @@ server:
       port: 8586
 
 # Above configuration for running http is fine for dev and testing.
-# For production setup, where UI app will hit apis through DPS it 
+# For production setup, where UI app will hit apis through DPS it
 # is strongly recommended to run https instead. Note that only
 # keyStorePath and keyStorePassword are mandatory properties. Values
 # for other properties are defaults
@@ -31,7 +31,7 @@ server:
   #applicationConnectors:
   #  - type: https
   #    port: 8585
-  #    keyStorePath: ./conf/keystore.jks 
+  #    keyStorePath: ./conf/keystore.jks
   #    keyStorePassword: changeit
   #    keyStoreType: JKS
   #    keyStoreProvider:
@@ -55,12 +55,12 @@ server:
   #    supportedCipherSuites: TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256
   #    allowRenegotiation: true
   #    endpointIdentificationAlgorithm: (none)
- 
+
   #adminConnectors:
   #  - type: https
   #    port: 8586
-  #    keyStorePath: ./conf/keystore.jks 
-  #    keyStorePassword: changeit 
+  #    keyStorePath: ./conf/keystore.jks
+  #    keyStorePassword: changeit
   #    keyStoreType: JKS
   #    keyStoreProvider:
   #    trustStorePath: /path/to/file
@@ -109,7 +109,7 @@ database:
   user: openmetadata_user
   password: openmetadata_password
   # the JDBC URL; the database is called openmetadata_db
-  url: jdbc:mysql://localhost/openmetadata_db?useSSL=false&serverTimezone=UTC
+  url: jdbc:mysql://localhost/openmetadata_db?allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC
 
 
 # Authorizer Configuration
@@ -129,7 +129,7 @@ authenticationConfiguration:
   authority: "https://accounts.google.com"
   clientId: "261867039324-neb92r2147i6upchb78tv29idk079bps.apps.googleusercontent.com"
   callbackUrl: "http://localhost:8585/callback"
-  
+
 elasticsearch:
   host: localhost
   port: 9200
@@ -160,4 +160,3 @@ health:
         downtimeInterval: 10s
         failureAttempts: 2
         successAttempts: 1
-
