@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import 'bootstrap/dist/css/bootstrap.min.css';
 import 'tailwindcss/tailwind.css';
 import './fonts.css';
 import './myDataDetailsTemp.css';
