@@ -35,6 +35,7 @@ import NonAdminAction from '../common/non-admin-action/NonAdminAction';
 import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
 import TabsPane from '../common/TabsPane/TabsPane';
 import PageContainer from '../containers/PageContainer';
+import Entitylineage from '../EntityLineage/EntityLineage.component';
 import ManageTabComponent from '../ManageTab/ManageTab.component';
 import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import TagsContainer from '../tags-container/tags-container';
@@ -64,6 +65,10 @@ const DashboardDetails = ({
   charts,
   chartDescriptionUpdateHandler,
   chartTagUpdateHandler,
+  entityLineage,
+  isNodeLoading,
+  lineageLeafNodes,
+  loadNodeHandler,
 }: DashboardDetailsProps) => {
   const { isAuthDisabled } = useAuth();
   const [isEdit, setIsEdit] = useState(false);
@@ -103,6 +108,17 @@ const DashboardDetails = ({
       position: 1,
     },
     {
+      name: 'Lineage',
+      icon: {
+        alt: 'lineage',
+        name: 'icon-lineage',
+        title: 'Lineage',
+        selectedName: 'icon-lineagecolor',
+      },
+      isProtected: false,
+      position: 2,
+    },
+    {
       name: 'Manage',
       icon: {
         alt: 'manage',
@@ -112,7 +128,7 @@ const DashboardDetails = ({
       },
       isProtected: true,
       protectedState: !owner || hasEditAccess(),
-      position: 2,
+      position: 3,
     },
   ];
 
@@ -464,6 +480,16 @@ const DashboardDetails = ({
                 </>
               )}
               {activeTab === 2 && (
+                <div className="tw-h-full">
+                  <Entitylineage
+                    entityLineage={entityLineage}
+                    isNodeLoading={isNodeLoading}
+                    lineageLeafNodes={lineageLeafNodes}
+                    loadNodeHandler={loadNodeHandler}
+                  />
+                </div>
+              )}
+              {activeTab === 3 && (
                 <div className="tw-mt-4">
                   <ManageTabComponent
                     currentTier={tier?.tagFQN}

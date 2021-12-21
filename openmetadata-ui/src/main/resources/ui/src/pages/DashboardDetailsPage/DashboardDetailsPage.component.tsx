@@ -13,7 +13,13 @@
 
 import { AxiosPromise, AxiosResponse } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
-import { EntityTags, TableDetail } from 'Models';
+import {
+  EntityTags,
+  LeafNodes,
+  LineagePos,
+  LoadingNodeState,
+  TableDetail,
+} from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import AppState from '../../AppState';
@@ -24,6 +30,7 @@ import {
   patchDashboardDetails,
   removeFollower,
 } from '../../axiosAPIs/dashboardAPI';
+import { getLineageByFQN } from '../../axiosAPIs/lineageAPI';
 import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
 import DashboardDetails from '../../components/DashboardDetails/DashboardDetails.component';
 import Loader from '../../components/Loader/Loader';
@@ -36,12 +43,15 @@ import { ServiceCategory } from '../../enums/service.enum';
 import { Chart } from '../../generated/entity/data/chart';
 import { Dashboard } from '../../generated/entity/data/dashboard';
 import { User } from '../../generated/entity/teams/user';
+import { EntityLineage } from '../../generated/type/entityLineage';
+import { EntityReference } from '../../generated/type/entityReference';
 import { TagLabel } from '../../generated/type/tagLabel';
 import { addToRecentViewed, getCurrentUserId } from '../../utils/CommonUtils';
 import {
   dashboardDetailsTabs,
   getCurrentDashboardTab,
 } from '../../utils/DashboardDetailsUtils';
+import { getEntityLineage } from '../../utils/EntityUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import {
   getOwnerFromId,
@@ -79,7 +89,15 @@ const DashboardDetailsPage = () => {
   const [slashedDashboardName, setSlashedDashboardName] = useState<
     TitleBreadcrumbProps['titleLinks']
   >([]);
-
+  const [entityLineage, setEntityLineage] = useState<EntityLineage>(
+    {} as EntityLineage
+  );
+  const [isLineageLoading, setIsLineageLoading] = useState<boolean>(true);
+  const [leafNodes, setLeafNodes] = useState<LeafNodes>({} as LeafNodes);
+  const [isNodeLoading, setNodeLoading] = useState<LoadingNodeState>({
+    id: undefined,
+    state: false,
+  });
   const activeTabHandler = (tabValue: number) => {
     const currentTabIndex = tabValue - 1;
     if (dashboardDetailsTabs[currentTabIndex].path !== tab) {
@@ -142,6 +160,32 @@ const DashboardDetailsPage = () => {
     return chartsData;
   };
 
+  const setLeafNode = (val: EntityLineage, pos: LineagePos) => {
+    if (pos === 'to' && val.downstreamEdges?.length === 0) {
+      setLeafNodes((prev) => ({
+        ...prev,
+        downStreamNode: [...(prev.downStreamNode ?? []), val.entity.id],
+      }));
+    }
+    if (pos === 'from' && val.upstreamEdges?.length === 0) {
+      setLeafNodes((prev) => ({
+        ...prev,
+        upStreamNode: [...(prev.upStreamNode ?? []), val.entity.id],
+      }));
+    }
+  };
+
+  const loadNodeHandler = (node: EntityReference, pos: LineagePos) => {
+    setNodeLoading({ id: node.id, state: true });
+    getLineageByFQN(node.name, node.type).then((res: AxiosResponse) => {
+      setLeafNode(res.data, pos);
+      setEntityLineage(getEntityLineage(entityLineage, res.data, pos));
+      setTimeout(() => {
+        setNodeLoading((prev) => ({ ...prev, state: false }));
+      }, 500);
+    });
+  };
+
   const fetchDashboardDetail = (dashboardFQN: string) => {
     setLoading(true);
     getDashboardByFqn(dashboardFQN, [
@@ -198,6 +242,14 @@ const DashboardDetailsPage = () => {
         serviceType: serviceType,
         timestamp: 0,
       });
+
+      getLineageByFQN(dashboardFQN, EntityType.DASHBOARD)
+        .then((res: AxiosResponse) => {
+          setEntityLineage(res.data);
+        })
+        .finally(() => {
+          setIsLineageLoading(false);
+        });
 
       setDashboardUrl(dashboardUrl);
       fetchCharts(charts).then((charts) => setCharts(charts));
@@ -296,7 +348,7 @@ const DashboardDetailsPage = () => {
 
   return (
     <>
-      {isLoading ? (
+      {isLoading || isLineageLoading ? (
         <Loader />
       ) : (
         <DashboardDetails
@@ -309,9 +361,13 @@ const DashboardDetailsPage = () => {
           dashboardUrl={dashboardUrl}
           description={description}
           descriptionUpdateHandler={descriptionUpdateHandler}
+          entityLineage={entityLineage}
           entityName={displayName}
           followDashboardHandler={followDashboard}
           followers={followers}
+          isNodeLoading={isNodeLoading}
+          lineageLeafNodes={leafNodes}
+          loadNodeHandler={loadNodeHandler}
           owner={owner}
           serviceType={serviceType}
           setActiveTabHandler={activeTabHandler}
