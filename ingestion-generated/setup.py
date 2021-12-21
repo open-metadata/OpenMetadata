@@ -10,7 +10,7 @@
 #  limitations under the License.
 import os
 
-from setuptools import setup, find_namespace_packages
+from setuptools import find_namespace_packages, setup
 
 
 def get_long_description():
@@ -20,20 +20,21 @@ def get_long_description():
     return description
 
 
-setup(name="openmetadata-ingestion-generated",
-      version="0.5.0",
-      url="https://open-metadata.org/",
-      author="OpenMetadata Committers",
-      license="Apache License 2.0",
-      description="These are the generated Python classes from JSON Schema",
-      long_description=get_long_description(),
-      long_description_content_type="text/markdown",
-      python_requires=">=3.8",
-      package_dir={"": "src"},
-      zip_safe=False,
-      project_urls={
-          "Documentation": "https://docs.open-metadata.org/",
-          "Source": "https://github.com/open-metadata/OpenMetadata",
-      },
-      packages=find_namespace_packages(where="./src", exclude=["tests*"]),
-      )
+setup(
+    name="openmetadata-ingestion-generated",
+    version="0.6.0.dev0",
+    url="https://open-metadata.org/",
+    author="OpenMetadata Committers",
+    license="Apache License 2.0",
+    description="These are the generated Python classes from JSON Schema",
+    long_description=get_long_description(),
+    long_description_content_type="text/markdown",
+    python_requires=">=3.8",
+    package_dir={"": "src"},
+    zip_safe=False,
+    project_urls={
+        "Documentation": "https://docs.open-metadata.org/",
+        "Source": "https://github.com/open-metadata/OpenMetadata",
+    },
+    packages=find_namespace_packages(where="./src", exclude=["tests*"]),
+)
