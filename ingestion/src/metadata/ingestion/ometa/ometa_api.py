@@ -39,6 +39,7 @@ from metadata.generated.schema.type.entityHistory import EntityVersionHistory
 from metadata.ingestion.ometa.auth_provider import AuthenticationProvider
 from metadata.ingestion.ometa.client import REST, APIError, ClientConfig
 from metadata.ingestion.ometa.mixins.lineageMixin import OMetaLineageMixin
+from metadata.ingestion.ometa.mixins.mlModelMixin import OMetaMlModelMixin
 from metadata.ingestion.ometa.mixins.tableMixin import OMetaTableMixin
 from metadata.ingestion.ometa.openmetadata_rest import (
     Auth0AuthenticationProvider,
@@ -75,7 +76,7 @@ class EntityList(Generic[T], BaseModel):
     after: str = None
 
 
-class OpenMetadata(OMetaLineageMixin, OMetaTableMixin, Generic[T, C]):
+class OpenMetadata(OMetaMlModelMixin, OMetaTableMixin, Generic[T, C]):
     """
     Generic interface to the OpenMetadata API
 
