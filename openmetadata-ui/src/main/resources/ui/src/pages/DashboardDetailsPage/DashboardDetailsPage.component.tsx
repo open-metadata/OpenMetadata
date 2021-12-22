@@ -354,8 +354,8 @@ const DashboardDetailsPage = () => {
         <DashboardDetails
           activeTab={activeTab}
           chartDescriptionUpdateHandler={onChartUpdate}
-          charts={charts}
           chartTagUpdateHandler={handleChartTagSelection}
+          charts={charts}
           dashboardDetails={dashboardDetails}
           dashboardTags={tags}
           dashboardUrl={dashboardUrl}

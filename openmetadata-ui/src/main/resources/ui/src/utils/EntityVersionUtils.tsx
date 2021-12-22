@@ -16,7 +16,7 @@ import { diffArrays, diffWordsWithSpace } from 'diff';
 import { isEmpty, isUndefined, uniqueId } from 'lodash';
 import React, { Fragment } from 'react';
 import ReactDOMServer from 'react-dom/server';
-import ReactMarkdown from 'react-markdown';
+import ReactMarkdown, { PluggableList } from 'react-markdown';
 import { Link } from 'react-router-dom';
 import rehypeRaw from 'rehype-raw';
 import gfm from 'remark-gfm';
@@ -75,7 +75,7 @@ const parseMarkdown = (
         },
       }}
       rehypePlugins={[[rehypeRaw, { allowDangerousHtml: false }]]}
-      remarkPlugins={[gfm]}
+      remarkPlugins={[gfm] as unknown as PluggableList | undefined}
     />
   );
 };

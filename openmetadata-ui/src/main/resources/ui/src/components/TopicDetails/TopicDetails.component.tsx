@@ -275,9 +275,9 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
           isTagEditable
           entityName={entityName}
           extraInfo={extraInfo}
+          followHandler={followTopic}
           followers={followersCount}
           followersList={followers}
-          followHandler={followTopic}
           hasEditAccess={hasEditAccess()}
           isFollowing={isFollowing}
           owner={owner}
