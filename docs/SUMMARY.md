@@ -26,7 +26,6 @@
   * [Presto](openmetadata/connectors/presto.md)
   * [Redash](openmetadata/connectors/redash.md)
   * [Redshift](openmetadata/connectors/redshift.md)
-  * [Redshift (Revised)](connectors/redshift-revised.md)
   * [Redshift Usage](openmetadata/connectors/redshift-usage.md)
   * [Salesforce](openmetadata/connectors/salesforce.md)
   * [Snowflake](openmetadata/connectors/snowflake.md)
