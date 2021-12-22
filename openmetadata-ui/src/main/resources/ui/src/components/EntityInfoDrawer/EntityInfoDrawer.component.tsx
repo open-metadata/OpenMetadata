@@ -254,7 +254,9 @@ const EntityInfoDrawer = ({
           <section className="tw-mt-1">
             <span className="tw-text-grey-muted">Description</span>
             <div>
-              {entityDetail.description ?? (
+              {entityDetail.description?.trim() ? (
+                entityDetail.description
+              ) : (
                 <p className="tw-text-xs tw-text-grey-muted">
                   No description added
                 </p>
