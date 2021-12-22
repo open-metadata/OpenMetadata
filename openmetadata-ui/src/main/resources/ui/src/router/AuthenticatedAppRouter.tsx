@@ -33,7 +33,7 @@ import SwaggerPage from '../pages/swagger';
 import TagsPage from '../pages/tags';
 import TeamsPage from '../pages/teams';
 import TopicDetailsPage from '../pages/TopicDetails/TopicDetailsPage.component';
-import TourPage from '../pages/tour-page';
+import TourPageComponent from '../pages/tour-page/TourPage.component';
 import UserListPage from '../pages/UserListPage/UserListPage';
 const AuthenticatedAppRouter: FunctionComponent = () => {
   const { isAuthDisabled, isAdminUser } = useAuth();
@@ -41,7 +41,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
   return (
     <Switch>
       <Route exact component={MyDataPage} path={ROUTES.MY_DATA} />
-      <Route exact component={TourPage} path={ROUTES.TOUR} />
+      <Route exact component={TourPageComponent} path={ROUTES.TOUR} />
       <Route exact component={ExplorePage} path={ROUTES.EXPLORE} />
       <Route component={ExplorePage} path={ROUTES.EXPLORE_WITH_SEARCH} />
       <Route component={ExplorePage} path={ROUTES.EXPLORE_WITH_TAB} />

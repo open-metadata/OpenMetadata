@@ -105,6 +105,7 @@ const SearchedData: React.FC<SearchedDataProp> = ({
             database={table.database}
             description={tDesc}
             fullyQualifiedName={table.fullyQualifiedName}
+            id={`tabledatacard${index}`}
             indexType={table.index}
             matches={matches}
             name={name}

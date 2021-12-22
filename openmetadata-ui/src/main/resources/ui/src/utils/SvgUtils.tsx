@@ -67,6 +67,7 @@ import IconWhatsNew from '../assets/svg/ic-whats-new.svg';
 import IconWorkflows from '../assets/svg/ic-workflows.svg';
 import IconKey from '../assets/svg/icon-key.svg';
 import IconNotNull from '../assets/svg/icon-notnull.svg';
+import IconTour from '../assets/svg/icon-tour.svg';
 import IconUnique from '../assets/svg/icon-unique.svg';
 import IconInfo from '../assets/svg/info.svg';
 import IconIngestion from '../assets/svg/ingestion.svg';
@@ -185,6 +186,7 @@ export const Icons = {
   VERSION_WHITE: 'icon-version-white',
   VERSION_BLACK: 'icon-version-black',
   ICON_DEPLOY: 'icon-deploy',
+  TOUR: 'tour',
   ICON_PLUS: 'icon-plus',
   ICON_MINUS: 'icon-minus',
   TAG: 'icon-tag',
@@ -225,6 +227,10 @@ const SVGIcons: FunctionComponent<Props> = ({
       break;
     case Icons.WORKFLOWS:
       IconComponent = IconWorkflows;
+
+      break;
+    case Icons.TOUR:
+      IconComponent = IconTour;
 
       break;
     case Icons.SQL_BUILDER:

@@ -11,107 +11,166 @@
  *  limitations under the License.
  */
 
-import { AxiosResponse } from 'axios';
 import { observer } from 'mobx-react';
-import React, { useEffect, useState } from 'react';
-// import ReactTutorial from 'react-tutorial';
-import { searchData } from '../../axiosAPIs/miscAPI';
-import { PAGE_SIZE } from '../../constants/constants';
-import { SearchIndex } from '../../enums/search.enum';
-// import { useTour } from '../../hooks/useTour';
+import React, { useState } from 'react';
+import ReactTutorial from '@deuex-solutions/react-tutorial';
+import AppState from '../../AppState';
+import { useTour } from '../../hooks/useTour';
+import TourEndModal from '../Modals/TourEndModal/TourEndModal';
+import { useHistory } from 'react-router-dom';
+import { CurrentTourPageType } from '../../enums/tour.enum';
 
 type Steps = {
-  content: string;
-  actionType: string;
-  position: string;
-  selector: string;
+  content?: string;
+  actionType?: string;
+  position?: string | number[];
+  selector?: string;
   userTypeText?: string;
   waitTimer?: number;
 };
 
 const getSteps = (value: string) => {
+  const modifiedValue = value.substr(0, 6);
+
   return [
     {
-      content: 'Click on the next.',
-      actionType: 'click',
-      position: 'bottom',
-      selector: '#next',
+      content: `OpenMetadata is a Centralized Metadata Store. Discover all your data assets in a single place, collaborate with your co-workers.
+         Understand your data assets and contribute to make it richer.`,
+      position: [15, 345],
+      selector: '#assetStatsCount',
     },
     {
-      content: 'Click on the next.',
-      actionType: 'click',
-      position: 'bottom',
-      selector: '#next',
+      content: `Feed Data`,
+      position: [640, 285],
+      selector: '#feedData',
     },
     {
-      content: 'Click on Explore OpenMetadata.',
-      actionType: 'click',
-      position: 'bottom',
-      selector: '#take-tour',
-    },
-    {
-      content: 'Click on explore.',
-      actionType: 'click',
-      position: 'bottom',
-      selector: '#explore',
-    },
-    {
-      content: `Type "${value}" in search box.`,
-      actionType: 'typing',
-      userTypeText: value,
-      position: 'bottom',
+      content: `This is a search box where you can type "name", "description", "column name", etc. to find any matching data asset. For example, type "${modifiedValue}". Hit Enter.`,
+      actionType: 'enter',
+      userTypeText: modifiedValue,
+      position: [600, 85],
       selector: '#searchBox',
+      beforeNext: () => {
+        AppState.currentTourPage = CurrentTourPageType.EXPLORE_PAGE;
+      },
     },
     {
-      content: 'Click on the table.',
+      beforePrev: () => {
+        AppState.currentTourPage = CurrentTourPageType.MY_DATA_PAGE;
+      },
+      content: 'Click on the assets title for more details.',
       actionType: 'click',
-      position: 'bottom',
-      selector: '#bigqueryshopifydim_address',
+      selector: '#tabledatacard0',
+      position: [600, 320],
+      beforeNext: () => {
+        AppState.currentTourPage = CurrentTourPageType.DATASET_PAGE;
+      },
     },
     {
-      content:
-        'Understand the schema of the table and add description, Claim ownership. Add tags etc..',
-      position: 'bottom',
-      selector: '#tabs',
-      actionType: 'wait',
-      waitTimer: 10000,
+      beforePrev: () => {
+        AppState.currentTourPage = CurrentTourPageType.EXPLORE_PAGE;
+      },
+      content: 'Understand the schema of the table and add description.',
+      position: [5, 255],
+      selector: '#schema',
     },
     {
-      content: 'Click here to explore more',
+      beforePrev: () => {
+        AppState.activeTabforTourDatasetPage = 1;
+      },
+      beforeNext: () => {
+        AppState.activeTabforTourDatasetPage = 2;
+      },
       actionType: 'click',
-      position: 'bottom',
-      selector: '#openmetadata_logo',
+      content: 'Click on the profiler tab.',
+      position: [75, 255],
+      selector: '#profiler',
+    },
+    {
+      content: 'Understand the profiler tab.',
+      position: [75, 255],
+      selector: '#profiler',
+    },
+    {
+      beforePrev: () => {
+        AppState.activeTabforTourDatasetPage = 2;
+      },
+      beforeNext: () => {
+        AppState.activeTabforTourDatasetPage = 3;
+      },
+      actionType: 'click',
+      content: 'Click lineage.',
+      position: [200, 255],
+      selector: '#lineage',
+    },
+    {
+      content: 'Understand lineage.',
+      position: [200, 255],
+      selector: '#lineage',
+    },
+    {
+      beforeNext: () => {
+        AppState.activeTabforTourDatasetPage = 5;
+      },
+      actionType: 'click',
+      content: 'Click on manage tab',
+      position: [300, 255],
+      selector: '#manage',
+    },
+    {
+      beforePrev: () => {
+        AppState.activeTabforTourDatasetPage = 3;
+      },
+      content: 'You can claim ownership from here.',
+      position: [300, 255],
+      selector: '#manage',
     },
   ];
 };
 
 const Tour = () => {
-  // const { isTourOpen, handleIsTourOpen } = useTour();
-  const [, setSteps] = useState<Steps[]>([]);
+  const { isTourOpen, handleIsTourOpen } = useTour();
+  const [steps] = useState<Steps[]>(getSteps('dim_a'));
+  const [showTourEndModal, setShowTourEndModal] = useState(false);
+  const history = useHistory();
 
-  useEffect(() => {
-    searchData('', 1, PAGE_SIZE, '', '', '', SearchIndex.TABLE).then(
-      (res: AxiosResponse) => {
-        const table = res.data.hits.hits[0];
-        setSteps(getSteps(table._source.table_name));
-      }
-    );
-  }, []);
+  const handleModalSubmit = () => {
+    history.push('/');
+  };
 
   return (
     <div>
-      {/* {isTourOpen ? (
+      {isTourOpen ? (
         <ReactTutorial
+          disableDotsNavigation
           disableKeyboardNavigation
           showNumber
+          accentColor="#7147E8"
+          inViewThreshold={200}
+          lastStepNextButton={
+            <button
+              className="tw-w-4"
+              onClick={() => setShowTourEndModal(true)}>
+              <svg viewBox="0 0 18.4 14.4">
+                <path
+                  d="M17 7.2H1M10.8 1 17 7.2l-6.2 6.2"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeLinecap="round"
+                  strokeMiterlimit={10}
+                  strokeWidth={2}
+                />
+              </svg>
+            </button>
+          }
           maskColor="#302E36"
           playTour={isTourOpen}
-          showButtons={false}
-          showNavigation={false}
           steps={steps}
           onRequestClose={() => handleIsTourOpen(false)}
         />
-      ) : null} */}
+      ) : null}
+
+      {showTourEndModal && <TourEndModal onSave={handleModalSubmit} />}
     </div>
   );
 };

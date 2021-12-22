@@ -35,6 +35,7 @@ import SearchedData from '../../components/searched-data/SearchedData';
 import {
   getExplorePathWithSearch,
   PAGE_SIZE,
+  ROUTES,
   tableSortingFields,
   visibleFilters,
 } from '../../constants/constants';
@@ -560,7 +561,9 @@ const Explore: React.FC<ExploreProps> = ({
             showResultCount
             currentPage={currentPage}
             data={data}
-            isLoading={isEntityLoading}
+            isLoading={
+              !location.pathname.includes(ROUTES.TOUR) && isEntityLoading
+            }
             paginate={paginate}
             searchText={searchText}
             totalValue={totalNumberOfValue}
