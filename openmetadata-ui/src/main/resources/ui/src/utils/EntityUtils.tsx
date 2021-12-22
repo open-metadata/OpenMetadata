@@ -58,6 +58,9 @@ export const getEntityTags = (
     case EntityType.PIPELINE: {
       return entityDetail.tags?.map((t) => t.tagFQN) || [];
     }
+    case EntityType.DASHBOARD: {
+      return entityDetail.tags?.map((t) => t.tagFQN) || [];
+    }
 
     default:
       return [];
@@ -215,6 +218,49 @@ export const getEntityOverview = (
           name: `${serviceType} url`,
           value: fullyQualifiedName?.split('.')[1] as string,
           url: pipelineUrl as string,
+          isLink: true,
+          isExternal: true,
+        },
+      ];
+
+      return overview;
+    }
+    case EntityType.DASHBOARD: {
+      const { owner, tags, dashboardUrl, service, fullyQualifiedName } =
+        entityDetail;
+      const ownerValue = getOwnerFromId(owner?.id);
+      const tier = getTierFromTableTags(tags || []);
+
+      const overview = [
+        {
+          name: 'Service',
+          value: service?.name as string,
+          url: getServiceDetailsPath(
+            service?.name as string,
+            serviceType,
+            ServiceCategory.DASHBOARD_SERVICES
+          ),
+          isLink: true,
+        },
+        {
+          name: 'Owner',
+          value: ownerValue?.displayName || ownerValue?.name || '--',
+          url: getTeamDetailsPath(owner?.name || ''),
+          isLink: ownerValue
+            ? ownerValue.type === 'team'
+              ? true
+              : false
+            : false,
+        },
+        {
+          name: 'Tier',
+          value: tier ? tier.split('.')[1] : '--',
+          isLink: false,
+        },
+        {
+          name: `${serviceType} url`,
+          value: fullyQualifiedName?.split('.')[1] as string,
+          url: dashboardUrl as string,
           isLink: true,
           isExternal: true,
         },

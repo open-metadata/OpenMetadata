@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
-import React, { FunctionComponent } from 'react';
 // import classnames from 'classnames';
+import PropTypes from 'prop-types';
+import React, { FunctionComponent } from 'react';
 import { ButtonProps, Ref } from './Button.interface';
 import { button } from './Button.styles';
 
@@ -26,11 +27,11 @@ export const Button: FunctionComponent<ButtonProps> = React.forwardRef<
       children,
       className = '',
       disabled = false,
-      size,
+      size = 'regular',
       tag = 'button',
       theme = 'default',
       type = tag === 'button' ? 'button' : undefined,
-      variant,
+      variant = 'contained',
       ...other
     }: ButtonProps,
     ref
@@ -63,5 +64,17 @@ export const Button: FunctionComponent<ButtonProps> = React.forwardRef<
     );
   }
 );
+
+Button.propTypes = {
+  block: PropTypes.bool,
+  children: PropTypes.node,
+  className: PropTypes.string,
+  disabled: PropTypes.bool,
+  tag: PropTypes.string.isRequired,
+  size: PropTypes.oneOf(['large', 'regular', 'small', 'x-small', 'custom']),
+  theme: PropTypes.oneOf(['default', 'primary']),
+  type: PropTypes.oneOf(['button', 'submit', 'reset']),
+  variant: PropTypes.oneOf(['contained', 'outlined', 'link', 'text']),
+};
 
 Button.displayName = 'Button';

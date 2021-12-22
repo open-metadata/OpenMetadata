@@ -12,6 +12,7 @@
  */
 
 import classNames from 'classnames';
+import PropTypes from 'prop-types';
 import React, { Fragment } from 'react';
 import { Handle } from 'react-flow-renderer';
 
@@ -85,6 +86,19 @@ const CustomNode = (props) => {
       </section>
     </div>
   );
+};
+
+CustomNode.propTypes = {
+  type: PropTypes.string.isRequired,
+  isConnectable: PropTypes.bool.isRequired,
+  data: PropTypes.shape({
+    label: PropTypes.string.isRequired,
+    columns: PropTypes.arrayOf(
+      PropTypes.shape({
+        name: PropTypes.string.isRequired,
+      })
+    ),
+  }),
 };
 
 export default CustomNode;

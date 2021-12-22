@@ -13,7 +13,7 @@
 
 import classNames from 'classnames';
 import React, { useEffect, useState } from 'react';
-import ReactMarkdown from 'react-markdown';
+import ReactMarkdown, { PluggableList } from 'react-markdown';
 import rehypeRaw from 'rehype-raw';
 import gfm from 'remark-gfm';
 
@@ -52,7 +52,7 @@ const RichTextEditorPreviewer = ({
             );
           },
         }}
-        remarkPlugins={[gfm]}
+        remarkPlugins={[gfm] as unknown as PluggableList | undefined}
         rehypePlugins={[[rehypeRaw, { allowDangerousHtml: false }]]}
       />
     </div>

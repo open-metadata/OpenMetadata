@@ -108,7 +108,7 @@ const TableProfiler = ({ tableProfiles, columns }: Props) => {
                             <i className="fas fa-caret-right" />
                           )}
                         </span>
-                        {colIndex === 0 && (
+                        {col.name.constraint && (
                           <span className="tw-mr-3 tw--ml-2">
                             {getConstraintIcon(
                               col.name.constraint,

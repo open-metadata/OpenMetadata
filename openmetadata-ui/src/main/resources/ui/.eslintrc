@@ -54,6 +54,7 @@
 
     "import/no-named-as-default-member": 0,
     "react/prop-types": 1,
+    "react/display-name": 0,
 
     // Require a whitespace at the beginning of a comment
     "spaced-comment": ["error", "always"],

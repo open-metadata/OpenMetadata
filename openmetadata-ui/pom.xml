@@ -96,50 +96,50 @@
 
         <executions>
           <execution>
-            <id>install node and npm</id>
+            <id>install node and yarn</id>
             <goals>
-              <goal>install-node-and-npm</goal>
+              <goal>install-node-and-yarn</goal>
             </goals>
             <configuration>
-              <nodeVersion>v12.16.1</nodeVersion>
-              <npmVersion>6.13.4</npmVersion>
+              <nodeVersion>v12.22.1</nodeVersion>
+              <yarnVersion>v1.22.10</yarnVersion>
             </configuration>
           </execution>
           <execution>
-            <id>npm install</id>
+            <id>yarn install --immutable</id>
             <goals>
-              <goal>npm</goal>
+              <goal>yarn</goal>
             </goals>
             <phase>prepare-package</phase>
             <configuration>
-              <arguments>install</arguments>
+              <arguments>install --immutable</arguments>
             </configuration>
           </execution>
           <execution>
-            <id>npm run-script build-check</id>
+            <id>yarn run build-check</id>
             <goals>
-              <goal>npm</goal>
+              <goal>yarn</goal>
             </goals>
             <!-- optional: the default phase is "generate-resources" -->
             <phase>prepare-package</phase>
             <configuration>
               <!-- optional: if not specified, it will run gulp's default task
                   (and you can remove this whole <configuration> section.) -->
-              <arguments>run-script build-check</arguments>
+              <arguments>run build-check</arguments>
               <!--arguments>build</arguments-->
             </configuration>
           </execution>
           <execution>
-            <id>npm run-script build</id>
+            <id>yarn run build</id>
             <goals>
-              <goal>npm</goal>
+              <goal>yarn</goal>
             </goals>
             <!-- optional: the default phase is "generate-resources" -->
             <phase>prepare-package</phase>
             <configuration>
               <!-- optional: if not specified, it will run gulp's default task
                   (and you can remove this whole <configuration> section.) -->
-              <arguments>run-script build</arguments>
+              <arguments>run build</arguments>
               <!--arguments>build</arguments-->
             </configuration>
           </execution>

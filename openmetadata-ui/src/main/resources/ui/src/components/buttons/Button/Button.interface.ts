@@ -18,9 +18,9 @@ export interface Props {
   children?: ReactNode;
   className?: string;
   disabled?: boolean;
-  size: 'large' | 'regular' | 'small' | 'x-small' | 'custom';
+  size?: 'large' | 'regular' | 'small' | 'x-small' | 'custom';
   theme?: 'default' | 'primary';
-  variant: 'contained' | 'outlined' | 'link' | 'text';
+  variant?: 'contained' | 'outlined' | 'link' | 'text';
 }
 
 export interface ButtonAsButtonProps

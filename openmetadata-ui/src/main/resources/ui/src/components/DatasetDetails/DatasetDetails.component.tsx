@@ -353,9 +353,9 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
         <EntityPageInfo
           entityName={entityName}
           extraInfo={extraInfo}
+          followHandler={followTable}
           followers={followersCount}
           followersList={followers}
-          followHandler={followTable}
           isFollowing={isFollowing}
           tags={tableTags}
           tier={tier}
