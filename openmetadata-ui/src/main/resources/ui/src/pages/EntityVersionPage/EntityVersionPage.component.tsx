@@ -14,8 +14,6 @@
 import { AxiosError, AxiosResponse } from 'axios';
 import React, { FunctionComponent, useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
-import { getDatabase } from '../../axiosAPIs/databaseAPI';
-import { getServiceById } from '../../axiosAPIs/serviceAPI';
 import {
   getTableDetailsByFQN,
   getTableVersion,
@@ -27,7 +25,7 @@ import Loader from '../../components/Loader/Loader';
 import {
   getDatabaseDetailsPath,
   getDatasetDetailsPath,
-  getDatasetVersionPath,
+  getVersionPath,
   getServiceDetailsPath,
 } from '../../constants/constants';
 import { ServiceCategory } from '../../enums/service.enum';
@@ -49,7 +47,10 @@ const EntityVersionPage: FunctionComponent = () => {
     {} as Table
   );
 
-  const { version, datasetFQN } = useParams() as Record<string, string>;
+  const { entityType, version, entityFQN } = useParams() as Record<
+    string,
+    string
+  >;
   const [isLoading, setIsloading] = useState<boolean>(false);
   const [versionList, setVersionList] = useState<EntityHistory>(
     {} as EntityHistory
@@ -60,54 +61,47 @@ const EntityVersionPage: FunctionComponent = () => {
   >([]);
 
   const backHandler = () => {
-    history.push(getDatasetDetailsPath(datasetFQN));
+    history.push(getDatasetDetailsPath(entityFQN));
   };
 
   const versionHandler = (v = version) => {
-    history.push(getDatasetVersionPath(datasetFQN, v as string));
+    history.push(getVersionPath(entityType, entityFQN, v as string));
   };
 
   const fetchEntityVersions = () => {
     setIsloading(true);
     getTableDetailsByFQN(
-      getPartialNameFromFQN(datasetFQN, ['service', 'database', 'table'], '.'),
+      getPartialNameFromFQN(entityFQN, ['service', 'database', 'table'], '.'),
       ['owner', 'tags']
     )
       .then((res: AxiosResponse) => {
-        const { id, owner, tags, name, database } = res.data;
+        const { id, owner, tags, name, database, service, serviceType } =
+          res.data;
         setTier(getTierTags(tags));
         setOwner(getOwnerFromId(owner?.id));
         setCurrentVersionData(res.data);
-        getDatabase(database.id).then((resDB: AxiosResponse) => {
-          getServiceById('databaseServices', resDB.data.service?.id).then(
-            (resService: AxiosResponse) => {
-              setSlashedTableName([
-                {
-                  name: resService.data.name,
-                  url: resService.data.name
-                    ? getServiceDetailsPath(
-                        resService.data.name,
-                        resService.data.serviceType,
-                        ServiceCategory.DATABASE_SERVICES
-                      )
-                    : '',
-                  imgSrc: resService.data.serviceType
-                    ? serviceTypeLogo(resService.data.serviceType)
-                    : undefined,
-                },
-                {
-                  name: resDB.data.name,
-                  url: getDatabaseDetailsPath(resDB.data.fullyQualifiedName),
-                },
-                {
-                  name: name,
-                  url: '',
-                  activeTitle: true,
-                },
-              ]);
-            }
-          );
-        });
+        setSlashedTableName([
+          {
+            name: service.name,
+            url: service.name
+              ? getServiceDetailsPath(
+                  service.name,
+                  serviceType,
+                  ServiceCategory.DATABASE_SERVICES
+                )
+              : '',
+            imgSrc: serviceType ? serviceTypeLogo(serviceType) : undefined,
+          },
+          {
+            name: database.name,
+            url: getDatabaseDetailsPath(database.fullyQualifiedName),
+          },
+          {
+            name: name,
+            url: '',
+            activeTitle: true,
+          },
+        ]);
         getTableVersions(id)
           .then((vres: AxiosResponse) => {
             setVersionList(vres.data);
@@ -117,7 +111,7 @@ const EntityVersionPage: FunctionComponent = () => {
             const msg = err.message;
             showToast({
               variant: 'error',
-              body: msg ?? `Error while fetching ${datasetFQN} versions`,
+              body: msg ?? `Error while fetching ${entityFQN} versions`,
             });
           });
       })
@@ -125,7 +119,7 @@ const EntityVersionPage: FunctionComponent = () => {
         const msg = err.message;
         showToast({
           variant: 'error',
-          body: msg ?? `Error while fetching ${datasetFQN} versions`,
+          body: msg ?? `Error while fetching ${entityFQN} versions`,
         });
       });
   };
@@ -133,41 +127,32 @@ const EntityVersionPage: FunctionComponent = () => {
   const fetchCurrentVersion = () => {
     setIsVersionLoading(true);
     getTableDetailsByFQN(
-      getPartialNameFromFQN(datasetFQN, ['service', 'database', 'table'], '.')
+      getPartialNameFromFQN(entityFQN, ['service', 'database', 'table'], '.')
     )
       .then((res: AxiosResponse) => {
-        const { id, database, name } = res.data;
-        getDatabase(database.id).then((resDB: AxiosResponse) => {
-          getServiceById('databaseServices', resDB.data.service?.id).then(
-            (resService: AxiosResponse) => {
-              setSlashedTableName([
-                {
-                  name: resService.data.name,
-                  url: resService.data.name
-                    ? getServiceDetailsPath(
-                        resService.data.name,
-                        resService.data.serviceType,
-                        ServiceCategory.DATABASE_SERVICES
-                      )
-                    : '',
-                  imgSrc: resService.data.serviceType
-                    ? serviceTypeLogo(resService.data.serviceType)
-                    : undefined,
-                },
-                {
-                  name: resDB.data.name,
-                  url: getDatabaseDetailsPath(resDB.data.fullyQualifiedName),
-                },
-                {
-                  name: name,
-                  url: '',
-                  activeTitle: true,
-                },
-              ]);
-            }
-          );
-        });
-
+        const { id, database, name, service, serviceType } = res.data;
+        setSlashedTableName([
+          {
+            name: service.name,
+            url: service.name
+              ? getServiceDetailsPath(
+                  service.name,
+                  serviceType,
+                  ServiceCategory.DATABASE_SERVICES
+                )
+              : '',
+            imgSrc: serviceType ? serviceTypeLogo(serviceType) : undefined,
+          },
+          {
+            name: database.name,
+            url: getDatabaseDetailsPath(database.fullyQualifiedName),
+          },
+          {
+            name: name,
+            url: '',
+            activeTitle: true,
+          },
+        ]);
         getTableVersion(id, version)
           .then((vRes: AxiosResponse) => {
             const { owner, tags } = vRes.data;
@@ -181,7 +166,7 @@ const EntityVersionPage: FunctionComponent = () => {
             showToast({
               variant: 'error',
               body:
-                msg ?? `Error while fetching ${datasetFQN} version ${version}`,
+                msg ?? `Error while fetching ${entityFQN} version ${version}`,
             });
           });
       })
@@ -189,14 +174,14 @@ const EntityVersionPage: FunctionComponent = () => {
         const msg = err.message;
         showToast({
           variant: 'error',
-          body: msg ?? `Error while fetching ${datasetFQN}  version ${version}`,
+          body: msg ?? `Error while fetching ${entityFQN}  version ${version}`,
         });
       });
   };
 
   useEffect(() => {
     fetchEntityVersions();
-  }, [datasetFQN]);
+  }, [entityFQN]);
 
   useEffect(() => {
     fetchCurrentVersion();
@@ -210,7 +195,7 @@ const EntityVersionPage: FunctionComponent = () => {
         <DatasetVersion
           backHandler={backHandler}
           currentVersionData={currentVersionData}
-          datasetFQN={datasetFQN}
+          datasetFQN={entityFQN}
           isVersionLoading={isVersionLoading}
           owner={owner}
           slashedTableName={slashedTableName}

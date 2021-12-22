@@ -31,7 +31,7 @@ import Loader from '../../components/Loader/Loader';
 import {
   getDatabaseDetailsPath,
   getDatasetTabPath,
-  getDatasetVersionPath,
+  getVersionPath,
   getServiceDetailsPath,
 } from '../../constants/constants';
 import { EntityType } from '../../enums/entity.enum';
@@ -191,7 +191,9 @@ const DatasetDetailsPage: FunctionComponent = () => {
   };
 
   const versionHandler = () => {
-    history.push(getDatasetVersionPath(tableFQN, currentVersion as string));
+    history.push(
+      getVersionPath(EntityType.TABLE, tableFQN, currentVersion as string)
+    );
   };
 
   const setLeafNode = (val: EntityLineage, pos: LineagePos) => {

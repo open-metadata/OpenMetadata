@@ -106,11 +106,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         path={ROUTES.PIPELINE_DETAILS_WITH_TAB}
       />
       <Route component={Onboarding} path={ROUTES.ONBOARDING} />
-      <Route
-        exact
-        component={EntityVersionPage}
-        path={ROUTES.DATASET_VERSION}
-      />
+      <Route exact component={EntityVersionPage} path={ROUTES.ENTITY_VERSION} />
       <Route exact component={IngestionPage} path={ROUTES.INGESTION} />
       {isAuthDisabled || isAdminUser ? (
         <Route exact component={UserListPage} path={ROUTES.USER_LIST} />
