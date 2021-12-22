@@ -428,30 +428,6 @@
     <pluginManagement>
       <plugins>
         <plugin>
-          <groupId>com.theoryinpractise</groupId>
-          <artifactId>googleformatter-maven-plugin</artifactId>
-          <version>1.7.3</version>
-          <executions>
-            <execution>
-              <id>reformat-sources</id>
-              <configuration>
-                <includeStale>false</includeStale>
-                <style>GOOGLE</style>
-                <formatMain>true</formatMain>
-                <formatTest>true</formatTest>
-                <filterModified>false</filterModified>
-                <skip>false</skip>
-                <fixImports>true</fixImports>
-                <maxLineLength>120</maxLineLength>
-              </configuration>
-              <goals>
-                <goal>format</goal>
-              </goals>
-              <phase>process-sources</phase>
-            </execution>
-          </executions>
-        </plugin>
-        <plugin>
            <groupId>org.apache.maven.plugins</groupId>
            <artifactId>maven-checkstyle-plugin</artifactId>
            <version>3.1.2</version>
@@ -541,6 +517,25 @@
           <autoVersionSubmodules>true</autoVersionSubmodules>
           <tagNameFormat>v@{project.version}</tagNameFormat>
         </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.jacoco</groupId>
+        <artifactId>jacoco-maven-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>default-prepare-agent</id>
+            <goals>
+              <goal>prepare-agent</goal>
+            </goals>
+          </execution>
+          <execution>
+            <id>report</id>
+            <phase>test</phase>
+            <goals>
+              <goal>report</goal>
+            </goals>
+          </execution>
+        </executions>
       </plugin>
       <plugin>
         <groupId>org.codehaus.mojo</groupId>

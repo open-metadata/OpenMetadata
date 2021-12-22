@@ -15,8 +15,16 @@ OpenMetadata high-level API Model test
 import uuid
 from unittest import TestCase
 
+from metadata.generated.schema.api.data.createDatabase import (
+    CreateDatabaseEntityRequest,
+)
 from metadata.generated.schema.api.data.createMlModel import CreateMlModelEntityRequest
+from metadata.generated.schema.api.data.createTable import CreateTableEntityRequest
+from metadata.generated.schema.api.services.createDatabaseService import (
+    CreateDatabaseServiceEntityRequest,
+)
 from metadata.generated.schema.api.teams.createUser import CreateUserEntityRequest
+from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.mlmodel import (
     FeatureSource,
     FeatureSourceDataType,
@@ -25,7 +33,13 @@ from metadata.generated.schema.entity.data.mlmodel import (
     MlHyperParameter,
     MlModel,
 )
+from metadata.generated.schema.entity.data.table import Column, DataType, Table
+from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseService,
+    DatabaseServiceType,
+)
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.jdbcConnection import JdbcInfo
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 
@@ -171,13 +185,42 @@ class OMetaModelTest(TestCase):
             None,
         )
 
-    def test_model_properties(self):
+    def test_mlmodel_properties(self):
         """
         Check that we can create models with MLFeatures and MLHyperParams
+
+        We can add lineage information
         """
 
+        service = CreateDatabaseServiceEntityRequest(
+            name="test-service-table",
+            serviceType=DatabaseServiceType.MySQL,
+            jdbc=JdbcInfo(driverClass="jdbc", connectionUrl="jdbc://localhost"),
+        )
+        service_entity = self.metadata.create_or_update(data=service)
+
+        create_db = CreateDatabaseEntityRequest(
+            name="test-db",
+            service=EntityReference(id=service_entity.id, type="databaseService"),
+        )
+        create_db_entity = self.metadata.create_or_update(data=create_db)
+
+        create_table1 = CreateTableEntityRequest(
+            name="test",
+            database=create_db_entity.id,
+            columns=[Column(name="education", dataType=DataType.STRING)],
+        )
+        table1_entity = self.metadata.create_or_update(data=create_table1)
+
+        create_table2 = CreateTableEntityRequest(
+            name="another_test",
+            database=create_db_entity.id,
+            columns=[Column(name="age", dataType=DataType.INT)],
+        )
+        table2_entity = self.metadata.create_or_update(data=create_table2)
+
         model = CreateMlModelEntityRequest(
-            name="test-model-properties",
+            name="test-model-lineage",
             algorithm="algo",
             mlFeatures=[
                 MlFeature(
@@ -187,7 +230,9 @@ class OMetaModelTest(TestCase):
                         FeatureSource(
                             name="age",
                             dataType=FeatureSourceDataType.integer,
-                            fullyQualifiedName="my_service.my_db.my_table.age",
+                            dataSource=EntityReference(
+                                id=table2_entity.id, type="table"
+                            ),
                         )
                     ],
                 ),
@@ -198,12 +243,19 @@ class OMetaModelTest(TestCase):
                         FeatureSource(
                             name="age",
                             dataType=FeatureSourceDataType.integer,
-                            fullyQualifiedName="my_service.my_db.my_table.age",
+                            dataSource=EntityReference(
+                                id=table2_entity.id, type="table"
+                            ),
                         ),
                         FeatureSource(
                             name="education",
                             dataType=FeatureSourceDataType.string,
-                            fullyQualifiedName="my_api.education",
+                            dataSource=EntityReference(
+                                id=table1_entity.id, type="table"
+                            ),
+                        ),
+                        FeatureSource(
+                            name="city", dataType=FeatureSourceDataType.string
                         ),
                     ],
                     featureAlgorithm="PCA",
@@ -219,3 +271,13 @@ class OMetaModelTest(TestCase):
 
         self.assertIsNotNone(res.mlFeatures)
         self.assertIsNotNone(res.mlHyperParameters)
+
+        lineage = self.metadata.add_mlmodel_lineage(model=res)
+
+        nodes = {node["id"] for node in lineage["nodes"]}
+        assert nodes == {str(table1_entity.id.__root__), str(table2_entity.id.__root__)}
+
+        self.metadata.delete(entity=Table, entity_id=table1_entity.id)
+        self.metadata.delete(entity=Table, entity_id=table2_entity.id)
+        self.metadata.delete(entity=Database, entity_id=create_db_entity.id)
+        self.metadata.delete(entity=DatabaseService, entity_id=service_entity.id)
