@@ -142,6 +142,7 @@ Note: The `source.config` field in the configuration JSON will include the major
       "auth_provider_type": "no-auth"
     }
   }
+}  
 ```
 {% endcode %}
 
