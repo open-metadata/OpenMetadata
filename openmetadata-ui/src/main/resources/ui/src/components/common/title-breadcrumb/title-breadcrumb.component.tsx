@@ -42,7 +42,7 @@ const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
                     {link.name}
                   </Link>
                   <span className="tw-px-2">
-                    <i className="fas fa-angle-double-right tw-text-xs tw-cursor-default tw-text-gray-400 tw-align-middle" />
+                    <i className="fas fa-angle-right tw-text-xs tw-cursor-default tw-text-gray-400 tw-align-middle" />
                   </span>
                 </>
               ) : link.url ? (

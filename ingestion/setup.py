@@ -23,6 +23,7 @@ def get_long_description():
 
 
 base_requirements = {
+    "openmetadata-ingestion-core==0.6.0.dev0",
     "commonregex",
     "idna<3,>=2.5",
     "click>=7.1.1",
@@ -111,7 +112,7 @@ plugins: Dict[str, Set[str]] = {
 build_options = {"includes": ["_cffi_backend"]}
 setup(
     name="openmetadata-ingestion",
-    version="0.6.0.dev0",
+    version="0.6.0.dev1",
     url="https://open-metadata.org/",
     author="OpenMetadata Committers",
     license="Apache License 2.0",

@@ -21,7 +21,7 @@ def get_long_description():
 
 
 setup(
-    name="openmetadata-ingestion-generated",
+    name="openmetadata-ingestion-core",
     version="0.6.0.dev0",
     url="https://open-metadata.org/",
     author="OpenMetadata Committers",

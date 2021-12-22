@@ -73,7 +73,7 @@ source env/bin/activate
 ### 3.1 Upgrade pip and setuptools
 
 ```
-pip install --upgrade pip setuptools
+pip3 install --upgrade pip setuptools
 ```
 
 ### 4. Install the OpenMetadata Python module using pip
@@ -82,7 +82,7 @@ pip install --upgrade pip setuptools
 pip3 install --upgrade 'openmetadata-ingestion[docker]'
 ```
 
-### 5. Ensure the module is installed and ready for use&#x20;
+### 5. Ensure the module is installed and ready for use
 
 ```
 metadata docker --help
@@ -146,7 +146,7 @@ After starting the containers, `metadata` will launch Airflow tasks to ingest sa
 
 ### 7. Wait for metadata ingestion to finish
 
-Once metadata ingestion has finished and the OpenMetadata UI is ready for use, you will see output similar to the following.&#x20;
+Once metadata ingestion has finished and the OpenMetadata UI is ready for use, you will see output similar to the following.
 
 ```
 [2021-11-18 15:54:51,165] INFO     {metadata.cmd:232} - Time took to get OpenMetadata running: 0:00:58.414548
@@ -171,13 +171,11 @@ http://localhost:8080
 
 You will see a login prompt similar to the one in the figure below. Use the following credentials to log in to Airflow.
 
-Username: `admin`&#x20;
+Username: `admin`
 
 Password: `admin`
 
 ![](../.gitbook/assets/airflow-login.png)
-
-
 
 ### 9. Begin using OpenMetadata
 
@@ -207,17 +205,16 @@ ERROR: Could not find a version that satisfies the requirement openmetadata-inge
 ERROR: No matching distribution found for openmetadata-ingestion[docker]
 ```
 
-If you see the above when attempting to install OpenMetadata, this can be due to using older version of Python and pip. Please check the [Requirements](run-openmetadata.md#requirements) section above and confirm that you have supported versions installed.&#x20;
+If you see the above when attempting to install OpenMetadata, this can be due to using older version of Python and pip. Please check the [Requirements](run-openmetadata.md#requirements) section above and confirm that you have supported versions installed.
 
-
-
-If you need support please get in touch on Slack: [https://slack.open-metadata.org/](https://slack.open-metadata.org).&#x20;
+If you need support please get in touch on Slack: [https://slack.open-metadata.org/](https://slack.open-metadata.org).
 
 ## Requirements (Windows)
 
 ### WSL2, Ubuntu 20.04, and Docker for Windows
+
 1. Install [WSL2](https://ubuntu.com/wsl)
-2. Install [Ubuntu 20.04](https://www.microsoft.com/en-us/p/ubuntu-2004-lts)
+2. Install [Ubuntu 20.04](https://www.microsoft.com/en-us/p/ubuntu-2004-lts/9n6svws3rx71)
 3. Install [Docker for Windows](https://www.docker.com/products/docker-desktop)
 
 ### In the Ubuntu terminal
