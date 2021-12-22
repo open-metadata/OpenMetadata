@@ -996,6 +996,17 @@
     exec-sh "^0.3.2"
     minimist "^1.2.0"
 
+"@deuex-solutions/react-tutorial@1.0.0":
+  version "1.0.0"
+  resolved "https://registry.yarnpkg.com/@deuex-solutions/react-tutorial/-/react-tutorial-1.0.0.tgz#546ec0c9bea04b1b025d3d0710e423ab3e6d996f"
+  integrity sha512-cROk3LqGJZOOXbocho65tp2oZekau36/cEZh7feaYeUNPhLSHBN6HBwOj0YPF4LnaXe/9Y/Wsm8XvmXySOaaZQ==
+  dependencies:
+    classnames "^2.2.6"
+    lodash "^4.17.15"
+    prop-types "^15.7.2"
+    scroll-smooth "^1.1.0"
+    scrollparent "^2.0.1"
+
 "@deuex-solutions/redoc@2.0.0-rc.31":
   version "2.0.0-rc.31"
   resolved "https://registry.yarnpkg.com/@deuex-solutions/redoc/-/redoc-2.0.0-rc.31.tgz#2a56efc022635a6323a037782ca18dedfff52dbb"
@@ -10661,6 +10672,16 @@ schema-utils@^3.0.0, schema-utils@^3.1.0:
     "@types/json-schema" "^7.0.8"
     ajv "^6.12.5"
     ajv-keywords "^3.5.2"
+
+scroll-smooth@^1.1.0:
+  version "1.1.0"
+  resolved "https://registry.yarnpkg.com/scroll-smooth/-/scroll-smooth-1.1.0.tgz#467994d5bb57ffe7407e9a85bd0303b3d4524ded"
+  integrity sha512-68OUOXKN/ykM/Dbp4Lhza3O9QQUuW/c01WTsZzDOUyVgb1I5QjT/awOHCCbuYTSV1QnExUQ9w+KcxmVxlXIiAg==
+
+scrollparent@^2.0.1:
+  version "2.0.1"
+  resolved "https://registry.yarnpkg.com/scrollparent/-/scrollparent-2.0.1.tgz#715d5b9cc57760fb22bdccc3befb5bfe06b1a317"
+  integrity sha1-cV1bnMV3YPsivczDvvtb/gaxoxc=
 
 select-hose@^2.0.0:
   version "2.0.0"
