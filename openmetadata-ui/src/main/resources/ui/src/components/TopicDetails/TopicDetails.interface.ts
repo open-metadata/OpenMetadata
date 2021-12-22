@@ -19,6 +19,7 @@ import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrum
 
 export interface TopicDetailsProps {
   tagList: Array<string>;
+  version?: string;
   schemaText: string;
   schemaType: string;
   partitions: number;
@@ -42,4 +43,5 @@ export interface TopicDetailsProps {
   settingsUpdateHandler: (updatedTopic: Topic) => Promise<void>;
   descriptionUpdateHandler: (updatedTopic: Topic) => void;
   tagUpdateHandler: (updatedTopic: Topic) => void;
+  versionHandler: () => void;
 }
