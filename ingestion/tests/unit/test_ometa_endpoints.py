@@ -14,7 +14,6 @@ OpenMetadata high-level API endpoint test
 """
 from unittest import TestCase
 
-from metadata.generated.schema.api.data.createModel import CreateModelEntityRequest
 from metadata.generated.schema.api.data.createTopic import CreateTopicEntityRequest
 from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceEntityRequest,
@@ -25,7 +24,6 @@ from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.metrics import Metrics
 from metadata.generated.schema.entity.data.mlmodel import MlModel
-from metadata.generated.schema.entity.data.model import Model
 from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.data.report import Report
 from metadata.generated.schema.entity.data.table import Table
@@ -52,9 +50,6 @@ class OMetaEndpointTest(TestCase):
         """
         Pass Entities and test their suffix generation
         """
-
-        # DBT Model
-        self.assertEqual(self.metadata.get_suffix(Model), "/models")
 
         # ML
         self.assertEqual(self.metadata.get_suffix(MlModel), "/mlmodels")
@@ -102,8 +97,6 @@ class OMetaEndpointTest(TestCase):
         """
         Validate the mapping from Entity to CreateEntity
         """
-        create = self.metadata.get_create_entity_type(Model)
-        assert issubclass(create, CreateModelEntityRequest)
 
         create = self.metadata.get_create_entity_type(Topic)
         assert issubclass(create, CreateTopicEntityRequest)
@@ -118,8 +111,6 @@ class OMetaEndpointTest(TestCase):
         """
         Validate the mapping from CreateEntity to Entity
         """
-        entity = self.metadata.get_entity_from_create(CreateModelEntityRequest)
-        assert issubclass(entity, Model)
 
         entity = self.metadata.get_entity_from_create(CreateTopicEntityRequest)
         assert issubclass(entity, Topic)
