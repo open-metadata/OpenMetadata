@@ -11,6 +11,7 @@
 import json
 import logging
 import re
+import sys
 import traceback
 import uuid
 from abc import abstractmethod
@@ -294,6 +295,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                 yield table_and_db
             except Exception as err:
                 logger.error(err)
+                logger.debug(traceback.print_exception(*sys.exc_info()))
                 self.status.warnings.append(
                     "{}.{}".format(self.config.service_name, table_name)
                 )

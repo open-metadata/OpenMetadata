@@ -11,7 +11,8 @@
 
 from typing import Optional
 
-from snowflake.sqlalchemy import custom_types
+from snowflake.sqlalchemy import custom_types, snowdialect
+from sqlalchemy.sql.coercions import sqltypes
 
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.source.sql_source import SQLConnectionConfig, SQLSource
@@ -21,6 +22,7 @@ register_custom_type(custom_types.TIMESTAMP_TZ, "TIME")
 register_custom_type(custom_types.TIMESTAMP_LTZ, "TIME")
 register_custom_type(custom_types.TIMESTAMP_NTZ, "TIME")
 
+snowdialect.ischema_names["GEOGRAPHY"] = sqltypes.NullType
 
 class SnowflakeConfig(SQLConnectionConfig):
     scheme = "snowflake"
