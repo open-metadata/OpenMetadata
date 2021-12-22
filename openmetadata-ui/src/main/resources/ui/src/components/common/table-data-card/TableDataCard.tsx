@@ -18,6 +18,7 @@ import { useHistory, useLocation } from 'react-router-dom';
 import AppState from '../../../AppState';
 import { ROUTES } from '../../../constants/constants';
 import { SearchIndex } from '../../../enums/search.enum';
+import { CurrentTourPageType } from '../../../enums/tour.enum';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { serviceTypeLogo } from '../../../utils/ServiceUtils';
 import { stringToHTML } from '../../../utils/StringsUtils';
@@ -101,13 +102,13 @@ const TableDataCard: FunctionComponent<Props> = ({
 
   const handleCardClick = () => {
     if (location.pathname.includes(ROUTES.TOUR)) {
-      AppState.currentTourPage = 'datasetPage';
+      AppState.currentTourPage = CurrentTourPageType.DATASET_PAGE;
     }
   };
 
   const handleLinkClick = () => {
     if (location.pathname.includes(ROUTES.TOUR)) {
-      AppState.currentTourPage = 'datasetPage';
+      AppState.currentTourPage = CurrentTourPageType.DATASET_PAGE;
     } else {
       history.push(getEntityLink(indexType, fullyQualifiedName));
     }

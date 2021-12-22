@@ -414,11 +414,6 @@ declare module 'Models' {
     state: boolean;
   }
 
-  export type CurrentTourPageType =
-    | 'myDataPage'
-    | 'explorePage'
-    | 'datasetPage';
-
   export type ExtraInfo = {
     key?: string;
     value: string | number | React.ReactNode;

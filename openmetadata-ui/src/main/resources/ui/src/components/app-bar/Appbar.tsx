@@ -32,6 +32,7 @@ import {
   ROUTES,
 } from '../../constants/constants';
 import { urlGitbookDocs, urlJoinSlack } from '../../constants/url.const';
+import { CurrentTourPageType } from '../../enums/tour.enum';
 import { useAuth } from '../../hooks/authHooks';
 import { useTour } from '../../hooks/useTour';
 import { userSignOut } from '../../utils/AuthUtils';
@@ -252,7 +253,8 @@ const Appbar: React.FC = (): JSX.Element => {
                     setIsOpen(false);
                     // below code is for tour feature
                     if (location.pathname.includes(ROUTES.TOUR)) {
-                      appState.currentTourPage = 'explorePage';
+                      appState.currentTourPage =
+                        CurrentTourPageType.EXPLORE_PAGE;
 
                       return;
                     }

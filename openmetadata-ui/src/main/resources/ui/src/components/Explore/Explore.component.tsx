@@ -562,7 +562,7 @@ const Explore: React.FC<ExploreProps> = ({
             currentPage={currentPage}
             data={data}
             isLoading={
-              location.pathname.includes(ROUTES.TOUR) ? false : isEntityLoading
+              !location.pathname.includes(ROUTES.TOUR) && isEntityLoading
             }
             paginate={paginate}
             searchText={searchText}

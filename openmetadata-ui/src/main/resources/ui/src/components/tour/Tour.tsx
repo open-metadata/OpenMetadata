@@ -18,6 +18,7 @@ import AppState from '../../AppState';
 import { useTour } from '../../hooks/useTour';
 import TourEndModal from '../Modals/TourEndModal/TourEndModal';
 import { useHistory } from 'react-router-dom';
+import { CurrentTourPageType } from '../../enums/tour.enum';
 
 type Steps = {
   content?: string;
@@ -50,24 +51,24 @@ const getSteps = (value: string) => {
       position: [600, 85],
       selector: '#searchBox',
       beforeNext: () => {
-        AppState.currentTourPage = 'explorePage';
+        AppState.currentTourPage = CurrentTourPageType.EXPLORE_PAGE;
       },
     },
     {
       beforePrev: () => {
-        AppState.currentTourPage = 'myDataPage';
+        AppState.currentTourPage = CurrentTourPageType.MY_DATA_PAGE;
       },
       content: 'Click on the assets title for more details.',
       actionType: 'click',
       selector: '#tabledatacard0',
       position: [600, 320],
       beforeNext: () => {
-        AppState.currentTourPage = 'datasetPage';
+        AppState.currentTourPage = CurrentTourPageType.DATASET_PAGE;
       },
     },
     {
       beforePrev: () => {
-        AppState.currentTourPage = 'explorePage';
+        AppState.currentTourPage = CurrentTourPageType.EXPLORE_PAGE;
       },
       content: 'Understand the schema of the table and add description.',
       position: [5, 255],

@@ -14,6 +14,7 @@
   "dependencies": {
     "@craco/craco": "^5.8.0",
     "@deuex-solutions/redoc": "2.0.0-rc.31",
+    "@deuex-solutions/react-tutorial": "1.0.0",
     "@fortawesome/fontawesome-free": "^5.15.1",
     "@testing-library/react": "^9.3.2",
     "@testing-library/user-event": "^7.1.2",
@@ -89,8 +90,7 @@
     "stream-http": "^3.2.0",
     "styled-components": "^5.2.3",
     "tailwindcss": "^2.1.4",
-    "to-arraybuffer": "^1.0.1",
-    "@deuex-solutions/react-tutorial": "1.0.0"
+    "to-arraybuffer": "^1.0.1"
   },
   "scripts": {
     "start": "NODE_ENV=development BABEL_ENV=development webpack serve --config ./webpack.config.dev.js --env development",

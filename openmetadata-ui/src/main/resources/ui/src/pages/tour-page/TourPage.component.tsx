@@ -1,5 +1,5 @@
 import { observer } from 'mobx-react';
-import { CurrentTourPageType, LeafNodes, SearchResponse } from 'Models';
+import { LeafNodes, SearchResponse } from 'Models';
 import React, { useEffect, useState } from 'react';
 import AppState from '../../AppState';
 import DatasetDetails from '../../components/DatasetDetails/DatasetDetails.component';
@@ -9,6 +9,7 @@ import { ExploreSearchData } from '../../components/Explore/explore.interface';
 import MyData from '../../components/MyData/MyData.component';
 import { MyDataProps } from '../../components/MyData/MyData.interface';
 import Tour from '../../components/tour/Tour';
+import { CurrentTourPageType } from '../../enums/tour.enum';
 import {
   Table,
   TableJoins,
@@ -52,7 +53,7 @@ const TourPage = () => {
 
   useEffect(() => {
     handleIsTourOpen(true);
-    AppState.currentTourPage = 'myDataPage';
+    AppState.currentTourPage = CurrentTourPageType.MY_DATA_PAGE;
     AppState.activeTabforTourDatasetPage = 1;
   }, []);
 
@@ -66,7 +67,7 @@ const TourPage = () => {
 
   const getCurrentPage = (page: CurrentTourPageType) => {
     switch (page) {
-      case 'myDataPage':
+      case CurrentTourPageType.MY_DATA_PAGE:
         return (
           <MyData
             countServices={4}
@@ -93,7 +94,7 @@ const TourPage = () => {
           />
         );
 
-      case 'explorePage':
+      case CurrentTourPageType.EXPLORE_PAGE:
         return (
           <Explore
             error=""
@@ -115,7 +116,7 @@ const TourPage = () => {
           />
         );
 
-      case 'datasetPage':
+      case CurrentTourPageType.DATASET_PAGE:
         return (
           <DatasetDetails
             activeTab={datasetActiveTab}
