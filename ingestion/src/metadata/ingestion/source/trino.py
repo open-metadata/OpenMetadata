@@ -8,15 +8,19 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-
+import logging
+import sys
 from typing import Iterable
 from urllib.parse import quote_plus
 
+import click
 from sqlalchemy.inspection import inspect
 
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.source.sql_source import SQLConnectionConfig, SQLSource
+
+logger = logging.getLogger(__name__)
 
 
 class TrinoConfig(SQLConnectionConfig):
@@ -53,6 +57,18 @@ class TrinoConfig(SQLConnectionConfig):
 
 class TrinoSource(SQLSource):
     def __init__(self, config, metadata_config, ctx):
+        try:
+            from sqlalchemy_trino import dbapi
+        except ModuleNotFoundError:
+            click.secho(
+                "Trino source dependencies are missing. Please run\n"
+                + "$ pip install --upgrade 'openmetadata-ingestion[trino]'",
+                fg="red",
+            )
+            if logger.isEnabledFor(logging.DEBUG):
+                raise
+            else:
+                sys.exit(1)
         super().__init__(config, metadata_config, ctx)
 
     @classmethod
