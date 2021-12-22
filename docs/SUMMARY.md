@@ -129,3 +129,5 @@
   * [Generate Typescript Types From JSON Schema](open-source-community/developer/generate-typescript-types-from-json-schema.md)
   * [Solution Design](open-source-community/developer/solution-design.md)
   * [Python API](open-source-community/developer/python-api.md)
+  * [Entities](open-source-community/developer/entities/README.md)
+    * [MlModel](open-source-community/developer/entities/mlmodel.md)
