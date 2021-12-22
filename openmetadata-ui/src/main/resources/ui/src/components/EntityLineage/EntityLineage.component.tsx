@@ -559,12 +559,12 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
             <ReactFlow
               panOnScroll
               elements={elements as Elements}
-              nodesConnectable={false}
               nodeTypes={{
                 output: CustomNode,
                 input: CustomNode,
                 default: CustomNode,
               }}
+              nodesConnectable={false}
               onConnect={onConnect}
               onElementClick={(_e, el) => onElementClick(el)}
               onElementsRemove={onElementsRemove}

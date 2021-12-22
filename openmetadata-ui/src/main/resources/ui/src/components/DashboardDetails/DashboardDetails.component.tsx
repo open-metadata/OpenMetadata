@@ -300,9 +300,9 @@ const DashboardDetails = ({
             isTagEditable
             entityName={entityName}
             extraInfo={extraInfo}
+            followHandler={followDashboard}
             followers={followersCount}
             followersList={followers}
-            followHandler={followDashboard}
             hasEditAccess={hasEditAccess()}
             isFollowing={isFollowing}
             owner={owner}

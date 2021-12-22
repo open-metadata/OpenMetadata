@@ -299,8 +299,8 @@ const PipelineDetailsPage = () => {
           descriptionUpdateHandler={descriptionUpdateHandler}
           entityLineage={entityLineage}
           entityName={displayName}
-          followers={followers}
           followPipelineHandler={followPipeline}
+          followers={followers}
           isNodeLoading={isNodeLoading}
           lineageLeafNodes={leafNodes}
           loadNodeHandler={loadNodeHandler}
@@ -314,8 +314,8 @@ const PipelineDetailsPage = () => {
           slashedPipelineName={slashedPipelineName}
           tagList={tagList}
           tagUpdateHandler={onTagUpdate}
-          tasks={tasks}
           taskUpdateHandler={onTaskUpdate}
+          tasks={tasks}
           tier={tier as TagLabel}
           unfollowPipelineHandler={unfollowPipeline}
           users={AppState.users}
