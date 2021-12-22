@@ -41,3 +41,7 @@ This document summarizes information relevant to OpenMetadata committers and con
 {% content-ref url="python-api.md" %}
 [python-api.md](python-api.md)
 {% endcontent-ref %}
+
+{% content-ref url="entities/" %}
+[entities](entities/)
+{% endcontent-ref %}

@@ -140,3 +140,5 @@
   * [Run OpenMetadata UI Locally](open-source-community/developer/run-openmetadata-ui-locally.md)
   * [Solution Design](open-source-community/developer/solution-design.md)
   * [Python API](open-source-community/developer/python-api.md)
+  * [Entities](open-source-community/developer/entities/README.md)
+    * [ML Model Entity](open-source-community/developer/entities/ml-model-entity.md)
