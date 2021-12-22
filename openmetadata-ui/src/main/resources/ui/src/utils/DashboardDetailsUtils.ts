@@ -17,6 +17,10 @@ export const dashboardDetailsTabs = [
     path: 'details',
   },
   {
+    name: 'Lineage',
+    path: 'lineage',
+  },
+  {
     name: 'Manage',
     path: 'manage',
   },
@@ -26,6 +30,11 @@ export const getCurrentDashboardTab = (tab: string) => {
   let currentTab = 1;
   switch (tab) {
     case 'manage':
+      currentTab = 3;
+
+      break;
+
+    case 'lineage':
       currentTab = 2;
 
       break;
