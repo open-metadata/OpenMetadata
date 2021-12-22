@@ -13,9 +13,11 @@
 
 import { observer } from 'mobx-react';
 import React, { useState } from 'react';
-import ReactTutorial from 'react-tutorial';
+import ReactTutorial from '@deuex-solutions/react-tutorial';
 import AppState from '../../AppState';
 import { useTour } from '../../hooks/useTour';
+import TourEndModal from '../Modals/TourEndModal/TourEndModal';
+import { useHistory } from 'react-router-dom';
 
 type Steps = {
   content?: string;
@@ -44,6 +46,7 @@ const getSteps = (value: string) => {
     {
       content: `This is a search box where you can type "name", "description", "column name", etc. to find any matching data asset. For example, type "${modifiedValue}". Hit Enter.`,
       actionType: 'enter',
+      userTypeText: modifiedValue,
       position: [600, 85],
       selector: '#searchBox',
       beforeNext: () => {
@@ -66,9 +69,6 @@ const getSteps = (value: string) => {
       beforePrev: () => {
         AppState.currentTourPage = 'explorePage';
       },
-      beforeNext: () => {
-        AppState.activeTabforTourDatasetPage = 2;
-      },
       content: 'Understand the schema of the table and add description.',
       position: [5, 255],
       selector: '#schema',
@@ -78,8 +78,14 @@ const getSteps = (value: string) => {
         AppState.activeTabforTourDatasetPage = 1;
       },
       beforeNext: () => {
-        AppState.activeTabforTourDatasetPage = 3;
+        AppState.activeTabforTourDatasetPage = 2;
       },
+      actionType: 'click',
+      content: 'Click on the profiler tab.',
+      position: [75, 255],
+      selector: '#profiler',
+    },
+    {
       content: 'Understand the profiler tab.',
       position: [75, 255],
       selector: '#profiler',
@@ -89,11 +95,26 @@ const getSteps = (value: string) => {
         AppState.activeTabforTourDatasetPage = 2;
       },
       beforeNext: () => {
-        AppState.activeTabforTourDatasetPage = 5;
+        AppState.activeTabforTourDatasetPage = 3;
       },
+      actionType: 'click',
+      content: 'Click lineage.',
+      position: [200, 255],
+      selector: '#lineage',
+    },
+    {
       content: 'Understand lineage.',
       position: [200, 255],
       selector: '#lineage',
+    },
+    {
+      beforeNext: () => {
+        AppState.activeTabforTourDatasetPage = 5;
+      },
+      actionType: 'click',
+      content: 'Click on manage tab',
+      position: [300, 255],
+      selector: '#manage',
     },
     {
       beforePrev: () => {
@@ -103,33 +124,52 @@ const getSteps = (value: string) => {
       position: [300, 255],
       selector: '#manage',
     },
-    {
-      content: 'Click on explore to access all the assests.',
-      actionType: 'click',
-      position: [10, 70],
-      selector: '#explore',
-    },
   ];
 };
 
 const Tour = () => {
   const { isTourOpen, handleIsTourOpen } = useTour();
   const [steps] = useState<Steps[]>(getSteps('dim_a'));
+  const [showTourEndModal, setShowTourEndModal] = useState(false);
+  const history = useHistory();
+
+  const handleModalSubmit = () => {
+    history.push('/');
+  };
 
   return (
     <div>
       {isTourOpen ? (
         <ReactTutorial
+          disableDotsNavigation
           disableKeyboardNavigation
           showNumber
           accentColor="#7147E8"
           inViewThreshold={200}
+          lastStepNextButton={
+            <button
+              className="tw-w-4"
+              onClick={() => setShowTourEndModal(true)}>
+              <svg viewBox="0 0 18.4 14.4">
+                <path
+                  d="M17 7.2H1M10.8 1 17 7.2l-6.2 6.2"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeLinecap="round"
+                  strokeMiterlimit={10}
+                  strokeWidth={2}
+                />
+              </svg>
+            </button>
+          }
           maskColor="#302E36"
           playTour={isTourOpen}
           steps={steps}
           onRequestClose={() => handleIsTourOpen(false)}
         />
       ) : null}
+
+      {showTourEndModal && <TourEndModal onSave={handleModalSubmit} />}
     </div>
   );
 };

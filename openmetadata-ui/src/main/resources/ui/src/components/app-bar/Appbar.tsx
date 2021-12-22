@@ -250,7 +250,6 @@ const Appbar: React.FC = (): JSX.Element => {
                   const target = e.target as HTMLInputElement;
                   if (e.key === 'Enter') {
                     setIsOpen(false);
-
                     // below code is for tour feature
                     if (location.pathname.includes(ROUTES.TOUR)) {
                       appState.currentTourPage = 'explorePage';
