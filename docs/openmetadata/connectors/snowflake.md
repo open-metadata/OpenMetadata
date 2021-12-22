@@ -127,6 +127,7 @@ Note: The `source.config` field in the configuration JSON will include the major
       "username": "username",
       "password": "strong_password",
       "database": "SNOWFLAKE_SAMPLE_DATA",
+      "warehouse": "DEMO",
       "account": "account_name",
       "service_name": "snowflake",
       "data_profiler_enabled": "false",
