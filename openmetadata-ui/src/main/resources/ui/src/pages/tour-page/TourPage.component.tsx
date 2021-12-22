@@ -127,8 +127,8 @@ const TourPage = () => {
             descriptionUpdateHandler={handleCountChange}
             entityLineage={datasetData.entityLineage}
             entityName={datasetData.entityName}
-            followers={datasetData.followers}
             followTableHandler={handleCountChange}
+            followers={datasetData.followers}
             isNodeLoading={{
               id: undefined,
               state: false,
