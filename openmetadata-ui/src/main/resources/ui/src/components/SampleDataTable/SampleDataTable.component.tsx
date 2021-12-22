@@ -29,7 +29,7 @@ type Props = {
 const SampleDataTable: FunctionComponent<Props> = ({ sampleData }: Props) => {
   return (
     <div className="tw-table-responsive">
-      {sampleData?.rows && sampleData?.columns ? (
+      {sampleData?.rows?.length && sampleData?.columns?.length ? (
         <table
           className="tw-min-w-max tw-w-full tw-table-auto"
           data-testid="sample-data-table">
