@@ -23,7 +23,6 @@ def get_long_description():
 
 
 base_requirements = {
-    "openmetadata-ingestion-core==0.6.0.dev0",
     "commonregex",
     "idna<3,>=2.5",
     "click>=7.1.1",
@@ -59,6 +58,7 @@ base_plugins = {
     "sql-metadata~=2.0.0",
 }
 plugins: Dict[str, Set[str]] = {
+    "core": {},
     "amundsen": {"neo4j~=4.4.0"},
     "athena": {"PyAthena[SQLAlchemy]"},
     "bigquery": {"openmetadata-sqlalchemy-bigquery==0.2.2"},
