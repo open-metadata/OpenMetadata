@@ -78,7 +78,7 @@ mkdir redshift; cd redshift
 
 #### 1c. Create the virtual environment
 
-Run the following command to create a Python virtual environment called, `env`.
+Run the following command to create a Python virtual environment called, `redshift-env`.
 
 ```bash
 python3 -m venv redshift-env
@@ -110,7 +110,7 @@ With the virtual environment set up and activated as described in Step 1, run th
 pip3 install 'openmetadata-ingestion[redshift]'
 ```
 
-### 3. Create a configuration file using the Redshift JSON template
+### 3. Create a configuration file using template JSON
 
 Create a new file called `redshift.json` in the current directory. Note that the current directory should be the `openmetadata/redshift` directory you created in Step 1.&#x20;
 
@@ -265,8 +265,6 @@ Note: `source.config.include_views` is set to `true` by default.
 #### include\_tables (optional)
 
 Use `source.config.include_tables` to control whether or not to include tables as part of metadata ingestion and data profiling.
-
-
 
 Explicitly include tables by adding the following key-value pair in the `source.config` field of your configuration file.
 
@@ -442,7 +440,7 @@ ERROR: Could not build wheels for cryptography which use PEP 517 and cannot be i
 This problem is usually due to running on older version of pip. Try upgrading pip as follows.
 
 ```bash
-pip3 install --upgrade pip
+pip3 install --upgrade pip setuptools
 ```
 
 Then re-run the install command in [Step 2](redshift.md#install-from-pypi-or-source).
