@@ -84,7 +84,7 @@ Run the following command to activate the virtual environment.&#x20;
 source mysql-env/bin/activate
 ```
 
-Once activated, you should see your command prompt change to indicate that your commands will now be executed in the environment named, mysql`-env`.
+Once activated, you should see your command prompt change to indicate that your commands will now be executed in the environment named, `mysql-env`.
 
 #### 1e. Upgrade pip and setuptools to the latest versions
 
@@ -181,7 +181,7 @@ Edit the value for `source.config.password` with the password for your MySQL use
 
 #### service\_name
 
-OpenMetadata uniquely identifies services by their `service_name`. Edit the value  for `source.config.service_name` with a name that distinguishes your this deployment from other services, including other MySQL services that you might be ingesting metadata from.
+OpenMetadata uniquely identifies services by their `service_name`. Edit the value for `source.config.service_name` with a name that distinguishes this deployment from other services, including other MySQL services that you might be ingesting metadata from.
 
 ```json
 "service_name": "local_mysql"
