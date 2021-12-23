@@ -246,7 +246,7 @@ const EntityPageInfo = ({
           </div>
         </div>
       </div>
-      <div className="tw-flex tw-gap-1 tw-mb-2 tw-mt-1 tw-ml-7">
+      <div className="tw-flex tw-gap-1 tw-mb-2 tw-mt-1 tw-ml-7 tw-flex-wrap">
         {extraInfo.map((info, index) => (
           <span className="tw-flex" key={index}>
             {getInfoElements(info)}

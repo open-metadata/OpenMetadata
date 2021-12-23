@@ -67,6 +67,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       />
       <Route exact component={TopicDetailsPage} path={ROUTES.TOPIC_DETAILS} />
       <Route
+        exact
         component={TopicDetailsPage}
         path={ROUTES.TOPIC_DETAILS_WITH_TAB}
       />
