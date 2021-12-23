@@ -272,9 +272,9 @@ const PipelineDetails = ({
             isTagEditable
             entityName={entityName}
             extraInfo={extraInfo}
+            followHandler={followPipeline}
             followers={followersCount}
             followersList={followers}
-            followHandler={followPipeline}
             hasEditAccess={hasEditAccess()}
             isFollowing={isFollowing}
             owner={owner}

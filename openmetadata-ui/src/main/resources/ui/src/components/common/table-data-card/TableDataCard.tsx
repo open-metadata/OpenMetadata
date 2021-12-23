@@ -14,8 +14,11 @@
 import { isString, isUndefined, startCase, uniqueId } from 'lodash';
 import { ExtraInfo } from 'Models';
 import React, { FunctionComponent } from 'react';
-import { Link } from 'react-router-dom';
+import { useHistory, useLocation } from 'react-router-dom';
+import AppState from '../../../AppState';
+import { ROUTES } from '../../../constants/constants';
 import { SearchIndex } from '../../../enums/search.enum';
+import { CurrentTourPageType } from '../../../enums/tour.enum';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { serviceTypeLogo } from '../../../utils/ServiceUtils';
 import { stringToHTML } from '../../../utils/StringsUtils';
@@ -27,6 +30,7 @@ type Props = {
   owner?: string;
   description?: string;
   tableType?: string;
+  id?: string;
   tier?: string | TagLabel;
   usage?: number;
   serviceType?: string;
@@ -44,6 +48,7 @@ const TableDataCard: FunctionComponent<Props> = ({
   name,
   owner = '',
   description,
+  id,
   tier = '',
   usage,
   serviceType,
@@ -53,6 +58,8 @@ const TableDataCard: FunctionComponent<Props> = ({
   matches,
   database,
 }: Props) => {
+  const location = useLocation();
+  const history = useHistory();
   const getTier = () => {
     if (tier) {
       return isString(tier) ? tier : tier.tagFQN.split('.')[1];
@@ -93,10 +100,26 @@ const TableDataCard: FunctionComponent<Props> = ({
     return [...new Set(assetTags)];
   };
 
+  const handleCardClick = () => {
+    if (location.pathname.includes(ROUTES.TOUR)) {
+      AppState.currentTourPage = CurrentTourPageType.DATASET_PAGE;
+    }
+  };
+
+  const handleLinkClick = () => {
+    if (location.pathname.includes(ROUTES.TOUR)) {
+      AppState.currentTourPage = CurrentTourPageType.DATASET_PAGE;
+    } else {
+      history.push(getEntityLink(indexType, fullyQualifiedName));
+    }
+  };
+
   return (
     <div
       className="tw-bg-white tw-p-3 tw-border tw-border-main tw-rounded-md"
-      data-testid="table-data-card">
+      data-testid="table-data-card"
+      id={id}
+      onClickCapture={handleCardClick}>
       <div>
         <div className="tw-flex">
           {/* {getEntityIcon(indexType)} */}
@@ -106,13 +129,12 @@ const TableDataCard: FunctionComponent<Props> = ({
             src={serviceTypeLogo(serviceType || '')}
           />
           <h6 className="tw-flex tw-items-center tw-m-0 tw-heading tw-pl-2">
-            <Link
+            <button
+              className="tw-text-grey-body tw-font-medium"
               data-testid="table-link"
-              to={getEntityLink(indexType, fullyQualifiedName)}>
-              <button className="tw-text-grey-body tw-font-medium">
-                {stringToHTML(name)}
-              </button>
-            </Link>
+              onClick={handleLinkClick}>
+              {stringToHTML(name)}
+            </button>
           </h6>
         </div>
       </div>

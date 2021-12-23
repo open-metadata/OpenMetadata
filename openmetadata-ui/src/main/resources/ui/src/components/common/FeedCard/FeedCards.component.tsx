@@ -12,8 +12,9 @@
  */
 
 import classNames from 'classnames';
-import React, { FC, Fragment, ReactNode } from 'react';
+import React, { FC, ReactNode } from 'react';
 import { Link } from 'react-router-dom';
+import AppState from '../../../AppState';
 import { getEntityLink } from '../../../utils/TableUtils';
 import { getTimeByTimeStamp } from '../../../utils/TimeUtils';
 import Avatar from '../avatar/Avatar';
@@ -37,7 +38,7 @@ const FeedCards: FC<FeedCardsProp> = ({
   relativeDays = [],
 }: FeedCardsProp) => {
   return (
-    <Fragment>
+    <div id="feedData">
       {relativeDays.map((d, i) => (
         <div className="tw-grid tw-grid-rows-1 tw-grid-cols-1 tw-mt-3" key={i}>
           <div className="tw-relative tw-mt-3 tw-mb-3.5">
@@ -62,7 +63,11 @@ const FeedCards: FC<FeedCardsProp> = ({
                     <span className="tw-pl-1 tw-font-normal">
                       updated {feed.entityType}{' '}
                       <Link to={getEntityLink(feed.entityType, feed.fqn)}>
-                        <span className="link-text">{feed.entityName}</span>
+                        <button
+                          className="link-text"
+                          disabled={AppState.isTourOpen}>
+                          {feed.entityName}
+                        </button>
                       </Link>
                       <span className="tw-text-grey-muted tw-pl-1 tw-text-xs">
                         {getTimeByTimeStamp(feed.updatedAt)}
@@ -80,7 +85,7 @@ const FeedCards: FC<FeedCardsProp> = ({
             ))}
         </div>
       ))}
-    </Fragment>
+    </div>
   );
 };
 

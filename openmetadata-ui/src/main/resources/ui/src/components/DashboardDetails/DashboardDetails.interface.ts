@@ -12,10 +12,18 @@
  */
 
 import { Operation } from 'fast-json-patch';
-import { EntityTags, TableDetail } from 'Models';
+import {
+  EntityTags,
+  LeafNodes,
+  LineagePos,
+  LoadingNodeState,
+  TableDetail,
+} from 'Models';
 import { Chart } from '../../generated/entity/data/chart';
 import { Dashboard } from '../../generated/entity/data/dashboard';
 import { User } from '../../generated/entity/teams/user';
+import { EntityLineage } from '../../generated/type/entityLineage';
+import { EntityReference } from '../../generated/type/entityReference';
 import { TagLabel } from '../../generated/type/tagLabel';
 import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
 
@@ -24,6 +32,9 @@ export interface ChartType extends Chart {
 }
 
 export interface DashboardDetailsProps {
+  isNodeLoading: LoadingNodeState;
+  lineageLeafNodes: LeafNodes;
+  entityLineage: EntityLineage;
   charts: Array<ChartType>;
   serviceType: string;
   dashboardUrl: string;
@@ -54,4 +65,5 @@ export interface DashboardDetailsProps {
     patch: Array<Operation>
   ) => void;
   tagUpdateHandler: (updatedDashboard: Dashboard) => void;
+  loadNodeHandler: (node: EntityReference, pos: LineagePos) => void;
 }

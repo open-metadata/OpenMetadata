@@ -14,10 +14,9 @@ import os
 import pathlib
 import subprocess
 import sys
+import tempfile
 import time
 import traceback
-import tempfile
-import pathlib
 from datetime import timedelta
 
 import click
@@ -47,9 +46,11 @@ def check() -> None:
 
 @click.group()
 @click.version_option(get_metadata_version())
-@click.option("--debug/--no-debug", default=False)
+@click.option(
+    "--debug/--no-debug", default=lambda: os.environ.get("METADATA_DEBUG", False)
+)
 def metadata(debug: bool) -> None:
-    if os.getenv("METADATA_DEBUG", False):
+    if debug:
         logging.getLogger().setLevel(logging.INFO)
         logging.getLogger("metadata").setLevel(logging.DEBUG)
     else:
@@ -160,6 +161,7 @@ def docker(start, stop, clean, type, path) -> None:
 
     try:
         import docker as sys_docker
+
         from metadata.ingestion.ometa.ometa_api import OpenMetadata
         from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 

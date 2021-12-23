@@ -12,10 +12,11 @@
  */
 
 import { getAllByTestId, getByTestId, render } from '@testing-library/react';
-import { TableDetail } from 'Models';
+import { LeafNodes, LoadingNodeState, TableDetail } from 'Models';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { Dashboard } from '../../generated/entity/data/dashboard';
+import { EntityLineage } from '../../generated/type/entityLineage';
 import { TagLabel } from '../../generated/type/tagLabel';
 import DashboardDetails from './DashboardDetails.component';
 
@@ -45,6 +46,7 @@ const DashboardDetailsProps = {
   tagList: [],
   users: [],
   dashboardDetails: {} as Dashboard,
+  entityLineage: {} as EntityLineage,
   entityName: '',
   activeTab: 1,
   owner: {} as TableDetail['owner'],
@@ -61,6 +63,9 @@ const DashboardDetailsProps = {
   chartDescriptionUpdateHandler: jest.fn(),
   chartTagUpdateHandler: jest.fn(),
   tagUpdateHandler: jest.fn(),
+  loadNodeHandler: jest.fn(),
+  lineageLeafNodes: {} as LeafNodes,
+  isNodeLoading: {} as LoadingNodeState,
 };
 
 jest.mock('../ManageTab/ManageTab.component', () => {

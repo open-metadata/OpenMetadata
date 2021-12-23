@@ -107,7 +107,10 @@ const MyAssetStats: FunctionComponent<Props> = ({
   }, [userTeams, users, countServices]);
 
   return (
-    <div className="tw-mb-3" data-testid="data-summary-container">
+    <div
+      className="tw-mb-3"
+      data-testid="data-summary-container"
+      id="assetStatsCount">
       {Object.values(dataSummary).map((data, index) => (
         <div
           className="tw-flex tw-items-center tw-justify-between tw-mb-2"
@@ -123,7 +126,9 @@ const MyAssetStats: FunctionComponent<Props> = ({
                 className="tw-font-medium tw-pl-2"
                 data-testid={data.dataTestId}
                 to={data.link}>
-                <button className="tw-text-grey-body hover:tw-text-primary-hover hover:tw-underline">
+                <button
+                  className="tw-text-grey-body hover:tw-text-primary-hover hover:tw-underline"
+                  disabled={AppState.isTourOpen}>
                   {data.data}
                 </button>
               </Link>

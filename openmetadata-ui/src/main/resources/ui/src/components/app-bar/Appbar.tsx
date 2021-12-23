@@ -32,7 +32,9 @@ import {
   ROUTES,
 } from '../../constants/constants';
 import { urlGitbookDocs, urlJoinSlack } from '../../constants/url.const';
+import { CurrentTourPageType } from '../../enums/tour.enum';
 import { useAuth } from '../../hooks/authHooks';
+import { useTour } from '../../hooks/useTour';
 import { userSignOut } from '../../utils/AuthUtils';
 import { addToRecentSearched } from '../../utils/CommonUtils';
 import {
@@ -44,7 +46,6 @@ import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import DropDown from '../dropdown/DropDown';
 import { WhatsNewModal } from '../Modals/WhatsNewModal';
 import { COOKIE_VERSION } from '../Modals/WhatsNewModal/whatsNewData';
-// import Tour from '../tour/Tour';
 import { ReactComponent as IconDefaultUserProfile } from './../../assets/svg/ic-default-profile.svg';
 import SearchOptions from './SearchOptions';
 import Suggestions from './Suggestions';
@@ -54,6 +55,7 @@ const cookieStorage = new CookieStorage();
 const Appbar: React.FC = (): JSX.Element => {
   const location = useLocation();
   const history = useHistory();
+  const { handleIsTourOpen } = useTour();
   const { isAuthenticatedRoute, isSignedIn, isFirstTimeUser, isAuthDisabled } =
     useAuth(location.pathname);
   const match: Match | null = useRouteMatch({
@@ -137,6 +139,20 @@ const Appbar: React.FC = (): JSX.Element => {
           width="12"
         />
       ),
+    },
+    {
+      name: `Tour`,
+      to: ROUTES.TOUR,
+      disabled: false,
+      icon: (
+        <SVGIcons
+          alt="tour icon"
+          className="tw-align-middle tw-mr-0.5"
+          icon={Icons.TOUR}
+          width="12"
+        />
+      ),
+      method: () => handleIsTourOpen(true),
     },
   ];
 
@@ -235,6 +251,14 @@ const Appbar: React.FC = (): JSX.Element => {
                   const target = e.target as HTMLInputElement;
                   if (e.key === 'Enter') {
                     setIsOpen(false);
+                    // below code is for tour feature
+                    if (location.pathname.includes(ROUTES.TOUR)) {
+                      appState.currentTourPage =
+                        CurrentTourPageType.EXPLORE_PAGE;
+
+                      return;
+                    }
+
                     if (target.value) {
                       addToRecentSearched(target.value);
                     }
@@ -280,23 +304,7 @@ const Appbar: React.FC = (): JSX.Element => {
                   icon={Icons.WHATS_NEW}
                   width="20"
                 />
-                {/* <span>What&#39;s new</span> */}
               </button>
-              {/* <NavLink
-              className="tw-nav focus:tw-no-underline hover:tw-underline"
-              data-testid="tour"
-              style={navStyle(location.pathname.startsWith('/explore'))}
-              to={{
-                pathname: '/tour',
-              }}>
-              <SVGIcons
-                alt="Doc icon"
-                className="tw-align-middle tw--mt-0.5 tw-mr-1"
-                icon={Icons.WHATS_NEW}
-                width="16"
-              />
-              <span>Tour</span>
-            </NavLink> */}
               <div>
                 <DropDown
                   dropDownList={supportLinks}
@@ -366,7 +374,6 @@ const Appbar: React.FC = (): JSX.Element => {
           )}
         </div>
       ) : null}
-      {/* <Tour /> */}
     </>
   );
 };

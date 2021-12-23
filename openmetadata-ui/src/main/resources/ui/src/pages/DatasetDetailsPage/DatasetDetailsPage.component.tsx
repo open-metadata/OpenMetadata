@@ -317,8 +317,8 @@ const DatasetDetailsPage: FunctionComponent = () => {
           descriptionUpdateHandler={descriptionUpdateHandler}
           entityLineage={entityLineage}
           entityName={name}
-          followers={followers}
           followTableHandler={followTable}
+          followers={followers}
           isNodeLoading={isNodeLoading}
           joins={joins}
           lineageLeafNodes={leafNodes}

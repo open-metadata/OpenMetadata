@@ -15,6 +15,7 @@ import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { getDashboardByFqn } from '../../axiosAPIs/dashboardAPI';
 import { getPipelineByFqn } from '../../axiosAPIs/pipelineAPI';
 import { getServiceById } from '../../axiosAPIs/serviceAPI';
 import { getTableDetailsByFQN } from '../../axiosAPIs/tableAPI';
@@ -135,6 +136,35 @@ const EntityInfoDrawer = ({
 
         break;
       }
+      case EntityType.DASHBOARD: {
+        setIsLoading(true);
+        getDashboardByFqn(selectedNode.name, ['tags', 'owner'])
+          .then((res: AxiosResponse) => {
+            getServiceById('dashboardServices', res.data.service?.id)
+              .then((serviceRes: AxiosResponse) => {
+                setServiceType(serviceRes.data.serviceType);
+              })
+              .catch((err: AxiosError) => {
+                const msg = err.message;
+                showToast({
+                  variant: 'error',
+                  body:
+                    msg ?? `Error while getting ${selectedNode.name} service`,
+                });
+              });
+            setEntityDetail(res.data);
+            setIsLoading(false);
+          })
+          .catch((err: AxiosError) => {
+            const msg = err.message;
+            showToast({
+              variant: 'error',
+              body: msg ?? `Error while getting ${selectedNode.name} details`,
+            });
+          });
+
+        break;
+      }
 
       default:
         break;
@@ -224,7 +254,9 @@ const EntityInfoDrawer = ({
           <section className="tw-mt-1">
             <span className="tw-text-grey-muted">Description</span>
             <div>
-              {entityDetail.description ?? (
+              {entityDetail.description?.trim() ? (
+                entityDetail.description
+              ) : (
                 <p className="tw-text-xs tw-text-grey-muted">
                   No description added
                 </p>

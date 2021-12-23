@@ -264,8 +264,8 @@ const TopicDetailsPage: FunctionComponent = () => {
           description={description}
           descriptionUpdateHandler={descriptionUpdateHandler}
           entityName={name}
-          followers={followers}
           followTopicHandler={followTopic}
+          followers={followers}
           maximumMessageSize={maximumMessageSize}
           owner={owner}
           partitions={partitions}
