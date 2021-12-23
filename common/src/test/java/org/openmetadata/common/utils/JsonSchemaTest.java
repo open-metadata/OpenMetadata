@@ -34,8 +34,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /**
- * This test provides examples of how to use: - JSON schema to validate the JSON payload - Generate JSON schema from
- * POJO
+ * This test provides examples of how to use: - JSON schema to validate the JSON payload - Generate
+ * JSON schema from POJO
  */
 public class JsonSchemaTest {
   private final UUID TEST_UUID = UUID.randomUUID();
@@ -47,8 +47,8 @@ public class JsonSchemaTest {
     urnFactory = JsonSchemaUtil.getUrnFactory();
   }
 
-  private java.util.Set<com.networknt.schema.ValidationMessage> validate(InputStream in, String jsonPayload)
-      throws IOException {
+  private java.util.Set<com.networknt.schema.ValidationMessage> validate(
+      InputStream in, String jsonPayload) throws IOException {
     System.out.println("Validating " + jsonPayload);
     Set<ValidationMessage> errors = JsonSchemaUtil.validate(in, jsonPayload, urnFactory);
     System.out.println("Errors " + errors);
@@ -59,7 +59,8 @@ public class JsonSchemaTest {
   @Test
   public void validJson() throws IOException {
     // Valid jsonPayload
-    InputStream in = JsonSchemaTest.class.getClassLoader().getResourceAsStream("json/entity/testEntity.json");
+    InputStream in =
+        JsonSchemaTest.class.getClassLoader().getResourceAsStream("json/entity/testEntity.json");
     Map<String, Object> objectTypeMap =
         Map.of(
             "ot1", "ot1",
@@ -77,7 +78,8 @@ public class JsonSchemaTest {
   /** Validate a non-conforming JSON payload that is missing a required field using JSON schema */
   @Test
   public void missingField() throws IOException {
-    InputStream in = JsonSchemaTest.class.getClassLoader().getResourceAsStream("json/entity/testEntity.json");
+    InputStream in =
+        JsonSchemaTest.class.getClassLoader().getResourceAsStream("json/entity/testEntity.json");
     // No mandatory field "stringProperty"
     Map<String, Object> objectTypeMap =
         Map.of(
@@ -95,11 +97,14 @@ public class JsonSchemaTest {
     assertTrue(errors.iterator().next().getMessage().contains("stringProperty: is missing"));
   }
 
-  /** Validate a non-conforming JSON payload that is missing a required inner field using JSON schema */
+  /**
+   * Validate a non-conforming JSON payload that is missing a required inner field using JSON schema
+   */
   @Test
   public void missingInnerField() throws IOException {
     // No mandatory inner field "objectType.ot1"
-    InputStream in = JsonSchemaTest.class.getClassLoader().getResourceAsStream("json/entity/testEntity.json");
+    InputStream in =
+        JsonSchemaTest.class.getClassLoader().getResourceAsStream("json/entity/testEntity.json");
     Map<String, Object> objectTypeMap =
         Map.of(
             // Missing inner field ot1
@@ -124,7 +129,8 @@ public class JsonSchemaTest {
   @Test
   public void invalidJsonData() throws IOException {
     // Invalid value that is not a URI
-    InputStream in = JsonSchemaTest.class.getClassLoader().getResourceAsStream("json/entity/testEntity.json");
+    InputStream in =
+        JsonSchemaTest.class.getClassLoader().getResourceAsStream("json/entity/testEntity.json");
     Map<String, Object> objectTypeMap = Map.of("ot1", "ot2", "ot2", "ot2");
     Map<String, Object> map =
         Map.of(
@@ -140,7 +146,12 @@ public class JsonSchemaTest {
 
     Set<ValidationMessage> errors = validate(in, jsonPayload);
     assertEquals(1, errors.size());
-    assertTrue(errors.iterator().next().getMessage().contains("uriProperty: does not match the uri pattern"));
+    assertTrue(
+        errors
+            .iterator()
+            .next()
+            .getMessage()
+            .contains("uriProperty: does not match the uri pattern"));
   }
 
   /** Test POJO to JSON schema */
@@ -156,6 +167,7 @@ public class JsonSchemaTest {
     assertEquals("object", jsonMap.get("type"));
 
     // Check properties of the object
+    @SuppressWarnings("unchecked")
     Map<String, Object> propertiesMap = (Map<String, Object>) jsonMap.get("properties");
     assertEquals("{type=string, description=TODO}", propertiesMap.get("name").toString());
   }

@@ -22,22 +22,25 @@ import org.openmetadata.catalog.type.TagLabel.LabelType;
 import org.openmetadata.catalog.type.TagLabel.State;
 
 /**
- * Enum ordinal number is stored in the database. New enums must be added at the end to ensure backward compatibility
+ * Enum ordinal number is stored in the database. New enums must be added at the end to ensure
+ * backward compatibility
  */
 public class EnumBackwardCompatibilityTest {
   /**
-   * Any time a new enum is added, this test will fail. Update the test with total number of enums and test the ordinal
-   * number of the last enum. This will help catch new enum inadvertently being added in the middle.
+   * Any time a new enum is added, this test will fail. Update the test with total number of enums
+   * and test the ordinal number of the last enum. This will help catch new enum inadvertently being
+   * added in the middle.
    */
   @Test
   public void testRelationshipEnumBackwardCompatible() {
-    assertEquals(14, Relationship.values().length);
-    assertEquals(13, Relationship.UPSTREAM.ordinal());
+    assertEquals(15, Relationship.values().length);
+    assertEquals(14, Relationship.APPLIED_TO.ordinal());
   }
 
   /**
-   * Any time a new enum is added, this test will fail. Update the test with total number of enums and test the ordinal
-   * number of the last enum. This will help catch new enum inadvertently being added in the middle.
+   * Any time a new enum is added, this test will fail. Update the test with total number of enums
+   * and test the ordinal number of the last enum. This will help catch new enum inadvertently being
+   * added in the middle.
    */
   @Test
   public void testTagLabelEnumBackwardCompatible() {
@@ -46,8 +49,9 @@ public class EnumBackwardCompatibilityTest {
   }
 
   /**
-   * Any time a new enum is added, this test will fail. Update the test with total number of enums and test the ordinal
-   * number of the last enum. This will help catch new enum inadvertently being added in the middle.
+   * Any time a new enum is added, this test will fail. Update the test with total number of enums
+   * and test the ordinal number of the last enum. This will help catch new enum inadvertently being
+   * added in the middle.
    */
   @Test
   public void testTagStateEnumBackwardCompatible() {

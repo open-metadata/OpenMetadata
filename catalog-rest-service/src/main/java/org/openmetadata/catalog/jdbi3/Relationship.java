@@ -14,15 +14,15 @@
 package org.openmetadata.catalog.jdbi3;
 
 /**
- * This enum captures all the relationships between Catalog entities Note that the relationship from is a Strong entity
- * and to is Weak entity when possible.
+ * This enum captures all the relationships between Catalog entities Note that the relationship from
+ * is a Strong entity and to is Weak entity when possible.
  */
 public enum Relationship {
 
   /**
-   * Rules for changing enums since the ordinal position is stored in the database. - Don't remove an enum, since the
-   * database might have stored the enum ordinal number - When adding a new enum, add it as the last enum to preserve
-   * the ordinal positions of the existing enums
+   * Rules for changing enums since the ordinal position is stored in the database. - Don't remove
+   * an enum, since the database might have stored the enum ordinal number - When adding a new enum,
+   * add it as the last enum to preserve the ordinal positions of the existing enums
    */
   // Database --- contains --> Table
   // Organization --- contains --> Team
@@ -74,7 +74,12 @@ public enum Relationship {
   // {Table1} --- upstream ---> {Table2} (Table1 is used for creating Table2}
   // {Pipeline} --- upstream ---> {Table2} (Pipeline creates Table2)
   // {Table} --- upstream ---> {Dashboard} (Table was used to  create Dashboard)
-  UPSTREAM("upstream"); // 13
+  UPSTREAM("upstream"), // 13
+
+  // Policy relationship
+  // {Policy1} -- appliedTo --> {Location1} (Policy1 is applied to Location1)
+  APPLIED_TO("appliedTo"); // 14
+
   /** * Add new enums to the end of the list * */
   private final String value;
 
