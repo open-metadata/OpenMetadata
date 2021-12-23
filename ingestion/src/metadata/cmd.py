@@ -132,14 +132,10 @@ def report(config: str) -> None:
 
 
 # metadata docker --start
+# metadata docker --start -f <path_to_docker_compose_file>
 # metadata docker --stop
 # metadata docker --pause
 # metadata docker --resume
-
-# metadata docker --start -f <path_to_docker_compose_file>
-# metadata docker --stop -f <path_to_docker_compose_file>
-# metadata docker --pause -f <path_to_docker_compose_file>
-# metadata docker --resume -f <path_to_docker_compose_file>
 
 
 @metadata.command()
