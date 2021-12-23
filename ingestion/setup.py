@@ -25,7 +25,6 @@ def get_long_description():
 base_requirements = {
     "openmetadata-ingestion-core==0.6.0.dev0",
     "commonregex",
-    "expandvars>=0.6.5",
     "idna<3,>=2.5",
     "click>=7.1.1",
     "typing_extensions>=3.7.4",
@@ -104,7 +103,7 @@ plugins: Dict[str, Set[str]] = {
     "tableau": {"tableau-api-lib==0.1.22"},
     "vertica": {"sqlalchemy-vertica[vertica-python]>=0.0.5"},
     "report-server": report_requirements,
-    "airflow": {"apache-airflow >= 1.10.2"},
+    "airflow": {"apache-airflow >= 1.10.2", "expandvars>=0.6.5"},
     "salesforce": {"simple_salesforce~=1.11.4"},
     "okta": {"okta~=2.3.0"},
     "mlflow": {"mlflow-skinny~=1.22.0"},
