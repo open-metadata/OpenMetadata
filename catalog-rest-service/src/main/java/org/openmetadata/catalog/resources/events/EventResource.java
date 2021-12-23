@@ -52,8 +52,10 @@ import org.openmetadata.catalog.util.ResultList;
 @Collection(name = "events")
 public class EventResource {
   private final ChangeEventRepository dao;
+  private final CatalogAuthorizer authorizer;
 
   public static class ChangeEventList extends ResultList<ChangeEvent> {
+
     @SuppressWarnings("unused") /* Required for tests */
     public ChangeEventList() {}
 
@@ -67,6 +69,7 @@ public class EventResource {
   public EventResource(CollectionDAO dao, CatalogAuthorizer authorizer) {
     Objects.requireNonNull(dao, "ChangeEventRepository must not be null");
     this.dao = new ChangeEventRepository(dao);
+    this.authorizer = authorizer;
   }
 
   @GET

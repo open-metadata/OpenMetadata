@@ -18,7 +18,6 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.openmetadata.catalog.security.SecurityUtil.addHeaders;
 
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -164,54 +163,58 @@ public final class TestUtils {
   }
 
   public static void post(WebTarget target, Map<String, String> headers) throws HttpResponseException {
-    Response response = addHeaders(target, headers).post(null);
+    Response response = SecurityUtil.addHeaders(target, headers).post(null);
     readResponse(response, Status.CREATED.getStatusCode());
   }
 
   public static <K> void post(WebTarget target, K request, Map<String, String> headers) throws HttpResponseException {
-    Response response = addHeaders(target, headers).post(Entity.entity(request, MediaType.APPLICATION_JSON));
+    Response response =
+        SecurityUtil.addHeaders(target, headers).post(Entity.entity(request, MediaType.APPLICATION_JSON));
     readResponse(response, Status.CREATED.getStatusCode());
   }
 
   public static <T, K> T post(WebTarget target, K request, Class<T> clz, Map<String, String> headers)
       throws HttpResponseException {
-    Response response = addHeaders(target, headers).post(Entity.entity(request, MediaType.APPLICATION_JSON));
+    Response response =
+        SecurityUtil.addHeaders(target, headers).post(Entity.entity(request, MediaType.APPLICATION_JSON));
     return readResponse(response, clz, Status.CREATED.getStatusCode());
   }
 
   public static <T> T patch(WebTarget target, JsonPatch patch, Class<T> clz, Map<String, String> headers)
       throws HttpResponseException {
     Response response =
-        addHeaders(target, headers)
+        SecurityUtil.addHeaders(target, headers)
             .method("PATCH", Entity.entity(patch.toJsonArray().toString(), MediaType.APPLICATION_JSON_PATCH_JSON_TYPE));
     return readResponse(response, clz, Status.OK.getStatusCode());
   }
 
   public static <K> void put(WebTarget target, K request, Status expectedStatus, Map<String, String> headers)
       throws HttpResponseException {
-    Response response = addHeaders(target, headers).method("PUT", Entity.entity(request, MediaType.APPLICATION_JSON));
+    Response response =
+        SecurityUtil.addHeaders(target, headers).method("PUT", Entity.entity(request, MediaType.APPLICATION_JSON));
     readResponse(response, expectedStatus.getStatusCode());
   }
 
   public static <T, K> T put(
       WebTarget target, K request, Class<T> clz, Status expectedStatus, Map<String, String> headers)
       throws HttpResponseException {
-    Response response = addHeaders(target, headers).method("PUT", Entity.entity(request, MediaType.APPLICATION_JSON));
+    Response response =
+        SecurityUtil.addHeaders(target, headers).method("PUT", Entity.entity(request, MediaType.APPLICATION_JSON));
     return readResponse(response, clz, expectedStatus.getStatusCode());
   }
 
   public static <T> T get(WebTarget target, Class<T> clz, Map<String, String> headers) throws HttpResponseException {
-    final Response response = addHeaders(target, headers).get();
+    final Response response = SecurityUtil.addHeaders(target, headers).get();
     return readResponse(response, clz, Status.OK.getStatusCode());
   }
 
   public static <T> T delete(WebTarget target, Class<T> clz, Map<String, String> headers) throws HttpResponseException {
-    final Response response = addHeaders(target, headers).delete();
+    final Response response = SecurityUtil.addHeaders(target, headers).delete();
     return readResponse(response, clz, Status.OK.getStatusCode());
   }
 
   public static void delete(WebTarget target, Map<String, String> headers) throws HttpResponseException {
-    final Response response = addHeaders(target, headers).delete();
+    final Response response = SecurityUtil.addHeaders(target, headers).delete();
     if (!HttpStatus.isSuccess(response.getStatus())) {
       readResponseError(response);
     }

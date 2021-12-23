@@ -66,11 +66,13 @@ import org.openmetadata.catalog.jdbi3.TableRepository.TableEntityInterface;
 import org.openmetadata.catalog.jdbi3.TeamRepository.TeamEntityInterface;
 import org.openmetadata.catalog.jdbi3.TopicRepository.TopicEntityInterface;
 import org.openmetadata.catalog.jdbi3.UserRepository.UserEntityInterface;
+import org.openmetadata.catalog.jdbi3.WebhookRepository.WebhookEntityInterface;
 import org.openmetadata.catalog.operations.workflows.Ingestion;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.type.UsageDetails;
 import org.openmetadata.catalog.type.UsageStats;
+import org.openmetadata.catalog.type.Webhook;
 import org.openmetadata.catalog.util.EntityUtil;
 
 public interface CollectionDAO {
@@ -154,6 +156,9 @@ public interface CollectionDAO {
 
   @CreateSqlObject
   ChangeEventDAO changeEventDAO();
+
+  @CreateSqlObject
+  WebhookDAO webhookDAO();
 
   interface DashboardDAO extends EntityDAO<Dashboard> {
     @Override
@@ -795,6 +800,28 @@ public interface CollectionDAO {
     @Override
     default EntityReference getEntityReference(Ingestion entity) {
       return new IngestionRepository.IngestionEntityInterface(entity).getEntityReference();
+    }
+  }
+
+  interface WebhookDAO extends EntityDAO<Webhook> {
+    @Override
+    default String getTableName() {
+      return "webhook_entity";
+    }
+
+    @Override
+    default Class<Webhook> getEntityClass() {
+      return Webhook.class;
+    }
+
+    @Override
+    default String getNameColumn() {
+      return "name";
+    }
+
+    @Override
+    default EntityReference getEntityReference(Webhook entity) {
+      return new WebhookEntityInterface(entity).getEntityReference();
     }
   }
 

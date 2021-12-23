@@ -378,7 +378,11 @@
         <artifactId>jackson-datatype-jsr353</artifactId>
         <version>${jackson.version}</version>
       </dependency>
-
+      <dependency>
+        <groupId>com.lmax</groupId>
+        <artifactId>disruptor</artifactId>
+        <version>3.4.4</version>
+      </dependency>
     </dependencies>
   </dependencyManagement>
 
@@ -422,7 +426,7 @@
         <plugin>
             <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-jxr-plugin</artifactId>
-            <version>2.3</version>
+            <version>3.1.1</version>
         </plugin>
     </plugins>
 </reporting>
@@ -441,7 +445,7 @@
             <dependency>
               <groupId>com.puppycrawl.tools</groupId>
               <artifactId>checkstyle</artifactId>
-              <version>9.1</version>
+              <version>9.2</version>
             </dependency>
           </dependencies>
         </plugin>

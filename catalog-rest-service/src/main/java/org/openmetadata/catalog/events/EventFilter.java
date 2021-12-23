@@ -51,21 +51,20 @@ public class EventFilter implements ContainerResponseFilter {
             ((Class<EventHandler>) Class.forName(eventHandlerClassName)).getConstructor().newInstance();
         eventHandler.init(config, jdbi);
         eventHandlers.add(eventHandler);
+        LOG.info("Added event handler {}", eventHandlerClassName);
       }
     } catch (Exception e) {
-      LOG.info(e.getMessage());
+      LOG.info("Exception ", e);
     }
   }
 
   @Override
   public void filter(ContainerRequestContext requestContext, ContainerResponseContext responseContext) {
-
     int responseCode = responseContext.getStatus();
     String method = requestContext.getMethod();
     if ((responseCode < 200 || responseCode > 299) || (!AUDITABLE_METHODS.contains(method))) {
       return;
     }
-
     eventHandlers
         .parallelStream()
         .forEach(

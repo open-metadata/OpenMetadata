@@ -315,11 +315,13 @@
       <artifactId>javafaker</artifactId>
       <version>1.0.2</version>
     </dependency>
-
+    <dependency>
+      <groupId>com.lmax</groupId>
+      <artifactId>disruptor</artifactId>
+    </dependency>
   </dependencies>
 
   <build>
-
     <plugins>
       <plugin>
         <groupId>org.codehaus.mojo</groupId>

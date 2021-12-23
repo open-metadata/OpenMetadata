@@ -42,13 +42,15 @@ public class ChangeEventHandler implements EventHandler {
       ChangeEvent changeEvent = getChangeEvent(method, responseContext);
       if (changeEvent != null) {
         LOG.info("Recording change event {} {}", changeEvent.getDateTime().getTime(), changeEvent);
+        EventPubSub.publish(changeEvent);
         if (changeEvent.getEntity() != null) {
           changeEvent.setEntity(JsonUtils.pojoToJson(changeEvent.getEntity()));
         }
+
         dao.changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
       }
     } catch (Exception e) {
-      LOG.error("Failed to capture change event for method {} due to {}", method, e);
+      LOG.error("Failed to capture change event for method {} due to ", method, e);
     }
     return null;
   }

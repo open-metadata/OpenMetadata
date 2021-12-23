@@ -405,7 +405,7 @@ public abstract class EntityRepository<T> {
     return entity;
   }
 
-  protected T withHref(UriInfo uriInfo, T entity) {
+  public T withHref(UriInfo uriInfo, T entity) {
     if (uriInfo == null) {
       return entity;
     }
@@ -607,7 +607,7 @@ public abstract class EntityRepository<T> {
     }
 
     public final void storeUpdate() throws IOException {
-      if (updateVersion(original.getVersion())) {
+      if (updateVersion(original.getVersion())) { // Update changed the entity veresion
         // Store the old version
         String extensionName = EntityUtil.getVersionExtension(entityName, original.getVersion());
         daoCollection
@@ -616,7 +616,7 @@ public abstract class EntityRepository<T> {
 
         // Store the new version
         EntityRepository.this.storeEntity(updated.getEntity(), true);
-      } else {
+      } else { // Update did not change the entity version
         updated.setUpdateDetails(original.getUpdatedBy(), original.getUpdatedAt());
       }
     }

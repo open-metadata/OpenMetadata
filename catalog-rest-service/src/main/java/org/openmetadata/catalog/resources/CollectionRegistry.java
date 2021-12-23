@@ -47,41 +47,22 @@ import org.slf4j.LoggerFactory;
  */
 public final class CollectionRegistry {
   private static final Logger LOG = LoggerFactory.getLogger(CollectionRegistry.class);
-  private static CollectionRegistry instance = null;
-
-  public static class CollectionDetails {
-    private final String resourceClass;
-    private final CollectionDescriptor cd;
-    private final List<CollectionDescriptor> childCollections = new ArrayList<>();
-
-    CollectionDetails(CollectionDescriptor cd, String resourceClass) {
-      this.cd = cd;
-      this.resourceClass = resourceClass;
-    }
-
-    public void addChildCollection(CollectionDetails child) {
-      CollectionInfo collectionInfo = child.cd.getCollection();
-      LOG.info(
-          "Adding child collection {} to parent collection {}", collectionInfo.getName(), cd.getCollection().getName());
-      childCollections.add(child.cd);
-    }
-
-    public CollectionDescriptor[] getChildCollections() {
-      return childCollections.toArray(new CollectionDescriptor[0]);
-    }
-  }
+  private static CollectionRegistry INSTANCE = null;
 
   /** Map of collection endpoint path to collection details */
   private final Map<String, CollectionDetails> collectionMap = new HashMap<>();
 
+  /** Resources used only for testing */
+  private final List<Object> testResources = new ArrayList<>();
+
   private CollectionRegistry() {}
 
   public static CollectionRegistry getInstance() {
-    if (instance == null) {
-      instance = new CollectionRegistry();
-      instance.initialize();
+    if (INSTANCE == null) {
+      INSTANCE = new CollectionRegistry();
+      INSTANCE.initialize();
     }
-    return instance;
+    return INSTANCE;
   }
 
   private void initialize() {
@@ -113,11 +94,6 @@ public final class CollectionRegistry {
     for (CollectionDetails collection : collections) {
       CollectionInfo collectionInfo = collection.cd.getCollection();
       collectionMap.put(collectionInfo.getHref().getPath(), collection);
-      LOG.info(
-          "Initialized collection name {} href {} details {}",
-          collectionInfo.getName(),
-          collectionInfo.getHref(),
-          collection);
     }
 
     // Now add collections to their parents
@@ -136,6 +112,10 @@ public final class CollectionRegistry {
     }
   }
 
+  public static void addTestResource(Object testResource) {
+    getInstance().testResources.add(testResource);
+  }
+
   /** Register resources from CollectionRegistry */
   public void registerResources(
       Jdbi jdbi, Environment environment, CatalogApplicationConfig config, CatalogAuthorizer authorizer) {
@@ -145,7 +125,7 @@ public final class CollectionRegistry {
       String resourceClass = details.resourceClass;
       try {
         CollectionDAO daoObject = jdbi.onDemand(CollectionDAO.class);
-        Objects.requireNonNull(daoObject);
+        Objects.requireNonNull(daoObject, "CollectionDAO must not be null");
         Object resource = createResource(daoObject, resourceClass, config, authorizer);
         environment.jersey().register(resource);
         LOG.info("Registering {}", resourceClass);
@@ -153,6 +133,13 @@ public final class CollectionRegistry {
         LOG.warn("Failed to create resource for class {} {}", resourceClass, ex);
       }
     }
+
+    // Now add test resources
+    testResources.forEach(
+        object -> {
+          LOG.info("Registering test resource {}", object);
+          environment.jersey().register(object);
+        });
   }
 
   /** Get collection details based on annotations in Resource classes */
@@ -202,22 +189,41 @@ public final class CollectionRegistry {
 
     // Create the resource identified by resourceClass
     try {
-      LOG.info("Creating resource {}", resourceClass);
       resource =
           clz.getDeclaredConstructor(CollectionDAO.class, CatalogAuthorizer.class).newInstance(daoObject, authorizer);
     } catch (NoSuchMethodException ex) {
-      LOG.info("Creating resource {} with default constructor", resourceClass);
       resource = Class.forName(resourceClass).getConstructor().newInstance();
     }
 
     // Call initialize method, if it exists
     try {
       Method initializeMethod = resource.getClass().getMethod("initialize", CatalogApplicationConfig.class);
-      LOG.info("Initializing resource {}", resourceClass);
       initializeMethod.invoke(resource, config);
     } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException ignored) {
       // Method does not exist and initialize is not called
     }
     return resource;
+  }
+
+  public static class CollectionDetails {
+    private final String resourceClass;
+    private final CollectionDescriptor cd;
+    private final List<CollectionDescriptor> childCollections = new ArrayList<>();
+
+    CollectionDetails(CollectionDescriptor cd, String resourceClass) {
+      this.cd = cd;
+      this.resourceClass = resourceClass;
+    }
+
+    public void addChildCollection(CollectionDetails child) {
+      CollectionInfo collectionInfo = child.cd.getCollection();
+      LOG.info(
+          "Adding child collection {} to parent collection {}", collectionInfo.getName(), cd.getCollection().getName());
+      childCollections.add(child.cd);
+    }
+
+    public CollectionDescriptor[] getChildCollections() {
+      return childCollections.toArray(new CollectionDescriptor[0]);
+    }
   }
 }
