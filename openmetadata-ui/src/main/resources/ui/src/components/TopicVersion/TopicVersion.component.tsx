@@ -3,14 +3,15 @@ import { isUndefined } from 'lodash';
 import { ExtraInfo } from 'Models';
 import React, { FC, useEffect, useState } from 'react';
 import { ChangeDescription } from '../../generated/entity/data/topic';
+import { TagLabel } from '../../generated/type/tagLabel';
 import {
   getDescriptionDiff,
   getDiffByFieldName,
   getDiffValue,
+  getTagsDiff,
 } from '../../utils/EntityVersionUtils';
 import { bytesToSize } from '../../utils/StringsUtils';
 import { getOwnerFromId } from '../../utils/TableUtils';
-import { getTableTags } from '../../utils/TagsUtils';
 import Description from '../common/description/Description';
 import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
 import TabsPane from '../common/TabsPane/TabsPane';
@@ -175,6 +176,43 @@ const TopicVersion: FC<TopicVersionProp> = ({
     return extraInfo;
   };
 
+  const getTags = () => {
+    const tagsDiff = getDiffByFieldName('tags', changeDescription, true);
+    const oldTags: Array<TagLabel> = JSON.parse(
+      tagsDiff?.added?.oldValue ??
+        tagsDiff?.deleted?.oldValue ??
+        tagsDiff?.updated?.oldValue ??
+        '[]'
+    );
+    const newTags: Array<TagLabel> = JSON.parse(
+      tagsDiff?.added?.newValue ??
+        tagsDiff?.deleted?.newValue ??
+        tagsDiff?.updated?.newValue ??
+        '[]'
+    );
+    const flag: { [x: string]: boolean } = {};
+    const uniqueTags: Array<TagLabel & { added: boolean; removed: boolean }> =
+      [];
+
+    [
+      ...(getTagsDiff(oldTags, newTags) ?? []),
+      ...(currentVersionData.tags ?? []),
+    ].forEach((elem: TagLabel & { added: boolean; removed: boolean }) => {
+      if (!flag[elem.tagFQN as string]) {
+        flag[elem.tagFQN as string] = true;
+        uniqueTags.push(elem);
+      }
+    });
+
+    return [
+      ...uniqueTags.map((t) =>
+        t.tagFQN.startsWith('Tier')
+          ? { ...t, tagFQN: t.tagFQN.split('.')[1] }
+          : t
+      ),
+    ];
+  };
+
   const getInfoBadge = (infos: Array<Record<string, string | number>>) => {
     return (
       <div className="tw-flex tw-justify-between">
@@ -216,8 +254,8 @@ const TopicVersion: FC<TopicVersionProp> = ({
               entityName={currentVersionData.name ?? ''}
               extraInfo={getExtraInfo()}
               followersList={[]}
-              tags={getTableTags(currentVersionData.tags || [])}
-              tier={tier}
+              tags={getTags()}
+              tier={{} as TagLabel}
               titleLinks={slashedTableName}
               version={version}
               versionHandler={backHandler}
