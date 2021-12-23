@@ -2,40 +2,40 @@
 
 ## Prerequisites
 
-* Make sure you are using maven 3.5.x or higher and JDK 11 or higher.
-*   Make sure you have a local instance of MySQL and ElasticSearch.
+* Clone the project on your local computer
 
+  ```
+  git https://github.com/open-metadata/OpenMetadata.git
+  ```
+* Make sure you are using maven 3.5.x or higher and JDK 11 or higher.
+* Make sure you have a local instance of MySQL and ElasticSearch.
     * For an easy install of MySQL and ES, just install Docker on your local machine and run the following commands from the top-level directory
 
-    ```
-    docker-compose -f docker/local-metadata/docker-compose-dev.yml up
-    ```
-*   Bootstrap MySQL with tables
+      ```
+      docker-compose -f docker/local-metadata/docker-compose-dev.yml up
+      ```
+* Bootstrap MySQL with tables and ES with indexes
+    1. [Install the packages](build-code-run-tests.md#building) in your local maven repository.
 
-    1. Create a distribution as explained [here](build-code-run-tests.md#create-a-distribution-packaging)
-    2. Extract the distribution tar.gz file and run the following command
-
-    ```
-    cd open-metadata-<version>/bootstrap
-    sh bootstrap_storage.sh drop-create-all
-    ```
-*   Bootstrap ES with indexes and load sample data into MySQL
-
+       ```
+       ./bootstrap/bootstrap_storage.sh drop-create-all
+       ```
+* Load sample data into MySQL
     1. Run OpenMetadata service instances through IntelliJ IDEA following the instructions [here](build-code-run-tests.md#run-instance-through-intellij-idea)
     2. Once the logs indicate that the instance is up, run the following commands from the top-level directory
 
-    ```
-    python3 -m venv venv
-    source venv/bin/activate
-    pip install -r ingestion/requirements.txt
-    make install_dev generate
-    cd ingestion
-    pip install -e '.[sample-data, elasticsearch]'
-    metadata ingest -c ./pipelines/sample_data.json
-    metadata ingest -c ./pipelines/sample_usage.json
-    metadata ingest -c ./pipelines/metadata_to_es.json
-    ```
-* You are now ready to explore the app by going to http://localhost:8585 \*If the web page doesn't work as intended, please take a look at the troubleshooting steps [here](build-code-run-tests.md#troubleshooting)
+       ```
+       cd ingestion
+       python3 -m venv venv
+       source venv/bin/activate
+       pip install -e '.[sample-data, elasticsearch]'
+       metadata ingest -c ./pipelines/sample_data.json
+       metadata ingest -c ./pipelines/sample_usage.json
+       # optional when the indexes of ES are misaligned with the tables of MySQL
+       metadata ingest -c ./pipelines/metadata_to_es.json
+       ```
+* You are now ready to explore the app by going to http://localhost:8585 
+* If the web page doesn't work as intended, please take a look at the troubleshooting steps [here](build-code-run-tests.md#troubleshooting)
 
 ## Building
 
@@ -70,34 +70,6 @@ Add a new Run/Debug configuration like the below screenshot.
 
 ![Intellij Runtime Configuration](<../../.gitbook/assets/Intellij-Runtime Config.png>)
 
-## Add missing dependency
-
-Right-click on catalog-rest-service
-
-![](../../.gitbook/assets/image-1-.png)
-
-Click on "Open Module Settings"
-
-![](../../.gitbook/assets/image-2-.png)
-
-Go to "Dependencies"
-
-![](../../.gitbook/assets/image-3-.png)
-
-Click “+” at the bottom of the dialog box and click "Add"
-
-![](../../.gitbook/assets/image-4-.png)
-
-Click on Library
-
-![](../../.gitbook/assets/image-5-.png)
-
-In that list look for "jersey-client:2.25.1"
-
-![](../../.gitbook/assets/image-6-.png)
-
-Select it and click "OK". Now run/debug the application.
-
 ## Troubleshooting
 
 * If you see blank page at http://localhost:8585 , please check the logs at `logs/openmetadata.log`. You might be encountering one of the following errors:
@@ -109,7 +81,23 @@ Select it and click "OK". Now run/debug the application.
 
 ## Coding Style
 
-1. [Refer to coding guidelines](coding-style.md)
-2.  Configure IntelliJ to disable the \[wild-card imports]
+* Get familiar with [pre-commit](https://pre-commit.com/) and run the following commands from the top-level directory.
 
-    ([https://www.jetbrains.com/help/idea/creating-and-optimizing-imports.html#disable-wildcard-imports](https://www.jetbrains.com/help/idea/creating-and-optimizing-imports.html#disable-wildcard-imports))
+  ```shell
+  brew install pre-commit
+  make precommit_install
+  ```
+
+* Follow the instructions of the [google java format](https://github.com/google/google-java-format#intellij-android-studio-and-other-jetbrains-ides) plugin for Intellij.
+
+  1. Install the google-java-format plugin
+  ![Install the google-java-format plugin](<../../.gitbook/assets/Intellij03.jpg>)
+  1. Enable the plugin
+  ![Enable the plugin](<../../.gitbook/assets/Intellij04.jpg>)
+  1. Import the Java GoogleStyle
+  ![Import the Java GoogleStyle](<../../.gitbook/assets/Intellij01.jpg>)
+  1. Fix the order of the imports
+  ![Fix the order of the imports](<../../.gitbook/assets/Intellij02.jpg>)
+
+* Refer to the [coding guidelines](coding-style.md)
+* Configure IntelliJ to disable the [wild-card imports](https://www.jetbrains.com/help/idea/creating-and-optimizing-imports.html#disable-wildcard-imports)

@@ -26,7 +26,7 @@ When developing, you can run these tools with `make` recipes: `make lint`, `make
 
 If you want to take this one step further and make sure that you are not committing any malformed changes, you can use [pre-commit hooks](https://pre-commit.com). This is a powerful tool that allows us to run specific validations at commit time. If those validations fail, the commit won't proceed. The interesting point is that the tools are going to fix your code for you, so you can freely try to commit again!
 
-You can install our hooks via `make precommit_install`.
+You can follow our [instructions](build-code-run-tests.md#coding-style) on how to install `pre-commit`
 
 #### Tooling Status
 
