@@ -1,5 +1,7 @@
 package org.openmetadata.catalog.selenium.pages.common;
 
+import java.io.IOException;
+import java.time.Duration;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
@@ -13,9 +15,6 @@ import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.interactions.Actions;
 import org.openqa.selenium.support.ui.WebDriverWait;
-
-import java.io.IOException;
-import java.time.Duration;
 
 @Order(15)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
@@ -42,9 +41,12 @@ public class PostIngestionTests {
   }
 
   public void ingestSampleDataPostTests() throws IOException {
-    String[] installIngestion = {"bash", "-c", "cd ../ && pip install ingestion/"}; // install openmetadata ingestion
-    String[] ingestSampleData = {"bash", "-c",
-        "cd ../ingestion && metadata ingest -c ./pipelines/sample_data.json"}; // ingest sample data
+    String[] installIngestion = {
+      "bash", "-c", "cd ../ && pip install ingestion/"
+    }; // install openmetadata ingestion
+    String[] ingestSampleData = {
+      "bash", "-c", "cd ../ingestion && metadata ingest -c ./pipelines/sample_data.json"
+    }; // ingest sample data
     Runtime.getRuntime().exec(installIngestion);
     Runtime.getRuntime().exec(ingestSampleData);
   }
@@ -58,7 +60,7 @@ public class PostIngestionTests {
     Thread.sleep(waitTime);
     Events.sendKeys(webDriver, By.cssSelector("[data-testid='searchBox']"), dashboard);
     Events.click(webDriver, By.cssSelector("[data-testid='data-name'][id='sample_superset34']"));
-    Events.click(webDriver, By.xpath("(//button[@data-testid='tab'])[2]")); // Manage
+    Events.click(webDriver, By.xpath("(//button[@data-testid='tab'])[3]")); // Manage
     Events.click(webDriver, By.cssSelector("[data-testid='owner-dropdown']")); // Owner
     Events.sendKeys(webDriver, By.cssSelector("[data-testid='searchInputText']"), "Cloud");
     Events.click(webDriver, By.cssSelector("[data-testid='list-item']")); // Select User/Team
@@ -74,7 +76,7 @@ public class PostIngestionTests {
     Thread.sleep(waitTime);
     Events.sendKeys(webDriver, By.cssSelector("[data-testid='searchBox']"), dashboard);
     Events.click(webDriver, By.cssSelector("[data-testid='data-name'][id='sample_superset34']"));
-    Events.click(webDriver, By.xpath("(//button[@data-testid='tab'])[2]")); // Manage
+    Events.click(webDriver, By.xpath("(//button[@data-testid='tab'])[3]")); // Manage
     Events.click(webDriver, By.xpath("//*[contains(text(), 'Cloud_Infra')]"));
   }
 }
