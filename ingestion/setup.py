@@ -25,6 +25,7 @@ def get_long_description():
 base_requirements = {
     "openmetadata-ingestion-core==0.6.0.dev0",
     "commonregex",
+    "expandvars>=0.6.5",
     "idna<3,>=2.5",
     "click>=7.1.1",
     "typing_extensions>=3.7.4",
