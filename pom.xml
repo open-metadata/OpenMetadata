@@ -78,6 +78,8 @@
     <log4j.version>2.17.0</log4j.version>
     <org.junit.jupiter.version>5.8.1</org.junit.jupiter.version>
     <dropwizard-health.version>1.7.1</dropwizard-health.version>
+    <sonar.organization>open-metadata</sonar.organization>
+    <sonar.host.url>https://sonarcloud.io</sonar.host.url>
   </properties>
   <dependencyManagement>
     <dependencies>
