@@ -15,6 +15,10 @@
     <dropwizard.swagger.version>2.0.12-1</dropwizard.swagger.version>
     <testng.version>7.4.0</testng.version>
     <selenium.version>4.0.0</selenium.version>
+
+    <sonar.junit.reportPaths>${project.basedir}/target/surefire-reports</sonar.junit.reportPaths>
+    <sonar.coverage.jacoco.xmlReportPaths>${project.basedir}/target/site/jacoco-aggregate/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
+    <sonar.tests>${project.basedir}/src/test/java</sonar.tests>
   </properties>
 
   <dependencies>

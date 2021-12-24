@@ -50,4 +50,4 @@ jobs:
           java-version: 11
 
       - name: Build with Maven
-        run: mvn clean package
+        run: mvn -Dbranch=${{ github.ref_name }} -Dsonar.login=${{ secrets.SONAR_TOKEN }} clean package
