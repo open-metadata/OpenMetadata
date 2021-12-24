@@ -101,23 +101,32 @@ public class LineageResourceTest extends CatalogApplicationTest {
     };
 
     // GET lineage by id
-    EntityLineage lineage = getLineage(Entity.TABLE, TABLES.get(4).getId(), 3, 3, adminAuthHeaders());
+    EntityLineage lineage =
+        getLineage(Entity.TABLE, TABLES.get(4).getId(), 3, 3, adminAuthHeaders());
     assertEdges(lineage, expectedUpstreamEdges, expectedDownstreamEdges);
 
     // GET lineage by fqn
-    lineage = getLineageByName(Entity.TABLE, TABLES.get(4).getFullyQualifiedName(), 3, 3, adminAuthHeaders());
+    lineage =
+        getLineageByName(
+            Entity.TABLE, TABLES.get(4).getFullyQualifiedName(), 3, 3, adminAuthHeaders());
     assertEdges(lineage, expectedUpstreamEdges, expectedDownstreamEdges);
 
     // Test table4 partial lineage with various upstream and downstream depths
     lineage = getLineage(Entity.TABLE, TABLES.get(4).getId(), 0, 0, adminAuthHeaders());
     assertEdges(
-        lineage, Arrays.copyOfRange(expectedUpstreamEdges, 0, 0), Arrays.copyOfRange(expectedDownstreamEdges, 0, 0));
+        lineage,
+        Arrays.copyOfRange(expectedUpstreamEdges, 0, 0),
+        Arrays.copyOfRange(expectedDownstreamEdges, 0, 0));
     lineage = getLineage(Entity.TABLE, TABLES.get(4).getId(), 1, 1, adminAuthHeaders());
     assertEdges(
-        lineage, Arrays.copyOfRange(expectedUpstreamEdges, 0, 3), Arrays.copyOfRange(expectedDownstreamEdges, 0, 3));
+        lineage,
+        Arrays.copyOfRange(expectedUpstreamEdges, 0, 3),
+        Arrays.copyOfRange(expectedDownstreamEdges, 0, 3));
     lineage = getLineage(Entity.TABLE, TABLES.get(4).getId(), 2, 2, adminAuthHeaders());
     assertEdges(
-        lineage, Arrays.copyOfRange(expectedUpstreamEdges, 0, 4), Arrays.copyOfRange(expectedDownstreamEdges, 0, 4));
+        lineage,
+        Arrays.copyOfRange(expectedUpstreamEdges, 0, 4),
+        Arrays.copyOfRange(expectedDownstreamEdges, 0, 4));
   }
 
   public Edge getEdge(Table from, Table to) {
@@ -143,8 +152,10 @@ public class LineageResourceTest extends CatalogApplicationTest {
     validateLineage(addLineage, authHeaders);
   }
 
-  public static void addLineage(AddLineage addLineage, Map<String, String> authHeaders) throws HttpResponseException {
-    TestUtils.put(CatalogApplicationTest.getResource("lineage"), addLineage, Status.OK, authHeaders);
+  public static void addLineage(AddLineage addLineage, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    TestUtils.put(
+        CatalogApplicationTest.getResource("lineage"), addLineage, Status.OK, authHeaders);
   }
 
   private static void validateLineage(AddLineage addLineage, Map<String, String> authHeaders)
@@ -188,22 +199,32 @@ public class LineageResourceTest extends CatalogApplicationTest {
   }
 
   public static EntityLineage getLineage(
-      String entity, UUID id, Integer upstreamDepth, Integer downStreamDepth, Map<String, String> authHeaders)
+      String entity,
+      UUID id,
+      Integer upstreamDepth,
+      Integer downStreamDepth,
+      Map<String, String> authHeaders)
       throws HttpResponseException {
     WebTarget target = getResource("lineage/" + entity + "/" + id);
     target = upstreamDepth != null ? target.queryParam("upstreamDepth", upstreamDepth) : target;
-    target = downStreamDepth != null ? target.queryParam("downstreamDepth", downStreamDepth) : target;
+    target =
+        downStreamDepth != null ? target.queryParam("downstreamDepth", downStreamDepth) : target;
     EntityLineage lineage = TestUtils.get(target, EntityLineage.class, authHeaders);
     validateLineage((lineage));
     return lineage;
   }
 
   public static EntityLineage getLineageByName(
-      String entity, String fqn, Integer upstreamDepth, Integer downStreamDepth, Map<String, String> authHeaders)
+      String entity,
+      String fqn,
+      Integer upstreamDepth,
+      Integer downStreamDepth,
+      Map<String, String> authHeaders)
       throws HttpResponseException {
     WebTarget target = getResource("lineage/" + entity + "/name/" + fqn);
     target = upstreamDepth != null ? target.queryParam("upstreamDepth", upstreamDepth) : target;
-    target = downStreamDepth != null ? target.queryParam("downstreamDepth", downStreamDepth) : target;
+    target =
+        downStreamDepth != null ? target.queryParam("downstreamDepth", downStreamDepth) : target;
     EntityLineage lineage = TestUtils.get(target, EntityLineage.class, authHeaders);
     validateLineage((lineage));
     return lineage;
@@ -217,7 +238,8 @@ public class LineageResourceTest extends CatalogApplicationTest {
     }
   }
 
-  public static void assertEdges(EntityLineage lineage, Edge[] expectedUpstreamEdges, Edge[] expectedDownstreamEdges) {
+  public static void assertEdges(
+      EntityLineage lineage, Edge[] expectedUpstreamEdges, Edge[] expectedDownstreamEdges) {
     assertEquals(lineage.getUpstreamEdges().size(), expectedUpstreamEdges.length);
     for (Edge expectedUpstreamEdge : expectedUpstreamEdges) {
       assertTrue(lineage.getUpstreamEdges().contains(expectedUpstreamEdge));

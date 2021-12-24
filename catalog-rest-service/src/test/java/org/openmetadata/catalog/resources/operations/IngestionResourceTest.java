@@ -74,12 +74,14 @@ public class IngestionResourceTest extends EntityOperationsResourceTest<Ingestio
   }
 
   @Override
-  public Object createRequest(String name, String description, String displayName, EntityReference owner) {
+  public Object createRequest(
+      String name, String description, String displayName, EntityReference owner) {
     return create(name).withDescription(description).withDisplayName(displayName).withOwner(owner);
   }
 
   @Override
-  public void validateCreatedEntity(Ingestion ingestion, Object request, Map<String, String> authHeaders)
+  public void validateCreatedEntity(
+      Ingestion ingestion, Object request, Map<String, String> authHeaders)
       throws HttpResponseException {
     CreateIngestion createRequest = (CreateIngestion) request;
     validateCommonEntityFields(
@@ -94,13 +96,15 @@ public class IngestionResourceTest extends EntityOperationsResourceTest<Ingestio
   }
 
   @Override
-  public void validateUpdatedEntity(Ingestion ingestion, Object request, Map<String, String> authHeaders)
+  public void validateUpdatedEntity(
+      Ingestion ingestion, Object request, Map<String, String> authHeaders)
       throws HttpResponseException {
     validateCreatedEntity(ingestion, request, authHeaders);
   }
 
   @Override
-  public void compareEntities(Ingestion expected, Ingestion updated, Map<String, String> authHeaders)
+  public void compareEntities(
+      Ingestion expected, Ingestion updated, Map<String, String> authHeaders)
       throws HttpResponseException {
     validateCommonEntityFields(
         getEntityInterface(updated),
@@ -119,7 +123,8 @@ public class IngestionResourceTest extends EntityOperationsResourceTest<Ingestio
   }
 
   @Override
-  public void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException {
+  public void assertFieldChange(String fieldName, Object expected, Object actual)
+      throws IOException {
     if (expected == null && actual == null) {
       return;
     }
@@ -143,7 +148,8 @@ public class IngestionResourceTest extends EntityOperationsResourceTest<Ingestio
 
   @Test
   public void post_IngestionWithTeamOwner_200_ok(TestInfo test) throws IOException {
-    createAndCheckEntity(create(test).withOwner(TEAM_OWNER1).withDisplayName("Ingestion1"), adminAuthHeaders());
+    createAndCheckEntity(
+        create(test).withOwner(TEAM_OWNER1).withDisplayName("Ingestion1"), adminAuthHeaders());
   }
 
   @Test
@@ -155,7 +161,9 @@ public class IngestionResourceTest extends EntityOperationsResourceTest<Ingestio
   public void post_Ingestion_as_non_admin_401(TestInfo test) {
     CreateIngestion create = create(test);
     HttpResponseException exception =
-        assertThrows(HttpResponseException.class, () -> createEntity(create, authHeaders("test@open-metadata.org")));
+        assertThrows(
+            HttpResponseException.class,
+            () -> createEntity(create, authHeaders("test@open-metadata.org")));
     assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
   }
 
@@ -181,7 +189,8 @@ public class IngestionResourceTest extends EntityOperationsResourceTest<Ingestio
 
     // Create Ingestion for each service and test APIs
     for (EntityReference service : differentServices) {
-      Ingestion ingestion = createAndCheckEntity(create(test).withService(service), adminAuthHeaders());
+      Ingestion ingestion =
+          createAndCheckEntity(create(test).withService(service), adminAuthHeaders());
       assertEquals(service.getName(), ingestion.getService().getName());
     }
   }
@@ -190,7 +199,10 @@ public class IngestionResourceTest extends EntityOperationsResourceTest<Ingestio
   public void put_IngestionUrlUpdate_200(TestInfo test) throws IOException {
     CreateIngestion request =
         create(test)
-            .withService(new EntityReference().withId(BIGQUERY_REFERENCE.getId()).withType("databaseService"))
+            .withService(
+                new EntityReference()
+                    .withId(BIGQUERY_REFERENCE.getId())
+                    .withType("databaseService"))
             .withDescription("description")
             .withScheduleInterval("5 * * * *");
     createAndCheckEntity(request, adminAuthHeaders());
@@ -218,15 +230,22 @@ public class IngestionResourceTest extends EntityOperationsResourceTest<Ingestio
 
   @Test
   public void put_IngestionUpdate_200(TestInfo test) throws IOException {
-    CreateIngestion request = create(test).withService(BIGQUERY_REFERENCE).withDescription(null).withOwner(null);
+    CreateIngestion request =
+        create(test).withService(BIGQUERY_REFERENCE).withDescription(null).withOwner(null);
     Ingestion ingestion = createAndCheckEntity(request, adminAuthHeaders());
 
     // Add description and tasks
     ChangeDescription change = getChangeDescription(ingestion.getVersion());
-    change.getFieldsAdded().add(new FieldChange().withName("description").withNewValue("newDescription"));
+    change
+        .getFieldsAdded()
+        .add(new FieldChange().withName("description").withNewValue("newDescription"));
     change.getFieldsAdded().add(new FieldChange().withName("owner").withNewValue(USER_OWNER1));
     updateAndCheckEntity(
-        request.withDescription("newDescription").withOwner(USER_OWNER1), OK, adminAuthHeaders(), MINOR_UPDATE, change);
+        request.withDescription("newDescription").withOwner(USER_OWNER1),
+        OK,
+        adminAuthHeaders(),
+        MINOR_UPDATE,
+        change);
   }
 
   @Test
@@ -240,7 +259,8 @@ public class IngestionResourceTest extends EntityOperationsResourceTest<Ingestio
     // TODO
   }
 
-  private Ingestion updateIngestion(CreateIngestion create, Status status, Map<String, String> authHeaders)
+  private Ingestion updateIngestion(
+      CreateIngestion create, Status status, Map<String, String> authHeaders)
       throws HttpResponseException {
     return TestUtils.put(getCollection(), create, Ingestion.class, status, authHeaders);
   }
@@ -250,7 +270,8 @@ public class IngestionResourceTest extends EntityOperationsResourceTest<Ingestio
    * .../operations/ingestion/name/{fqn}?fields="..."
    */
   @Override
-  public void validateGetWithDifferentFields(Ingestion ingestion, boolean byName) throws HttpResponseException {
+  public void validateGetWithDifferentFields(Ingestion ingestion, boolean byName)
+      throws HttpResponseException {
     // .../Pipelines?fields=owner
     String fields = "owner";
     ingestion =

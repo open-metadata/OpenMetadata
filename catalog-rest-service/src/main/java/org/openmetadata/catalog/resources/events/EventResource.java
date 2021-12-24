@@ -59,7 +59,8 @@ public class EventResource {
     @SuppressWarnings("unused") /* Required for tests */
     public ChangeEventList() {}
 
-    public ChangeEventList(List<ChangeEvent> data, String beforeCursor, String afterCursor, int total)
+    public ChangeEventList(
+        List<ChangeEvent> data, String beforeCursor, String afterCursor, int total)
         throws GeneralSecurityException, UnsupportedEncodingException {
       super(data, beforeCursor, afterCursor, total);
     }
@@ -77,12 +78,16 @@ public class EventResource {
   @Operation(
       summary = "Get change events",
       tags = "events",
-      description = "Get a list of change events matching event types, entity type, from a given date",
+      description =
+          "Get a list of change events matching event types, entity type, from a given date",
       responses = {
         @ApiResponse(
             responseCode = "200",
             description = "Entity events",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ChangeEvent.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ChangeEvent.class))),
         @ApiResponse(responseCode = "404", description = "Entity for instance {id} is not found")
       })
   public ResultList<ChangeEvent> get(

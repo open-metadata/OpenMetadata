@@ -73,7 +73,8 @@ public class ReportResource {
   }
 
   static final String FIELDS = "owner,usageSummary";
-  public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replaceAll(" ", "").split(","));
+  public static final List<String> FIELD_LIST =
+      Arrays.asList(FIELDS.replaceAll(" ", "").split(","));
 
   @GET
   @Operation(
@@ -84,7 +85,10 @@ public class ReportResource {
         @ApiResponse(
             responseCode = "200",
             description = "List of reports",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ReportList.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ReportList.class)))
       })
   public ResultList<Report> list(
       @Context UriInfo uriInfo,
@@ -108,7 +112,10 @@ public class ReportResource {
         @ApiResponse(
             responseCode = "200",
             description = "The report",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Report.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Report.class))),
         @ApiResponse(responseCode = "404", description = "Report for instance {id} is not found")
       })
   public Report get(
@@ -133,10 +140,14 @@ public class ReportResource {
         @ApiResponse(
             responseCode = "200",
             description = "The report",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Report.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Report.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
-  public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid Report report)
+  public Response create(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid Report report)
       throws IOException {
     addToReport(securityContext, report);
     dao.create(uriInfo, report);
@@ -152,7 +163,10 @@ public class ReportResource {
         @ApiResponse(
             responseCode = "200",
             description = "The report",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Report.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Report.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createOrUpdate(

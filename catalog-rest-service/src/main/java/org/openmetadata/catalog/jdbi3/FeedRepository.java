@@ -50,14 +50,20 @@ public class FeedRepository {
 
     // Get owner for the addressed to Entity
     EntityReference owner =
-        EntityUtil.populateOwner(aboutRef.getId(), dao.relationshipDAO(), dao.userDAO(), dao.teamDAO());
+        EntityUtil.populateOwner(
+            aboutRef.getId(), dao.relationshipDAO(), dao.userDAO(), dao.teamDAO());
 
     // Insert a new thread
     dao.feedDAO().insert(JsonUtils.pojoToJson(thread));
 
     // Add relationship User -- created --> Thread relationship
     dao.relationshipDAO()
-        .insert(fromUser.toString(), thread.getId().toString(), "user", "thread", Relationship.CREATED.ordinal());
+        .insert(
+            fromUser.toString(),
+            thread.getId().toString(),
+            "user",
+            "thread",
+            Relationship.CREATED.ordinal());
 
     // Add field relationship data asset Thread -- isAbout ---> entity/entityField
     // relationship
@@ -69,7 +75,8 @@ public class FeedRepository {
             about.getFullyQualifiedFieldType(),
             Relationship.IS_ABOUT.ordinal());
 
-    // Add the owner also as addressedTo as the entity he owns when addressed, the owner is actually being addressed
+    // Add the owner also as addressedTo as the entity he owns when addressed, the owner is actually
+    // being addressed
     if (owner != null) {
       dao.relationshipDAO()
           .insert(
@@ -146,7 +153,8 @@ public class FeedRepository {
     }
     EntityLink entityLink = EntityLink.parse(link);
     if (entityLink.getLinkType() != LinkType.ENTITY) {
-      throw new IllegalArgumentException("Only entity links of type <E#/{entityType}/{entityName}> is allowed");
+      throw new IllegalArgumentException(
+          "Only entity links of type <E#/{entityType}/{entityName}> is allowed");
     }
     EntityReference reference = EntityUtil.validateEntityLink(entityLink);
     List<String> threadIds = new ArrayList<>();
@@ -163,9 +171,11 @@ public class FeedRepository {
     // For a user entitylink get created or replied relationships to the thread
     if (reference.getType().equals(Entity.USER)) {
       threadIds.addAll(
-          dao.relationshipDAO().findTo(reference.getId().toString(), Relationship.CREATED.ordinal(), "thread"));
+          dao.relationshipDAO()
+              .findTo(reference.getId().toString(), Relationship.CREATED.ordinal(), "thread"));
       threadIds.addAll(
-          dao.relationshipDAO().findTo(reference.getId().toString(), Relationship.REPLIED_TO.ordinal(), "thread"));
+          dao.relationshipDAO()
+              .findTo(reference.getId().toString(), Relationship.REPLIED_TO.ordinal(), "thread"));
     } else {
       // Only data assets are added as about
       result =
@@ -181,7 +191,8 @@ public class FeedRepository {
     List<Thread> threads = new ArrayList<>();
     Set<String> uniqueValues = new HashSet<>();
     for (String t : threadIds) {
-      // If an entity has multiple relationships (created, mentioned, repliedTo etc.) to the same thread
+      // If an entity has multiple relationships (created, mentioned, repliedTo etc.) to the same
+      // thread
       // Don't sent duplicated copies of the thread in response
       if (uniqueValues.add(t)) {
         threads.add(EntityUtil.validate(t, dao.feedDAO().findById(t), Thread.class));

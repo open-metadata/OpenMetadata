@@ -70,7 +70,8 @@ public class CatalogApplicationConfig extends Configuration {
     return authenticationConfiguration;
   }
 
-  public void setAuthenticationConfiguration(AuthenticationConfiguration authenticationConfiguration) {
+  public void setAuthenticationConfiguration(
+      AuthenticationConfiguration authenticationConfiguration) {
     this.authenticationConfiguration = authenticationConfiguration;
   }
 

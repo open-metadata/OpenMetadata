@@ -32,7 +32,8 @@ import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
 
 public class MetricsRepository extends EntityRepository<Metrics> {
-  private static final Fields METRICS_UPDATE_FIELDS = new Fields(MetricsResource.FIELD_LIST, "owner");
+  private static final Fields METRICS_UPDATE_FIELDS =
+      new Fields(MetricsResource.FIELD_LIST, "owner");
   private final CollectionDAO dao;
 
   public MetricsRepository(CollectionDAO dao) {
@@ -56,7 +57,9 @@ public class MetricsRepository extends EntityRepository<Metrics> {
     metrics.setService(getService(metrics)); // service is a default field
     metrics.setOwner(fields.contains("owner") ? getOwner(metrics) : null);
     metrics.setUsageSummary(
-        fields.contains("usageSummary") ? EntityUtil.getLatestUsage(dao.usageDAO(), metrics.getId()) : null);
+        fields.contains("usageSummary")
+            ? EntityUtil.getLatestUsage(dao.usageDAO(), metrics.getId())
+            : null);
     return metrics;
   }
 
@@ -83,7 +86,8 @@ public class MetricsRepository extends EntityRepository<Metrics> {
     List<TagLabel> tags = metrics.getTags();
     EntityReference service = metrics.getService();
 
-    // Don't store owner, database, href and tags as JSON. Build it on the fly based on relationships
+    // Don't store owner, database, href and tags as JSON. Build it on the fly based on
+    // relationships
     metrics.withOwner(null).withService(null).withHref(null).withTags(null);
 
     if (update) {
@@ -109,22 +113,27 @@ public class MetricsRepository extends EntityRepository<Metrics> {
     applyTags(metrics);
   }
 
-  private EntityReference getService(Metrics metrics) throws IOException { // Get service by metrics ID
-    EntityReference ref = EntityUtil.getService(dao.relationshipDAO(), metrics.getId(), Entity.DASHBOARD_SERVICE);
+  private EntityReference getService(Metrics metrics)
+      throws IOException { // Get service by metrics ID
+    EntityReference ref =
+        EntityUtil.getService(dao.relationshipDAO(), metrics.getId(), Entity.DASHBOARD_SERVICE);
     return getService(Objects.requireNonNull(ref));
   }
 
-  private EntityReference getService(EntityReference service) throws IOException { // Get service by service ID
+  private EntityReference getService(EntityReference service)
+      throws IOException { // Get service by service ID
     if (service.getType().equalsIgnoreCase(Entity.DASHBOARD_SERVICE)) {
       return dao.dbServiceDAO().findEntityReferenceById(service.getId());
     }
-    throw new IllegalArgumentException(CatalogExceptionMessage.invalidServiceEntity(service.getType(), Entity.METRICS));
+    throw new IllegalArgumentException(
+        CatalogExceptionMessage.invalidServiceEntity(service.getType(), Entity.METRICS));
   }
 
   private EntityReference getOwner(Metrics metrics) throws IOException {
     return metrics == null
         ? null
-        : EntityUtil.populateOwner(metrics.getId(), dao.relationshipDAO(), dao.userDAO(), dao.teamDAO());
+        : EntityUtil.populateOwner(
+            metrics.getId(), dao.relationshipDAO(), dao.userDAO(), dao.teamDAO());
   }
 
   public void setOwner(Metrics metrics, EntityReference owner) {
@@ -135,7 +144,8 @@ public class MetricsRepository extends EntityRepository<Metrics> {
   private void applyTags(Metrics metrics) {
     // Add chart level tags by adding tag to chart relationship
     EntityUtil.applyTags(dao.tagDAO(), metrics.getTags(), metrics.getFullyQualifiedName());
-    metrics.setTags(getTags(metrics.getFullyQualifiedName())); // Update tag to handle additional derived tags
+    metrics.setTags(
+        getTags(metrics.getFullyQualifiedName())); // Update tag to handle additional derived tags
   }
 
   private List<TagLabel> getTags(String fqn) {

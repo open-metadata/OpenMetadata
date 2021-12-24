@@ -50,7 +50,9 @@ public class EmbeddedMySqlSupport implements BeforeAllCallback, AfterAllCallback
           Flyway.configure()
               // TODO Remove hardcoding
               .dataSource(
-                  "jdbc:mysql://localhost:3307/openmetadata_test_db?useSSL=false&serverTimezone=UTC", "test", "")
+                  "jdbc:mysql://localhost:3307/openmetadata_test_db?useSSL=false&serverTimezone=UTC",
+                  "test",
+                  "")
               .sqlMigrationPrefix("v")
               .load();
       flyway.clean();

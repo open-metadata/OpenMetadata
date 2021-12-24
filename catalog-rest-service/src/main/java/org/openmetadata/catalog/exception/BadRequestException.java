@@ -17,7 +17,8 @@ import javax.ws.rs.core.Response;
 
 public final class BadRequestException extends WebServiceException {
   private static final String DEFAULT_MESSAGE = "Bad request.";
-  private static final String PARAMETER_MISSING_MESSAGE = "Bad request. Param [%s] is missing or empty.";
+  private static final String PARAMETER_MISSING_MESSAGE =
+      "Bad request. Param [%s] is missing or empty.";
 
   private BadRequestException(String message) {
     super(Response.Status.BAD_REQUEST, message);

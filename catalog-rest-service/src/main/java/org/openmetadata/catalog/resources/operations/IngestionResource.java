@@ -93,7 +93,9 @@ public class IngestionResource {
   }
 
   public static ResultList<Ingestion> addHref(UriInfo uriInfo, ResultList<Ingestion> ingestions) {
-    Optional.ofNullable(ingestions.getData()).orElse(Collections.emptyList()).forEach(i -> addHref(uriInfo, i));
+    Optional.ofNullable(ingestions.getData())
+        .orElse(Collections.emptyList())
+        .forEach(i -> addHref(uriInfo, i));
     return ingestions;
   }
 
@@ -128,7 +130,8 @@ public class IngestionResource {
   }
 
   static final String FIELDS = "owner,tags,status,scheduleInterval";
-  public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replaceAll(" ", "").split(","));
+  public static final List<String> FIELD_LIST =
+      Arrays.asList(FIELDS.replaceAll(" ", "").split(","));
 
   @GET
   @Valid
@@ -143,7 +146,10 @@ public class IngestionResource {
         @ApiResponse(
             responseCode = "200",
             description = "List of ingestion workflows",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = IngestionList.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = IngestionList.class)))
       })
   public ResultList<Ingestion> list(
       @Context UriInfo uriInfo,
@@ -153,16 +159,22 @@ public class IngestionResource {
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
           String fieldsParam,
-      @Parameter(description = "Limit the number ingestion returned. (1 to 1000000, " + "default = 10)")
+      @Parameter(
+              description =
+                  "Limit the number ingestion returned. (1 to 1000000, " + "default = 10)")
           @DefaultValue("10")
           @Min(1)
           @Max(1000000)
           @QueryParam("limit")
           int limitParam,
-      @Parameter(description = "Returns list of ingestion before this cursor", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Returns list of ingestion before this cursor",
+              schema = @Schema(type = "string"))
           @QueryParam("before")
           String before,
-      @Parameter(description = "Returns list of ingestion after this cursor", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Returns list of ingestion after this cursor",
+              schema = @Schema(type = "string"))
           @QueryParam("after")
           String after)
       throws IOException, GeneralSecurityException, ParseException {
@@ -171,7 +183,8 @@ public class IngestionResource {
 
     ResultList<Ingestion> ingestions;
     if (before != null) { // Reverse paging
-      ingestions = dao.listBefore(uriInfo, fields, null, limitParam, before); // Ask for one extra entry
+      ingestions =
+          dao.listBefore(uriInfo, fields, null, limitParam, before); // Ask for one extra entry
     } else { // Forward paging or first page
       ingestions = dao.listAfter(uriInfo, fields, null, limitParam, after);
     }
@@ -191,12 +204,16 @@ public class IngestionResource {
         @ApiResponse(
             responseCode = "200",
             description = "List of ingestion versions",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = EntityHistory.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = EntityHistory.class)))
       })
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "ingestion Id", schema = @Schema(type = "string")) @PathParam("id") String id)
+      @Parameter(description = "ingestion Id", schema = @Schema(type = "string")) @PathParam("id")
+          String id)
       throws IOException, ParseException {
     return dao.listVersions(id);
   }
@@ -211,7 +228,10 @@ public class IngestionResource {
         @ApiResponse(
             responseCode = "200",
             description = "The ingestion",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Ingestion.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Ingestion.class))),
         @ApiResponse(responseCode = "404", description = "ingestion for instance {id} is not found")
       })
   public Ingestion get(
@@ -242,7 +262,10 @@ public class IngestionResource {
         @ApiResponse(
             responseCode = "200",
             description = "ingestion",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Ingestion.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Ingestion.class))),
         @ApiResponse(
             responseCode = "404",
             description = "Ingestion for instance {id} and version  " + "{version} is not found")
@@ -250,7 +273,8 @@ public class IngestionResource {
   public Ingestion getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Ingestion Id", schema = @Schema(type = "string")) @PathParam("id") String id,
+      @Parameter(description = "Ingestion Id", schema = @Schema(type = "string")) @PathParam("id")
+          String id,
       @Parameter(
               description = "Ingestion version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
@@ -270,7 +294,10 @@ public class IngestionResource {
         @ApiResponse(
             responseCode = "200",
             description = "The ingestion",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Ingestion.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Ingestion.class))),
         @ApiResponse(responseCode = "404", description = "Ingestion for instance {id} is not found")
       })
   public Ingestion getByName(
@@ -301,11 +328,15 @@ public class IngestionResource {
             responseCode = "200",
             description = "The ingestion",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = CreateIngestion.class))),
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = CreateIngestion.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateIngestion create)
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid CreateIngestion create)
       throws IOException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Ingestion ingestion = getIngestion(securityContext, create);
@@ -321,7 +352,10 @@ public class IngestionResource {
       summary = "Update a ingestion",
       tags = "ingestion",
       description = "Update an existing ingestion using JsonPatch.",
-      externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
+      externalDocs =
+          @ExternalDocumentation(
+              description = "JsonPatch RFC",
+              url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
   public Response updateDescription(
       @Context UriInfo uriInfo,
@@ -333,15 +367,18 @@ public class IngestionResource {
                   @Content(
                       mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
                       examples = {
-                        @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
+                        @ExampleObject(
+                            "[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
                       }))
           JsonPatch patch)
       throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, FIELDS);
     Ingestion ingestion = dao.get(uriInfo, id, fields);
-    SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, dao.getOwnerReference(ingestion));
+    SecurityUtil.checkAdminRoleOrPermissions(
+        authorizer, securityContext, dao.getOwnerReference(ingestion));
     PatchResponse<Ingestion> response =
-        dao.patch(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
+        dao.patch(
+            uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
     addHref(uriInfo, response.getEntity());
     return response.toResponse();
   }
@@ -355,11 +392,16 @@ public class IngestionResource {
         @ApiResponse(
             responseCode = "200",
             description = "The ingestion",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Ingestion.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Ingestion.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createOrUpdate(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateIngestion create)
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid CreateIngestion create)
       throws IOException, ParseException {
     Ingestion ingestion = getIngestion(securityContext, create);
     deploy(ingestion);
@@ -379,11 +421,18 @@ public class IngestionResource {
         @ApiResponse(
             responseCode = "200",
             description = "The ingestion",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Ingestion.class))),
-        @ApiResponse(responseCode = "404", description = "Ingestion for instance {name} is not found")
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Ingestion.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Ingestion for instance {name} is not found")
       })
   public Ingestion triggerIngestion(
-      @Context UriInfo uriInfo, @PathParam("id") String id, @Context SecurityContext securityContext)
+      @Context UriInfo uriInfo,
+      @PathParam("id") String id,
+      @Context SecurityContext securityContext)
       throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, "owner");
     Ingestion ingestion = dao.get(uriInfo, id, fields);

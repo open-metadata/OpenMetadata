@@ -102,21 +102,25 @@ public class LocationResource {
   }
 
   static final String FIELDS = "owner,followers,tags";
-  public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replaceAll(" ", "").split(","));
+  public static final List<String> FIELD_LIST =
+      Arrays.asList(FIELDS.replaceAll(" ", "").split(","));
 
   @GET
   @Operation(
       summary = "List locations",
       tags = "locations",
       description =
-          "Get a list of locations, optionally filtered by `service` it belongs to. Use `fields` "
-              + "parameter to get only necessary fields. Use cursor-based pagination to limit the number "
-              + "entries in the list using `limit` and `before` or `after` query params.",
+          "Get a list of locations, optionally filtered by `service` it belongs to. Use `fields`"
+              + " parameter to get only necessary fields. Use cursor-based pagination to limit the"
+              + " number entries in the list using `limit` and `before` or `after` query params.",
       responses = {
         @ApiResponse(
             responseCode = "200",
             description = "List of locations",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = LocationList.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = LocationList.class)))
       })
   public ResultList<Location> list(
       @Context UriInfo uriInfo,
@@ -131,16 +135,22 @@ public class LocationResource {
               schema = @Schema(type = "string", example = "s3://bucket/folder1"))
           @QueryParam("service")
           String serviceParam,
-      @Parameter(description = "Limit the number locations returned. " + "(1 to 1000000, default = 10)")
+      @Parameter(
+              description =
+                  "Limit the number locations returned. " + "(1 to 1000000, default = 10)")
           @DefaultValue("10")
           @Min(1)
           @Max(1000000)
           @QueryParam("limit")
           int limitParam,
-      @Parameter(description = "Returns list of locations before this cursor", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Returns list of locations before this cursor",
+              schema = @Schema(type = "string"))
           @QueryParam("before")
           String before,
-      @Parameter(description = "Returns list of locations after this cursor", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Returns list of locations after this cursor",
+              schema = @Schema(type = "string"))
           @QueryParam("after")
           String after)
       throws IOException, GeneralSecurityException, ParseException {
@@ -149,7 +159,9 @@ public class LocationResource {
 
     ResultList<Location> locations;
     if (before != null) { // Reverse paging
-      locations = dao.listBefore(uriInfo, fields, serviceParam, limitParam, before); // Ask for one extra entry
+      locations =
+          dao.listBefore(
+              uriInfo, fields, serviceParam, limitParam, before); // Ask for one extra entry
     } else { // Forward paging or first page
       locations = dao.listAfter(uriInfo, fields, serviceParam, limitParam, after);
     }
@@ -167,12 +179,16 @@ public class LocationResource {
         @ApiResponse(
             responseCode = "200",
             description = "List of location versions",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = EntityHistory.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = EntityHistory.class)))
       })
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "location Id", schema = @Schema(type = "string")) @PathParam("id") String id)
+      @Parameter(description = "location Id", schema = @Schema(type = "string")) @PathParam("id")
+          String id)
       throws IOException, ParseException {
     return dao.listVersions(id);
   }
@@ -187,13 +203,17 @@ public class LocationResource {
         @ApiResponse(
             responseCode = "200",
             description = "The location",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Location.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Location.class))),
         @ApiResponse(responseCode = "404", description = "Location for instance {id} is not found")
       })
   public Location get(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "location Id", schema = @Schema(type = "string")) @PathParam("id") String id,
+      @Parameter(description = "location Id", schema = @Schema(type = "string")) @PathParam("id")
+          String id,
       @Parameter(
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
@@ -210,14 +230,17 @@ public class LocationResource {
       summary = "List locations that are prefixes",
       tags = "locations",
       description =
-          "Get a list of locations. Use `fields` parameter to get only necessary fields. "
-              + "Use cursor-based pagination to limit the number entries in the list using `limit` and `before` "
-              + "or `after` query params.",
+          "Get a list of locations. Use `fields` parameter to get only necessary fields. Use"
+              + " cursor-based pagination to limit the number entries in the list using `limit` and"
+              + " `before` or `after` query params.",
       responses = {
         @ApiResponse(
             responseCode = "200",
             description = "List of ancestor locations",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = LocationList.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = LocationList.class)))
       })
   public ResultList<Location> listPrefixes(
       @Context UriInfo uriInfo,
@@ -232,16 +255,22 @@ public class LocationResource {
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
           String fieldsParam,
-      @Parameter(description = "Limit the number locations returned. " + "(1 to 1000000, default = 10)")
+      @Parameter(
+              description =
+                  "Limit the number locations returned. " + "(1 to 1000000, default = 10)")
           @DefaultValue("10")
           @Min(1)
           @Max(1000000)
           @QueryParam("limit")
           int limitParam,
-      @Parameter(description = "Returns list of locations before this cursor", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Returns list of locations before this cursor",
+              schema = @Schema(type = "string"))
           @QueryParam("before")
           String before,
-      @Parameter(description = "Returns list of locations after this cursor", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Returns list of locations after this cursor",
+              schema = @Schema(type = "string"))
           @QueryParam("after")
           String after)
       throws IOException, GeneralSecurityException {
@@ -250,7 +279,8 @@ public class LocationResource {
 
     ResultList<Location> locations;
     if (before != null) { // Reverse paging
-      locations = dao.listPrefixesBefore(fields, fqn, limitParam, before); // Ask for one extra entry
+      locations =
+          dao.listPrefixesBefore(fields, fqn, limitParam, before); // Ask for one extra entry
     } else { // Forward paging or first page
       locations = dao.listPrefixesAfter(fields, fqn, limitParam, after);
     }
@@ -268,7 +298,10 @@ public class LocationResource {
         @ApiResponse(
             responseCode = "200",
             description = "The location",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Location.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Location.class))),
         @ApiResponse(responseCode = "404", description = "Location for instance {id} is not found")
       })
   public Location getByName(
@@ -299,7 +332,10 @@ public class LocationResource {
         @ApiResponse(
             responseCode = "200",
             description = "location",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Location.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Location.class))),
         @ApiResponse(
             responseCode = "404",
             description = "Location for instance {id} and version " + "{version} is not found")
@@ -307,7 +343,8 @@ public class LocationResource {
   public Location getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "location Id", schema = @Schema(type = "string")) @PathParam("id") String id,
+      @Parameter(description = "location Id", schema = @Schema(type = "string")) @PathParam("id")
+          String id,
       @Parameter(
               description = "location version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
@@ -326,11 +363,16 @@ public class LocationResource {
         @ApiResponse(
             responseCode = "200",
             description = "The location",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Location.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Location.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateLocation create)
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid CreateLocation create)
       throws IOException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Location location = getLocation(securityContext, create);
@@ -347,14 +389,20 @@ public class LocationResource {
         @ApiResponse(
             responseCode = "200",
             description = "The updated location ",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Location.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Location.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createOrUpdate(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateLocation create)
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid CreateLocation create)
       throws IOException, ParseException {
     Location location = getLocation(securityContext, create);
-    SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, dao.getOwnerReference(location));
+    SecurityUtil.checkAdminRoleOrPermissions(
+        authorizer, securityContext, dao.getOwnerReference(location));
     PutResponse<Location> response = dao.createOrUpdate(uriInfo, validateNewLocation(location));
     addHref(uriInfo, response.getEntity());
     return response.toResponse();
@@ -366,7 +414,10 @@ public class LocationResource {
       summary = "Update a location",
       tags = "locations",
       description = "Update an existing location using JsonPatch.",
-      externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
+      externalDocs =
+          @ExternalDocumentation(
+              description = "JsonPatch RFC",
+              url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
   public Response patch(
       @Context UriInfo uriInfo,
@@ -378,15 +429,18 @@ public class LocationResource {
                   @Content(
                       mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
                       examples = {
-                        @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
+                        @ExampleObject(
+                            "[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
                       }))
           JsonPatch patch)
       throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, FIELDS);
     Location location = dao.get(uriInfo, id, fields);
-    SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, dao.getOwnerReference(location));
+    SecurityUtil.checkAdminRoleOrPermissions(
+        authorizer, securityContext, dao.getOwnerReference(location));
     PatchResponse<Location> response =
-        dao.patch(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
+        dao.patch(
+            uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
     addHref(uriInfo, response.getEntity());
     return response.toResponse();
   }
@@ -404,7 +458,9 @@ public class LocationResource {
   public Response delete(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the location", schema = @Schema(type = "string")) @PathParam("id") String id) {
+      @Parameter(description = "Id of the location", schema = @Schema(type = "string"))
+          @PathParam("id")
+          String id) {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     dao.delete(UUID.fromString(id));
     return Response.ok().build();
@@ -423,11 +479,18 @@ public class LocationResource {
   public Response addFollower(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the location", schema = @Schema(type = "string")) @PathParam("id") String id,
-      @Parameter(description = "Id of the user to be added as follower", schema = @Schema(type = "string"))
+      @Parameter(description = "Id of the location", schema = @Schema(type = "string"))
+          @PathParam("id")
+          String id,
+      @Parameter(
+              description = "Id of the user to be added as follower",
+              schema = @Schema(type = "string"))
           String userId)
       throws IOException {
-    return dao.addFollower(securityContext.getUserPrincipal().getName(), UUID.fromString(id), UUID.fromString(userId))
+    return dao.addFollower(
+            securityContext.getUserPrincipal().getName(),
+            UUID.fromString(id),
+            UUID.fromString(userId))
         .toResponse();
   }
 
@@ -440,13 +503,19 @@ public class LocationResource {
   public Response deleteFollower(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the location", schema = @Schema(type = "string")) @PathParam("id") String id,
-      @Parameter(description = "Id of the user being removed as follower", schema = @Schema(type = "string"))
+      @Parameter(description = "Id of the location", schema = @Schema(type = "string"))
+          @PathParam("id")
+          String id,
+      @Parameter(
+              description = "Id of the user being removed as follower",
+              schema = @Schema(type = "string"))
           @PathParam("userId")
           String userId)
       throws IOException {
     return dao.deleteFollower(
-            securityContext.getUserPrincipal().getName(), UUID.fromString(id), UUID.fromString(userId))
+            securityContext.getUserPrincipal().getName(),
+            UUID.fromString(id),
+            UUID.fromString(userId))
         .toResponse();
   }
 

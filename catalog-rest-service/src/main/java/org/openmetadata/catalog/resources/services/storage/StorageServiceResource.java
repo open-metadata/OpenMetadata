@@ -79,7 +79,8 @@ public class StorageServiceResource {
     @SuppressWarnings("unused") /* Required for tests */
     public StorageServiceList() {}
 
-    public StorageServiceList(List<StorageService> data, String beforeCursor, String afterCursor, int total)
+    public StorageServiceList(
+        List<StorageService> data, String beforeCursor, String afterCursor, int total)
         throws GeneralSecurityException, UnsupportedEncodingException {
       super(data, beforeCursor, afterCursor, total);
     }
@@ -97,7 +98,9 @@ public class StorageServiceResource {
             responseCode = "200",
             description = "List of storage services",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = StorageServiceList.class)))
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = StorageServiceList.class)))
       })
   public ResultList<StorageService> list(
       @Context UriInfo uriInfo,
@@ -108,10 +111,14 @@ public class StorageServiceResource {
           @Max(1000000)
           @QueryParam("limit")
           int limitParam,
-      @Parameter(description = "Returns list of services before this cursor", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Returns list of services before this cursor",
+              schema = @Schema(type = "string"))
           @QueryParam("before")
           String before,
-      @Parameter(description = "Returns list of services after this cursor", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Returns list of services after this cursor",
+              schema = @Schema(type = "string"))
           @QueryParam("after")
           String after)
       throws IOException, GeneralSecurityException, ParseException {
@@ -134,11 +141,17 @@ public class StorageServiceResource {
             responseCode = "200",
             description = "Storage service instance",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = StorageService.class))),
-        @ApiResponse(responseCode = "404", description = "Storage service for instance {id} is not found")
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = StorageService.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Storage service for instance {id} is not found")
       })
   public StorageService get(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("id") String id)
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @PathParam("id") String id)
       throws IOException, ParseException {
     return dao.get(uriInfo, id, null);
   }
@@ -154,11 +167,17 @@ public class StorageServiceResource {
             responseCode = "200",
             description = "Storage service instance",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = StorageService.class))),
-        @ApiResponse(responseCode = "404", description = "Storage service for instance {id} is not found")
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = StorageService.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Storage service for instance {id} is not found")
       })
   public StorageService getByName(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("name") String name)
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @PathParam("name") String name)
       throws IOException, ParseException {
     return dao.getByName(uriInfo, name, null);
   }
@@ -173,12 +192,17 @@ public class StorageServiceResource {
         @ApiResponse(
             responseCode = "200",
             description = "List of storage service versions",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = EntityHistory.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = EntityHistory.class)))
       })
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "storage service Id", schema = @Schema(type = "string")) @PathParam("id") String id)
+      @Parameter(description = "storage service Id", schema = @Schema(type = "string"))
+          @PathParam("id")
+          String id)
       throws IOException, ParseException {
     return dao.listVersions(id);
   }
@@ -194,15 +218,20 @@ public class StorageServiceResource {
             responseCode = "200",
             description = "storage service",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = StorageService.class))),
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = StorageService.class))),
         @ApiResponse(
             responseCode = "404",
-            description = "Storage service for instance {id} and version " + "{version} is not found")
+            description =
+                "Storage service for instance {id} and version " + "{version} is not found")
       })
   public StorageService getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "storage service Id", schema = @Schema(type = "string")) @PathParam("id") String id,
+      @Parameter(description = "storage service Id", schema = @Schema(type = "string"))
+          @PathParam("id")
+          String id,
       @Parameter(
               description = "storage service version number in the form `major`" + ".`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
@@ -222,11 +251,15 @@ public class StorageServiceResource {
             responseCode = "200",
             description = "Storage service instance",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = StorageService.class))),
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = StorageService.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateStorageService create)
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid CreateStorageService create)
       throws IOException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     StorageService databaseService = getService(create, securityContext);
@@ -244,11 +277,15 @@ public class StorageServiceResource {
             responseCode = "200",
             description = "Storage service instance",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = StorageService.class))),
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = StorageService.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response update(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateStorageService update)
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid CreateStorageService update)
       throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     StorageService databaseService = getService(update, securityContext);
@@ -261,15 +298,20 @@ public class StorageServiceResource {
   @Operation(
       summary = "Delete a storage service",
       tags = "services",
-      description = "Delete a storage services. If storages (and tables) belong the service, it can't be " + "deleted.",
+      description =
+          "Delete a storage services. If storages (and tables) belong the service, it can't be "
+              + "deleted.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
-        @ApiResponse(responseCode = "404", description = "StorageService service for instance {id} " + "is not found")
+        @ApiResponse(
+            responseCode = "404",
+            description = "StorageService service for instance {id} " + "is not found")
       })
   public Response delete(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the storage service", schema = @Schema(type = "string")) @PathParam("id")
+      @Parameter(description = "Id of the storage service", schema = @Schema(type = "string"))
+          @PathParam("id")
           String id) {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     dao.delete(UUID.fromString(id));

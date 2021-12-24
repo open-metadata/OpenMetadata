@@ -36,7 +36,8 @@ public abstract class CatalogApplicationTest {
   protected static final String CONFIG_PATH;
   public static final DropwizardAppExtension<CatalogApplicationConfig> APP;
   private static final Client client;
-  protected static final WebhookCallbackResource webhookCallbackResource = new WebhookCallbackResource();
+  protected static final WebhookCallbackResource webhookCallbackResource =
+      new WebhookCallbackResource();
 
   static {
     CollectionRegistry.addTestResource(webhookCallbackResource);
@@ -54,7 +55,8 @@ public abstract class CatalogApplicationTest {
   }
 
   public static WebTarget getOperationsResource(String collection) {
-    String targetURI = "http://localhost:" + APP.getLocalPort() + "/api/operations/v1/" + collection;
+    String targetURI =
+        "http://localhost:" + APP.getLocalPort() + "/api/operations/v1/" + collection;
     return APP.client().target(targetURI);
   }
 }

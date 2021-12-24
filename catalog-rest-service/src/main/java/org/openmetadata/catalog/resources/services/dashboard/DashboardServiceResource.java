@@ -79,7 +79,8 @@ public class DashboardServiceResource {
     @SuppressWarnings("unused") /* Required for tests */
     public DashboardServiceList() {}
 
-    public DashboardServiceList(List<DashboardService> data, String beforeCursor, String afterCursor, int total)
+    public DashboardServiceList(
+        List<DashboardService> data, String beforeCursor, String afterCursor, int total)
         throws GeneralSecurityException, UnsupportedEncodingException {
       super(data, beforeCursor, afterCursor, total);
     }
@@ -95,7 +96,9 @@ public class DashboardServiceResource {
             responseCode = "200",
             description = "List of dashboard service instances",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = DashboardServiceList.class)))
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = DashboardServiceList.class)))
       })
   public ResultList<DashboardService> list(
       @Context UriInfo uriInfo,
@@ -132,11 +135,17 @@ public class DashboardServiceResource {
             responseCode = "200",
             description = "Dashboard service instance",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = DashboardService.class))),
-        @ApiResponse(responseCode = "404", description = "Dashboard service for instance {id} is not found")
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = DashboardService.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Dashboard service for instance {id} is not found")
       })
   public DashboardService get(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("id") String id)
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @PathParam("id") String id)
       throws IOException, ParseException {
     return dao.get(uriInfo, id, null);
   }
@@ -152,11 +161,17 @@ public class DashboardServiceResource {
             responseCode = "200",
             description = "Dashboard service instance",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = DashboardService.class))),
-        @ApiResponse(responseCode = "404", description = "Dashboard service for instance {id} is not found")
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = DashboardService.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Dashboard service for instance {id} is not found")
       })
   public DashboardService getByName(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("name") String name)
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @PathParam("name") String name)
       throws IOException, ParseException {
     return dao.getByName(uriInfo, name, null);
   }
@@ -171,12 +186,17 @@ public class DashboardServiceResource {
         @ApiResponse(
             responseCode = "200",
             description = "List of dashboard service versions",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = EntityHistory.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = EntityHistory.class)))
       })
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "dashboard service Id", schema = @Schema(type = "string")) @PathParam("id") String id)
+      @Parameter(description = "dashboard service Id", schema = @Schema(type = "string"))
+          @PathParam("id")
+          String id)
       throws IOException, ParseException {
     return dao.listVersions(id);
   }
@@ -192,15 +212,20 @@ public class DashboardServiceResource {
             responseCode = "200",
             description = "dashboard service",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = DashboardService.class))),
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = DashboardService.class))),
         @ApiResponse(
             responseCode = "404",
-            description = "Dashboard service for instance {id} and version " + "{version} is not found")
+            description =
+                "Dashboard service for instance {id} and version " + "{version} is not found")
       })
   public DashboardService getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "dashboard service Id", schema = @Schema(type = "string")) @PathParam("id") String id,
+      @Parameter(description = "dashboard service Id", schema = @Schema(type = "string"))
+          @PathParam("id")
+          String id,
       @Parameter(
               description = "dashboard service version number in the form `major`" + ".`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
@@ -226,7 +251,9 @@ public class DashboardServiceResource {
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDashboardService create)
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid CreateDashboardService create)
       throws IOException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     DashboardService service = getService(create, securityContext);
@@ -250,7 +277,9 @@ public class DashboardServiceResource {
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response update(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDashboardService update)
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid CreateDashboardService update)
       throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     DashboardService service = getService(update, securityContext);
@@ -264,22 +293,27 @@ public class DashboardServiceResource {
       summary = "Delete a Dashboard service",
       tags = "services",
       description =
-          "Delete a Dashboard services. If dashboard (and charts) belong to the service, it can't be " + "deleted.",
+          "Delete a Dashboard services. If dashboard (and charts) belong to the service, it can't"
+              + " be deleted.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
-        @ApiResponse(responseCode = "404", description = "DashboardService service for instance {id} " + "is not found")
+        @ApiResponse(
+            responseCode = "404",
+            description = "DashboardService service for instance {id} " + "is not found")
       })
   public Response delete(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the dashboard service", schema = @Schema(type = "string")) @PathParam("id")
+      @Parameter(description = "Id of the dashboard service", schema = @Schema(type = "string"))
+          @PathParam("id")
           String id) {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     dao.delete(UUID.fromString(id));
     return Response.ok().build();
   }
 
-  private DashboardService getService(CreateDashboardService create, SecurityContext securityContext) {
+  private DashboardService getService(
+      CreateDashboardService create, SecurityContext securityContext) {
     return new DashboardService()
         .withId(UUID.randomUUID())
         .withName(create.getName())

@@ -43,7 +43,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class ElasticSearchIndexDefinition {
-  final Map<ElasticSearchIndexType, ElasticSearchIndexStatus> elasticSearchIndexes = new HashMap<>();
+  final Map<ElasticSearchIndexType, ElasticSearchIndexStatus> elasticSearchIndexes =
+      new HashMap<>();
   private final RestHighLevelClient client;
   private static final Logger LOG = LoggerFactory.getLogger(ElasticSearchIndexDefinition.class);
 
@@ -122,8 +123,10 @@ public class ElasticSearchIndexDefinition {
         String elasticSearchIndexMapping = getIndexMapping(elasticSearchIndexType);
         CreateIndexRequest request = new CreateIndexRequest(elasticSearchIndexType.indexName);
         request.mapping(elasticSearchIndexMapping, XContentType.JSON);
-        CreateIndexResponse createIndexResponse = client.indices().create(request, RequestOptions.DEFAULT);
-        LOG.info(elasticSearchIndexType.indexName + " Created " + createIndexResponse.isAcknowledged());
+        CreateIndexResponse createIndexResponse =
+            client.indices().create(request, RequestOptions.DEFAULT);
+        LOG.info(
+            elasticSearchIndexType.indexName + " Created " + createIndexResponse.isAcknowledged());
       }
       setIndexStatus(elasticSearchIndexType, ElasticSearchIndexStatus.CREATED);
     } catch (Exception e) {
@@ -143,13 +146,17 @@ public class ElasticSearchIndexDefinition {
       if (exists) {
         PutMappingRequest request = new PutMappingRequest(elasticSearchIndexType.indexName);
         request.source(elasticSearchIndexMapping, XContentType.JSON);
-        AcknowledgedResponse putMappingResponse = client.indices().putMapping(request, RequestOptions.DEFAULT);
-        LOG.info(elasticSearchIndexType.indexName + " Updated " + putMappingResponse.isAcknowledged());
+        AcknowledgedResponse putMappingResponse =
+            client.indices().putMapping(request, RequestOptions.DEFAULT);
+        LOG.info(
+            elasticSearchIndexType.indexName + " Updated " + putMappingResponse.isAcknowledged());
       } else {
         CreateIndexRequest request = new CreateIndexRequest(elasticSearchIndexType.indexName);
         request.mapping(elasticSearchIndexMapping, XContentType.JSON);
-        CreateIndexResponse createIndexResponse = client.indices().create(request, RequestOptions.DEFAULT);
-        LOG.info(elasticSearchIndexType.indexName + " Created " + createIndexResponse.isAcknowledged());
+        CreateIndexResponse createIndexResponse =
+            client.indices().create(request, RequestOptions.DEFAULT);
+        LOG.info(
+            elasticSearchIndexType.indexName + " Created " + createIndexResponse.isAcknowledged());
       }
       setIndexStatus(elasticSearchIndexType, ElasticSearchIndexStatus.CREATED);
     } catch (Exception e) {
@@ -163,8 +170,10 @@ public class ElasticSearchIndexDefinition {
   private boolean deleteIndex(ElasticSearchIndexType elasticSearchIndexType) {
     try {
       DeleteIndexRequest request = new DeleteIndexRequest(elasticSearchIndexType.indexName);
-      AcknowledgedResponse deleteIndexResponse = client.indices().delete(request, RequestOptions.DEFAULT);
-      LOG.info(elasticSearchIndexType.indexName + " Deleted " + deleteIndexResponse.isAcknowledged());
+      AcknowledgedResponse deleteIndexResponse =
+          client.indices().delete(request, RequestOptions.DEFAULT);
+      LOG.info(
+          elasticSearchIndexType.indexName + " Deleted " + deleteIndexResponse.isAcknowledged());
     } catch (IOException e) {
       LOG.error("Failed to delete Elastic Search indexes due to", e);
       return false;
@@ -172,12 +181,15 @@ public class ElasticSearchIndexDefinition {
     return true;
   }
 
-  private void setIndexStatus(ElasticSearchIndexType indexType, ElasticSearchIndexStatus elasticSearchIndexStatus) {
+  private void setIndexStatus(
+      ElasticSearchIndexType indexType, ElasticSearchIndexStatus elasticSearchIndexStatus) {
     elasticSearchIndexes.put(indexType, elasticSearchIndexStatus);
   }
 
   public String getIndexMapping(ElasticSearchIndexType elasticSearchIndexType) throws IOException {
-    InputStream in = ElasticSearchIndexDefinition.class.getResourceAsStream(elasticSearchIndexType.indexMappingFile);
+    InputStream in =
+        ElasticSearchIndexDefinition.class.getResourceAsStream(
+            elasticSearchIndexType.indexMappingFile);
     return new String(in.readAllBytes());
   }
 
@@ -329,7 +341,8 @@ class TableESIndex extends ElasticSearchIndex {
     List<String> columnNames = new ArrayList<>();
     List<String> columnDescriptions = new ArrayList<>();
     List<ElasticSearchSuggest> suggest = new ArrayList<>();
-    suggest.add(ElasticSearchSuggest.builder().input(table.getFullyQualifiedName()).weight(5).build());
+    suggest.add(
+        ElasticSearchSuggest.builder().input(table.getFullyQualifiedName()).weight(5).build());
     suggest.add(ElasticSearchSuggest.builder().input(table.getName()).weight(10).build());
 
     if (table.getTags() != null) {
@@ -385,15 +398,20 @@ class TableESIndex extends ElasticSearchIndex {
     if (table.getUsageSummary() != null) {
       tableESIndexBuilder
           .weeklyStats(table.getUsageSummary().getWeeklyStats().getCount())
-          .weeklyPercentileRank(table.getUsageSummary().getWeeklyStats().getPercentileRank().intValue())
+          .weeklyPercentileRank(
+              table.getUsageSummary().getWeeklyStats().getPercentileRank().intValue())
           .dailyStats(table.getUsageSummary().getDailyStats().getCount())
-          .dailyPercentileRank(table.getUsageSummary().getDailyStats().getPercentileRank().intValue())
+          .dailyPercentileRank(
+              table.getUsageSummary().getDailyStats().getPercentileRank().intValue())
           .monthlyStats(table.getUsageSummary().getMonthlyStats().getCount())
-          .monthlyPercentileRank(table.getUsageSummary().getMonthlyStats().getPercentileRank().intValue());
+          .monthlyPercentileRank(
+              table.getUsageSummary().getMonthlyStats().getPercentileRank().intValue());
     }
     if (table.getFollowers() != null) {
       tableESIndexBuilder.followers(
-          table.getFollowers().stream().map(item -> item.getId().toString()).collect(Collectors.toList()));
+          table.getFollowers().stream()
+              .map(item -> item.getId().toString())
+              .collect(Collectors.toList()));
     } else if (responseCode == Response.Status.CREATED.getStatusCode()) {
       tableESIndexBuilder.followers(Collections.emptyList());
     }
@@ -406,7 +424,10 @@ class TableESIndex extends ElasticSearchIndex {
 
     if (table.getChangeDescription() != null) {
       esChangeDescription =
-          ESChangeDescription.builder().updatedAt(updatedTimestamp).updatedBy(table.getUpdatedBy()).build();
+          ESChangeDescription.builder()
+              .updatedAt(updatedTimestamp)
+              .updatedBy(table.getUpdatedBy())
+              .build();
       esChangeDescription.setFieldsAdded(table.getChangeDescription().getFieldsAdded());
       esChangeDescription.setFieldsDeleted(table.getChangeDescription().getFieldsDeleted());
       esChangeDescription.setFieldsUpdated(table.getChangeDescription().getFieldsUpdated());
@@ -420,13 +441,15 @@ class TableESIndex extends ElasticSearchIndex {
               .fieldsDeleted(new ArrayList<>())
               .build();
     }
-    tableESIndexBuilder.changeDescriptions(esChangeDescription != null ? List.of(esChangeDescription) : null);
+    tableESIndexBuilder.changeDescriptions(
+        esChangeDescription != null ? List.of(esChangeDescription) : null);
     return tableESIndexBuilder;
   }
 
   private static List<FlattenColumn> parseColumns(
       List<Column> columns, List<FlattenColumn> flattenColumns, String parentColumn) {
-    Optional<String> optParentColumn = Optional.ofNullable(parentColumn).filter(Predicate.not(String::isEmpty));
+    Optional<String> optParentColumn =
+        Optional.ofNullable(parentColumn).filter(Predicate.not(String::isEmpty));
     List<String> tags = new ArrayList<>();
     for (Column col : columns) {
       String columnName = col.getName();
@@ -437,7 +460,8 @@ class TableESIndex extends ElasticSearchIndex {
         tags = col.getTags().stream().map(TagLabel::getTagFQN).collect(Collectors.toList());
       }
 
-      FlattenColumn flattenColumn = FlattenColumn.builder().name(columnName).description(col.getDescription()).build();
+      FlattenColumn flattenColumn =
+          FlattenColumn.builder().name(columnName).description(col.getDescription()).build();
 
       if (!tags.isEmpty()) {
         flattenColumn.tags = tags;
@@ -463,7 +487,8 @@ class TopicESIndex extends ElasticSearchIndex {
   public static TopicESIndexBuilder builder(Topic topic, int responseCode) {
     List<String> tags = new ArrayList<>();
     List<ElasticSearchSuggest> suggest = new ArrayList<>();
-    suggest.add(ElasticSearchSuggest.builder().input(topic.getFullyQualifiedName()).weight(5).build());
+    suggest.add(
+        ElasticSearchSuggest.builder().input(topic.getFullyQualifiedName()).weight(5).build());
     suggest.add(ElasticSearchSuggest.builder().input(topic.getName()).weight(10).build());
 
     if (topic.getTags() != null) {
@@ -491,7 +516,9 @@ class TopicESIndex extends ElasticSearchIndex {
 
     if (topic.getFollowers() != null) {
       topicESIndexBuilder.followers(
-          topic.getFollowers().stream().map(item -> item.getId().toString()).collect(Collectors.toList()));
+          topic.getFollowers().stream()
+              .map(item -> item.getId().toString())
+              .collect(Collectors.toList()));
     } else if (responseCode == Response.Status.CREATED.getStatusCode()) {
       topicESIndexBuilder.followers(Collections.emptyList());
     }
@@ -504,16 +531,23 @@ class TopicESIndex extends ElasticSearchIndex {
 
     if (topic.getChangeDescription() != null) {
       esChangeDescription =
-          ESChangeDescription.builder().updatedAt(updatedTimestamp).updatedBy(topic.getUpdatedBy()).build();
+          ESChangeDescription.builder()
+              .updatedAt(updatedTimestamp)
+              .updatedBy(topic.getUpdatedBy())
+              .build();
       esChangeDescription.setFieldsAdded(topic.getChangeDescription().getFieldsAdded());
       esChangeDescription.setFieldsDeleted(topic.getChangeDescription().getFieldsDeleted());
       esChangeDescription.setFieldsUpdated(topic.getChangeDescription().getFieldsUpdated());
     } else if (responseCode == Response.Status.CREATED.getStatusCode()) {
       esChangeDescription =
-          ESChangeDescription.builder().updatedAt(updatedTimestamp).updatedBy(topic.getUpdatedBy()).build();
+          ESChangeDescription.builder()
+              .updatedAt(updatedTimestamp)
+              .updatedBy(topic.getUpdatedBy())
+              .build();
     }
 
-    topicESIndexBuilder.changeDescriptions(esChangeDescription != null ? List.of(esChangeDescription) : null);
+    topicESIndexBuilder.changeDescriptions(
+        esChangeDescription != null ? List.of(esChangeDescription) : null);
 
     return topicESIndexBuilder;
   }
@@ -557,8 +591,10 @@ class DashboardESIndex extends ElasticSearchIndex {
     List<String> chartNames = new ArrayList<>();
     List<String> chartDescriptions = new ArrayList<>();
     List<ElasticSearchSuggest> suggest = new ArrayList<>();
-    suggest.add(ElasticSearchSuggest.builder().input(dashboard.getFullyQualifiedName()).weight(5).build());
-    suggest.add(ElasticSearchSuggest.builder().input(dashboard.getDisplayName()).weight(10).build());
+    suggest.add(
+        ElasticSearchSuggest.builder().input(dashboard.getFullyQualifiedName()).weight(5).build());
+    suggest.add(
+        ElasticSearchSuggest.builder().input(dashboard.getDisplayName()).weight(10).build());
     Long updatedTimestamp = dashboard.getUpdatedAt().getTime();
     if (dashboard.getTags() != null) {
       dashboard.getTags().forEach(tag -> tags.add(tag.getTagFQN()));
@@ -592,16 +628,21 @@ class DashboardESIndex extends ElasticSearchIndex {
     if (dashboard.getUsageSummary() != null) {
       dashboardESIndexBuilder
           .weeklyStats(dashboard.getUsageSummary().getWeeklyStats().getCount())
-          .weeklyPercentileRank(dashboard.getUsageSummary().getWeeklyStats().getPercentileRank().intValue())
+          .weeklyPercentileRank(
+              dashboard.getUsageSummary().getWeeklyStats().getPercentileRank().intValue())
           .dailyStats(dashboard.getUsageSummary().getDailyStats().getCount())
-          .dailyPercentileRank(dashboard.getUsageSummary().getDailyStats().getPercentileRank().intValue())
+          .dailyPercentileRank(
+              dashboard.getUsageSummary().getDailyStats().getPercentileRank().intValue())
           .monthlyStats(dashboard.getUsageSummary().getMonthlyStats().getCount())
-          .monthlyPercentileRank(dashboard.getUsageSummary().getMonthlyStats().getPercentileRank().intValue());
+          .monthlyPercentileRank(
+              dashboard.getUsageSummary().getMonthlyStats().getPercentileRank().intValue());
     }
 
     if (dashboard.getFollowers() != null) {
       dashboardESIndexBuilder.followers(
-          dashboard.getFollowers().stream().map(item -> item.getId().toString()).collect(Collectors.toList()));
+          dashboard.getFollowers().stream()
+              .map(item -> item.getId().toString())
+              .collect(Collectors.toList()));
     } else if (responseCode == Response.Status.CREATED.getStatusCode()) {
       dashboardESIndexBuilder.followers(Collections.emptyList());
     }
@@ -611,15 +652,22 @@ class DashboardESIndex extends ElasticSearchIndex {
     ESChangeDescription esChangeDescription = null;
     if (dashboard.getChangeDescription() != null) {
       esChangeDescription =
-          ESChangeDescription.builder().updatedAt(updatedTimestamp).updatedBy(dashboard.getUpdatedBy()).build();
+          ESChangeDescription.builder()
+              .updatedAt(updatedTimestamp)
+              .updatedBy(dashboard.getUpdatedBy())
+              .build();
       esChangeDescription.setFieldsAdded(dashboard.getChangeDescription().getFieldsAdded());
       esChangeDescription.setFieldsDeleted(dashboard.getChangeDescription().getFieldsDeleted());
       esChangeDescription.setFieldsUpdated(dashboard.getChangeDescription().getFieldsUpdated());
     } else if (responseCode == Response.Status.CREATED.getStatusCode()) {
       esChangeDescription =
-          ESChangeDescription.builder().updatedAt(updatedTimestamp).updatedBy(dashboard.getUpdatedBy()).build();
+          ESChangeDescription.builder()
+              .updatedAt(updatedTimestamp)
+              .updatedBy(dashboard.getUpdatedBy())
+              .build();
     }
-    dashboardESIndexBuilder.changeDescriptions(esChangeDescription != null ? List.of(esChangeDescription) : null);
+    dashboardESIndexBuilder.changeDescriptions(
+        esChangeDescription != null ? List.of(esChangeDescription) : null);
     return dashboardESIndexBuilder;
   }
 }
@@ -644,7 +692,8 @@ class PipelineESIndex extends ElasticSearchIndex {
     List<String> taskNames = new ArrayList<>();
     List<String> taskDescriptions = new ArrayList<>();
     List<ElasticSearchSuggest> suggest = new ArrayList<>();
-    suggest.add(ElasticSearchSuggest.builder().input(pipeline.getFullyQualifiedName()).weight(5).build());
+    suggest.add(
+        ElasticSearchSuggest.builder().input(pipeline.getFullyQualifiedName()).weight(5).build());
     suggest.add(ElasticSearchSuggest.builder().input(pipeline.getDisplayName()).weight(10).build());
 
     if (pipeline.getTags() != null) {
@@ -679,7 +728,9 @@ class PipelineESIndex extends ElasticSearchIndex {
 
     if (pipeline.getFollowers() != null) {
       pipelineESIndexBuilder.followers(
-          pipeline.getFollowers().stream().map(item -> item.getId().toString()).collect(Collectors.toList()));
+          pipeline.getFollowers().stream()
+              .map(item -> item.getId().toString())
+              .collect(Collectors.toList()));
     } else if (responseCode == Response.Status.CREATED.getStatusCode()) {
       pipelineESIndexBuilder.followers(Collections.emptyList());
     }
@@ -691,15 +742,22 @@ class PipelineESIndex extends ElasticSearchIndex {
     ESChangeDescription esChangeDescription = null;
     if (pipeline.getChangeDescription() != null) {
       esChangeDescription =
-          ESChangeDescription.builder().updatedAt(updatedTimestamp).updatedBy(pipeline.getUpdatedBy()).build();
+          ESChangeDescription.builder()
+              .updatedAt(updatedTimestamp)
+              .updatedBy(pipeline.getUpdatedBy())
+              .build();
       esChangeDescription.setFieldsAdded(pipeline.getChangeDescription().getFieldsAdded());
       esChangeDescription.setFieldsDeleted(pipeline.getChangeDescription().getFieldsDeleted());
       esChangeDescription.setFieldsUpdated(pipeline.getChangeDescription().getFieldsUpdated());
     } else if (responseCode == Response.Status.CREATED.getStatusCode()) {
       esChangeDescription =
-          ESChangeDescription.builder().updatedAt(updatedTimestamp).updatedBy(pipeline.getUpdatedBy()).build();
+          ESChangeDescription.builder()
+              .updatedAt(updatedTimestamp)
+              .updatedBy(pipeline.getUpdatedBy())
+              .build();
     }
-    pipelineESIndexBuilder.changeDescriptions(esChangeDescription != null ? List.of(esChangeDescription) : null);
+    pipelineESIndexBuilder.changeDescriptions(
+        esChangeDescription != null ? List.of(esChangeDescription) : null);
     return pipelineESIndexBuilder;
   }
 }

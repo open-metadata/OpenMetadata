@@ -23,7 +23,8 @@ public class CollectionRegistryTest {
   @Test
   public void testCollections() {
     CollectionRegistry.getInstance();
-    Map<String, CollectionRegistry.CollectionDetails> descriptors = CollectionRegistry.getInstance().getCollectionMap();
+    Map<String, CollectionRegistry.CollectionDetails> descriptors =
+        CollectionRegistry.getInstance().getCollectionMap();
     String path = "/v1";
     CollectionRegistry.CollectionDetails parent = descriptors.get(path);
     CollectionDescriptor[] children = parent.getChildCollections();

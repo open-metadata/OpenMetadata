@@ -49,7 +49,8 @@ public class AuthorizerConfiguration {
     return catalogAuthorizerConfiguration;
   }
 
-  public void setCatalogAuthorizerConfiguration(CatalogAuthorizerConfiguration catalogAuthorizerConfiguration) {
+  public void setCatalogAuthorizerConfiguration(
+      CatalogAuthorizerConfiguration catalogAuthorizerConfiguration) {
     this.catalogAuthorizerConfiguration = catalogAuthorizerConfiguration;
   }
 

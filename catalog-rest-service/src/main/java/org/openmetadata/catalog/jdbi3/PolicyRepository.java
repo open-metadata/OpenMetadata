@@ -36,10 +36,12 @@ import org.openmetadata.catalog.util.JsonUtils;
 public class PolicyRepository extends EntityRepository<Policy> {
   private static final Fields POLICY_UPDATE_FIELDS =
       new Fields(
-          PolicyResource.FIELD_LIST, "displayName,description,owner,policyUrl,enabled,rules,location");
+          PolicyResource.FIELD_LIST,
+          "displayName,description,owner,policyUrl,enabled,rules,location");
   private static final Fields POLICY_PATCH_FIELDS =
       new Fields(
-          PolicyResource.FIELD_LIST, "displayName,description,owner,policyUrl,enabled,rules,location");
+          PolicyResource.FIELD_LIST,
+          "displayName,description,owner,policyUrl,enabled,rules,location");
   private final CollectionDAO dao;
 
   public PolicyRepository(CollectionDAO dao) {

@@ -47,7 +47,9 @@ public final class CommonUtil {
     for (String element : classPathElements) {
       File file = new File(element);
       resources.addAll(
-          file.isDirectory() ? getResourcesFromDirectory(file, pattern) : getResourcesFromJarFile(file, pattern));
+          file.isDirectory()
+              ? getResourcesFromDirectory(file, pattern)
+              : getResourcesFromJarFile(file, pattern));
     }
     return resources;
   }
@@ -69,7 +71,8 @@ public final class CommonUtil {
     return retval;
   }
 
-  public static Collection<String> getResourcesFromDirectory(File file, Pattern pattern) throws IOException {
+  public static Collection<String> getResourcesFromDirectory(File file, Pattern pattern)
+      throws IOException {
     final Path root = Path.of(file.getPath());
     return Files.walk(Paths.get(file.getPath()))
         .filter(Files::isRegularFile)
@@ -100,19 +103,21 @@ public final class CommonUtil {
   }
 
   /** Get date after {@code days} from the given date or before i{@code days} when it is negative */
-  public static Date getDateByOffset(DateFormat dateFormat, String strDate, int days) throws ParseException {
+  public static Date getDateByOffset(DateFormat dateFormat, String strDate, int days)
+      throws ParseException {
     Date date = dateFormat.parse(strDate);
     return getDateByOffset(date, days);
   }
 
   /** Get date after {@code days} from the given date or before i{@code days} when it is negative */
-  public static String getDateStringByOffset(DateFormat dateFormat, String strDate, int days) throws ParseException {
+  public static String getDateStringByOffset(DateFormat dateFormat, String strDate, int days)
+      throws ParseException {
     return dateFormat.format(getDateByOffset(dateFormat, strDate, days));
   }
 
   /** Check if given date is with in today - pastDays and today + futureDays */
-  public static boolean dateInRange(DateFormat dateFormat, String date, int futureDays, int pastDays)
-      throws ParseException {
+  public static boolean dateInRange(
+      DateFormat dateFormat, String date, int futureDays, int pastDays) throws ParseException {
     Date today = new Date();
     Date startDate = getDateByOffset(today, -pastDays);
     Date endDate = getDateByOffset(today, futureDays);

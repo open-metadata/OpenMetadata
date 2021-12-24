@@ -57,7 +57,9 @@ public class IngestionRepository extends EntityRepository<Ingestion> {
 
   @Transaction
   public void delete(UUID id) {
-    if (dao.relationshipDAO().findToCount(id.toString(), Relationship.CONTAINS.ordinal(), Entity.INGESTION) > 0) {
+    if (dao.relationshipDAO()
+            .findToCount(id.toString(), Relationship.CONTAINS.ordinal(), Entity.INGESTION)
+        > 0) {
       throw new IllegalArgumentException("Ingestion is not empty");
     }
     dao.ingestionDAO().delete(id);
@@ -108,7 +110,8 @@ public class IngestionRepository extends EntityRepository<Ingestion> {
     List<TagLabel> tags = ingestion.getTags();
     EntityReference service = ingestion.getService();
 
-    // Don't store owner, dashboard, href and tags as JSON. Build it on the fly based on relationships
+    // Don't store owner, dashboard, href and tags as JSON. Build it on the fly based on
+    // relationships
     ingestion.withOwner(null).withHref(null).withTags(null);
 
     if (update) {
@@ -143,7 +146,8 @@ public class IngestionRepository extends EntityRepository<Ingestion> {
   private EntityReference getOwner(Ingestion ingestion) throws IOException {
     return ingestion == null
         ? null
-        : EntityUtil.populateOwner(ingestion.getId(), dao.relationshipDAO(), dao.userDAO(), dao.teamDAO());
+        : EntityUtil.populateOwner(
+            ingestion.getId(), dao.relationshipDAO(), dao.userDAO(), dao.teamDAO());
   }
 
   public void setOwner(Ingestion ingestion, EntityReference owner) {
@@ -154,7 +158,8 @@ public class IngestionRepository extends EntityRepository<Ingestion> {
   private void applyTags(Ingestion ingestion) {
     // Add ingestion level tags by adding tag to ingestion relationship
     EntityUtil.applyTags(dao.tagDAO(), ingestion.getTags(), ingestion.getFullyQualifiedName());
-    ingestion.setTags(getTags(ingestion.getFullyQualifiedName())); // Update tag to handle additional derived tags
+    ingestion.setTags(
+        getTags(ingestion.getFullyQualifiedName())); // Update tag to handle additional derived tags
   }
 
   private EntityReference getService(Ingestion ingestion) throws IOException {
@@ -308,8 +313,14 @@ public class IngestionRepository extends EntityRepository<Ingestion> {
     public void entitySpecificUpdate() throws IOException {
       Ingestion origIngestion = original.getEntity();
       Ingestion updatedIngestion = updated.getEntity();
-      recordChange("scheduleInterval", origIngestion.getScheduleInterval(), updatedIngestion.getScheduleInterval());
-      recordChange("connectorConfig", origIngestion.getConnectorConfig(), updatedIngestion.getConnectorConfig());
+      recordChange(
+          "scheduleInterval",
+          origIngestion.getScheduleInterval(),
+          updatedIngestion.getScheduleInterval());
+      recordChange(
+          "connectorConfig",
+          origIngestion.getConnectorConfig(),
+          updatedIngestion.getConnectorConfig());
       recordChange("startDate", origIngestion.getStartDate(), updatedIngestion.getStartDate());
       recordChange("endDate", origIngestion.getEndDate(), updatedIngestion.getEndDate());
     }

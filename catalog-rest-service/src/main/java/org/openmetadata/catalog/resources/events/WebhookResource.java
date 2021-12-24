@@ -97,21 +97,30 @@ public class WebhookResource {
         @ApiResponse(
             responseCode = "200",
             description = "List of webhooks",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = WebhookList.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = WebhookList.class)))
       })
   public ResultList<Webhook> list(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Limit the number webhooks returned. (1 to 1000000, default = " + "10) ")
+      @Parameter(
+              description =
+                  "Limit the number webhooks returned. (1 to 1000000, default = " + "10) ")
           @DefaultValue("10")
           @Min(1)
           @Max(1000000)
           @QueryParam("limit")
           int limitParam,
-      @Parameter(description = "Returns list of webhooks before this cursor", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Returns list of webhooks before this cursor",
+              schema = @Schema(type = "string"))
           @QueryParam("before")
           String before,
-      @Parameter(description = "Returns list of webhooks after this cursor", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Returns list of webhooks after this cursor",
+              schema = @Schema(type = "string"))
           @QueryParam("after")
           String after)
       throws IOException, ParseException, GeneralSecurityException {
@@ -137,12 +146,16 @@ public class WebhookResource {
         @ApiResponse(
             responseCode = "200",
             description = "Entity events",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ChangeEvent.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ChangeEvent.class))),
         @ApiResponse(responseCode = "404", description = "Entity for instance {id} is not found")
       })
   public Webhook getWebhook(
       @Context UriInfo uriInfo,
-      @Parameter(description = "webhook Id", schema = @Schema(type = "string")) @PathParam("id") String id)
+      @Parameter(description = "webhook Id", schema = @Schema(type = "string")) @PathParam("id")
+          String id)
       throws IOException, GeneralSecurityException, ParseException {
     return dao.get(uriInfo, id, Fields.EMPTY_FIELDS);
   }
@@ -157,13 +170,18 @@ public class WebhookResource {
         @ApiResponse(
             responseCode = "200",
             description = "webhook",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Webhook.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Webhook.class))),
         @ApiResponse(responseCode = "404", description = "Webhook for instance {id} is not found")
       })
   public Webhook getByName(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Name of the webhook", schema = @Schema(type = "string")) @PathParam("name") String fqn)
+      @Parameter(description = "Name of the webhook", schema = @Schema(type = "string"))
+          @PathParam("name")
+          String fqn)
       throws IOException, ParseException {
     return dao.getByName(uriInfo, fqn, Fields.EMPTY_FIELDS);
   }
@@ -178,12 +196,16 @@ public class WebhookResource {
         @ApiResponse(
             responseCode = "200",
             description = "List of webhook versions",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = EntityHistory.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = EntityHistory.class)))
       })
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "webhook Id", schema = @Schema(type = "string")) @PathParam("id") String id)
+      @Parameter(description = "webhook Id", schema = @Schema(type = "string")) @PathParam("id")
+          String id)
       throws IOException, ParseException {
     return dao.listVersions(id);
   }
@@ -198,7 +220,10 @@ public class WebhookResource {
         @ApiResponse(
             responseCode = "200",
             description = "webhook",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Webhook.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Webhook.class))),
         @ApiResponse(
             responseCode = "404",
             description = "Webhook for instance {id} and version {version} is " + "not found")
@@ -206,7 +231,8 @@ public class WebhookResource {
   public Webhook getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "webhook Id", schema = @Schema(type = "string")) @PathParam("id") String id,
+      @Parameter(description = "webhook Id", schema = @Schema(type = "string")) @PathParam("id")
+          String id,
       @Parameter(
               description = "webhook version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
@@ -225,11 +251,16 @@ public class WebhookResource {
         @ApiResponse(
             responseCode = "200",
             description = "webhook",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Webhook.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Webhook.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createWebhook(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateWebhook create)
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid CreateWebhook create)
       throws IOException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Webhook webhook = getWebhook(securityContext, create);
@@ -247,11 +278,16 @@ public class WebhookResource {
         @ApiResponse(
             responseCode = "200",
             description = "webhook",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Webhook.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Webhook.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response updateWebhook(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateWebhook create)
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid CreateWebhook create)
       throws IOException, ParseException {
     // TODO
     //    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
@@ -272,12 +308,16 @@ public class WebhookResource {
         @ApiResponse(
             responseCode = "200",
             description = "Entity events",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Webhook.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Webhook.class))),
         @ApiResponse(responseCode = "404", description = "Entity for instance {id} is not found")
       })
   public Response deleteWebhook(
       @Context UriInfo uriInfo,
-      @Parameter(description = "webhook Id", schema = @Schema(type = "string")) @PathParam("id") String id)
+      @Parameter(description = "webhook Id", schema = @Schema(type = "string")) @PathParam("id")
+          String id)
       throws IOException, GeneralSecurityException, ParseException {
     dao.delete(id);
     return Response.ok().build();

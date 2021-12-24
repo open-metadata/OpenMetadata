@@ -34,12 +34,15 @@ public final class ElasticSearchClientUtils {
   public static RestHighLevelClient createElasticSearchClient(ElasticSearchConfiguration esConfig) {
     try {
       RestClientBuilder restClientBuilder =
-          RestClient.builder(new HttpHost(esConfig.getHost(), esConfig.getPort(), esConfig.getScheme()));
+          RestClient.builder(
+              new HttpHost(esConfig.getHost(), esConfig.getPort(), esConfig.getScheme()));
 
-      if (StringUtils.isNotEmpty(esConfig.getUsername()) && StringUtils.isNotEmpty(esConfig.getUsername())) {
+      if (StringUtils.isNotEmpty(esConfig.getUsername())
+          && StringUtils.isNotEmpty(esConfig.getUsername())) {
         CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
         credentialsProvider.setCredentials(
-            AuthScope.ANY, new UsernamePasswordCredentials(esConfig.getUsername(), esConfig.getPassword()));
+            AuthScope.ANY,
+            new UsernamePasswordCredentials(esConfig.getUsername(), esConfig.getPassword()));
         SSLContext sslContext = createSSLContext(esConfig);
         restClientBuilder.setHttpClientConfigCallback(
             httpAsyncClientBuilder -> {

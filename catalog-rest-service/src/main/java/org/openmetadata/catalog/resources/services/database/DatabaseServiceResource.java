@@ -79,7 +79,8 @@ public class DatabaseServiceResource {
     @SuppressWarnings("unused") /* Required for tests */
     public DatabaseServiceList() {}
 
-    public DatabaseServiceList(List<DatabaseService> data, String beforeCursor, String afterCursor, int total)
+    public DatabaseServiceList(
+        List<DatabaseService> data, String beforeCursor, String afterCursor, int total)
         throws GeneralSecurityException, UnsupportedEncodingException {
       super(data, beforeCursor, afterCursor, total);
     }
@@ -95,7 +96,9 @@ public class DatabaseServiceResource {
             responseCode = "200",
             description = "List of database service instances",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = DatabaseServiceList.class)))
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = DatabaseServiceList.class)))
       })
   public ResultList<DatabaseService> list(
       @Context UriInfo uriInfo,
@@ -105,7 +108,9 @@ public class DatabaseServiceResource {
               schema = @Schema(type = "string"))
           @QueryParam("before")
           String before,
-      @Parameter(description = "Returns list of database services after this cursor", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Returns list of database services after this cursor",
+              schema = @Schema(type = "string"))
           @QueryParam("after")
           String after)
       throws IOException, GeneralSecurityException, ParseException {
@@ -128,11 +133,17 @@ public class DatabaseServiceResource {
             responseCode = "200",
             description = "Database service instance",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = DatabaseService.class))),
-        @ApiResponse(responseCode = "404", description = "Database service for instance {id} is not found")
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = DatabaseService.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Database service for instance {id} is not found")
       })
   public DatabaseService get(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("id") String id)
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @PathParam("id") String id)
       throws IOException, ParseException {
     return dao.get(uriInfo, id, null);
   }
@@ -148,11 +159,17 @@ public class DatabaseServiceResource {
             responseCode = "200",
             description = "Database service instance",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = DatabaseService.class))),
-        @ApiResponse(responseCode = "404", description = "Database service for instance {id} is not found")
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = DatabaseService.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Database service for instance {id} is not found")
       })
   public DatabaseService getByName(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("name") String name)
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @PathParam("name") String name)
       throws IOException, ParseException {
     return dao.getByName(uriInfo, name, null);
   }
@@ -167,12 +184,17 @@ public class DatabaseServiceResource {
         @ApiResponse(
             responseCode = "200",
             description = "List of database service versions",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = EntityHistory.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = EntityHistory.class)))
       })
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "database service Id", schema = @Schema(type = "string")) @PathParam("id") String id)
+      @Parameter(description = "database service Id", schema = @Schema(type = "string"))
+          @PathParam("id")
+          String id)
       throws IOException, ParseException {
     return dao.listVersions(id);
   }
@@ -188,15 +210,20 @@ public class DatabaseServiceResource {
             responseCode = "200",
             description = "database service",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = DatabaseService.class))),
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = DatabaseService.class))),
         @ApiResponse(
             responseCode = "404",
-            description = "Database service for instance {id} and version " + "{version} is not found")
+            description =
+                "Database service for instance {id} and version " + "{version} is not found")
       })
   public DatabaseService getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "database service Id", schema = @Schema(type = "string")) @PathParam("id") String id,
+      @Parameter(description = "database service Id", schema = @Schema(type = "string"))
+          @PathParam("id")
+          String id,
       @Parameter(
               description = "database service version number in the form `major`" + ".`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
@@ -222,7 +249,9 @@ public class DatabaseServiceResource {
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDatabaseService create)
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid CreateDatabaseService create)
       throws IOException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     DatabaseService service = getService(create, securityContext);
@@ -246,7 +275,9 @@ public class DatabaseServiceResource {
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response update(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDatabaseService update)
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid CreateDatabaseService update)
       throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     DatabaseService service = getService(update, securityContext);
@@ -260,22 +291,27 @@ public class DatabaseServiceResource {
       summary = "Delete a database service",
       tags = "services",
       description =
-          "Delete a database services. If databases (and tables) belong the service, it can't be " + "deleted.",
+          "Delete a database services. If databases (and tables) belong the service, it can't be "
+              + "deleted.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
-        @ApiResponse(responseCode = "404", description = "DatabaseService service for instance {id} " + "is not found")
+        @ApiResponse(
+            responseCode = "404",
+            description = "DatabaseService service for instance {id} " + "is not found")
       })
   public Response delete(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the database service", schema = @Schema(type = "string")) @PathParam("id")
+      @Parameter(description = "Id of the database service", schema = @Schema(type = "string"))
+          @PathParam("id")
           String id) {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     dao.delete(UUID.fromString(id));
     return Response.ok().build();
   }
 
-  private DatabaseService getService(CreateDatabaseService create, SecurityContext securityContext) {
+  private DatabaseService getService(
+      CreateDatabaseService create, SecurityContext securityContext) {
     return new DatabaseService()
         .withId(UUID.randomUUID())
         .withName(create.getName())

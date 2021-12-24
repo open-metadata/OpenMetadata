@@ -95,7 +95,8 @@ public class TagRepository {
   @Transaction
   public TagCategory getCategory(String categoryName, Fields fields) throws IOException {
     TagCategory category =
-        EntityUtil.validate(categoryName, dao.tagDAO().findCategory(categoryName), TagCategory.class);
+        EntityUtil.validate(
+            categoryName, dao.tagDAO().findCategory(categoryName), TagCategory.class);
     category = setFields(category, fields);
     return populateCategoryTags(category, fields);
   }
@@ -113,7 +114,8 @@ public class TagRepository {
   @Transaction
   public TagCategory updateCategory(String category, TagCategory updated) throws IOException {
     // Validate category
-    TagCategory original = EntityUtil.validate(category, dao.tagDAO().findCategory(category), TagCategory.class);
+    TagCategory original =
+        EntityUtil.validate(category, dao.tagDAO().findCategory(category), TagCategory.class);
     if (!original.getName().equals(updated.getName())) {
       // Category name changed - update tag names starting from category and all the children tags
       LOG.info("Tag category name changed from {} to {}", original.getName(), updated.getName());
@@ -129,15 +131,16 @@ public class TagRepository {
   }
 
   @Transaction
-  public Tag updatePrimaryTag(String categoryName, String primaryTag, Tag updated) throws IOException {
+  public Tag updatePrimaryTag(String categoryName, String primaryTag, Tag updated)
+      throws IOException {
     // Validate categoryName
     EntityUtil.validate(categoryName, dao.tagDAO().findCategory(categoryName), TagCategory.class);
     return updateTag(categoryName, primaryTag, updated);
   }
 
   @Transaction
-  public Tag updateSecondaryTag(String categoryName, String primaryTag, String secondaryTag, Tag updated)
-      throws IOException {
+  public Tag updateSecondaryTag(
+      String categoryName, String primaryTag, String secondaryTag, Tag updated) throws IOException {
     // Validate categoryName
     EntityUtil.validate(categoryName, dao.tagDAO().findCategory(categoryName), TagCategory.class);
     String fqnPrefix = categoryName + "." + primaryTag;
@@ -156,7 +159,9 @@ public class TagRepository {
       updateChildrenTagNames(originalFQN, updatedFQN);
       original.withName(updated.getName()).withFullyQualifiedName(updatedFQN);
     }
-    original.withDescription(updated.getDescription()).withAssociatedTags(updated.getAssociatedTags());
+    original
+        .withDescription(updated.getDescription())
+        .withAssociatedTags(updated.getAssociatedTags());
     dao.tagDAO().updateTag(originalFQN, JsonUtils.pojoToJson(original));
 
     // Populate children
@@ -164,11 +169,12 @@ public class TagRepository {
   }
 
   /**
-   * Replace category name: prefix = cat1 and newPrefix = cat2 replaces the FQN of all the children tags of a category
-   * from cat1.primaryTag1.secondaryTag1 to cat2.primaryTag1.secondaryTag1
+   * Replace category name: prefix = cat1 and newPrefix = cat2 replaces the FQN of all the children
+   * tags of a category from cat1.primaryTag1.secondaryTag1 to cat2.primaryTag1.secondaryTag1
    *
-   * <p>Replace primary tag name: Prefix = cat1.primaryTag1 and newPrefix = cat1.primaryTag2 replaces the FQN of all the
-   * children tags from cat1.primaryTag1.secondaryTag1 to cat2.primaryTag2.secondaryTag1
+   * <p>Replace primary tag name: Prefix = cat1.primaryTag1 and newPrefix = cat1.primaryTag2
+   * replaces the FQN of all the children tags from cat1.primaryTag1.secondaryTag1 to
+   * cat2.primaryTag2.secondaryTag1
    */
   private void updateChildrenTagNames(String prefix, String newPrefix) throws IOException {
     // Update the fully qualified names of all the primary and secondary tags
@@ -196,7 +202,8 @@ public class TagRepository {
   private Tag createTagInternal(String parentFQN, Tag tag) throws JsonProcessingException {
     // First add the tag
     List<Tag> tags = tag.getChildren();
-    tag.setChildren(null); // Children of tag group are not stored as json but constructed on the fly
+    tag.setChildren(
+        null); // Children of tag group are not stored as json but constructed on the fly
     tag.setFullyQualifiedName(parentFQN + "." + tag.getName());
     dao.tagDAO().insertTag(JsonUtils.pojoToJson(tag));
     tag.setChildren(tags);
@@ -262,7 +269,8 @@ public class TagRepository {
 
   public static class TagLabelMapper implements RowMapper<TagLabel> {
     @Override
-    public TagLabel map(ResultSet r, org.jdbi.v3.core.statement.StatementContext ctx) throws SQLException {
+    public TagLabel map(ResultSet r, org.jdbi.v3.core.statement.StatementContext ctx)
+        throws SQLException {
       return new TagLabel()
           .withLabelType(TagLabel.LabelType.values()[r.getInt("labelType")])
           .withState(TagLabel.State.values()[r.getInt("state")])

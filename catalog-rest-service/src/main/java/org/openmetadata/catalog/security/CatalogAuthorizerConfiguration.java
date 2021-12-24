@@ -41,6 +41,12 @@ public class CatalogAuthorizerConfiguration {
 
   @Override
   public String toString() {
-    return "CatalogAuthorizerConfiguration{" + "className='" + className + '\'' + ", properties=" + properties + '}';
+    return "CatalogAuthorizerConfiguration{"
+        + "className='"
+        + className
+        + '\''
+        + ", properties="
+        + properties
+        + '}';
   }
 }

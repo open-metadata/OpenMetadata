@@ -26,7 +26,8 @@ import org.slf4j.LoggerFactory;
 
 @Provider
 public class CatalogSecurityContextRequestFilter implements ContainerRequestFilter {
-  private static final Logger LOG = LoggerFactory.getLogger(CatalogSecurityContextRequestFilter.class);
+  private static final Logger LOG =
+      LoggerFactory.getLogger(CatalogSecurityContextRequestFilter.class);
 
   @Context private HttpServletRequest httpRequest;
 
@@ -47,7 +48,8 @@ public class CatalogSecurityContextRequestFilter implements ContainerRequestFilt
       throw new AuthenticationException("Not authorized. Principal is not available");
     }
 
-    SecurityContext securityContext = new CatalogSecurityContext(principal, scheme, httpRequest.getAuthType());
+    SecurityContext securityContext =
+        new CatalogSecurityContext(principal, scheme, httpRequest.getAuthType());
     LOG.debug("SecurityContext {}", securityContext);
     requestContext.setSecurityContext(securityContext);
   }

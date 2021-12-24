@@ -80,7 +80,9 @@ public class PipelineResource {
   private final CatalogAuthorizer authorizer;
 
   public static ResultList<Pipeline> addHref(UriInfo uriInfo, ResultList<Pipeline> pipelines) {
-    Optional.ofNullable(pipelines.getData()).orElse(Collections.emptyList()).forEach(i -> addHref(uriInfo, i));
+    Optional.ofNullable(pipelines.getData())
+        .orElse(Collections.emptyList())
+        .forEach(i -> addHref(uriInfo, i));
     return pipelines;
   }
 
@@ -112,7 +114,8 @@ public class PipelineResource {
   }
 
   static final String FIELDS = "owner,tasks,followers,tags,usageSummary";
-  public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replaceAll(" ", "").split(","));
+  public static final List<String> FIELD_LIST =
+      Arrays.asList(FIELDS.replaceAll(" ", "").split(","));
 
   @GET
   @Valid
@@ -120,14 +123,17 @@ public class PipelineResource {
       summary = "List Pipelines",
       tags = "pipelines",
       description =
-          "Get a list of pipelines, optionally filtered by `service` it belongs to. Use `fields` "
-              + "parameter to get only necessary fields. Use cursor-based pagination to limit the number "
-              + "entries in the list using `limit` and `before` or `after` query params.",
+          "Get a list of pipelines, optionally filtered by `service` it belongs to. Use `fields`"
+              + " parameter to get only necessary fields. Use cursor-based pagination to limit the"
+              + " number entries in the list using `limit` and `before` or `after` query params.",
       responses = {
         @ApiResponse(
             responseCode = "200",
             description = "List of pipelines",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = PipelineList.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = PipelineList.class)))
       })
   public ResultList<Pipeline> list(
       @Context UriInfo uriInfo,
@@ -142,16 +148,22 @@ public class PipelineResource {
               schema = @Schema(type = "string", example = "airflow"))
           @QueryParam("service")
           String serviceParam,
-      @Parameter(description = "Limit the number pipelines returned. (1 to 1000000, " + "default = 10)")
+      @Parameter(
+              description =
+                  "Limit the number pipelines returned. (1 to 1000000, " + "default = 10)")
           @DefaultValue("10")
           @Min(1)
           @Max(1000000)
           @QueryParam("limit")
           int limitParam,
-      @Parameter(description = "Returns list of pipelines before this cursor", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Returns list of pipelines before this cursor",
+              schema = @Schema(type = "string"))
           @QueryParam("before")
           String before,
-      @Parameter(description = "Returns list of pipelines after this cursor", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Returns list of pipelines after this cursor",
+              schema = @Schema(type = "string"))
           @QueryParam("after")
           String after)
       throws IOException, GeneralSecurityException, ParseException {
@@ -160,7 +172,9 @@ public class PipelineResource {
 
     ResultList<Pipeline> pipelines;
     if (before != null) { // Reverse paging
-      pipelines = dao.listBefore(uriInfo, fields, serviceParam, limitParam, before); // Ask for one extra entry
+      pipelines =
+          dao.listBefore(
+              uriInfo, fields, serviceParam, limitParam, before); // Ask for one extra entry
     } else { // Forward paging or first page
       pipelines = dao.listAfter(uriInfo, fields, serviceParam, limitParam, after);
     }
@@ -177,12 +191,16 @@ public class PipelineResource {
         @ApiResponse(
             responseCode = "200",
             description = "List of pipeline versions",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = EntityHistory.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = EntityHistory.class)))
       })
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "pipeline Id", schema = @Schema(type = "string")) @PathParam("id") String id)
+      @Parameter(description = "pipeline Id", schema = @Schema(type = "string")) @PathParam("id")
+          String id)
       throws IOException, ParseException {
     return dao.listVersions(id);
   }
@@ -197,7 +215,10 @@ public class PipelineResource {
         @ApiResponse(
             responseCode = "200",
             description = "The pipeline",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Pipeline.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Pipeline.class))),
         @ApiResponse(responseCode = "404", description = "Pipeline for instance {id} is not found")
       })
   public Pipeline get(
@@ -224,7 +245,10 @@ public class PipelineResource {
         @ApiResponse(
             responseCode = "200",
             description = "The pipeline",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Pipeline.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Pipeline.class))),
         @ApiResponse(responseCode = "404", description = "Pipeline for instance {id} is not found")
       })
   public Pipeline getByName(
@@ -252,7 +276,10 @@ public class PipelineResource {
         @ApiResponse(
             responseCode = "200",
             description = "pipeline",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Pipeline.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Pipeline.class))),
         @ApiResponse(
             responseCode = "404",
             description = "Pipeline for instance {id} and version {version} is " + "not found")
@@ -260,7 +287,8 @@ public class PipelineResource {
   public Pipeline getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Pipeline Id", schema = @Schema(type = "string")) @PathParam("id") String id,
+      @Parameter(description = "Pipeline Id", schema = @Schema(type = "string")) @PathParam("id")
+          String id,
       @Parameter(
               description = "Pipeline version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
@@ -280,11 +308,15 @@ public class PipelineResource {
             responseCode = "200",
             description = "The pipeline",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = CreatePipeline.class))),
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = CreatePipeline.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreatePipeline create)
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid CreatePipeline create)
       throws IOException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Pipeline pipeline = getPipeline(securityContext, create);
@@ -298,7 +330,10 @@ public class PipelineResource {
       summary = "Update a Pipeline",
       tags = "pipelines",
       description = "Update an existing pipeline using JsonPatch.",
-      externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
+      externalDocs =
+          @ExternalDocumentation(
+              description = "JsonPatch RFC",
+              url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
   public Response updateDescription(
       @Context UriInfo uriInfo,
@@ -310,15 +345,18 @@ public class PipelineResource {
                   @Content(
                       mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
                       examples = {
-                        @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
+                        @ExampleObject(
+                            "[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
                       }))
           JsonPatch patch)
       throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, FIELDS);
     Pipeline pipeline = dao.get(uriInfo, id, fields);
-    SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, dao.getOwnerReference(pipeline));
+    SecurityUtil.checkAdminRoleOrPermissions(
+        authorizer, securityContext, dao.getOwnerReference(pipeline));
     PatchResponse<Pipeline> response =
-        dao.patch(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
+        dao.patch(
+            uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
     addHref(uriInfo, response.getEntity());
     return response.toResponse();
   }
@@ -333,11 +371,15 @@ public class PipelineResource {
             responseCode = "200",
             description = "The pipeline",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = CreatePipeline.class))),
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = CreatePipeline.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createOrUpdate(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreatePipeline create)
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid CreatePipeline create)
       throws IOException, ParseException {
     Pipeline pipeline = getPipeline(securityContext, create);
     PutResponse<Pipeline> response = dao.createOrUpdate(uriInfo, pipeline);
@@ -358,11 +400,18 @@ public class PipelineResource {
   public Response addFollower(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the pipeline", schema = @Schema(type = "string")) @PathParam("id") String id,
-      @Parameter(description = "Id of the user to be added as follower", schema = @Schema(type = "string"))
+      @Parameter(description = "Id of the pipeline", schema = @Schema(type = "string"))
+          @PathParam("id")
+          String id,
+      @Parameter(
+              description = "Id of the user to be added as follower",
+              schema = @Schema(type = "string"))
           String userId)
       throws IOException {
-    return dao.addFollower(securityContext.getUserPrincipal().getName(), UUID.fromString(id), UUID.fromString(userId))
+    return dao.addFollower(
+            securityContext.getUserPrincipal().getName(),
+            UUID.fromString(id),
+            UUID.fromString(userId))
         .toResponse();
   }
 
@@ -375,13 +424,19 @@ public class PipelineResource {
   public Response deleteFollower(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the pipeline", schema = @Schema(type = "string")) @PathParam("id") String id,
-      @Parameter(description = "Id of the user being removed as follower", schema = @Schema(type = "string"))
+      @Parameter(description = "Id of the pipeline", schema = @Schema(type = "string"))
+          @PathParam("id")
+          String id,
+      @Parameter(
+              description = "Id of the user being removed as follower",
+              schema = @Schema(type = "string"))
           @PathParam("userId")
           String userId)
       throws IOException {
     return dao.deleteFollower(
-            securityContext.getUserPrincipal().getName(), UUID.fromString(id), UUID.fromString(userId))
+            securityContext.getUserPrincipal().getName(),
+            UUID.fromString(id),
+            UUID.fromString(userId))
         .toResponse();
   }
 

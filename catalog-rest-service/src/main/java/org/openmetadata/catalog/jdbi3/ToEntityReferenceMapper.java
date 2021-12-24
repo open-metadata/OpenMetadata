@@ -21,7 +21,10 @@ import org.openmetadata.catalog.type.EntityReference;
 
 public class ToEntityReferenceMapper implements RowMapper<EntityReference> {
   @Override
-  public EntityReference map(ResultSet rs, org.jdbi.v3.core.statement.StatementContext ctx) throws SQLException {
-    return new EntityReference().withId(UUID.fromString(rs.getString("toId"))).withType(rs.getString("toEntity"));
+  public EntityReference map(ResultSet rs, org.jdbi.v3.core.statement.StatementContext ctx)
+      throws SQLException {
+    return new EntityReference()
+        .withId(UUID.fromString(rs.getString("toId")))
+        .withType(rs.getString("toEntity"));
   }
 }

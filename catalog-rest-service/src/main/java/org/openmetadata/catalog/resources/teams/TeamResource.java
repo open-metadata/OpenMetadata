@@ -100,7 +100,8 @@ public class TeamResource {
   }
 
   public static final String FIELDS = "profile,users,owns";
-  public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replaceAll(" ", "").split(","));
+  public static final List<String> FIELD_LIST =
+      Arrays.asList(FIELDS.replaceAll(" ", "").split(","));
 
   @GET
   @Valid
@@ -108,14 +109,17 @@ public class TeamResource {
       summary = "List teams",
       tags = "teams",
       description =
-          "Get a list of teams. Use `fields` "
-              + "parameter to get only necessary fields. Use cursor-based pagination to limit the number "
-              + "entries in the list using `limit` and `before` or `after` query params.",
+          "Get a list of teams. Use `fields` parameter to get only necessary fields. Use"
+              + " cursor-based pagination to limit the number entries in the list using `limit` and"
+              + " `before` or `after` query params.",
       responses = {
         @ApiResponse(
             responseCode = "200",
             description = "List of teams",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = TeamList.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = TeamList.class)))
       })
   public ResultList<Team> list(
       @Context UriInfo uriInfo,
@@ -131,10 +135,14 @@ public class TeamResource {
           @Max(1000000)
           @QueryParam("limit")
           int limitParam,
-      @Parameter(description = "Returns list of tables before this cursor", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Returns list of tables before this cursor",
+              schema = @Schema(type = "string"))
           @QueryParam("before")
           String before,
-      @Parameter(description = "Returns list of tables after this cursor", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Returns list of tables after this cursor",
+              schema = @Schema(type = "string"))
           @QueryParam("after")
           String after)
       throws IOException, GeneralSecurityException, ParseException {
@@ -161,12 +169,16 @@ public class TeamResource {
         @ApiResponse(
             responseCode = "200",
             description = "List of team versions",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = EntityHistory.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = EntityHistory.class)))
       })
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "team Id", schema = @Schema(type = "string")) @PathParam("id") String id)
+      @Parameter(description = "team Id", schema = @Schema(type = "string")) @PathParam("id")
+          String id)
       throws IOException, ParseException {
     return dao.listVersions(id);
   }
@@ -182,7 +194,10 @@ public class TeamResource {
         @ApiResponse(
             responseCode = "200",
             description = "The team",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Team.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Team.class))),
         @ApiResponse(responseCode = "404", description = "Team for instance {id} is not found")
       })
   public Team get(
@@ -210,7 +225,10 @@ public class TeamResource {
         @ApiResponse(
             responseCode = "200",
             description = "The team",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Team.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Team.class))),
         @ApiResponse(responseCode = "404", description = "Team for instance {name} is not found")
       })
   public Team getByName(
@@ -237,7 +255,10 @@ public class TeamResource {
         @ApiResponse(
             responseCode = "200",
             description = "team",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Team.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Team.class))),
         @ApiResponse(
             responseCode = "404",
             description = "Team for instance {id} and version {version} is " + "not found")
@@ -245,7 +266,8 @@ public class TeamResource {
   public Team getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Team Id", schema = @Schema(type = "string")) @PathParam("id") String id,
+      @Parameter(description = "Team Id", schema = @Schema(type = "string")) @PathParam("id")
+          String id,
       @Parameter(
               description = "Team version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
@@ -264,10 +286,14 @@ public class TeamResource {
         @ApiResponse(
             responseCode = "200",
             description = "The team",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = CreateTeam.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = CreateTeam.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
-  public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTeam ct)
+  public Response create(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTeam ct)
       throws IOException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Team team = getTeam(ct, securityContext);
@@ -284,7 +310,10 @@ public class TeamResource {
         @ApiResponse(
             responseCode = "200",
             description = "The team ",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = CreateTeam.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = CreateTeam.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createOrUpdateTeam(
@@ -304,7 +333,10 @@ public class TeamResource {
       summary = "Update a team",
       tags = "teams",
       description = "Update an existing team with JsonPatch.",
-      externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
+      externalDocs =
+          @ExternalDocumentation(
+              description = "JsonPatch RFC",
+              url = "https://tools.ietf.org/html/rfc6902"))
   public Response patch(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
@@ -315,14 +347,16 @@ public class TeamResource {
                   @Content(
                       mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
                       examples = {
-                        @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
+                        @ExampleObject(
+                            "[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
                       }))
           JsonPatch patch)
       throws IOException, ParseException {
 
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     PatchResponse<Team> response =
-        dao.patch(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
+        dao.patch(
+            uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
     addHref(uriInfo, response.getEntity());
     return response.toResponse();
   }
@@ -338,7 +372,9 @@ public class TeamResource {
         @ApiResponse(responseCode = "404", description = "Team for instance {id} is not found")
       })
   public Response delete(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("id") String id) {
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @PathParam("id") String id) {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     dao.delete(UUID.fromString(id));
     return Response.ok().build();

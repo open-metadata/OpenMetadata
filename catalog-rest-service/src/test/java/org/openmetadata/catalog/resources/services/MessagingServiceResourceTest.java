@@ -79,13 +79,15 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
     // Create messaging with mandatory serviceType field empty
     HttpResponseException exception =
         assertThrows(
-            HttpResponseException.class, () -> createEntity(create(test).withServiceType(null), adminAuthHeaders()));
+            HttpResponseException.class,
+            () -> createEntity(create(test).withServiceType(null), adminAuthHeaders()));
     TestUtils.assertResponse(exception, BAD_REQUEST, "[serviceType must not be null]");
 
     // Create messaging with mandatory brokers field empty
     exception =
         assertThrows(
-            HttpResponseException.class, () -> createEntity(create(test).withBrokers(null), adminAuthHeaders()));
+            HttpResponseException.class,
+            () -> createEntity(create(test).withBrokers(null), adminAuthHeaders()));
     TestUtils.assertResponse(exception, BAD_REQUEST, "[brokers must not be null]");
   }
 
@@ -107,7 +109,8 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
         assertThrows(
             HttpResponseException.class,
             () -> createAndCheckEntity(create(test, 1).withDescription(null), authHeaders));
-    TestUtils.assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
+    TestUtils.assertResponse(
+        exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
   }
 
   @Test
@@ -124,25 +127,31 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
 
     // Duration that contains years, months and seconds are not allowed
     create.withIngestionSchedule(schedule.withRepeatFrequency("P1Y"));
-    exception = assertThrows(HttpResponseException.class, () -> createEntity(create, adminAuthHeaders()));
+    exception =
+        assertThrows(HttpResponseException.class, () -> createEntity(create, adminAuthHeaders()));
     TestUtils.assertResponse(
         exception,
         BAD_REQUEST,
-        "Ingestion repeatFrequency can only contain Days, Hours, " + "and Minutes - example P{d}DT{h}H{m}M");
+        "Ingestion repeatFrequency can only contain Days, Hours, "
+            + "and Minutes - example P{d}DT{h}H{m}M");
 
     create.withIngestionSchedule(schedule.withRepeatFrequency("P1M"));
-    exception = assertThrows(HttpResponseException.class, () -> createEntity(create, adminAuthHeaders()));
+    exception =
+        assertThrows(HttpResponseException.class, () -> createEntity(create, adminAuthHeaders()));
     TestUtils.assertResponse(
         exception,
         BAD_REQUEST,
-        "Ingestion repeatFrequency can only contain Days, Hours, " + "and Minutes - example P{d}DT{h}H{m}M");
+        "Ingestion repeatFrequency can only contain Days, Hours, "
+            + "and Minutes - example P{d}DT{h}H{m}M");
 
     create.withIngestionSchedule(schedule.withRepeatFrequency("PT1S"));
-    exception = assertThrows(HttpResponseException.class, () -> createEntity(create, adminAuthHeaders()));
+    exception =
+        assertThrows(HttpResponseException.class, () -> createEntity(create, adminAuthHeaders()));
     TestUtils.assertResponse(
         exception,
         BAD_REQUEST,
-        "Ingestion repeatFrequency can only contain Days, Hours, " + "and Minutes - example P{d}DT{h}H{m}M");
+        "Ingestion repeatFrequency can only contain Days, Hours, "
+            + "and Minutes - example P{d}DT{h}H{m}M");
   }
 
   @Test
@@ -167,12 +176,18 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
     HttpResponseException exception =
         assertThrows(HttpResponseException.class, () -> createEntity(create, adminAuthHeaders()));
     TestUtils.assertResponseContains(
-        exception, BAD_REQUEST, "Ingestion repeatFrequency is too short and must be more than 60 minutes");
+        exception,
+        BAD_REQUEST,
+        "Ingestion repeatFrequency is too short and must be more than 60 minutes");
 
-    create.withIngestionSchedule(schedule.withRepeatFrequency("PT59M")); // Repeat every 50 minutes 59 seconds
-    exception = assertThrows(HttpResponseException.class, () -> createEntity(create, adminAuthHeaders()));
+    create.withIngestionSchedule(
+        schedule.withRepeatFrequency("PT59M")); // Repeat every 50 minutes 59 seconds
+    exception =
+        assertThrows(HttpResponseException.class, () -> createEntity(create, adminAuthHeaders()));
     TestUtils.assertResponse(
-        exception, BAD_REQUEST, "Ingestion repeatFrequency is too short and must " + "be more than 60 minutes");
+        exception,
+        BAD_REQUEST,
+        "Ingestion repeatFrequency is too short and must " + "be more than 60 minutes");
   }
 
   @Test
@@ -187,15 +202,20 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
             adminAuthHeaders());
 
     // Update messaging description and ingestion service that are null
-    CreateMessagingService update = create(test).withDescription("description1").withIngestionSchedule(null);
+    CreateMessagingService update =
+        create(test).withDescription("description1").withIngestionSchedule(null);
     ChangeDescription change = getChangeDescription(service.getVersion());
-    change.getFieldsAdded().add(new FieldChange().withName("description").withNewValue("description1"));
+    change
+        .getFieldsAdded()
+        .add(new FieldChange().withName("description").withNewValue("description1"));
     service = updateAndCheckEntity(update, OK, adminAuthHeaders(), UpdateType.MINOR_UPDATE, change);
 
     // Update ingestion schedule
     Schedule schedule = new Schedule().withStartDate(new Date()).withRepeatFrequency("P1D");
     change = getChangeDescription(service.getVersion());
-    change.getFieldsAdded().add(new FieldChange().withName("ingestionSchedule").withNewValue(schedule));
+    change
+        .getFieldsAdded()
+        .add(new FieldChange().withName("ingestionSchedule").withNewValue(schedule));
     update.withIngestionSchedule(schedule);
     service = updateAndCheckEntity(update, OK, adminAuthHeaders(), UpdateType.MINOR_UPDATE, change);
 
@@ -205,7 +225,11 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
     change = getChangeDescription(service.getVersion());
     change
         .getFieldsUpdated()
-        .add(new FieldChange().withName("ingestionSchedule").withOldValue(schedule).withNewValue(schedule1));
+        .add(
+            new FieldChange()
+                .withName("ingestionSchedule")
+                .withOldValue(schedule)
+                .withNewValue(schedule1));
     service = updateAndCheckEntity(update, OK, adminAuthHeaders(), UpdateType.MINOR_UPDATE, change);
 
     // update broker list and schema registry
@@ -214,7 +238,9 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
     update.withBrokers(updatedBrokers).withSchemaRegistry(updatedSchemaRegistry);
 
     change = getChangeDescription(service.getVersion());
-    change.getFieldsDeleted().add(new FieldChange().withName("brokers").withOldValue(KAFKA_BROKERS));
+    change
+        .getFieldsDeleted()
+        .add(new FieldChange().withName("brokers").withOldValue(KAFKA_BROKERS));
     change.getFieldsAdded().add(new FieldChange().withName("brokers").withNewValue(updatedBrokers));
     change
         .getFieldsUpdated()
@@ -230,7 +256,8 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
   @Test
   public void put_update_as_non_admin_401(TestInfo test) throws IOException {
     Map<String, String> authHeaders = adminAuthHeaders();
-    createAndCheckEntity(create(test).withDescription(null).withIngestionSchedule(null), authHeaders);
+    createAndCheckEntity(
+        create(test).withDescription(null).withIngestionSchedule(null), authHeaders);
 
     // Update messaging description as non admin and expect exception
     HttpResponseException exception =
@@ -238,12 +265,18 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
             HttpResponseException.class,
             () ->
                 updateAndCheckEntity(
-                    create(test), OK, authHeaders("test@open-metadata.org"), UpdateType.NO_CHANGE, null));
-    TestUtils.assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} " + "is not admin");
+                    create(test),
+                    OK,
+                    authHeaders("test@open-metadata.org"),
+                    UpdateType.NO_CHANGE,
+                    null));
+    TestUtils.assertResponse(
+        exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} " + "is not admin");
   }
 
   @Test
-  public void delete_ExistentMessagingService_as_admin_200(TestInfo test) throws HttpResponseException {
+  public void delete_ExistentMessagingService_as_admin_200(TestInfo test)
+      throws HttpResponseException {
     Map<String, String> authHeaders = adminAuthHeaders();
     MessagingService messagingService = createEntity(create(test), authHeaders);
     deleteEntity(messagingService.getId(), authHeaders);
@@ -257,17 +290,21 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
         assertThrows(
             HttpResponseException.class,
             () -> deleteEntity(messagingService.getId(), authHeaders("test@open-metadata.org")));
-    TestUtils.assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
+    TestUtils.assertResponse(
+        exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
   }
 
   @Test
   public void delete_notExistentMessagingService() {
     HttpResponseException exception =
-        assertThrows(HttpResponseException.class, () -> getEntity(TestUtils.NON_EXISTENT_ENTITY, adminAuthHeaders()));
+        assertThrows(
+            HttpResponseException.class,
+            () -> getEntity(TestUtils.NON_EXISTENT_ENTITY, adminAuthHeaders()));
     TestUtils.assertResponse(
         exception,
         NOT_FOUND,
-        CatalogExceptionMessage.entityNotFound(Entity.MESSAGING_SERVICE, TestUtils.NON_EXISTENT_ENTITY));
+        CatalogExceptionMessage.entityNotFound(
+            Entity.MESSAGING_SERVICE, TestUtils.NON_EXISTENT_ENTITY));
   }
 
   private CreateMessagingService create(TestInfo test) {
@@ -288,31 +325,40 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
   }
 
   @Override
-  public Object createRequest(String name, String description, String displayName, EntityReference owner) {
+  public Object createRequest(
+      String name, String description, String displayName, EntityReference owner) {
     return create(name).withDescription(description).withIngestionSchedule(null);
   }
 
   @Override
-  public void validateCreatedEntity(MessagingService service, Object request, Map<String, String> authHeaders) {
+  public void validateCreatedEntity(
+      MessagingService service, Object request, Map<String, String> authHeaders) {
     CreateMessagingService createRequest = (CreateMessagingService) request;
     validateCommonEntityFields(
-        getEntityInterface(service), createRequest.getDescription(), TestUtils.getPrincipal(authHeaders), null);
+        getEntityInterface(service),
+        createRequest.getDescription(),
+        TestUtils.getPrincipal(authHeaders),
+        null);
     Schedule expectedIngestion = createRequest.getIngestionSchedule();
     if (expectedIngestion != null) {
       assertEquals(expectedIngestion.getStartDate(), service.getIngestionSchedule().getStartDate());
-      assertEquals(expectedIngestion.getRepeatFrequency(), service.getIngestionSchedule().getRepeatFrequency());
+      assertEquals(
+          expectedIngestion.getRepeatFrequency(),
+          service.getIngestionSchedule().getRepeatFrequency());
     }
     assertTrue(createRequest.getBrokers().containsAll(service.getBrokers()));
     assertEquals(createRequest.getSchemaRegistry(), service.getSchemaRegistry());
   }
 
   @Override
-  public void validateUpdatedEntity(MessagingService service, Object request, Map<String, String> authHeaders) {
+  public void validateUpdatedEntity(
+      MessagingService service, Object request, Map<String, String> authHeaders) {
     validateCreatedEntity(service, request, authHeaders);
   }
 
   @Override
-  public void compareEntities(MessagingService expected, MessagingService updated, Map<String, String> authHeaders) {
+  public void compareEntities(
+      MessagingService expected, MessagingService updated, Map<String, String> authHeaders) {
     // PATCH operation is not supported by this entity
   }
 
@@ -322,7 +368,8 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
   }
 
   @Override
-  public void validateGetWithDifferentFields(MessagingService service, boolean byName) throws HttpResponseException {
+  public void validateGetWithDifferentFields(MessagingService service, boolean byName)
+      throws HttpResponseException {
     // No fields support
     String fields = "";
     service =
@@ -338,7 +385,8 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
   }
 
   @Override
-  public void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException {
+  public void assertFieldChange(String fieldName, Object expected, Object actual)
+      throws IOException {
     switch (fieldName) {
       case "ingestionSchedule":
         Schedule expectedSchedule = (Schedule) expected;

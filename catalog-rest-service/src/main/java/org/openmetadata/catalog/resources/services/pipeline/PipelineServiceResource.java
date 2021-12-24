@@ -70,7 +70,8 @@ public class PipelineServiceResource {
   private final CatalogAuthorizer authorizer;
 
   public static EntityReference addHref(UriInfo uriInfo, EntityReference service) {
-    return service.withHref(RestUtil.getHref(uriInfo, "v1/services/pipelineServices/", service.getId()));
+    return service.withHref(
+        RestUtil.getHref(uriInfo, "v1/services/pipelineServices/", service.getId()));
   }
 
   @Inject
@@ -84,7 +85,8 @@ public class PipelineServiceResource {
     @SuppressWarnings("unused") /* Required for tests */
     public PipelineServiceList() {}
 
-    public PipelineServiceList(List<PipelineService> data, String beforeCursor, String afterCursor, int total)
+    public PipelineServiceList(
+        List<PipelineService> data, String beforeCursor, String afterCursor, int total)
         throws GeneralSecurityException, UnsupportedEncodingException {
       super(data, beforeCursor, afterCursor, total);
     }
@@ -102,7 +104,9 @@ public class PipelineServiceResource {
             responseCode = "200",
             description = "List of pipeline services",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = PipelineServiceList.class)))
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = PipelineServiceList.class)))
       })
   public ResultList<PipelineService> list(
       @Context UriInfo uriInfo,
@@ -113,10 +117,14 @@ public class PipelineServiceResource {
           @Max(1000000)
           @QueryParam("limit")
           int limitParam,
-      @Parameter(description = "Returns list of services before this cursor", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Returns list of services before this cursor",
+              schema = @Schema(type = "string"))
           @QueryParam("before")
           String before,
-      @Parameter(description = "Returns list of services after this cursor", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Returns list of services after this cursor",
+              schema = @Schema(type = "string"))
           @QueryParam("after")
           String after)
       throws IOException, GeneralSecurityException, ParseException {
@@ -140,11 +148,17 @@ public class PipelineServiceResource {
             responseCode = "200",
             description = "Pipeline service instance",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = PipelineService.class))),
-        @ApiResponse(responseCode = "404", description = "Pipeline service for instance {id} is not found")
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = PipelineService.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Pipeline service for instance {id} is not found")
       })
   public PipelineService get(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("id") String id)
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @PathParam("id") String id)
       throws IOException, ParseException {
     return dao.get(uriInfo, id, null);
   }
@@ -160,11 +174,17 @@ public class PipelineServiceResource {
             responseCode = "200",
             description = "Pipeline service instance",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = PipelineService.class))),
-        @ApiResponse(responseCode = "404", description = "Pipeline service for instance {id} is not found")
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = PipelineService.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Pipeline service for instance {id} is not found")
       })
   public PipelineService getByName(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("name") String name)
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @PathParam("name") String name)
       throws IOException, ParseException {
     return dao.getByName(uriInfo, name, null);
   }
@@ -179,12 +199,17 @@ public class PipelineServiceResource {
         @ApiResponse(
             responseCode = "200",
             description = "List of pipeline service versions",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = EntityHistory.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = EntityHistory.class)))
       })
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "pipeline service Id", schema = @Schema(type = "string")) @PathParam("id") String id)
+      @Parameter(description = "pipeline service Id", schema = @Schema(type = "string"))
+          @PathParam("id")
+          String id)
       throws IOException, ParseException {
     return dao.listVersions(id);
   }
@@ -200,15 +225,20 @@ public class PipelineServiceResource {
             responseCode = "200",
             description = "pipeline service",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = PipelineService.class))),
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = PipelineService.class))),
         @ApiResponse(
             responseCode = "404",
-            description = "Pipeline service for instance {id} and version " + "{version} is not found")
+            description =
+                "Pipeline service for instance {id} and version " + "{version} is not found")
       })
   public PipelineService getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "pipeline service Id", schema = @Schema(type = "string")) @PathParam("id") String id,
+      @Parameter(description = "pipeline service Id", schema = @Schema(type = "string"))
+          @PathParam("id")
+          String id,
       @Parameter(
               description = "pipeline service version number in the form `major`" + ".`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
@@ -234,7 +264,9 @@ public class PipelineServiceResource {
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreatePipelineService create)
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid CreatePipelineService create)
       throws IOException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     PipelineService service = getService(create, securityContext);
@@ -246,7 +278,9 @@ public class PipelineServiceResource {
   @Operation(
       summary = "Update a pipeline service",
       tags = "services",
-      description = "Create a new pipeline service or update an existing pipeline service identified by `id`.",
+      description =
+          "Create a new pipeline service or update an existing pipeline service identified by"
+              + " `id`.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -258,7 +292,9 @@ public class PipelineServiceResource {
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response update(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreatePipelineService update)
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid CreatePipelineService update)
       throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     PipelineService service = getService(update, securityContext);
@@ -272,22 +308,27 @@ public class PipelineServiceResource {
       summary = "Delete a pipeline service",
       tags = "services",
       description =
-          "Delete a pipeline services. If pipelines (and tasks) belong to the service, it can't be " + "deleted.",
+          "Delete a pipeline services. If pipelines (and tasks) belong to the service, it can't be "
+              + "deleted.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
-        @ApiResponse(responseCode = "404", description = "Pipeline service for instance {id} " + "is not found")
+        @ApiResponse(
+            responseCode = "404",
+            description = "Pipeline service for instance {id} " + "is not found")
       })
   public Response delete(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the pipeline service", schema = @Schema(type = "string")) @PathParam("id")
+      @Parameter(description = "Id of the pipeline service", schema = @Schema(type = "string"))
+          @PathParam("id")
           String id) {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     dao.delete(UUID.fromString(id));
     return Response.ok().build();
   }
 
-  private PipelineService getService(CreatePipelineService create, SecurityContext securityContext) {
+  private PipelineService getService(
+      CreatePipelineService create, SecurityContext securityContext) {
     return new PipelineService()
         .withId(UUID.randomUUID())
         .withName(create.getName())

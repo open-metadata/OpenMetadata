@@ -23,13 +23,16 @@ public final class EventUtils {
   private EventUtils() {}
 
   public static void publishEntityCreatedEvent(String entity, String entityName, String event) {
-    String print = String.format("Entity Created: [%s] Name: [%s] Event: [%s]", entity, entityName, event);
+    String print =
+        String.format("Entity Created: [%s] Name: [%s] Event: [%s]", entity, entityName, event);
     LOG.info(print);
   }
 
-  public static void publishEntityUpdatedEvent(String entity, String entityName, String oldEvent, String newEvent) {
+  public static void publishEntityUpdatedEvent(
+      String entity, String entityName, String oldEvent, String newEvent) {
     String diff = JsonUtils.diffTwoJson(oldEvent, newEvent);
-    String print = String.format("Entity Updated: [%s] Name: [%s] DiffString: [%s]", entity, entityName, diff);
+    String print =
+        String.format("Entity Updated: [%s] Name: [%s] DiffString: [%s]", entity, entityName, diff);
     LOG.info(print);
   }
 }

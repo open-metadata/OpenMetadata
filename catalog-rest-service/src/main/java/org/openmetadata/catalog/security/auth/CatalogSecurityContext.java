@@ -18,7 +18,9 @@ import javax.ws.rs.core.SecurityContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** Holds authenticated principal and security context which is passed to the JAX-RS request methods */
+/**
+ * Holds authenticated principal and security context which is passed to the JAX-RS request methods
+ */
 public class CatalogSecurityContext implements SecurityContext {
   private static final Logger LOG = LoggerFactory.getLogger(CatalogSecurityContext.class);
 

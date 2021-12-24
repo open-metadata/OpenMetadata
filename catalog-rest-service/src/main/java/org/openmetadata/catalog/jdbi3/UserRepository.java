@@ -73,7 +73,8 @@ public class UserRepository extends EntityRepository<User> {
     // Relationships and fields such as href are derived and not stored as part of json
     List<EntityReference> teams = user.getTeams();
 
-    // Don't store owner, database, href and tags as JSON. Build it on the fly based on relationships
+    // Don't store owner, database, href and tags as JSON. Build it on the fly based on
+    // relationships
     user.withTeams(null).withHref(null);
 
     if (update) {
@@ -128,7 +129,8 @@ public class UserRepository extends EntityRepository<User> {
 
   private List<EntityReference> getOwns(User user) throws IOException {
     // Compile entities owned by the user
-    List<EntityReference> ownedEntities = dao.relationshipDAO().findTo(user.getId().toString(), OWNS.ordinal());
+    List<EntityReference> ownedEntities =
+        dao.relationshipDAO().findTo(user.getId().toString(), OWNS.ordinal());
 
     // Compile entities owned by the team the user belongs to
     List<EntityReference> teams = user.getTeams() == null ? getTeams(user) : user.getTeams();
@@ -161,7 +163,8 @@ public class UserRepository extends EntityRepository<User> {
 
   /* Add all the teams that user belongs to User entity */
   private List<EntityReference> getTeams(User user) throws IOException {
-    List<String> teamIds = dao.relationshipDAO().findFrom(user.getId().toString(), CONTAINS.ordinal(), "team");
+    List<String> teamIds =
+        dao.relationshipDAO().findFrom(user.getId().toString(), CONTAINS.ordinal(), "team");
     List<EntityReference> teams = new ArrayList<>();
     for (String teamId : teamIds) {
       teams.add(dao.teamDAO().findEntityReferenceById(UUID.fromString(teamId)));
@@ -174,7 +177,8 @@ public class UserRepository extends EntityRepository<User> {
     teams = Optional.ofNullable(teams).orElse(Collections.emptyList());
     for (EntityReference team : teams) {
       dao.relationshipDAO()
-          .insert(team.getId().toString(), user.getId().toString(), "team", "user", CONTAINS.ordinal());
+          .insert(
+              team.getId().toString(), user.getId().toString(), "team", "user", CONTAINS.ordinal());
     }
   }
 
@@ -323,11 +327,14 @@ public class UserRepository extends EntityRepository<User> {
     public void entitySpecificUpdate() throws IOException {
       // Update operation can't undelete a user
       if (updated.getEntity().getDeactivated() != original.getEntity().getDeactivated()) {
-        throw new IllegalArgumentException(CatalogExceptionMessage.readOnlyAttribute("User", "deactivated"));
+        throw new IllegalArgumentException(
+            CatalogExceptionMessage.readOnlyAttribute("User", "deactivated"));
       }
       updateTeams(original.getEntity(), updated.getEntity());
-      recordChange("profile", original.getEntity().getProfile(), updated.getEntity().getProfile(), true);
-      recordChange("timezone", original.getEntity().getTimezone(), updated.getEntity().getTimezone());
+      recordChange(
+          "profile", original.getEntity().getProfile(), updated.getEntity().getProfile(), true);
+      recordChange(
+          "timezone", original.getEntity().getTimezone(), updated.getEntity().getTimezone());
       recordChange("isBot", original.getEntity().getIsBot(), updated.getEntity().getIsBot());
       recordChange("isAdmin", original.getEntity().getIsAdmin(), updated.getEntity().getIsAdmin());
       recordChange("email", original.getEntity().getEmail(), updated.getEntity().getEmail());
@@ -338,15 +345,18 @@ public class UserRepository extends EntityRepository<User> {
       dao.relationshipDAO().deleteTo(origUser.getId().toString(), CONTAINS.ordinal(), "team");
       assignTeams(updatedUser, updatedUser.getTeams());
 
-      List<EntityReference> origTeams = Optional.ofNullable(origUser.getTeams()).orElse(Collections.emptyList());
-      List<EntityReference> updatedTeams = Optional.ofNullable(updatedUser.getTeams()).orElse(Collections.emptyList());
+      List<EntityReference> origTeams =
+          Optional.ofNullable(origUser.getTeams()).orElse(Collections.emptyList());
+      List<EntityReference> updatedTeams =
+          Optional.ofNullable(updatedUser.getTeams()).orElse(Collections.emptyList());
 
       origTeams.sort(EntityUtil.compareEntityReference);
       updatedTeams.sort(EntityUtil.compareEntityReference);
 
       List<EntityReference> added = new ArrayList<>();
       List<EntityReference> deleted = new ArrayList<>();
-      recordListChange("teams", origTeams, updatedTeams, added, deleted, EntityUtil.entityReferenceMatch);
+      recordListChange(
+          "teams", origTeams, updatedTeams, added, deleted, EntityUtil.entityReferenceMatch);
     }
   }
 }

@@ -105,8 +105,10 @@ public class MlModelResource {
   }
 
   static final String FIELDS =
-      "owner,dashboard,algorithm,mlFeatures,mlHyperParameters,mlStore,server," + "followers,tags,usageSummary";
-  public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replaceAll(" ", "").split(","));
+      "owner,dashboard,algorithm,mlFeatures,mlHyperParameters,mlStore,server,"
+          + "followers,tags,usageSummary";
+  public static final List<String> FIELD_LIST =
+      Arrays.asList(FIELDS.replaceAll(" ", "").split(","));
 
   @GET
   @Valid
@@ -121,7 +123,10 @@ public class MlModelResource {
         @ApiResponse(
             responseCode = "200",
             description = "List of models",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = MlModelList.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = MlModelList.class)))
       })
   public ResultList<MlModel> list(
       @Context UriInfo uriInfo,
@@ -131,16 +136,21 @@ public class MlModelResource {
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
           String fieldsParam,
-      @Parameter(description = "Limit the number models returned. (1 to 1000000, " + "default = 10)")
+      @Parameter(
+              description = "Limit the number models returned. (1 to 1000000, " + "default = 10)")
           @DefaultValue("10")
           @Min(1)
           @Max(1000000)
           @QueryParam("limit")
           int limitParam,
-      @Parameter(description = "Returns list of models before this cursor", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Returns list of models before this cursor",
+              schema = @Schema(type = "string"))
           @QueryParam("before")
           String before,
-      @Parameter(description = "Returns list of models after this cursor", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Returns list of models after this cursor",
+              schema = @Schema(type = "string"))
           @QueryParam("after")
           String after)
       throws IOException, GeneralSecurityException, ParseException {
@@ -167,7 +177,10 @@ public class MlModelResource {
         @ApiResponse(
             responseCode = "200",
             description = "The model",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = MlModel.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = MlModel.class))),
         @ApiResponse(responseCode = "404", description = "Model for instance {id} is not found")
       })
   public MlModel get(
@@ -194,7 +207,10 @@ public class MlModelResource {
         @ApiResponse(
             responseCode = "200",
             description = "The model",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = MlModel.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = MlModel.class))),
         @ApiResponse(responseCode = "404", description = "Model for instance {id} is not found")
       })
   public MlModel getByName(
@@ -220,11 +236,16 @@ public class MlModelResource {
         @ApiResponse(
             responseCode = "200",
             description = "ML Model",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = CreateMlModel.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = CreateMlModel.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateMlModel create)
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid CreateMlModel create)
       throws IOException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     MlModel mlModel = getMlModel(securityContext, create);
@@ -238,27 +259,35 @@ public class MlModelResource {
       summary = "Update an ML Model",
       tags = "mlModels",
       description = "Update an existing ML Model using JsonPatch.",
-      externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
+      externalDocs =
+          @ExternalDocumentation(
+              description = "JsonPatch RFC",
+              url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
   public Response patch(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the ML Model", schema = @Schema(type = "string")) @PathParam("id") String id,
+      @Parameter(description = "Id of the ML Model", schema = @Schema(type = "string"))
+          @PathParam("id")
+          String id,
       @RequestBody(
               description = "JsonPatch with array of operations",
               content =
                   @Content(
                       mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
                       examples = {
-                        @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
+                        @ExampleObject(
+                            "[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
                       }))
           JsonPatch patch)
       throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, FIELDS);
     MlModel mlModel = dao.get(uriInfo, id, fields);
-    SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, dao.getOwnerReference(mlModel));
+    SecurityUtil.checkAdminRoleOrPermissions(
+        authorizer, securityContext, dao.getOwnerReference(mlModel));
     PatchResponse<MlModel> response =
-        dao.patch(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
+        dao.patch(
+            uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
     addHref(uriInfo, response.getEntity());
     return response.toResponse();
   }
@@ -272,14 +301,20 @@ public class MlModelResource {
         @ApiResponse(
             responseCode = "200",
             description = "The model",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = MlModel.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = MlModel.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createOrUpdate(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateMlModel create)
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid CreateMlModel create)
       throws IOException, ParseException {
     MlModel mlModel = getMlModel(securityContext, create);
-    SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, dao.getOwnerReference(mlModel));
+    SecurityUtil.checkAdminRoleOrPermissions(
+        authorizer, securityContext, dao.getOwnerReference(mlModel));
     PutResponse<MlModel> response = dao.createOrUpdate(uriInfo, mlModel);
     addHref(uriInfo, response.getEntity());
     return response.toResponse();
@@ -298,11 +333,18 @@ public class MlModelResource {
   public Response addFollower(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the model", schema = @Schema(type = "string")) @PathParam("id") String id,
-      @Parameter(description = "Id of the user to be added as follower", schema = @Schema(type = "string"))
+      @Parameter(description = "Id of the model", schema = @Schema(type = "string"))
+          @PathParam("id")
+          String id,
+      @Parameter(
+              description = "Id of the user to be added as follower",
+              schema = @Schema(type = "string"))
           String userId)
       throws IOException {
-    return dao.addFollower(securityContext.getUserPrincipal().getName(), UUID.fromString(id), UUID.fromString(userId))
+    return dao.addFollower(
+            securityContext.getUserPrincipal().getName(),
+            UUID.fromString(id),
+            UUID.fromString(userId))
         .toResponse();
   }
 
@@ -315,13 +357,19 @@ public class MlModelResource {
   public Response deleteFollower(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the model", schema = @Schema(type = "string")) @PathParam("id") String id,
-      @Parameter(description = "Id of the user being removed as follower", schema = @Schema(type = "string"))
+      @Parameter(description = "Id of the model", schema = @Schema(type = "string"))
+          @PathParam("id")
+          String id,
+      @Parameter(
+              description = "Id of the user being removed as follower",
+              schema = @Schema(type = "string"))
           @PathParam("userId")
           String userId)
       throws IOException {
     return dao.deleteFollower(
-            securityContext.getUserPrincipal().getName(), UUID.fromString(id), UUID.fromString(userId))
+            securityContext.getUserPrincipal().getName(),
+            UUID.fromString(id),
+            UUID.fromString(userId))
         .toResponse();
   }
 
@@ -335,12 +383,16 @@ public class MlModelResource {
         @ApiResponse(
             responseCode = "200",
             description = "List of Ml Model versions",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = EntityHistory.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = EntityHistory.class)))
       })
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "ML Model Id", schema = @Schema(type = "string")) @PathParam("id") String id)
+      @Parameter(description = "ML Model Id", schema = @Schema(type = "string")) @PathParam("id")
+          String id)
       throws IOException, ParseException {
     return dao.listVersions(id);
   }
@@ -355,7 +407,10 @@ public class MlModelResource {
         @ApiResponse(
             responseCode = "200",
             description = "MlModel",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = MlModel.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = MlModel.class))),
         @ApiResponse(
             responseCode = "404",
             description = "ML Model for instance {id} and version {version} is " + "not found")
@@ -363,7 +418,8 @@ public class MlModelResource {
   public MlModel getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "ML Model Id", schema = @Schema(type = "string")) @PathParam("id") String id,
+      @Parameter(description = "ML Model Id", schema = @Schema(type = "string")) @PathParam("id")
+          String id,
       @Parameter(
               description = "ML Model version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
@@ -386,7 +442,9 @@ public class MlModelResource {
   public Response delete(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the ML Model", schema = @Schema(type = "string")) @PathParam("id") String id) {
+      @Parameter(description = "Id of the ML Model", schema = @Schema(type = "string"))
+          @PathParam("id")
+          String id) {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     dao.delete(UUID.fromString(id));
     return Response.ok().build();

@@ -287,7 +287,8 @@ public interface CollectionDAO {
     @SqlQuery(
         "SELECT extension, json FROM entity_extension WHERE id = :id AND extension "
             + "LIKE CONCAT (:extensionPrefix, '.%')")
-    List<EntityVersionPair> getEntityVersions(@Bind("id") String id, @Bind("extensionPrefix") String extensionPrefix);
+    List<EntityVersionPair> getEntityVersions(
+        @Bind("id") String id, @Bind("extensionPrefix") String extensionPrefix);
 
     @SqlQuery("SELECT json FROM entity_extension WHERE id = :id AND extension = :extension")
     String getEntityVersion(@Bind("id") String id, @Bind("extension") String extension);
@@ -345,13 +346,18 @@ public interface CollectionDAO {
             + "WHERE fromId = :fromId AND relation = :relation AND toEntity = :toEntity "
             + "ORDER BY toId")
     List<String> findTo(
-        @Bind("fromId") String fromId, @Bind("relation") int relation, @Bind("toEntity") String toEntity);
+        @Bind("fromId") String fromId,
+        @Bind("relation") int relation,
+        @Bind("toEntity") String toEntity);
 
     @SqlQuery(
         "SELECT count(*) FROM entity_relationship "
             + "WHERE fromId = :fromId AND relation = :relation AND toEntity = :toEntity "
             + "ORDER BY fromId")
-    int findToCount(@Bind("fromId") String fromId, @Bind("relation") int relation, @Bind("toEntity") String toEntity);
+    int findToCount(
+        @Bind("fromId") String fromId,
+        @Bind("relation") int relation,
+        @Bind("toEntity") String toEntity);
 
     //
     // Find from operations
@@ -361,7 +367,9 @@ public interface CollectionDAO {
             + "WHERE toId = :toId AND relation = :relation AND fromEntity = :fromEntity "
             + "ORDER BY fromId")
     List<String> findFrom(
-        @Bind("toId") String toId, @Bind("relation") int relation, @Bind("fromEntity") String fromEntity);
+        @Bind("toId") String toId,
+        @Bind("relation") int relation,
+        @Bind("fromEntity") String fromEntity);
 
     @SqlQuery(
         "SELECT fromId, fromEntity FROM entity_relationship "
@@ -376,27 +384,41 @@ public interface CollectionDAO {
             + "ORDER BY fromId")
     @RegisterRowMapper(FromEntityReferenceMapper.class)
     List<EntityReference> findFromEntity(
-        @Bind("toId") String toId, @Bind("relation") int relation, @Bind("fromEntity") String fromEntity);
+        @Bind("toId") String toId,
+        @Bind("relation") int relation,
+        @Bind("fromEntity") String fromEntity);
 
     //
     // Delete Operations
     //
-    @SqlUpdate("DELETE from entity_relationship " + "WHERE fromId = :fromId AND toId = :toId AND relation = :relation")
-    void delete(@Bind("fromId") String fromId, @Bind("toId") String toId, @Bind("relation") int relation);
+    @SqlUpdate(
+        "DELETE from entity_relationship "
+            + "WHERE fromId = :fromId AND toId = :toId AND relation = :relation")
+    void delete(
+        @Bind("fromId") String fromId, @Bind("toId") String toId, @Bind("relation") int relation);
 
     // Delete all the entity relationship fromID --- relation --> entity of type toEntity
     @SqlUpdate(
-        "DELETE from entity_relationship " + "WHERE fromId = :fromId AND relation = :relation AND toEntity = :toEntity")
-    void deleteFrom(@Bind("fromId") String fromId, @Bind("relation") int relation, @Bind("toEntity") String toEntity);
+        "DELETE from entity_relationship "
+            + "WHERE fromId = :fromId AND relation = :relation AND toEntity = :toEntity")
+    void deleteFrom(
+        @Bind("fromId") String fromId,
+        @Bind("relation") int relation,
+        @Bind("toEntity") String toEntity);
 
     // Delete all the entity relationship fromID --- relation --> to any entity
-    @SqlUpdate("DELETE from entity_relationship " + "WHERE fromId = :fromId AND relation = :relation")
+    @SqlUpdate(
+        "DELETE from entity_relationship " + "WHERE fromId = :fromId AND relation = :relation")
     void deleteFrom(@Bind("fromId") String fromId, @Bind("relation") int relation);
 
     // Delete all the entity relationship toId <-- relation --  entity of type fromEntity
     @SqlUpdate(
-        "DELETE from entity_relationship " + "WHERE toId = :toId AND relation = :relation AND fromEntity = :fromEntity")
-    void deleteTo(@Bind("toId") String toId, @Bind("relation") int relation, @Bind("fromEntity") String fromEntity);
+        "DELETE from entity_relationship "
+            + "WHERE toId = :toId AND relation = :relation AND fromEntity = :fromEntity")
+    void deleteTo(
+        @Bind("toId") String toId,
+        @Bind("relation") int relation,
+        @Bind("fromEntity") String fromEntity);
 
     @SqlUpdate("DELETE from entity_relationship " + "WHERE toId = :id OR fromId = :id")
     void deleteAll(@Bind("id") String id);
@@ -428,9 +450,9 @@ public interface CollectionDAO {
         @Bind("relation") int relation);
 
     @SqlUpdate(
-        "INSERT INTO field_relationship(fromFQN, toFQN, fromType, toType, relation, jsonSchema, json) "
-            + "VALUES (:fromFQN, :toFQN, :fromType, :toType, :relation, :jsonSchema, :json) "
-            + "ON DUPLICATE KEY UPDATE json = :json")
+        "INSERT INTO field_relationship(fromFQN, toFQN, fromType, toType, relation, jsonSchema,"
+            + " json) VALUES (:fromFQN, :toFQN, :fromType, :toType, :relation, :jsonSchema, :json)"
+            + " ON DUPLICATE KEY UPDATE json = :json")
     void upsert(
         @Bind("fromFQN") String fromFQN,
         @Bind("toFQN") String toFQN,
@@ -452,8 +474,8 @@ public interface CollectionDAO {
         @Bind("relation") int relation);
 
     @SqlQuery(
-        "SELECT fromFQN, toFQN, json FROM field_relationship WHERE "
-            + "toFQN LIKE CONCAT(:fqnPrefix, '%') AND fromType = :fromType AND toType = :toType AND relation = :relation")
+        "SELECT fromFQN, toFQN, json FROM field_relationship WHERE toFQN LIKE CONCAT(:fqnPrefix,"
+            + " '%') AND fromType = :fromType AND toType = :toType AND relation = :relation")
     @RegisterRowMapper(FromFieldMapper.class)
     List<List<String>> listFromByPrefix(
         @Bind("fqnPrefix") String fqnPrefix,
@@ -842,7 +864,9 @@ public interface CollectionDAO {
     @SqlQuery("SELECT json FROM tag_category ORDER BY name")
     List<String> listCategories();
 
-    @SqlQuery("SELECT json FROM tag WHERE fullyQualifiedName LIKE CONCAT(:fqnPrefix, '.%') ORDER BY fullyQualifiedName")
+    @SqlQuery(
+        "SELECT json FROM tag WHERE fullyQualifiedName LIKE CONCAT(:fqnPrefix, '.%') ORDER BY"
+            + " fullyQualifiedName")
     List<String> listChildrenTags(@Bind("fqnPrefix") String fqnPrefix);
 
     @SqlQuery("SELECT json FROM tag_category WHERE name = :name")
@@ -855,8 +879,8 @@ public interface CollectionDAO {
     String findTag(@Bind("fqn") String fqn);
 
     @SqlUpdate(
-        "INSERT IGNORE INTO tag_usage (tagFQN, targetFQN, labelType, state) VALUES (:tagFQN, :targetFQN, "
-            + ":labelType, :state)")
+        "INSERT IGNORE INTO tag_usage (tagFQN, targetFQN, labelType, state) VALUES (:tagFQN,"
+            + " :targetFQN, :labelType, :state)")
     void applyTag(
         @Bind("tagFQN") String tagFQN,
         @Bind("targetFQN") String targetFQN,
@@ -864,8 +888,9 @@ public interface CollectionDAO {
         @Bind("state") int state);
 
     @SqlQuery(
-        "SELECT tu.tagFQN, tu.labelType, tu.state, t.json ->> '$.description' AS description FROM tag_usage tu "
-            + "JOIN tag t ON tu.tagFQN = t.fullyQualifiedName WHERE tu.targetFQN = :targetFQN ORDER BY tu.tagFQN")
+        "SELECT tu.tagFQN, tu.labelType, tu.state, t.json ->> '$.description' AS description FROM"
+            + " tag_usage tu JOIN tag t ON tu.tagFQN = t.fullyQualifiedName WHERE tu.targetFQN ="
+            + " :targetFQN ORDER BY tu.tagFQN")
     List<TagLabel> getTags(@Bind("targetFQN") String targetFQN);
 
     @SqlQuery("SELECT COUNT(*) FROM tag_usage WHERE tagFQN LIKE CONCAT(:fqnPrefix, '%')")
@@ -936,12 +961,11 @@ public interface CollectionDAO {
   @RegisterRowMapper(UsageDetailsMapper.class)
   interface UsageDAO {
     @SqlUpdate(
-        "INSERT INTO entity_usage (usageDate, id, entityType, count1, count7, count30) "
-            + "SELECT :date, :id, :entityType, :count1, "
-            + "(:count1 + (SELECT COALESCE(SUM(count1), 0) FROM entity_usage WHERE id = :id AND usageDate >= :date - "
-            + "INTERVAL 6 DAY)), "
-            + "(:count1 + (SELECT COALESCE(SUM(count1), 0) FROM entity_usage WHERE id = :id AND usageDate >= :date - "
-            + "INTERVAL 29 DAY))")
+        "INSERT INTO entity_usage (usageDate, id, entityType, count1, count7, count30) SELECT"
+            + " :date, :id, :entityType, :count1, (:count1 + (SELECT COALESCE(SUM(count1), 0) FROM"
+            + " entity_usage WHERE id = :id AND usageDate >= :date - INTERVAL 6 DAY)), (:count1 +"
+            + " (SELECT COALESCE(SUM(count1), 0) FROM entity_usage WHERE id = :id AND usageDate >="
+            + " :date - INTERVAL 29 DAY))")
     void insert(
         @Bind("date") String date,
         @Bind("id") String id,
@@ -949,13 +973,12 @@ public interface CollectionDAO {
         @Bind("count1") int count1);
 
     @SqlUpdate(
-        "INSERT INTO entity_usage (usageDate, id, entityType, count1, count7, count30) "
-            + "SELECT :date, :id, :entityType, :count1, "
-            + "(:count1 + (SELECT COALESCE(SUM(count1), 0) FROM entity_usage WHERE id = :id AND usageDate >= :date - "
-            + "INTERVAL 6 DAY)), "
-            + "(:count1 + (SELECT COALESCE(SUM(count1), 0) FROM entity_usage WHERE id = :id AND usageDate >= :date - "
-            + "INTERVAL 29 DAY)) "
-            + "ON DUPLICATE KEY UPDATE count1 = count1 + :count1, count7 = count7 + :count1, count30 = count30 + :count1")
+        "INSERT INTO entity_usage (usageDate, id, entityType, count1, count7, count30) SELECT"
+            + " :date, :id, :entityType, :count1, (:count1 + (SELECT COALESCE(SUM(count1), 0) FROM"
+            + " entity_usage WHERE id = :id AND usageDate >= :date - INTERVAL 6 DAY)), (:count1 +"
+            + " (SELECT COALESCE(SUM(count1), 0) FROM entity_usage WHERE id = :id AND usageDate >="
+            + " :date - INTERVAL 29 DAY)) ON DUPLICATE KEY UPDATE count1 = count1 + :count1, count7"
+            + " = count7 + :count1, count30 = count30 + :count1")
     void insertOrUpdateCount(
         @Bind("date") String date,
         @Bind("id") String id,
@@ -963,50 +986,54 @@ public interface CollectionDAO {
         @Bind("count1") int count1);
 
     @SqlQuery(
-        "SELECT id, usageDate, entityType, count1, count7, count30, "
-            + "percentile1, percentile7, percentile30 FROM entity_usage "
-            + "WHERE id = :id AND usageDate >= :date - INTERVAL :days DAY AND usageDate <= :date ORDER BY usageDate DESC")
-    List<UsageDetails> getUsageById(@Bind("id") String id, @Bind("date") String date, @Bind("days") int days);
+        "SELECT id, usageDate, entityType, count1, count7, count30, percentile1, percentile7,"
+            + " percentile30 FROM entity_usage WHERE id = :id AND usageDate >= :date - INTERVAL"
+            + " :days DAY AND usageDate <= :date ORDER BY usageDate DESC")
+    List<UsageDetails> getUsageById(
+        @Bind("id") String id, @Bind("date") String date, @Bind("days") int days);
 
     /** Get latest usage record */
     @SqlQuery(
-        "SELECT id, usageDate, entityType, count1, count7, count30, "
-            + "percentile1, percentile7, percentile30 FROM entity_usage "
-            + "WHERE usageDate IN (SELECT MAX(usageDate) FROM entity_usage WHERE id = :id) AND id = :id")
+        "SELECT id, usageDate, entityType, count1, count7, count30, percentile1, percentile7,"
+            + " percentile30 FROM entity_usage WHERE usageDate IN (SELECT MAX(usageDate) FROM"
+            + " entity_usage WHERE id = :id) AND id = :id")
     UsageDetails getLatestUsage(@Bind("id") String id);
 
     @SqlUpdate("DELETE FROM entity_usage WHERE id = :id")
     int delete(@Bind("id") String id);
 
     /**
-     * Note not using in following percentile computation PERCENT_RANK function as unit tests use mysql5.7, and it does
-     * not have window function
+     * Note not using in following percentile computation PERCENT_RANK function as unit tests use
+     * mysql5.7, and it does not have window function
      */
     @SqlUpdate(
-        "UPDATE entity_usage u JOIN ( "
-            + "SELECT u1.id, "
-            + "(SELECT COUNT(*) FROM entity_usage as u2 WHERE u2.count1 <  u1.count1 AND u2.entityType = :entityType "
-            + "AND u2.usageDate = :date) as p1, "
-            + "(SELECT COUNT(*) FROM entity_usage as u3 WHERE u3.count7 <  u1.count7 AND u3.entityType = :entityType "
-            + "AND u3.usageDate = :date) as p7, "
-            + "(SELECT COUNT(*) FROM entity_usage as u4 WHERE u4.count30 <  u1.count30 AND u4.entityType = :entityType "
-            + "AND u4.usageDate = :date) as p30, "
-            + "(SELECT COUNT(*) FROM entity_usage WHERE entityType = :entityType AND usageDate = :date) as total "
-            + "FROM entity_usage u1 WHERE u1.entityType = :entityType AND u1.usageDate = :date"
-            + ") vals ON u.id = vals.id AND usageDate = :date "
-            + "SET u.percentile1 = ROUND(100 * p1/total, 2), u.percentile7 = ROUND(p7 * 100/total, 2), u.percentile30 ="
-            + " ROUND(p30*100/total, 2)")
+        "UPDATE entity_usage u JOIN ( SELECT u1.id, (SELECT COUNT(*) FROM entity_usage as u2 WHERE"
+            + " u2.count1 <  u1.count1 AND u2.entityType = :entityType AND u2.usageDate = :date) as"
+            + " p1, (SELECT COUNT(*) FROM entity_usage as u3 WHERE u3.count7 <  u1.count7 AND"
+            + " u3.entityType = :entityType AND u3.usageDate = :date) as p7, (SELECT COUNT(*) FROM"
+            + " entity_usage as u4 WHERE u4.count30 <  u1.count30 AND u4.entityType = :entityType"
+            + " AND u4.usageDate = :date) as p30, (SELECT COUNT(*) FROM entity_usage WHERE"
+            + " entityType = :entityType AND usageDate = :date) as total FROM entity_usage u1 WHERE"
+            + " u1.entityType = :entityType AND u1.usageDate = :date) vals ON u.id = vals.id AND"
+            + " usageDate = :date SET u.percentile1 = ROUND(100 * p1/total, 2), u.percentile7 ="
+            + " ROUND(p7 * 100/total, 2), u.percentile30 = ROUND(p30*100/total, 2)")
     void computePercentile(@Bind("entityType") String entityType, @Bind("date") String date);
 
     class UsageDetailsMapper implements RowMapper<UsageDetails> {
       @Override
       public UsageDetails map(ResultSet r, StatementContext ctx) throws SQLException {
         UsageStats dailyStats =
-            new UsageStats().withCount(r.getInt("count1")).withPercentileRank(r.getDouble("percentile1"));
+            new UsageStats()
+                .withCount(r.getInt("count1"))
+                .withPercentileRank(r.getDouble("percentile1"));
         UsageStats weeklyStats =
-            new UsageStats().withCount(r.getInt("count7")).withPercentileRank(r.getDouble("percentile7"));
+            new UsageStats()
+                .withCount(r.getInt("count7"))
+                .withPercentileRank(r.getDouble("percentile7"));
         UsageStats monthlyStats =
-            new UsageStats().withCount(r.getInt("count30")).withPercentileRank(r.getDouble("percentile30"));
+            new UsageStats()
+                .withCount(r.getInt("count30"))
+                .withPercentileRank(r.getDouble("percentile30"));
         return new UsageDetails()
             .withDate(r.getString("usageDate"))
             .withDailyStats(dailyStats)
@@ -1046,12 +1073,14 @@ public interface CollectionDAO {
 
     @Override
     default List<String> listBefore(String team, int limit, String before) {
-      return listBefore(getTableName(), getNameColumn(), team, limit, before, Relationship.CONTAINS.ordinal());
+      return listBefore(
+          getTableName(), getNameColumn(), team, limit, before, Relationship.CONTAINS.ordinal());
     }
 
     @Override
     default List<String> listAfter(String team, int limit, String after) {
-      return listAfter(getTableName(), getNameColumn(), team, limit, after, Relationship.CONTAINS.ordinal());
+      return listAfter(
+          getTableName(), getNameColumn(), team, limit, after, Relationship.CONTAINS.ordinal());
     }
 
     @SqlQuery(
@@ -1134,6 +1163,7 @@ public interface CollectionDAO {
             + "eventType = :eventType AND "
             + "dateTime >= :dateTime "
             + "ORDER BY dateTime DESC")
-    List<String> listWithoutEntityFilter(@Bind("eventType") String eventType, @Bind("dateTime") long dateTime);
+    List<String> listWithoutEntityFilter(
+        @Bind("eventType") String eventType, @Bind("dateTime") long dateTime);
   }
 }

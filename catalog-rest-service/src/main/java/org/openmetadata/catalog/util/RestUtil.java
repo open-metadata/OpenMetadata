@@ -94,7 +94,8 @@ public final class RestUtil {
   /** Get list of attributes for an entity based on JsonProperty annotation */
   public static <T> List<String> getAttributes(Class<T> clz) {
     List<String> attributes = new ArrayList<>();
-    for (Field field : ReflectionUtils.getFields(clz, ReflectionUtils.withAnnotation(JsonProperty.class))) {
+    for (Field field :
+        ReflectionUtils.getFields(clz, ReflectionUtils.withAnnotation(JsonProperty.class))) {
       // Attributes are fields that are not of entity type
       if (!field.getType().getName().contains(".entity.")) {
         attributes.add(field.getName());
@@ -106,7 +107,8 @@ public final class RestUtil {
   /** Get list of relationships for an entity based on JsonProperty annotation */
   public static <T> List<String> getRelationships(Class<T> clz) {
     List<String> relationships = new ArrayList<>();
-    for (Field field : ReflectionUtils.getFields(clz, ReflectionUtils.withAnnotation(JsonProperty.class))) {
+    for (Field field :
+        ReflectionUtils.getFields(clz, ReflectionUtils.withAnnotation(JsonProperty.class))) {
       // Relationships are fields that are of entity type
       if (field.getType().getName().contains(".entity.")) {
         relationships.add(field.getName());
@@ -137,8 +139,8 @@ public final class RestUtil {
     private final String changeType;
 
     /**
-     * Response.Status.CREATED when PUT operation creates a new entity or Response.Status.OK when PUT operation updates
-     * a new entity
+     * Response.Status.CREATED when PUT operation creates a new entity or Response.Status.OK when
+     * PUT operation updates a new entity
      */
     public PutResponse(Response.Status status, T entity, String changeType) {
       this.entity = entity;
@@ -158,7 +160,8 @@ public final class RestUtil {
     }
 
     public Response toResponse() {
-      ResponseBuilder responseBuilder = Response.status(status).header(CHANGE_CUSTOM_HEADER, changeType);
+      ResponseBuilder responseBuilder =
+          Response.status(status).header(CHANGE_CUSTOM_HEADER, changeType);
       if (changeType.equals(RestUtil.ENTITY_CREATED)
           || changeType.equals(RestUtil.ENTITY_UPDATED)
           || changeType.equals(RestUtil.ENTITY_NO_CHANGE)) {
@@ -175,8 +178,8 @@ public final class RestUtil {
     private final String changeType;
 
     /**
-     * Response.Status.CREATED when PUT operation creates a new entity or Response.Status.OK when PUT operation updates
-     * a new entity
+     * Response.Status.CREATED when PUT operation creates a new entity or Response.Status.OK when
+     * PUT operation updates a new entity
      */
     public PatchResponse(Response.Status status, T entity, String changeType) {
       this.entity = entity;
@@ -189,7 +192,10 @@ public final class RestUtil {
     }
 
     public Response toResponse() {
-      return Response.status(status).header(CHANGE_CUSTOM_HEADER, changeType).entity(entity).build();
+      return Response.status(status)
+          .header(CHANGE_CUSTOM_HEADER, changeType)
+          .entity(entity)
+          .build();
     }
   }
 }

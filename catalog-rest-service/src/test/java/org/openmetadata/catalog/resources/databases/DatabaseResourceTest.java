@@ -46,7 +46,14 @@ import org.openmetadata.catalog.util.TestUtils;
 public class DatabaseResourceTest extends EntityResourceTest<Database> {
   public DatabaseResourceTest() {
     super(
-        Entity.DATABASE, Database.class, DatabaseList.class, "databases", DatabaseResource.FIELDS, false, true, false);
+        Entity.DATABASE,
+        Database.class,
+        DatabaseList.class,
+        "databases",
+        DatabaseResource.FIELDS,
+        false,
+        true,
+        false);
   }
 
   @BeforeAll
@@ -68,7 +75,8 @@ public class DatabaseResourceTest extends EntityResourceTest<Database> {
   public void post_databaseFQN_as_admin_200_OK(TestInfo test) throws IOException {
     // Create team with different optional fields
     CreateDatabase create = create(test);
-    create.setService(new EntityReference().withId(SNOWFLAKE_REFERENCE.getId()).withType("databaseService"));
+    create.setService(
+        new EntityReference().withId(SNOWFLAKE_REFERENCE.getId()).withType("databaseService"));
     Database db = createAndCheckEntity(create, adminAuthHeaders());
     String expectedFQN = SNOWFLAKE_REFERENCE.getName() + "." + create.getName();
     assertEquals(expectedFQN, db.getFullyQualifiedName());
@@ -88,7 +96,9 @@ public class DatabaseResourceTest extends EntityResourceTest<Database> {
   public void post_database_as_non_admin_401(TestInfo test) {
     CreateDatabase create = create(test);
     HttpResponseException exception =
-        assertThrows(HttpResponseException.class, () -> createDatabase(create, authHeaders("test@open-metadata.org")));
+        assertThrows(
+            HttpResponseException.class,
+            () -> createDatabase(create, authHeaders("test@open-metadata.org")));
     assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
   }
 
@@ -140,9 +150,13 @@ public class DatabaseResourceTest extends EntityResourceTest<Database> {
     return TestUtils.post(getResource("databases"), create, Database.class, authHeaders);
   }
 
-  /** Validate returned fields GET .../databases/{id}?fields="..." or GET .../databases/name/{fqn}?fields="..." */
+  /**
+   * Validate returned fields GET .../databases/{id}?fields="..." or GET
+   * .../databases/name/{fqn}?fields="..."
+   */
   @Override
-  public void validateGetWithDifferentFields(Database database, boolean byName) throws HttpResponseException {
+  public void validateGetWithDifferentFields(Database database, boolean byName)
+      throws HttpResponseException {
     // .../databases?fields=owner
     String fields = "owner";
     database =
@@ -176,12 +190,14 @@ public class DatabaseResourceTest extends EntityResourceTest<Database> {
   }
 
   @Override
-  public Object createRequest(String name, String description, String displayName, EntityReference owner) {
+  public Object createRequest(
+      String name, String description, String displayName, EntityReference owner) {
     return create(name).withDescription(description).withOwner(owner);
   }
 
   @Override
-  public void validateCreatedEntity(Database database, Object request, Map<String, String> authHeaders) {
+  public void validateCreatedEntity(
+      Database database, Object request, Map<String, String> authHeaders) {
     CreateDatabase createRequest = (CreateDatabase) request;
     validateCommonEntityFields(
         getEntityInterface(database),
@@ -195,12 +211,14 @@ public class DatabaseResourceTest extends EntityResourceTest<Database> {
   }
 
   @Override
-  public void validateUpdatedEntity(Database updatedEntity, Object request, Map<String, String> authHeaders) {
+  public void validateUpdatedEntity(
+      Database updatedEntity, Object request, Map<String, String> authHeaders) {
     validateCreatedEntity(updatedEntity, request, authHeaders);
   }
 
   @Override
-  public void compareEntities(Database expected, Database updated, Map<String, String> authHeaders) {
+  public void compareEntities(
+      Database expected, Database updated, Map<String, String> authHeaders) {
     validateCommonEntityFields(
         getEntityInterface(updated),
         expected.getDescription(),
@@ -216,7 +234,8 @@ public class DatabaseResourceTest extends EntityResourceTest<Database> {
   }
 
   @Override
-  public void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException {
+  public void assertFieldChange(String fieldName, Object expected, Object actual)
+      throws IOException {
     assertCommonFieldChange(fieldName, expected, actual);
   }
 }

@@ -61,7 +61,8 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook> {
   }
 
   @Override
-  public CreateWebhook createRequest(String name, String description, String displayName, EntityReference owner)
+  public CreateWebhook createRequest(
+      String name, String description, String displayName, EntityReference owner)
       throws URISyntaxException {
     String uri = "http://localhost:" + APP.getLocalPort() + "/api/v1/test/webhook/ignore";
     return new CreateWebhook()
@@ -72,17 +73,22 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook> {
   }
 
   @Override
-  public void validateCreatedEntity(Webhook webhook, Object request, Map<String, String> authHeaders)
+  public void validateCreatedEntity(
+      Webhook webhook, Object request, Map<String, String> authHeaders)
       throws HttpResponseException {
     CreateWebhook createRequest = (CreateWebhook) request;
     validateCommonEntityFields(
-        getEntityInterface(webhook), createRequest.getDescription(), TestUtils.getPrincipal(authHeaders), null);
+        getEntityInterface(webhook),
+        createRequest.getDescription(),
+        TestUtils.getPrincipal(authHeaders),
+        null);
     assertEquals(createRequest.getName(), webhook.getName());
     assertEquals(createRequest.getEventFilters(), webhook.getEventFilters());
   }
 
   @Override
-  public void validateUpdatedEntity(Webhook webhook, Object request, Map<String, String> authHeaders)
+  public void validateUpdatedEntity(
+      Webhook webhook, Object request, Map<String, String> authHeaders)
       throws HttpResponseException {
     validateCreatedEntity(webhook, request, authHeaders);
   }
@@ -99,10 +105,12 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook> {
   }
 
   @Override
-  public void validateGetWithDifferentFields(Webhook entity, boolean byName) throws HttpResponseException {}
+  public void validateGetWithDifferentFields(Webhook entity, boolean byName)
+      throws HttpResponseException {}
 
   @Override
-  public void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException {}
+  public void assertFieldChange(String fieldName, Object expected, Object actual)
+      throws IOException {}
 
   public void createWebhooks() throws IOException, URISyntaxException {
     // Valid webhook callback
@@ -115,7 +123,8 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook> {
     createWebhook.withName("slowServer").withEndPoint(URI.create(baseUri + "/slowServer"));
     createEntity(createWebhook, adminAuthHeaders());
 
-    // Webhook callback that responds slowly with after 12 seconds (beyond connection + read response timeout)
+    // Webhook callback that responds slowly with after 12 seconds (beyond connection + read
+    // response timeout)
     createWebhook.withName("callbackTimeout").withEndPoint(URI.create(baseUri + "/timeout"));
     createEntity(createWebhook, adminAuthHeaders());
 
@@ -140,17 +149,18 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook> {
     // Check the healthy callback server received all the change events
     ConcurrentLinkedQueue<ChangeEvent> callbackEvents = webhookCallbackResource.getEvents();
     List<ChangeEvent> actualEvents =
-        getChangeEvents(null, null, null, callbackEvents.peek().getDateTime(), adminAuthHeaders()).getData();
+        getChangeEvents(null, null, null, callbackEvents.peek().getDateTime(), adminAuthHeaders())
+            .getData();
     assertEquals(actualEvents.size(), callbackEvents.size());
     webhookCallbackResource.clearAllEvents();
 
     // TODO enable this test
     // Check the slow callback server received all the change events
-//    callbackEvents = webhookCallbackResource.getEventsSlowServer();
-//    actualEvents = getChangeEvents(null, null, null, callbackEvents.peek().getDateTime(),
-//            adminAuthHeaders()).getData();
-//    assertEquals(actualEvents.size() - 1, callbackEvents.size());
-//    webhookCallbackResource.clearAllEvents();
+    //    callbackEvents = webhookCallbackResource.getEventsSlowServer();
+    //    actualEvents = getChangeEvents(null, null, null, callbackEvents.peek().getDateTime(),
+    //            adminAuthHeaders()).getData();
+    //    assertEquals(actualEvents.size() - 1, callbackEvents.size());
+    //    webhookCallbackResource.clearAllEvents();
 
     // Check all webhook status
     Webhook webhook = getEntityByName("validWebhook", "", adminAuthHeaders());

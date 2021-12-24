@@ -109,7 +109,8 @@ public class UserResource {
   }
 
   static final String FIELDS = "profile,teams,follows,owns";
-  public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replaceAll(" ", "").split(","));
+  public static final List<String> FIELD_LIST =
+      Arrays.asList(FIELDS.replaceAll(" ", "").split(","));
 
   @GET
   @Valid
@@ -117,14 +118,17 @@ public class UserResource {
       summary = "List users",
       tags = "users",
       description =
-          "Get a list of users. Use `fields` "
-              + "parameter to get only necessary fields. Use cursor-based pagination to limit the number "
-              + "entries in the list using `limit` and `before` or `after` query params.",
+          "Get a list of users. Use `fields` parameter to get only necessary fields. Use"
+              + " cursor-based pagination to limit the number entries in the list using `limit` and"
+              + " `before` or `after` query params.",
       responses = {
         @ApiResponse(
             responseCode = "200",
             description = "The user ",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = UserList.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = UserList.class)))
       })
   public ResultList<User> list(
       @Context UriInfo uriInfo,
@@ -134,7 +138,9 @@ public class UserResource {
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
           String fieldsParam,
-      @Parameter(description = "Filter users by team", schema = @Schema(type = "string", example = "Legal"))
+      @Parameter(
+              description = "Filter users by team",
+              schema = @Schema(type = "string", example = "Legal"))
           @QueryParam("team")
           String teamParam,
       @Parameter(description = "Limit the number users returned. (1 to 1000000, default = 10)")
@@ -143,10 +149,14 @@ public class UserResource {
           @Max(1000000)
           @QueryParam("limit")
           int limitParam,
-      @Parameter(description = "Returns list of users before this cursor", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Returns list of users before this cursor",
+              schema = @Schema(type = "string"))
           @QueryParam("before")
           String before,
-      @Parameter(description = "Returns list of users after this cursor", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Returns list of users after this cursor",
+              schema = @Schema(type = "string"))
           @QueryParam("after")
           String after)
       throws IOException, GeneralSecurityException, ParseException {
@@ -159,7 +169,9 @@ public class UserResource {
     } else { // Forward paging or first page
       users = dao.listAfter(uriInfo, fields, teamParam, limitParam, after);
     }
-    Optional.ofNullable(users.getData()).orElse(Collections.emptyList()).forEach(u -> addHref(uriInfo, u));
+    Optional.ofNullable(users.getData())
+        .orElse(Collections.emptyList())
+        .forEach(u -> addHref(uriInfo, u));
     return users;
   }
 
@@ -173,12 +185,16 @@ public class UserResource {
         @ApiResponse(
             responseCode = "200",
             description = "List of user versions",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = EntityHistory.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = EntityHistory.class)))
       })
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "user Id", schema = @Schema(type = "string")) @PathParam("id") String id)
+      @Parameter(description = "user Id", schema = @Schema(type = "string")) @PathParam("id")
+          String id)
       throws IOException, ParseException {
     return dao.listVersions(id);
   }
@@ -194,7 +210,10 @@ public class UserResource {
         @ApiResponse(
             responseCode = "200",
             description = "The user",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = User.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = User.class))),
         @ApiResponse(responseCode = "404", description = "User for instance {id} is not found")
       })
   public User get(
@@ -223,7 +242,10 @@ public class UserResource {
         @ApiResponse(
             responseCode = "200",
             description = "The user",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = User.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = User.class))),
         @ApiResponse(responseCode = "404", description = "User for instance {id} is not found")
       })
   public User getByName(
@@ -252,7 +274,10 @@ public class UserResource {
         @ApiResponse(
             responseCode = "200",
             description = "The user",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = User.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = User.class))),
         @ApiResponse(responseCode = "404", description = "User not found")
       })
   public User getCurrentLoggedInUser(
@@ -280,7 +305,10 @@ public class UserResource {
         @ApiResponse(
             responseCode = "200",
             description = "user",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = User.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = User.class))),
         @ApiResponse(
             responseCode = "404",
             description = "User for instance {id} and version {version} is " + "not found")
@@ -288,7 +316,8 @@ public class UserResource {
   public User getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "User Id", schema = @Schema(type = "string")) @PathParam("id") String id,
+      @Parameter(description = "User Id", schema = @Schema(type = "string")) @PathParam("id")
+          String id,
       @Parameter(
               description = "User version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
@@ -307,11 +336,15 @@ public class UserResource {
         @ApiResponse(
             responseCode = "200",
             description = "The user ",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = CreateUser.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = CreateUser.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createUser(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateUser create) throws IOException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateUser create)
+      throws IOException {
     if (create.getIsAdmin() != null && create.getIsAdmin()) {
       SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     }
@@ -329,13 +362,17 @@ public class UserResource {
         @ApiResponse(
             responseCode = "200",
             description = "The user ",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = CreateUser.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = CreateUser.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createOrUpdateUser(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateUser create)
       throws IOException, ParseException {
-    if ((create.getIsAdmin() != null && create.getIsAdmin()) || (create.getIsBot() != null && create.getIsBot())) {
+    if ((create.getIsAdmin() != null && create.getIsAdmin())
+        || (create.getIsBot() != null && create.getIsBot())) {
       SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     }
     User user = getUser(securityContext, create);
@@ -353,7 +390,10 @@ public class UserResource {
       summary = "Update a user",
       tags = "users",
       description = "Update an existing user using JsonPatch.",
-      externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
+      externalDocs =
+          @ExternalDocumentation(
+              description = "JsonPatch RFC",
+              url = "https://tools.ietf.org/html/rfc6902"))
   public Response patch(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
@@ -364,7 +404,8 @@ public class UserResource {
                   @Content(
                       mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
                       examples = {
-                        @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
+                        @ExampleObject(
+                            "[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
                       }))
           JsonPatch patch)
       throws IOException, ParseException {
@@ -381,7 +422,8 @@ public class UserResource {
     SecurityUtil.checkAdminRoleOrPermissions(
         authorizer, securityContext, new UserEntityInterface(user).getEntityReference());
     PatchResponse<User> response =
-        dao.patch(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
+        dao.patch(
+            uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
     addHref(uriInfo, response.getEntity());
     return response.toResponse();
   }
@@ -398,7 +440,10 @@ public class UserResource {
         @ApiResponse(responseCode = "200", description = "OK"),
         @ApiResponse(responseCode = "404", description = "User for instance {id} is not found")
       })
-  public Response delete(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("id") String id)
+  public Response delete(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @PathParam("id") String id)
       throws IOException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     dao.delete(UUID.fromString(id));

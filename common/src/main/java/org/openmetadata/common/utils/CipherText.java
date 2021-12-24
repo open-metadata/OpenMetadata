@@ -31,7 +31,8 @@ public final class CipherText {
   private static CipherText instance = null;
   private static SecretKeySpec secretKey;
 
-  private CipherText() throws NoSuchAlgorithmException, InvalidKeyException, NoSuchPaddingException {
+  private CipherText()
+      throws NoSuchAlgorithmException, InvalidKeyException, NoSuchPaddingException {
     // Generate random set of bytes to be used as secret key
     byte[] bytes = new byte[16];
     new Random().nextBytes(bytes);
@@ -41,21 +42,24 @@ public final class CipherText {
     secretKey = new SecretKeySpec(Arrays.copyOf(bytes, 16), "AES");
   }
 
-  public static CipherText instance() throws NoSuchPaddingException, NoSuchAlgorithmException, InvalidKeyException {
+  public static CipherText instance()
+      throws NoSuchPaddingException, NoSuchAlgorithmException, InvalidKeyException {
     if (instance == null) {
       instance = new CipherText();
     }
     return instance;
   }
 
-  public String encrypt(String strToEncrypt) throws GeneralSecurityException, UnsupportedEncodingException {
+  public String encrypt(String strToEncrypt)
+      throws GeneralSecurityException, UnsupportedEncodingException {
     if (strToEncrypt == null) {
       return null;
     }
     // Initialize Cipher with the secret key
     Cipher cipher = Cipher.getInstance("AES/ECB/PKCS5Padding");
     cipher.init(Cipher.ENCRYPT_MODE, secretKey);
-    return Base64.getUrlEncoder().encodeToString(cipher.doFinal(strToEncrypt.getBytes(StandardCharsets.UTF_8)));
+    return Base64.getUrlEncoder()
+        .encodeToString(cipher.doFinal(strToEncrypt.getBytes(StandardCharsets.UTF_8)));
   }
 
   public String decrypt(String strToDecrypt) throws GeneralSecurityException {

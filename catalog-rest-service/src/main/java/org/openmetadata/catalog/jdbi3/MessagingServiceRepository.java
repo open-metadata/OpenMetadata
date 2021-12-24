@@ -84,7 +84,8 @@ public class MessagingServiceRepository extends EntityRepository<MessagingServic
   public void storeRelationships(MessagingService entity) {}
 
   @Override
-  public EntityUpdater getUpdater(MessagingService original, MessagingService updated, boolean patchOperation) {
+  public EntityUpdater getUpdater(
+      MessagingService original, MessagingService updated, boolean patchOperation) {
     return new MessagingServiceUpdater(original, updated, patchOperation);
   }
 
@@ -210,7 +211,8 @@ public class MessagingServiceRepository extends EntityRepository<MessagingServic
   }
 
   public class MessagingServiceUpdater extends EntityUpdater {
-    public MessagingServiceUpdater(MessagingService original, MessagingService updated, boolean patchOperation) {
+    public MessagingServiceUpdater(
+        MessagingService original, MessagingService updated, boolean patchOperation) {
       super(original, updated, patchOperation);
     }
 
@@ -218,9 +220,13 @@ public class MessagingServiceRepository extends EntityRepository<MessagingServic
     public void entitySpecificUpdate() throws IOException {
       MessagingService origService = original.getEntity();
       MessagingService updatedService = updated.getEntity();
-      recordChange("schemaRegistry", origService.getSchemaRegistry(), updatedService.getSchemaRegistry());
       recordChange(
-          "ingestionSchedule", origService.getIngestionSchedule(), updatedService.getIngestionSchedule(), true);
+          "schemaRegistry", origService.getSchemaRegistry(), updatedService.getSchemaRegistry());
+      recordChange(
+          "ingestionSchedule",
+          origService.getIngestionSchedule(),
+          updatedService.getIngestionSchedule(),
+          true);
       updateBrokers();
     }
 
@@ -230,7 +236,13 @@ public class MessagingServiceRepository extends EntityRepository<MessagingServic
 
       List<String> addedBrokers = new ArrayList<>();
       List<String> deletedBrokers = new ArrayList<>();
-      recordListChange("brokers", origBrokers, updatedBrokers, addedBrokers, deletedBrokers, EntityUtil.stringMatch);
+      recordListChange(
+          "brokers",
+          origBrokers,
+          updatedBrokers,
+          addedBrokers,
+          deletedBrokers,
+          EntityUtil.stringMatch);
     }
   }
 }

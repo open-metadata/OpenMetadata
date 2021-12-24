@@ -48,20 +48,26 @@ public final class JsonSchemaUtil {
   /** Return JSON schema from a POJO annotated appropriately */
   public static <T> String jsonSchemaForClass(Class<T> c) throws JsonProcessingException {
     ObjectMapper mapper = new ObjectMapper();
-    JsonSchemaConfig config = JsonSchemaConfig.vanillaJsonSchemaDraft4().withJsonSchemaDraft(JsonSchemaDraft.DRAFT_07);
+    JsonSchemaConfig config =
+        JsonSchemaConfig.vanillaJsonSchemaDraft4().withJsonSchemaDraft(JsonSchemaDraft.DRAFT_07);
     JsonSchemaGenerator schemaGen = new JsonSchemaGenerator(mapper, config);
     JsonNode jsonSchema = schemaGen.generateJsonSchema(c);
     return mapper.writeValueAsString(jsonSchema);
   }
 
-  /** URN factory that maps the json schema URL to internal resource based URL to be used for testing purposes */
+  /**
+   * URN factory that maps the json schema URL to internal resource based URL to be used for testing
+   * purposes
+   */
   public static URNFactory getUrnFactory() {
     return urn -> {
       try {
-        // Turn urn in relative path format "../type/common.json into absolute path /json/type/common.json
+        // Turn urn in relative path format "../type/common.json into absolute path
+        // /json/type/common.json
         urn = urn.replace("../type", "json/type");
         URL absoluteURL =
-            ClasspathURLFactory.convert(new ClasspathURLFactory().create(String.format("resource:/%s", urn)));
+            ClasspathURLFactory.convert(
+                new ClasspathURLFactory().create(String.format("resource:/%s", urn)));
         return absoluteURL.toURI();
       } catch (Exception ex) {
         return null;
@@ -69,12 +75,13 @@ public final class JsonSchemaUtil {
     };
   }
 
-  public static Set<ValidationMessage> validate(InputStream schemaStream, String jsonPayload) throws IOException {
+  public static Set<ValidationMessage> validate(InputStream schemaStream, String jsonPayload)
+      throws IOException {
     return validate(schemaStream, jsonPayload, null);
   }
 
-  public static Set<ValidationMessage> validate(InputStream schemaStream, String jsonPayload, URNFactory urnFactory)
-      throws IOException {
+  public static Set<ValidationMessage> validate(
+      InputStream schemaStream, String jsonPayload, URNFactory urnFactory) throws IOException {
     JsonSchemaFactory.Builder builder = new JsonSchemaFactory.Builder();
     JsonMetaSchema metaSchema = JsonMetaSchema.getV7();
     builder.defaultMetaSchemaURI(metaSchema.getUri()).addMetaSchema(metaSchema);

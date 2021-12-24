@@ -107,7 +107,8 @@ public class DashboardServiceRepository extends EntityRepository<DashboardServic
   public void storeRelationships(DashboardService entity) {}
 
   @Override
-  public EntityUpdater getUpdater(DashboardService original, DashboardService updated, boolean patchOperation) {
+  public EntityUpdater getUpdater(
+      DashboardService original, DashboardService updated, boolean patchOperation) {
     return new DashboardServiceUpdater(original, updated, patchOperation);
   }
 
@@ -233,7 +234,8 @@ public class DashboardServiceRepository extends EntityRepository<DashboardServic
   }
 
   public class DashboardServiceUpdater extends EntityUpdater {
-    public DashboardServiceUpdater(DashboardService original, DashboardService updated, boolean patchOperation) {
+    public DashboardServiceUpdater(
+        DashboardService original, DashboardService updated, boolean patchOperation) {
       super(original, updated, patchOperation);
     }
 
@@ -241,13 +243,18 @@ public class DashboardServiceRepository extends EntityRepository<DashboardServic
     public void entitySpecificUpdate() throws IOException {
       updateDashboardUrl();
       updateIngestionSchedule();
-      recordChange("userName", original.getEntity().getUsername(), updated.getEntity().getUsername());
+      recordChange(
+          "userName", original.getEntity().getUsername(), updated.getEntity().getUsername());
       // TODO change recorded for password
-      //      recordChange("password", original.getEntity().getPassword(), updated.getEntity().getPassword());
+      //      recordChange("password", original.getEntity().getPassword(),
+      // updated.getEntity().getPassword());
     }
 
     private void updateDashboardUrl() throws JsonProcessingException {
-      recordChange("dashboardUrl", original.getEntity().getDashboardUrl(), updated.getEntity().getDashboardUrl());
+      recordChange(
+          "dashboardUrl",
+          original.getEntity().getDashboardUrl(),
+          updated.getEntity().getDashboardUrl());
     }
 
     private void updateIngestionSchedule() throws JsonProcessingException {

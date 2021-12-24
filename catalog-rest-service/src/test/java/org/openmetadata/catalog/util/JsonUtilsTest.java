@@ -66,18 +66,22 @@ public class JsonUtilsTest {
         updated.getUsers().stream()
             .anyMatch(
                 entry ->
-                    entry.getName().equals(newUser1.getString("name")) && entry.getId().toString().equals(newUserId1)));
+                    entry.getName().equals(newUser1.getString("name"))
+                        && entry.getId().toString().equals(newUserId1)));
     assertTrue(
         updated.getUsers().stream()
             .anyMatch(
                 entry ->
-                    entry.getName().equals(newUser2.getString("name")) && entry.getId().toString().equals(newUserId2)));
+                    entry.getName().equals(newUser2.getString("name"))
+                        && entry.getId().toString().equals(newUserId2)));
 
     // Add a user with an out of index path
     final JsonPatchBuilder jsonPatchBuilder = Json.createPatchBuilder();
     jsonPatchBuilder.add("/users/4", newUser1);
     JsonException jsonException =
-        assertThrows(JsonException.class, () -> JsonUtils.applyPatch(original, jsonPatchBuilder.build(), Team.class));
+        assertThrows(
+            JsonException.class,
+            () -> JsonUtils.applyPatch(original, jsonPatchBuilder.build(), Team.class));
     assertTrue(jsonException.getMessage().contains("contains no element for index 4"));
 
     // Delete the two users from the team
@@ -92,7 +96,9 @@ public class JsonUtilsTest {
     final JsonPatchBuilder jsonPatchBuilder2 = Json.createPatchBuilder();
     jsonPatchBuilder2.remove("/users/3");
     jsonException =
-        assertThrows(JsonException.class, () -> JsonUtils.applyPatch(original, jsonPatchBuilder2.build(), Team.class));
+        assertThrows(
+            JsonException.class,
+            () -> JsonUtils.applyPatch(original, jsonPatchBuilder2.build(), Team.class));
     assertTrue(jsonException.getMessage().contains("contains no element for index 3"));
   }
 }

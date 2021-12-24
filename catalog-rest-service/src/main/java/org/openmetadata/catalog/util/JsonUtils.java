@@ -65,12 +65,13 @@ public final class JsonUtils {
 
   private JsonUtils() {}
 
-  public static Set<ValidationMessage> validate(InputStream schemaStream, String jsonPayload) throws IOException {
+  public static Set<ValidationMessage> validate(InputStream schemaStream, String jsonPayload)
+      throws IOException {
     return validate(schemaStream, jsonPayload, null);
   }
 
-  public static Set<ValidationMessage> validate(InputStream schemaStream, String jsonPayload, URNFactory urnFactory)
-      throws IOException {
+  public static Set<ValidationMessage> validate(
+      InputStream schemaStream, String jsonPayload, URNFactory urnFactory) throws IOException {
     JsonSchemaFactory.Builder builder = new JsonSchemaFactory.Builder();
     JsonMetaSchema metaSchema = JsonMetaSchema.getV7();
     builder.defaultMetaSchemaURI(metaSchema.getUri()).addMetaSchema(metaSchema);
@@ -177,23 +178,28 @@ public final class JsonUtils {
     JsonStructure targetJson = JsonUtils.getJsonStructure(original);
 
     //
-    // JsonPatch array operations are not handled correctly by johnzon libraries. Example, the following operation:
+    // JsonPatch array operations are not handled correctly by johnzon libraries. Example, the
+    // following operation:
     // {"op":"replace","path":"/tags/0/tagFQN","value":"User.BankAccount"}
     // {"op":"replace","path":"/tags/0/labelType","value":"MANUAL"}
     // {"op":"remove","path":"/tags/1"}
     // {"op":"remove","path":"/tags/2"}
     // Removes second array element in a 3 array field /tags/1
-    // Then it fails to remove 3rd array element /tags/2. Because the previous operation removed the second element and
-    // now array of length 2 and there is no third element to remove. The patch operation fails with "array index not
+    // Then it fails to remove 3rd array element /tags/2. Because the previous operation removed the
+    // second element and
+    // now array of length 2 and there is no third element to remove. The patch operation fails with
+    // "array index not
     // found error".
     //
     // The same applies to add operation as well. Example, the following operation:
     // {"op":"add","path":"/tags/2"}
     // {"op":"add","path":"/tags/1"}
-    // It will try to add element in index 2 before adding element in index 1 and the patch operation fails with
+    // It will try to add element in index 2 before adding element in index 1 and the patch
+    // operation fails with
     // "contains no element for index 1" error.
     //
-    // Reverse sorting the remove operations and sorting all the other operations including "add" by "path" fields
+    // Reverse sorting the remove operations and sorting all the other operations including "add" by
+    // "path" fields
     // before applying the patch as a workaround.
     //
     JsonArray array = patch.toJsonArray();

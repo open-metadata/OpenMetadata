@@ -46,12 +46,15 @@ public class RestUtilTest {
     List<String> attributes = RestUtil.getAttributes(entity.getClass());
     List<String> expectedAttributes = Arrays.asList("attribute1", "attribute2");
     assertEquals(expectedAttributes.size(), attributes.size());
-    assertTrue(attributes.containsAll(expectedAttributes) && expectedAttributes.containsAll(attributes));
+    assertTrue(
+        attributes.containsAll(expectedAttributes) && expectedAttributes.containsAll(attributes));
 
     // Get relationships (that are fields with types that are entity classes)
     List<String> relationships = RestUtil.getRelationships(entity.getClass());
     List<String> expectedRelationships = Arrays.asList("relationship1", "relationship2");
     assertEquals(expectedRelationships.size(), relationships.size());
-    assertTrue(relationships.containsAll(expectedRelationships) && expectedRelationships.containsAll(relationships));
+    assertTrue(
+        relationships.containsAll(expectedRelationships)
+            && expectedRelationships.containsAll(relationships));
   }
 }

@@ -69,13 +69,16 @@ public class SearchResource {
       summary = "Search entities",
       tags = "search",
       description =
-          "Search entities using query test. Use query params `from` and `size` for pagination. Use "
-              + "`sort_field` to sort the results in `sort_order`.",
+          "Search entities using query test. Use query params `from` and `size` for pagination. Use"
+              + " `sort_field` to sort the results in `sort_order`.",
       responses = {
         @ApiResponse(
             responseCode = "200",
             description = "search response",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = SearchResponse.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = SearchResponse.class)))
       })
   public Response search(
       @Context UriInfo uriInfo,
@@ -116,7 +119,9 @@ public class SearchResource {
                       + " , daily_stats, monthly_stats, last_updated_timestamp")
           @QueryParam("sort_field")
           String sortFieldParam,
-      @Parameter(description = "Sort order asc for ascending or desc for descending, " + "defaults to desc")
+      @Parameter(
+              description =
+                  "Sort order asc for ascending or desc for descending, " + "defaults to desc")
           @DefaultValue("desc")
           @QueryParam("sort_order")
           String sortOrderParam)
@@ -167,7 +172,10 @@ public class SearchResource {
         @ApiResponse(
             responseCode = "200",
             description = "Table Suggestion API",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = SearchResponse.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = SearchResponse.class)))
       })
   public Response suggest(
       @Context UriInfo uriInfo,
@@ -186,7 +194,8 @@ public class SearchResource {
       throws IOException {
     SearchRequest searchRequest = new SearchRequest(index);
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-    CompletionSuggestionBuilder suggestionBuilder = SuggestBuilders.completionSuggestion("suggest").prefix(query);
+    CompletionSuggestionBuilder suggestionBuilder =
+        SuggestBuilders.completionSuggestion("suggest").prefix(query);
     SuggestBuilder suggestBuilder = new SuggestBuilder();
     suggestBuilder.addSuggestion("table-suggest", suggestionBuilder);
     searchSourceBuilder.suggest(suggestBuilder);
@@ -220,7 +229,8 @@ public class SearchResource {
     highlightDescription.highlighterType("unified");
     HighlightBuilder.Field highlightColumns = new HighlightBuilder.Field("column_names");
     highlightColumns.highlighterType("unified");
-    HighlightBuilder.Field highlightColumnDescriptions = new HighlightBuilder.Field("column_descriptions");
+    HighlightBuilder.Field highlightColumnDescriptions =
+        new HighlightBuilder.Field("column_descriptions");
     highlightColumnDescriptions.highlighterType("unified");
     HighlightBuilder hb = new HighlightBuilder();
     hb.field(highlightDescription);
@@ -262,7 +272,11 @@ public class SearchResource {
     hb.preTags("<span class=\"text-highlighter\">");
     hb.postTags("</span>");
     searchSourceBuilder
-        .query(QueryBuilders.queryStringQuery(query).field("name", 5.0f).field("description").lenient(true))
+        .query(
+            QueryBuilders.queryStringQuery(query)
+                .field("name", 5.0f)
+                .field("description")
+                .lenient(true))
         .aggregation(AggregationBuilders.terms("Service").field("service_type"))
         .aggregation(AggregationBuilders.terms("ServiceCategory").field("service_category"))
         .aggregation(AggregationBuilders.terms("EntityType").field("entity_type"))
@@ -283,7 +297,8 @@ public class SearchResource {
     highlightDescription.highlighterType("unified");
     HighlightBuilder.Field highlightCharts = new HighlightBuilder.Field("chart_names");
     highlightCharts.highlighterType("unified");
-    HighlightBuilder.Field highlightChartDescriptions = new HighlightBuilder.Field("chart_descriptions");
+    HighlightBuilder.Field highlightChartDescriptions =
+        new HighlightBuilder.Field("chart_descriptions");
     highlightChartDescriptions.highlighterType("unified");
 
     HighlightBuilder hb = new HighlightBuilder();
@@ -321,7 +336,8 @@ public class SearchResource {
     highlightDescription.highlighterType("unified");
     HighlightBuilder.Field highlightTasks = new HighlightBuilder.Field("task_names");
     highlightTasks.highlighterType("unified");
-    HighlightBuilder.Field highlightTaskDescriptions = new HighlightBuilder.Field("task_descriptions");
+    HighlightBuilder.Field highlightTaskDescriptions =
+        new HighlightBuilder.Field("task_descriptions");
     highlightTaskDescriptions.highlighterType("unified");
     HighlightBuilder hb = new HighlightBuilder();
     hb.field(highlightDescription);

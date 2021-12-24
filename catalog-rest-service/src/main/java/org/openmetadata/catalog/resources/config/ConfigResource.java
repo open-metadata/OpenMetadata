@@ -54,7 +54,8 @@ public class ConfigResource {
                     mediaType = "application/json",
                     schema = @Schema(implementation = AuthenticationConfiguration.class)))
       })
-  public AuthenticationConfiguration getAuthConfig(@Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+  public AuthenticationConfiguration getAuthConfig(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
     AuthenticationConfiguration authenticationConfiguration = new AuthenticationConfiguration();
     if (catalogApplicationConfig.getAuthenticationConfiguration() != null) {
       authenticationConfiguration = catalogApplicationConfig.getAuthenticationConfiguration();

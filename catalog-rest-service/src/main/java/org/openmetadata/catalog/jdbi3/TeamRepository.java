@@ -131,9 +131,15 @@ public class TeamRepository extends EntityRepository<Team> {
 
   @Override
   public void storeRelationships(Team team) {
-    for (EntityReference user : Optional.ofNullable(team.getUsers()).orElse(Collections.emptyList())) {
+    for (EntityReference user :
+        Optional.ofNullable(team.getUsers()).orElse(Collections.emptyList())) {
       dao.relationshipDAO()
-          .insert(team.getId().toString(), user.getId().toString(), "team", "user", Relationship.CONTAINS.ordinal());
+          .insert(
+              team.getId().toString(),
+              user.getId().toString(),
+              "team",
+              "user",
+              Relationship.CONTAINS.ordinal());
     }
   }
 
@@ -143,7 +149,8 @@ public class TeamRepository extends EntityRepository<Team> {
   }
 
   private List<EntityReference> getUsers(String id) throws IOException {
-    List<String> userIds = dao.relationshipDAO().findTo(id, Relationship.CONTAINS.ordinal(), "user");
+    List<String> userIds =
+        dao.relationshipDAO().findTo(id, Relationship.CONTAINS.ordinal(), "user");
     List<EntityReference> users = new ArrayList<>();
     for (String userId : userIds) {
       users.add(dao.userDAO().findEntityReferenceById(UUID.fromString(userId)));
@@ -153,7 +160,8 @@ public class TeamRepository extends EntityRepository<Team> {
 
   private List<EntityReference> getOwns(String teamId) throws IOException {
     // Compile entities owned by the team
-    return EntityUtil.populateEntityReferences(dao.relationshipDAO().findTo(teamId, OWNS.ordinal()));
+    return EntityUtil.populateEntityReferences(
+        dao.relationshipDAO().findTo(teamId, OWNS.ordinal()));
   }
 
   public static class TeamEntityInterface implements EntityInterface<Team> {
@@ -288,21 +296,26 @@ public class TeamRepository extends EntityRepository<Team> {
     public void entitySpecificUpdate() throws IOException {
       // Update operation can't undelete a user
       if (updated.getEntity().getDeleted() != original.getEntity().getDeleted()) {
-        throw new IllegalArgumentException(CatalogExceptionMessage.readOnlyAttribute("Team", "deleted"));
+        throw new IllegalArgumentException(
+            CatalogExceptionMessage.readOnlyAttribute("Team", "deleted"));
       }
       recordChange("profile", original.getEntity().getProfile(), updated.getEntity().getProfile());
       updateUsers(original.getEntity(), updated.getEntity());
     }
 
     private void updateUsers(Team origTeam, Team updatedTeam) throws JsonProcessingException {
-      List<EntityReference> origUsers = Optional.ofNullable(origTeam.getUsers()).orElse(Collections.emptyList());
-      List<EntityReference> updatedUsers = Optional.ofNullable(updatedTeam.getUsers()).orElse(Collections.emptyList());
+      List<EntityReference> origUsers =
+          Optional.ofNullable(origTeam.getUsers()).orElse(Collections.emptyList());
+      List<EntityReference> updatedUsers =
+          Optional.ofNullable(updatedTeam.getUsers()).orElse(Collections.emptyList());
 
       List<EntityReference> added = new ArrayList<>();
       List<EntityReference> deleted = new ArrayList<>();
-      if (recordListChange("users", origUsers, updatedUsers, added, deleted, entityReferenceMatch)) {
+      if (recordListChange(
+          "users", origUsers, updatedUsers, added, deleted, entityReferenceMatch)) {
         // Remove users from original and add users from updated
-        dao.relationshipDAO().deleteFrom(origTeam.getId().toString(), Relationship.CONTAINS.ordinal(), "user");
+        dao.relationshipDAO()
+            .deleteFrom(origTeam.getId().toString(), Relationship.CONTAINS.ordinal(), "user");
         // Add relationships
         for (EntityReference user : updatedUsers) {
           dao.relationshipDAO()

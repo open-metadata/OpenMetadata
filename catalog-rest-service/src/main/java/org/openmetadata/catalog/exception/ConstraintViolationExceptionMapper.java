@@ -25,11 +25,12 @@ import javax.ws.rs.ext.ExceptionMapper;
 import javax.ws.rs.ext.Provider;
 
 /**
- * Dropwizard by default maps the JSON constraint violations to 422 Response code. This overrides that behavior by
- * mapping the response code to 400 bad request.
+ * Dropwizard by default maps the JSON constraint violations to 422 Response code. This overrides
+ * that behavior by mapping the response code to 400 bad request.
  */
 @Provider
-public class ConstraintViolationExceptionMapper implements ExceptionMapper<ConstraintViolationException> {
+public class ConstraintViolationExceptionMapper
+    implements ExceptionMapper<ConstraintViolationException> {
   @Override
   public Response toResponse(ConstraintViolationException exception) {
     Set<ConstraintViolation<?>> constraintViolations = exception.getConstraintViolations();
@@ -42,7 +43,8 @@ public class ConstraintViolationExceptionMapper implements ExceptionMapper<Const
                 })
             .collect(Collectors.toList());
     return Response.status(Response.Status.BAD_REQUEST)
-        .entity(new ErrorMessage(Response.Status.BAD_REQUEST.getStatusCode(), errorMessages.toString()))
+        .entity(
+            new ErrorMessage(Response.Status.BAD_REQUEST.getStatusCode(), errorMessages.toString()))
         .build();
   }
 }

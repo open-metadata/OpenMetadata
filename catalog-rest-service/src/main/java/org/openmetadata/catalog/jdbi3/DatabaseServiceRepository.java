@@ -85,7 +85,8 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
   public void storeRelationships(DatabaseService entity) {}
 
   @Override
-  public EntityUpdater getUpdater(DatabaseService original, DatabaseService updated, boolean patchOperation) {
+  public EntityUpdater getUpdater(
+      DatabaseService original, DatabaseService updated, boolean patchOperation) {
     return new DatabaseServiceUpdater(original, updated, patchOperation);
   }
 
@@ -211,7 +212,8 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
   }
 
   public class DatabaseServiceUpdater extends EntityUpdater {
-    public DatabaseServiceUpdater(DatabaseService original, DatabaseService updated, boolean patchOperation) {
+    public DatabaseServiceUpdater(
+        DatabaseService original, DatabaseService updated, boolean patchOperation) {
       super(original, updated, patchOperation);
     }
 

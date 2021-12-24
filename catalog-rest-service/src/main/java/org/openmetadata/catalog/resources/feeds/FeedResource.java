@@ -91,7 +91,10 @@ public class FeedResource {
         @ApiResponse(
             responseCode = "200",
             description = "List of threads",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ThreadList.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ThreadList.class)))
       })
   public ThreadList list(
       @Context UriInfo uriInfo,
@@ -114,7 +117,10 @@ public class FeedResource {
         @ApiResponse(
             responseCode = "200",
             description = "The thread",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Thread.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Thread.class))),
         @ApiResponse(responseCode = "404", description = "Thread for instance {id} is not found")
       })
   public Thread get(@Context UriInfo uriInfo, @PathParam("id") String id) throws IOException {
@@ -125,18 +131,25 @@ public class FeedResource {
   @Operation(
       summary = "Create a thread",
       tags = "feeds",
-      description = "Create a new thread. A thread is created about a data asset when a user posts the first post.",
+      description =
+          "Create a new thread. A thread is created about a data asset when a user posts the first"
+              + " post.",
       responses = {
         @ApiResponse(
             responseCode = "200",
             description = "The thread",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = CreateThread.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = CreateThread.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(@Context UriInfo uriInfo, @Valid CreateThread cr) throws IOException {
-    Thread thread = new Thread().withId(UUID.randomUUID()).withThreadTs(new Date()).withAbout(cr.getAbout());
+    Thread thread =
+        new Thread().withId(UUID.randomUUID()).withThreadTs(new Date()).withAbout(cr.getAbout());
     // For now redundantly storing everything in json (that includes fromEntity, addressedTo entity)
-    // TODO - This needs cleanup later if this information is too much or inconsistent in relationship table
+    // TODO - This needs cleanup later if this information is too much or inconsistent in
+    // relationship table
     FeedUtil.addPost(thread, new Post().withMessage(cr.getMessage()).withFrom(cr.getFrom()));
     addHref(uriInfo, dao.create(thread));
     return Response.created(thread.getHref()).entity(thread).build();
@@ -152,10 +165,14 @@ public class FeedResource {
         @ApiResponse(
             responseCode = "200",
             description = "The post",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Post.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Post.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
-  public Response addPost(@Context UriInfo uriInfo, @PathParam("id") String id, @Valid Post post) throws IOException {
+  public Response addPost(@Context UriInfo uriInfo, @PathParam("id") String id, @Valid Post post)
+      throws IOException {
     Thread thread = addHref(uriInfo, dao.addPostToThread(id, post));
     return Response.created(thread.getHref()).entity(thread).build();
   }

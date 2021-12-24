@@ -53,7 +53,15 @@ public class ChartResourceTest extends EntityResourceTest<Chart> {
   public static EntityReference LOOKER_REFERENCE;
 
   public ChartResourceTest() {
-    super(Entity.CHART, Chart.class, ChartList.class, "charts", ChartResource.FIELDS, true, true, true);
+    super(
+        Entity.CHART,
+        Chart.class,
+        ChartList.class,
+        "charts",
+        ChartResource.FIELDS,
+        true,
+        true,
+        true);
   }
 
   @BeforeAll
@@ -65,7 +73,8 @@ public class ChartResourceTest extends EntityResourceTest<Chart> {
             .withName("superset")
             .withServiceType(DashboardServiceType.Superset)
             .withDashboardUrl(new URI("http://localhost:0"));
-    DashboardService service = new DashboardServiceResourceTest().createEntity(createService, adminAuthHeaders());
+    DashboardService service =
+        new DashboardServiceResourceTest().createEntity(createService, adminAuthHeaders());
     SUPERSET_REFERENCE = new DashboardServiceEntityInterface(service).getEntityReference();
 
     createService
@@ -82,7 +91,9 @@ public class ChartResourceTest extends EntityResourceTest<Chart> {
     CreateChart create =
         create(test)
             .withService(
-                new EntityReference().withId(SUPERSET_REFERENCE.getId()).withType(SUPERSET_REFERENCE.getType()));
+                new EntityReference()
+                    .withId(SUPERSET_REFERENCE.getId())
+                    .withType(SUPERSET_REFERENCE.getType()));
     createAndCheckEntity(create, adminAuthHeaders());
 
     create.withName(getEntityName(test, 1)).withDescription("description");
@@ -98,7 +109,8 @@ public class ChartResourceTest extends EntityResourceTest<Chart> {
 
   @Test
   public void post_chartWithTeamOwner_200_ok(TestInfo test) throws IOException {
-    createAndCheckEntity(create(test).withOwner(TEAM_OWNER1).withDisplayName("chart1"), adminAuthHeaders());
+    createAndCheckEntity(
+        create(test).withOwner(TEAM_OWNER1).withDisplayName("chart1"), adminAuthHeaders());
   }
 
   @Test
@@ -152,9 +164,13 @@ public class ChartResourceTest extends EntityResourceTest<Chart> {
     // TODO
   }
 
-  /** Validate returned fields GET .../charts/{id}?fields="..." or GET .../charts/name/{fqn}?fields="..." */
+  /**
+   * Validate returned fields GET .../charts/{id}?fields="..." or GET
+   * .../charts/name/{fqn}?fields="..."
+   */
   @Override
-  public void validateGetWithDifferentFields(Chart chart, boolean byName) throws HttpResponseException {
+  public void validateGetWithDifferentFields(Chart chart, boolean byName)
+      throws HttpResponseException {
     // .../charts?fields=owner
     String fields = "owner";
     chart =
@@ -173,11 +189,15 @@ public class ChartResourceTest extends EntityResourceTest<Chart> {
   }
 
   public CreateChart create(String entityName) {
-    return new CreateChart().withName(entityName).withService(SUPERSET_REFERENCE).withChartType(ChartType.Area);
+    return new CreateChart()
+        .withName(entityName)
+        .withService(SUPERSET_REFERENCE)
+        .withChartType(ChartType.Area);
   }
 
   @Override
-  public Object createRequest(String name, String description, String displayName, EntityReference owner) {
+  public Object createRequest(
+      String name, String description, String displayName, EntityReference owner) {
     return create(name).withDescription(description).withDisplayName(displayName).withOwner(owner);
   }
 
@@ -194,7 +214,8 @@ public class ChartResourceTest extends EntityResourceTest<Chart> {
   }
 
   @Override
-  public void validateUpdatedEntity(Chart updatedEntity, Object request, Map<String, String> authHeaders) {
+  public void validateUpdatedEntity(
+      Chart updatedEntity, Object request, Map<String, String> authHeaders) {
     validateCreatedEntity(updatedEntity, request, authHeaders);
   }
 
@@ -214,7 +235,8 @@ public class ChartResourceTest extends EntityResourceTest<Chart> {
   }
 
   @Override
-  public void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException {
+  public void assertFieldChange(String fieldName, Object expected, Object actual)
+      throws IOException {
     assertCommonFieldChange(fieldName, expected, actual);
   }
 }

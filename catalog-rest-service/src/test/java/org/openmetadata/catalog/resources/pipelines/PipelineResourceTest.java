@@ -61,7 +61,15 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline> {
   public static List<Task> TASKS;
 
   public PipelineResourceTest() {
-    super(Entity.PIPELINE, Pipeline.class, PipelineList.class, "pipelines", PipelineResource.FIELDS, true, true, true);
+    super(
+        Entity.PIPELINE,
+        Pipeline.class,
+        PipelineList.class,
+        "pipelines",
+        PipelineResource.FIELDS,
+        true,
+        true,
+        true);
   }
 
   @BeforeAll
@@ -80,12 +88,18 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline> {
   }
 
   @Override
-  public Object createRequest(String name, String description, String displayName, EntityReference owner) {
-    return create(name).withDescription(description).withDisplayName(displayName).withOwner(owner).withTasks(TASKS);
+  public Object createRequest(
+      String name, String description, String displayName, EntityReference owner) {
+    return create(name)
+        .withDescription(description)
+        .withDisplayName(displayName)
+        .withOwner(owner)
+        .withTasks(TASKS);
   }
 
   @Override
-  public void validateCreatedEntity(Pipeline pipeline, Object request, Map<String, String> authHeaders)
+  public void validateCreatedEntity(
+      Pipeline pipeline, Object request, Map<String, String> authHeaders)
       throws HttpResponseException {
     CreatePipeline createRequest = (CreatePipeline) request;
     validateCommonEntityFields(
@@ -101,7 +115,8 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline> {
   }
 
   @Override
-  public void validateUpdatedEntity(Pipeline pipeline, Object request, Map<String, String> authHeaders)
+  public void validateUpdatedEntity(
+      Pipeline pipeline, Object request, Map<String, String> authHeaders)
       throws HttpResponseException {
     validateCreatedEntity(pipeline, request, authHeaders);
   }
@@ -126,7 +141,8 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline> {
   }
 
   @Override
-  public void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException {
+  public void assertFieldChange(String fieldName, Object expected, Object actual)
+      throws IOException {
     if (expected == null && actual == null) {
       return;
     }
@@ -156,7 +172,8 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline> {
 
   @Test
   public void post_PipelineWithTeamOwner_200_ok(TestInfo test) throws IOException {
-    createAndCheckEntity(create(test).withOwner(TEAM_OWNER1).withDisplayName("Pipeline1"), adminAuthHeaders());
+    createAndCheckEntity(
+        create(test).withOwner(TEAM_OWNER1).withDisplayName("Pipeline1"), adminAuthHeaders());
   }
 
   @Test
@@ -168,7 +185,9 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline> {
   public void post_Pipeline_as_non_admin_401(TestInfo test) {
     CreatePipeline create = create(test);
     HttpResponseException exception =
-        assertThrows(HttpResponseException.class, () -> createPipeline(create, authHeaders("test@open-metadata.org")));
+        assertThrows(
+            HttpResponseException.class,
+            () -> createPipeline(create, authHeaders("test@open-metadata.org")));
     assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
   }
 
@@ -206,17 +225,22 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline> {
   public void put_PipelineUrlUpdate_200(TestInfo test) throws IOException, URISyntaxException {
     CreatePipeline request =
         create(test)
-            .withService(new EntityReference().withId(AIRFLOW_REFERENCE.getId()).withType("pipelineService"))
+            .withService(
+                new EntityReference().withId(AIRFLOW_REFERENCE.getId()).withType("pipelineService"))
             .withDescription("description");
     createAndCheckEntity(request, adminAuthHeaders());
-    URI pipelineURI = new URI("https://airflow.open-metadata.org/tree?dag_id=airflow_redshift_usage");
+    URI pipelineURI =
+        new URI("https://airflow.open-metadata.org/tree?dag_id=airflow_redshift_usage");
     Integer pipelineConcurrency = 110;
     Date startDate = new DateTime("2021-11-13T20:20:39+00:00").toDate();
 
     // Updating description is ignored when backend already has description
     Pipeline pipeline =
         updatePipeline(
-            request.withPipelineUrl(pipelineURI).withConcurrency(pipelineConcurrency).withStartDate(startDate),
+            request
+                .withPipelineUrl(pipelineURI)
+                .withConcurrency(pipelineConcurrency)
+                .withStartDate(startDate),
             OK,
             adminAuthHeaders());
     String expectedFQN = AIRFLOW_REFERENCE.getName() + "." + pipeline.getName();
@@ -233,14 +257,21 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline> {
 
     // Add description and tasks
     ChangeDescription change = getChangeDescription(pipeline.getVersion());
-    change.getFieldsAdded().add(new FieldChange().withName("description").withNewValue("newDescription"));
+    change
+        .getFieldsAdded()
+        .add(new FieldChange().withName("description").withNewValue("newDescription"));
     change.getFieldsAdded().add(new FieldChange().withName("tasks").withNewValue(TASKS));
     updateAndCheckEntity(
-        request.withDescription("newDescription").withTasks(TASKS), OK, adminAuthHeaders(), MINOR_UPDATE, change);
+        request.withDescription("newDescription").withTasks(TASKS),
+        OK,
+        adminAuthHeaders(),
+        MINOR_UPDATE,
+        change);
   }
 
   @Test
-  public void put_AddRemovePipelineTasksUpdate_200(TestInfo test) throws IOException, URISyntaxException {
+  public void put_AddRemovePipelineTasksUpdate_200(TestInfo test)
+      throws IOException, URISyntaxException {
     CreatePipeline request =
         create(test)
             .withService(AIRFLOW_REFERENCE)
@@ -252,7 +283,9 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline> {
 
     // Add tasks and description
     ChangeDescription change = getChangeDescription(pipeline.getVersion());
-    change.getFieldsAdded().add(new FieldChange().withName("description").withNewValue("newDescription"));
+    change
+        .getFieldsAdded()
+        .add(new FieldChange().withName("description").withNewValue("newDescription"));
     change.getFieldsAdded().add(new FieldChange().withName("tasks").withNewValue(TASKS));
     change.getFieldsAdded().add(new FieldChange().withName("concurrency").withNewValue(5));
     change
@@ -276,7 +309,8 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline> {
     // TODO update this once task removal is figured out
     // remove a task
     // TASKS.remove(0);
-    // change = getChangeDescription(pipeline.getVersion()).withFieldsUpdated(singletonList("tasks"));
+    // change =
+    // getChangeDescription(pipeline.getVersion()).withFieldsUpdated(singletonList("tasks"));
     // updateAndCheckEntity(request.withTasks(TASKS), OK, adminAuthHeaders(), MINOR_UPDATE, change);
   }
 
@@ -291,7 +325,8 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline> {
     // TODO
   }
 
-  public static Pipeline updatePipeline(CreatePipeline create, Status status, Map<String, String> authHeaders)
+  public static Pipeline updatePipeline(
+      CreatePipeline create, Status status, Map<String, String> authHeaders)
       throws HttpResponseException {
     return TestUtils.put(getResource("pipelines"), create, Pipeline.class, status, authHeaders);
   }
@@ -301,9 +336,13 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline> {
     return TestUtils.post(getResource("pipelines"), create, Pipeline.class, authHeaders);
   }
 
-  /** Validate returned fields GET .../pipelines/{id}?fields="..." or GET .../pipelines/name/{fqn}?fields="..." */
+  /**
+   * Validate returned fields GET .../pipelines/{id}?fields="..." or GET
+   * .../pipelines/name/{fqn}?fields="..."
+   */
   @Override
-  public void validateGetWithDifferentFields(Pipeline pipeline, boolean byName) throws HttpResponseException {
+  public void validateGetWithDifferentFields(Pipeline pipeline, boolean byName)
+      throws HttpResponseException {
     // .../Pipelines?fields=owner
     String fields = "owner";
     pipeline =
@@ -319,7 +358,8 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline> {
         byName
             ? getPipelineByName(pipeline.getFullyQualifiedName(), fields, adminAuthHeaders())
             : getPipeline(pipeline.getId(), fields, adminAuthHeaders());
-    assertListNotNull(pipeline.getOwner(), pipeline.getService(), pipeline.getServiceType(), pipeline.getTasks());
+    assertListNotNull(
+        pipeline.getOwner(), pipeline.getService(), pipeline.getServiceType(), pipeline.getTasks());
   }
 
   public static Pipeline getPipeline(UUID id, String fields, Map<String, String> authHeaders)
@@ -329,8 +369,8 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline> {
     return TestUtils.get(target, Pipeline.class, authHeaders);
   }
 
-  public static Pipeline getPipelineByName(String fqn, String fields, Map<String, String> authHeaders)
-      throws HttpResponseException {
+  public static Pipeline getPipelineByName(
+      String fqn, String fields, Map<String, String> authHeaders) throws HttpResponseException {
     WebTarget target = getResource("pipelines/name/" + fqn);
     target = fields != null ? target.queryParam("fields", fields) : target;
     return TestUtils.get(target, Pipeline.class, authHeaders);

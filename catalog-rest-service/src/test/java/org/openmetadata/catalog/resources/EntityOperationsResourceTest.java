@@ -37,7 +37,8 @@ public abstract class EntityOperationsResourceTest<T> extends EntityResourceTest
         supportsTags);
   }
 
-  // Override the resource path name of regular entities api/v1/<entities> to api/operations/v1/<operations>
+  // Override the resource path name of regular entities api/v1/<entities> to
+  // api/operations/v1/<operations>
   protected WebTarget getCollection() {
     return getOperationsResource(collectionName);
   }

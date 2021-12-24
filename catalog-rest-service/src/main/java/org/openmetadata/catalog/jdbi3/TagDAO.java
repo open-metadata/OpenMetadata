@@ -22,11 +22,12 @@ import org.openmetadata.catalog.jdbi3.TagRepository.TagLabelMapper;
 import org.openmetadata.catalog.type.TagLabel;
 
 /**
- * Tag categories are stored as JSON in {@code tag_category} table. All the attributes are stored as JSON document
- * except href, usageCount and children tags which are constructed on the fly as needed.
+ * Tag categories are stored as JSON in {@code tag_category} table. All the attributes are stored as
+ * JSON document except href, usageCount and children tags which are constructed on the fly as
+ * needed.
  *
- * <p>Tags are stored as JSON in {@code tag} table. All the attributes of tags are stored as JSON document except href,
- * usageCount and children tags which are constructed on the fly as needed.
+ * <p>Tags are stored as JSON in {@code tag} table. All the attributes of tags are stored as JSON
+ * document except href, usageCount and children tags which are constructed on the fly as needed.
  */
 @RegisterRowMapper(TagLabelMapper.class)
 public interface TagDAO {
@@ -45,7 +46,9 @@ public interface TagDAO {
   @SqlQuery("SELECT json FROM tag_category ORDER BY name")
   List<String> listCategories();
 
-  @SqlQuery("SELECT json FROM tag WHERE fullyQualifiedName LIKE CONCAT(:fqnPrefix, '.%') ORDER BY fullyQualifiedName")
+  @SqlQuery(
+      "SELECT json FROM tag WHERE fullyQualifiedName LIKE CONCAT(:fqnPrefix, '.%') ORDER BY"
+          + " fullyQualifiedName")
   List<String> listChildrenTags(@Bind("fqnPrefix") String fqnPrefix);
 
   @SqlQuery("SELECT json FROM tag_category WHERE name = :name")
@@ -58,15 +61,16 @@ public interface TagDAO {
   String findTag(@Bind("fqn") String fqn);
 
   @SqlUpdate(
-      "INSERT IGNORE INTO tag_usage (tagFQN, targetFQN, labelType, state) VALUES (:tagFQN, :targetFQN, "
-          + ":labelType, :state)")
+      "INSERT IGNORE INTO tag_usage (tagFQN, targetFQN, labelType, state) VALUES (:tagFQN,"
+          + " :targetFQN, :labelType, :state)")
   void applyTag(
       @Bind("tagFQN") String tagFQN,
       @Bind("targetFQN") String targetFQN,
       @Bind("labelType") int labelType,
       @Bind("state") int state);
 
-  @SqlQuery("SELECT tagFQN, labelType, state FROM tag_usage WHERE targetFQN = :targetFQN ORDER BY tagFQN")
+  @SqlQuery(
+      "SELECT tagFQN, labelType, state FROM tag_usage WHERE targetFQN = :targetFQN ORDER BY tagFQN")
   List<TagLabel> getTags(@Bind("targetFQN") String targetFQN);
 
   @SqlQuery("SELECT COUNT(*) FROM tag_usage WHERE tagFQN LIKE CONCAT(:fqnPrefix, '%')")

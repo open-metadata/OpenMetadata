@@ -41,9 +41,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Collection registry is a registry of all the REST collections in the catalog. It is used for building REST endpoints
- * that anchor all the collections as follows: - .../api/v1 Provides information about all the collections in the
- * catalog - .../api/v1/collection-name provides sub collections or resources in that collection
+ * Collection registry is a registry of all the REST collections in the catalog. It is used for
+ * building REST endpoints that anchor all the collections as follows: - .../api/v1 Provides
+ * information about all the collections in the catalog - .../api/v1/collection-name provides sub
+ * collections or resources in that collection
  */
 public final class CollectionRegistry {
   private static final Logger LOG = LoggerFactory.getLogger(CollectionRegistry.class);
@@ -69,7 +70,10 @@ public final class CollectionRegistry {
     loadCollectionDescriptors();
   }
 
-  /** For a collection at {@code collectionPath} returns JSON document that describes it and it's children */
+  /**
+   * For a collection at {@code collectionPath} returns JSON document that describes it and it's
+   * children
+   */
   public CollectionDescriptor[] getCollectionForPath(String collectionPath, UriInfo uriInfo) {
     CollectionDetails parent = collectionMap.get(collectionPath);
     CollectionDescriptor[] children = parent.getChildCollections();
@@ -85,8 +89,8 @@ public final class CollectionRegistry {
   }
 
   /**
-   * REST collections are described using *CollectionDescriptor.json Load all CollectionDescriptors from these files in
-   * the classpath
+   * REST collections are described using *CollectionDescriptor.json Load all CollectionDescriptors
+   * from these files in the classpath
    */
   private void loadCollectionDescriptors() {
     // Load collection classes marked with @Collection annotation
@@ -118,7 +122,10 @@ public final class CollectionRegistry {
 
   /** Register resources from CollectionRegistry */
   public void registerResources(
-      Jdbi jdbi, Environment environment, CatalogApplicationConfig config, CatalogAuthorizer authorizer) {
+      Jdbi jdbi,
+      Environment environment,
+      CatalogApplicationConfig config,
+      CatalogAuthorizer authorizer) {
     // Build list of ResourceDescriptors
     for (Map.Entry<String, CollectionDetails> e : collectionMap.entrySet()) {
       CollectionDetails details = e.getValue();
@@ -161,11 +168,15 @@ public final class CollectionRegistry {
       }
     }
     CollectionDescriptor cd = new CollectionDescriptor();
-    cd.setCollection(new CollectionInfo().withName(name).withDocumentation(doc).withHref(URI.create(href)));
+    cd.setCollection(
+        new CollectionInfo().withName(name).withDocumentation(doc).withHref(URI.create(href)));
     return new CollectionDetails(cd, cl.getCanonicalName());
   }
 
-  /** Compile a list of REST collection based on Resource classes marked with {@code Collection} annotation */
+  /**
+   * Compile a list of REST collection based on Resource classes marked with {@code Collection}
+   * annotation
+   */
   private static List<CollectionDetails> getCollections() {
     Reflections reflections = new Reflections("org.openmetadata.catalog.resources");
 
@@ -181,23 +192,28 @@ public final class CollectionRegistry {
 
   /** Create a resource class based on dependencies declared in @Collection annotation */
   private static Object createResource(
-      CollectionDAO daoObject, String resourceClass, CatalogApplicationConfig config, CatalogAuthorizer authorizer)
-      throws ClassNotFoundException, NoSuchMethodException, IllegalAccessException, InvocationTargetException,
-          InstantiationException {
+      CollectionDAO daoObject,
+      String resourceClass,
+      CatalogApplicationConfig config,
+      CatalogAuthorizer authorizer)
+      throws ClassNotFoundException, NoSuchMethodException, IllegalAccessException,
+          InvocationTargetException, InstantiationException {
     Object resource;
     Class<?> clz = Class.forName(resourceClass);
 
     // Create the resource identified by resourceClass
     try {
       resource =
-          clz.getDeclaredConstructor(CollectionDAO.class, CatalogAuthorizer.class).newInstance(daoObject, authorizer);
+          clz.getDeclaredConstructor(CollectionDAO.class, CatalogAuthorizer.class)
+              .newInstance(daoObject, authorizer);
     } catch (NoSuchMethodException ex) {
       resource = Class.forName(resourceClass).getConstructor().newInstance();
     }
 
     // Call initialize method, if it exists
     try {
-      Method initializeMethod = resource.getClass().getMethod("initialize", CatalogApplicationConfig.class);
+      Method initializeMethod =
+          resource.getClass().getMethod("initialize", CatalogApplicationConfig.class);
       initializeMethod.invoke(resource, config);
     } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException ignored) {
       // Method does not exist and initialize is not called
@@ -218,7 +234,9 @@ public final class CollectionRegistry {
     public void addChildCollection(CollectionDetails child) {
       CollectionInfo collectionInfo = child.cd.getCollection();
       LOG.info(
-          "Adding child collection {} to parent collection {}", collectionInfo.getName(), cd.getCollection().getName());
+          "Adding child collection {} to parent collection {}",
+          collectionInfo.getName(),
+          cd.getCollection().getName());
       childCollections.add(child.cd);
     }
 

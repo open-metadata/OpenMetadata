@@ -76,7 +76,8 @@ public class ElasticSearchEventHandler implements EventHandler {
     esIndexDefinition.createIndexes();
   }
 
-  public Void process(ContainerRequestContext requestContext, ContainerResponseContext responseContext) {
+  public Void process(
+      ContainerRequestContext requestContext, ContainerResponseContext responseContext) {
     try {
       LOG.info("request Context " + requestContext.toString());
       if (responseContext.getEntity() != null) {
@@ -84,25 +85,31 @@ public class ElasticSearchEventHandler implements EventHandler {
         UpdateRequest updateRequest = null;
         String entityClass = entity.getClass().toString();
         if (entityClass.toLowerCase().endsWith(Entity.TABLE.toLowerCase())) {
-          boolean exists = esIndexDefinition.checkIndexExistsOrCreate(ElasticSearchIndexType.TABLE_SEARCH_INDEX);
+          boolean exists =
+              esIndexDefinition.checkIndexExistsOrCreate(ElasticSearchIndexType.TABLE_SEARCH_INDEX);
           if (exists) {
             Table instance = (Table) entity;
             updateRequest = updateTable(instance, responseContext);
           }
         } else if (entityClass.toLowerCase().endsWith(Entity.DASHBOARD.toLowerCase())) {
-          boolean exists = esIndexDefinition.checkIndexExistsOrCreate(ElasticSearchIndexType.DASHBOARD_SEARCH_INDEX);
+          boolean exists =
+              esIndexDefinition.checkIndexExistsOrCreate(
+                  ElasticSearchIndexType.DASHBOARD_SEARCH_INDEX);
           if (exists) {
             Dashboard instance = (Dashboard) entity;
             updateRequest = updateDashboard(instance, responseContext);
           }
         } else if (entityClass.toLowerCase().endsWith(Entity.TOPIC.toLowerCase())) {
-          boolean exists = esIndexDefinition.checkIndexExistsOrCreate(ElasticSearchIndexType.TOPIC_SEARCH_INDEX);
+          boolean exists =
+              esIndexDefinition.checkIndexExistsOrCreate(ElasticSearchIndexType.TOPIC_SEARCH_INDEX);
           if (exists) {
             Topic instance = (Topic) entity;
             updateRequest = updateTopic(instance, responseContext);
           }
         } else if (entityClass.toLowerCase().endsWith(Entity.PIPELINE.toLowerCase())) {
-          boolean exists = esIndexDefinition.checkIndexExistsOrCreate(ElasticSearchIndexType.PIPELINE_SEARCH_INDEX);
+          boolean exists =
+              esIndexDefinition.checkIndexExistsOrCreate(
+                  ElasticSearchIndexType.PIPELINE_SEARCH_INDEX);
           if (exists) {
             Pipeline instance = (Pipeline) entity;
             updateRequest = updatePipeline(instance, responseContext);
@@ -161,12 +168,14 @@ public class ElasticSearchEventHandler implements EventHandler {
         for (EntityReference follower : entityReferences) {
           fieldAddParams.put(fieldChange.getName(), follower.getId().toString());
         }
-        scriptTxt.append("ctx._source.followers.removeAll(Collections.singleton(params.followers));");
+        scriptTxt.append(
+            "ctx._source.followers.removeAll(Collections.singleton(params.followers));");
       }
     }
 
     if (!scriptTxt.toString().isEmpty()) {
-      Script script = new Script(ScriptType.INLINE, "painless", scriptTxt.toString(), fieldAddParams);
+      Script script =
+          new Script(ScriptType.INLINE, "painless", scriptTxt.toString(), fieldAddParams);
       UpdateRequest updateRequest = new UpdateRequest(esIndexType.indexName, entityId.toString());
       updateRequest.script(script);
 
@@ -181,7 +190,8 @@ public class ElasticSearchEventHandler implements EventHandler {
     int responseCode = responseContext.getStatus();
     TableESIndex tableESIndex = TableESIndex.builder(instance, responseCode).build();
     UpdateRequest updateRequest =
-        new UpdateRequest(ElasticSearchIndexType.TABLE_SEARCH_INDEX.indexName, instance.getId().toString());
+        new UpdateRequest(
+            ElasticSearchIndexType.TABLE_SEARCH_INDEX.indexName, instance.getId().toString());
     if (responseCode != Response.Status.CREATED.getStatusCode()) {
       scriptedUpsert(tableESIndex, updateRequest);
     } else {
@@ -197,7 +207,8 @@ public class ElasticSearchEventHandler implements EventHandler {
     int responseCode = responseContext.getStatus();
     TopicESIndex topicESIndex = TopicESIndex.builder(instance, responseCode).build();
     UpdateRequest updateRequest =
-        new UpdateRequest(ElasticSearchIndexType.TOPIC_SEARCH_INDEX.indexName, instance.getId().toString());
+        new UpdateRequest(
+            ElasticSearchIndexType.TOPIC_SEARCH_INDEX.indexName, instance.getId().toString());
     if (responseCode != Response.Status.CREATED.getStatusCode()) {
       scriptedUpsert(topicESIndex, updateRequest);
     } else {
@@ -208,12 +219,13 @@ public class ElasticSearchEventHandler implements EventHandler {
     return updateRequest;
   }
 
-  private UpdateRequest updateDashboard(Dashboard instance, ContainerResponseContext responseContext)
-      throws JsonProcessingException {
+  private UpdateRequest updateDashboard(
+      Dashboard instance, ContainerResponseContext responseContext) throws JsonProcessingException {
     int responseCode = responseContext.getStatus();
     DashboardESIndex dashboardESIndex = DashboardESIndex.builder(instance, responseCode).build();
     UpdateRequest updateRequest =
-        new UpdateRequest(ElasticSearchIndexType.DASHBOARD_SEARCH_INDEX.indexName, instance.getId().toString());
+        new UpdateRequest(
+            ElasticSearchIndexType.DASHBOARD_SEARCH_INDEX.indexName, instance.getId().toString());
     if (responseCode != Response.Status.CREATED.getStatusCode()) {
       scriptedUpsert(dashboardESIndex, updateRequest);
     } else {
@@ -228,7 +240,8 @@ public class ElasticSearchEventHandler implements EventHandler {
     int responseCode = responseContext.getStatus();
     PipelineESIndex pipelineESIndex = PipelineESIndex.builder(instance, responseCode).build();
     UpdateRequest updateRequest =
-        new UpdateRequest(ElasticSearchIndexType.PIPELINE_SEARCH_INDEX.indexName, instance.getId().toString());
+        new UpdateRequest(
+            ElasticSearchIndexType.PIPELINE_SEARCH_INDEX.indexName, instance.getId().toString());
     if (responseCode != Response.Status.CREATED.getStatusCode()) {
       scriptedUpsert(pipelineESIndex, updateRequest);
     } else {

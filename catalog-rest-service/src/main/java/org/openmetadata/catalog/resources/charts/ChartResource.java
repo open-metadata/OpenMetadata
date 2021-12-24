@@ -80,7 +80,9 @@ public class ChartResource {
   private final CatalogAuthorizer authorizer;
 
   public static ResultList<Chart> addHref(UriInfo uriInfo, ResultList<Chart> charts) {
-    Optional.ofNullable(charts.getData()).orElse(Collections.emptyList()).forEach(i -> addHref(uriInfo, i));
+    Optional.ofNullable(charts.getData())
+        .orElse(Collections.emptyList())
+        .forEach(i -> addHref(uriInfo, i));
     return charts;
   }
 
@@ -111,21 +113,25 @@ public class ChartResource {
   }
 
   static final String FIELDS = "owner,followers,tags";
-  public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replaceAll(" ", "").split(","));
+  public static final List<String> FIELD_LIST =
+      Arrays.asList(FIELDS.replaceAll(" ", "").split(","));
 
   @GET
   @Operation(
       summary = "List charts",
       tags = "charts",
       description =
-          "Get a list of charts, optionally filtered by `service` it belongs to. Use `fields` "
-              + "parameter to get only necessary fields. Use cursor-based pagination to limit the number "
-              + "entries in the list using `limit` and `before` or `after` query params.",
+          "Get a list of charts, optionally filtered by `service` it belongs to. Use `fields`"
+              + " parameter to get only necessary fields. Use cursor-based pagination to limit the"
+              + " number entries in the list using `limit` and `before` or `after` query params.",
       responses = {
         @ApiResponse(
             responseCode = "200",
             description = "List of charts",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ChartList.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ChartList.class)))
       })
   public ResultList<Chart> list(
       @Context UriInfo uriInfo,
@@ -135,7 +141,9 @@ public class ChartResource {
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
           String fieldsParam,
-      @Parameter(description = "Filter charts by service name", schema = @Schema(type = "string", example = "superset"))
+      @Parameter(
+              description = "Filter charts by service name",
+              schema = @Schema(type = "string", example = "superset"))
           @QueryParam("service")
           String serviceParam,
       @Parameter(description = "Limit the number charts returned. (1 to 1000000, default = 10)")
@@ -144,10 +152,14 @@ public class ChartResource {
           @Min(1)
           @Max(1000000)
           int limitParam,
-      @Parameter(description = "Returns list of charts before this cursor", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Returns list of charts before this cursor",
+              schema = @Schema(type = "string"))
           @QueryParam("before")
           String before,
-      @Parameter(description = "Returns list of charts after this cursor", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Returns list of charts after this cursor",
+              schema = @Schema(type = "string"))
           @QueryParam("after")
           String after)
       throws IOException, GeneralSecurityException, ParseException {
@@ -156,7 +168,9 @@ public class ChartResource {
 
     ResultList<Chart> charts;
     if (before != null) { // Reverse paging
-      charts = dao.listBefore(uriInfo, fields, serviceParam, limitParam, before); // Ask for one extra entry
+      charts =
+          dao.listBefore(
+              uriInfo, fields, serviceParam, limitParam, before); // Ask for one extra entry
     } else { // Forward paging or first page
       charts = dao.listAfter(uriInfo, fields, serviceParam, limitParam, after);
     }
@@ -173,12 +187,16 @@ public class ChartResource {
         @ApiResponse(
             responseCode = "200",
             description = "List of chart versions",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = EntityHistory.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = EntityHistory.class)))
       })
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Chart Id", schema = @Schema(type = "string")) @PathParam("id") String id)
+      @Parameter(description = "Chart Id", schema = @Schema(type = "string")) @PathParam("id")
+          String id)
       throws IOException, ParseException {
     return dao.listVersions(id);
   }
@@ -193,7 +211,10 @@ public class ChartResource {
         @ApiResponse(
             responseCode = "200",
             description = "The chart",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Chart.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Chart.class))),
         @ApiResponse(responseCode = "404", description = "Chart for instance {id} is not found")
       })
   public Chart get(
@@ -220,7 +241,10 @@ public class ChartResource {
         @ApiResponse(
             responseCode = "200",
             description = "The chart",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Chart.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Chart.class))),
         @ApiResponse(responseCode = "404", description = "Chart for instance {id} is not found")
       })
   public Response getByName(
@@ -249,7 +273,10 @@ public class ChartResource {
         @ApiResponse(
             responseCode = "200",
             description = "chart",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Chart.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Chart.class))),
         @ApiResponse(
             responseCode = "404",
             description = "Chart for instance {id} and version {version} is " + "not found")
@@ -257,7 +284,8 @@ public class ChartResource {
   public Chart getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Chart Id", schema = @Schema(type = "string")) @PathParam("id") String id,
+      @Parameter(description = "Chart Id", schema = @Schema(type = "string")) @PathParam("id")
+          String id,
       @Parameter(
               description = "Chart version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
@@ -276,10 +304,14 @@ public class ChartResource {
         @ApiResponse(
             responseCode = "200",
             description = "The chart",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = CreateChart.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = CreateChart.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
-  public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateChart create)
+  public Response create(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateChart create)
       throws IOException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Chart chart = getChart(securityContext, create);
@@ -293,7 +325,10 @@ public class ChartResource {
       summary = "Update a chart",
       tags = "charts",
       description = "Update an existing chart using JsonPatch.",
-      externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
+      externalDocs =
+          @ExternalDocumentation(
+              description = "JsonPatch RFC",
+              url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
   public Response updateDescription(
       @Context UriInfo uriInfo,
@@ -305,7 +340,8 @@ public class ChartResource {
                   @Content(
                       mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
                       examples = {
-                        @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
+                        @ExampleObject(
+                            "[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
                       }))
           JsonPatch patch)
       throws IOException, ParseException {
@@ -314,7 +350,8 @@ public class ChartResource {
     SecurityUtil.checkAdminRoleOrPermissions(
         authorizer, securityContext, new ChartEntityInterface(chart).getEntityReference());
     PatchResponse<Chart> response =
-        dao.patch(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
+        dao.patch(
+            uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
     addHref(uriInfo, response.getEntity());
     return response.toResponse();
   }
@@ -328,7 +365,10 @@ public class ChartResource {
         @ApiResponse(
             responseCode = "200",
             description = "The updated chart ",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = CreateChart.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = CreateChart.class)))
       })
   public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateChart create)
@@ -353,11 +393,18 @@ public class ChartResource {
   public Response addFollower(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the chart", schema = @Schema(type = "string")) @PathParam("id") String id,
-      @Parameter(description = "Id of the user to be added as follower", schema = @Schema(type = "string"))
+      @Parameter(description = "Id of the chart", schema = @Schema(type = "string"))
+          @PathParam("id")
+          String id,
+      @Parameter(
+              description = "Id of the user to be added as follower",
+              schema = @Schema(type = "string"))
           String userId)
       throws IOException {
-    return dao.addFollower(securityContext.getUserPrincipal().getName(), UUID.fromString(id), UUID.fromString(userId))
+    return dao.addFollower(
+            securityContext.getUserPrincipal().getName(),
+            UUID.fromString(id),
+            UUID.fromString(userId))
         .toResponse();
   }
 
@@ -370,13 +417,19 @@ public class ChartResource {
   public Response deleteFollower(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the chart", schema = @Schema(type = "string")) @PathParam("id") String id,
-      @Parameter(description = "Id of the user being removed as follower", schema = @Schema(type = "string"))
+      @Parameter(description = "Id of the chart", schema = @Schema(type = "string"))
+          @PathParam("id")
+          String id,
+      @Parameter(
+              description = "Id of the user being removed as follower",
+              schema = @Schema(type = "string"))
           @PathParam("userId")
           String userId)
       throws IOException {
     return dao.deleteFollower(
-            securityContext.getUserPrincipal().getName(), UUID.fromString(id), UUID.fromString(userId))
+            securityContext.getUserPrincipal().getName(),
+            UUID.fromString(id),
+            UUID.fromString(userId))
         .toResponse();
   }
 

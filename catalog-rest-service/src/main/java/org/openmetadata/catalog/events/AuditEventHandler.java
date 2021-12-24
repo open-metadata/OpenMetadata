@@ -31,7 +31,8 @@ public class AuditEventHandler implements EventHandler {
     // Nothing to do
   }
 
-  public Void process(ContainerRequestContext requestContext, ContainerResponseContext responseContext) {
+  public Void process(
+      ContainerRequestContext requestContext, ContainerResponseContext responseContext) {
     int responseCode = responseContext.getStatus();
     String method = requestContext.getMethod();
     if (responseContext.getEntity() != null) {
@@ -52,7 +53,11 @@ public class AuditEventHandler implements EventHandler {
                 .withResponseCode(responseCode);
         LOG.info("Added audit log entry: {}", auditLog);
       } catch (Exception e) {
-        LOG.error("Failed to capture audit log for {} and method {} due to {}", path, method, e.getMessage());
+        LOG.error(
+            "Failed to capture audit log for {} and method {} due to {}",
+            path,
+            method,
+            e.getMessage());
       }
     }
     return null;

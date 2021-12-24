@@ -41,8 +41,10 @@ import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
 
 public class PipelineRepository extends EntityRepository<Pipeline> {
-  private static final Fields PIPELINE_UPDATE_FIELDS = new Fields(PipelineResource.FIELD_LIST, "owner,tags,tasks");
-  private static final Fields PIPELINE_PATCH_FIELDS = new Fields(PipelineResource.FIELD_LIST, "owner,tags,tasks");
+  private static final Fields PIPELINE_UPDATE_FIELDS =
+      new Fields(PipelineResource.FIELD_LIST, "owner,tags,tasks");
+  private static final Fields PIPELINE_PATCH_FIELDS =
+      new Fields(PipelineResource.FIELD_LIST, "owner,tags,tasks");
   private final CollectionDAO dao;
 
   public PipelineRepository(CollectionDAO dao) {
@@ -63,7 +65,9 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
   @Transaction
   public void delete(UUID id) {
-    if (dao.relationshipDAO().findToCount(id.toString(), Relationship.CONTAINS.ordinal(), Entity.PIPELINE) > 0) {
+    if (dao.relationshipDAO()
+            .findToCount(id.toString(), Relationship.CONTAINS.ordinal(), Entity.PIPELINE)
+        > 0) {
       throw new IllegalArgumentException("Pipeline is not empty");
     }
     dao.pipelineDAO().delete(id);
@@ -125,7 +129,8 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     List<TagLabel> tags = pipeline.getTags();
     EntityReference service = pipeline.getService();
 
-    // Don't store owner, database, href and tags as JSON. Build it on the fly based on relationships
+    // Don't store owner, database, href and tags as JSON. Build it on the fly based on
+    // relationships
     pipeline.withOwner(null).withService(null).withHref(null).withTags(null);
 
     if (update) {
@@ -150,7 +155,8 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
             Relationship.CONTAINS.ordinal());
 
     // Add owner relationship
-    EntityUtil.setOwner(dao.relationshipDAO(), pipeline.getId(), Entity.PIPELINE, pipeline.getOwner());
+    EntityUtil.setOwner(
+        dao.relationshipDAO(), pipeline.getId(), Entity.PIPELINE, pipeline.getOwner());
 
     // Add tag to pipeline relationship
     applyTags(pipeline);
@@ -162,7 +168,8 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   }
 
   private EntityReference getService(Pipeline pipeline) throws IOException {
-    EntityReference ref = EntityUtil.getService(dao.relationshipDAO(), pipeline.getId(), Entity.PIPELINE_SERVICE);
+    EntityReference ref =
+        EntityUtil.getService(dao.relationshipDAO(), pipeline.getId(), Entity.PIPELINE_SERVICE);
     PipelineService service = getService(ref.getId(), ref.getType());
     ref.setName(service.getName());
     ref.setDescription(service.getDescription());
@@ -170,7 +177,8 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   }
 
   private void populateService(Pipeline pipeline) throws IOException {
-    PipelineService service = getService(pipeline.getService().getId(), pipeline.getService().getType());
+    PipelineService service =
+        getService(pipeline.getService().getId(), pipeline.getService().getType());
     pipeline.setService(new PipelineServiceEntityInterface(service).getEntityReference());
     pipeline.setServiceType(service.getServiceType());
   }
@@ -179,13 +187,15 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     if (entityType.equalsIgnoreCase(Entity.PIPELINE_SERVICE)) {
       return dao.pipelineServiceDAO().findEntityById(serviceId);
     }
-    throw new IllegalArgumentException(CatalogExceptionMessage.invalidServiceEntity(entityType, Entity.PIPELINE));
+    throw new IllegalArgumentException(
+        CatalogExceptionMessage.invalidServiceEntity(entityType, Entity.PIPELINE));
   }
 
   private EntityReference getOwner(Pipeline pipeline) throws IOException {
     return pipeline == null
         ? null
-        : EntityUtil.populateOwner(pipeline.getId(), dao.relationshipDAO(), dao.userDAO(), dao.teamDAO());
+        : EntityUtil.populateOwner(
+            pipeline.getId(), dao.relationshipDAO(), dao.userDAO(), dao.teamDAO());
   }
 
   public void setOwner(Pipeline pipeline, EntityReference owner) {
@@ -196,11 +206,14 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   private void applyTags(Pipeline pipeline) {
     // Add pipeline level tags by adding tag to pipeline relationship
     EntityUtil.applyTags(dao.tagDAO(), pipeline.getTags(), pipeline.getFullyQualifiedName());
-    pipeline.setTags(getTags(pipeline.getFullyQualifiedName())); // Update tag to handle additional derived tags
+    pipeline.setTags(
+        getTags(pipeline.getFullyQualifiedName())); // Update tag to handle additional derived tags
   }
 
   private List<EntityReference> getFollowers(Pipeline pipeline) throws IOException {
-    return pipeline == null ? null : EntityUtil.getFollowers(pipeline.getId(), dao.relationshipDAO(), dao.userDAO());
+    return pipeline == null
+        ? null
+        : EntityUtil.getFollowers(pipeline.getId(), dao.relationshipDAO(), dao.userDAO());
   }
 
   public static class PipelineEntityInterface implements EntityInterface<Pipeline> {
@@ -341,19 +354,31 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
       updateTasks(origPipeline, updatedPipeline);
       recordChange("pipelineUrl", origPipeline.getPipelineUrl(), updatedPipeline.getPipelineUrl());
       recordChange("concurrency", origPipeline.getConcurrency(), updatedPipeline.getConcurrency());
-      recordChange("pipelineLocation", origPipeline.getPipelineLocation(), updatedPipeline.getPipelineLocation());
+      recordChange(
+          "pipelineLocation",
+          origPipeline.getPipelineLocation(),
+          updatedPipeline.getPipelineLocation());
       recordChange("startDate", origPipeline.getStartDate(), updatedPipeline.getStartDate());
     }
 
-    private void updateTasks(Pipeline origPipeline, Pipeline updatedPipeline) throws JsonProcessingException {
-      // Airflow lineage backend gets executed per task in a DAG. This means we will not a get full picture of the
-      // pipeline in each call. Hence, we may create a pipeline and add a single task when one task finishes in a
-      // pipeline in the next task run we may have to update. To take care of this we will merge the tasks
-      List<Task> updatedTasks = Optional.ofNullable(updatedPipeline.getTasks()).orElse(Collections.emptyList());
-      List<Task> origTasks = Optional.ofNullable(origPipeline.getTasks()).orElse(Collections.emptyList());
+    private void updateTasks(Pipeline origPipeline, Pipeline updatedPipeline)
+        throws JsonProcessingException {
+      // Airflow lineage backend gets executed per task in a DAG. This means we will not a get full
+      // picture of the
+      // pipeline in each call. Hence, we may create a pipeline and add a single task when one task
+      // finishes in a
+      // pipeline in the next task run we may have to update. To take care of this we will merge the
+      // tasks
+      List<Task> updatedTasks =
+          Optional.ofNullable(updatedPipeline.getTasks()).orElse(Collections.emptyList());
+      List<Task> origTasks =
+          Optional.ofNullable(origPipeline.getTasks()).orElse(Collections.emptyList());
 
       // TODO this might not provide distinct
-      updatedTasks = Stream.concat(origTasks.stream(), updatedTasks.stream()).distinct().collect(Collectors.toList());
+      updatedTasks =
+          Stream.concat(origTasks.stream(), updatedTasks.stream())
+              .distinct()
+              .collect(Collectors.toList());
 
       List<Task> added = new ArrayList<>();
       List<Task> deleted = new ArrayList<>();

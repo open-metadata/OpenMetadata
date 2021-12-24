@@ -33,14 +33,15 @@ public class LineageRepository {
   }
 
   @Transaction
-  public EntityLineage get(String entityType, String id, int upstreamDepth, int downstreamDepth) throws IOException {
+  public EntityLineage get(String entityType, String id, int upstreamDepth, int downstreamDepth)
+      throws IOException {
     EntityReference ref = Entity.getEntityReference(entityType, UUID.fromString(id));
     return getLineage(ref, upstreamDepth, downstreamDepth);
   }
 
   @Transaction
-  public EntityLineage getByName(String entityType, String fqn, int upstreamDepth, int downstreamDepth)
-      throws IOException {
+  public EntityLineage getByName(
+      String entityType, String fqn, int upstreamDepth, int downstreamDepth) throws IOException {
     EntityReference ref = Entity.getEntityReferenceByName(entityType, fqn);
     return getLineage(ref, upstreamDepth, downstreamDepth);
   }
@@ -65,7 +66,8 @@ public class LineageRepository {
             Relationship.UPSTREAM.ordinal());
   }
 
-  private EntityLineage getLineage(EntityReference primary, int upstreamDepth, int downstreamDepth) throws IOException {
+  private EntityLineage getLineage(EntityReference primary, int upstreamDepth, int downstreamDepth)
+      throws IOException {
     List<EntityReference> entities = new ArrayList<>();
     EntityLineage lineage =
         new EntityLineage()
@@ -99,8 +101,13 @@ public class LineageRepository {
 
     upstreamDepth--;
     for (EntityReference upstreamEntity : upstreamEntities) {
-      lineage.getUpstreamEdges().add(new Edge().withFromEntity(upstreamEntity.getId()).withToEntity(id));
-      addUpstreamLineage(upstreamEntity.getId(), lineage, upstreamDepth); // Recursively add upstream nodes and edges
+      lineage
+          .getUpstreamEdges()
+          .add(new Edge().withFromEntity(upstreamEntity.getId()).withToEntity(id));
+      addUpstreamLineage(
+          upstreamEntity.getId(),
+          lineage,
+          upstreamDepth); // Recursively add upstream nodes and edges
     }
   }
 

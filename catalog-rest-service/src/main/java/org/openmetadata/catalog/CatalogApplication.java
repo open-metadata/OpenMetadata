@@ -67,8 +67,8 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
 
   @Override
   public void run(CatalogApplicationConfig catalogConfig, Environment environment)
-      throws ClassNotFoundException, IllegalAccessException, InstantiationException, NoSuchMethodException,
-          InvocationTargetException {
+      throws ClassNotFoundException, IllegalAccessException, InstantiationException,
+          NoSuchMethodException, InvocationTargetException {
 
     final JdbiFactory factory = new JdbiFactory();
     final Jdbi jdbi = factory.build(environment, catalogConfig.getDataSourceFactory(), "mysql3");
@@ -89,7 +89,8 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
     environment.jersey().register(new ConfigResource(catalogConfig));
 
     // Unregister dropwizard default exception mappers
-    ((DefaultServerFactory) catalogConfig.getServerFactory()).setRegisterDefaultExceptionMappers(false);
+    ((DefaultServerFactory) catalogConfig.getServerFactory())
+        .setRegisterDefaultExceptionMappers(false);
     environment.jersey().property(ServerProperties.RESPONSE_SET_STATUS_OVER_SEND_ERROR, true);
     environment.jersey().register(MultiPartFeature.class);
     environment.jersey().register(CatalogGenericExceptionMapper.class);
@@ -102,7 +103,9 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
     environment.jersey().register(new JsonProcessingExceptionMapper(true));
     environment.jersey().register(new EarlyEofExceptionMapper());
     environment.jersey().register(JsonMappingExceptionMapper.class);
-    environment.healthChecks().register("UserDatabaseCheck", new CatalogHealthCheck(catalogConfig, jdbi));
+    environment
+        .healthChecks()
+        .register("UserDatabaseCheck", new CatalogHealthCheck(catalogConfig, jdbi));
     registerResources(catalogConfig, environment, jdbi);
 
     // Register Event Handler
@@ -116,7 +119,8 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
     bootstrap.addBundle(
         new SwaggerBundle<>() {
           @Override
-          protected SwaggerBundleConfiguration getSwaggerBundleConfiguration(CatalogApplicationConfig catalogConfig) {
+          protected SwaggerBundleConfiguration getSwaggerBundleConfiguration(
+              CatalogApplicationConfig catalogConfig) {
             return catalogConfig.getSwaggerBundleConfig();
           }
         });
@@ -124,7 +128,8 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
     bootstrap.addBundle(
         new HealthCheckBundle<>() {
           @Override
-          protected HealthConfiguration getHealthConfiguration(final CatalogApplicationConfig configuration) {
+          protected HealthConfiguration getHealthConfiguration(
+              final CatalogApplicationConfig configuration) {
             return configuration.getHealthConfiguration();
           }
         });
@@ -132,14 +137,18 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
     super.initialize(bootstrap);
   }
 
-  private void registerAuthorizer(CatalogApplicationConfig catalogConfig, Environment environment, Jdbi jdbi)
-      throws NoSuchMethodException, ClassNotFoundException, IllegalAccessException, InvocationTargetException,
-          InstantiationException {
+  private void registerAuthorizer(
+      CatalogApplicationConfig catalogConfig, Environment environment, Jdbi jdbi)
+      throws NoSuchMethodException, ClassNotFoundException, IllegalAccessException,
+          InvocationTargetException, InstantiationException {
     AuthorizerConfiguration authorizerConf = catalogConfig.getAuthorizerConfiguration();
-    AuthenticationConfiguration authenticationConfiguration = catalogConfig.getAuthenticationConfiguration();
+    AuthenticationConfiguration authenticationConfiguration =
+        catalogConfig.getAuthenticationConfiguration();
     if (authorizerConf != null) {
       authorizer =
-          ((Class<CatalogAuthorizer>) Class.forName(authorizerConf.getClassName())).getConstructor().newInstance();
+          ((Class<CatalogAuthorizer>) Class.forName(authorizerConf.getClassName()))
+              .getConstructor()
+              .newInstance();
       authorizer.init(authorizerConf, jdbi);
       String filterClazzName = authorizerConf.getContainerRequestFilter();
       ContainerRequestFilter filter;
@@ -162,14 +171,16 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
     injector = Guice.createInjector(new CatalogModule(authorizer));
   }
 
-  private void registerEventFilter(CatalogApplicationConfig catalogConfig, Environment environment, Jdbi jdbi) {
+  private void registerEventFilter(
+      CatalogApplicationConfig catalogConfig, Environment environment, Jdbi jdbi) {
     if (catalogConfig.getEventHandlerConfiguration() != null) {
       ContainerResponseFilter eventFilter = new EventFilter(catalogConfig, jdbi);
       environment.jersey().register(eventFilter);
     }
   }
 
-  private void registerResources(CatalogApplicationConfig config, Environment environment, Jdbi jdbi) {
+  private void registerResources(
+      CatalogApplicationConfig config, Environment environment, Jdbi jdbi) {
     CollectionRegistry.getInstance().registerResources(jdbi, environment, config, authorizer);
 
     environment
@@ -182,7 +193,10 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
               @Override
               public void stop() {
                 long startTime = System.currentTimeMillis();
-                LOG.info("Took " + (System.currentTimeMillis() - startTime) + " ms to close all the services");
+                LOG.info(
+                    "Took "
+                        + (System.currentTimeMillis() - startTime)
+                        + " ms to close all the services");
               }
             });
     environment.jersey().register(new SearchResource(config.getElasticSearchConfiguration()));

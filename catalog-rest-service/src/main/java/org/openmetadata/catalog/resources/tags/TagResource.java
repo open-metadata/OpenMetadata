@@ -96,7 +96,8 @@ public class TagResource {
         tagFile -> {
           try {
             LOG.info("Loading tag definitions from file {}", tagFile);
-            String tagJson = IOUtil.toString(getClass().getClassLoader().getResourceAsStream(tagFile));
+            String tagJson =
+                IOUtil.toString(getClass().getClassLoader().getResourceAsStream(tagFile));
             TagCategory tagCategory = JsonUtils.readValue(tagJson, TagCategory.class);
             // TODO hack for now
             Date now = new Date();
@@ -122,7 +123,8 @@ public class TagResource {
   }
 
   static final String FIELDS = "usageCount";
-  public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replaceAll(" ", "").split(","));
+  public static final List<String> FIELD_LIST =
+      Arrays.asList(FIELDS.replaceAll(" ", "").split(","));
 
   @GET
   @Operation(
@@ -133,7 +135,10 @@ public class TagResource {
         @ApiResponse(
             responseCode = "200",
             description = "The user ",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = CategoryList.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = CategoryList.class)))
       })
   public CategoryList getCategories(
       @Context UriInfo uriInfo,
@@ -156,19 +161,25 @@ public class TagResource {
       summary = "Get a tag category",
       tags = "tags",
       description =
-          "Get a tag category identified by name. The response includes tag category information along "
-              + "with the entire hierarchy of all the children tags.",
+          "Get a tag category identified by name. The response includes tag category information"
+              + " along with the entire hierarchy of all the children tags.",
       responses = {
         @ApiResponse(
             responseCode = "200",
             description = "The user ",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = TagCategory.class))),
-        @ApiResponse(responseCode = "404", description = "TagCategory for instance {category} is not found")
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = TagCategory.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "TagCategory for instance {category} is not found")
       })
   public TagCategory getCategory(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Tag category name", schema = @Schema(type = "string")) @PathParam("category")
+      @Parameter(description = "Tag category name", schema = @Schema(type = "string"))
+          @PathParam("category")
           String category,
       @Parameter(
               description = "Fields requested in the returned resource",
@@ -185,27 +196,37 @@ public class TagResource {
       summary = "Get a primary tag",
       tags = "tags",
       description =
-          "Get a primary tag identified by name. The response includes with the entire hierarchy of all"
-              + " the children tags.",
+          "Get a primary tag identified by name. The response includes with the entire hierarchy of"
+              + " all the children tags.",
       responses = {
         @ApiResponse(
             responseCode = "200",
             description = "The user ",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Tag.class))),
-        @ApiResponse(responseCode = "404", description = "TagCategory for instance {category} is not found"),
-        @ApiResponse(responseCode = "404", description = "Tag for instance {primaryTag} is not found")
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Tag.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "TagCategory for instance {category} is not found"),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Tag for instance {primaryTag} is not found")
       })
   @Path("{category}/{primaryTag}")
   @ApiOperation(value = "Returns tag groups under the given category.", response = Tag.class)
   public Tag getPrimaryTag(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Tag category name", schema = @Schema(type = "string")) @PathParam("category")
+      @Parameter(description = "Tag category name", schema = @Schema(type = "string"))
+          @PathParam("category")
           String category,
       @Parameter(
               description = "Primary tag name",
               schema =
-                  @Schema(type = "string", example = "<primaryTag> fully qualified name <categoryName>.<primaryTag>"))
+                  @Schema(
+                      type = "string",
+                      example = "<primaryTag> fully qualified name <categoryName>.<primaryTag>"))
           @PathParam("primaryTag")
           String primaryTag,
       @Parameter(
@@ -231,20 +252,32 @@ public class TagResource {
         @ApiResponse(
             responseCode = "200",
             description = "The user ",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Tag.class))),
-        @ApiResponse(responseCode = "404", description = "TagCategory for instance {category} is not found"),
-        @ApiResponse(responseCode = "404", description = "Tag for instance {primaryTag} is not found"),
-        @ApiResponse(responseCode = "404", description = "Tag for instance {secondaryTag} is not found")
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Tag.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "TagCategory for instance {category} is not found"),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Tag for instance {primaryTag} is not found"),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Tag for instance {secondaryTag} is not found")
       })
   public Tag getSecondaryTag(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Tag category name", schema = @Schema(type = "string")) @PathParam("category")
+      @Parameter(description = "Tag category name", schema = @Schema(type = "string"))
+          @PathParam("category")
           String category,
       @Parameter(
               description = "Primary tag name",
               schema =
-                  @Schema(type = "string", example = "<primaryTag> fully qualified name <categoryName>.<primaryTag>"))
+                  @Schema(
+                      type = "string",
+                      example = "<primaryTag> fully qualified name <categoryName>.<primaryTag>"))
           @PathParam("primaryTag")
           String primaryTag,
       @Parameter(
@@ -252,7 +285,9 @@ public class TagResource {
               schema =
                   @Schema(
                       type = "string",
-                      example = "<secondaryTag> fully qualified name <categoryName>" + ".<primaryTag>.<SecondaryTag>"))
+                      example =
+                          "<secondaryTag> fully qualified name <categoryName>"
+                              + ".<primaryTag>.<SecondaryTag>"))
           @PathParam("secondaryTag")
           String secondaryTag,
       @Parameter(
@@ -273,18 +308,22 @@ public class TagResource {
       summary = "Create a tag category",
       tags = "tags",
       description =
-          "Create a new tag category. The request can include the children tags to be created along "
-              + "with the tag category.",
+          "Create a new tag category. The request can include the children tags to be created along"
+              + " with the tag category.",
       responses = {
         @ApiResponse(
             responseCode = "200",
             description = "The user ",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = CreateTagCategory.class))),
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = CreateTagCategory.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createCategory(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTagCategory create)
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid CreateTagCategory create)
       throws IOException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     TagCategory category =
@@ -308,13 +347,17 @@ public class TagResource {
         @ApiResponse(
             responseCode = "200",
             description = "The user ",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = CreateTag.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = CreateTag.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createPrimaryTag(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Tag category name", schema = @Schema(type = "string")) @PathParam("category")
+      @Parameter(description = "Tag category name", schema = @Schema(type = "string"))
+          @PathParam("category")
           String category,
       @Valid CreateTag create)
       throws IOException {
@@ -341,20 +384,25 @@ public class TagResource {
         @ApiResponse(
             responseCode = "200",
             description = "The user ",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = CreateTag.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = CreateTag.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createSecondaryTag(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Tag category name", schema = @Schema(type = "string")) @PathParam("category")
+      @Parameter(description = "Tag category name", schema = @Schema(type = "string"))
+          @PathParam("category")
           String category,
       @Parameter(
               description = "Primary tag name",
               schema =
                   @Schema(
                       type = "string",
-                      example = "<primaryTag> fully qualified name <categoryName>" + ".<primaryTag>"))
+                      example =
+                          "<primaryTag> fully qualified name <categoryName>" + ".<primaryTag>"))
           @PathParam("primaryTag")
           String primaryTag,
       @Valid CreateTag create)
@@ -382,7 +430,8 @@ public class TagResource {
   public Response updateCategory(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Tag category name", schema = @Schema(type = "string")) @PathParam("category")
+      @Parameter(description = "Tag category name", schema = @Schema(type = "string"))
+          @PathParam("category")
           String categoryName,
       @Valid CreateTagCategory create)
       throws IOException {
@@ -406,14 +455,16 @@ public class TagResource {
   public Response updatePrimaryTag(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Tag category name", schema = @Schema(type = "string")) @PathParam("category")
+      @Parameter(description = "Tag category name", schema = @Schema(type = "string"))
+          @PathParam("category")
           String categoryName,
       @Parameter(
               description = "Primary tag name",
               schema =
                   @Schema(
                       type = "string",
-                      example = "<primaryTag> fully qualified name <categoryName>" + ".<primaryTag>"))
+                      example =
+                          "<primaryTag> fully qualified name <categoryName>" + ".<primaryTag>"))
           @PathParam("primaryTag")
           String primaryTag,
       @Valid CreateTag create)
@@ -438,14 +489,16 @@ public class TagResource {
   public Response updateSecondaryTag(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Tag category name", schema = @Schema(type = "string")) @PathParam("category")
+      @Parameter(description = "Tag category name", schema = @Schema(type = "string"))
+          @PathParam("category")
           String categoryName,
       @Parameter(
               description = "Primary tag name",
               schema =
                   @Schema(
                       type = "string",
-                      example = "<primaryTag> fully qualified name <categoryName>" + ".<primaryTag>"))
+                      example =
+                          "<primaryTag> fully qualified name <categoryName>" + ".<primaryTag>"))
           @PathParam("primaryTag")
           String primaryTag,
       @Parameter(
@@ -453,7 +506,9 @@ public class TagResource {
               schema =
                   @Schema(
                       type = "string",
-                      example = "<secondaryTag> fully qualified name <categoryName>" + ".<primaryTag>.<secondaryTag>"))
+                      example =
+                          "<secondaryTag> fully qualified name <categoryName>"
+                              + ".<primaryTag>.<secondaryTag>"))
           @PathParam("secondaryTag")
           String secondaryTag,
       @Valid CreateTag create)

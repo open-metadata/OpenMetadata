@@ -44,7 +44,15 @@ import org.openmetadata.catalog.util.TestUtils;
 public class TopicResourceTest extends EntityResourceTest<Topic> {
 
   public TopicResourceTest() {
-    super(Entity.TOPIC, Topic.class, TopicList.class, "topics", TopicResource.FIELDS, true, true, true);
+    super(
+        Entity.TOPIC,
+        Topic.class,
+        TopicList.class,
+        "topics",
+        TopicResource.FIELDS,
+        true,
+        true,
+        true);
   }
 
   @Test
@@ -73,7 +81,9 @@ public class TopicResourceTest extends EntityResourceTest<Topic> {
   public void post_topic_as_non_admin_401(TestInfo test) {
     CreateTopic create = create(test);
     HttpResponseException exception =
-        assertThrows(HttpResponseException.class, () -> createTopic(create, authHeaders("test@open-metadata.org")));
+        assertThrows(
+            HttpResponseException.class,
+            () -> createTopic(create, authHeaders("test@open-metadata.org")));
     assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
   }
 
@@ -82,19 +92,22 @@ public class TopicResourceTest extends EntityResourceTest<Topic> {
     // Service is required field
     HttpResponseException exception =
         assertThrows(
-            HttpResponseException.class, () -> createTopic(create(test).withService(null), adminAuthHeaders()));
+            HttpResponseException.class,
+            () -> createTopic(create(test).withService(null), adminAuthHeaders()));
     assertResponse(exception, BAD_REQUEST, "[service must not be null]");
 
     // Partitions is required field
     exception =
         assertThrows(
-            HttpResponseException.class, () -> createTopic(create(test).withPartitions(null), adminAuthHeaders()));
+            HttpResponseException.class,
+            () -> createTopic(create(test).withPartitions(null), adminAuthHeaders()));
     assertResponse(exception, BAD_REQUEST, "[partitions must not be null]");
 
     // Partitions must be >= 1
     exception =
         assertThrows(
-            HttpResponseException.class, () -> createTopic(create(test).withPartitions(0), adminAuthHeaders()));
+            HttpResponseException.class,
+            () -> createTopic(create(test).withPartitions(0), adminAuthHeaders()));
     assertResponse(exception, BAD_REQUEST, "[partitions must be greater than or equal to 1]");
   }
 
@@ -131,13 +144,18 @@ public class TopicResourceTest extends EntityResourceTest<Topic> {
     // TODO
   }
 
-  public static Topic createTopic(CreateTopic create, Map<String, String> authHeaders) throws HttpResponseException {
+  public static Topic createTopic(CreateTopic create, Map<String, String> authHeaders)
+      throws HttpResponseException {
     return TestUtils.post(getResource("topics"), create, Topic.class, authHeaders);
   }
 
-  /** Validate returned fields GET .../topics/{id}?fields="..." or GET .../topics/name/{fqn}?fields="..." */
+  /**
+   * Validate returned fields GET .../topics/{id}?fields="..." or GET
+   * .../topics/name/{fqn}?fields="..."
+   */
   @Override
-  public void validateGetWithDifferentFields(Topic topic, boolean byName) throws HttpResponseException {
+  public void validateGetWithDifferentFields(Topic topic, boolean byName)
+      throws HttpResponseException {
     // .../topics?fields=owner
     String fields = "owner";
     topic =
@@ -147,7 +165,8 @@ public class TopicResourceTest extends EntityResourceTest<Topic> {
     assertListNotNull(topic.getOwner(), topic.getService(), topic.getServiceType());
   }
 
-  public static Topic getTopic(UUID id, String fields, Map<String, String> authHeaders) throws HttpResponseException {
+  public static Topic getTopic(UUID id, String fields, Map<String, String> authHeaders)
+      throws HttpResponseException {
     WebTarget target = getResource("topics/" + id);
     target = fields != null ? target.queryParam("fields", fields) : target;
     return TestUtils.get(target, Topic.class, authHeaders);
@@ -169,7 +188,8 @@ public class TopicResourceTest extends EntityResourceTest<Topic> {
   }
 
   @Override
-  public CreateTopic createRequest(String name, String description, String displayName, EntityReference owner) {
+  public CreateTopic createRequest(
+      String name, String description, String displayName, EntityReference owner) {
     return create(name).withDescription(description).withOwner(owner);
   }
 
@@ -210,7 +230,8 @@ public class TopicResourceTest extends EntityResourceTest<Topic> {
   }
 
   @Override
-  public void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException {
+  public void assertFieldChange(String fieldName, Object expected, Object actual)
+      throws IOException {
     assertCommonFieldChange(fieldName, expected, actual);
   }
 }

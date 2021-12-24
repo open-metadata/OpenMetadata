@@ -13,6 +13,9 @@
 
 package org.openmetadata.catalog.selenium.pages.common;
 
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.logging.Logger;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.MethodOrderer;
@@ -30,10 +33,6 @@ import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.interactions.Actions;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
-
-import java.time.Duration;
-import java.util.ArrayList;
-import java.util.logging.Logger;
 
 @Order(14)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
@@ -67,12 +66,16 @@ public class PaginationAndFilterTest {
     Thread.sleep(waitTime);
     Events.click(webDriver, By.cssSelector("[data-testid='tables']")); // Tables
     for (int i = 0; i <= 5; i++) {
-      Events.click(webDriver, By.xpath("//div[@data-testid='pagination-button']//ul//li[2]")); // Next Page
+      Events.click(
+          webDriver, By.xpath("//div[@data-testid='pagination-button']//ul//li[2]")); // Next Page
     }
-    Events.click(webDriver, By.cssSelector("[data-testid='checkbox'][id='BigQuery']")); // Select Filter
+    Events.click(
+        webDriver, By.cssSelector("[data-testid='checkbox'][id='BigQuery']")); // Select Filter
     try {
-      WebElement noDataFound = wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath(
-          "//*[contains(text(), 'No matching data assets found')]")));
+      WebElement noDataFound =
+          wait.until(
+              ExpectedConditions.presenceOfElementLocated(
+                  By.xpath("//*[contains(text(), 'No matching data assets found')]")));
       if (noDataFound.isDisplayed()) {
         throw new Exception("Flakiness exists");
       }
@@ -87,10 +90,13 @@ public class PaginationAndFilterTest {
     Events.click(webDriver, By.cssSelector("[data-testid='closeWhatsNew']")); // Close What's new
     Thread.sleep(waitTime);
     Events.click(webDriver, By.cssSelector("[data-testid='tables']")); // Tables
-    Events.click(webDriver, By.cssSelector("[data-testid='checkbox'][id='BigQuery']")); // Select Filter
+    Events.click(
+        webDriver, By.cssSelector("[data-testid='checkbox'][id='BigQuery']")); // Select Filter
     try {
-      WebElement noDataFound = wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath(
-          "//*[contains(text(), 'No matching data assets found')]")));
+      WebElement noDataFound =
+          wait.until(
+              ExpectedConditions.presenceOfElementLocated(
+                  By.xpath("//*[contains(text(), 'No matching data assets found')]")));
       if (noDataFound.isDisplayed()) {
         throw new Exception("Data not found with filter count more than 0");
       }
@@ -105,15 +111,18 @@ public class PaginationAndFilterTest {
     Events.click(webDriver, By.cssSelector("[data-testid='closeWhatsNew']")); // Close What's new
     Thread.sleep(waitTime);
     Events.click(webDriver, By.cssSelector("[data-testid='tables']")); // Tables
-    Events.click(webDriver, By.cssSelector("[data-testid='checkbox'][id='Tier.Tier3']")); // Select Filter
+    Events.click(
+        webDriver, By.cssSelector("[data-testid='checkbox'][id='Tier.Tier3']")); // Select Filter
     try {
 
-      WebElement dataFound = wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector(
-          "[data-testid='search-results']")));
+      WebElement dataFound =
+          wait.until(
+              ExpectedConditions.presenceOfElementLocated(
+                  By.cssSelector("[data-testid='search-results']")));
       if (dataFound.isDisplayed()) {
         throw new Exception("Data found with filter count 0");
       }
-    } catch(TimeoutException exception) {
+    } catch (TimeoutException exception) {
       LOG.info("Success");
     }
   }

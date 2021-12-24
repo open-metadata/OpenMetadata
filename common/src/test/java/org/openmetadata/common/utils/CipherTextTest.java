@@ -23,7 +23,9 @@ public class CipherTextTest {
   @Test
   public void encryptDescryptTest() throws GeneralSecurityException, UnsupportedEncodingException {
     CipherText cipherText = CipherText.instance();
-    String[] strings = {"test1", "test2", "service.dwh.fact_trip", "random text", "user@domain.com"};
+    String[] strings = {
+      "test1", "test2", "service.dwh.fact_trip", "random text", "user@domain.com"
+    };
     for (String str : strings) {
       String encryptedStr = cipherText.encrypt(str);
       assertEquals(str, cipherText.decrypt(encryptedStr));

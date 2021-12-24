@@ -36,7 +36,8 @@ public class ChangeEventHandler implements EventHandler {
     this.dao = jdbi.onDemand(CollectionDAO.class);
   }
 
-  public Void process(ContainerRequestContext requestContext, ContainerResponseContext responseContext) {
+  public Void process(
+      ContainerRequestContext requestContext, ContainerResponseContext responseContext) {
     String method = requestContext.getMethod();
     try {
       ChangeEvent changeEvent = getChangeEvent(method, responseContext);
@@ -55,7 +56,8 @@ public class ChangeEventHandler implements EventHandler {
     return null;
   }
 
-  public static ChangeEvent getChangeEvent(String method, ContainerResponseContext responseContext) {
+  public static ChangeEvent getChangeEvent(
+      String method, ContainerResponseContext responseContext) {
     // GET operations don't produce change events
     if (method.equals("GET")) {
       return null;
@@ -70,10 +72,12 @@ public class ChangeEventHandler implements EventHandler {
     String changeType = responseContext.getHeaderString(RestUtil.CHANGE_CUSTOM_HEADER);
 
     // Entity was created by either POST .../entities or PUT .../entities
-    if (responseCode == Status.CREATED.getStatusCode() && !RestUtil.ENTITY_FIELDS_CHANGED.equals(changeType)) {
+    if (responseCode == Status.CREATED.getStatusCode()
+        && !RestUtil.ENTITY_FIELDS_CHANGED.equals(changeType)) {
       var entityInterface = Entity.getEntityInterface(entity);
       String entityType = Entity.getEntityReference(entity).getType();
-      return getChangeEvent(EventType.ENTITY_CREATED, entityType, entityInterface).withEntity(entity);
+      return getChangeEvent(EventType.ENTITY_CREATED, entityType, entityInterface)
+          .withEntity(entity);
     }
 
     // PUT or PATCH operation didn't result in any change
@@ -89,7 +93,8 @@ public class ChangeEventHandler implements EventHandler {
           .withPreviousVersion(entityInterface.getChangeDescription().getPreviousVersion());
     }
 
-    // Entity field was updated by PUT .../entities/{id}/fieldName - Example PUT ../tables/{id}/follower
+    // Entity field was updated by PUT .../entities/{id}/fieldName - Example PUT
+    // ../tables/{id}/follower
     if (changeType.equals(RestUtil.ENTITY_FIELDS_CHANGED)) {
       return (ChangeEvent) entity;
     }
@@ -101,7 +106,8 @@ public class ChangeEventHandler implements EventHandler {
     return null;
   }
 
-  private static ChangeEvent getChangeEvent(EventType eventType, String entityType, EntityInterface entityInterface) {
+  private static ChangeEvent getChangeEvent(
+      EventType eventType, String entityType, EntityInterface entityInterface) {
     return new ChangeEvent()
         .withEventType(eventType)
         .withEntityId(entityInterface.getId())

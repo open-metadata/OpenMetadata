@@ -32,7 +32,8 @@ public final class DatabaseUtil {
       if (c.getConstraint() == ColumnConstraint.PRIMARY_KEY) {
         primaryKeyColumns++;
         if (primaryKeyColumns > 1) {
-          throw new IllegalArgumentException("Multiple columns tagged with primary key constraints");
+          throw new IllegalArgumentException(
+              "Multiple columns tagged with primary key constraints");
         }
       }
     }
@@ -40,7 +41,8 @@ public final class DatabaseUtil {
   }
 
   /** Validate column and table constraints */
-  public static void validateConstraints(List<Column> columns, List<TableConstraint> tableConstraints) {
+  public static void validateConstraints(
+      List<Column> columns, List<TableConstraint> tableConstraints) {
     boolean primaryColumnExists = validateSinglePrimaryColumn(columns);
     if (tableConstraints == null) {
       return;
@@ -50,9 +52,11 @@ public final class DatabaseUtil {
     List<String> columnNames = new ArrayList<>();
     columns.forEach(c -> columnNames.add(c.getName()));
     for (TableConstraint t : tableConstraints) {
-      if (t.getConstraintType() == TableConstraint.ConstraintType.PRIMARY_KEY && primaryColumnExists) {
+      if (t.getConstraintType() == TableConstraint.ConstraintType.PRIMARY_KEY
+          && primaryColumnExists) {
         throw new IllegalArgumentException(
-            "A column already tagged as a primary key and table constraint also " + "includes primary key");
+            "A column already tagged as a primary key and table constraint also "
+                + "includes primary key");
       }
       for (String columnName : t.getColumns()) {
         if (!columnNames.contains(columnName)) {
@@ -63,7 +67,9 @@ public final class DatabaseUtil {
   }
 
   public static void validateViewDefinition(TableType tableType, String viewDefinition) {
-    if ((tableType == null || tableType.equals(TableType.Regular) || tableType.equals(TableType.External))
+    if ((tableType == null
+            || tableType.equals(TableType.Regular)
+            || tableType.equals(TableType.External))
         && viewDefinition != null
         && !viewDefinition.isEmpty()) {
       throw new IllegalArgumentException(
@@ -85,7 +91,8 @@ public final class DatabaseUtil {
     List<String> columnNames = new ArrayList<>();
     for (Column c : columns) {
       if (columnNames.contains(c.getName())) {
-        throw new IllegalArgumentException(String.format("Column name %s is repeated", c.getName()));
+        throw new IllegalArgumentException(
+            String.format("Column name %s is repeated", c.getName()));
       }
       columnNames.add(c.getName());
     }
@@ -103,7 +110,9 @@ public final class DatabaseUtil {
 
     if (!dataTypeDisplay.startsWith(dataType)) {
       throw new IllegalArgumentException(
-          String.format("columnDataType %s does not match columnDataTypeDisplay %s", dataType, dataTypeDisplay));
+          String.format(
+              "columnDataType %s does not match columnDataTypeDisplay %s",
+              dataType, dataTypeDisplay));
     }
 
     column.setDataTypeDisplay(dataTypeDisplay); // Make dataTypeDisplay lower case
@@ -118,7 +127,8 @@ public final class DatabaseUtil {
             || dataType == ColumnDataType.VARBINARY)
         && column.getDataLength() == null) {
       throw new IllegalArgumentException(
-          "For column data types char, varchar, binary, varbinary dataLength " + "must not be null");
+          "For column data types char, varchar, binary, varbinary dataLength "
+              + "must not be null");
     }
   }
 
@@ -131,12 +141,14 @@ public final class DatabaseUtil {
 
     if (dataType == ColumnDataType.ARRAY) {
       if (column.getArrayDataType() == null) {
-        throw new IllegalArgumentException("For column data type array, arrayDataType " + "must not be null");
+        throw new IllegalArgumentException(
+            "For column data type array, arrayDataType " + "must not be null");
       }
 
       if (!column.getDataTypeDisplay().startsWith("array<")) {
         throw new IllegalArgumentException(
-            "For column data type array, dataTypeDisplay must be of type " + "array<arrayDataType>");
+            "For column data type array, dataTypeDisplay must be of type "
+                + "array<arrayDataType>");
       }
     }
   }
@@ -145,13 +157,15 @@ public final class DatabaseUtil {
     ColumnDataType dataType = column.getDataType();
     if (dataType == ColumnDataType.STRUCT) {
       if (column.getChildren() == null) {
-        throw new IllegalArgumentException("For column data type struct, children " + "must not be null");
+        throw new IllegalArgumentException(
+            "For column data type struct, children " + "must not be null");
       }
 
       validateColumnNames(column.getChildren());
       if (!column.getDataTypeDisplay().startsWith("struct<")) {
         throw new IllegalArgumentException(
-            "For column data type struct, dataTypeDisplay must be of type " + "struct<member fields>");
+            "For column data type struct, dataTypeDisplay must be of type "
+                + "struct<member fields>");
       }
     }
   }

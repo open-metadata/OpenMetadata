@@ -19,18 +19,23 @@ import org.openmetadata.catalog.type.ChangeEvent;
 @Consumes(MediaType.APPLICATION_JSON)
 public class WebhookCallbackResource {
   private final ConcurrentLinkedQueue<ChangeEvent> changeEvents = new ConcurrentLinkedQueue<>();
-  private final ConcurrentLinkedQueue<ChangeEvent> changeEventsSlowServer = new ConcurrentLinkedQueue<>();
+  private final ConcurrentLinkedQueue<ChangeEvent> changeEventsSlowServer =
+      new ConcurrentLinkedQueue<>();
 
   @POST
   @Path("/ignore")
   public Response receiveEventIgnore(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, EventResource.ChangeEventList events) {
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      EventResource.ChangeEventList events) {
     return Response.ok().build();
   }
 
   @POST
   public Response receiveEvent(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, EventResource.ChangeEventList events) {
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      EventResource.ChangeEventList events) {
     changeEvents.addAll(events.getData());
     return Response.ok().build();
   }
@@ -38,7 +43,9 @@ public class WebhookCallbackResource {
   @POST
   @Path("/slowServer")
   public Response receiveEventWithDelay(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, EventResource.ChangeEventList events) {
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      EventResource.ChangeEventList events) {
     try {
       Thread.sleep(1000);
     } catch (InterruptedException e) {
@@ -51,7 +58,9 @@ public class WebhookCallbackResource {
   @POST
   @Path("/timeout")
   public Response receiveEventWithTimeout(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, EventResource.ChangeEventList events) {
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      EventResource.ChangeEventList events) {
     try {
       Thread.sleep(11 * 1000);
     } catch (InterruptedException e) {
@@ -63,21 +72,27 @@ public class WebhookCallbackResource {
   @POST
   @Path("/300")
   public Response receiveEvent300(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, EventResource.ChangeEventList events) {
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      EventResource.ChangeEventList events) {
     return Response.status(Response.Status.MOVED_PERMANENTLY).build();
   }
 
   @POST
   @Path("/400")
   public Response receiveEvent400(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, EventResource.ChangeEventList events) {
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      EventResource.ChangeEventList events) {
     return Response.status(Response.Status.BAD_REQUEST).build();
   }
 
   @POST
   @Path("/500")
   public Response receiveEvent500(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, EventResource.ChangeEventList events) {
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      EventResource.ChangeEventList events) {
     return Response.status(Response.Status.INTERNAL_SERVER_ERROR).build();
   }
 

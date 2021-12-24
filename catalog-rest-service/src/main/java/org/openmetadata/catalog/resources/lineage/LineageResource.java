@@ -75,7 +75,10 @@ public class LineageResource {
         @ApiResponse(
             responseCode = "200",
             description = "Entity lineage",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = EntityLineage.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = EntityLineage.class))),
         @ApiResponse(responseCode = "404", description = "Entity for instance {id} is not found")
       })
   public EntityLineage get(
@@ -86,11 +89,14 @@ public class LineageResource {
               schema = @Schema(type = "string", example = "table, report, metrics, or dashboard"))
           @PathParam("entity")
           String entity,
-      @Parameter(description = "Entity id", required = true, schema = @Schema(type = "string")) @PathParam("id")
+      @Parameter(description = "Entity id", required = true, schema = @Schema(type = "string"))
+          @PathParam("id")
           String id,
-      @Parameter(description = "Upstream depth of lineage (default=1, min=0, max=3)") @QueryParam("upstreamDepth")
+      @Parameter(description = "Upstream depth of lineage (default=1, min=0, max=3)")
+          @QueryParam("upstreamDepth")
           int upstreamDepth,
-      @Parameter(description = "Downstream depth of lineage (default=1, min=0, max=3)") @QueryParam("downstreamDepth")
+      @Parameter(description = "Downstream depth of lineage (default=1, min=0, max=3)")
+          @QueryParam("downstreamDepth")
           int downStreamDepth)
       throws IOException {
     upstreamDepth = Math.min(Math.max(upstreamDepth, 0), 3);
@@ -109,7 +115,10 @@ public class LineageResource {
         @ApiResponse(
             responseCode = "200",
             description = "Entity lineage",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = EntityLineage.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = EntityLineage.class))),
         @ApiResponse(responseCode = "404", description = "Entity for instance {id} is not found")
       })
   public EntityLineage getByName(
@@ -146,12 +155,14 @@ public class LineageResource {
   @Operation(
       summary = "Add a lineage edge",
       tags = "lineage",
-      description = "Add a lineage edge with from entity as upstream node and to entity as downstream node.",
+      description =
+          "Add a lineage edge with from entity as upstream node and to entity as downstream node.",
       responses = {
         @ApiResponse(responseCode = "200"),
         @ApiResponse(responseCode = "404", description = "Entity for instance {id} is not found")
       })
-  public Response addLineage(@Context UriInfo uriInfo, @Valid AddLineage addLineage) throws IOException {
+  public Response addLineage(@Context UriInfo uriInfo, @Valid AddLineage addLineage)
+      throws IOException {
     dao.addLineage(addLineage);
     return Response.status(Status.OK).build();
   }

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ExternalDependencies">
+    <plugin id="google-java-format" min-version="1.13.0" max-version="1.13.0" />
+  </component>
+</project>

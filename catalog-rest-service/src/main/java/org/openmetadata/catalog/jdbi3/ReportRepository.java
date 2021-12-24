@@ -49,7 +49,9 @@ public class ReportRepository extends EntityRepository<Report> {
     report.setService(getService(report)); // service is a default field
     report.setOwner(fields.contains("owner") ? getOwner(report) : null);
     report.setUsageSummary(
-        fields.contains("usageSummary") ? EntityUtil.getLatestUsage(dao.usageDAO(), report.getId()) : null);
+        fields.contains("usageSummary")
+            ? EntityUtil.getLatestUsage(dao.usageDAO(), report.getId())
+            : null);
     return report;
   }
 
@@ -80,7 +82,9 @@ public class ReportRepository extends EntityRepository<Report> {
   }
 
   private EntityReference getService(Report report) {
-    return report == null ? null : getService(EntityUtil.getService(dao.relationshipDAO(), report.getId()));
+    return report == null
+        ? null
+        : getService(EntityUtil.getService(dao.relationshipDAO(), report.getId()));
   }
 
   private EntityReference getService(EntityReference service) {
@@ -105,7 +109,8 @@ public class ReportRepository extends EntityRepository<Report> {
   private EntityReference getOwner(Report report) throws IOException {
     return report == null
         ? null
-        : EntityUtil.populateOwner(report.getId(), dao.relationshipDAO(), dao.userDAO(), dao.teamDAO());
+        : EntityUtil.populateOwner(
+            report.getId(), dao.relationshipDAO(), dao.userDAO(), dao.teamDAO());
   }
 
   public void setOwner(Report report, EntityReference owner) {

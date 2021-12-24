@@ -14,7 +14,14 @@
 package org.openmetadata.catalog.selenium.pages.topicDetails;
 
 import com.github.javafaker.Faker;
+import java.time.Duration;
+import java.util.ArrayList;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.catalog.selenium.events.Events;
 import org.openmetadata.catalog.selenium.properties.Property;
 import org.openqa.selenium.By;
@@ -24,14 +31,6 @@ import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.interactions.Actions;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.Order;
-import org.junit.jupiter.api.TestMethodOrder;
-import org.junit.jupiter.api.MethodOrderer;
-
-import java.time.Duration;
-import java.util.ArrayList;
 
 @Order(7)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
@@ -39,7 +38,8 @@ public class TopicDetailsPageTest {
   static WebDriver webDriver;
   static String url = Property.getInstance().getURL();
   static Faker faker = new Faker();
-  static String enterDescription = "//div[@data-testid='enterDescription']/div/div[2]/div/div/div/div/div/div";
+  static String enterDescription =
+      "//div[@data-testid='enterDescription']/div/div[2]/div/div/div/div/div/div";
   static Actions actions;
   static WebDriverWait wait;
   Integer waitTime = Property.getInstance().getSleepTime();
@@ -162,15 +162,20 @@ public class TopicDetailsPageTest {
     Events.click(webDriver, By.cssSelector("[data-testid='sortBy']")); // Sort By
     Events.click(webDriver, By.cssSelector("[data-testid='list-item']")); // Last Updated
     Events.click(webDriver, By.xpath("(//a[@data-testid='table-link'])[last()]"));
-    wait.until(ExpectedConditions.elementToBeClickable(By.cssSelector("[data-testid='breadcrumb-link']")));
+    wait.until(
+        ExpectedConditions.elementToBeClickable(By.cssSelector("[data-testid='breadcrumb-link']")));
     Events.click(webDriver, By.cssSelector("[data-testid='breadcrumb-link']"));
-    wait.until(ExpectedConditions.elementToBeClickable(By.cssSelector("[data-testid='edit-description']")));
+    wait.until(
+        ExpectedConditions.elementToBeClickable(
+            By.cssSelector("[data-testid='edit-description']")));
     Events.click(webDriver, By.cssSelector("[data-testid='edit-description']")); // edit description
     Events.sendKeys(webDriver, By.xpath(enterDescription), faker.address().toString());
     Events.click(webDriver, By.cssSelector("[data-testid='save']"));
-    for (int i = 1; i <= 3; i++) { //check topics in service
-      Events.click(webDriver, By.xpath("(//tr[@data-testid='column']//td[1]/a)" + "[" + i + "]")); // topics
-      Events.click(webDriver, By.cssSelector("[data-testid='edit-description']")); // edit description
+    for (int i = 1; i <= 3; i++) { // check topics in service
+      Events.click(
+          webDriver, By.xpath("(//tr[@data-testid='column']//td[1]/a)" + "[" + i + "]")); // topics
+      Events.click(
+          webDriver, By.cssSelector("[data-testid='edit-description']")); // edit description
       Events.sendKeys(webDriver, By.xpath(enterDescription), faker.address().toString());
       Events.click(webDriver, By.cssSelector("[data-testid='save']"));
       Thread.sleep(waitTime);

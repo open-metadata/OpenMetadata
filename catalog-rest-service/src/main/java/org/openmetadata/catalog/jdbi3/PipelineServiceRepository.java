@@ -82,7 +82,8 @@ public class PipelineServiceRepository extends EntityRepository<PipelineService>
   public void storeRelationships(PipelineService entity) {}
 
   @Override
-  public EntityUpdater getUpdater(PipelineService original, PipelineService updated, boolean patchOperation) {
+  public EntityUpdater getUpdater(
+      PipelineService original, PipelineService updated, boolean patchOperation) {
     return new PipelineServiceUpdater(original, updated, patchOperation);
   }
 
@@ -208,13 +209,17 @@ public class PipelineServiceRepository extends EntityRepository<PipelineService>
   }
 
   public class PipelineServiceUpdater extends EntityUpdater {
-    public PipelineServiceUpdater(PipelineService original, PipelineService updated, boolean patchOperation) {
+    public PipelineServiceUpdater(
+        PipelineService original, PipelineService updated, boolean patchOperation) {
       super(original, updated, patchOperation);
     }
 
     @Override
     public void entitySpecificUpdate() throws IOException {
-      recordChange("pipelineUrl", original.getEntity().getPipelineUrl(), updated.getEntity().getPipelineUrl());
+      recordChange(
+          "pipelineUrl",
+          original.getEntity().getPipelineUrl(),
+          updated.getEntity().getPipelineUrl());
       recordChange(
           "ingestionSchedule",
           original.getEntity().getIngestionSchedule(),

@@ -70,8 +70,10 @@ public final class EntityUtil {
       Comparator.comparing(entityReference -> entityReference.getId().toString());
   public static final Comparator<EntityVersionPair> compareVersion =
       Comparator.comparing(EntityVersionPair::getVersion);
-  public static final Comparator<TagLabel> compareTagLabel = Comparator.comparing(TagLabel::getTagFQN);
-  public static final Comparator<FieldChange> compareFieldChange = Comparator.comparing(FieldChange::getName);
+  public static final Comparator<TagLabel> compareTagLabel =
+      Comparator.comparing(TagLabel::getTagFQN);
+  public static final Comparator<FieldChange> compareFieldChange =
+      Comparator.comparing(FieldChange::getName);
   public static final Comparator<TableConstraint> compareTableConstraint =
       Comparator.comparing(TableConstraint::getConstraintType);
 
@@ -86,7 +88,8 @@ public final class EntityUtil {
   public static final BiPredicate<TagLabel, TagLabel> tagLabelMatch =
       (tag1, tag2) -> tag1.getTagFQN().equals(tag2.getTagFQN());
 
-  public static final BiPredicate<Task, Task> taskMatch = (task1, task2) -> task1.getName().equals(task2.getName());
+  public static final BiPredicate<Task, Task> taskMatch =
+      (task1, task2) -> task1.getName().equals(task2.getName());
 
   public static final BiPredicate<String, String> stringMatch = String::equals;
 
@@ -106,7 +109,8 @@ public final class EntityUtil {
               && constraint1.getColumns().equals(constraint2.getColumns());
 
   public static final BiPredicate<MlFeature, MlFeature> mlFeatureMatch = MlFeature::equals;
-  public static final BiPredicate<MlHyperParameter, MlHyperParameter> mlHyperParameterMatch = MlHyperParameter::equals;
+  public static final BiPredicate<MlHyperParameter, MlHyperParameter> mlHyperParameterMatch =
+      MlHyperParameter::equals;
 
   private EntityUtil() {}
 
@@ -119,9 +123,12 @@ public final class EntityUtil {
 
     // ISO8601 duration format is P{y}Y{m}M{d}DT{h}H{m}M{s}S.
     String[] splits = duration.split("T");
-    if (splits[0].contains("Y") || splits[0].contains("M") || (splits.length == 2 && splits[1].contains("S"))) {
+    if (splits[0].contains("Y")
+        || splits[0].contains("M")
+        || (splits.length == 2 && splits[1].contains("S"))) {
       throw new IllegalArgumentException(
-          "Ingestion repeatFrequency can only contain Days, Hours, and Minutes - " + "example P{d}DT{h}H{m}M");
+          "Ingestion repeatFrequency can only contain Days, Hours, and Minutes - "
+              + "example P{d}DT{h}H{m}M");
     }
 
     Period period;
@@ -131,18 +138,21 @@ public final class EntityUtil {
       throw new IllegalArgumentException("Invalid ingestion repeatFrequency " + duration, e);
     }
     if (period.toStandardMinutes().getMinutes() < 60) {
-      throw new IllegalArgumentException("Ingestion repeatFrequency is too short and must be more than 60 minutes");
+      throw new IllegalArgumentException(
+          "Ingestion repeatFrequency is too short and must be more than 60 minutes");
     }
   }
 
   /** Validate that JSON payload can be turned into POJO object */
-  public static <T> T validate(String identity, String json, Class<T> clz) throws WebApplicationException, IOException {
+  public static <T> T validate(String identity, String json, Class<T> clz)
+      throws WebApplicationException, IOException {
     T entity = null;
     if (json != null) {
       entity = JsonUtils.readValue(json, clz);
     }
     if (entity == null) {
-      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(clz.getSimpleName(), identity));
+      throw EntityNotFoundException.byMessage(
+          CatalogExceptionMessage.entityNotFound(clz.getSimpleName(), identity));
     }
     return entity;
   }
@@ -156,8 +166,10 @@ public final class EntityUtil {
     return refs.isEmpty() ? null : refs.get(0);
   }
 
-  public static EntityReference getService(EntityRelationshipDAO dao, UUID entityId, String serviceType) {
-    List<EntityReference> refs = dao.findFromEntity(entityId.toString(), Relationship.CONTAINS.ordinal(), serviceType);
+  public static EntityReference getService(
+      EntityRelationshipDAO dao, UUID entityId, String serviceType) {
+    List<EntityReference> refs =
+        dao.findFromEntity(entityId.toString(), Relationship.CONTAINS.ordinal(), serviceType);
     if (refs.size() > 1) {
       LOG.warn("Possible database issues - multiple services found for entity {}", entityId);
       return refs.get(0);
@@ -167,22 +179,25 @@ public final class EntityUtil {
 
   public static void validateUser(UserDAO userDAO, UUID userId) {
     if (!userDAO.exists(userId)) {
-      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(Entity.USER, userId));
+      throw EntityNotFoundException.byMessage(
+          CatalogExceptionMessage.entityNotFound(Entity.USER, userId));
     }
   }
 
   // Get owner for a given entity
   public static EntityReference populateOwner(
-      UUID id, EntityRelationshipDAO entityRelationshipDAO, UserDAO userDAO, TeamDAO teamDAO) throws IOException {
-    List<EntityReference> ids = entityRelationshipDAO.findFrom(id.toString(), Relationship.OWNS.ordinal());
+      UUID id, EntityRelationshipDAO entityRelationshipDAO, UserDAO userDAO, TeamDAO teamDAO)
+      throws IOException {
+    List<EntityReference> ids =
+        entityRelationshipDAO.findFrom(id.toString(), Relationship.OWNS.ordinal());
     if (ids.size() > 1) {
       LOG.warn("Possible database issues - multiple owners {} found for entity {}", ids, id);
     }
     return ids.isEmpty() ? null : populateOwner(userDAO, teamDAO, ids.get(0));
   }
 
-  public static EntityReference populateOwner(UserDAO userDAO, TeamDAO teamDAO, EntityReference owner)
-      throws IOException {
+  public static EntityReference populateOwner(
+      UserDAO userDAO, TeamDAO teamDAO, EntityReference owner) throws IOException {
     if (owner == null) {
       return null;
     }
@@ -204,10 +219,18 @@ public final class EntityUtil {
   }
 
   public static void setOwner(
-      EntityRelationshipDAO dao, UUID ownedEntityId, String ownedEntityType, EntityReference owner) {
+      EntityRelationshipDAO dao,
+      UUID ownedEntityId,
+      String ownedEntityType,
+      EntityReference owner) {
     // Add relationship owner --- owns ---> ownedEntity
     if (owner != null) {
-      LOG.info("Adding owner {}:{} for entity {}:{}", owner.getType(), owner.getId(), ownedEntityType, ownedEntityId);
+      LOG.info(
+          "Adding owner {}:{} for entity {}:{}",
+          owner.getType(),
+          owner.getId(),
+          ownedEntityType,
+          ownedEntityId);
       dao.insert(
           owner.getId().toString(),
           ownedEntityId.toString(),
@@ -218,7 +241,8 @@ public final class EntityUtil {
   }
 
   /** Unassign owner relationship for a given entity */
-  public static void unassignOwner(EntityRelationshipDAO dao, EntityReference owner, String ownedEntityId) {
+  public static void unassignOwner(
+      EntityRelationshipDAO dao, EntityReference owner, String ownedEntityId) {
     if (owner != null && owner.getId() != null) {
       LOG.info("Removing owner {}:{} for entity {}", owner.getType(), owner.getId(), ownedEntityId);
       dao.delete(owner.getId().toString(), ownedEntityId, Relationship.OWNS.ordinal());
@@ -237,7 +261,8 @@ public final class EntityUtil {
     setOwner(dao, ownedEntityId, ownedEntityType, newOwner);
   }
 
-  public static List<EntityReference> populateEntityReferences(List<EntityReference> list) throws IOException {
+  public static List<EntityReference> populateEntityReferences(List<EntityReference> list)
+      throws IOException {
     for (EntityReference ref : list) {
       populateEntityReference(ref);
     }
@@ -279,22 +304,29 @@ public final class EntityUtil {
       if (json == null) {
         // Invalid TagLabel
         throw EntityNotFoundException.byMessage(
-            CatalogExceptionMessage.entityNotFound(Tag.class.getSimpleName(), tagLabel.getTagFQN()));
+            CatalogExceptionMessage.entityNotFound(
+                Tag.class.getSimpleName(), tagLabel.getTagFQN()));
       }
 
       // Apply tagLabel to targetFQN that identifies an entity or field
       tagDAO.applyTag(
-          tagLabel.getTagFQN(), targetFQN, tagLabel.getLabelType().ordinal(), tagLabel.getState().ordinal());
+          tagLabel.getTagFQN(),
+          targetFQN,
+          tagLabel.getLabelType().ordinal(),
+          tagLabel.getState().ordinal());
     }
   }
 
-  public static List<TagLabel> getDerivedTags(TagDAO tagDAO, TagLabel tagLabel, Tag tag) throws IOException {
+  public static List<TagLabel> getDerivedTags(TagDAO tagDAO, TagLabel tagLabel, Tag tag)
+      throws IOException {
     List<TagLabel> derivedTags = new ArrayList<>();
-    for (String fqn : Optional.ofNullable(tag.getAssociatedTags()).orElse(Collections.emptyList())) {
+    for (String fqn :
+        Optional.ofNullable(tag.getAssociatedTags()).orElse(Collections.emptyList())) {
       String json = tagDAO.findTag(fqn);
       if (json == null) {
         // Invalid TagLabel
-        throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(Tag.class.getSimpleName(), fqn));
+        throw EntityNotFoundException.byMessage(
+            CatalogExceptionMessage.entityNotFound(Tag.class.getSimpleName(), fqn));
       }
       Tag tempTag = JsonUtils.readValue(json, Tag.class);
       derivedTags.add(
@@ -308,14 +340,16 @@ public final class EntityUtil {
   }
 
   /** Validate given list of tags and add derived tags to it */
-  public static List<TagLabel> addDerivedTags(TagDAO tagDAO, List<TagLabel> tagLabels) throws IOException {
+  public static List<TagLabel> addDerivedTags(TagDAO tagDAO, List<TagLabel> tagLabels)
+      throws IOException {
     List<TagLabel> updatedTagLabels = new ArrayList<>();
     for (TagLabel tagLabel : Optional.ofNullable(tagLabels).orElse(Collections.emptyList())) {
       String json = tagDAO.findTag(tagLabel.getTagFQN());
       if (json == null) {
         // Invalid TagLabel
         throw EntityNotFoundException.byMessage(
-            CatalogExceptionMessage.entityNotFound(Tag.class.getSimpleName(), tagLabel.getTagFQN()));
+            CatalogExceptionMessage.entityNotFound(
+                Tag.class.getSimpleName(), tagLabel.getTagFQN()));
       }
       Tag tag = JsonUtils.readValue(json, Tag.class);
       updatedTagLabels.add(tagLabel);
@@ -367,18 +401,22 @@ public final class EntityUtil {
         > 0;
   }
 
-  public static void removeFollower(EntityRelationshipDAO dao, UUID followedEntityId, UUID followerId) {
+  public static void removeFollower(
+      EntityRelationshipDAO dao, UUID followedEntityId, UUID followerId) {
     dao.delete(followerId.toString(), followedEntityId.toString(), Relationship.FOLLOWS.ordinal());
   }
 
   public static List<EntityReference> getFollowers(
-      UUID followedEntityId, EntityRelationshipDAO entityRelationshipDAO, UserDAO userDAO) throws IOException {
+      UUID followedEntityId, EntityRelationshipDAO entityRelationshipDAO, UserDAO userDAO)
+      throws IOException {
     List<String> followerIds =
-        entityRelationshipDAO.findFrom(followedEntityId.toString(), Relationship.FOLLOWS.ordinal(), Entity.USER);
+        entityRelationshipDAO.findFrom(
+            followedEntityId.toString(), Relationship.FOLLOWS.ordinal(), Entity.USER);
     List<EntityReference> followers = new ArrayList<>();
     for (String followerId : followerIds) {
       User user = userDAO.findEntityById(UUID.fromString(followerId));
-      followers.add(new EntityReference().withName(user.getName()).withId(user.getId()).withType("user"));
+      followers.add(
+          new EntityReference().withName(user.getName()).withId(user.getId()).withType("user"));
     }
     return followers;
   }
@@ -409,7 +447,10 @@ public final class EntityUtil {
     if (refList == null) {
       return null;
     }
-    return refList.stream().sorted(compareEntityReference).map(EntityReference::getId).collect(Collectors.toList());
+    return refList.stream()
+        .sorted(compareEntityReference)
+        .map(EntityReference::getId)
+        .collect(Collectors.toList());
   }
 
   public static String getVersionExtension(String entityName, Double version) {
@@ -428,7 +469,8 @@ public final class EntityUtil {
 
   public static String getLocalColumnName(String fqn) {
     // Return for fqn=service.database.table.c1 -> c1
-    // Return for fqn=service.database.table.c1.c2 -> c1.c2 (note different from just the local name of the column c2)
+    // Return for fqn=service.database.table.c1.c2 -> c1.c2 (note different from just the local name
+    // of the column c2)
     StringBuilder localColumnName = new StringBuilder();
     String[] s = fqn.split("\\.");
     for (int i = 3; i < s.length - 1; i++) {

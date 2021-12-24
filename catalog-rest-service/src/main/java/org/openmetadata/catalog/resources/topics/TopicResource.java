@@ -79,7 +79,9 @@ public class TopicResource {
   private final CatalogAuthorizer authorizer;
 
   public static ResultList<Topic> addHref(UriInfo uriInfo, ResultList<Topic> topics) {
-    Optional.ofNullable(topics.getData()).orElse(Collections.emptyList()).forEach(i -> addHref(uriInfo, i));
+    Optional.ofNullable(topics.getData())
+        .orElse(Collections.emptyList())
+        .forEach(i -> addHref(uriInfo, i));
     return topics;
   }
 
@@ -109,21 +111,25 @@ public class TopicResource {
   }
 
   static final String FIELDS = "owner,followers,tags";
-  public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replaceAll(" ", "").split(","));
+  public static final List<String> FIELD_LIST =
+      Arrays.asList(FIELDS.replaceAll(" ", "").split(","));
 
   @GET
   @Operation(
       summary = "List topics",
       tags = "topics",
       description =
-          "Get a list of topics, optionally filtered by `service` it belongs to. Use `fields` "
-              + "parameter to get only necessary fields. Use cursor-based pagination to limit the number "
-              + "entries in the list using `limit` and `before` or `after` query params.",
+          "Get a list of topics, optionally filtered by `service` it belongs to. Use `fields`"
+              + " parameter to get only necessary fields. Use cursor-based pagination to limit the"
+              + " number entries in the list using `limit` and `before` or `after` query params.",
       responses = {
         @ApiResponse(
             responseCode = "200",
             description = "List of topics",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = TopicList.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = TopicList.class)))
       })
   public ResultList<Topic> list(
       @Context UriInfo uriInfo,
@@ -138,16 +144,21 @@ public class TopicResource {
               schema = @Schema(type = "string", example = "kafkaWestCoast"))
           @QueryParam("service")
           String serviceParam,
-      @Parameter(description = "Limit the number topics returned. (1 to 1000000, default = " + "10)")
+      @Parameter(
+              description = "Limit the number topics returned. (1 to 1000000, default = " + "10)")
           @DefaultValue("10")
           @QueryParam("limit")
           @Min(1)
           @Max(1000000)
           int limitParam,
-      @Parameter(description = "Returns list of topics before this cursor", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Returns list of topics before this cursor",
+              schema = @Schema(type = "string"))
           @QueryParam("before")
           String before,
-      @Parameter(description = "Returns list of topics after this cursor", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Returns list of topics after this cursor",
+              schema = @Schema(type = "string"))
           @QueryParam("after")
           String after)
       throws IOException, GeneralSecurityException, ParseException {
@@ -156,7 +167,9 @@ public class TopicResource {
 
     ResultList<Topic> topics;
     if (before != null) { // Reverse paging
-      topics = dao.listBefore(uriInfo, fields, serviceParam, limitParam, before); // Ask for one extra entry
+      topics =
+          dao.listBefore(
+              uriInfo, fields, serviceParam, limitParam, before); // Ask for one extra entry
     } else { // Forward paging or first page
       topics = dao.listAfter(uriInfo, fields, serviceParam, limitParam, after);
     }
@@ -173,12 +186,16 @@ public class TopicResource {
         @ApiResponse(
             responseCode = "200",
             description = "List of topic versions",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = EntityHistory.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = EntityHistory.class)))
       })
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Topic Id", schema = @Schema(type = "string")) @PathParam("id") String id)
+      @Parameter(description = "Topic Id", schema = @Schema(type = "string")) @PathParam("id")
+          String id)
       throws IOException, ParseException {
     return dao.listVersions(id);
   }
@@ -193,7 +210,10 @@ public class TopicResource {
         @ApiResponse(
             responseCode = "200",
             description = "The topic",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Topic.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Topic.class))),
         @ApiResponse(responseCode = "404", description = "Topic for instance {id} is not found")
       })
   public Topic get(
@@ -220,7 +240,10 @@ public class TopicResource {
         @ApiResponse(
             responseCode = "200",
             description = "The topic",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Topic.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Topic.class))),
         @ApiResponse(responseCode = "404", description = "Topic for instance {id} is not found")
       })
   public Response getByName(
@@ -249,7 +272,10 @@ public class TopicResource {
         @ApiResponse(
             responseCode = "200",
             description = "topic",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Topic.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Topic.class))),
         @ApiResponse(
             responseCode = "404",
             description = "Topic for instance {id} and version {version} is " + "not found")
@@ -257,7 +283,8 @@ public class TopicResource {
   public Topic getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Topic Id", schema = @Schema(type = "string")) @PathParam("id") String id,
+      @Parameter(description = "Topic Id", schema = @Schema(type = "string")) @PathParam("id")
+          String id,
       @Parameter(
               description = "Topic version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
@@ -276,10 +303,14 @@ public class TopicResource {
         @ApiResponse(
             responseCode = "200",
             description = "The topic",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = CreateTopic.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = CreateTopic.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
-  public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTopic create)
+  public Response create(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTopic create)
       throws IOException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Topic topic = getTopic(securityContext, create);
@@ -294,7 +325,10 @@ public class TopicResource {
       summary = "Update a topic",
       tags = "topics",
       description = "Update an existing topic using JsonPatch.",
-      externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
+      externalDocs =
+          @ExternalDocumentation(
+              description = "JsonPatch RFC",
+              url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
   public Response updateDescription(
       @Context UriInfo uriInfo,
@@ -306,15 +340,18 @@ public class TopicResource {
                   @Content(
                       mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
                       examples = {
-                        @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
+                        @ExampleObject(
+                            "[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
                       }))
           JsonPatch patch)
       throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, FIELDS);
     Topic topic = dao.get(uriInfo, id, fields);
-    SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, dao.getOwnerReference(topic));
+    SecurityUtil.checkAdminRoleOrPermissions(
+        authorizer, securityContext, dao.getOwnerReference(topic));
     PatchResponse<Topic> response =
-        dao.patch(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
+        dao.patch(
+            uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
     addHref(uriInfo, response.getEntity());
     return response.toResponse();
   }
@@ -328,7 +365,10 @@ public class TopicResource {
         @ApiResponse(
             responseCode = "200",
             description = "The updated topic ",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = CreateTopic.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = CreateTopic.class)))
       })
   public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTopic create)
@@ -353,11 +393,18 @@ public class TopicResource {
   public Response addFollower(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the topic", schema = @Schema(type = "string")) @PathParam("id") String id,
-      @Parameter(description = "Id of the user to be added as follower", schema = @Schema(type = "string"))
+      @Parameter(description = "Id of the topic", schema = @Schema(type = "string"))
+          @PathParam("id")
+          String id,
+      @Parameter(
+              description = "Id of the user to be added as follower",
+              schema = @Schema(type = "string"))
           String userId)
       throws IOException {
-    return dao.addFollower(securityContext.getUserPrincipal().getName(), UUID.fromString(id), UUID.fromString(userId))
+    return dao.addFollower(
+            securityContext.getUserPrincipal().getName(),
+            UUID.fromString(id),
+            UUID.fromString(userId))
         .toResponse();
   }
 
@@ -370,13 +417,19 @@ public class TopicResource {
   public Response deleteFollower(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the topic", schema = @Schema(type = "string")) @PathParam("id") String id,
-      @Parameter(description = "Id of the user being removed as follower", schema = @Schema(type = "string"))
+      @Parameter(description = "Id of the topic", schema = @Schema(type = "string"))
+          @PathParam("id")
+          String id,
+      @Parameter(
+              description = "Id of the user being removed as follower",
+              schema = @Schema(type = "string"))
           @PathParam("userId")
           String userId)
       throws IOException {
     return dao.deleteFollower(
-            securityContext.getUserPrincipal().getName(), UUID.fromString(id), UUID.fromString(userId))
+            securityContext.getUserPrincipal().getName(),
+            UUID.fromString(id),
+            UUID.fromString(userId))
         .toResponse();
   }
 

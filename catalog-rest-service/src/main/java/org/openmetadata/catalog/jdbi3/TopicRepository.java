@@ -34,8 +34,10 @@ import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
 
 public class TopicRepository extends EntityRepository<Topic> {
-  private static final Fields TOPIC_UPDATE_FIELDS = new Fields(TopicResource.FIELD_LIST, "owner,tags");
-  private static final Fields TOPIC_PATCH_FIELDS = new Fields(TopicResource.FIELD_LIST, "owner,tags");
+  private static final Fields TOPIC_UPDATE_FIELDS =
+      new Fields(TopicResource.FIELD_LIST, "owner,tags");
+  private static final Fields TOPIC_PATCH_FIELDS =
+      new Fields(TopicResource.FIELD_LIST, "owner,tags");
   private final CollectionDAO dao;
 
   public static String getFQN(Topic topic) {
@@ -56,7 +58,9 @@ public class TopicRepository extends EntityRepository<Topic> {
 
   @Transaction
   public void delete(UUID id) {
-    if (dao.relationshipDAO().findToCount(id.toString(), Relationship.CONTAINS.ordinal(), Entity.TOPIC) > 0) {
+    if (dao.relationshipDAO()
+            .findToCount(id.toString(), Relationship.CONTAINS.ordinal(), Entity.TOPIC)
+        > 0) {
       throw new IllegalArgumentException("Topic is not empty");
     }
     dao.topicDAO().delete(id);
@@ -70,7 +74,8 @@ public class TopicRepository extends EntityRepository<Topic> {
 
   @Override
   public void prepare(Topic topic) throws IOException {
-    MessagingService messagingService = getService(topic.getService().getId(), topic.getService().getType());
+    MessagingService messagingService =
+        getService(topic.getService().getId(), topic.getService().getType());
     topic.setService(new MessagingServiceEntityInterface(messagingService).getEntityReference());
     topic.setServiceType(messagingService.getServiceType());
     topic.setFullyQualifiedName(getFQN(topic));
@@ -85,7 +90,8 @@ public class TopicRepository extends EntityRepository<Topic> {
     List<TagLabel> tags = topic.getTags();
     EntityReference service = topic.getService();
 
-    // Don't store owner, database, href and tags as JSON. Build it on the fly based on relationships
+    // Don't store owner, database, href and tags as JSON. Build it on the fly based on
+    // relationships
     topic.withOwner(null).withService(null).withHref(null).withTags(null);
 
     if (update) {
@@ -108,12 +114,14 @@ public class TopicRepository extends EntityRepository<Topic> {
   private void applyTags(Topic topic) {
     // Add topic level tags by adding tag to topic relationship
     EntityUtil.applyTags(dao.tagDAO(), topic.getTags(), topic.getFullyQualifiedName());
-    topic.setTags(getTags(topic.getFullyQualifiedName())); // Update tag to handle additional derived tags
+    topic.setTags(
+        getTags(topic.getFullyQualifiedName())); // Update tag to handle additional derived tags
   }
 
   public EntityReference getOwner(Topic topic) throws IOException {
     return topic != null
-        ? EntityUtil.populateOwner(topic.getId(), dao.relationshipDAO(), dao.userDAO(), dao.teamDAO())
+        ? EntityUtil.populateOwner(
+            topic.getId(), dao.relationshipDAO(), dao.userDAO(), dao.teamDAO())
         : null;
   }
 
@@ -139,7 +147,9 @@ public class TopicRepository extends EntityRepository<Topic> {
   }
 
   private List<EntityReference> getFollowers(Topic topic) throws IOException {
-    return topic == null ? null : EntityUtil.getFollowers(topic.getId(), dao.relationshipDAO(), dao.userDAO());
+    return topic == null
+        ? null
+        : EntityUtil.getFollowers(topic.getId(), dao.relationshipDAO(), dao.userDAO());
   }
 
   private List<TagLabel> getTags(String fqn) {
@@ -152,14 +162,16 @@ public class TopicRepository extends EntityRepository<Topic> {
     }
     // Find service by topic Id
     EntityReference service = EntityUtil.getService(dao.relationshipDAO(), topic.getId());
-    return new MessagingServiceEntityInterface(getService(service.getId(), service.getType())).getEntityReference();
+    return new MessagingServiceEntityInterface(getService(service.getId(), service.getType()))
+        .getEntityReference();
   }
 
   private MessagingService getService(UUID serviceId, String entityType) throws IOException {
     if (entityType.equalsIgnoreCase(Entity.MESSAGING_SERVICE)) {
       return dao.messagingServiceDAO().findEntityById(serviceId);
     }
-    throw new IllegalArgumentException(CatalogExceptionMessage.invalidServiceEntity(entityType, Entity.TOPIC));
+    throw new IllegalArgumentException(
+        CatalogExceptionMessage.invalidServiceEntity(entityType, Entity.TOPIC));
   }
 
   public void setService(Topic topic, EntityReference service) {

@@ -45,15 +45,23 @@ public final class TablesInitializer {
     OPTIONS = new Options();
     OPTIONS.addOption("s", OPTION_SCRIPT_ROOT_PATH, true, "Root directory of script path");
     OPTIONS.addOption("c", OPTION_CONFIG_FILE_PATH, true, "Config file path");
-    OPTIONS.addOption(null, SchemaMigrationOption.CREATE.toString(), false, "Run sql migrations from scratch");
-    OPTIONS.addOption(null, SchemaMigrationOption.DROP.toString(), false, "Drop all the tables in the target database");
+    OPTIONS.addOption(
+        null, SchemaMigrationOption.CREATE.toString(), false, "Run sql migrations from scratch");
+    OPTIONS.addOption(
+        null,
+        SchemaMigrationOption.DROP.toString(),
+        false,
+        "Drop all the tables in the target database");
     OPTIONS.addOption(
         null,
         SchemaMigrationOption.CHECK_CONNECTION.toString(),
         false,
         "Check the connection for " + "configured data source");
     OPTIONS.addOption(
-        null, SchemaMigrationOption.MIGRATE.toString(), false, "Execute schema migration from last " + "check point");
+        null,
+        SchemaMigrationOption.MIGRATE.toString(),
+        false,
+        "Execute schema migration from last " + "check point");
     OPTIONS.addOption(
         null,
         SchemaMigrationOption.INFO.toString(),
@@ -71,12 +79,25 @@ public final class TablesInitializer {
         "Repairs the DATABASE_CHANGE_LOG by "
             + "removing failed migrations and correcting checksum of existing migration script");
     OPTIONS.addOption(
-        null, DISABLE_VALIDATE_ON_MIGRATE, false, "Disable flyway validation checks while running " + "migrate");
+        null,
+        DISABLE_VALIDATE_ON_MIGRATE,
+        false,
+        "Disable flyway validation checks while running " + "migrate");
     OPTIONS.addOption(
-        null, SchemaMigrationOption.ES_CREATE.toString(), false, "Creates all the indexes in the elastic search");
+        null,
+        SchemaMigrationOption.ES_CREATE.toString(),
+        false,
+        "Creates all the indexes in the elastic search");
     OPTIONS.addOption(
-        null, SchemaMigrationOption.ES_DROP.toString(), false, "Drop all the indexes in the elastic search");
-    OPTIONS.addOption(null, SchemaMigrationOption.ES_MIGRATE.toString(), false, "Update Elastic Search index mapping");
+        null,
+        SchemaMigrationOption.ES_DROP.toString(),
+        false,
+        "Drop all the indexes in the elastic search");
+    OPTIONS.addOption(
+        null,
+        SchemaMigrationOption.ES_MIGRATE.toString(),
+        false,
+        "Update Elastic Search index mapping");
   }
 
   private TablesInitializer() {}
@@ -84,7 +105,8 @@ public final class TablesInitializer {
   public static void main(String[] args) throws Exception {
     CommandLineParser parser = new DefaultParser();
     CommandLine commandLine = parser.parse(OPTIONS, args);
-    if (!commandLine.hasOption(OPTION_CONFIG_FILE_PATH) || !commandLine.hasOption(OPTION_SCRIPT_ROOT_PATH)) {
+    if (!commandLine.hasOption(OPTION_CONFIG_FILE_PATH)
+        || !commandLine.hasOption(OPTION_SCRIPT_ROOT_PATH)) {
       usage();
       System.exit(1);
     }
@@ -95,8 +117,8 @@ public final class TablesInitializer {
       if (commandLine.hasOption(schemaMigrationOption.toString())) {
         if (isSchemaMigrationOptionSpecified) {
           System.out.println(
-              "Only one operation can be execute at once, please select one of 'create', ',migrate', "
-                  + "'validate', 'info', 'drop', 'repair', 'check-connection'.");
+              "Only one operation can be execute at once, please select one of 'create',"
+                  + " ',migrate', 'validate', 'info', 'drop', 'repair', 'check-connection'.");
           System.exit(1);
         }
         isSchemaMigrationOptionSpecified = true;
@@ -129,7 +151,8 @@ public final class TablesInitializer {
     String scriptRootPath = commandLine.getOptionValue(OPTION_SCRIPT_ROOT_PATH);
     Flyway flyway = get(jdbcUrl, user, password, scriptRootPath, !disableValidateOnMigrate);
     ObjectMapper oMapper = new ObjectMapper();
-    ElasticSearchConfiguration esConfig = oMapper.convertValue(esConf, ElasticSearchConfiguration.class);
+    ElasticSearchConfiguration esConfig =
+        oMapper.convertValue(esConf, ElasticSearchConfiguration.class);
     RestHighLevelClient client = ElasticSearchClientUtils.createElasticSearchClient(esConfig);
     try {
       execute(flyway, client, schemaMigrationOptionSpecified);
@@ -141,7 +164,8 @@ public final class TablesInitializer {
     System.exit(0);
   }
 
-  static Flyway get(String url, String user, String password, String scriptRootPath, boolean validateOnMigrate) {
+  static Flyway get(
+      String url, String user, String password, String scriptRootPath, boolean validateOnMigrate) {
     System.out.format(
         "url %s, user %s, password %s, scriptRoot %s, validateOnMigrate %s",
         url, user, password, scriptRootPath, validateOnMigrate);
@@ -160,7 +184,8 @@ public final class TablesInitializer {
         .load();
   }
 
-  private static void execute(Flyway flyway, RestHighLevelClient client, SchemaMigrationOption schemaMigrationOption)
+  private static void execute(
+      Flyway flyway, RestHighLevelClient client, SchemaMigrationOption schemaMigrationOption)
       throws SQLException {
     ElasticSearchIndexDefinition esIndexDefinition;
     switch (schemaMigrationOption) {
@@ -168,8 +193,10 @@ public final class TablesInitializer {
         try (Connection connection = flyway.getConfiguration().getDataSource().getConnection()) {
           DatabaseMetaData databaseMetaData = connection.getMetaData();
           try (ResultSet resultSet =
-              databaseMetaData.getTables(connection.getCatalog(), connection.getSchema(), "", null)) {
-            // If the database has any entity like views, tables etc, resultSet.next() would return true here
+              databaseMetaData.getTables(
+                  connection.getCatalog(), connection.getSchema(), "", null)) {
+            // If the database has any entity like views, tables etc, resultSet.next() would return
+            // true here
             if (resultSet.next()) {
               throw new SQLException(
                   "Please use an empty database or use \"migrate\" if you are already running a "
@@ -217,7 +244,8 @@ public final class TablesInitializer {
         esIndexDefinition.dropIndexes();
         break;
       default:
-        throw new SQLException("SchemaMigrationHelper unable to execute the option : " + schemaMigrationOption);
+        throw new SQLException(
+            "SchemaMigrationHelper unable to execute the option : " + schemaMigrationOption);
     }
   }
 

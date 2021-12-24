@@ -38,18 +38,25 @@ public class ChangeEventRepository {
 
   @Transaction
   public ResultList<ChangeEvent> list(
-      Date date, List<String> entityCreatedList, List<String> entityUpdatedList, List<String> entityDeletedList)
+      Date date,
+      List<String> entityCreatedList,
+      List<String> entityUpdatedList,
+      List<String> entityDeletedList)
       throws IOException, GeneralSecurityException {
     List<String> jsons = new ArrayList<>();
-    jsons.addAll(dao.changeEventDAO().list(ENTITY_CREATED.value(), entityCreatedList, date.getTime()));
-    jsons.addAll(dao.changeEventDAO().list(ENTITY_UPDATED.value(), entityUpdatedList, date.getTime()));
-    jsons.addAll(dao.changeEventDAO().list(ENTITY_DELETED.value(), entityDeletedList, date.getTime()));
+    jsons.addAll(
+        dao.changeEventDAO().list(ENTITY_CREATED.value(), entityCreatedList, date.getTime()));
+    jsons.addAll(
+        dao.changeEventDAO().list(ENTITY_UPDATED.value(), entityUpdatedList, date.getTime()));
+    jsons.addAll(
+        dao.changeEventDAO().list(ENTITY_DELETED.value(), entityDeletedList, date.getTime()));
     List<ChangeEvent> changeEvents = new ArrayList<>();
     for (String json : jsons) {
       changeEvents.add(JsonUtils.readValue(json, ChangeEvent.class));
     }
     changeEvents.sort(
-        Comparator.comparing((ChangeEvent changeEvent) -> changeEvent.getDateTime().getTime()).reversed());
+        Comparator.comparing((ChangeEvent changeEvent) -> changeEvent.getDateTime().getTime())
+            .reversed());
     return new ChangeEventList(changeEvents, null, null, changeEvents.size()); // TODO
   }
 }

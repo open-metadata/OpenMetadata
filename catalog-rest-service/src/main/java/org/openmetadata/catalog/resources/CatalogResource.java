@@ -49,7 +49,8 @@ public class CatalogResource {
 
   public static CollectionList getCollectionList(UriInfo uriInfo) {
     if (collectionList == null) {
-      CollectionDescriptor[] collections = CollectionRegistry.getInstance().getCollectionForPath("/v1", uriInfo);
+      CollectionDescriptor[] collections =
+          CollectionRegistry.getInstance().getCollectionForPath("/v1", uriInfo);
       collectionList = new CollectionList(Arrays.asList(collections));
     }
     return collectionList;
@@ -60,14 +61,16 @@ public class CatalogResource {
       summary = "List all collections",
       tags = "general",
       description =
-          "List all the collections supported by OpenMetadata. This list provides all the collections "
-              + "and resource REST endpoints.",
+          "List all the collections supported by OpenMetadata. This list provides all the"
+              + " collections and resource REST endpoints.",
       responses = {
         @ApiResponse(
             responseCode = "200",
             description = "All collections",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = CollectionDescriptor.class)))
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = CollectionDescriptor.class)))
       })
   public CollectionList getCollections(@Context UriInfo uriInfo) {
     return getCollectionList(uriInfo);

@@ -100,7 +100,8 @@ public class DefaultCatalogAuthorizer implements CatalogAuthorizer {
   @Override
   public boolean hasPermissions(AuthenticationContext ctx, EntityReference owner) {
     validateAuthenticationContext(ctx);
-    // To encourage users to claim or update changes to tables when a non-owner or un-claimed datasets.
+    // To encourage users to claim or update changes to tables when a non-owner or un-claimed
+    // datasets.
     if (owner == null) {
       return true;
     }

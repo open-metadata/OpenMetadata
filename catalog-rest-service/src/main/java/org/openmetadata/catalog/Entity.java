@@ -81,7 +81,8 @@ public final class Entity {
 
   private Entity() {}
 
-  public static <T> void registerEntity(String entity, EntityDAO<T> dao, EntityRepository<T> entityRepository) {
+  public static <T> void registerEntity(
+      String entity, EntityDAO<T> dao, EntityRepository<T> entityRepository) {
     DAO_MAP.put(entity, dao);
     ENTITY_REPOSITORY_MAP.put(entity, entityRepository);
     CANONICAL_ENTITY_NAME_MAP.put(entity.toLowerCase(Locale.ROOT), entity);
@@ -96,7 +97,8 @@ public final class Entity {
     return dao.findEntityReferenceById(id);
   }
 
-  public static EntityReference getEntityReferenceByName(String entity, String fqn) throws IOException {
+  public static EntityReference getEntityReferenceByName(String entity, String fqn)
+      throws IOException {
     EntityDAO<?> dao = DAO_MAP.get(entity);
     if (dao == null) {
       throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entity));
@@ -108,15 +110,19 @@ public final class Entity {
     String entityName = getEntityNameFromObject(entity);
 
     @SuppressWarnings("unchecked")
-    EntityRepository<T> entityRepository = (EntityRepository<T>) ENTITY_REPOSITORY_MAP.get(entityName);
+    EntityRepository<T> entityRepository =
+        (EntityRepository<T>) ENTITY_REPOSITORY_MAP.get(entityName);
     if (entityRepository == null) {
-      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entityName));
+      throw EntityNotFoundException.byMessage(
+          CatalogExceptionMessage.entityTypeNotFound(entityName));
     }
     return entityRepository.getEntityInterface(entity).getEntityReference();
   }
 
   public static void withHref(UriInfo uriInfo, List<EntityReference> list) {
-    Optional.ofNullable(list).orElse(Collections.emptyList()).forEach(ref -> withHref(uriInfo, ref));
+    Optional.ofNullable(list)
+        .orElse(Collections.emptyList())
+        .forEach(ref -> withHref(uriInfo, ref));
   }
 
   public static EntityReference withHref(UriInfo uriInfo, EntityReference ref) {
@@ -126,7 +132,8 @@ public final class Entity {
     String entityName = ref.getType();
     EntityRepository<?> entityRepository = ENTITY_REPOSITORY_MAP.get(entityName);
     if (entityRepository == null) {
-      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entityName));
+      throw EntityNotFoundException.byMessage(
+          CatalogExceptionMessage.entityTypeNotFound(entityName));
     }
     URI href = entityRepository.getHref(uriInfo, ref.getId());
     return ref.withHref(href);
@@ -138,9 +145,11 @@ public final class Entity {
     }
     String entityName = getEntityNameFromObject(entity);
     @SuppressWarnings("unchecked")
-    EntityRepository<T> entityRepository = (EntityRepository<T>) ENTITY_REPOSITORY_MAP.get(entityName);
+    EntityRepository<T> entityRepository =
+        (EntityRepository<T>) ENTITY_REPOSITORY_MAP.get(entityName);
     if (entityRepository == null) {
-      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entityName));
+      throw EntityNotFoundException.byMessage(
+          CatalogExceptionMessage.entityTypeNotFound(entityName));
     }
     return entityRepository.getEntityInterface(entity);
   }
@@ -150,7 +159,8 @@ public final class Entity {
   }
 
   public static String getEntityNameFromObject(Object object) {
-    return CANONICAL_ENTITY_NAME_MAP.get(object.getClass().getSimpleName().toLowerCase(Locale.ROOT));
+    return CANONICAL_ENTITY_NAME_MAP.get(
+        object.getClass().getSimpleName().toLowerCase(Locale.ROOT));
   }
 
   public static class EntityList {
@@ -167,7 +177,8 @@ public final class Entity {
     private static void validateEntities(String name, List<String> list) {
       for (String entity : list) {
         if (ENTITY_REPOSITORY_MAP.get(entity) == null) {
-          throw new IllegalArgumentException(String.format("Invalid entity %s in query param %s", entity, name));
+          throw new IllegalArgumentException(
+              String.format("Invalid entity %s in query param %s", entity, name));
         }
       }
     }

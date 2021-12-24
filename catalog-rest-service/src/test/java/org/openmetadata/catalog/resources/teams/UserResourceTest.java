@@ -78,10 +78,12 @@ import org.openmetadata.catalog.util.TestUtils.UpdateType;
 import org.openmetadata.common.utils.JsonSchemaUtil;
 
 public class UserResourceTest extends EntityResourceTest<User> {
-  final Profile PROFILE = new Profile().withImages(new ImageList().withImage(URI.create("http://image.com")));
+  final Profile PROFILE =
+      new Profile().withImages(new ImageList().withImage(URI.create("http://image.com")));
 
   public UserResourceTest() {
-    super(Entity.USER, User.class, UserList.class, "users", UserResource.FIELDS, false, false, false);
+    super(
+        Entity.USER, User.class, UserList.class, "users", UserResource.FIELDS, false, false, false);
   }
 
   @BeforeAll
@@ -99,19 +101,28 @@ public class UserResourceTest extends EntityResourceTest<User> {
 
     // Create user with mandatory email field empty
     create.withEmail("");
-    exception = assertThrows(HttpResponseException.class, () -> createUser(create, adminAuthHeaders()));
-    TestUtils.assertResponseContains(exception, BAD_REQUEST, "email must match \"^\\S+@\\S+\\.\\S+$\"");
-    TestUtils.assertResponseContains(exception, BAD_REQUEST, "email size must be between 6 and 127");
+    exception =
+        assertThrows(HttpResponseException.class, () -> createUser(create, adminAuthHeaders()));
+    TestUtils.assertResponseContains(
+        exception, BAD_REQUEST, "email must match \"^\\S+@\\S+\\.\\S+$\"");
+    TestUtils.assertResponseContains(
+        exception, BAD_REQUEST, "email size must be between 6 and 127");
 
     // Create user with mandatory email field with invalid email address
     create.withEmail("invalidEmail");
-    exception = assertThrows(HttpResponseException.class, () -> createUser(create, adminAuthHeaders()));
-    TestUtils.assertResponseContains(exception, BAD_REQUEST, "[email must match \"^\\S+@\\S+\\.\\S+$\"]");
+    exception =
+        assertThrows(HttpResponseException.class, () -> createUser(create, adminAuthHeaders()));
+    TestUtils.assertResponseContains(
+        exception, BAD_REQUEST, "[email must match \"^\\S+@\\S+\\.\\S+$\"]");
   }
 
   @Test
   public void post_validUser_200_ok_without_login(TestInfo test) {
-    CreateUser create = create(test, 6).withDisplayName("displayName").withEmail("test@email.com").withIsAdmin(true);
+    CreateUser create =
+        create(test, 6)
+            .withDisplayName("displayName")
+            .withEmail("test@email.com")
+            .withIsAdmin(true);
 
     HttpResponseException exception =
         assertThrows(HttpResponseException.class, () -> createAndCheckEntity(create, null));
@@ -151,28 +162,45 @@ public class UserResourceTest extends EntityResourceTest<User> {
     ChangeDescription change = getChangeDescription(user.getVersion());
     change
         .getFieldsAdded()
-        .add(new FieldChange().withName("displayName").withOldValue(oldDisplayName).withNewValue("displayName1"));
+        .add(
+            new FieldChange()
+                .withName("displayName")
+                .withOldValue(oldDisplayName)
+                .withNewValue("displayName1"));
     change
         .getFieldsUpdated()
-        .add(new FieldChange().withName("email").withOldValue(oldEmail).withNewValue("test1@email.com"));
+        .add(
+            new FieldChange()
+                .withName("email")
+                .withOldValue(oldEmail)
+                .withNewValue("test1@email.com"));
     updateAndCheckEntity(update, OK, adminAuthHeaders(), MINOR_UPDATE, change);
   }
 
   @Test
   public void post_validAdminUser_Non_Admin_401(TestInfo test) {
     CreateUser create =
-        create(test, 6).withName("test").withDisplayName("displayName").withEmail("test@email.com").withIsAdmin(true);
+        create(test, 6)
+            .withName("test")
+            .withDisplayName("displayName")
+            .withEmail("test@email.com")
+            .withIsAdmin(true);
 
     HttpResponseException exception =
         assertThrows(
-            HttpResponseException.class, () -> createAndCheckEntity(create, authHeaders("test@open-metadata.org")));
+            HttpResponseException.class,
+            () -> createAndCheckEntity(create, authHeaders("test@open-metadata.org")));
     assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
   }
 
   @Test
   public void post_validAdminUser_200_ok(TestInfo test) throws IOException {
     CreateUser create =
-        create(test, 6).withName("test1").withDisplayName("displayName").withEmail("test1@email.com").withIsAdmin(true);
+        create(test, 6)
+            .withName("test1")
+            .withDisplayName("displayName")
+            .withEmail("test1@email.com")
+            .withIsAdmin(true);
     createAndCheckEntity(create, adminAuthHeaders());
   }
 
@@ -245,18 +273,23 @@ public class UserResourceTest extends EntityResourceTest<User> {
 
     // Empty query field .../users?fields=
     HttpResponseException exception =
-        assertThrows(HttpResponseException.class, () -> getUser(user.getId(), "", adminAuthHeaders()));
+        assertThrows(
+            HttpResponseException.class, () -> getUser(user.getId(), "", adminAuthHeaders()));
     TestUtils.assertResponseContains(exception, BAD_REQUEST, "Invalid field name");
 
     // .../users?fields=invalidField
     exception =
-        assertThrows(HttpResponseException.class, () -> getUser(user.getId(), "invalidField", adminAuthHeaders()));
+        assertThrows(
+            HttpResponseException.class,
+            () -> getUser(user.getId(), "invalidField", adminAuthHeaders()));
     assertResponse(exception, BAD_REQUEST, CatalogExceptionMessage.invalidField("invalidField"));
   }
 
   /**
-   * @see EntityResourceTest#put_addDeleteFollower_200 test for tests related to GET user with owns field parameter
-   * @see EntityResourceTest#put_addDeleteFollower_200 for tests related getting user with follows list
+   * @see EntityResourceTest#put_addDeleteFollower_200 test for tests related to GET user with owns
+   *     field parameter
+   * @see EntityResourceTest#put_addDeleteFollower_200 for tests related getting user with follows
+   *     list
    * @see TableResourceTest also tests GET user returns owns list
    */
   @Test
@@ -265,27 +298,42 @@ public class UserResourceTest extends EntityResourceTest<User> {
     // Ensure username can't be changed using patch
     User user =
         createUser(
-            create(test, 7).withName("test23").withDisplayName("displayName").withEmail("test23@email.com"),
+            create(test, 7)
+                .withName("test23")
+                .withDisplayName("displayName")
+                .withEmail("test23@email.com"),
             authHeaders("test23@email.com"));
     String userJson = JsonUtils.pojoToJson(user);
     user.setDisplayName("newName");
     HttpResponseException exception =
-        assertThrows(HttpResponseException.class, () -> patchUser(userJson, user, authHeaders("test100@email.com")));
-    assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test100'} does not have permissions");
+        assertThrows(
+            HttpResponseException.class,
+            () -> patchUser(userJson, user, authHeaders("test100@email.com")));
+    assertResponse(
+        exception,
+        FORBIDDEN,
+        "Principal: CatalogPrincipal{name='test100'} does not have permissions");
   }
 
   @Test
-  public void patch_makeAdmin_as_another_user_401(TestInfo test) throws HttpResponseException, JsonProcessingException {
+  public void patch_makeAdmin_as_another_user_401(TestInfo test)
+      throws HttpResponseException, JsonProcessingException {
     // Ensure username can't be changed using patch
     User user =
         createUser(
-            create(test, 6).withName("test2").withDisplayName("displayName").withEmail("test2@email.com"),
+            create(test, 6)
+                .withName("test2")
+                .withDisplayName("displayName")
+                .withEmail("test2@email.com"),
             authHeaders("test2@email.com"));
     String userJson = JsonUtils.pojoToJson(user);
     user.setIsAdmin(Boolean.TRUE);
     HttpResponseException exception =
-        assertThrows(HttpResponseException.class, () -> patchUser(userJson, user, authHeaders("test100@email.com")));
-    assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test100'} is not admin");
+        assertThrows(
+            HttpResponseException.class,
+            () -> patchUser(userJson, user, authHeaders("test100@email.com")));
+    assertResponse(
+        exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test100'} is not admin");
   }
 
   @Test
@@ -294,7 +342,10 @@ public class UserResourceTest extends EntityResourceTest<User> {
     // Ensure username can't be changed using patch
     User user =
         createUser(
-            create(test, 6).withName("test").withDisplayName("displayName").withEmail("test@email.com"),
+            create(test, 6)
+                .withName("test")
+                .withDisplayName("displayName")
+                .withEmail("test@email.com"),
             authHeaders("test@email.com"));
     String userJson = JsonUtils.pojoToJson(user);
     String newDisplayName = "newDisplayName";
@@ -304,13 +355,15 @@ public class UserResourceTest extends EntityResourceTest<User> {
   }
 
   @Test
-  public void patch_userDeletedDisallowed_400(TestInfo test) throws HttpResponseException, JsonProcessingException {
+  public void patch_userDeletedDisallowed_400(TestInfo test)
+      throws HttpResponseException, JsonProcessingException {
     // Ensure user deleted attributed can't be changed using patch
     User user = createUser(create(test), adminAuthHeaders());
     String userJson = JsonUtils.pojoToJson(user);
     user.setDeactivated(true);
     HttpResponseException exception =
-        assertThrows(HttpResponseException.class, () -> patchUser(userJson, user, adminAuthHeaders()));
+        assertThrows(
+            HttpResponseException.class, () -> patchUser(userJson, user, adminAuthHeaders()));
     assertResponse(exception, BAD_REQUEST, readOnlyAttribute("User", "deactivated"));
   }
 
@@ -334,7 +387,8 @@ public class UserResourceTest extends EntityResourceTest<User> {
             .getEntityReference()
             .withHref(null);
     List<EntityReference> teams = Arrays.asList(team1, team2);
-    Profile profile = new Profile().withImages(new ImageList().withImage(URI.create("http://image.com")));
+    Profile profile =
+        new Profile().withImages(new ImageList().withImage(URI.create("http://image.com")));
 
     //
     // Add previously absent attributes
@@ -352,7 +406,9 @@ public class UserResourceTest extends EntityResourceTest<User> {
     ChangeDescription change = getChangeDescription(user.getVersion());
     change.getFieldsAdded().add(new FieldChange().withName("teams").withNewValue(teams));
     change.getFieldsAdded().add(new FieldChange().withName("timezone").withNewValue(timezone));
-    change.getFieldsAdded().add(new FieldChange().withName("displayName").withNewValue("displayName"));
+    change
+        .getFieldsAdded()
+        .add(new FieldChange().withName("displayName").withNewValue("displayName"));
     change.getFieldsAdded().add(new FieldChange().withName("profile").withNewValue(profile));
     change.getFieldsAdded().add(new FieldChange().withName("isBot").withNewValue(false));
     user = patchEntityAndCheck(user, origJson, adminAuthHeaders(), MINOR_UPDATE, change);
@@ -362,7 +418,8 @@ public class UserResourceTest extends EntityResourceTest<User> {
     //
     String timezone1 = "Canada/Eastern";
     List<EntityReference> teams1 = Arrays.asList(team1, team3); // team2 dropped and team3 is added
-    Profile profile1 = new Profile().withImages(new ImageList().withImage(URI.create("http://image2.com")));
+    Profile profile1 =
+        new Profile().withImages(new ImageList().withImage(URI.create("http://image2.com")));
 
     origJson = JsonUtils.pojoToJson(user);
     user.withTeams(teams1)
@@ -380,9 +437,17 @@ public class UserResourceTest extends EntityResourceTest<User> {
         .add(new FieldChange().withName("timezone").withOldValue(timezone).withNewValue(timezone1));
     change
         .getFieldsUpdated()
-        .add(new FieldChange().withName("displayName").withOldValue("displayName").withNewValue("displayName1"));
-    change.getFieldsUpdated().add(new FieldChange().withName("profile").withOldValue(profile).withNewValue(profile1));
-    change.getFieldsUpdated().add(new FieldChange().withName("isBot").withOldValue(false).withNewValue(true));
+        .add(
+            new FieldChange()
+                .withName("displayName")
+                .withOldValue("displayName")
+                .withNewValue("displayName1"));
+    change
+        .getFieldsUpdated()
+        .add(new FieldChange().withName("profile").withOldValue(profile).withNewValue(profile1));
+    change
+        .getFieldsUpdated()
+        .add(new FieldChange().withName("isBot").withOldValue(false).withNewValue(true));
 
     user = patchEntityAndCheck(user, origJson, adminAuthHeaders(), MINOR_UPDATE, change);
 
@@ -390,15 +455,24 @@ public class UserResourceTest extends EntityResourceTest<User> {
     // Remove the attributes
     //
     origJson = JsonUtils.pojoToJson(user);
-    user.withTeams(null).withTimezone(null).withDisplayName(null).withProfile(null).withIsBot(null).withIsAdmin(false);
+    user.withTeams(null)
+        .withTimezone(null)
+        .withDisplayName(null)
+        .withProfile(null)
+        .withIsBot(null)
+        .withIsAdmin(false);
 
     // Note non-empty display field is not deleted
     change = getChangeDescription(user.getVersion());
     change.getFieldsDeleted().add(new FieldChange().withName("teams").withOldValue(teams1));
     change.getFieldsDeleted().add(new FieldChange().withName("timezone").withOldValue(timezone1));
-    change.getFieldsDeleted().add(new FieldChange().withName("displayName").withOldValue("displayName1"));
+    change
+        .getFieldsDeleted()
+        .add(new FieldChange().withName("displayName").withOldValue("displayName1"));
     change.getFieldsDeleted().add(new FieldChange().withName("profile").withOldValue(profile1));
-    change.getFieldsDeleted().add(new FieldChange().withName("isBot").withOldValue(true).withNewValue(null));
+    change
+        .getFieldsDeleted()
+        .add(new FieldChange().withName("isBot").withOldValue(true).withNewValue(null));
     patchEntityAndCheck(user, origJson, adminAuthHeaders(), MINOR_UPDATE, change);
   }
 
@@ -408,7 +482,9 @@ public class UserResourceTest extends EntityResourceTest<User> {
     User user = createUser(create, authHeaders("test3"));
 
     HttpResponseException exception =
-        assertThrows(HttpResponseException.class, () -> deleteEntity(user.getId(), authHeaders("test3@email.com")));
+        assertThrows(
+            HttpResponseException.class,
+            () -> deleteEntity(user.getId(), authHeaders("test3@email.com")));
     assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test3'} is not admin");
   }
 
@@ -424,7 +500,8 @@ public class UserResourceTest extends EntityResourceTest<User> {
     // Add user as follower to a table
     TableResourceTest tableResourceTest = new TableResourceTest();
     Table table = tableResourceTest.createEntity(test, 1);
-    tableResourceTest.addAndCheckFollower(table.getId(), user.getId(), CREATED, 1, adminAuthHeaders());
+    tableResourceTest.addAndCheckFollower(
+        table.getId(), user.getId(), CREATED, 1, adminAuthHeaders());
 
     deleteEntity(user.getId(), adminAuthHeaders());
 
@@ -442,17 +519,21 @@ public class UserResourceTest extends EntityResourceTest<User> {
     HttpResponseException exception =
         assertThrows(
             HttpResponseException.class,
-            () -> tableResourceTest.addAndCheckFollower(table.getId(), user.getId(), CREATED, 1, adminAuthHeaders()));
+            () ->
+                tableResourceTest.addAndCheckFollower(
+                    table.getId(), user.getId(), CREATED, 1, adminAuthHeaders()));
     assertResponse(exception, BAD_REQUEST, deactivatedUser(user.getId()));
 
     // TODO deactivated user can't be made owner
   }
 
-  private User patchUser(UUID userId, String originalJson, User updated, Map<String, String> headers)
+  private User patchUser(
+      UUID userId, String originalJson, User updated, Map<String, String> headers)
       throws JsonProcessingException, HttpResponseException {
     String updatedJson = JsonUtils.pojoToJson(updated);
     JsonPatch patch = JsonSchemaUtil.getJsonPatch(originalJson, updatedJson);
-    return TestUtils.patch(CatalogApplicationTest.getResource("users/" + userId), patch, User.class, headers);
+    return TestUtils.patch(
+        CatalogApplicationTest.getResource("users/" + userId), patch, User.class, headers);
   }
 
   private User patchUser(String originalJson, User updated, Map<String, String> headers)
@@ -470,18 +551,25 @@ public class UserResourceTest extends EntityResourceTest<User> {
 
   public CreateUser create(String entityName) {
     // user part of the email should be less than 64 in length
-    String emailUser = entityName == null || entityName.isEmpty() ? UUID.randomUUID().toString() : entityName;
+    String emailUser =
+        entityName == null || entityName.isEmpty() ? UUID.randomUUID().toString() : entityName;
     emailUser = emailUser.length() > 64 ? emailUser.substring(0, 64) : emailUser;
     return new CreateUser().withName(entityName).withEmail(emailUser + "@open-metadata.org");
   }
 
-  public static User createUser(CreateUser create, Map<String, String> authHeaders) throws HttpResponseException {
-    return TestUtils.post(CatalogApplicationTest.getResource("users"), create, User.class, authHeaders);
+  public static User createUser(CreateUser create, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    return TestUtils.post(
+        CatalogApplicationTest.getResource("users"), create, User.class, authHeaders);
   }
 
-  /** Validate returned fields GET .../users/{id}?fields="..." or GET .../users/name/{name}?fields="..." */
+  /**
+   * Validate returned fields GET .../users/{id}?fields="..." or GET
+   * .../users/name/{name}?fields="..."
+   */
   @Override
-  public void validateGetWithDifferentFields(User user, boolean byName) throws HttpResponseException {
+  public void validateGetWithDifferentFields(User user, boolean byName)
+      throws HttpResponseException {
     // .../teams?fields=profile
     String fields = "profile";
     user =
@@ -500,11 +588,13 @@ public class UserResourceTest extends EntityResourceTest<User> {
     assertListNotNull(user.getProfile(), user.getTeams());
   }
 
-  public static User getUser(UUID id, Map<String, String> authHeaders) throws HttpResponseException {
+  public static User getUser(UUID id, Map<String, String> authHeaders)
+      throws HttpResponseException {
     return getUser(id, null, authHeaders);
   }
 
-  public static User getUser(UUID id, String fields, Map<String, String> authHeaders) throws HttpResponseException {
+  public static User getUser(UUID id, String fields, Map<String, String> authHeaders)
+      throws HttpResponseException {
     WebTarget target = CatalogApplicationTest.getResource("users/" + id);
     target = fields != null ? target.queryParam("fields", fields) : target;
     return TestUtils.get(target, User.class, authHeaders);
@@ -518,15 +608,22 @@ public class UserResourceTest extends EntityResourceTest<User> {
   }
 
   @Override
-  public Object createRequest(String name, String description, String displayName, EntityReference owner) {
-    return create(name).withDescription(description).withDisplayName(displayName).withProfile(PROFILE);
+  public Object createRequest(
+      String name, String description, String displayName, EntityReference owner) {
+    return create(name)
+        .withDescription(description)
+        .withDisplayName(displayName)
+        .withProfile(PROFILE);
   }
 
   @Override
   public void validateCreatedEntity(User user, Object request, Map<String, String> authHeaders) {
     CreateUser createRequest = (CreateUser) request;
     validateCommonEntityFields(
-        getEntityInterface(user), createRequest.getDescription(), TestUtils.getPrincipal(authHeaders), null);
+        getEntityInterface(user),
+        createRequest.getDescription(),
+        TestUtils.getPrincipal(authHeaders),
+        null);
 
     assertEquals(createRequest.getName(), user.getName());
     assertEquals(createRequest.getDisplayName(), user.getDisplayName());
@@ -535,7 +632,8 @@ public class UserResourceTest extends EntityResourceTest<User> {
     assertEquals(createRequest.getIsAdmin(), user.getIsAdmin());
 
     List<EntityReference> expectedTeams = new ArrayList<>();
-    for (UUID teamId : Optional.ofNullable(createRequest.getTeams()).orElse(Collections.emptyList())) {
+    for (UUID teamId :
+        Optional.ofNullable(createRequest.getTeams()).orElse(Collections.emptyList())) {
       expectedTeams.add(new EntityReference().withId(teamId).withType(Entity.TEAM));
     }
 
@@ -558,7 +656,10 @@ public class UserResourceTest extends EntityResourceTest<User> {
   @Override
   public void compareEntities(User expected, User updated, Map<String, String> authHeaders) {
     validateCommonEntityFields(
-        getEntityInterface(expected), expected.getDescription(), TestUtils.getPrincipal(authHeaders), null);
+        getEntityInterface(expected),
+        expected.getDescription(),
+        TestUtils.getPrincipal(authHeaders),
+        null);
 
     assertEquals(expected.getName(), expected.getName());
     assertEquals(expected.getDisplayName(), expected.getDisplayName());
@@ -566,7 +667,8 @@ public class UserResourceTest extends EntityResourceTest<User> {
     assertEquals(expected.getIsBot(), expected.getIsBot());
     assertEquals(expected.getIsAdmin(), expected.getIsAdmin());
 
-    List<EntityReference> expectedTeams = Optional.ofNullable(expected.getTeams()).orElse(Collections.emptyList());
+    List<EntityReference> expectedTeams =
+        Optional.ofNullable(expected.getTeams()).orElse(Collections.emptyList());
     List<EntityReference> updatedTeams =
         new ArrayList<>(Optional.ofNullable(updated.getTeams()).orElse(Collections.emptyList()));
 
@@ -588,7 +690,8 @@ public class UserResourceTest extends EntityResourceTest<User> {
   }
 
   @Override
-  public void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException {
+  public void assertFieldChange(String fieldName, Object expected, Object actual)
+      throws IOException {
     if (expected == null && actual == null) {
       return;
     }
@@ -598,7 +701,8 @@ public class UserResourceTest extends EntityResourceTest<User> {
       assertEquals(expectedProfile, actualProfile);
     } else if (fieldName.equals("teams")) {
       List<EntityReference> expectedTeams = (List<EntityReference>) expected;
-      List<EntityReference> actualTeams = JsonUtils.readObjects(actual.toString(), EntityReference.class);
+      List<EntityReference> actualTeams =
+          JsonUtils.readObjects(actual.toString(), EntityReference.class);
       assertEquals(expectedTeams, actualTeams);
     } else {
       assertCommonFieldChange(fieldName, expected, actual);

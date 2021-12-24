@@ -58,7 +58,8 @@ public final class MessageParser {
 
     public EntityLink(String entityType, String entityId, String fieldName, String fieldValue) {
       if (entityType == null || entityId == null) {
-        throw new IllegalArgumentException("Entity link must have both {entityType} and {entityId}");
+        throw new IllegalArgumentException(
+            "Entity link must have both {entityType} and {entityId}");
       }
       this.entityType = entityType;
       this.entityId = entityId;
@@ -85,7 +86,9 @@ public final class MessageParser {
       EntityLink entityLink = null;
       while (matcher.find()) {
         if (entityLink == null) {
-          entityLink = new EntityLink(matcher.group(1), matcher.group(2), matcher.group(4), matcher.group(6));
+          entityLink =
+              new EntityLink(
+                  matcher.group(1), matcher.group(2), matcher.group(4), matcher.group(6));
         } else {
           throw new IllegalArgumentException("Unexpected multiple entity links in " + link);
         }
@@ -127,7 +130,8 @@ public final class MessageParser {
     @Override
     public String toString() {
       return String.format(
-          "EntityLink { type = %s, entityType = %s, entityId = %s, fieldName = %s, fieldValue = %s}",
+          "EntityLink { type = %s, entityType = %s, entityId = %s, fieldName = %s, fieldValue ="
+              + " %s}",
           linkType, entityType, entityType, fieldName, fieldName);
     }
 
@@ -158,7 +162,8 @@ public final class MessageParser {
     List<EntityLink> links = new ArrayList<>();
     Matcher matcher = ENTITY_LINK_PATTERN.matcher(message);
     while (matcher.find()) {
-      EntityLink link = new EntityLink(matcher.group(1), matcher.group(2), matcher.group(4), matcher.group(6));
+      EntityLink link =
+          new EntityLink(matcher.group(1), matcher.group(2), matcher.group(4), matcher.group(6));
       links.add(link);
     }
     return links;

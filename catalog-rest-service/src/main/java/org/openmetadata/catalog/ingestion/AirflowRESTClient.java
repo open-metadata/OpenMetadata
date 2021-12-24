@@ -67,15 +67,18 @@ public class AirflowRESTClient {
             .build();
     HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
     if (response.statusCode() == 200) {
-      AirflowAuthResponse authResponse = JsonUtils.readValue(response.body(), AirflowAuthResponse.class);
+      AirflowAuthResponse authResponse =
+          JsonUtils.readValue(response.body(), AirflowAuthResponse.class);
       return authResponse.getAccessToken();
     }
-    throw new RuntimeException("Failed to get access_token. Please check AirflowConfiguration username, password");
+    throw new RuntimeException(
+        "Failed to get access_token. Please check AirflowConfiguration username, password");
   }
 
   public String deploy(Ingestion ingestion, CatalogApplicationConfig config) {
     try {
-      IngestionPipeline pipeline = AirflowUtils.toIngestionPipeline(ingestion, config.getAirflowConfiguration());
+      IngestionPipeline pipeline =
+          AirflowUtils.toIngestionPipeline(ingestion, config.getAirflowConfiguration());
       String token = authenticate();
       String authToken = String.format(this.authHeader, token);
       String pipelinePayload = JsonUtils.pojoToJson(pipeline);
@@ -120,7 +123,9 @@ public class AirflowRESTClient {
       }
 
       throw IngestionPipelineDeploymentException.byMessage(
-          pipelineName, "Failed to trigger IngestionPipeline", Response.Status.fromStatusCode(response.statusCode()));
+          pipelineName,
+          "Failed to trigger IngestionPipeline",
+          Response.Status.fromStatusCode(response.statusCode()));
     } catch (Exception e) {
       throw IngestionPipelineDeploymentException.byMessage(pipelineName, e.getMessage());
     }
@@ -141,7 +146,8 @@ public class AirflowRESTClient {
               .build();
       HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
       if (response.statusCode() == 200) {
-        AirflowListResponse airflowListResponse = JsonUtils.readValue(response.body(), AirflowListResponse.class);
+        AirflowListResponse airflowListResponse =
+            JsonUtils.readValue(response.body(), AirflowListResponse.class);
         ingestion.setNextExecutionDate(airflowListResponse.getNextRun());
         List<IngestionStatus> statuses = new ArrayList<>();
         for (AirflowDagRun dagRun : airflowListResponse.dagRuns) {

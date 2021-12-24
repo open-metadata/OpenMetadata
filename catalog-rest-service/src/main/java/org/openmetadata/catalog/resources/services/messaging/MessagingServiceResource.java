@@ -79,7 +79,8 @@ public class MessagingServiceResource {
     @SuppressWarnings("unused") /* Required for tests */
     public MessagingServiceList() {}
 
-    public MessagingServiceList(List<MessagingService> data, String beforeCursor, String afterCursor, int total)
+    public MessagingServiceList(
+        List<MessagingService> data, String beforeCursor, String afterCursor, int total)
         throws GeneralSecurityException, UnsupportedEncodingException {
       super(data, beforeCursor, afterCursor, total);
     }
@@ -97,7 +98,9 @@ public class MessagingServiceResource {
             responseCode = "200",
             description = "List of messaging services",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = MessagingServiceList.class)))
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = MessagingServiceList.class)))
       })
   public ResultList<MessagingService> list(
       @Context UriInfo uriInfo,
@@ -108,10 +111,14 @@ public class MessagingServiceResource {
           @Max(1000000)
           @QueryParam("limit")
           int limitParam,
-      @Parameter(description = "Returns list of services before this cursor", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Returns list of services before this cursor",
+              schema = @Schema(type = "string"))
           @QueryParam("before")
           String before,
-      @Parameter(description = "Returns list of services after this cursor", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Returns list of services after this cursor",
+              schema = @Schema(type = "string"))
           @QueryParam("after")
           String after)
       throws IOException, ParseException, GeneralSecurityException {
@@ -134,11 +141,17 @@ public class MessagingServiceResource {
             responseCode = "200",
             description = "Messaging service instance",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = MessagingService.class))),
-        @ApiResponse(responseCode = "404", description = "Messaging service for instance {id} is not found")
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = MessagingService.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Messaging service for instance {id} is not found")
       })
   public MessagingService get(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("id") String id)
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @PathParam("id") String id)
       throws IOException, ParseException {
     MessagingService service = dao.get(uriInfo, id, null);
     return service;
@@ -155,11 +168,17 @@ public class MessagingServiceResource {
             responseCode = "200",
             description = "Messaging service instance",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = MessagingService.class))),
-        @ApiResponse(responseCode = "404", description = "Messaging service for instance {id} is not found")
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = MessagingService.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Messaging service for instance {id} is not found")
       })
   public MessagingService getByName(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("name") String name)
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @PathParam("name") String name)
       throws IOException, ParseException {
     return dao.getByName(uriInfo, name, null);
   }
@@ -174,12 +193,17 @@ public class MessagingServiceResource {
         @ApiResponse(
             responseCode = "200",
             description = "List of messaging service versions",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = EntityHistory.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = EntityHistory.class)))
       })
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "messaging service Id", schema = @Schema(type = "string")) @PathParam("id") String id)
+      @Parameter(description = "messaging service Id", schema = @Schema(type = "string"))
+          @PathParam("id")
+          String id)
       throws IOException, ParseException {
     return dao.listVersions(id);
   }
@@ -195,15 +219,20 @@ public class MessagingServiceResource {
             responseCode = "200",
             description = "messaging service",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = MessagingService.class))),
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = MessagingService.class))),
         @ApiResponse(
             responseCode = "404",
-            description = "Messaging service for instance {id} and version " + "{version} is not found")
+            description =
+                "Messaging service for instance {id} and version " + "{version} is not found")
       })
   public MessagingService getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "messaging service Id", schema = @Schema(type = "string")) @PathParam("id") String id,
+      @Parameter(description = "messaging service Id", schema = @Schema(type = "string"))
+          @PathParam("id")
+          String id,
       @Parameter(
               description = "messaging service version number in the form `major`" + ".`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
@@ -229,7 +258,9 @@ public class MessagingServiceResource {
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateMessagingService create)
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid CreateMessagingService create)
       throws IOException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     MessagingService service = getService(create, securityContext);
@@ -241,7 +272,9 @@ public class MessagingServiceResource {
   @Operation(
       summary = "Update a messaging service",
       tags = "services",
-      description = "Create a new messaging service or Update an existing messaging service identified by `id`.",
+      description =
+          "Create a new messaging service or Update an existing messaging service identified by"
+              + " `id`.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -255,7 +288,8 @@ public class MessagingServiceResource {
   public Response update(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the messaging service", schema = @Schema(type = "string")) @PathParam("id")
+      @Parameter(description = "Id of the messaging service", schema = @Schema(type = "string"))
+          @PathParam("id")
           String id,
       @Valid CreateMessagingService update)
       throws IOException, ParseException {
@@ -270,22 +304,27 @@ public class MessagingServiceResource {
   @Operation(
       summary = "Delete a messaging service",
       tags = "services",
-      description = "Delete a messaging service. If topics belong the service, it can't be " + "deleted.",
+      description =
+          "Delete a messaging service. If topics belong the service, it can't be " + "deleted.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
-        @ApiResponse(responseCode = "404", description = "MessagingService service for instance {id} " + "is not found")
+        @ApiResponse(
+            responseCode = "404",
+            description = "MessagingService service for instance {id} " + "is not found")
       })
   public Response delete(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the messaging service", schema = @Schema(type = "string")) @PathParam("id")
+      @Parameter(description = "Id of the messaging service", schema = @Schema(type = "string"))
+          @PathParam("id")
           String id) {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     dao.delete(UUID.fromString(id));
     return Response.ok().build();
   }
 
-  private MessagingService getService(CreateMessagingService create, SecurityContext securityContext) {
+  private MessagingService getService(
+      CreateMessagingService create, SecurityContext securityContext) {
     return new MessagingService()
         .withId(UUID.randomUUID())
         .withName(create.getName())

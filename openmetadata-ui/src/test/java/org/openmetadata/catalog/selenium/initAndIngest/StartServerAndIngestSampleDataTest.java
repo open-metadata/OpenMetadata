@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate 
+ *  Copyright 2021 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -13,15 +13,15 @@
 
 package org.openmetadata.catalog.selenium.initAndIngest;
 
-import org.junit.jupiter.api.Test;
-
 import java.io.File;
 import java.io.IOException;
 import java.util.logging.Logger;
+import org.junit.jupiter.api.Test;
 
 public class StartServerAndIngestSampleDataTest {
 
-  private static final Logger LOG = Logger.getLogger(StartServerAndIngestSampleDataTest.class.getName());
+  private static final Logger LOG =
+      Logger.getLogger(StartServerAndIngestSampleDataTest.class.getName());
 
   // RUN THIS TEST FIRST
 
@@ -35,4 +35,3 @@ public class StartServerAndIngestSampleDataTest {
     LOG.info("Server started and Ingested the data");
   }
 }
-

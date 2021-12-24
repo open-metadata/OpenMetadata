@@ -23,7 +23,8 @@ public final class AirflowUtils {
 
   private AirflowUtils() {}
 
-  public static OpenMetadataIngestionComponent makeOpenMetadataDatasourceComponent(Ingestion ingestion) {
+  public static OpenMetadataIngestionComponent makeOpenMetadataDatasourceComponent(
+      Ingestion ingestion) {
     Map<String, Object> dbConfig = new HashMap<>();
     dbConfig.put("host_port", ingestion.getConnectorConfig().getHost());
     dbConfig.put("username", ingestion.getConnectorConfig().getUsername());
@@ -38,22 +39,35 @@ public final class AirflowUtils {
       filterPattern.put("excludes", ingestion.getConnectorConfig().getExcludeFilterPattern());
     }
     dbConfig.put("filter_pattern", filterPattern);
-    return OpenMetadataIngestionComponent.builder().type(ingestion.getIngestionType().value()).config(dbConfig).build();
+    return OpenMetadataIngestionComponent.builder()
+        .type(ingestion.getIngestionType().value())
+        .config(dbConfig)
+        .build();
   }
 
-  public static OpenMetadataIngestionComponent makeOpenMetadataSourceComponent(Ingestion ingestion) {
+  public static OpenMetadataIngestionComponent makeOpenMetadataSourceComponent(
+      Ingestion ingestion) {
     Map<String, Object> dbConfig = new HashMap<>();
-    return OpenMetadataIngestionComponent.builder().type(ingestion.getIngestionType().value()).config(dbConfig).build();
+    return OpenMetadataIngestionComponent.builder()
+        .type(ingestion.getIngestionType().value())
+        .config(dbConfig)
+        .build();
   }
 
   public static OpenMetadataIngestionComponent makeElasticSearchSinkComponent(Ingestion ingestion) {
     Map<String, Object> sinkConfig = new HashMap<>();
-    return OpenMetadataIngestionComponent.builder().type("elasticsearch").config(sinkConfig).build();
+    return OpenMetadataIngestionComponent.builder()
+        .type("elasticsearch")
+        .config(sinkConfig)
+        .build();
   }
 
   public static OpenMetadataIngestionComponent makeOpenMetadataSinkComponent(Ingestion ingestion) {
     Map<String, Object> sinkConfig = new HashMap<>();
-    return OpenMetadataIngestionComponent.builder().type("metadata-rest").config(sinkConfig).build();
+    return OpenMetadataIngestionComponent.builder()
+        .type("metadata-rest")
+        .config(sinkConfig)
+        .build();
   }
 
   public static OpenMetadataIngestionComponent makeOpenMetadataConfigComponent(
@@ -62,7 +76,10 @@ public final class AirflowUtils {
     metadataConfig.put("api_endpoint", airflowConfiguration.getMetadataApiEndpoint());
     metadataConfig.put("auth_provider_type", airflowConfiguration.getAuthProvider());
     metadataConfig.put("secret_key", airflowConfiguration.getSecretKey());
-    return OpenMetadataIngestionComponent.builder().type("metadata-server").config(metadataConfig).build();
+    return OpenMetadataIngestionComponent.builder()
+        .type("metadata-server")
+        .config(metadataConfig)
+        .build();
   }
 
   public static OpenMetadataIngestionConfig buildDatabaseIngestion(
@@ -74,7 +91,8 @@ public final class AirflowUtils {
         .build();
   }
 
-  public static IngestionPipeline toIngestionPipeline(Ingestion ingestion, AirflowConfiguration airflowConfiguration) {
+  public static IngestionPipeline toIngestionPipeline(
+      Ingestion ingestion, AirflowConfiguration airflowConfiguration) {
     Map<String, Object> taskParams = new HashMap<>();
     taskParams.put("workflow_config", buildDatabaseIngestion(ingestion, airflowConfiguration));
     IngestionTaskConfig taskConfig = IngestionTaskConfig.builder().opKwargs(taskParams).build();

@@ -46,9 +46,11 @@ public class UsageRepository {
   }
 
   @Transaction
-  public EntityUsage getByName(String entityType, String fqn, String date, int days) throws IOException {
+  public EntityUsage getByName(String entityType, String fqn, String date, int days)
+      throws IOException {
     EntityReference ref = Entity.getEntityReferenceByName(entityType, fqn);
-    List<UsageDetails> usageDetails = dao.usageDAO().getUsageById(ref.getId().toString(), date, days - 1);
+    List<UsageDetails> usageDetails =
+        dao.usageDAO().getUsageById(ref.getId().toString(), date, days - 1);
     return new EntityUsage().withUsage(usageDetails).withEntity(ref);
   }
 
@@ -60,7 +62,8 @@ public class UsageRepository {
   }
 
   @Transaction
-  public void createByName(String entityType, String fullyQualifiedName, DailyCount usage) throws IOException {
+  public void createByName(String entityType, String fullyQualifiedName, DailyCount usage)
+      throws IOException {
     EntityReference ref = Entity.getEntityReferenceByName(entityType, fullyQualifiedName);
     addUsage(entityType, ref.getId().toString(), usage);
     LOG.info("Usage successfully posted by name");
@@ -78,8 +81,11 @@ public class UsageRepository {
     // If table usage was reported, add the usage count to database
     if (entityType.equalsIgnoreCase(Entity.TABLE)) {
       List<String> databaseIds =
-          dao.relationshipDAO().findFrom(entityId, Relationship.CONTAINS.ordinal(), Entity.DATABASE);
-      dao.usageDAO().insertOrUpdateCount(usage.getDate(), databaseIds.get(0), Entity.DATABASE, usage.getCount());
+          dao.relationshipDAO()
+              .findFrom(entityId, Relationship.CONTAINS.ordinal(), Entity.DATABASE);
+      dao.usageDAO()
+          .insertOrUpdateCount(
+              usage.getDate(), databaseIds.get(0), Entity.DATABASE, usage.getCount());
     }
   }
 
@@ -87,11 +93,17 @@ public class UsageRepository {
     @Override
     public UsageDetails map(ResultSet r, StatementContext ctx) throws SQLException {
       UsageStats dailyStats =
-          new UsageStats().withCount(r.getInt("count1")).withPercentileRank(r.getDouble("percentile1"));
+          new UsageStats()
+              .withCount(r.getInt("count1"))
+              .withPercentileRank(r.getDouble("percentile1"));
       UsageStats weeklyStats =
-          new UsageStats().withCount(r.getInt("count7")).withPercentileRank(r.getDouble("percentile7"));
+          new UsageStats()
+              .withCount(r.getInt("count7"))
+              .withPercentileRank(r.getDouble("percentile7"));
       UsageStats monthlyStats =
-          new UsageStats().withCount(r.getInt("count30")).withPercentileRank(r.getDouble("percentile30"));
+          new UsageStats()
+              .withCount(r.getInt("count30"))
+              .withPercentileRank(r.getDouble("percentile30"));
       return new UsageDetails()
           .withDate(r.getString("usageDate"))
           .withDailyStats(dailyStats)

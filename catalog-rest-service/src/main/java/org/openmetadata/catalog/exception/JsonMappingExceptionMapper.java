@@ -22,9 +22,9 @@ import javax.ws.rs.ext.ExceptionMapper;
 import javax.ws.rs.ext.Provider;
 
 /**
- * Dropwizard by default maps the JSON payload format issues (invalid URI etc.) violations to 400 Response with no error
- * message. This exception mapper overrides that behavior by including ErrorMessage json in the response along with the
- * error code.
+ * Dropwizard by default maps the JSON payload format issues (invalid URI etc.) violations to 400
+ * Response with no error message. This exception mapper overrides that behavior by including
+ * ErrorMessage json in the response along with the error code.
  */
 @Provider
 @Priority(1) // Override the default JsonMappingExceptionMapper by setting the priority higher

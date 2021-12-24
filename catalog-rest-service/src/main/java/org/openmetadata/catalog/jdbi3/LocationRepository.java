@@ -39,9 +39,11 @@ import org.openmetadata.common.utils.CipherText;
 
 public class LocationRepository extends EntityRepository<Location> {
   // Location fields that can be patched in a PATCH request
-  private static final Fields LOCATION_PATCH_FIELDS = new Fields(LocationResource.FIELD_LIST, "owner,tags");
+  private static final Fields LOCATION_PATCH_FIELDS =
+      new Fields(LocationResource.FIELD_LIST, "owner,tags");
   // Location fields that can be updated in a PUT request
-  private static final Fields LOCATION_UPDATE_FIELDS = new Fields(LocationResource.FIELD_LIST, "owner,tags");
+  private static final Fields LOCATION_UPDATE_FIELDS =
+      new Fields(LocationResource.FIELD_LIST, "owner,tags");
 
   private final CollectionDAO dao;
 
@@ -77,7 +79,8 @@ public class LocationRepository extends EntityRepository<Location> {
   }
 
   @Transaction
-  public final ResultList<Location> listPrefixesBefore(Fields fields, String fqn, int limitParam, String before)
+  public final ResultList<Location> listPrefixesBefore(
+      Fields fields, String fqn, int limitParam, String before)
       throws GeneralSecurityException, IOException {
     String service = fqn.split("\\.")[0];
     // Reverse scrolling - Get one extra result used for computing before cursor
@@ -97,10 +100,12 @@ public class LocationRepository extends EntityRepository<Location> {
     }
     int total =
         dao.locationDAO()
-            .listPrefixesCount(dao.locationDAO().getTableName(), dao.locationDAO().getNameColumn(), fqn, service);
+            .listPrefixesCount(
+                dao.locationDAO().getTableName(), dao.locationDAO().getNameColumn(), fqn, service);
 
     String beforeCursor = null, afterCursor;
-    if (entities.size() > limitParam) { // If extra result exists, then previous page exists - return before cursor
+    if (entities.size()
+        > limitParam) { // If extra result exists, then previous page exists - return before cursor
       entities.remove(0);
       beforeCursor = getFullyQualifiedName(entities.get(0));
     }
@@ -109,7 +114,8 @@ public class LocationRepository extends EntityRepository<Location> {
   }
 
   @Transaction
-  public final ResultList<Location> listPrefixesAfter(Fields fields, String fqn, int limitParam, String after)
+  public final ResultList<Location> listPrefixesAfter(
+      Fields fields, String fqn, int limitParam, String after)
       throws GeneralSecurityException, IOException {
     String service = fqn.split("\\.")[0];
     // forward scrolling, if after == null then first page is being asked
@@ -129,11 +135,13 @@ public class LocationRepository extends EntityRepository<Location> {
     }
     int total =
         dao.locationDAO()
-            .listPrefixesCount(dao.locationDAO().getTableName(), dao.locationDAO().getNameColumn(), fqn, service);
+            .listPrefixesCount(
+                dao.locationDAO().getTableName(), dao.locationDAO().getNameColumn(), fqn, service);
 
     String beforeCursor, afterCursor = null;
     beforeCursor = after == null ? null : getFullyQualifiedName(entities.get(0));
-    if (entities.size() > limitParam) { // If extra result exists, then next page exists - return after cursor
+    if (entities.size()
+        > limitParam) { // If extra result exists, then next page exists - return after cursor
       entities.remove(limitParam);
       afterCursor = getFullyQualifiedName(entities.get(limitParam - 1));
     }
@@ -164,14 +172,17 @@ public class LocationRepository extends EntityRepository<Location> {
     if (entityType.equalsIgnoreCase(Entity.STORAGE_SERVICE)) {
       return dao.storageServiceDAO().findEntityById(serviceId);
     }
-    throw new IllegalArgumentException(CatalogExceptionMessage.invalidServiceEntity(entityType, Entity.LOCATION));
+    throw new IllegalArgumentException(
+        CatalogExceptionMessage.invalidServiceEntity(entityType, Entity.LOCATION));
   }
 
   @Override
   public void prepare(Location location) throws IOException {
-    StorageService storageService = getService(location.getService().getId(), location.getService().getType());
+    StorageService storageService =
+        getService(location.getService().getId(), location.getService().getType());
     location.setService(
-        new StorageServiceRepository.StorageServiceEntityInterface(storageService).getEntityReference());
+        new StorageServiceRepository.StorageServiceEntityInterface(storageService)
+            .getEntityReference());
     location.setServiceType(storageService.getServiceType());
     location.setFullyQualifiedName(getFQN(location));
     EntityUtil.populateOwner(dao.userDAO(), dao.teamDAO(), location.getOwner()); // Validate owner
@@ -201,7 +212,8 @@ public class LocationRepository extends EntityRepository<Location> {
   @Override
   public void storeRelationships(Location location) {
     // Add location owner relationship
-    EntityUtil.setOwner(dao.relationshipDAO(), location.getId(), Entity.LOCATION, location.getOwner());
+    EntityUtil.setOwner(
+        dao.relationshipDAO(), location.getId(), Entity.LOCATION, location.getOwner());
     dao.relationshipDAO()
         .insert(
             location.getService().getId().toString(),
@@ -221,16 +233,20 @@ public class LocationRepository extends EntityRepository<Location> {
 
   public EntityReference getOwner(Location location) throws IOException {
     return location != null
-        ? EntityUtil.populateOwner(location.getId(), dao.relationshipDAO(), dao.userDAO(), dao.teamDAO())
+        ? EntityUtil.populateOwner(
+            location.getId(), dao.relationshipDAO(), dao.userDAO(), dao.teamDAO())
         : null;
   }
 
   private List<EntityReference> getFollowers(Location location) throws IOException {
-    return location == null ? null : EntityUtil.getFollowers(location.getId(), dao.relationshipDAO(), dao.userDAO());
+    return location == null
+        ? null
+        : EntityUtil.getFollowers(location.getId(), dao.relationshipDAO(), dao.userDAO());
   }
 
   private EntityReference getService(Location location) throws IOException {
-    EntityReference ref = EntityUtil.getService(dao.relationshipDAO(), location.getId(), Entity.STORAGE_SERVICE);
+    EntityReference ref =
+        EntityUtil.getService(dao.relationshipDAO(), location.getId(), Entity.STORAGE_SERVICE);
     return getService(Objects.requireNonNull(ref));
   }
 
@@ -259,7 +275,8 @@ public class LocationRepository extends EntityRepository<Location> {
   private void applyTags(Location location) {
     // Add location level tags by adding tag to location relationship
     EntityUtil.applyTags(dao.tagDAO(), location.getTags(), location.getFullyQualifiedName());
-    location.setTags(getTags(location.getFullyQualifiedName())); // Update tag to handle additional derived tags
+    location.setTags(
+        getTags(location.getFullyQualifiedName())); // Update tag to handle additional derived tags
   }
 
   private List<TagLabel> getTags(String fqn) {
@@ -399,7 +416,10 @@ public class LocationRepository extends EntityRepository<Location> {
 
     @Override
     public void entitySpecificUpdate() throws IOException {
-      recordChange("locationType", original.getEntity().getLocationType(), updated.getEntity().getLocationType());
+      recordChange(
+          "locationType",
+          original.getEntity().getLocationType(),
+          updated.getEntity().getLocationType());
     }
   }
 }

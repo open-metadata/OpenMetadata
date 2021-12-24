@@ -36,7 +36,8 @@ import org.openmetadata.catalog.util.JsonUtils;
 
 public class ChartRepository extends EntityRepository<Chart> {
   private static final Fields CHART_UPDATE_FIELDS = new Fields(ChartResource.FIELD_LIST, "owner");
-  private static final Fields CHART_PATCH_FIELDS = new Fields(ChartResource.FIELD_LIST, "owner,tags");
+  private static final Fields CHART_PATCH_FIELDS =
+      new Fields(ChartResource.FIELD_LIST, "owner,tags");
   private final CollectionDAO dao;
 
   public ChartRepository(CollectionDAO dao) {
@@ -57,7 +58,9 @@ public class ChartRepository extends EntityRepository<Chart> {
 
   @Transaction
   public void delete(UUID id) {
-    if (dao.relationshipDAO().findToCount(id.toString(), Relationship.CONTAINS.ordinal(), Entity.CHART) > 0) {
+    if (dao.relationshipDAO()
+            .findToCount(id.toString(), Relationship.CONTAINS.ordinal(), Entity.CHART)
+        > 0) {
       throw new IllegalArgumentException("Chart is not empty");
     }
     dao.chartDAO().delete(id);
@@ -68,7 +71,8 @@ public class ChartRepository extends EntityRepository<Chart> {
   public void prepare(Chart chart) throws IOException {
     populateService(chart);
     chart.setFullyQualifiedName(getFQN(chart));
-    EntityUtil.populateOwner(dao.userDAO(), dao.teamDAO(), chart.getOwner()); // Validate and populate owner
+    EntityUtil.populateOwner(
+        dao.userDAO(), dao.teamDAO(), chart.getOwner()); // Validate and populate owner
     chart.setTags(EntityUtil.addDerivedTags(dao.tagDAO(), chart.getTags()));
   }
 
@@ -79,7 +83,8 @@ public class ChartRepository extends EntityRepository<Chart> {
     List<TagLabel> tags = chart.getTags();
     EntityReference service = chart.getService();
 
-    // Don't store owner, database, href and tags as JSON. Build it on the fly based on relationships
+    // Don't store owner, database, href and tags as JSON. Build it on the fly based on
+    // relationships
     chart.withOwner(null).withService(null).withHref(null).withTags(null);
 
     if (update) {
@@ -109,12 +114,14 @@ public class ChartRepository extends EntityRepository<Chart> {
   private void applyTags(Chart chart) {
     // Add chart level tags by adding tag to chart relationship
     EntityUtil.applyTags(dao.tagDAO(), chart.getTags(), chart.getFullyQualifiedName());
-    chart.setTags(getTags(chart.getFullyQualifiedName())); // Update tag to handle additional derived tags
+    chart.setTags(
+        getTags(chart.getFullyQualifiedName())); // Update tag to handle additional derived tags
   }
 
   public EntityReference getOwner(Chart chart) throws IOException {
     return chart != null
-        ? EntityUtil.populateOwner(chart.getId(), dao.relationshipDAO(), dao.userDAO(), dao.teamDAO())
+        ? EntityUtil.populateOwner(
+            chart.getId(), dao.relationshipDAO(), dao.userDAO(), dao.teamDAO())
         : null;
   }
 
@@ -149,7 +156,9 @@ public class ChartRepository extends EntityRepository<Chart> {
   }
 
   private List<EntityReference> getFollowers(Chart chart) throws IOException {
-    return chart == null ? null : EntityUtil.getFollowers(chart.getId(), dao.relationshipDAO(), dao.userDAO());
+    return chart == null
+        ? null
+        : EntityUtil.getFollowers(chart.getId(), dao.relationshipDAO(), dao.userDAO());
   }
 
   private List<TagLabel> getTags(String fqn) {
@@ -157,7 +166,8 @@ public class ChartRepository extends EntityRepository<Chart> {
   }
 
   private EntityReference getService(Chart chart) throws IOException {
-    EntityReference ref = EntityUtil.getService(dao.relationshipDAO(), chart.getId(), Entity.DASHBOARD_SERVICE);
+    EntityReference ref =
+        EntityUtil.getService(dao.relationshipDAO(), chart.getId(), Entity.DASHBOARD_SERVICE);
     if (ref != null) {
       DashboardService service = getService(ref.getId(), ref.getType());
       ref.setName(service.getName());

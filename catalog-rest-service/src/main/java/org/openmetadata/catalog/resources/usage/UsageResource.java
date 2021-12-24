@@ -73,7 +73,10 @@ public class UsageResource {
         @ApiResponse(
             responseCode = "200",
             description = "Entity usage",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = EntityUsage.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = EntityUsage.class))),
         @ApiResponse(responseCode = "404", description = "Entity for instance {id} is not found")
       })
   public EntityUsage get(
@@ -84,15 +87,19 @@ public class UsageResource {
               schema = @Schema(type = "string", example = "table, report, metrics, or dashboard"))
           @PathParam("entity")
           String entity,
-      @Parameter(description = "Entity id", required = true, schema = @Schema(type = "string")) @PathParam("id")
+      @Parameter(description = "Entity id", required = true, schema = @Schema(type = "string"))
+          @PathParam("id")
           String id,
       @Parameter(
-              description = "Usage for number of days going back from the given date " + "(default=1, min=1, max=30)")
+              description =
+                  "Usage for number of days going back from the given date "
+                      + "(default=1, min=1, max=30)")
           @QueryParam("days")
           int days,
       @Parameter(
               description =
-                  "Usage for number of days going back from this date in ISO 8601 format. " + "(default = currentDate)")
+                  "Usage for number of days going back from this date in ISO 8601 format. "
+                      + "(default = currentDate)")
           @QueryParam("date")
           String date)
       throws IOException {
@@ -113,7 +120,10 @@ public class UsageResource {
         @ApiResponse(
             responseCode = "200",
             description = "Entity usage",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = EntityUsage.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = EntityUsage.class))),
         @ApiResponse(responseCode = "404", description = "Entity for instance {id} is not found")
       })
   public EntityUsage getByName(
@@ -131,12 +141,15 @@ public class UsageResource {
           @PathParam("fqn")
           String fqn,
       @Parameter(
-              description = "Usage for number of days going back from the given date " + "(default=1, min=1, max=30)")
+              description =
+                  "Usage for number of days going back from the given date "
+                      + "(default=1, min=1, max=30)")
           @QueryParam("days")
           int days,
       @Parameter(
               description =
-                  "Usage for number of days going back from this date in ISO 8601 format " + "(default = currentDate)")
+                  "Usage for number of days going back from this date in ISO 8601 format "
+                      + "(default = currentDate)")
           @QueryParam("date")
           String date)
       throws IOException {
@@ -152,13 +165,16 @@ public class UsageResource {
       summary = "Report usage",
       tags = "usage",
       description =
-          "Report usage information for an entity on a given date. System stores last 30 days of usage "
-              + "information. Usage information older than 30 days is deleted.",
+          "Report usage information for an entity on a given date. System stores last 30 days of"
+              + " usage information. Usage information older than 30 days is deleted.",
       responses = {
         @ApiResponse(
             responseCode = "200",
             description = "Usage information",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = EntityUsage.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = EntityUsage.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(
@@ -169,7 +185,8 @@ public class UsageResource {
               schema = @Schema(type = "string", example = "table, report, metrics, or dashboard"))
           @PathParam("entity")
           String entity,
-      @Parameter(description = "Entity id", required = true, schema = @Schema(type = "string")) @PathParam("id")
+      @Parameter(description = "Entity id", required = true, schema = @Schema(type = "string"))
+          @PathParam("id")
           String id,
       @Parameter(description = "Usage information a given date") @Valid DailyCount usage)
       throws IOException {
@@ -183,13 +200,16 @@ public class UsageResource {
       summary = "Report usage by name",
       tags = "usage",
       description =
-          "Report usage information for an entity by name on a given date. System stores last 30 days "
-              + "of usage information. Usage information older than 30 days is deleted.",
+          "Report usage information for an entity by name on a given date. System stores last 30"
+              + " days of usage information. Usage information older than 30 days is deleted.",
       responses = {
         @ApiResponse(
             responseCode = "200",
             description = "Usage information",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = EntityUsage.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = EntityUsage.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createByName(

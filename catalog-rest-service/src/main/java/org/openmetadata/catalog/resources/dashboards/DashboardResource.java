@@ -80,7 +80,9 @@ public class DashboardResource {
   private final CatalogAuthorizer authorizer;
 
   public static ResultList<Dashboard> addHref(UriInfo uriInfo, ResultList<Dashboard> dashboards) {
-    Optional.ofNullable(dashboards.getData()).orElse(Collections.emptyList()).forEach(i -> addHref(uriInfo, i));
+    Optional.ofNullable(dashboards.getData())
+        .orElse(Collections.emptyList())
+        .forEach(i -> addHref(uriInfo, i));
     return dashboards;
   }
 
@@ -112,7 +114,8 @@ public class DashboardResource {
   }
 
   static final String FIELDS = "owner,charts,followers,tags,usageSummary";
-  public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replaceAll(" ", "").split(","));
+  public static final List<String> FIELD_LIST =
+      Arrays.asList(FIELDS.replaceAll(" ", "").split(","));
 
   @GET
   @Valid
@@ -120,14 +123,17 @@ public class DashboardResource {
       summary = "List Dashboards",
       tags = "dashboards",
       description =
-          "Get a list of dashboards, optionally filtered by `service` it belongs to. Use `fields` "
-              + "parameter to get only necessary fields. Use cursor-based pagination to limit the number "
-              + "entries in the list using `limit` and `before` or `after` query params.",
+          "Get a list of dashboards, optionally filtered by `service` it belongs to. Use `fields`"
+              + " parameter to get only necessary fields. Use cursor-based pagination to limit the"
+              + " number entries in the list using `limit` and `before` or `after` query params.",
       responses = {
         @ApiResponse(
             responseCode = "200",
             description = "List of dashboards",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = DashboardList.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = DashboardList.class)))
       })
   public ResultList<Dashboard> list(
       @Context UriInfo uriInfo,
@@ -142,16 +148,22 @@ public class DashboardResource {
               schema = @Schema(type = "string", example = "superset"))
           @QueryParam("service")
           String serviceParam,
-      @Parameter(description = "Limit the number dashboards returned. (1 to 1000000, " + "default = 10)")
+      @Parameter(
+              description =
+                  "Limit the number dashboards returned. (1 to 1000000, " + "default = 10)")
           @DefaultValue("10")
           @Min(1)
           @Max(1000000)
           @QueryParam("limit")
           int limitParam,
-      @Parameter(description = "Returns list of dashboards before this cursor", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Returns list of dashboards before this cursor",
+              schema = @Schema(type = "string"))
           @QueryParam("before")
           String before,
-      @Parameter(description = "Returns list of dashboards after this cursor", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Returns list of dashboards after this cursor",
+              schema = @Schema(type = "string"))
           @QueryParam("after")
           String after)
       throws IOException, GeneralSecurityException, ParseException {
@@ -160,7 +172,9 @@ public class DashboardResource {
 
     ResultList<Dashboard> dashboards;
     if (before != null) { // Reverse paging
-      dashboards = dao.listBefore(uriInfo, fields, serviceParam, limitParam, before); // Ask for one extra entry
+      dashboards =
+          dao.listBefore(
+              uriInfo, fields, serviceParam, limitParam, before); // Ask for one extra entry
     } else { // Forward paging or first page
       dashboards = dao.listAfter(uriInfo, fields, serviceParam, limitParam, after);
     }
@@ -177,12 +191,16 @@ public class DashboardResource {
         @ApiResponse(
             responseCode = "200",
             description = "List of dashboard versions",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = EntityHistory.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = EntityHistory.class)))
       })
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Dashboard Id", schema = @Schema(type = "string")) @PathParam("id") String id)
+      @Parameter(description = "Dashboard Id", schema = @Schema(type = "string")) @PathParam("id")
+          String id)
       throws IOException, ParseException {
     return dao.listVersions(id);
   }
@@ -197,7 +215,10 @@ public class DashboardResource {
         @ApiResponse(
             responseCode = "200",
             description = "The dashboard",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Dashboard.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Dashboard.class))),
         @ApiResponse(responseCode = "404", description = "Dashboard for instance {id} is not found")
       })
   public Dashboard get(
@@ -224,7 +245,10 @@ public class DashboardResource {
         @ApiResponse(
             responseCode = "200",
             description = "The dashboard",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Dashboard.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Dashboard.class))),
         @ApiResponse(responseCode = "404", description = "Dashboard for instance {id} is not found")
       })
   public Dashboard getByName(
@@ -252,7 +276,10 @@ public class DashboardResource {
         @ApiResponse(
             responseCode = "200",
             description = "dashboard",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Dashboard.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Dashboard.class))),
         @ApiResponse(
             responseCode = "404",
             description = "Dashboard for instance {id} and version {version} is " + "not found")
@@ -260,7 +287,8 @@ public class DashboardResource {
   public Dashboard getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Dashboard Id", schema = @Schema(type = "string")) @PathParam("id") String id,
+      @Parameter(description = "Dashboard Id", schema = @Schema(type = "string")) @PathParam("id")
+          String id,
       @Parameter(
               description = "Dashboard version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
@@ -280,11 +308,15 @@ public class DashboardResource {
             responseCode = "200",
             description = "The dashboard",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = CreateDashboard.class))),
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = CreateDashboard.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDashboard create)
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid CreateDashboard create)
       throws IOException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Dashboard dashboard = getDashboard(securityContext, create);
@@ -298,7 +330,10 @@ public class DashboardResource {
       summary = "Update a Dashboard",
       tags = "dashboards",
       description = "Update an existing dashboard using JsonPatch.",
-      externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
+      externalDocs =
+          @ExternalDocumentation(
+              description = "JsonPatch RFC",
+              url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
   public Response updateDescription(
       @Context UriInfo uriInfo,
@@ -310,15 +345,18 @@ public class DashboardResource {
                   @Content(
                       mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
                       examples = {
-                        @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
+                        @ExampleObject(
+                            "[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
                       }))
           JsonPatch patch)
       throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, FIELDS);
     Dashboard dashboard = dao.get(uriInfo, id, fields);
-    SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, dao.getOwnerReference(dashboard));
+    SecurityUtil.checkAdminRoleOrPermissions(
+        authorizer, securityContext, dao.getOwnerReference(dashboard));
     PatchResponse<Dashboard> response =
-        dao.patch(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
+        dao.patch(
+            uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
     addHref(uriInfo, response.getEntity());
     return response.toResponse();
   }
@@ -333,11 +371,15 @@ public class DashboardResource {
             responseCode = "200",
             description = "The dashboard",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = CreateDashboard.class))),
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = CreateDashboard.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createOrUpdate(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDashboard create)
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid CreateDashboard create)
       throws IOException, ParseException {
     Dashboard dashboard = getDashboard(securityContext, create);
     PutResponse<Dashboard> response = dao.createOrUpdate(uriInfo, dashboard);
@@ -358,11 +400,18 @@ public class DashboardResource {
   public Response addFollower(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the dashboard", schema = @Schema(type = "string")) @PathParam("id") String id,
-      @Parameter(description = "Id of the user to be added as follower", schema = @Schema(type = "string"))
+      @Parameter(description = "Id of the dashboard", schema = @Schema(type = "string"))
+          @PathParam("id")
+          String id,
+      @Parameter(
+              description = "Id of the user to be added as follower",
+              schema = @Schema(type = "string"))
           String userId)
       throws IOException {
-    return dao.addFollower(securityContext.getUserPrincipal().getName(), UUID.fromString(id), UUID.fromString(userId))
+    return dao.addFollower(
+            securityContext.getUserPrincipal().getName(),
+            UUID.fromString(id),
+            UUID.fromString(userId))
         .toResponse();
   }
 
@@ -375,13 +424,19 @@ public class DashboardResource {
   public Response deleteFollower(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the dashboard", schema = @Schema(type = "string")) @PathParam("id") String id,
-      @Parameter(description = "Id of the user being removed as follower", schema = @Schema(type = "string"))
+      @Parameter(description = "Id of the dashboard", schema = @Schema(type = "string"))
+          @PathParam("id")
+          String id,
+      @Parameter(
+              description = "Id of the user being removed as follower",
+              schema = @Schema(type = "string"))
           @PathParam("userId")
           String userId)
       throws IOException {
     return dao.deleteFollower(
-            securityContext.getUserPrincipal().getName(), UUID.fromString(id), UUID.fromString(userId))
+            securityContext.getUserPrincipal().getName(),
+            UUID.fromString(id),
+            UUID.fromString(userId))
         .toResponse();
   }
 

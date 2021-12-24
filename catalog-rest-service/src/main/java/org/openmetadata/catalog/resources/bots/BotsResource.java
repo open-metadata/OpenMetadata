@@ -82,17 +82,24 @@ public class BotsResource {
         @ApiResponse(
             responseCode = "200",
             description = "List of bots",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = BotsList.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = BotsList.class)))
       })
   public ResultList<Bots> list(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @QueryParam("name") String name,
       @DefaultValue("10") @Min(1) @Max(1000000) @QueryParam("limit") int limitParam,
-      @Parameter(description = "Returns list of bots before this cursor", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Returns list of bots before this cursor",
+              schema = @Schema(type = "string"))
           @QueryParam("before")
           String before,
-      @Parameter(description = "Returns list of bots after this cursor", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Returns list of bots after this cursor",
+              schema = @Schema(type = "string"))
           @QueryParam("after")
           String after)
       throws IOException, GeneralSecurityException, ParseException {
@@ -117,10 +124,16 @@ public class BotsResource {
         @ApiResponse(
             responseCode = "200",
             description = "The bot",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Bots.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Bots.class))),
         @ApiResponse(responseCode = "404", description = "Bot for instance {id} is not found")
       })
-  public Bots get(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("id") String id)
+  public Bots get(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @PathParam("id") String id)
       throws IOException, ParseException {
     return dao.get(uriInfo, id, Fields.EMPTY_FIELDS);
   }
@@ -134,13 +147,19 @@ public class BotsResource {
         @ApiResponse(
             responseCode = "200",
             description = "The bot ",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Bots.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Bots.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
-  public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, Bots bot)
+  public Response create(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, Bots bot)
       throws IOException {
     SecurityUtil.checkAdminRole(authorizer, securityContext);
-    bot.withId(UUID.randomUUID()).withUpdatedBy(securityContext.getUserPrincipal().getName()).withUpdatedAt(new Date());
+    bot.withId(UUID.randomUUID())
+        .withUpdatedBy(securityContext.getUserPrincipal().getName())
+        .withUpdatedAt(new Date());
     dao.create(uriInfo, bot);
     return Response.created(bot.getHref()).entity(bot).build();
   }

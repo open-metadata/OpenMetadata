@@ -40,7 +40,8 @@ public class ServiceResource {
 
   public static CollectionList getServiceList(UriInfo uriInfo) {
     if (serviceList == null) {
-      CollectionDescriptor[] services = CollectionRegistry.getInstance().getCollectionForPath("/v1/services", uriInfo);
+      CollectionDescriptor[] services =
+          CollectionRegistry.getInstance().getCollectionForPath("/v1/services", uriInfo);
       serviceList = new CollectionList(Arrays.asList(services));
     }
     return serviceList;
@@ -55,7 +56,10 @@ public class ServiceResource {
         @ApiResponse(
             responseCode = "200",
             description = "List of serviceCollections",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = CollectionInfo.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = CollectionInfo.class)))
       })
   public CollectionList getCollections(@Context UriInfo uriInfo) {
     return getServiceList(uriInfo);

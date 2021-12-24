@@ -105,7 +105,8 @@ public class WebhookRepository extends EntityRepository<Webhook> {
   }
 
   @Override
-  public EntityRepository<Webhook>.EntityUpdater getUpdater(Webhook original, Webhook updated, boolean patchOperation) {
+  public EntityRepository<Webhook>.EntityUpdater getUpdater(
+      Webhook original, Webhook updated, boolean patchOperation) {
     return super.getUpdater(original, updated, patchOperation);
   }
 
@@ -292,7 +293,8 @@ public class WebhookRepository extends EntityRepository<Webhook> {
     }
 
     @Override
-    public void onEvent(ChangeEventHolder changeEventHolder, long sequence, boolean endOfBatch) throws Exception {
+    public void onEvent(ChangeEventHolder changeEventHolder, long sequence, boolean endOfBatch)
+        throws Exception {
 
       batch.add(changeEventHolder.get());
       // Batch until either the batch size has reached the max size
@@ -304,7 +306,8 @@ public class WebhookRepository extends EntityRepository<Webhook> {
       ChangeEventList list = new ChangeEventList(batch, null, null, batch.size());
       Date attemptTime = new Date();
       try {
-        Response response = target.post(javax.ws.rs.client.Entity.entity(list, MediaType.APPLICATION_JSON));
+        Response response =
+            target.post(javax.ws.rs.client.Entity.entity(list, MediaType.APPLICATION_JSON));
         LOG.info(
             "Webhook {}:{}:{} received response {}",
             webhook.getName(),
@@ -319,11 +322,13 @@ public class WebhookRepository extends EntityRepository<Webhook> {
           }
           // 3xx response/redirection is not allowed for callback. Set the webhook state as in error
         } else if (response.getStatus() >= 300 && response.getStatus() < 400) {
-          setErrorStatus(attemptTime, response.getStatus(), response.getStatusInfo().getReasonPhrase());
+          setErrorStatus(
+              attemptTime, response.getStatus(), response.getStatusInfo().getReasonPhrase());
           // 4xx, 5xx response retry delivering events after timeout
         } else if (response.getStatus() >= 300 && response.getStatus() < 600) {
           setNextBackOff();
-          setAwaitingRetry(attemptTime, response.getStatus(), response.getStatusInfo().getReasonPhrase());
+          setAwaitingRetry(
+              attemptTime, response.getStatus(), response.getStatusInfo().getReasonPhrase());
           Thread.sleep(currentBackoffTime);
         }
       } catch (ProcessingException ex) {
@@ -335,8 +340,10 @@ public class WebhookRepository extends EntityRepository<Webhook> {
       }
     }
 
-    private void setErrorStatus(Date attemptTime, Integer statusCode, String reason) throws IOException {
-      if (webhook.getFailureDetails() == null || attemptTime != webhook.getFailureDetails().getLastFailedAttempt()) {
+    private void setErrorStatus(Date attemptTime, Integer statusCode, String reason)
+        throws IOException {
+      if (webhook.getFailureDetails() == null
+          || attemptTime != webhook.getFailureDetails().getLastFailedAttempt()) {
         setStatus(
             Status.ERROR,
             new FailureDetails()
@@ -347,15 +354,18 @@ public class WebhookRepository extends EntityRepository<Webhook> {
       throw new RuntimeException(reason);
     }
 
-    private void setAwaitingRetry(Date attemptTime, int statusCode, String reason) throws ParseException, IOException {
-      if (webhook.getFailureDetails() == null || attemptTime != webhook.getFailureDetails().getLastFailedAttempt()) {
+    private void setAwaitingRetry(Date attemptTime, int statusCode, String reason)
+        throws ParseException, IOException {
+      if (webhook.getFailureDetails() == null
+          || attemptTime != webhook.getFailureDetails().getLastFailedAttempt()) {
         setStatus(
             Status.AWAITING_RETRY,
             new FailureDetails()
                 .withLastFailedAttempt(attemptTime)
                 .withLastFailedStatusCode(statusCode)
                 .withLastFailedReason(reason)
-                .withNextAttempt(CommonUtil.getDateByOffsetSeconds(attemptTime, currentBackoffTime)));
+                .withNextAttempt(
+                    CommonUtil.getDateByOffsetSeconds(attemptTime, currentBackoffTime)));
       }
     }
 

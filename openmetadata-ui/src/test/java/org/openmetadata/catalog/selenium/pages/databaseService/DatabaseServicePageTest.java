@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate 
+ *  Copyright 2021 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -14,7 +14,15 @@
 package org.openmetadata.catalog.selenium.pages.databaseService;
 
 import com.github.javafaker.Faker;
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.catalog.selenium.events.Events;
 import org.openmetadata.catalog.selenium.properties.Property;
 import org.openqa.selenium.By;
@@ -23,17 +31,7 @@ import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.interactions.Actions;
-import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.Order;
-import org.junit.jupiter.api.TestMethodOrder;
-import org.junit.jupiter.api.MethodOrderer;
-
-import java.time.Duration;
-import java.util.ArrayList;
-import java.util.List;
 
 @Order(8)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
@@ -43,7 +41,8 @@ public class DatabaseServicePageTest {
   static String url = Property.getInstance().getURL();
   static Faker faker = new Faker();
   static String serviceName = faker.name().firstName();
-  static String enterDescription = "//div[@data-testid='enterDescription']/div/div[2]/div/div/div/div/div/div";
+  static String enterDescription =
+      "//div[@data-testid='enterDescription']/div/div[2]/div/div/div/div/div/div";
   static Actions actions;
   static WebDriverWait wait;
   Integer waitTime = Property.getInstance().getSleepTime();
@@ -65,9 +64,11 @@ public class DatabaseServicePageTest {
   public void openDatabaseServicePage() throws InterruptedException {
     Events.click(webDriver, By.cssSelector("[data-testid='closeWhatsNew']")); // Close What's new
     Thread.sleep(waitTime);
-    Events.click(webDriver, By.cssSelector(
-        "[data-testid='menu-button'][id='menu-button-Settings']")); // Setting
-    Events.click(webDriver, By.cssSelector("[data-testid='menu-item-Services']")); // Setting/Services
+    Events.click(
+        webDriver,
+        By.cssSelector("[data-testid='menu-button'][id='menu-button-Settings']")); // Setting
+    Events.click(
+        webDriver, By.cssSelector("[data-testid='menu-item-Services']")); // Setting/Services
     Thread.sleep(waitTime);
   }
 
@@ -76,7 +77,8 @@ public class DatabaseServicePageTest {
   public void addDatabaseService() throws InterruptedException {
     openDatabaseServicePage();
     Thread.sleep(2000);
-    List<WebElement> webElementList = webDriver.findElements(By.cssSelector("[data-testid='add-new-user-button']"));
+    List<WebElement> webElementList =
+        webDriver.findElements(By.cssSelector("[data-testid='add-new-user-button']"));
     if (webElementList.isEmpty()) {
       Events.click(webDriver, By.cssSelector("[data-testid='add-service-button']"));
     } else {
@@ -106,7 +108,7 @@ public class DatabaseServicePageTest {
   public void editDatabaseService() throws InterruptedException {
     openDatabaseServicePage();
     Thread.sleep(2000);
-    Events.click(webDriver, By.cssSelector("[data-testid='edit-service-"+ serviceName + "']"));
+    Events.click(webDriver, By.cssSelector("[data-testid='edit-service-" + serviceName + "']"));
     Events.click(webDriver, By.xpath(enterDescription));
     Events.sendEnter(webDriver, By.xpath(enterDescription));
     Events.sendKeys(webDriver, By.xpath(enterDescription), faker.address().toString());
@@ -140,10 +142,9 @@ public class DatabaseServicePageTest {
   public void deleteDatabaseService() throws InterruptedException {
     openDatabaseServicePage();
     Thread.sleep(2000);
-    Events.click(webDriver, By.cssSelector("[data-testid='delete-service-"+ serviceName + "']"));
+    Events.click(webDriver, By.cssSelector("[data-testid='delete-service-" + serviceName + "']"));
     Events.click(webDriver, By.cssSelector("[data-testid='save-button']"));
   }
-
 
   @AfterEach
   public void closeTabs() {
