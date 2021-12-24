@@ -81,9 +81,7 @@ public class PolicyResource {
   private final CatalogAuthorizer authorizer;
 
   public static ResultList<Policy> addHref(UriInfo uriInfo, ResultList<Policy> policies) {
-    Optional.ofNullable(policies.getData())
-        .orElse(Collections.emptyList())
-        .forEach(i -> addHref(uriInfo, i));
+    Optional.ofNullable(policies.getData()).orElse(Collections.emptyList()).forEach(i -> addHref(uriInfo, i));
     return policies;
   }
 
@@ -112,8 +110,7 @@ public class PolicyResource {
   }
 
   static final String FIELDS = "displayName,description,owner,policyUrl,enabled,rules,location";
-  public static final List<String> FIELD_LIST =
-      Arrays.asList(FIELDS.replaceAll(" ", "").split(","));
+  public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replaceAll(" ", "").split(","));
 
   @GET
   @Valid
@@ -128,10 +125,7 @@ public class PolicyResource {
         @ApiResponse(
             responseCode = "200",
             description = "List of policies",
-            content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = PolicyList.class)))
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = PolicyList.class)))
       })
   public ResultList<Policy> list(
       @Context UriInfo uriInfo,
@@ -141,21 +135,16 @@ public class PolicyResource {
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
           String fieldsParam,
-      @Parameter(
-              description = "Limit the number policies returned. (1 to 1000000, " + "default = 10)")
+      @Parameter(description = "Limit the number policies returned. (1 to 1000000, " + "default = 10)")
           @DefaultValue("10")
           @Min(1)
           @Max(1000000)
           @QueryParam("limit")
           int limitParam,
-      @Parameter(
-              description = "Returns list of policies before this cursor",
-              schema = @Schema(type = "string"))
+      @Parameter(description = "Returns list of policies before this cursor", schema = @Schema(type = "string"))
           @QueryParam("before")
           String before,
-      @Parameter(
-              description = "Returns list of policies after this cursor",
-              schema = @Schema(type = "string"))
+      @Parameter(description = "Returns list of policies after this cursor", schema = @Schema(type = "string"))
           @QueryParam("after")
           String after)
       throws IOException, GeneralSecurityException, ParseException {
@@ -164,8 +153,7 @@ public class PolicyResource {
 
     ResultList<Policy> policies;
     if (before != null) { // Reverse paging
-      policies =
-          dao.listBefore(uriInfo, fields, null, limitParam, before); // Ask for one extra entry
+      policies = dao.listBefore(uriInfo, fields, null, limitParam, before); // Ask for one extra entry
     } else { // Forward paging or first page
       policies = dao.listAfter(uriInfo, fields, null, limitParam, after);
     }
@@ -182,10 +170,7 @@ public class PolicyResource {
         @ApiResponse(
             responseCode = "200",
             description = "The policy",
-            content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = Policy.class))),
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Policy.class))),
         @ApiResponse(responseCode = "404", description = "Policy for instance {id} is not found")
       })
   public Policy get(
@@ -212,10 +197,7 @@ public class PolicyResource {
         @ApiResponse(
             responseCode = "200",
             description = "The policy",
-            content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = Policy.class))),
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Policy.class))),
         @ApiResponse(responseCode = "404", description = "Policy for instance {id} is not found")
       })
   public Policy getByName(
@@ -243,16 +225,12 @@ public class PolicyResource {
         @ApiResponse(
             responseCode = "200",
             description = "List of policy versions",
-            content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = EntityHistory.class)))
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = EntityHistory.class)))
       })
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "policy Id", schema = @Schema(type = "string")) @PathParam("id")
-          String id)
+      @Parameter(description = "policy Id", schema = @Schema(type = "string")) @PathParam("id") String id)
       throws IOException, ParseException {
     return dao.listVersions(id);
   }
@@ -267,10 +245,7 @@ public class PolicyResource {
         @ApiResponse(
             responseCode = "200",
             description = "policy",
-            content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = Policy.class))),
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Policy.class))),
         @ApiResponse(
             responseCode = "404",
             description = "Policy for instance {id} and version {version} is" + " " + "not found")
@@ -278,8 +253,7 @@ public class PolicyResource {
   public Policy getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "policy Id", schema = @Schema(type = "string")) @PathParam("id")
-          String id,
+      @Parameter(description = "policy Id", schema = @Schema(type = "string")) @PathParam("id") String id,
       @Parameter(
               description = "policy version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
@@ -298,16 +272,10 @@ public class PolicyResource {
         @ApiResponse(
             responseCode = "200",
             description = "The policy",
-            content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = CreatePolicy.class))),
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = CreatePolicy.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
-  public Response create(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Valid CreatePolicy create)
+  public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreatePolicy create)
       throws IOException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Policy policy = getPolicy(securityContext, create);
@@ -321,10 +289,7 @@ public class PolicyResource {
       summary = "Update a policy",
       tags = "policies",
       description = "Update an existing policy using JsonPatch.",
-      externalDocs =
-          @ExternalDocumentation(
-              description = "JsonPatch RFC",
-              url = "https://tools.ietf.org/html/rfc6902"))
+      externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
   public Response patch(
       @Context UriInfo uriInfo,
@@ -336,19 +301,16 @@ public class PolicyResource {
                   @Content(
                       mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
                       examples = {
-                        @ExampleObject(
-                            "[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
+                        @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
                       }))
           JsonPatch patch)
       throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, FIELDS);
     Policy policy = dao.get(uriInfo, id, fields);
-    SecurityUtil.checkAdminRoleOrPermissions(
-        authorizer, securityContext, dao.getOwnerReference(policy));
+    SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, dao.getOwnerReference(policy));
 
     PatchResponse<Policy> response =
-        dao.patch(
-            uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
+        dao.patch(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
     addHref(uriInfo, response.getEntity());
     return response.toResponse();
   }
@@ -362,16 +324,11 @@ public class PolicyResource {
         @ApiResponse(
             responseCode = "200",
             description = "The policy",
-            content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = Policy.class))),
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Policy.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createOrUpdate(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Valid CreatePolicy create)
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreatePolicy create)
       throws IOException, ParseException {
     Policy policy = getPolicy(securityContext, create);
     PutResponse<Policy> response = dao.createOrUpdate(uriInfo, policy);

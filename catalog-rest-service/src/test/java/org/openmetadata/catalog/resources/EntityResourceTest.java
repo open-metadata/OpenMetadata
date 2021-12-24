@@ -75,7 +75,6 @@ import org.openmetadata.catalog.entity.services.MessagingService;
 import org.openmetadata.catalog.entity.services.PipelineService;
 import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
-import org.openmetadata.catalog.events.EventPubSub;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.jdbi3.DatabaseServiceRepository.DatabaseServiceEntityInterface;
 import org.openmetadata.catalog.jdbi3.MessagingServiceRepository.MessagingServiceEntityInterface;
@@ -245,10 +244,10 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
 
   @AfterAll
   public static void afterAllTests() throws Exception {
-    EventPubSub.shutdown();
+    //    EventPubSub.shutdown();
     // Ensure webhooks are in the right state
     new WebhookResourceTest().validateWebhookEvents();
-    APP.getEnvironment().getApplicationContext().getServer().stop();
+    //    APP.getEnvironment().getApplicationContext().getServer().stop();
   }
 
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////

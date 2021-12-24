@@ -44,6 +44,7 @@ import org.openmetadata.catalog.jdbi3.Relationship;
 import org.openmetadata.catalog.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.catalog.type.Column;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.FailureDetails;
 import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.type.MlFeature;
 import org.openmetadata.catalog.type.MlHyperParameter;
@@ -107,6 +108,8 @@ public final class EntityUtil {
 
   public static final BiPredicate<MlFeature, MlFeature> mlFeatureMatch = MlFeature::equals;
   public static final BiPredicate<MlHyperParameter, MlHyperParameter> mlHyperParameterMatch = MlHyperParameter::equals;
+  public static final BiPredicate<FailureDetails, FailureDetails> failureDetailsMatch =
+      (failureDetails1, failureDetails2) -> failureDetails1.getLastFailedAt().equals(failureDetails2.getLastFailedAt());
 
   private EntityUtil() {}
 

@@ -24,8 +24,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import javax.ws.rs.core.Response;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.events.CreateWebhook;
@@ -60,6 +62,50 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook> {
     EntityResourceTest.setup(test);
   }
 
+  @Test
+  public void post_webhookEnabledStateChange() throws URISyntaxException, IOException, InterruptedException {
+    // Disabled webhook will not start webhook publisher
+    String uri = "http://localhost:" + APP.getLocalPort() + "/api/v1/test/webhook/counter";
+    CreateWebhook create =
+        createRequest("disabledWebhook", "", "", null).withEnabled(false).withEndPoint(URI.create(uri));
+    Webhook webhook = createAndCheckEntity(create, adminAuthHeaders());
+    assertEquals(Status.NOT_STARTED, webhook.getStatus());
+    Webhook getWebhook = getEntity(webhook.getId(), adminAuthHeaders());
+    assertEquals(Status.NOT_STARTED, getWebhook.getStatus());
+    assertEquals(0, webhookCallbackResource.getCount());
+
+    // Now enable the webhook
+    int counter = webhookCallbackResource.getCount();
+    create.withEnabled(true);
+    getWebhook = updateEntity(create, Response.Status.OK, adminAuthHeaders());
+    assertEquals(Status.SUCCESS, getWebhook.getStatus());
+    getWebhook = getEntity(webhook.getId(), adminAuthHeaders());
+    assertEquals(Status.SUCCESS, getWebhook.getStatus());
+
+    // Change event for webhook enabling is received to ensure the call back has started
+    int iterations = 0;
+    while (webhookCallbackResource.getCount() <= counter && iterations < 100) {
+      Thread.sleep(10);
+      iterations++;
+    }
+    assertEquals(counter + 1, webhookCallbackResource.getCount());
+
+    // Disable the webhook and ensure it is disabled
+    create.withEnabled(false);
+    getWebhook = updateEntity(create, Response.Status.OK, adminAuthHeaders());
+    assertEquals(Status.NOT_STARTED, getWebhook.getStatus());
+    getWebhook = getEntity(webhook.getId(), adminAuthHeaders());
+    assertEquals(Status.NOT_STARTED, getWebhook.getStatus());
+
+    // Ensure callback is disabled and no further events are received
+    iterations = 0;
+    while (iterations < 100) {
+      Thread.sleep(10);
+      iterations++;
+      assertEquals(counter + 1, webhookCallbackResource.getCount()); // Event counter remains the same
+    }
+  }
+
   @Override
   public CreateWebhook createRequest(String name, String description, String displayName, EntityReference owner)
       throws URISyntaxException {
@@ -68,7 +114,8 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook> {
         .withName(name)
         .withDescription(description)
         .withEventFilters(ALL_EVENTS_FILTER)
-        .withEndPoint(URI.create(uri));
+        .withEndPoint(URI.create(uri))
+        .withBatchSize(100);
   }
 
   @Override
@@ -136,21 +183,29 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook> {
     createEntity(createWebhook, adminAuthHeaders());
   }
 
-  public void validateWebhookEvents() throws HttpResponseException {
+  public void validateWebhookEvents() throws HttpResponseException, InterruptedException {
     // Check the healthy callback server received all the change events
     ConcurrentLinkedQueue<ChangeEvent> callbackEvents = webhookCallbackResource.getEvents();
     List<ChangeEvent> actualEvents =
         getChangeEvents(null, null, null, callbackEvents.peek().getDateTime(), adminAuthHeaders()).getData();
+    int iteration = 0;
+    while (callbackEvents.size() < actualEvents.size() && iteration < 100) {
+      Thread.sleep(10);
+      iteration++;
+    }
     assertEquals(actualEvents.size(), callbackEvents.size());
-    webhookCallbackResource.clearAllEvents();
 
     // TODO enable this test
     // Check the slow callback server received all the change events
-//    callbackEvents = webhookCallbackResource.getEventsSlowServer();
-//    actualEvents = getChangeEvents(null, null, null, callbackEvents.peek().getDateTime(),
-//            adminAuthHeaders()).getData();
-//    assertEquals(actualEvents.size() - 1, callbackEvents.size());
-//    webhookCallbackResource.clearAllEvents();
+    callbackEvents = webhookCallbackResource.getEventsSlowServer();
+    actualEvents = getChangeEvents(null, null, null, callbackEvents.peek().getDateTime(), adminAuthHeaders()).getData();
+    iteration = 0;
+    while (callbackEvents.size() < actualEvents.size() - 1 && iteration < 300) {
+      Thread.sleep(10);
+      iteration++;
+    }
+    assertEquals(actualEvents.size() - 1, callbackEvents.size());
+    webhookCallbackResource.clearAllEvents();
 
     // Check all webhook status
     Webhook webhook = getEntityByName("validWebhook", "", adminAuthHeaders());

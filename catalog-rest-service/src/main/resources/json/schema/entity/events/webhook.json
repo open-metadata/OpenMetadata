@@ -60,9 +60,10 @@
       "type": "string"
     },
     "status": {
-      "description": "Status is `success` on 200 response to notifications. Status is `error` on bad callback URL, connection failures, and `1xx`, `3xx` response. Status is `awaitingRetry` when previous attempt at delivery timed out or received `4xx`, `5xx` response. Status is `retryLimitReached` after all retries fail.",
+      "description": "Status is `notStarted`, when webhook was created with `enabled` set to false and it never started publishing events. Status is `success` on 200 response to notifications. Status is `error` on bad callback URL, connection failures, and `1xx`, `3xx` response. Status is `awaitingRetry` when previous attempt at delivery timed out or received `4xx`, `5xx` response. Status is `retryLimitReached` after all retries fail.",
       "type": "string",
       "enum": [
+        "notStarted",
         "success",
         "error",
         "awaitingRetry",
@@ -74,9 +75,13 @@
       "description": "Failure details are set only when `status` is not `success`",
       "type": "object",
       "properties": {
-        "lastFailedAttempt": {
-          "description": "Last non-successful callback time",
-          "$ref": "../../type/basic.json#/definitions/dateTime"
+        "lastSuccessfulAt": {
+          "description": "Last non-successful callback time in UNIX UTC epoch time in milliseconds",
+          "$ref": "../../type/basic.json#/definitions/timestamp"
+        },
+        "lastFailedAt": {
+          "description": "Last non-successful callback time in UNIX UTC epoch time in milliseconds",
+          "$ref": "../../type/basic.json#/definitions/timestamp"
         },
         "lastFailedStatusCode": {
           "description": "Last non-successful activity response code received during callback",
