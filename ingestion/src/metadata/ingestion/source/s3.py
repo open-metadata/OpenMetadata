@@ -10,39 +10,38 @@
 #  limitations under the License.
 
 import logging
-import os
 import uuid
-from typing import Iterable, List
-
-import boto3
+from typing import Iterable, List, Union
 
 from metadata.generated.schema.api.services.createStorageService import (
     CreateStorageServiceEntityRequest,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.api.common import ConfigModel, Entity, WorkflowContext
+from metadata.ingestion.api.common import Entity, WorkflowContext
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.models.ometa_policy import OMetaPolicy
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.generated.schema.entity.data.location import Location, LocationType
-from metadata.generated.schema.entity.policies.filters import Filters1, Prefix
+from metadata.generated.schema.entity.policies.filters import Prefix
 from metadata.generated.schema.entity.policies.policy import Policy, PolicyType
 from metadata.generated.schema.entity.policies.lifecycle.rule import LifecycleRule
+from metadata.generated.schema.entity.policies.lifecycle.deleteAction import (
+    LifecycleDeleteAction,
+)
 from metadata.generated.schema.entity.policies.lifecycle.moveAction import (
     Destination,
     LifecycleMoveAction,
 )
 from metadata.generated.schema.entity.services.storageService import StorageService
 from metadata.generated.schema.type.storage import StorageServiceType, S3StorageClass
+from metadata.utils.aws_client import AWSClientConfigModel, AWSClient
 
 logger: logging.Logger = logging.getLogger(__name__)
 
 
-class S3SourceConfig(ConfigModel):
+class S3SourceConfig(AWSClientConfigModel):
     service_name: str
-    aws_access_key_id: str
-    aws_secret_access_key: str
 
 
 class S3Source(Source[Entity]):
@@ -55,13 +54,11 @@ class S3Source(Source[Entity]):
         super().__init__(ctx)
         self.config = config
         self.metadata_config = metadata_config
-        os.environ["AWS_ACCESS_KEY_ID"] = self.config.aws_access_key_id
-        os.environ["AWS_SECRET_ACCESS_KEY"] = self.config.aws_secret_access_key
         self.status = SourceStatus()
         self.service = get_storage_service_or_create(
             config.service_name, metadata_config
         )
-        self.s3 = boto3.resource("s3")
+        self.s3 = AWSClient(self.config).get_client("s3")
 
     @classmethod
     def create(
@@ -76,9 +73,13 @@ class S3Source(Source[Entity]):
 
     def next_record(self) -> Iterable[OMetaPolicy]:
         try:
-            for bucket in self.s3.buckets.all():
-                self.status.scanned(bucket)
-                location_name = self._get_bucket_name_with_prefix(bucket.name)
+            buckets_response = self.s3.list_buckets()
+            if not "Buckets" in buckets_response or not buckets_response["Buckets"]:
+                return
+            for bucket in buckets_response["Buckets"]:
+                bucket_name = bucket["Name"]
+                self.status.scanned(bucket_name)
+                location_name = self._get_bucket_name_with_prefix(bucket_name)
                 location_id = uuid.uuid4()
                 location = Location(
                     id=location_id,
@@ -94,9 +95,11 @@ class S3Source(Source[Entity]):
 
                 # Retrieve lifecycle policy and rules for the bucket.
                 rules: List[LifecycleRule] = []
-                for rule in self.s3.BucketLifecycleConfiguration(bucket.name).rules:
+                for rule in self.s3.get_bucket_lifecycle_configuration(
+                    Bucket=bucket_name
+                )["Rules"]:
                     rules.append(self._get_rule(rule, location))
-                policy_name = f"{bucket.name}-lifecycle-policy"
+                policy_name = f"{bucket_name}-lifecycle-policy"
                 policy = Policy(
                     id=uuid.uuid4(),
                     name=policy_name,
@@ -128,7 +131,7 @@ class S3Source(Source[Entity]):
         pass
 
     def _get_rule(self, rule: dict, location: Location) -> LifecycleRule:
-        actions = []
+        actions: List[Union[LifecycleDeleteAction, LifecycleMoveAction]] = []
         if "Transitions" in rule:
             for transition in rule["Transitions"]:
                 if "StorageClass" in transition and "Days" in transition:
@@ -144,19 +147,23 @@ class S3Source(Source[Entity]):
                             ),
                         )
                     )
+        if "Expiration" in rule and "Days" in rule["Expiration"]:
+            actions.append(
+                LifecycleDeleteAction(daysAfterCreation=rule["Expiration"]["Days"])
+            )
 
         enabled = rule["Status"] == "Enabled" if "Status" in rule else False
 
-        filters = []
+        prefix_filter = None
         if "Filter" in rule and "Prefix" in rule["Filter"]:
-            filters.append(Prefix.parse_obj(rule["Filter"]["Prefix"]))
+            prefix_filter = Prefix.parse_obj(rule["Filter"]["Prefix"])
 
         name = rule["ID"] if "ID" in rule else None
 
         return LifecycleRule(
             actions=actions,
             enabled=enabled,
-            filters=Filters1.parse_obj(filters),
+            prefixFilter=prefix_filter,
             name=name,
         )
 
