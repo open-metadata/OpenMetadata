@@ -89,7 +89,6 @@
     <sonar.language>java</sonar.language>
     <sonar.skip>false</sonar.skip>
     <sonar.dynamicAnalysis>reuseReports</sonar.dynamicAnalysis>
-    <sonar.exclusions>openmetadata-ui/**,ingestion/**,ingestion-core/**,profiler/**</sonar.exclusions>
 
   </properties>
   <dependencyManagement>
