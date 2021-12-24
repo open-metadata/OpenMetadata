@@ -26,9 +26,7 @@ import org.openmetadata.catalog.type.ChangeEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * Change event PubSub built based on LMAX Disruptor.
- */
+/** Change event PubSub built based on LMAX Disruptor. */
 public class EventPubSub {
   private static final Logger LOG = LoggerFactory.getLogger(EventPubSub.class);
   private static Disruptor<ChangeEventHolder> disruptor;

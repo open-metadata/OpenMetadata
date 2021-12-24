@@ -146,11 +146,11 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook> {
 
     // TODO enable this test
     // Check the slow callback server received all the change events
-//    callbackEvents = webhookCallbackResource.getEventsSlowServer();
-//    actualEvents = getChangeEvents(null, null, null, callbackEvents.peek().getDateTime(),
-//            adminAuthHeaders()).getData();
-//    assertEquals(actualEvents.size() - 1, callbackEvents.size());
-//    webhookCallbackResource.clearAllEvents();
+    //    callbackEvents = webhookCallbackResource.getEventsSlowServer();
+    //    actualEvents = getChangeEvents(null, null, null, callbackEvents.peek().getDateTime(),
+    //            adminAuthHeaders()).getData();
+    //    assertEquals(actualEvents.size() - 1, callbackEvents.size());
+    //    webhookCallbackResource.clearAllEvents();
 
     // Check all webhook status
     Webhook webhook = getEntityByName("validWebhook", "", adminAuthHeaders());
