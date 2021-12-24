@@ -55,6 +55,7 @@ import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.ChangeEvent;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.Webhook;
+import org.openmetadata.catalog.type.Webhook.Status;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
@@ -233,8 +234,9 @@ public class WebhookResource {
       throws IOException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Webhook webhook = getWebhook(securityContext, create);
+    webhook.setStatus(webhook.getEnabled() ? Status.SUCCESS : Status.NOT_STARTED);
     webhook = dao.create(uriInfo, webhook);
-    dao.addWebhook(webhook);
+    dao.addWebhookPublisher(webhook);
     return Response.created(webhook.getHref()).entity(webhook).build();
   }
 
@@ -252,12 +254,14 @@ public class WebhookResource {
       })
   public Response updateWebhook(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateWebhook create)
-      throws IOException, ParseException {
+      throws IOException, ParseException, InterruptedException {
     // TODO
     //    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     //    Table table = getTable(securityContext, create);
     Webhook webhook = getWebhook(securityContext, create);
+    webhook.setStatus(webhook.getEnabled() ? Status.SUCCESS : Status.NOT_STARTED);
     PutResponse<Webhook> putResponse = dao.createOrUpdate(uriInfo, webhook);
+    dao.updateWebhookPublisher(webhook);
     return putResponse.toResponse();
   }
 
@@ -290,6 +294,9 @@ public class WebhookResource {
         .withId(UUID.randomUUID())
         .withEndPoint(create.getEndPoint())
         .withEventFilters(create.getEventFilters())
+        .withBatchSize(create.getBatchSize())
+        .withTimeout(create.getTimeout())
+        .withEnabled(create.getEnabled())
         .withUpdatedBy(securityContext.getUserPrincipal().getName())
         .withUpdatedAt(new Date());
   }

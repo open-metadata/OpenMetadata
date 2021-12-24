@@ -20,11 +20,6 @@
       "type": "string",
       "format": "uri"
     },
-    "batchSize": {
-      "description": "Maximum number of events sent in a batch (Default 10).",
-      "type": "integer",
-      "default": 10
-    },
     "eventFilters": {
       "description": "Endpoint to receive the webhook events over POST requests.",
       "type": "array",
@@ -32,10 +27,20 @@
         "$ref": "../../type/changeEvent.json#/definitions/eventFilter"
       }
     },
+    "batchSize": {
+      "description": "Maximum number of events sent in a batch (Default 10).",
+      "type": "integer",
+      "default": 10
+    },
     "timeout": {
       "description": "Connection timeout in seconds. (Default = 10s)",
       "type": "integer",
       "default": 10
+    },
+    "enabled": {
+      "description": "When set to `true`, the webhook event notification is enabled. Set it to `false` to disable the subscription. (Default `true`)",
+      "type": "boolean",
+      "default": true
     }
   },
   "required": [

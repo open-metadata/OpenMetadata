@@ -14,15 +14,15 @@
 package org.openmetadata.catalog.jdbi3;
 
 /**
- * This enum captures all the relationships between Catalog entities Note that the relationship from
- * is a Strong entity and to is Weak entity when possible.
+ * This enum captures all the relationships between Catalog entities Note that the relationship from is a Strong entity
+ * and to is Weak entity when possible.
  */
 public enum Relationship {
 
   /**
-   * Rules for changing enums since the ordinal position is stored in the database. - Don't remove
-   * an enum, since the database might have stored the enum ordinal number - When adding a new enum,
-   * add it as the last enum to preserve the ordinal positions of the existing enums
+   * Rules for changing enums since the ordinal position is stored in the database. - Don't remove an enum, since the
+   * database might have stored the enum ordinal number - When adding a new enum, add it as the last enum to preserve
+   * the ordinal positions of the existing enums
    */
   // Database --- contains --> Table
   // Organization --- contains --> Team

@@ -35,11 +35,9 @@ import org.openmetadata.catalog.util.JsonUtils;
 @Slf4j
 public class PolicyRepository extends EntityRepository<Policy> {
   private static final Fields POLICY_UPDATE_FIELDS =
-      new Fields(
-          PolicyResource.FIELD_LIST, "displayName,description,owner,policyUrl,enabled,rules,location");
+      new Fields(PolicyResource.FIELD_LIST, "displayName,description,owner,policyUrl,enabled,rules,location");
   private static final Fields POLICY_PATCH_FIELDS =
-      new Fields(
-          PolicyResource.FIELD_LIST, "displayName,description,owner,policyUrl,enabled,rules,location");
+      new Fields(PolicyResource.FIELD_LIST, "displayName,description,owner,policyUrl,enabled,rules,location");
   private final CollectionDAO dao;
 
   public PolicyRepository(CollectionDAO dao) {
@@ -60,9 +58,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
 
   @Transaction
   public void delete(UUID id) {
-    if (dao.relationshipDAO()
-            .findToCount(id.toString(), Relationship.CONTAINS.ordinal(), Entity.POLICY)
-        > 0) {
+    if (dao.relationshipDAO().findToCount(id.toString(), Relationship.CONTAINS.ordinal(), Entity.POLICY) > 0) {
       throw new IllegalArgumentException("Policy is not empty");
     }
     dao.policyDAO().delete(id);
@@ -78,12 +74,9 @@ public class PolicyRepository extends EntityRepository<Policy> {
   @Transaction
   private EntityReference getLocationForPolicy(UUID policyId) throws IOException {
     List<String> result =
-        dao.relationshipDAO()
-            .findTo(policyId.toString(), Relationship.APPLIED_TO.ordinal(), Entity.LOCATION);
+        dao.relationshipDAO().findTo(policyId.toString(), Relationship.APPLIED_TO.ordinal(), Entity.LOCATION);
     // There is at most one location for a policy.
-    return result.size() == 1
-        ? dao.locationDAO().findEntityReferenceById(UUID.fromString(result.get(0)))
-        : null;
+    return result.size() == 1 ? dao.locationDAO().findEntityReferenceById(UUID.fromString(result.get(0))) : null;
   }
 
   @Override
@@ -170,8 +163,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
   private EntityReference getOwner(Policy policy) throws IOException {
     return policy == null
         ? null
-        : EntityUtil.populateOwner(
-            policy.getId(), dao.relationshipDAO(), dao.userDAO(), dao.teamDAO());
+        : EntityUtil.populateOwner(policy.getId(), dao.relationshipDAO(), dao.userDAO(), dao.teamDAO());
   }
 
   private void setOwner(Policy policy, EntityReference owner) {
@@ -335,8 +327,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
 
     @Override
     public void entitySpecificUpdate() throws IOException {
-      recordChange(
-          "policyUrl", original.getEntity().getPolicyUrl(), updated.getEntity().getPolicyUrl());
+      recordChange("policyUrl", original.getEntity().getPolicyUrl(), updated.getEntity().getPolicyUrl());
       recordChange("enabled", original.getEntity().getEnabled(), updated.getEntity().getEnabled());
       recordChange("rules", original.getEntity().getRules(), updated.getEntity().getRules());
       updateLocation(original.getEntity(), updated.getEntity());

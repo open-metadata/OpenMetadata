@@ -107,7 +107,7 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
 
     // Register Event Handler
     registerEventFilter(catalogConfig, environment, jdbi);
-    EventPubSub.start();
+    environment.lifecycle().manage(new ManagedShutdown());
   }
 
   @SneakyThrows
@@ -195,5 +195,20 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
   public static void main(String[] args) throws Exception {
     CatalogApplication catalogApplication = new CatalogApplication();
     catalogApplication.run(args);
+  }
+
+  public class ManagedShutdown implements Managed {
+
+    @Override
+    public void start() throws Exception {
+      LOG.info("starting the application");
+      EventPubSub.start();
+    }
+
+    @Override
+    public void stop() throws Exception {
+      EventPubSub.shutdown();
+      LOG.info("stopping the application");
+    }
   }
 }

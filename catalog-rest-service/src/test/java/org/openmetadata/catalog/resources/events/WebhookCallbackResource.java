@@ -2,6 +2,7 @@ package org.openmetadata.catalog.resources.events;
 
 import io.swagger.annotations.Api;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.atomic.AtomicInteger;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
@@ -18,8 +19,17 @@ import org.openmetadata.catalog.type.ChangeEvent;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 public class WebhookCallbackResource {
+  private AtomicInteger counter = new AtomicInteger();
   private final ConcurrentLinkedQueue<ChangeEvent> changeEvents = new ConcurrentLinkedQueue<>();
   private final ConcurrentLinkedQueue<ChangeEvent> changeEventsSlowServer = new ConcurrentLinkedQueue<>();
+
+  @POST
+  @Path("/counter")
+  public Response receiveEventCount(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, EventResource.ChangeEventList events) {
+    counter.incrementAndGet();
+    return Response.ok().build();
+  }
 
   @POST
   @Path("/ignore")
@@ -92,5 +102,13 @@ public class WebhookCallbackResource {
   public void clearAllEvents() {
     changeEvents.clear();
     changeEventsSlowServer.clear();
+  }
+
+  public int getCount() {
+    return counter.get();
+  }
+
+  public void resetCount() {
+    counter.set(0);
   }
 }

@@ -16,6 +16,7 @@ package org.openmetadata.catalog.events;
 import com.lmax.disruptor.BatchEventProcessor;
 import com.lmax.disruptor.EventFactory;
 import com.lmax.disruptor.EventHandler;
+import com.lmax.disruptor.ExceptionHandler;
 import com.lmax.disruptor.RingBuffer;
 import com.lmax.disruptor.dsl.Disruptor;
 import com.lmax.disruptor.util.DaemonThreadFactory;
@@ -26,9 +27,7 @@ import org.openmetadata.catalog.type.ChangeEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * Change event PubSub built based on LMAX Disruptor.
- */
+/** Change event PubSub built based on LMAX Disruptor. */
 public class EventPubSub {
   private static final Logger LOG = LoggerFactory.getLogger(EventPubSub.class);
   private static Disruptor<ChangeEventHolder> disruptor;
@@ -39,6 +38,7 @@ public class EventPubSub {
   public static void start() {
     if (!STARTED) {
       disruptor = new Disruptor<>(ChangeEventHolder::new, 1024, DaemonThreadFactory.INSTANCE);
+      disruptor.setDefaultExceptionHandler(new DefaultExceptionHandler());
       executor = Executors.newCachedThreadPool(DaemonThreadFactory.INSTANCE);
       ringBuffer = disruptor.start();
       LOG.info("Disruptor started");
@@ -50,8 +50,8 @@ public class EventPubSub {
     if (STARTED) {
       disruptor.shutdown();
       disruptor.halt();
-      executor.shutdown();
-      executor.awaitTermination(5, TimeUnit.SECONDS);
+      executor.shutdownNow();
+      executor.awaitTermination(10, TimeUnit.SECONDS);
       disruptor = null;
       ringBuffer = null;
       STARTED = false;
@@ -89,6 +89,7 @@ public class EventPubSub {
   public static BatchEventProcessor<ChangeEventHolder> addEventHandler(EventHandler<ChangeEventHolder> eventHandler) {
     BatchEventProcessor<ChangeEventHolder> processor =
         new BatchEventProcessor<>(ringBuffer, ringBuffer.newBarrier(), eventHandler);
+    processor.setExceptionHandler(new DefaultExceptionHandler());
     ringBuffer.addGatingSequences(processor.getSequence());
     executor.execute(processor);
     LOG.info("Processor added for {}", processor);
@@ -100,4 +101,22 @@ public class EventPubSub {
   }
 
   public void close() {}
+
+  public static class DefaultExceptionHandler implements ExceptionHandler<ChangeEventHolder> {
+    @Override
+    public void handleEventException(Throwable throwable, long l, ChangeEventHolder changeEventHolder) {
+      LOG.warn("Disruptor error in onEvent {}", throwable.getMessage());
+      throw new RuntimeException(throwable.getMessage()); // Throw runtime exception to stop the event handler thread
+    }
+
+    @Override
+    public void handleOnStartException(Throwable throwable) {
+      LOG.warn("Disruptor error in onStart {}", throwable.getMessage());
+    }
+
+    @Override
+    public void handleOnShutdownException(Throwable throwable) {
+      LOG.warn("Disruptor error on onShutdown {}", throwable.getMessage());
+    }
+  }
 }
