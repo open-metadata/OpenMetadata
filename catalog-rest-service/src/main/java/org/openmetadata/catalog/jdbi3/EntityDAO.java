@@ -50,18 +50,12 @@ public interface EntityDAO<T> {
   String findById(@Define("table") String table, @Bind("id") String id);
 
   @SqlQuery("SELECT json FROM <table> WHERE <nameColumn> = :name")
-  String findByName(
-      @Define("table") String table,
-      @Define("nameColumn") String nameColumn,
-      @Bind("name") String name);
+  String findByName(@Define("table") String table, @Define("nameColumn") String nameColumn, @Bind("name") String name);
 
   @SqlQuery(
-      "SELECT count(*) FROM <table> WHERE "
-          + "(<nameColumn> LIKE CONCAT(:fqnPrefix, '.%') OR :fqnPrefix IS NULL)")
+      "SELECT count(*) FROM <table> WHERE " + "(<nameColumn> LIKE CONCAT(:fqnPrefix, '.%') OR :fqnPrefix IS NULL)")
   int listCount(
-      @Define("table") String table,
-      @Define("nameColumn") String nameColumn,
-      @Bind("fqnPrefix") String fqnPrefix);
+      @Define("table") String table, @Define("nameColumn") String nameColumn, @Bind("fqnPrefix") String fqnPrefix);
 
   @SqlQuery(
       "SELECT json FROM ("
@@ -119,8 +113,7 @@ public interface EntityDAO<T> {
     }
     if (entity == null) {
       String entityName = Entity.getEntityNameFromClass(clz);
-      throw EntityNotFoundException.byMessage(
-          CatalogExceptionMessage.entityNotFound(entityName, id));
+      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(entityName, id));
     }
     return entity;
   }
@@ -134,8 +127,7 @@ public interface EntityDAO<T> {
     }
     if (entity == null) {
       String entityName = Entity.getEntityNameFromClass(clz);
-      throw EntityNotFoundException.byMessage(
-          CatalogExceptionMessage.entityNotFound(entityName, fqn));
+      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(entityName, fqn));
     }
     return entity;
   }
