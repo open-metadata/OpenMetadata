@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate 
+ *  Copyright 2021 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -14,7 +14,14 @@
 package org.openmetadata.catalog.selenium.pages.teams;
 
 import com.github.javafaker.Faker;
+import java.time.Duration;
+import java.util.ArrayList;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.catalog.selenium.events.Events;
 import org.openmetadata.catalog.selenium.properties.Property;
 import org.openqa.selenium.By;
@@ -24,14 +31,6 @@ import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.interactions.Actions;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.Order;
-import org.junit.jupiter.api.TestMethodOrder;
-import org.junit.jupiter.api.MethodOrderer;
-
-import java.time.Duration;
-import java.util.ArrayList;
 
 @Order(2)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
@@ -41,7 +40,8 @@ public class TeamsPageTest {
   static String URL = Property.getInstance().getURL();
   Integer waitTime = Property.getInstance().getSleepTime();
   static Faker faker = new Faker();
-  static String enterDescription = "//div[@data-testid='enterDescription']/div/div[2]/div/div/div/div/div/div";
+  static String enterDescription =
+      "//div[@data-testid='enterDescription']/div/div[2]/div/div/div/div/div/div";
   static String teamDisplayName = faker.name().lastName();
   static Actions actions;
   static WebDriverWait wait;
@@ -64,7 +64,9 @@ public class TeamsPageTest {
   @Order(1)
   public void openTeamsPage() throws InterruptedException {
     Events.click(webDriver, By.cssSelector("[data-testid='closeWhatsNew']")); // Close What's new
-    Events.click(webDriver, By.cssSelector("[data-testid='menu-button'][id='menu-button-Settings']")); // Setting
+    Events.click(
+        webDriver,
+        By.cssSelector("[data-testid='menu-button'][id='menu-button-Settings']")); // Setting
     Events.click(webDriver, By.cssSelector("[data-testid='menu-item-Teams']")); // Setting/Teams
     Thread.sleep(waitTime);
   }
@@ -90,7 +92,9 @@ public class TeamsPageTest {
     Events.click(webDriver, By.xpath("//*[text()[contains(.,'" + teamDisplayName + "')]] "));
     // Select the created listed team
     for (int i = 0; i <= 10; i++) {
-      Events.click(webDriver, By.cssSelector("[data-testid='add-new-user-button']")); // select add user button
+      Events.click(
+          webDriver,
+          By.cssSelector("[data-testid='add-new-user-button']")); // select add user button
       Events.click(webDriver, By.cssSelector("[data-testid='checkboxAddUser']"));
       Events.click(webDriver, By.cssSelector("[data-testid='AddUserSave']"));
       Thread.sleep(waitTime);
@@ -104,8 +108,7 @@ public class TeamsPageTest {
     Events.click(webDriver, By.xpath("//*[text()[contains(.,'" + teamDisplayName + "')]] "));
     // Select the created listed team
     Events.click(webDriver, By.cssSelector("[data-testid='edit-description']"));
-    wait.until(ExpectedConditions.elementToBeClickable(
-        By.xpath(enterDescription)));
+    wait.until(ExpectedConditions.elementToBeClickable(By.xpath(enterDescription)));
     Events.sendKeys(webDriver, By.xpath(enterDescription), faker.address().toString());
     Events.click(webDriver, By.cssSelector("[data-testid='save']"));
   }
@@ -119,14 +122,17 @@ public class TeamsPageTest {
     Events.click(webDriver, By.cssSelector("[data-testid='assets']")); // Assets
     Events.click(webDriver, By.cssSelector("[data-testid='appbar-item'][id='explore']")); // Explore
     Events.click(webDriver, By.cssSelector("[data-testid='sortBy']")); // Sort By
-    Events.click(webDriver, By.cssSelector("[data-testid='list-item']")); // Last Updated // Last Updated
-    Events.click(webDriver, By.xpath("(//a[@data-testid='table-link'])[last()]"));
+    Events.click(
+        webDriver, By.cssSelector("[data-testid='list-item']")); // Last Updated // Last Updated
+    Events.click(webDriver, By.xpath("(//button[@data-testid='table-link'])[last()]"));
     Events.click(webDriver, By.xpath("(//button[@data-testid='tab'])[4]")); // Manage
     Events.click(webDriver, By.cssSelector("[data-testid='owner-dropdown']")); // Owner
     Events.sendKeys(webDriver, By.cssSelector("[data-testid='searchInputText']"), teamDisplayName);
     Events.click(webDriver, By.cssSelector("[data-testid='list-item']")); // Select User/Team
     Events.click(webDriver, By.cssSelector("[data-testid='saveManageTab']")); // Save
-    Events.click(webDriver, By.cssSelector("[data-testid='menu-button'][id='menu-button-Settings']")); // Setting
+    Events.click(
+        webDriver,
+        By.cssSelector("[data-testid='menu-button'][id='menu-button-Settings']")); // Setting
     Events.click(webDriver, By.cssSelector("[data-testid='menu-item-Teams']")); // Setting/Teams
     Events.click(webDriver, By.xpath("//*[text()[contains(.,'" + teamDisplayName + "')]] "));
     // Select the created listed team

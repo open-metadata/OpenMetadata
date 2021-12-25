@@ -14,7 +14,14 @@
 package org.openmetadata.catalog.selenium.pages.tags;
 
 import com.github.javafaker.Faker;
+import java.time.Duration;
+import java.util.ArrayList;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.catalog.selenium.events.Events;
 import org.openmetadata.catalog.selenium.properties.Property;
 import org.openqa.selenium.By;
@@ -24,14 +31,6 @@ import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.interactions.Actions;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.Order;
-import org.junit.jupiter.api.TestMethodOrder;
-import org.junit.jupiter.api.MethodOrderer;
-
-import java.time.Duration;
-import java.util.ArrayList;
 
 @Order(3)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
@@ -42,7 +41,8 @@ public class TagsPageTest {
   static Faker faker = new Faker();
   static String tagCategoryDisplayName = faker.name().firstName();
   static String tagDisplayName = faker.name().firstName();
-  static String enterDescription = "//div[@data-testid='enterDescription']/div/div[2]/div/div/div/div/div/div";
+  static String enterDescription =
+      "//div[@data-testid='enterDescription']/div/div[2]/div/div/div/div/div/div";
   static Actions actions;
   static WebDriverWait wait;
   Integer waitTime = Property.getInstance().getSleepTime();
@@ -64,7 +64,9 @@ public class TagsPageTest {
   @Order(1)
   public void openTagsPage() throws InterruptedException {
     Events.click(webDriver, By.cssSelector("[data-testid='closeWhatsNew']")); // Close What's new
-    Events.click(webDriver, By.cssSelector("[data-testid='menu-button'][id='menu-button-Settings']")); // Setting
+    Events.click(
+        webDriver,
+        By.cssSelector("[data-testid='menu-button'][id='menu-button-Settings']")); // Setting
     Events.click(webDriver, By.cssSelector("[data-testid='menu-item-Tags']")); // Setting/Tags
     Thread.sleep(waitTime);
   }
@@ -119,7 +121,8 @@ public class TagsPageTest {
     Events.sendEnter(webDriver, By.xpath(enterDescription));
     Events.click(webDriver, By.cssSelector("[data-testid='linkButton']"));
     Events.sendKeys(webDriver, By.xpath(enterDescription), faker.address().toString());
-    wait.until(ExpectedConditions.elementToBeClickable(By.cssSelector("[data-testid='saveButton']")));
+    wait.until(
+        ExpectedConditions.elementToBeClickable(By.cssSelector("[data-testid='saveButton']")));
     Events.click(webDriver, By.cssSelector("[data-testid='saveButton']"));
   }
 
@@ -129,7 +132,9 @@ public class TagsPageTest {
     openTagsPage();
     Events.click(webDriver, By.xpath("//*[text()[contains(.,'" + tagCategoryDisplayName + "')]] "));
     // Select the created listed team
-    actions.moveToElement(webDriver.findElement(By.cssSelector("[data-testid='editTagDescription']"))).perform();
+    actions
+        .moveToElement(webDriver.findElement(By.cssSelector("[data-testid='editTagDescription']")))
+        .perform();
     Events.click(webDriver, By.cssSelector("[data-testid='editTagDescription']"));
     wait.until(ExpectedConditions.elementToBeClickable(By.xpath(enterDescription)));
     Events.sendKeys(webDriver, By.xpath(enterDescription), faker.address().toString());
@@ -172,17 +177,21 @@ public class TagsPageTest {
     Events.click(webDriver, By.cssSelector("[data-testid='appbar-item'][id='explore']")); // Explore
     Events.click(webDriver, By.cssSelector("[data-testid='sortBy']")); // Sort By
     Events.click(webDriver, By.cssSelector("[data-testid='list-item']")); // Last Updated
-    Events.click(webDriver, By.xpath("(//a[@data-testid='table-link'])[last()]"));
+    Events.click(webDriver, By.xpath("(//button[@data-testid='table-link'])[last()]"));
     Thread.sleep(waitTime);
     actions.moveToElement(webDriver.findElement(By.cssSelector("[data-testid='tags']"))).perform();
     Thread.sleep(waitTime);
     Events.click(webDriver, By.cssSelector("[data-testid='tags']"));
     Events.click(webDriver, By.cssSelector("[data-testid='associatedTagName']"));
-    Events.sendKeys(webDriver, By.cssSelector("[data-testid='associatedTagName']"),
+    Events.sendKeys(
+        webDriver,
+        By.cssSelector("[data-testid='associatedTagName']"),
         tagCategoryDisplayName + "." + tagDisplayName);
     Events.click(webDriver, By.cssSelector("[data-testid='list-item']"));
     Events.click(webDriver, By.cssSelector("[data-testid='saveAssociatedTag']"));
-    Events.click(webDriver, By.cssSelector("[data-testid='menu-button'][id='menu-button-Settings']")); // Setting
+    Events.click(
+        webDriver,
+        By.cssSelector("[data-testid='menu-button'][id='menu-button-Settings']")); // Setting
     Events.click(webDriver, By.cssSelector("[data-testid='menu-item-Tags']")); // Setting/Tags
     Events.click(webDriver, By.xpath("//*[text()[contains(.,'" + tagCategoryDisplayName + "')]] "));
     Events.click(webDriver, By.cssSelector("[data-testid='usage-count']"));
@@ -194,9 +203,16 @@ public class TagsPageTest {
   public void checkAddedTagToTableColumn() {
     Events.click(webDriver, By.cssSelector("[data-testid='closeWhatsNew']")); // Close What's new
     Events.click(webDriver, By.cssSelector("[data-testid='tables']")); // Tables
-    Events.click(webDriver, By.cssSelector("[data-testid='checkbox']" +
-        "[id='" + tagCategoryDisplayName + "." + tagDisplayName + "']"));
-    Events.click(webDriver, By.xpath("//a[@data-testid='table-link']//button"));
+    Events.click(
+        webDriver,
+        By.cssSelector(
+            "[data-testid='checkbox']"
+                + "[id='"
+                + tagCategoryDisplayName
+                + "."
+                + tagDisplayName
+                + "']"));
+    Events.click(webDriver, By.xpath("//button[@data-testid='table-link']"));
   }
 
   @Test
@@ -205,9 +221,11 @@ public class TagsPageTest {
     openTagsPage();
     Events.click(webDriver, By.xpath("//*[text()[contains(.,'" + tagCategoryDisplayName + "')]] "));
     Events.click(webDriver, By.cssSelector("[data-testid='usage-count']"));
-    Events.click(webDriver, By.xpath("//a[@data-testid='table-link']//button"));
+    Events.click(webDriver, By.xpath("//button[@data-testid='table-link']"));
     Thread.sleep(waitTime);
-    actions.moveToElement(webDriver.findElement(By.xpath("//div[@data-testid='tag-conatiner']//span"))).perform();
+    actions
+        .moveToElement(webDriver.findElement(By.xpath("//div[@data-testid='tag-conatiner']//span")))
+        .perform();
     Events.click(webDriver, By.xpath("//div[@data-testid='tag-conatiner']//span"));
     Events.click(webDriver, By.cssSelector("[data-testid='remove']"));
     Events.click(webDriver, By.cssSelector("[data-testid='saveAssociatedTag']"));
