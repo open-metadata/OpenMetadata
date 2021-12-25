@@ -155,10 +155,10 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
 
   @BeforeAll
   public static void setup(TestInfo test) throws URISyntaxException, IOException {
-    webhookCallbackResource.clearAllEvents();
+    webhookCallbackResource.clearEvents();
     WebhookResourceTest webhookResourceTest = new WebhookResourceTest();
+    webhookResourceTest.startWebhookSubscription();
 
-    webhookResourceTest.createWebhooks();
     UserResourceTest userResourceTest = new UserResourceTest();
     USER1 = UserResourceTest.createUser(userResourceTest.create(test), authHeaders("test@open-metadata.org"));
     USER_OWNER1 = new EntityReference().withId(USER1.getId()).withType("user");
@@ -244,10 +244,7 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
 
   @AfterAll
   public static void afterAllTests() throws Exception {
-    //    EventPubSub.shutdown();
-    // Ensure webhooks are in the right state
     new WebhookResourceTest().validateWebhookEvents();
-    //    APP.getEnvironment().getApplicationContext().getServer().stop();
   }
 
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1000,7 +997,11 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
         changeEvents = getChangeEvents(null, null, null, updateTime, authHeaders);
       }
 
-      assertTrue(changeEvents.getData().size() > 0);
+      // Wait for change event to be recorded
+      if (changeEvents.getData().size() == 0) {
+        continue;
+      }
+
       for (ChangeEvent event : changeEvents.getData()) {
         if (event.getDateTime().getTime() == updateTime.getTime()) {
           changeEvent = event;

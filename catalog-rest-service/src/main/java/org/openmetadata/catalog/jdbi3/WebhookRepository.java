@@ -118,35 +118,37 @@ public class WebhookRepository extends EntityRepository<Webhook> {
   }
 
   public void addWebhookPublisher(Webhook webhook) {
-    if (webhook.getEnabled()) { // Only add webhook that is enabled
-      WebhookPublisher publisher = new WebhookPublisher(webhook);
-      BatchEventProcessor<ChangeEventHolder> processor = EventPubSub.addEventHandler(publisher);
-      publisher.setProcessor(processor);
-      webhookPublisherMap.put(webhook.getId(), publisher);
-      LOG.info("Webhook subscription started for {}", webhook.getName());
+    if (!webhook.getEnabled()) { // Only add webhook that is enabled
+      return;
     }
+    WebhookPublisher publisher = new WebhookPublisher(webhook);
+    BatchEventProcessor<ChangeEventHolder> processor = EventPubSub.addEventHandler(publisher);
+    publisher.setProcessor(processor);
+    webhookPublisherMap.put(webhook.getId(), publisher);
+    LOG.info("Webhook subscription started for {}", webhook.getName());
   }
 
   public void updateWebhookPublisher(Webhook webhook) throws InterruptedException {
     if (webhook.getEnabled()) { // Only add webhook that is enabled
       // If there was a previous webhook either in disabled state or stopped due
-      // to errors, update it and restart subscription
+      // to errors, update it and restart publishing
       WebhookPublisher previousPublisher = getPublisher(webhook.getId());
       if (previousPublisher == null) {
         addWebhookPublisher(webhook);
         return;
       }
-      // Update the previousPublisher
+
+      // Update the existing publisher
       Status status = previousPublisher.getWebhook().getStatus();
       previousPublisher.updateWebhook(webhook);
       if (status != Status.SUCCESS && status != Status.AWAITING_RETRY) {
-        // Restart the publisher
+        // Restart the previously stopped publisher (in states notStarted, error, retryLimitReached)
         BatchEventProcessor<ChangeEventHolder> processor = EventPubSub.addEventHandler(previousPublisher);
         previousPublisher.setProcessor(processor);
         LOG.info("Webhook publisher restarted for {}", webhook.getName());
       }
     } else {
-      // Remove the webhook that may be enabled currently
+      // Remove the webhook publisher
       deleteWebhookPublisher(webhook.getId());
     }
   }
