@@ -433,12 +433,6 @@
 
     <profile>	<!-- run SCA for master branch: -Dbranch=master -->
       <id>static-code-analysis</id>
-      <activation>
-        <property>
-          <name>branch</name>
-          <value>main</value>
-        </property>
-      </activation>
       <build>
         <plugins>
 
