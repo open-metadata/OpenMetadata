@@ -54,8 +54,8 @@ public class LocationResourceTest extends EntityResourceTest<Location> {
   }
 
   @BeforeAll
-  public static void setup(TestInfo test) throws IOException, URISyntaxException {
-    EntityResourceTest.setup(test);
+  public void setup(TestInfo test) throws IOException, URISyntaxException {
+    super.setup(test);
   }
 
   @Override
@@ -282,10 +282,6 @@ public class LocationResourceTest extends EntityResourceTest<Location> {
 
   private CreateLocation create(TestInfo test) {
     return new CreateLocation().withName(getEntityName(test)).withService(AWS_STORAGE_SERVICE_REFERENCE);
-  }
-
-  private CreateLocation create(TestInfo test, int index) {
-    return new CreateLocation().withName(getEntityName(test, index)).withService(AWS_STORAGE_SERVICE_REFERENCE);
   }
 
   private CreateLocation create(String name) {

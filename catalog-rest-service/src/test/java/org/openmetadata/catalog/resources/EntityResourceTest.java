@@ -62,6 +62,7 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
+import org.junit.jupiter.api.TestInstance;
 import org.openmetadata.catalog.CatalogApplicationTest;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.services.CreateDatabaseService;
@@ -107,6 +108,7 @@ import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.TestUtils;
 import org.openmetadata.common.utils.JsonSchemaUtil;
 
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
   private final String entityName;
   private final Class<T> entityClass;
@@ -161,10 +163,12 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
   }
 
   @BeforeAll
-  public static void setup(TestInfo test) throws URISyntaxException, IOException {
+  public void setup(TestInfo test) throws URISyntaxException, IOException {
     webhookCallbackResource.clearEvents();
+    webhookCallbackResource.clearEntityCallbackCount();
     WebhookResourceTest webhookResourceTest = new WebhookResourceTest();
     webhookResourceTest.startWebhookSubscription();
+    new WebhookResourceTest().startWebhookEntitySubscriptions(entityName);
 
     UserResourceTest userResourceTest = new UserResourceTest();
     USER1 = UserResourceTest.createUser(userResourceTest.create(test), authHeaders("test@open-metadata.org"));
@@ -263,8 +267,10 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
   }
 
   @AfterAll
-  public static void afterAllTests() throws Exception {
-    new WebhookResourceTest().validateWebhookEvents();
+  public void afterAllTests() throws Exception {
+    WebhookResourceTest webhookResourceTest = new WebhookResourceTest();
+    webhookResourceTest.validateWebhookEvents();
+    webhookResourceTest.validateWebhookEntityEvents(entityName);
   }
 
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1017,7 +1023,7 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
         changeEvents = getChangeEvents(entityName, entityName, null, updateTime, authHeaders);
       } else {
         // Get change event with no event filter for entity types
-        changeEvents = getChangeEvents(null, null, null, updateTime, authHeaders);
+        changeEvents = getChangeEvents("*", "*", null, updateTime, authHeaders);
       }
 
       // Wait for change event to be recorded

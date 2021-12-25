@@ -46,6 +46,7 @@ import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.ChangeEvent;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.EventType;
 import org.openmetadata.catalog.type.FailureDetails;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.type.Webhook;
@@ -288,7 +289,22 @@ public class WebhookRepository extends EntityRepository<Webhook> {
     public void setTags(List<TagLabel> tags) {}
   }
 
-  /** One webhook call back per webhook subscription */
+  /**
+   * WebhookPublisher publishes events to the webhook endpoint using POST http requests. There is one instance of
+   * WebhookPublisher per webhook subscription. Each WebhookPublish is an EventHandler that runs in a separate thread
+   * and receives events from LMAX Disruptor {@link EventPubSub} through {@link BatchEventProcessor}.
+   *
+   * <p>The failures during callback to Webhook endpoints are handled in this class as follows:
+   *
+   * <ul>
+   *   <li>Webhook with unresolvable URLs are marked as "failed" and no further attempt is made to deliver the events
+   *   <li>Webhook callbacks that return 3xx are marked as "failed" and no further attempt is made to deliver the events
+   *   <li>Webhook callbacks that return 4xx, 5xx, or timeout are marked as "awaitingRetry" and 5 retry attempts are
+   *       made to deliver the events with the following backoff - 3 seconds, 30 seconds, 5 minutes, 1 hours, and 24
+   *       hour. When all the 5 delivery attempts fail, the webhook state is marked as "retryLimitReached" and no
+   *       further attempt is made to deliver the events.
+   * </ul>
+   */
   public class WebhookPublisher implements EventHandler<ChangeEventHolder>, LifecycleAware {
     // Backoff timeout in seconds. Delivering events is retried 5 times.
     private static final int BACKOFF_NORMAL = 0;
@@ -305,34 +321,35 @@ public class WebhookRepository extends EntityRepository<Webhook> {
     private BatchEventProcessor<ChangeEventHolder> processor;
     private Client client;
     private Builder target;
+    private final ConcurrentHashMap<EventType, List<String>> filter = new ConcurrentHashMap<>();
 
     public WebhookPublisher(Webhook webhook) {
       this.webhook = webhook;
+      initFilter();
     }
 
-    public synchronized Webhook getWebhook() {
-      return webhook;
-    }
-
-    public synchronized void updateWebhook(Webhook updatedWebhook) {
-      currentBackoffTime = BACKOFF_NORMAL;
-      webhook.setTimeout(updatedWebhook.getTimeout());
-      webhook.setBatchSize(updatedWebhook.getBatchSize());
-      webhook.setEndPoint(updatedWebhook.getEndPoint());
+    @Override
+    public void onStart() {
+      LOG.info("Webhook-lifecycle-onStart {}", webhook.getName());
       createClient();
-    }
+      webhook.withFailureDetails(new FailureDetails());
 
-    public void cleanup() {
-      LOG.info("Cleaning up webhook-lifecycle {}", webhook.getName());
-      currentBackoffTime = BACKOFF_NORMAL;
-      client.close();
-      client = null;
+      // TODO clean this up
+      Map<String, String> authHeaders = SecurityUtil.authHeaders("admin@open-metadata.org");
+      target = SecurityUtil.addHeaders(client.target(webhook.getEndPoint()), authHeaders);
     }
 
     @Override
     public void onEvent(ChangeEventHolder changeEventHolder, long sequence, boolean endOfBatch) throws Exception {
-      batch.add(changeEventHolder.get());
+      // Ignore events that don't match the webhook event filters
+      ChangeEvent changeEvent = changeEventHolder.get();
+      List<String> entities = filter.get(changeEvent.getEventType());
+      if (entities == null || (!entities.get(0).equals("*") && !entities.contains(changeEvent.getEntityType()))) {
+        return;
+      }
+
       // Batch until either the batch has ended or batch size has reached the max size
+      batch.add(changeEventHolder.get());
       if (!endOfBatch && batch.size() < webhook.getBatchSize()) {
         return;
       }
@@ -372,9 +389,42 @@ public class WebhookRepository extends EntityRepository<Webhook> {
       }
     }
 
+    @Override
+    public void onShutdown() {
+      currentBackoffTime = BACKOFF_NORMAL;
+      client.close();
+      client = null;
+      shutdownLatch.countDown();
+      LOG.info("Webhook-lifecycle-onShutdown {}", webhook.getName());
+    }
+
+    public synchronized Webhook getWebhook() {
+      return webhook;
+    }
+
+    public synchronized void updateWebhook(Webhook updatedWebhook) {
+      currentBackoffTime = BACKOFF_NORMAL;
+      webhook.setTimeout(updatedWebhook.getTimeout());
+      webhook.setBatchSize(updatedWebhook.getBatchSize());
+      webhook.setEndPoint(updatedWebhook.getEndPoint());
+      webhook.setEventFilters(updatedWebhook.getEventFilters());
+      initFilter();
+      createClient();
+    }
+
+    private void initFilter() {
+      filter.clear();
+      webhook
+          .getEventFilters()
+          .forEach(
+              f -> { // Set up filters
+                filter.put(f.getEventType(), f.getEntities());
+              });
+    }
+
     private void setErrorStatus(Long attemptTime, Integer statusCode, String reason) throws IOException {
       if (!attemptTime.equals(webhook.getFailureDetails().getLastFailedAt())) {
-        setStatus(Status.ERROR, attemptTime, statusCode, reason, null);
+        setStatus(Status.FAILED, attemptTime, statusCode, reason, null);
       }
       throw new RuntimeException(reason);
     }
@@ -398,17 +448,6 @@ public class WebhookRepository extends EntityRepository<Webhook> {
       storeEntity(webhook, true);
     }
 
-    @Override
-    public void onStart() {
-      LOG.info("Webhook-lifecycle-onStart {}", webhook.getName());
-      createClient();
-      webhook.withFailureDetails(new FailureDetails());
-
-      // TODO clean this up
-      Map<String, String> authHeaders = SecurityUtil.authHeaders("admin@open-metadata.org");
-      target = SecurityUtil.addHeaders(client.target(webhook.getEndPoint()), authHeaders);
-    }
-
     private synchronized void createClient() {
       if (client != null) {
         client.close();
@@ -420,14 +459,7 @@ public class WebhookRepository extends EntityRepository<Webhook> {
       client = clientBuilder.build();
     }
 
-    @Override
-    public void onShutdown() {
-      cleanup();
-      shutdownLatch.countDown();
-      LOG.info("Webhook-lifecycle-onShutdown {}", webhook.getName());
-    }
-
-    public void awaitShutdown() throws InterruptedException {
+    private void awaitShutdown() throws InterruptedException {
       LOG.info("Awaiting shutdown webhook-lifecycle {}", webhook.getName());
       shutdownLatch.await();
     }
@@ -440,7 +472,7 @@ public class WebhookRepository extends EntityRepository<Webhook> {
       return processor;
     }
 
-    public void setNextBackOff() {
+    private void setNextBackOff() {
       if (currentBackoffTime == BACKOFF_NORMAL) {
         currentBackoffTime = BACKOFF_3_SECONDS;
       } else if (currentBackoffTime == BACKOFF_3_SECONDS) {

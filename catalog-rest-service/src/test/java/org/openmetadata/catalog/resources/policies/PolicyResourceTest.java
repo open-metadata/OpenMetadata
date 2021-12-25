@@ -67,8 +67,8 @@ public class PolicyResourceTest extends EntityResourceTest<Policy> {
   }
 
   @BeforeAll
-  public static void setup(TestInfo test) throws IOException, URISyntaxException {
-    EntityResourceTest.setup(test);
+  public void setup(TestInfo test) throws IOException, URISyntaxException {
+    super.setup(test);
     location = createLocation();
   }
 
