@@ -49,9 +49,6 @@ jobs:
         with:
           java-version: 11
 
-      - name: Check environment
-        run: echo "$GITHUB_CONTEXT"
-
       - name: Build PR with Maven
         if: ${{ github.event_name == 'pull_request' }}
         run: |
@@ -59,8 +56,8 @@ jobs:
               -Dsonar.pullrequest.key=${{ github.event.pull_request.number }} \
               -Dsonar.pullrequest.branch=${{ github.ref_name }} \
               -Dsonar.pullrequest.base=origin/main \
-              -Dsonar.pullrequest.provider=github clean package
+              -Dsonar.pullrequest.provider=github clean install
 
       - name: Build with Maven
         if: ${{ github.event_name == 'push' }}
-        run: mvn -Dsonar.login=${{ secrets.SONAR_TOKEN }} clean package
+        run: mvn -Dsonar.login=${{ secrets.SONAR_TOKEN }} clean install
