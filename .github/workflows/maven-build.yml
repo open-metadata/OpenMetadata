@@ -55,7 +55,7 @@ jobs:
       - name: Build PR with Maven
         if: ${{ github.event_name == 'pull_request' }}
         run: |
-          mvn -P static-code-analysis -Dsonar.login=${{ secrets.SONAR_TOKEN }} \
+          mvn -Dsonar.login=${{ secrets.SONAR_TOKEN }} \
               -Dsonar.pullrequest.key=${{ github.event.pull_request.number }} \
               -Dsonar.pullrequest.branch=${{ github.ref_name }} \
               -Dsonar.pullrequest.base=origin/main \
@@ -63,4 +63,4 @@ jobs:
 
       - name: Build with Maven
         if: ${{ github.event_name == 'push' }}
-        run: mvn -Dsonar.login=${{ secrets.SONAR_TOKEN }} -P static-code-analysis clean package
+        run: mvn -Dsonar.login=${{ secrets.SONAR_TOKEN }} clean package
