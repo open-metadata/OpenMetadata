@@ -431,7 +431,7 @@
 
   <profiles>
 
-    <profile>	<!-- run SCA for master branch: -Dbranch=master -->
+    <profile>	<!-- run SCA -->
       <id>static-code-analysis</id>
       <build>
         <plugins>
@@ -632,4 +632,9 @@
       </plugin>
     </plugins>
   </build>
+  <settings>
+    <activeProfiles>
+      <activeProfile>static-code-analysis</activeProfile>
+    </activeProfiles>
+  </settings>
 </project>
