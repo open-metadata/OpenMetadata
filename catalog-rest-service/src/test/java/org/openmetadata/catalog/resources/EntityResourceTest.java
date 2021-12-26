@@ -70,9 +70,11 @@ import org.openmetadata.catalog.api.services.CreateMessagingService;
 import org.openmetadata.catalog.api.services.CreateMessagingService.MessagingServiceType;
 import org.openmetadata.catalog.api.services.CreatePipelineService;
 import org.openmetadata.catalog.api.services.CreatePipelineService.PipelineServiceType;
+import org.openmetadata.catalog.api.services.CreateStorageService;
 import org.openmetadata.catalog.entity.services.DatabaseService;
 import org.openmetadata.catalog.entity.services.MessagingService;
 import org.openmetadata.catalog.entity.services.PipelineService;
+import org.openmetadata.catalog.entity.services.StorageService;
 import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
@@ -84,6 +86,7 @@ import org.openmetadata.catalog.resources.events.WebhookResourceTest;
 import org.openmetadata.catalog.resources.services.DatabaseServiceResourceTest;
 import org.openmetadata.catalog.resources.services.MessagingServiceResourceTest;
 import org.openmetadata.catalog.resources.services.PipelineServiceResourceTest;
+import org.openmetadata.catalog.resources.services.StorageServiceResourceTest;
 import org.openmetadata.catalog.resources.tags.TagResourceTest;
 import org.openmetadata.catalog.resources.teams.TeamResourceTest;
 import org.openmetadata.catalog.resources.teams.UserResourceTest;
@@ -93,6 +96,7 @@ import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.EventType;
 import org.openmetadata.catalog.type.FieldChange;
+import org.openmetadata.catalog.type.StorageServiceType;
 import org.openmetadata.catalog.type.Tag;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
@@ -128,6 +132,9 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
   public static EntityReference PULSAR_REFERENCE;
   public static EntityReference AIRFLOW_REFERENCE;
   public static EntityReference PREFECT_REFERENCE;
+
+  public static EntityReference AWS_STORAGE_SERVICE_REFERENCE;
+  public static EntityReference GCP_STORAGE_SERVICE_REFERENCE;
 
   public static TagLabel USER_ADDRESS_TAG_LABEL;
   public static TagLabel USER_BANK_ACCOUNT_TAG_LABEL;
@@ -230,6 +237,19 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     pipelineService = pipelineServiceResourceTest.createEntity(createPipeline, adminAuthHeaders());
     PREFECT_REFERENCE = new PipelineServiceEntityInterface(pipelineService).getEntityReference();
 
+    // Create AWS storage service, S3
+    CreateStorageService createService =
+        new CreateStorageService().withName("s3").withServiceType(StorageServiceType.S3);
+    StorageService service = new StorageServiceResourceTest().createEntity(createService, adminAuthHeaders());
+    AWS_STORAGE_SERVICE_REFERENCE =
+        new EntityReference().withName(service.getName()).withId(service.getId()).withType(Entity.STORAGE_SERVICE);
+
+    // Create GCP storage service, GCS
+    createService.withName("gs").withServiceType(StorageServiceType.GCS);
+    service = new StorageServiceResourceTest().createEntity(createService, adminAuthHeaders());
+    GCP_STORAGE_SERVICE_REFERENCE =
+        new EntityReference().withName(service.getName()).withId(service.getId()).withType(Entity.STORAGE_SERVICE);
+
     Tag tag = TagResourceTest.getTag("User.Address", adminAuthHeaders());
     USER_ADDRESS_TAG_LABEL =
         new TagLabel().withTagFQN(tag.getFullyQualifiedName()).withDescription(tag.getDescription());
@@ -295,7 +315,8 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     printEntities(allEntities);
 
     // List tables with limit set from 1 to maxTables size
-    // Each time compare the returned list with allTables list to make sure right results are returned
+    // Each time compare the returned list with allTables list to make sure right results are
+    // returned
     for (int limit = 1; limit < maxEntities; limit++) {
       String after = null;
       String before;
@@ -501,7 +522,8 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     entityInterface = getEntityInterface(entity);
     checkOwnerOwns(USER_OWNER1, entityInterface.getId(), true);
 
-    // Remove ownership (from USER_OWNER1) using PUT request. Owner is expected to remain the same and not removed.
+    // Remove ownership (from USER_OWNER1) using PUT request. Owner is expected to remain the same
+    // and not removed.
     request = createRequest(getEntityName(test), "description", "displayName", null);
     updateEntity(request, OK, adminAuthHeaders());
     checkOwnerOwns(USER_OWNER1, entityInterface.getId(), true);
@@ -568,7 +590,8 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     User user1 = UserResourceTest.createUser(userResourceTest.create(test, 1), userAuthHeaders());
     addAndCheckFollower(entityId, user1.getId(), CREATED, 1, userAuthHeaders());
 
-    // Add the same user as follower and make sure no errors are thrown and return response is OK (and not CREATED)
+    // Add the same user as follower and make sure no errors are thrown and return response is OK
+    // (and not CREATED)
     addAndCheckFollower(entityId, user1.getId(), OK, 1, userAuthHeaders());
 
     // Add a new follower to the entity

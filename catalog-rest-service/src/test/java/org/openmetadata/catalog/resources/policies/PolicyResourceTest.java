@@ -29,6 +29,7 @@ import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
 import javax.ws.rs.client.WebTarget;
@@ -38,10 +39,14 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.catalog.Entity;
+import org.openmetadata.catalog.api.data.CreateLocation;
 import org.openmetadata.catalog.api.policies.CreatePolicy;
+import org.openmetadata.catalog.entity.data.Location;
 import org.openmetadata.catalog.entity.policies.Policy;
+import org.openmetadata.catalog.jdbi3.LocationRepository;
 import org.openmetadata.catalog.jdbi3.PolicyRepository.PolicyEntityInterface;
 import org.openmetadata.catalog.resources.EntityResourceTest;
+import org.openmetadata.catalog.resources.locations.LocationResourceTest;
 import org.openmetadata.catalog.resources.policies.PolicyResource.PolicyList;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
@@ -54,6 +59,9 @@ import org.openmetadata.catalog.util.TestUtils;
 @Slf4j
 public class PolicyResourceTest extends EntityResourceTest<Policy> {
 
+  private static String LOCATION_NAME = "aws-s3";
+  private static Location location;
+
   public PolicyResourceTest() {
     super(Entity.POLICY, Policy.class, PolicyList.class, "policies", PolicyResource.FIELDS, false, true, false);
   }
@@ -61,6 +69,7 @@ public class PolicyResourceTest extends EntityResourceTest<Policy> {
   @BeforeAll
   public static void setup(TestInfo test) throws IOException, URISyntaxException {
     EntityResourceTest.setup(test);
+    location = createLocation();
   }
 
   @Override
@@ -98,8 +107,6 @@ public class PolicyResourceTest extends EntityResourceTest<Policy> {
       return;
     }
     if (fieldName.equals("policyUrl")) {
-      System.out.println("expected " + expected);
-      System.out.println("actual " + actual);
       URI expectedPolicyUrl = (URI) expected;
       URI actualPolicyUrl = URI.create((String) actual);
       assertEquals(expectedPolicyUrl, actualPolicyUrl);
@@ -254,6 +261,19 @@ public class PolicyResourceTest extends EntityResourceTest<Policy> {
     policy.setPolicyUrl(null);
     change = getChangeDescription(policy.getVersion());
     change.getFieldsDeleted().add(new FieldChange().withName("policyUrl").withOldValue(uri));
+    policy = patchEntityAndCheck(policy, origJson, adminAuthHeaders(), MINOR_UPDATE, change);
+
+    EntityReference locationReference = new LocationRepository.LocationEntityInterface(location).getEntityReference();
+    Map<String, String> locationObj = new LinkedHashMap<>();
+    locationObj.put("type", locationReference.getType());
+    locationObj.put("name", locationReference.getName());
+    locationObj.put("id", locationReference.getId().toString());
+
+    // Add new field location
+    origJson = JsonUtils.pojoToJson(policy);
+    policy.setLocation(locationReference);
+    change = getChangeDescription(policy.getVersion());
+    change.getFieldsAdded().add(new FieldChange().withName("location").withNewValue(locationObj));
     patchEntityAndCheck(policy, origJson, adminAuthHeaders(), MINOR_UPDATE, change);
   }
 
@@ -338,5 +358,10 @@ public class PolicyResourceTest extends EntityResourceTest<Policy> {
         .withDescription("description")
         .withPolicyType(PolicyType.Lifecycle)
         .withOwner(USER_OWNER1);
+  }
+
+  private static Location createLocation() throws HttpResponseException {
+    CreateLocation createLocation = LocationResourceTest.create(LOCATION_NAME, AWS_STORAGE_SERVICE_REFERENCE);
+    return TestUtils.post(getResource("locations"), createLocation, Location.class, adminAuthHeaders());
   }
 }

@@ -39,23 +39,16 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.data.CreateLocation;
-import org.openmetadata.catalog.api.services.CreateStorageService;
 import org.openmetadata.catalog.entity.data.Location;
-import org.openmetadata.catalog.entity.services.StorageService;
 import org.openmetadata.catalog.jdbi3.LocationRepository.LocationEntityInterface;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.locations.LocationResource.LocationList;
-import org.openmetadata.catalog.resources.services.StorageServiceResourceTest;
 import org.openmetadata.catalog.type.EntityReference;
-import org.openmetadata.catalog.type.StorageServiceType;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.TestUtils;
 
 public class LocationResourceTest extends EntityResourceTest<Location> {
-  public static EntityReference AWS_REFERENCE;
-  public static EntityReference GCP_REFERENCE;
-
   public LocationResourceTest() {
     super(Entity.LOCATION, Location.class, LocationList.class, "locations", LocationResource.FIELDS, true, true, true);
   }
@@ -63,16 +56,6 @@ public class LocationResourceTest extends EntityResourceTest<Location> {
   @BeforeAll
   public static void setup(TestInfo test) throws IOException, URISyntaxException {
     EntityResourceTest.setup(test);
-    CreateStorageService createService =
-        new CreateStorageService().withName("s3").withServiceType(StorageServiceType.S3);
-    StorageService service = new StorageServiceResourceTest().createEntity(createService, adminAuthHeaders());
-    AWS_REFERENCE =
-        new EntityReference().withName(service.getName()).withId(service.getId()).withType(Entity.STORAGE_SERVICE);
-
-    createService.withName("gs").withServiceType(StorageServiceType.GCS);
-    service = new StorageServiceResourceTest().createEntity(createService, adminAuthHeaders());
-    GCP_REFERENCE =
-        new EntityReference().withName(service.getName()).withId(service.getId()).withType(Entity.STORAGE_SERVICE);
   }
 
   @Override
@@ -145,7 +128,7 @@ public class LocationResourceTest extends EntityResourceTest<Location> {
                 (subtotal, element) -> {
                   try {
                     CreateLocation create =
-                        new CreateLocation().withName(subtotal + element).withService(AWS_REFERENCE);
+                        new CreateLocation().withName(subtotal + element).withService(AWS_STORAGE_SERVICE_REFERENCE);
                     createLocation(create, adminAuthHeaders());
                   } catch (HttpResponseException e) {
                     throw new RuntimeException(e);
@@ -155,7 +138,13 @@ public class LocationResourceTest extends EntityResourceTest<Location> {
 
     // List all locations
     LocationList allLocations =
-        listPrefixes(null, AWS_REFERENCE.getName() + "." + locationName, 1000000, null, null, adminAuthHeaders());
+        listPrefixes(
+            null,
+            AWS_STORAGE_SERVICE_REFERENCE.getName() + "." + locationName,
+            1000000,
+            null,
+            null,
+            adminAuthHeaders());
     assertEquals(5, allLocations.getData().size(), "Wrong number of prefix locations");
   }
 
@@ -218,7 +207,7 @@ public class LocationResourceTest extends EntityResourceTest<Location> {
 
   @Test
   public void post_locationWithDifferentService_200_ok(TestInfo test) throws IOException {
-    EntityReference[] differentServices = {GCP_REFERENCE, AWS_REFERENCE};
+    EntityReference[] differentServices = {GCP_STORAGE_SERVICE_REFERENCE, AWS_STORAGE_SERVICE_REFERENCE};
 
     // Create location for each service and test APIs
     for (EntityReference service : differentServices) {
@@ -240,7 +229,7 @@ public class LocationResourceTest extends EntityResourceTest<Location> {
 
   @Test
   public void put_locationNonEmptyDescriptionUpdate_200(TestInfo test) throws IOException {
-    CreateLocation request = create(test).withService(AWS_REFERENCE).withDescription("description");
+    CreateLocation request = create(test).withService(AWS_STORAGE_SERVICE_REFERENCE).withDescription("description");
     createAndCheckEntity(request, adminAuthHeaders());
 
     // Updating description is ignored when backend already has description
@@ -291,15 +280,19 @@ public class LocationResourceTest extends EntityResourceTest<Location> {
     return String.format("location%d_%s", index, test.getDisplayName());
   }
 
-  public CreateLocation create(TestInfo test) {
-    return new CreateLocation().withName(getEntityName(test)).withService(AWS_REFERENCE);
+  private CreateLocation create(TestInfo test) {
+    return new CreateLocation().withName(getEntityName(test)).withService(AWS_STORAGE_SERVICE_REFERENCE);
   }
 
-  public CreateLocation create(TestInfo test, int index) {
-    return new CreateLocation().withName(getEntityName(test, index)).withService(AWS_REFERENCE);
+  private CreateLocation create(TestInfo test, int index) {
+    return new CreateLocation().withName(getEntityName(test, index)).withService(AWS_STORAGE_SERVICE_REFERENCE);
   }
 
-  public CreateLocation create(String name) {
-    return new CreateLocation().withName(name).withService(AWS_REFERENCE);
+  private CreateLocation create(String name) {
+    return create(name, AWS_STORAGE_SERVICE_REFERENCE);
+  }
+
+  public static CreateLocation create(String name, EntityReference storageServiceReference) {
+    return new CreateLocation().withName(name).withService(storageServiceReference);
   }
 }

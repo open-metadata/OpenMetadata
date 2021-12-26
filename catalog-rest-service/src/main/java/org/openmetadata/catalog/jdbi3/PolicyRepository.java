@@ -110,13 +110,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
     if (location == null) {
       return null;
     }
-    return new EntityReference()
-        .withDescription(location.getDescription())
-        .withDisplayName(location.getDisplayName())
-        .withId(location.getId())
-        .withHref(location.getHref())
-        .withName(location.getName())
-        .withType(Entity.LOCATION);
+    return new LocationRepository.LocationEntityInterface(location).getEntityReference();
   }
 
   @Override
