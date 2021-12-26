@@ -49,6 +49,9 @@ jobs:
         with:
           java-version: 11
 
+      - name: Check environment
+        run: ${{ github }}
+
       - name: Build PR with Maven
         if: ${{ github.event_name == 'pull_request' }}
         run: |
