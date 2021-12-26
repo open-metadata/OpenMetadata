@@ -54,7 +54,7 @@ jobs:
         run: |
           mvn -Dsonar.login=${{ secrets.SONAR_TOKEN }} \
               -Dsonar.pullrequest.key=${{ github.event.pull_request.number }} \
-              -Dsonar.pullrequest.branch=${{ github.ref_name }} \
+              -Dsonar.pullrequest.branch=${{ github.head_ref }} \
               -Dsonar.pullrequest.base=origin/main \
               -Dsonar.pullrequest.provider=github clean install
 
