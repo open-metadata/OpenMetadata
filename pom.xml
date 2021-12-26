@@ -433,6 +433,9 @@
 
     <profile>	<!-- run SCA -->
       <id>static-code-analysis</id>
+      <activation>
+        <activeByDefault>true</activeByDefault>
+      </activation>
       <build>
         <plugins>
 
@@ -632,9 +635,4 @@
       </plugin>
     </plugins>
   </build>
-  <settings>
-    <activeProfiles>
-      <activeProfile>static-code-analysis</activeProfile>
-    </activeProfiles>
-  </settings>
 </project>
