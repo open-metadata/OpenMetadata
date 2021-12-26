@@ -98,6 +98,7 @@ public class EventPubSub {
 
   public static void removeProcessor(BatchEventProcessor<ChangeEventHolder> processor) {
     ringBuffer.removeGatingSequence(processor.getSequence());
+    LOG.info("Processor removed for {}", processor);
   }
 
   public void close() {}

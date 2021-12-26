@@ -15,13 +15,13 @@
       "description": "Description of the application",
       "type": "string"
     },
-    "endPoint": {
+    "endpoint": {
       "description": "Endpoint to receive the webhook events over POST requests.",
       "type": "string",
       "format": "uri"
     },
     "eventFilters": {
-      "description": "Endpoint to receive the webhook events over POST requests.",
+      "description": "Event filters to filter for desired events.",
       "type": "array",
       "items": {
         "$ref": "../../type/changeEvent.json#/definitions/eventFilter"

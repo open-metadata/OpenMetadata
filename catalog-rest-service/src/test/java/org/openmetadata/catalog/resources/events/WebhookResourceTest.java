@@ -30,19 +30,24 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import javax.ws.rs.core.Response;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.events.CreateWebhook;
 import org.openmetadata.catalog.jdbi3.WebhookRepository.WebhookEntityInterface;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.events.WebhookResource.WebhookList;
+import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.ChangeEvent;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.EventFilter;
 import org.openmetadata.catalog.type.EventType;
+import org.openmetadata.catalog.type.FailureDetails;
+import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.type.Webhook;
 import org.openmetadata.catalog.type.Webhook.Status;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.TestUtils;
+import org.openmetadata.catalog.util.TestUtils.UpdateType;
 
 public class WebhookResourceTest extends EntityResourceTest<Webhook> {
   public static List<EventFilter> ALL_EVENTS_FILTER = new ArrayList<>();
@@ -61,9 +66,10 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook> {
   @Test
   public void post_webhookEnabledStateChange() throws URISyntaxException, IOException, InterruptedException {
     // Disabled webhook will not start webhook publisher
+    webhookCallbackResource.resetCount();
     String uri = "http://localhost:" + APP.getLocalPort() + "/api/v1/test/webhook/counter";
     CreateWebhook create =
-        createRequest("disabledWebhook", "", "", null).withEnabled(false).withEndPoint(URI.create(uri));
+        createRequest("disabledWebhook", "", "", null).withEnabled(false).withEndpoint(URI.create(uri));
     Webhook webhook = createAndCheckEntity(create, adminAuthHeaders());
     assertEquals(Status.NOT_STARTED, webhook.getStatus());
     Webhook getWebhook = getEntity(webhook.getId(), adminAuthHeaders());
@@ -72,9 +78,18 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook> {
 
     // Now enable the webhook
     int counter = webhookCallbackResource.getCount();
-    create.withEnabled(true);
-    getWebhook = updateEntity(create, Response.Status.OK, adminAuthHeaders());
-    assertEquals(Status.SUCCESS, getWebhook.getStatus());
+    ChangeDescription change = getChangeDescription(webhook.getVersion());
+    change.getFieldsUpdated().add(new FieldChange().withName("enabled").withOldValue(false).withNewValue(true));
+    change
+        .getFieldsUpdated()
+        .add(new FieldChange().withName("status").withOldValue(Status.NOT_STARTED).withNewValue(Status.SUCCESS));
+    change
+            .getFieldsUpdated()
+            .add(new FieldChange().withName("batchSize").withOldValue(10).withNewValue(50));
+    create.withEnabled(true).withBatchSize(50);
+
+    webhook = updateAndCheckEntity(create, Response.Status.OK, adminAuthHeaders(), UpdateType.MINOR_UPDATE, change);
+    assertEquals(Status.SUCCESS, webhook.getStatus());
     getWebhook = getEntity(webhook.getId(), adminAuthHeaders());
     assertEquals(Status.SUCCESS, getWebhook.getStatus());
 
@@ -88,8 +103,15 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook> {
 
     // Disable the webhook and ensure it is disabled
     create.withEnabled(false);
-    getWebhook = updateEntity(create, Response.Status.OK, adminAuthHeaders());
+    change = getChangeDescription(webhook.getVersion());
+    change.getFieldsUpdated().add(new FieldChange().withName("enabled").withOldValue(true).withNewValue(false));
+    change
+        .getFieldsUpdated()
+        .add(new FieldChange().withName("status").withOldValue(Status.SUCCESS).withNewValue(Status.NOT_STARTED));
+
+    getWebhook = updateAndCheckEntity(create, Response.Status.OK, adminAuthHeaders(), UpdateType.MINOR_UPDATE, change);
     assertEquals(Status.NOT_STARTED, getWebhook.getStatus());
+
     getWebhook = getEntity(webhook.getId(), adminAuthHeaders());
     assertEquals(Status.NOT_STARTED, getWebhook.getStatus());
 
@@ -100,6 +122,48 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook> {
       iterations++;
       assertEquals(counter + 1, webhookCallbackResource.getCount()); // Event counter remains the same
     }
+
+    deleteEntity(webhook.getId(), adminAuthHeaders());
+  }
+
+  @Test
+  public void put_updateEndpointURL() throws URISyntaxException, IOException, InterruptedException {
+    CreateWebhook create =
+        createRequest("replaceURL", "", "", null).withEndpoint(URI.create("http://invalidUnknowHost"));
+    Webhook webhook = createAndCheckEntity(create, adminAuthHeaders());
+
+    // Wait for webhook to be marked as failed
+    int iteration = 0;
+    Webhook getWebhook = getEntity(webhook.getId(), adminAuthHeaders());
+    LOG.info("getWebhook {}", getWebhook);
+    while (getWebhook.getStatus() != Status.FAILED && iteration < 100) {
+      getWebhook = getEntity(webhook.getId(), adminAuthHeaders());
+      LOG.info("getWebhook {}", getWebhook);
+      Thread.sleep(100);
+      iteration++;
+    }
+    assertEquals(Status.FAILED, getWebhook.getStatus());
+    FailureDetails failureDetails = getWebhook.getFailureDetails();
+
+    // Now change the webhook URL to a valid URL and ensure callbacks resume
+    String baseUri = "http://localhost:" + APP.getLocalPort() + "/api/v1/test/webhook/counter";
+    create = create.withEndpoint(URI.create(baseUri));
+    ChangeDescription change = getChangeDescription(getWebhook.getVersion());
+    change.getFieldsDeleted().add(new FieldChange().withName("failureDetails").withOldValue(failureDetails));
+    change
+        .getFieldsUpdated()
+        .add(
+            new FieldChange()
+                .withName("endPoint")
+                .withOldValue(webhook.getEndpoint())
+                .withNewValue(create.getEndpoint()));
+    change
+        .getFieldsUpdated()
+        .add(new FieldChange().withName("status").withOldValue(Status.FAILED).withNewValue(Status.SUCCESS));
+    webhook = updateAndCheckEntity(create, Response.Status.OK, adminAuthHeaders(), UpdateType.MINOR_UPDATE, change);
+    assertEquals(Status.SUCCESS, webhook.getStatus());
+
+    deleteEntity(webhook.getId(), adminAuthHeaders());
   }
 
   @Override
@@ -110,7 +174,7 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook> {
         .withName(name)
         .withDescription(description)
         .withEventFilters(ALL_EVENTS_FILTER)
-        .withEndPoint(URI.create(uri))
+        .withEndpoint(URI.create(uri))
         .withBatchSize(100);
   }
 
@@ -155,7 +219,7 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook> {
     // Valid webhook callback
     String baseUri = "http://localhost:" + APP.getLocalPort() + "/api/v1/test/webhook";
     CreateWebhook createWebhook =
-        createRequest("validWebhook", "validWebhook", "", null).withEndPoint(URI.create(baseUri));
+        createRequest("validWebhook", "validWebhook", "", null).withEndpoint(URI.create(baseUri));
     createEntity(createWebhook, adminAuthHeaders());
   }
 
@@ -214,16 +278,15 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook> {
 
   @Test
   public void testDifferentTypesOfWebhooks() throws IOException, InterruptedException, URISyntaxException {
-    Thread.sleep(1000);
     String baseUri = "http://localhost:" + APP.getLocalPort() + "/api/v1/test/webhook";
 
     // Create multiple webhooks each with different type of response to callback
-    createWebhook("slowServer", baseUri + "/slowServer"); // Callback response 1 second slower
-    createWebhook("callbackTimeout", baseUri + "/timeout"); // Callback response 12 seconds slower
-    createWebhook("callbackResponse300", baseUri + "/300"); // 3xx response
-    createWebhook("callbackResponse400", baseUri + "/400"); // 4xx response
-    createWebhook("callbackResponse500", baseUri + "/500"); // 5xx response
-    createWebhook("invalidEndpoint", "http://invalidUnknownHost"); // Invalid URL
+    Webhook w1 = createWebhook("slowServer", baseUri + "/slowServer"); // Callback response 1 second slower
+    Webhook w2 = createWebhook("callbackTimeout", baseUri + "/timeout"); // Callback response 12 seconds slower
+    Webhook w3 = createWebhook("callbackResponse300", baseUri + "/300"); // 3xx response
+    Webhook w4 = createWebhook("callbackResponse400", baseUri + "/400"); // 4xx response
+    Webhook w5 = createWebhook("callbackResponse500", baseUri + "/500"); // 5xx response
+    Webhook w6 = createWebhook("invalidEndpoint", "http://invalidUnknownHost"); // Invalid URL
 
     // Now check state of webhooks created
     ConcurrentLinkedQueue<ChangeEvent> callbackEvents = webhookCallbackResource.getEventsSlowServer();
@@ -243,16 +306,25 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook> {
     assertWebhookStatus("callbackResponse400", Status.AWAITING_RETRY, 400, "Bad Request");
     assertWebhookStatus("callbackResponse500", Status.AWAITING_RETRY, 500, "Internal Server Error");
     assertWebhookStatus("invalidEndpoint", Status.FAILED, null, "UnknownHostException");
+
+    // Delete all webhooks
+    deleteEntity(w1.getId(), adminAuthHeaders());
+    deleteEntity(w2.getId(), adminAuthHeaders());
+    deleteEntity(w3.getId(), adminAuthHeaders());
+    deleteEntity(w4.getId(), adminAuthHeaders());
+    deleteEntity(w5.getId(), adminAuthHeaders());
+    deleteEntity(w6.getId(), adminAuthHeaders());
   }
 
-  public void createWebhook(String name, String uri) throws URISyntaxException, IOException {
-    createWebhook(name, uri, ALL_EVENTS_FILTER);
+  public Webhook createWebhook(String name, String uri) throws URISyntaxException, IOException {
+    return createWebhook(name, uri, ALL_EVENTS_FILTER);
   }
 
-  public void createWebhook(String name, String uri, List<EventFilter> filters) throws URISyntaxException, IOException {
+  public Webhook createWebhook(String name, String uri, List<EventFilter> filters)
+      throws URISyntaxException, IOException {
     CreateWebhook createWebhook =
-        createRequest(name, "", "", null).withEndPoint(URI.create(uri)).withEventFilters(filters);
-    createAndCheckEntity(createWebhook, adminAuthHeaders());
+        createRequest(name, "", "", null).withEndpoint(URI.create(uri)).withEventFilters(filters);
+    return createAndCheckEntity(createWebhook, adminAuthHeaders());
   }
 
   public void assertWebhookStatusSuccess(String name) throws HttpResponseException {

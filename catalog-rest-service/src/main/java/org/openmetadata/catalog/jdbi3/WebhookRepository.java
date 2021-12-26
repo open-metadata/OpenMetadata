@@ -154,7 +154,7 @@ public class WebhookRepository extends EntityRepository<Webhook> {
     }
   }
 
-  public static void deleteWebhookPublisher(UUID id) throws InterruptedException {
+  public void deleteWebhookPublisher(UUID id) throws InterruptedException {
     WebhookPublisher publisher = webhookPublisherMap.get(id);
     if (publisher != null) {
       publisher.getProcessor().halt();
@@ -330,13 +330,13 @@ public class WebhookRepository extends EntityRepository<Webhook> {
 
     @Override
     public void onStart() {
-      LOG.info("Webhook-lifecycle-onStart {}", webhook.getName());
       createClient();
       webhook.withFailureDetails(new FailureDetails());
 
       // TODO clean this up
       Map<String, String> authHeaders = SecurityUtil.authHeaders("admin@open-metadata.org");
-      target = SecurityUtil.addHeaders(client.target(webhook.getEndPoint()), authHeaders);
+      target = SecurityUtil.addHeaders(client.target(webhook.getEndpoint()), authHeaders);
+      LOG.info("Webhook-lifecycle-onStart {}", webhook.getName());
     }
 
     @Override
@@ -367,8 +367,8 @@ public class WebhookRepository extends EntityRepository<Webhook> {
         // 2xx response means call back is successful
         if (response.getStatus() >= 200 && response.getStatus() < 300) { // All 2xx responses
           batch.clear();
-          webhook.getFailureDetails().setLastSuccessfulAt(changeEventHolder.get().getDateTime().getTime());
           if (webhook.getStatus() != Status.SUCCESS) {
+            webhook.getFailureDetails().setLastSuccessfulAt(changeEventHolder.get().getDateTime().getTime());
             setStatus(Status.SUCCESS, null, null, null, null);
           }
           // 3xx response/redirection is not allowed for callback. Set the webhook state as in error
@@ -383,7 +383,7 @@ public class WebhookRepository extends EntityRepository<Webhook> {
       } catch (ProcessingException ex) {
         Throwable cause = ex.getCause();
         if (cause.getClass() == UnknownHostException.class) {
-          LOG.warn("Invalid webhook {} endpoint {}", webhook.getName(), webhook.getEndPoint());
+          LOG.warn("Invalid webhook {} endpoint {}", webhook.getName(), webhook.getEndpoint());
           setErrorStatus(attemptTime, null, "UnknownHostException");
         }
       }
@@ -406,7 +406,7 @@ public class WebhookRepository extends EntityRepository<Webhook> {
       currentBackoffTime = BACKOFF_NORMAL;
       webhook.setTimeout(updatedWebhook.getTimeout());
       webhook.setBatchSize(updatedWebhook.getBatchSize());
-      webhook.setEndPoint(updatedWebhook.getEndPoint());
+      webhook.setEndpoint(updatedWebhook.getEndpoint());
       webhook.setEventFilters(updatedWebhook.getEventFilters());
       initFilter();
       createClient();
@@ -437,6 +437,7 @@ public class WebhookRepository extends EntityRepository<Webhook> {
 
     private void setStatus(Status status, Long attemptTime, Integer statusCode, String reason, Date date)
         throws IOException {
+      Webhook stored = dao.webhookDAO().findEntityById(webhook.getId());
       webhook.setStatus(status);
       webhook
           .getFailureDetails()
@@ -444,8 +445,8 @@ public class WebhookRepository extends EntityRepository<Webhook> {
           .withLastFailedStatusCode(statusCode)
           .withLastFailedReason(reason)
           .withNextAttempt(date);
-      // TODO versioning
-      storeEntity(webhook, true);
+      WebhookUpdater updater = new WebhookUpdater(stored, webhook, false);
+      updater.update();
     }
 
     private synchronized void createClient() {
@@ -496,6 +497,8 @@ public class WebhookRepository extends EntityRepository<Webhook> {
     public void entitySpecificUpdate() throws IOException {
       recordChange("enabled", original.getEntity().getEnabled(), updated.getEntity().getEnabled());
       recordChange("status", original.getEntity().getStatus(), updated.getEntity().getStatus());
+      recordChange("endPoint", original.getEntity().getEndpoint(), updated.getEntity().getEndpoint());
+      recordChange("batchSize", original.getEntity().getBatchSize(), updated.getEntity().getBatchSize());
       recordChange(
           "failureDetails",
           original.getEntity().getFailureDetails(),
