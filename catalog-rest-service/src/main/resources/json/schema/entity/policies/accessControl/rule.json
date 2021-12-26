@@ -10,8 +10,14 @@
       "description": "Name that identifies this Rule.",
       "type": "string"
     },
-    "filters": {
-      "$ref": "../filters.json#/definitions/filters"
+    "prefixFilter": {
+      "$ref": "../filters.json#/definitions/prefix"
+    },
+    "regexFilter": {
+      "$ref": "../filters.json#/definitions/regex"
+    },
+    "tagsFilter": {
+      "$ref": "../filters.json#/definitions/tags"
     },
     "actions": {
       "description": "A set of access control enforcements to take on the entities.",
