@@ -65,7 +65,7 @@
       "enum": [
         "notStarted",
         "success",
-        "error",
+        "failed",
         "awaitingRetry",
         "retryLimitReached"
       ],

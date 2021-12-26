@@ -41,7 +41,12 @@ public class ChangeEventHandler implements EventHandler {
     try {
       ChangeEvent changeEvent = getChangeEvent(method, responseContext);
       if (changeEvent != null) {
-        LOG.info("Recording change event {} {}", changeEvent.getDateTime().getTime(), changeEvent);
+        LOG.info(
+            "Recording change event {}:{}:{}:{}",
+            changeEvent.getDateTime().getTime(),
+            changeEvent.getEntityId(),
+            changeEvent.getEventType(),
+            changeEvent.getEntityType());
         EventPubSub.publish(changeEvent);
         if (changeEvent.getEntity() != null) {
           changeEvent.setEntity(JsonUtils.pojoToJson(changeEvent.getEntity()));

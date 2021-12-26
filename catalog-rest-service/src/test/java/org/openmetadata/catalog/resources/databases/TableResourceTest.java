@@ -110,15 +110,19 @@ import org.openmetadata.catalog.util.TestUtils;
 public class TableResourceTest extends EntityResourceTest<Table> {
   public static Database DATABASE;
 
-  public static List<Column> COLUMNS;
+  public static List<Column> COLUMNS =
+      Arrays.asList(
+          getColumn("c1", BIGINT, USER_ADDRESS_TAG_LABEL),
+          getColumn("c2", ColumnDataType.VARCHAR, USER_ADDRESS_TAG_LABEL).withDataLength(10),
+          getColumn("c3", BIGINT, USER_BANK_ACCOUNT_TAG_LABEL));
 
   public TableResourceTest() {
     super(Entity.TABLE, Table.class, TableList.class, "tables", TableResource.FIELDS, true, true, true);
   }
 
   @BeforeAll
-  public static void setup(TestInfo test) throws IOException, URISyntaxException {
-    EntityResourceTest.setup(test);
+  public void setup(TestInfo test) throws IOException, URISyntaxException {
+    super.setup(test);
     DatabaseResourceTest databaseResourceTest = new DatabaseResourceTest();
     CreateDatabase create = databaseResourceTest.create(test).withService(SNOWFLAKE_REFERENCE);
     DATABASE = databaseResourceTest.createAndCheckEntity(create, adminAuthHeaders());

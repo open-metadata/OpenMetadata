@@ -13,6 +13,11 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 import org.jdbi.v3.core.mapper.RowMapper;
 import org.jdbi.v3.core.statement.StatementContext;
 import org.jdbi.v3.sqlobject.CreateSqlObject;
@@ -70,11 +75,6 @@ import org.openmetadata.catalog.type.UsageDetails;
 import org.openmetadata.catalog.type.UsageStats;
 import org.openmetadata.catalog.type.Webhook;
 import org.openmetadata.catalog.util.EntityUtil;
-
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.util.Arrays;
-import java.util.List;
 
 public interface CollectionDAO {
   @CreateSqlObject
@@ -1113,14 +1113,17 @@ public interface CollectionDAO {
     void insert(@Bind("json") String json);
 
     default List<String> list(String eventType, List<String> entityTypes, String dateTime) {
-      if (entityTypes == null || entityTypes.isEmpty()) {
+      if (entityTypes == null) {
+        return Collections.emptyList();
+      }
+      if (entityTypes.get(0).equals("*")) {
         return listWithoutEntityFilter(eventType, dateTime);
       }
       return listWithEntityFilter(eventType, entityTypes, dateTime);
     }
 
     @SqlQuery(
-            "SELECT json FROM change_event WHERE "
+        "SELECT json FROM change_event WHERE "
             + "eventType = :eventType AND (entityType IN (<entityTypes>)) AND dateTime >= :dateTime "
             + "ORDER BY dateTime ASC")
     List<String> listWithEntityFilter(
@@ -1128,7 +1131,8 @@ public interface CollectionDAO {
         @BindList("entityTypes") List<String> entityTypes,
         @Bind("dateTime") String dateTime);
 
-    @SqlQuery("SELECT json FROM change_event WHERE "
+    @SqlQuery(
+        "SELECT json FROM change_event WHERE "
             + "eventType = :eventType AND dateTime >= :dateTime "
             + "ORDER BY dateTime ASC")
     List<String> listWithoutEntityFilter(@Bind("eventType") String eventType, @Bind("dateTime") String dateTime);

@@ -66,8 +66,9 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
   }
 
   @BeforeAll
-  public static void setup(TestInfo test) throws URISyntaxException, IOException {
-    EntityResourceTest.setup(test);
+  @Override
+  public void setup(TestInfo test) throws URISyntaxException, IOException {
+    super.setup(test);
     PIPELINE_SERVICE_URL = new URI("http://localhost:8080");
   }
 

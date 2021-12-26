@@ -90,7 +90,7 @@ public class EventResource {
       @Parameter(
               description =
                   "List of comma separated entities requested for "
-                      + "`entityCreated` event. When null or not set, all entities will be "
+                      + "`entityCreated` event. When set to `*` all entities will be "
                       + "returned",
               schema = @Schema(type = "string", example = "table,dashboard,..."))
           @QueryParam("entityCreated")
@@ -98,7 +98,7 @@ public class EventResource {
       @Parameter(
               description =
                   "List of comma separated entities requested for "
-                      + "`entityUpdated` event. When null or not set, all entities will be "
+                      + "`entityCreated` event. When set to `*` all entities will be "
                       + "returned",
               schema = @Schema(type = "string", example = "table,dashboard,..."))
           @QueryParam("entityUpdated")
@@ -106,7 +106,7 @@ public class EventResource {
       @Parameter(
               description =
                   "List of comma separated entities requested for "
-                      + "`entityDeleted` event. When null or not set, all entities will be "
+                      + "`entityCreated` event. When set to `*` all entities will be "
                       + "returned",
               schema = @Schema(type = "string", example = "table,dashboard,..."))
           @QueryParam("entityDeleted")

@@ -159,7 +159,11 @@ public final class Entity {
       if (entitiesParam == null) {
         return null;
       }
-      List<String> list = Arrays.asList(entitiesParam.replaceAll("\\s", "").split(","));
+      entitiesParam = entitiesParam.replaceAll("\\s", "");
+      if (entitiesParam.equals("*")) {
+        return List.of("*");
+      }
+      List<String> list = Arrays.asList(entitiesParam.split(","));
       validateEntities(name, list);
       return list;
     }
