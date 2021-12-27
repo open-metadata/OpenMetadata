@@ -54,6 +54,8 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   unfollowTopicHandler,
   descriptionUpdateHandler,
   tagUpdateHandler,
+  version,
+  versionHandler,
 }: TopicDetailsProps) => {
   const { isAuthDisabled } = useAuth();
   const [isEdit, setIsEdit] = useState(false);
@@ -286,6 +288,8 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
           tagsHandler={onTagUpdate}
           tier={tier ?? ''}
           titleLinks={slashedTopicName}
+          version={version}
+          versionHandler={versionHandler}
         />
         <div className="tw-mt-4 tw-flex tw-flex-col tw-flex-grow">
           <TabsPane

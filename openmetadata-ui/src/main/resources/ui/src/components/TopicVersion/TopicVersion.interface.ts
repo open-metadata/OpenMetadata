@@ -11,20 +11,20 @@
  *  limitations under the License.
  */
 
-import { Table } from '../../generated/entity/data/table';
+import { Topic } from '../../generated/entity/data/topic';
 import { EntityHistory } from '../../generated/type/entityHistory';
 import { TagLabel } from '../../generated/type/tagLabel';
 import { VersionData } from '../../pages/EntityVersionPage/EntityVersionPage.component';
 import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
 
-export interface DatasetVersionProp {
+export interface TopicVersionProp {
   version: string;
   currentVersionData: VersionData;
   isVersionLoading: boolean;
-  owner: Table['owner'];
+  owner: Topic['owner'];
   tier: TagLabel;
-  slashedTableName: TitleBreadcrumbProps['titleLinks'];
-  datasetFQN: string;
+  slashedTopicName: TitleBreadcrumbProps['titleLinks'];
+  topicFQN: string;
   versionList: EntityHistory;
   backHandler: () => void;
   versionHandler: (v: string) => void;

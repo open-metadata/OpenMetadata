@@ -12,7 +12,7 @@
  */
 
 import classNames from 'classnames';
-import { isUndefined } from 'lodash';
+import { isEmpty, isUndefined } from 'lodash';
 import { EntityTags, ExtraInfo, TableDetail } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { FOLLOWERS_VIEW_CAP, LIST_SIZE } from '../../../constants/constants';
@@ -246,7 +246,7 @@ const EntityPageInfo = ({
           </div>
         </div>
       </div>
-      <div className="tw-flex tw-gap-1 tw-mb-2 tw-mt-1 tw-ml-7">
+      <div className="tw-flex tw-gap-1 tw-mb-2 tw-mt-1 tw-ml-7 tw-flex-wrap">
         {extraInfo.map((info, index) => (
           <span className="tw-flex" key={index}>
             {getInfoElements(info)}
@@ -261,7 +261,7 @@ const EntityPageInfo = ({
       <div className="tw-flex tw-flex-wrap tw-pt-1 tw-ml-7 tw-group">
         {(!isEditable || !isTagEditable) && (
           <>
-            {(tags.length > 0 || tier) && (
+            {(tags.length > 0 || !isEmpty(tier)) && (
               <SVGIcons
                 alt="icon-tag"
                 className="tw-mx-1"
@@ -279,7 +279,16 @@ const EntityPageInfo = ({
             {tags.length > 0 && (
               <>
                 {tags.slice(0, LIST_SIZE).map((tag, index) => (
-                  <Tags key={index} startWith="#" tag={tag} type="label" />
+                  <Tags
+                    className={classNames(
+                      { 'diff-added tw-mx-1': tag?.added },
+                      { 'diff-removed': tag?.removed }
+                    )}
+                    key={index}
+                    startWith="#"
+                    tag={tag}
+                    type="label"
+                  />
                 ))}
 
                 {tags.slice(LIST_SIZE).length > 0 && (
@@ -288,7 +297,15 @@ const EntityPageInfo = ({
                       <>
                         {tags.slice(LIST_SIZE).map((tag, index) => (
                           <p className="tw-text-left" key={index}>
-                            <Tags startWith="#" tag={tag} type="label" />
+                            <Tags
+                              className={classNames(
+                                { 'diff-added tw-mx-1': tag?.added },
+                                { 'diff-removed': tag?.removed }
+                              )}
+                              startWith="#"
+                              tag={tag}
+                              type="label"
+                            />
                           </p>
                         ))}
                       </>

@@ -31,7 +31,7 @@ import Loader from '../../components/Loader/Loader';
 import {
   getDatabaseDetailsPath,
   getDatasetTabPath,
-  getDatasetVersionPath,
+  getVersionPath,
   getServiceDetailsPath,
 } from '../../constants/constants';
 import { EntityType } from '../../enums/entity.enum';
@@ -100,7 +100,6 @@ const DatasetDetailsPage: FunctionComponent = () => {
       {} as TypeUsedToReturnUsageDetailsOfAnEntity
     );
   const [currentVersion, setCurrentVersion] = useState<string>();
-  const [, setPreviousVersion] = useState<string>();
   const [isNodeLoading, setNodeLoading] = useState<LoadingNodeState>({
     id: undefined,
     state: false,
@@ -138,9 +137,8 @@ const DatasetDetailsPage: FunctionComponent = () => {
 
   const descriptionUpdateHandler = (updatedTable: Table) => {
     saveUpdatedTableData(updatedTable).then((res: AxiosResponse) => {
-      const { description, version, changeDescription } = res.data;
+      const { description, version } = res.data;
       setCurrentVersion(version);
-      setPreviousVersion(changeDescription.previousVersion);
       setTableDetails(res.data);
       setDescription(description);
     });
@@ -148,9 +146,8 @@ const DatasetDetailsPage: FunctionComponent = () => {
 
   const columnsUpdateHandler = (updatedTable: Table) => {
     saveUpdatedTableData(updatedTable).then((res: AxiosResponse) => {
-      const { columns, version, changeDescription } = res.data;
+      const { columns, version } = res.data;
       setCurrentVersion(version);
-      setPreviousVersion(changeDescription.previousVersion);
       setTableDetails(res.data);
       setColumns(columns);
       setTableTags(getTableTags(columns || []));
@@ -161,9 +158,8 @@ const DatasetDetailsPage: FunctionComponent = () => {
     return new Promise<void>((resolve, reject) => {
       saveUpdatedTableData(updatedTable)
         .then((res) => {
-          const { version, changeDescription, owner, tags } = res.data;
+          const { version, owner, tags } = res.data;
           setCurrentVersion(version);
-          setPreviousVersion(changeDescription.previousVersion);
           setTableDetails(res.data);
           setOwner(getOwnerFromId(owner?.id));
           setTier(getTierTags(tags));
@@ -191,7 +187,9 @@ const DatasetDetailsPage: FunctionComponent = () => {
   };
 
   const versionHandler = () => {
-    history.push(getDatasetVersionPath(tableFQN, currentVersion as string));
+    history.push(
+      getVersionPath(EntityType.TABLE, tableFQN, currentVersion as string)
+    );
   };
 
   const setLeafNode = (val: EntityLineage, pos: LineagePos) => {
@@ -242,14 +240,12 @@ const DatasetDetailsPage: FunctionComponent = () => {
           sampleData,
           tableProfile,
           version,
-          changeDescription,
           service,
           serviceType,
         } = res.data;
         setTableDetails(res.data);
         setTableId(id);
         setCurrentVersion(version);
-        setPreviousVersion(changeDescription?.previousVersion);
         setTier(getTierTags(tags));
         setOwner(getOwnerFromId(owner?.id));
         setFollowers(followers);

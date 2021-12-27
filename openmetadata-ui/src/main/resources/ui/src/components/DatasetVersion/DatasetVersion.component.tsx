@@ -197,9 +197,9 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
         });
       };
 
-      formatColumnData(colList);
+      formatColumnData(colList ?? []);
 
-      return colList;
+      return colList ?? [];
     } else if (
       isEndsWithField(
         columnsDiff?.added?.name ??
@@ -244,9 +244,9 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
         });
       };
 
-      formatColumnData(colList);
+      formatColumnData(colList ?? []);
 
-      return colList;
+      return colList ?? [];
     } else {
       const columnsDiff = getDiffByFieldName(
         'columns',
@@ -279,7 +279,7 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
               }
             });
           };
-          formatColumnData(colList);
+          formatColumnData(colList ?? []);
         });
       }
       if (columnsDiff.deleted) {
@@ -302,10 +302,10 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
           name: getDescriptionDiff(col.name, undefined, col.name),
         }));
       } else {
-        return colList;
+        return colList ?? [];
       }
 
-      return [...newColumns, ...colList];
+      return [...newColumns, ...(colList ?? [])];
     }
   };
 
@@ -341,7 +341,7 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
           <div className={classNames('version-data')}>
             <EntityPageInfo
               isVersionSelected
-              entityName={currentVersionData.name}
+              entityName={currentVersionData.name ?? ''}
               extraInfo={getExtraInfo()}
               followersList={[]}
               tags={getTableTags(currentVersionData.columns || [])}
