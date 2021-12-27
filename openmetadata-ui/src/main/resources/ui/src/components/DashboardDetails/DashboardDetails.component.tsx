@@ -69,6 +69,8 @@ const DashboardDetails = ({
   isNodeLoading,
   lineageLeafNodes,
   loadNodeHandler,
+  versionHandler,
+  version,
 }: DashboardDetailsProps) => {
   const { isAuthDisabled } = useAuth();
   const [isEdit, setIsEdit] = useState(false);
@@ -327,6 +329,8 @@ const DashboardDetails = ({
             tagsHandler={onTagUpdate}
             tier={tier || ''}
             titleLinks={slashedDashboardName}
+            version={version}
+            versionHandler={versionHandler}
           />
           <div className="tw-mt-4 tw-flex tw-flex-col tw-flex-grow">
             <TabsPane

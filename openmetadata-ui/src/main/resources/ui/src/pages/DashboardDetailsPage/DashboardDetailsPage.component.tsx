@@ -37,6 +37,7 @@ import Loader from '../../components/Loader/Loader';
 import {
   getDashboardDetailsPath,
   getServiceDetailsPath,
+  getVersionPath,
 } from '../../constants/constants';
 import { EntityType } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
@@ -98,6 +99,8 @@ const DashboardDetailsPage = () => {
     id: undefined,
     state: false,
   });
+  const [currentVersion, setCurrentVersion] = useState<string>();
+
   const activeTabHandler = (tabValue: number) => {
     const currentTabIndex = tabValue - 1;
     if (dashboardDetailsTabs[currentTabIndex].path !== tab) {
@@ -207,9 +210,11 @@ const DashboardDetailsPage = () => {
         charts,
         dashboardUrl,
         serviceType,
+        version,
       } = res.data;
       setDisplayName(displayName);
       setDashboardDetails(res.data);
+      setCurrentVersion(version);
       setDashboardId(id);
       setDescription(description ?? '');
       setFollowers(followers);
@@ -259,7 +264,8 @@ const DashboardDetailsPage = () => {
 
   const descriptionUpdateHandler = (updatedDashboard: Dashboard) => {
     saveUpdatedDashboardData(updatedDashboard).then((res: AxiosResponse) => {
-      const { description } = res.data;
+      const { description, version } = res.data;
+      setCurrentVersion(version);
       setDashboardDetails(res.data);
       setDescription(description);
     });
@@ -285,6 +291,7 @@ const DashboardDetailsPage = () => {
   const onTagUpdate = (updatedDashboard: Dashboard) => {
     saveUpdatedDashboardData(updatedDashboard).then((res: AxiosResponse) => {
       setTier(getTierTags(res.data.tags));
+      setCurrentVersion(res.data.version);
       setTags(getTagsWithoutTier(res.data.tags));
     });
   };
@@ -296,6 +303,7 @@ const DashboardDetailsPage = () => {
       saveUpdatedDashboardData(updatedDashboard)
         .then((res) => {
           setDashboardDetails(res.data);
+          setCurrentVersion(res.data.version);
           setOwner(getOwnerFromId(res.data.owner?.id));
           setTier(getTierTags(res.data.tags));
           resolve();
@@ -338,6 +346,16 @@ const DashboardDetailsPage = () => {
     });
   };
 
+  const versionHandler = () => {
+    history.push(
+      getVersionPath(
+        EntityType.DASHBOARD,
+        dashboardFQN,
+        currentVersion as string
+      )
+    );
+  };
+
   useEffect(() => {
     fetchDashboardDetail(dashboardFQN);
   }, [dashboardFQN]);
@@ -378,6 +396,8 @@ const DashboardDetailsPage = () => {
           tier={tier as TagLabel}
           unfollowDashboardHandler={unfollowDashboard}
           users={AppState.users}
+          version={currentVersion as string}
+          versionHandler={versionHandler}
         />
       )}
     </>
