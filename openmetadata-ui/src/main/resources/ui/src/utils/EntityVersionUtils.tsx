@@ -534,5 +534,12 @@ export const getSummary = (
 };
 
 export const isMajorVersion = (version1: string, version2: string) => {
-  return version2.split('.')[0] > version1.split('.')[0];
+  const v1 = parseFloat(version1);
+  const v2 = parseFloat(version2);
+  const flag = !isNaN(v1) && !isNaN(v2);
+  if (flag) {
+    return v1 + 1 === v2;
+  }
+
+  return flag;
 };
