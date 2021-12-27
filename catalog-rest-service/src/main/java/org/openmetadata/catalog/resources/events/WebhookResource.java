@@ -282,8 +282,9 @@ public class WebhookResource {
   public Response deleteWebhook(
       @Context UriInfo uriInfo,
       @Parameter(description = "webhook Id", schema = @Schema(type = "string")) @PathParam("id") String id)
-      throws IOException, GeneralSecurityException, ParseException {
+      throws IOException, GeneralSecurityException, ParseException, InterruptedException {
     dao.delete(id);
+    dao.deleteWebhookPublisher(UUID.fromString(id));
     return Response.ok().build();
   }
 
@@ -292,7 +293,7 @@ public class WebhookResource {
         .withDescription(create.getDescription())
         .withName(create.getName())
         .withId(UUID.randomUUID())
-        .withEndPoint(create.getEndPoint())
+        .withEndpoint(create.getEndpoint())
         .withEventFilters(create.getEventFilters())
         .withBatchSize(create.getBatchSize())
         .withTimeout(create.getTimeout())

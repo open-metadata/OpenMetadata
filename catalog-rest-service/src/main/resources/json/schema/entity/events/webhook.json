@@ -20,7 +20,7 @@
       "description": "Description of the application",
       "type": "string"
     },
-    "endPoint": {
+    "endpoint": {
       "description": "Endpoint to receive the webhook events over POST requests.",
       "type": "string",
       "format": "uri"

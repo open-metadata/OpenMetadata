@@ -30,6 +30,7 @@ import org.slf4j.LoggerFactory;
 public class WebhookCallbackResource {
   public static final Logger LOG = LoggerFactory.getLogger(WebhookCallbackResource.class);
   private final AtomicInteger counter = new AtomicInteger();
+  private volatile long counterStartTime;
   private final ConcurrentLinkedQueue<ChangeEvent> changeEvents = new ConcurrentLinkedQueue<>();
   private final ConcurrentLinkedQueue<ChangeEvent> changeEventsSlowServer = new ConcurrentLinkedQueue<>();
 
@@ -56,14 +57,17 @@ public class WebhookCallbackResource {
   @Path("/counter")
   public Response receiveEventCount(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, EventResource.ChangeEventList events) {
+    if (counter.get() == 0) {
+      counterStartTime = events.getData().get(0).getDateTime().getTime();
+    }
     counter.incrementAndGet();
     LOG.info("callback /counter received event. Current count {}", counter.get());
     return Response.ok().build();
   }
 
-  public int getCount() {
-    return counter.get();
-  }
+  public int getCount() { return counter.get(); }
+  public void resetCount() { counter.set(0); }
+  public long getCountStartTime() { return counterStartTime; }
 
   /** Webhook endpoint that immediately responds to callback. The events received are ignored */
   @POST
@@ -150,7 +154,7 @@ public class WebhookCallbackResource {
     String key = eventType + ":" + entityType;
     List<ChangeEvent> list = entityCallbackMap.get(key);
     if (list == null) {
-      list = new ArrayList<ChangeEvent>();
+      list = new ArrayList<>();
       entityCallbackMap.put(key, list);
     } else {
       list.addAll(events.getData());

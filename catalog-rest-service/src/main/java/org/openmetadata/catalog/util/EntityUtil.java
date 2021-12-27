@@ -109,7 +109,9 @@ public final class EntityUtil {
   public static final BiPredicate<MlFeature, MlFeature> mlFeatureMatch = MlFeature::equals;
   public static final BiPredicate<MlHyperParameter, MlHyperParameter> mlHyperParameterMatch = MlHyperParameter::equals;
   public static final BiPredicate<FailureDetails, FailureDetails> failureDetailsMatch =
-      (failureDetails1, failureDetails2) -> failureDetails1.getLastFailedAt().equals(failureDetails2.getLastFailedAt());
+          (failureDetails1, failureDetails2) ->
+                  failureDetails1.getLastFailedAt().equals(failureDetails2.getLastFailedAt()) &&
+                          failureDetails1.getLastSuccessfulAt().equals(failureDetails2.getLastSuccessfulAt());
 
   private EntityUtil() {}
 
