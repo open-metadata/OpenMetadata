@@ -128,7 +128,8 @@ class KafkaSource(Source[CreateTopicEntityRequest]):
                 else:
                     self.status.dropped(t)
             except Exception as err:
-                logger.error(err)
+                logger.error(repr(err))
+                self.status.failure(t)
 
     def _parse_topic_metadata(self, topic: str) -> Optional[Schema]:
         logger.debug(f"topic = {topic}")
