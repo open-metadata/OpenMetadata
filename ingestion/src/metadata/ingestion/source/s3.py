@@ -13,14 +13,10 @@ import logging
 import uuid
 from typing import Iterable, List, Union
 
-from metadata.generated.schema.api.services.createStorageService import (
-    CreateStorageServiceEntityRequest,
-)
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.common import Entity, WorkflowContext
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.models.ometa_policy import OMetaPolicy
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.generated.schema.entity.data.location import Location, LocationType
 from metadata.generated.schema.entity.policies.filters import Prefix
@@ -33,9 +29,9 @@ from metadata.generated.schema.entity.policies.lifecycle.moveAction import (
     Destination,
     LifecycleMoveAction,
 )
-from metadata.generated.schema.entity.services.storageService import StorageService
 from metadata.generated.schema.type.storage import StorageServiceType, S3StorageClass
 from metadata.utils.aws_client import AWSClientConfigModel, AWSClient
+from metadata.utils.helpers import get_storage_service_or_create
 
 logger: logging.Logger = logging.getLogger(__name__)
 
@@ -56,7 +52,8 @@ class S3Source(Source[Entity]):
         self.metadata_config = metadata_config
         self.status = SourceStatus()
         self.service = get_storage_service_or_create(
-            config.service_name, metadata_config
+            {"name": self.config.service_name, "serviceType": StorageServiceType.S3},
+            metadata_config,
         )
         self.s3 = AWSClient(self.config).get_client("s3")
 
@@ -166,18 +163,3 @@ class S3Source(Source[Entity]):
             prefixFilter=prefix_filter,
             name=name,
         )
-
-
-def get_storage_service_or_create(
-    service_name: str, metadata_config: MetadataServerConfig
-) -> StorageService:
-    metadata = OpenMetadata(metadata_config)
-    service = metadata.get_by_name(entity=StorageService, fqdn=service_name)
-    if service is not None:
-        return service
-    return metadata.create_or_update(
-        CreateStorageServiceEntityRequest(
-            name=service_name,
-            serviceType=StorageServiceType.S3,
-        )
-    )
