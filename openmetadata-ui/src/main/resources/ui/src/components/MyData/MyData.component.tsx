@@ -69,6 +69,7 @@ const MyData: React.FC<MyDataProps> = ({
             className="tw-underline"
             data-testid="feeds"
             size="custom"
+            tag="button"
             theme="primary"
             variant="link"
             onClick={() => setFieldListVisible((visible) => !visible)}>
@@ -171,7 +172,7 @@ const MyData: React.FC<MyDataProps> = ({
       .map((d) => {
         return (
           d.changeDescriptions
-            .filter(
+            ?.filter(
               (c) =>
                 c.fieldsAdded?.length ||
                 c.fieldsDeleted?.length ||
