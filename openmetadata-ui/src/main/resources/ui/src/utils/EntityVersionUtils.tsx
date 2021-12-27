@@ -22,6 +22,7 @@ import rehypeRaw from 'rehype-raw';
 import gfm from 'remark-gfm';
 import { DESCRIPTIONLENGTH, getTeamDetailsPath } from '../constants/constants';
 import { ChangeType } from '../enums/entity.enum';
+import { Column } from '../generated/entity/data/table';
 import {
   ChangeDescription,
   FieldChange,
@@ -192,17 +193,17 @@ export const getPreposition = (type: ChangeType) => {
 
 const getColumnName = (column: string) => {
   const name = column.split('.');
-  return name.slice(1, name.length - 1).join('.');
+  const length = name.length;
+  return name
+    .slice(length > 1 ? 1 : 0, length > 1 ? length - 1 : length)
+    .join('.');
 };
 
 const getLinkWithColumn = (column: string, eFqn: string, eType: string) => {
-  const name = column.split('.');
   return (
     <Link
       className="tw-pl-1"
-      to={`${getEntityLink(eType, eFqn)}.${name
-        .slice(1, name.length - 1)
-        .join('.')}`}>
+      to={`${getEntityLink(eType, eFqn)}.${getColumnName(column)}`}>
       {getColumnName(column)}
     </Link>
   );
@@ -298,6 +299,21 @@ export const feedSummaryFromatter = (
               entityType
             )}
             {isEmpty(value) ? getDescriptionElement(fieldChange) : ''}
+          </p>
+        );
+
+        break;
+      } else if (fieldChange?.name === 'columns') {
+        const length = value?.length ?? 0;
+        summary = (
+          <p key={uniqueId()}>
+            {`${type} ${fieldChange?.name}`}{' '}
+            {value?.map((column: Column, i: number) => (
+              <span key={uniqueId()}>
+                {getLinkWithColumn(column.name, entityFQN, entityType)}{' '}
+                {i !== length - 1 ? ', ' : ''}
+              </span>
+            ))}
           </p>
         );
 

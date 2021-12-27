@@ -89,7 +89,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
   });
   const [tableProfile, setTableProfile] = useState<Table['tableProfile']>([]);
   const [tableDetails, setTableDetails] = useState<Table>({} as Table);
-  const { datasetFQN: tableFQN, tab } = useParams() as Record<string, string>;
+  const { datasetFQN, tab } = useParams() as Record<string, string>;
   const [activeTab, setActiveTab] = useState<number>(getCurrentDatasetTab(tab));
   const [entityLineage, setEntityLineage] = useState<EntityLineage>(
     {} as EntityLineage
@@ -104,6 +104,9 @@ const DatasetDetailsPage: FunctionComponent = () => {
     id: undefined,
     state: false,
   });
+  const [tableFQN, setTableFQN] = useState<string>(
+    getPartialNameFromFQN(datasetFQN, ['service', 'database', 'table'], '.')
+  );
 
   const activeTabHandler = (tabValue: number) => {
     const currentTabIndex = tabValue - 1;
@@ -221,7 +224,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
   useEffect(() => {
     setIsLoading(true);
     getTableDetailsByFQN(
-      getPartialNameFromFQN(tableFQN, ['service', 'database', 'table'], '.'),
+      tableFQN,
       'columns, usageSummary, followers, joins, tags, owner, sampleData, tableProfile, dataModel'
     )
       .then((res: AxiosResponse) => {
@@ -301,6 +304,12 @@ const DatasetDetailsPage: FunctionComponent = () => {
       });
     setActiveTab(getCurrentDatasetTab(tab));
   }, [tableFQN]);
+
+  useEffect(() => {
+    setTableFQN(
+      getPartialNameFromFQN(datasetFQN, ['service', 'database', 'table'], '.')
+    );
+  }, [datasetFQN]);
 
   return (
     <>
