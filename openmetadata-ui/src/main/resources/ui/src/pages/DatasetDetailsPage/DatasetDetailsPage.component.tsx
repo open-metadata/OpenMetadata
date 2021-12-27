@@ -292,7 +292,10 @@ const DatasetDetailsPage: FunctionComponent = () => {
         setIsLoading(false);
       });
 
-    getLineageByFQN(tableFQN, EntityType.TABLE)
+    getLineageByFQN(
+      getPartialNameFromFQN(tableFQN, ['service', 'database', 'table'], '.'),
+      EntityType.TABLE
+    )
       .then((res: AxiosResponse) => {
         setEntityLineage(res.data);
       })
