@@ -40,7 +40,7 @@ const TopicVersion: FC<TopicVersionProp> = ({
   isVersionLoading,
   owner,
   tier,
-  slashedTableName,
+  slashedTopicName,
   versionList,
   backHandler,
   versionHandler,
@@ -269,7 +269,7 @@ const TopicVersion: FC<TopicVersionProp> = ({
               followersList={[]}
               tags={getTags()}
               tier={{} as TagLabel}
-              titleLinks={slashedTableName}
+              titleLinks={slashedTopicName}
               version={version}
               versionHandler={backHandler}
             />

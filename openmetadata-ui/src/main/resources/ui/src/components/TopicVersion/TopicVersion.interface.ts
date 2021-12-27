@@ -23,7 +23,7 @@ export interface TopicVersionProp {
   isVersionLoading: boolean;
   owner: Topic['owner'];
   tier: TagLabel;
-  slashedTableName: TitleBreadcrumbProps['titleLinks'];
+  slashedTopicName: TitleBreadcrumbProps['titleLinks'];
   topicFQN: string;
   versionList: EntityHistory;
   backHandler: () => void;

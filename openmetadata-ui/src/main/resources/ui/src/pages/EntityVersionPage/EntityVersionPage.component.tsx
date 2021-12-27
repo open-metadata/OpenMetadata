@@ -73,7 +73,7 @@ const EntityVersionPage: FunctionComponent = () => {
     {} as EntityHistory
   );
   const [isVersionLoading, setIsVersionLoading] = useState<boolean>(false);
-  const [slashedTableName, setSlashedTableName] = useState<
+  const [slashedEntityName, setSlashedEntityName] = useState<
     TitleBreadcrumbProps['titleLinks']
   >([]);
 
@@ -98,10 +98,16 @@ const EntityVersionPage: FunctionComponent = () => {
     history.push(getVersionPath(entityType, entityFQN, v as string));
   };
 
-  const setBreadCrumbTitle = (
-    value: TitleBreadcrumbProps['titleLinks'] = []
+  const setEntityState = (
+    tags: TagLabel[],
+    owner: Table['owner'],
+    data: VersionData,
+    titleBreadCrumb: TitleBreadcrumbProps['titleLinks']
   ) => {
-    setSlashedTableName(value);
+    setTier(getTierTags(tags));
+    setOwner(getOwnerFromId(owner?.id));
+    setCurrentVersionData(data);
+    setSlashedEntityName(titleBreadCrumb);
   };
 
   const fetchEntityVersions = () => {
@@ -119,10 +125,7 @@ const EntityVersionPage: FunctionComponent = () => {
           .then((res: AxiosResponse) => {
             const { id, owner, tags, name, database, service, serviceType } =
               res.data;
-            setTier(getTierTags(tags));
-            setOwner(getOwnerFromId(owner?.id));
-            setCurrentVersionData(res.data);
-            setBreadCrumbTitle([
+            setEntityState(tags, owner, res.data, [
               {
                 name: service.name,
                 url: service.name
@@ -144,6 +147,7 @@ const EntityVersionPage: FunctionComponent = () => {
                 activeTitle: true,
               },
             ]);
+
             getTableVersions(id)
               .then((vres: AxiosResponse) => {
                 setVersionList(vres.data);
@@ -174,10 +178,7 @@ const EntityVersionPage: FunctionComponent = () => {
         )
           .then((res: AxiosResponse) => {
             const { id, owner, tags, name, service, serviceType } = res.data;
-            setTier(getTierTags(tags));
-            setOwner(getOwnerFromId(owner?.id));
-            setCurrentVersionData(res.data);
-            setBreadCrumbTitle([
+            setEntityState(tags, owner, res.data, [
               {
                 name: service.name,
                 url: service.name
@@ -195,6 +196,7 @@ const EntityVersionPage: FunctionComponent = () => {
                 activeTitle: true,
               },
             ]);
+
             getTopicVersions(id)
               .then((vres: AxiosResponse) => {
                 setVersionList(vres.data);
@@ -237,34 +239,33 @@ const EntityVersionPage: FunctionComponent = () => {
         )
           .then((res: AxiosResponse) => {
             const { id, database, name, service, serviceType } = res.data;
-            setBreadCrumbTitle([
-              {
-                name: service.name,
-                url: service.name
-                  ? getServiceDetailsPath(
-                      service.name,
-                      serviceType,
-                      ServiceCategory.DATABASE_SERVICES
-                    )
-                  : '',
-                imgSrc: serviceType ? serviceTypeLogo(serviceType) : undefined,
-              },
-              {
-                name: database.name,
-                url: getDatabaseDetailsPath(database.fullyQualifiedName),
-              },
-              {
-                name: name,
-                url: '',
-                activeTitle: true,
-              },
-            ]);
             getTableVersion(id, version)
               .then((vRes: AxiosResponse) => {
                 const { owner, tags } = vRes.data;
-                setTier(getTierTags(tags));
-                setOwner(getOwnerFromId(owner?.id) ?? owner);
-                setCurrentVersionData(vRes.data);
+                setEntityState(tags, owner, vRes.data, [
+                  {
+                    name: service.name,
+                    url: service.name
+                      ? getServiceDetailsPath(
+                          service.name,
+                          serviceType,
+                          ServiceCategory.DATABASE_SERVICES
+                        )
+                      : '',
+                    imgSrc: serviceType
+                      ? serviceTypeLogo(serviceType)
+                      : undefined,
+                  },
+                  {
+                    name: database.name,
+                    url: getDatabaseDetailsPath(database.fullyQualifiedName),
+                  },
+                  {
+                    name: name,
+                    url: '',
+                    activeTitle: true,
+                  },
+                ]);
                 setIsVersionLoading(false);
               })
               .catch((err: AxiosError) => {
@@ -295,30 +296,29 @@ const EntityVersionPage: FunctionComponent = () => {
         )
           .then((res: AxiosResponse) => {
             const { id, name, service, serviceType } = res.data;
-            setBreadCrumbTitle([
-              {
-                name: service.name,
-                url: service.name
-                  ? getServiceDetailsPath(
-                      service.name,
-                      serviceType,
-                      ServiceCategory.MESSAGING_SERVICES
-                    )
-                  : '',
-                imgSrc: serviceType ? serviceTypeLogo(serviceType) : undefined,
-              },
-              {
-                name: name,
-                url: '',
-                activeTitle: true,
-              },
-            ]);
             getTopicVersion(id, version)
               .then((vRes: AxiosResponse) => {
                 const { owner, tags } = vRes.data;
-                setTier(getTierTags(tags));
-                setOwner(getOwnerFromId(owner?.id) ?? owner);
-                setCurrentVersionData(vRes.data);
+                setEntityState(tags, owner, vRes.data, [
+                  {
+                    name: service.name,
+                    url: service.name
+                      ? getServiceDetailsPath(
+                          service.name,
+                          serviceType,
+                          ServiceCategory.MESSAGING_SERVICES
+                        )
+                      : '',
+                    imgSrc: serviceType
+                      ? serviceTypeLogo(serviceType)
+                      : undefined,
+                  },
+                  {
+                    name: name,
+                    url: '',
+                    activeTitle: true,
+                  },
+                ]);
                 setIsVersionLoading(false);
               })
               .catch((err: AxiosError) => {
@@ -358,7 +358,7 @@ const EntityVersionPage: FunctionComponent = () => {
             datasetFQN={entityFQN}
             isVersionLoading={isVersionLoading}
             owner={owner}
-            slashedTableName={slashedTableName}
+            slashedTableName={slashedEntityName}
             tier={tier as TagLabel}
             version={version}
             versionHandler={versionHandler}
@@ -373,7 +373,7 @@ const EntityVersionPage: FunctionComponent = () => {
             currentVersionData={currentVersionData}
             isVersionLoading={isVersionLoading}
             owner={owner}
-            slashedTableName={slashedTableName}
+            slashedTopicName={slashedEntityName}
             tier={tier as TagLabel}
             topicFQN={entityFQN}
             version={version}
