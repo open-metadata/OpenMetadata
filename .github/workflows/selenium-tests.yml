@@ -20,11 +20,13 @@ on:
     paths:
       - 'openmetadata-ui/src/main/resources/ui/**'
       - 'openmetadata-ui/src/test/java/org/openmetadata/catalog/selenium/pages/**'
+      - 'openmetadata-ui/src/test/java/org/openmetadata/catalog/selenium/pagesWithoutData/**'
   pull_request:
     branches: [main]
     paths:
       - 'openmetadata-ui/src/main/resources/ui/**'
       - 'openmetadata-ui/src/test/java/org/openmetadata/catalog/selenium/pages/**'
+      - 'openmetadata-ui/src/test/java/org/openmetadata/catalog/selenium/pagesWithoutData/**'
 
 jobs:
   build:
@@ -48,3 +50,8 @@ jobs:
     - name: Run Page Tests
       run: mvn clean test -Dtest="org.openmetadata.catalog.selenium.pages.**.*.java" -DfailIfNoTests=false
 
+    - name: Drop-Create
+      run: docker exec -it openmetadata_server ./openmetadata-0.8.0-SNAPSHOT/bootstrap/bootstrap_storage.sh drop-create-all
+
+    - name : Run Page Tests without data
+      run: mvn clean test -Dtest="org.openmetadata.catalog.selenium.pagesWithoutData.**.*.java" -DfailIfNoTests=false
