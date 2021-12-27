@@ -58,6 +58,7 @@
     <wiremock-standalone.version>2.15.0</wiremock-standalone.version>
     <jacoco-plugin.version>0.8.6</jacoco-plugin.version>
     <jdbi3.version>3.24.1</jdbi3.version>
+    <jeasy.version>4.1.0</jeasy.version>
     <commons-cli.version>1.5.0</commons-cli.version>
     <commons-io.version>2.11.0</commons-io.version>
     <flyway.version>8.0.4</flyway.version>
@@ -140,6 +141,11 @@
         <groupId>org.jdbi</groupId>
         <artifactId>jdbi3-core</artifactId>
         <version>${jdbi3.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.jeasy</groupId>
+        <artifactId>easy-rules-core</artifactId>
+        <version>${jeasy.version}</version>
       </dependency>
       <dependency>
         <groupId>commons-cli</groupId>

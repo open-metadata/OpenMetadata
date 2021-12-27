@@ -2,34 +2,64 @@
   "$id": "https://open-metadata.org/schema/entity/data/policies/accessControl/rule.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "AccessControlRule",
-  "description": "Describes an entity Access Control Rule used within a Policy.",
+  "description": "Describes an Access Control Rule for OpenMetadata Metadata Operations. All non-null user (subject) and entity (object) attributes are evaluated with logical AND.",
   "type": "object",
   "javaType": "org.openmetadata.catalog.entity.policies.accessControl.Rule",
+  "definitions": {
+    "operation": {
+      "javaType": "org.openmetadata.catalog.type.MetadataOperation",
+      "description": "This schema defines all possible operations on metadata of data entities",
+      "type": "string",
+      "enum": [
+        "SuggestDescription",
+        "SuggestTags",
+        "UpdateDescription",
+        "UpdateOwner",
+        "UpdateTags"
+      ],
+      "javaEnums": [
+        {"name":"SuggestDescription"},
+        {"name":"SuggestTags"},
+        {"name":"UpdateDescription"},
+        {"name":"UpdateOwner"},
+        {"name":"UpdateTags"}
+      ]
+    }
+  },
   "properties": {
     "name": {
-      "description": "Name that identifies this Rule.",
+      "description": "Name for this Rule.",
       "type": "string"
     },
-    "prefixFilter": {
-      "$ref": "../filters.json#/definitions/prefix"
+    "entityTypeAttr": {
+      "description": "Entity type that the rule should match on",
+      "type": "string",
+      "default": null
     },
-    "regexFilter": {
-      "$ref": "../filters.json#/definitions/regex"
+    "entityTagAttr": {
+      "description": "Entity tag that the rule should match on",
+      "$ref": "../../../type/tagLabel.json#/definitions/tagFQN",
+      "default": null
     },
-    "tagsFilter": {
-      "$ref": "../filters.json#/definitions/tags"
+    "userRoleAttr": {
+      "description": "Role of the user that the rule should match on",
+      "$ref": "../../teams/team.json#/definitions/teamName",
+      "default": null
     },
-    "actions": {
-      "description": "A set of access control enforcements to take on the entities.",
-      "type": "array",
-      "minItems": 1,
-      "items": {
-        "anyOf": [
-          {
-            "$ref": "tagBased.json"
-          }
-        ]
-      }
+    "operation": {
+      "description": "Operation on the entity.",
+      "$ref": "#/definitions/operation",
+      "default": null
+    },
+    "allow": {
+      "description": "Allow or Deny operation on the entity.",
+      "type": "boolean",
+      "default": false
+    },
+    "priority": {
+      "description": "Priority of this rule among other rules in this policy.",
+      "type": "integer",
+      "default": 0
     },
     "enabled": {
       "description": "Is the rule enabled.",
@@ -38,8 +68,7 @@
     }
   },
   "required": [
-    "filters",
-    "actions"
+    "name"
   ],
   "additionalProperties": false
 }
