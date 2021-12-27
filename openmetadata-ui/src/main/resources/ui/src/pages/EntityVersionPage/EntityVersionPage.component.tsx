@@ -12,7 +12,7 @@
  */
 
 import { AxiosError, AxiosResponse } from 'axios';
-import React, { Fragment, FunctionComponent, useEffect, useState } from 'react';
+import React, { FunctionComponent, useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import {
   getTableDetailsByFQN,
@@ -396,9 +396,7 @@ const EntityVersionPage: FunctionComponent = () => {
     fetchCurrentVersion();
   }, [version]);
 
-  return (
-    <>{isLoading ? <Loader /> : <Fragment>{versionComponent()}</Fragment>}</>
-  );
+  return <>{isLoading ? <Loader /> : versionComponent()}</>;
 };
 
 export default EntityVersionPage;
