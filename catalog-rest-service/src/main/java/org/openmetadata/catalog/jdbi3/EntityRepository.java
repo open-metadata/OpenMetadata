@@ -520,7 +520,8 @@ public abstract class EntityRepository<T> {
         newVersion = Math.round((oldVersion + 0.1) * 10.0) / 10.0;
       }
       LOG.info(
-          "{}->{} - Fields added {}, updated {}, deleted {}",
+          "{} {}->{} - Fields added {}, updated {}, deleted {}",
+          original.getId(),
           oldVersion,
           newVersion,
           changeDescription.getFieldsAdded(),
@@ -531,7 +532,7 @@ public abstract class EntityRepository<T> {
       return !newVersion.equals(oldVersion);
     }
 
-    private boolean fieldsChanged() {
+    public boolean fieldsChanged() {
       return !changeDescription.getFieldsAdded().isEmpty()
           || !changeDescription.getFieldsUpdated().isEmpty()
           || !changeDescription.getFieldsDeleted().isEmpty();
