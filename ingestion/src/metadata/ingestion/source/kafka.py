@@ -101,31 +101,35 @@ class KafkaSource(Source[CreateTopicEntityRequest]):
     def next_record(self) -> Iterable[CreateTopicEntityRequest]:
         topics = self.admin_client.list_topics().topics
         for t in topics:
-            if self.config.filter_pattern.included(t):
-                logger.info("Fetching topic schema {}".format(t))
-                topic_schema = self._parse_topic_metadata(t)
-                topic = CreateTopicEntityRequest(
-                    name=t,
-                    service=EntityReference(
-                        id=self.service.id, type="messagingService"
-                    ),
-                    partitions=1,
-                )
-                if topic_schema is not None:
-                    topic.schemaText = topic_schema.schema_str
-                    if topic_schema.schema_type == "AVRO":
-                        topic.schemaType = SchemaType.Avro.name
-                    elif topic_schema.schema_type == "PROTOBUF":
-                        topic.schemaType = SchemaType.Protobuf.name
-                    elif topic_schema.schema_type == "JSON":
-                        topic.schemaType = SchemaType.JSON.name
-                    else:
-                        topic.schemaType = SchemaType.Other.name
+            try:
+                if self.config.filter_pattern.included(t):
+                    logger.info("Fetching topic schema {}".format(t))
+                    topic_schema = self._parse_topic_metadata(t)
+                    topic = CreateTopicEntityRequest(
+                        name=t.replace(".", "_DOT_"),
+                        service=EntityReference(
+                            id=self.service.id, type="messagingService"
+                        ),
+                        partitions=1,
+                    )
+                    if topic_schema is not None:
+                        topic.schemaText = topic_schema.schema_str
+                        if topic_schema.schema_type == "AVRO":
+                            topic.schemaType = SchemaType.Avro.name
+                        elif topic_schema.schema_type == "PROTOBUF":
+                            topic.schemaType = SchemaType.Protobuf.name
+                        elif topic_schema.schema_type == "JSON":
+                            topic.schemaType = SchemaType.JSON.name
+                        else:
+                            topic.schemaType = SchemaType.Other.name
 
-                self.status.topic_scanned(topic.name.__root__)
-                yield topic
-            else:
-                self.status.dropped(t)
+                    self.status.topic_scanned(topic.name.__root__)
+                    yield topic
+                else:
+                    self.status.dropped(t)
+            except Exception as err:
+                logger.error(repr(err))
+                self.status.failure(t)
 
     def _parse_topic_metadata(self, topic: str) -> Optional[Schema]:
         logger.debug(f"topic = {topic}")
