@@ -60,16 +60,15 @@
       "type": "string"
     },
     "status": {
-      "description": "Status is `notStarted`, when webhook was created with `enabled` set to false and it never started publishing events. Status is `success` on 200 response to notifications. Status is `error` on bad callback URL, connection failures, and `1xx`, `3xx` response. Status is `awaitingRetry` when previous attempt at delivery timed out or received `4xx`, `5xx` response. Status is `retryLimitReached` after all retries fail.",
+      "description": "Status is `notStarted`, when webhook was created with `enabled` set to false and it never started publishing events. Status is `started` when webhook is normally functioning and 200 OK response was received for callback notification. Status is `failed` on bad callback URL, connection failures, `1xx`, and `3xx` response was received for callback notification. Status is `awaitingRetry` when previous attempt at callback timed out or received `4xx`, `5xx` response. Status is `retryLimitReached` after all retries fail.",
       "type": "string",
       "enum": [
         "notStarted",
-        "success",
+        "started",
         "failed",
         "awaitingRetry",
         "retryLimitReached"
-      ],
-      "default": "success"
+      ]
     },
     "failureDetails": {
       "description": "Failure details are set only when `status` is not `success`",

@@ -234,7 +234,7 @@ public class WebhookResource {
       throws IOException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Webhook webhook = getWebhook(securityContext, create);
-    webhook.setStatus(webhook.getEnabled() ? Status.SUCCESS : Status.NOT_STARTED);
+    webhook.setStatus(webhook.getEnabled() ? Status.STARTED : Status.NOT_STARTED);
     webhook = dao.create(uriInfo, webhook);
     dao.addWebhookPublisher(webhook);
     return Response.created(webhook.getHref()).entity(webhook).build();
@@ -259,7 +259,7 @@ public class WebhookResource {
     //    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     //    Table table = getTable(securityContext, create);
     Webhook webhook = getWebhook(securityContext, create);
-    webhook.setStatus(webhook.getEnabled() ? Status.SUCCESS : Status.NOT_STARTED);
+    webhook.setStatus(webhook.getEnabled() ? Status.STARTED : Status.NOT_STARTED);
     PutResponse<Webhook> putResponse = dao.createOrUpdate(uriInfo, webhook);
     dao.updateWebhookPublisher(webhook);
     return putResponse.toResponse();
