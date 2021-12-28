@@ -183,6 +183,22 @@ public class TopicDetailsPageTest {
     }
   }
 
+  @Test
+  @Order(9)
+  public void checkVersion() throws InterruptedException {
+    openExplorePage();
+    Events.click(webDriver, By.xpath("(//button[@data-testid='table-link'])[last()]"));
+    Events.click(webDriver, By.cssSelector("[data-testid='version-button']"));
+    Events.click(webDriver, By.cssSelector("[data-testid='closeDrawer']"));
+    Events.click(webDriver, By.cssSelector("[data-testid='edit-description']"));
+    Events.sendKeys(webDriver, By.xpath(enterDescription), faker.address().toString());
+    Events.click(webDriver, By.cssSelector("[data-testid='save']"));
+    Events.click(webDriver, By.cssSelector("[data-testid='version-button']"));
+    Events.click(webDriver, By.xpath("(//span[@data-testid='select-version'])[2]"));
+    Events.click(webDriver, By.xpath("(//span[@data-testid='select-version'])[1]"));
+    Events.click(webDriver, By.cssSelector("[data-testid='closeDrawer']"));
+  }
+
   @AfterEach
   public void closeTabs() {
     ArrayList<String> tabs = new ArrayList<>(webDriver.getWindowHandles());
