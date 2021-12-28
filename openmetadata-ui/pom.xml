@@ -110,17 +110,17 @@
             </goals>
             <configuration>
               <nodeVersion>v12.22.1</nodeVersion>
-              <yarnVersion>v1.22.10</yarnVersion>
+              <yarnVersion>v1.22.17</yarnVersion>
             </configuration>
           </execution>
           <execution>
-            <id>yarn install --immutable</id>
+            <id>yarn install --frozen-lockfile</id>
             <goals>
               <goal>yarn</goal>
             </goals>
             <phase>prepare-package</phase>
             <configuration>
-              <arguments>install --immutable</arguments>
+              <arguments>install --frozen-lockfile</arguments>
             </configuration>
           </execution>
           <execution>
