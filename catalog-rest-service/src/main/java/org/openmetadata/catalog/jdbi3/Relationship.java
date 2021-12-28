@@ -24,10 +24,18 @@ public enum Relationship {
    * database might have stored the enum ordinal number - When adding a new enum, add it as the last enum to preserve
    * the ordinal positions of the existing enums
    */
-  // Database --- contains --> Table
-  // Organization --- contains --> Team
-  // Team --- contains --> User
-  // Service --- contains --> Database
+
+  /**
+   * CONTAINS relationship is a stronger relationship than HAS. The entity that contains other entities can't be deleted
+   * until all the entities that it contains are also deleted. Some examples of these relationships:
+   *
+   * <ul>
+   *   <li>Database --- contains --> Table
+   *   <li>Organization --- contains --> Team
+   *   <li>Team --- contains --> User
+   *   <li>Service --- contains --> Database
+   * </ul>
+   */
   CONTAINS("contains"), // 0
 
   // User/Bot --- created ---> Thread
@@ -59,9 +67,16 @@ public enum Relationship {
   // {Role} --- parentOf ---> {Role}
   PARENT_OF("parentOf"), // 9
 
-  // {User} --- has ---> {Role}
-  // {Table} --- has ---> {Location}
-  // {Database} --- has ---> {Location}
+  /**
+   * HAS relationship is a weaker relationship compared to CONTAINS relationship. The entity that has HAS another entity
+   * can be deleted. During deletion, the HAS relationship is simply deleted. Examples of HAS relationship:
+   *
+   * <ul>
+   *   <li>{User} --- has ---> {Role}
+   *   <li>{Table} --- has ---> {Location}
+   *   <li>{Database} --- has ---> {Location}
+   * </ul>
+   */
   HAS("has"), // 10
 
   // {User} --- follows ----> {Table, Database, Metrics...}

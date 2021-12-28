@@ -1163,7 +1163,7 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
       UUID ownerId = owner.getId();
       List<EntityReference> ownsList;
       if (owner.getType().equals(Entity.USER)) {
-        User user = UserResourceTest.getUser(ownerId, "owns", adminAuthHeaders());
+        User user = new UserResourceTest().getEntity(ownerId, "owns", adminAuthHeaders());
         ownsList = user.getOwns();
       } else if (owner.getType().equals(Entity.TEAM)) {
         Team team = TeamResourceTest.getTeam(ownerId, "owns", adminAuthHeaders());
@@ -1222,9 +1222,6 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     List<EntityReference> followers = getEntityInterface(getEntity).getFollowers();
     TestUtils.validateEntityReference(followers);
     TestUtils.existsInEntityReferenceList(followers, userId, false);
-
-    // GET .../users/{userId} shows user as following the entity
-    checkUserFollowing(userId, entityId, false, authHeaders);
     return getEntity;
   }
 

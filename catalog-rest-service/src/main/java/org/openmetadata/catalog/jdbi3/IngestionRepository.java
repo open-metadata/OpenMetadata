@@ -56,15 +56,6 @@ public class IngestionRepository extends EntityRepository<Ingestion> {
   }
 
   @Transaction
-  public void delete(UUID id) {
-    if (dao.relationshipDAO().findToCount(id.toString(), Relationship.CONTAINS.ordinal(), Entity.INGESTION) > 0) {
-      throw new IllegalArgumentException("Ingestion is not empty");
-    }
-    dao.ingestionDAO().delete(id);
-    dao.relationshipDAO().deleteAll(id.toString());
-  }
-
-  @Transaction
   public EntityReference getOwnerReference(Ingestion ingestion) throws IOException {
     return EntityUtil.populateOwner(dao.userDAO(), dao.teamDAO(), ingestion.getOwner());
   }
@@ -285,6 +276,11 @@ public class IngestionRepository extends EntityRepository<Ingestion> {
     @Override
     public void setOwner(EntityReference owner) {
       entity.setOwner(owner);
+    }
+
+    @Override
+    public void setDeleted(boolean flag) {
+      entity.setDeleted(flag);
     }
 
     @Override

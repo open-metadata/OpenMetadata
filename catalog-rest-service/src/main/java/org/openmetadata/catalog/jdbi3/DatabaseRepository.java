@@ -59,15 +59,6 @@ public class DatabaseRepository extends EntityRepository<Database> {
   }
 
   @Transaction
-  public void delete(UUID id) {
-    if (dao.relationshipDAO().findToCount(id.toString(), Relationship.CONTAINS.ordinal(), Entity.TABLE) > 0) {
-      throw new IllegalArgumentException("Database is not empty");
-    }
-    dao.databaseDAO().delete(id);
-    dao.relationshipDAO().deleteAll(id.toString());
-  }
-
-  @Transaction
   public void deleteLocation(String databaseId) {
     dao.relationshipDAO().deleteFrom(databaseId, Relationship.HAS.ordinal(), Entity.LOCATION);
   }
@@ -310,6 +301,11 @@ public class DatabaseRepository extends EntityRepository<Database> {
     @Override
     public void setOwner(EntityReference owner) {
       entity.setOwner(owner);
+    }
+
+    @Override
+    public void setDeleted(boolean flag) {
+      entity.setDeleted(flag);
     }
 
     @Override

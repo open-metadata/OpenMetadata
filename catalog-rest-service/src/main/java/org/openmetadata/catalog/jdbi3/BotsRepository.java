@@ -186,6 +186,11 @@ public class BotsRepository extends EntityRepository<Bots> {
     public void setOwner(EntityReference owner) {}
 
     @Override
+    public void setDeleted(boolean flag) {
+      entity.setDeleted(flag);
+    }
+
+    @Override
     public Bots withHref(URI href) {
       return entity.withHref(href);
     }

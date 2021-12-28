@@ -97,6 +97,7 @@ public abstract class EntityRepository<T> {
   private final String entityName;
   protected final EntityDAO<T> dao;
   protected final CollectionDAO daoCollection;
+  protected boolean softDelete = true;
 
   /** Fields that can be updated during PATCH operation */
   private final Fields patchFields;
@@ -331,7 +332,7 @@ public abstract class EntityRepository<T> {
 
     // Validate follower
     User user = daoCollection.userDAO().findEntityById(userId);
-    if (user.getDeactivated()) {
+    if (user.getDeleted()) {
       throw new IllegalArgumentException(CatalogExceptionMessage.deactivatedUser(userId));
     }
 
@@ -358,6 +359,25 @@ public abstract class EntityRepository<T> {
             .withPreviousVersion(change.getPreviousVersion());
 
     return new PutResponse<>(added > 0 ? Status.CREATED : Status.OK, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
+  }
+
+  @Transaction
+  public final void delete(UUID id) throws IOException {
+    // If an entity being deleted contains other children entities, it can't be deleted
+    if (daoCollection.relationshipDAO().findToCount(id.toString(), Relationship.CONTAINS.ordinal(), null) > 0) {
+      throw new IllegalArgumentException(entityName + " is not empty");
+    }
+    if (softDelete) {
+      T entity = dao.findEntityById(id);
+      EntityInterface<T> entityInterface = getEntityInterface(entity);
+      entityInterface.setDeleted(true);
+      storeEntity(entity, true);
+      daoCollection.relationshipDAO().softDeleteAll(id.toString());
+      return;
+    }
+    // Hard delete
+    dao.delete(id);
+    daoCollection.relationshipDAO().deleteAll(id.toString());
   }
 
   @Transaction

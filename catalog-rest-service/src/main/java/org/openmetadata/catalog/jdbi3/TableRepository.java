@@ -129,12 +129,6 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   @Transaction
-  public void delete(UUID id) {
-    dao.tableDAO().delete(id);
-    dao.relationshipDAO().deleteAll(id.toString()); // Remove all relationships
-  }
-
-  @Transaction
   public Table addJoins(UUID tableId, TableJoins joins) throws IOException, ParseException {
     // Validate the request content
     Table table = dao.tableDAO().findEntityById(tableId);
@@ -789,6 +783,11 @@ public class TableRepository extends EntityRepository<Table> {
     @Override
     public void setOwner(EntityReference owner) {
       entity.setOwner(owner);
+    }
+
+    @Override
+    public void setDeleted(boolean flag) {
+      entity.setDeleted(flag);
     }
 
     @Override

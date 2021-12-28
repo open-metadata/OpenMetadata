@@ -337,8 +337,8 @@ public class TeamResource {
         @ApiResponse(responseCode = "200", description = "OK"),
         @ApiResponse(responseCode = "404", description = "Team for instance {id} is not found")
       })
-  public Response delete(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("id") String id) {
+  public Response delete(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("id") String id)
+      throws IOException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     dao.delete(UUID.fromString(id));
     return Response.ok().build();

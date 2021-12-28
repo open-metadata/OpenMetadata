@@ -65,5 +65,7 @@ public interface EntityInterface<T> {
 
   void setOwner(EntityReference owner);
 
+  void setDeleted(boolean flag);
+
   T withHref(URI href);
 }

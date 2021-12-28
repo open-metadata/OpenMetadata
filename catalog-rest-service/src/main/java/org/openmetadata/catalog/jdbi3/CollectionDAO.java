@@ -336,21 +336,22 @@ public interface CollectionDAO {
     //
     @SqlQuery(
         "SELECT toId, toEntity FROM entity_relationship "
-            + "WHERE fromId = :fromId AND relation = :relation "
+            + "WHERE fromId = :fromId AND relation = :relation AND deleted = false "
             + "ORDER BY toId")
     @RegisterRowMapper(ToEntityReferenceMapper.class)
     List<EntityReference> findTo(@Bind("fromId") String fromId, @Bind("relation") int relation);
 
     @SqlQuery(
         "SELECT toId FROM entity_relationship "
-            + "WHERE fromId = :fromId AND relation = :relation AND toEntity = :toEntity "
+            + "WHERE fromId = :fromId AND relation = :relation AND toEntity = :toEntity AND deleted = false "
             + "ORDER BY toId")
     List<String> findTo(
         @Bind("fromId") String fromId, @Bind("relation") int relation, @Bind("toEntity") String toEntity);
 
     @SqlQuery(
         "SELECT count(*) FROM entity_relationship "
-            + "WHERE fromId = :fromId AND relation = :relation AND toEntity = :toEntity "
+            + "WHERE fromId = :fromId AND relation = :relation AND (toEntity = :toEntity || :toEntity IS NULL) "
+            + "AND deleted = false "
             + "ORDER BY fromId")
     int findToCount(@Bind("fromId") String fromId, @Bind("relation") int relation, @Bind("toEntity") String toEntity);
 
@@ -359,21 +360,21 @@ public interface CollectionDAO {
     //
     @SqlQuery(
         "SELECT fromId FROM entity_relationship "
-            + "WHERE toId = :toId AND relation = :relation AND fromEntity = :fromEntity "
+            + "WHERE toId = :toId AND relation = :relation AND fromEntity = :fromEntity AND deleted = false "
             + "ORDER BY fromId")
     List<String> findFrom(
         @Bind("toId") String toId, @Bind("relation") int relation, @Bind("fromEntity") String fromEntity);
 
     @SqlQuery(
         "SELECT fromId, fromEntity FROM entity_relationship "
-            + "WHERE toId = :toId AND relation = :relation "
+            + "WHERE toId = :toId AND relation = :relation AND deleted =  false "
             + "ORDER BY fromId")
     @RegisterRowMapper(FromEntityReferenceMapper.class)
     List<EntityReference> findFrom(@Bind("toId") String toId, @Bind("relation") int relation);
 
     @SqlQuery(
         "SELECT fromId, fromEntity FROM entity_relationship "
-            + "WHERE toId = :toId AND relation = :relation AND fromEntity = :fromEntity "
+            + "WHERE toId = :toId AND relation = :relation AND fromEntity = :fromEntity AND deleted = false "
             + "ORDER BY fromId")
     @RegisterRowMapper(FromEntityReferenceMapper.class)
     List<EntityReference> findFromEntity(
@@ -401,6 +402,9 @@ public interface CollectionDAO {
 
     @SqlUpdate("DELETE from entity_relationship " + "WHERE toId = :id OR fromId = :id")
     void deleteAll(@Bind("id") String id);
+
+    @SqlUpdate("UPDATE entity_relationship SET deleted = true WHERE toId = :id OR fromId = :id")
+    void softDeleteAll(@Bind("id") String id);
   }
 
   interface FeedDAO {
@@ -1042,17 +1046,17 @@ public interface CollectionDAO {
     String findByEmail(@Bind("email") String email);
 
     default int listCount(String team) {
-      return listCount(getTableName(), getNameColumn(), team, Relationship.CONTAINS.ordinal());
+      return listCount(getTableName(), getNameColumn(), team, Relationship.HAS.ordinal());
     }
 
     @Override
     default List<String> listBefore(String team, int limit, String before) {
-      return listBefore(getTableName(), getNameColumn(), team, limit, before, Relationship.CONTAINS.ordinal());
+      return listBefore(getTableName(), getNameColumn(), team, limit, before, Relationship.HAS.ordinal());
     }
 
     @Override
     default List<String> listAfter(String team, int limit, String after) {
-      return listAfter(getTableName(), getNameColumn(), team, limit, after, Relationship.CONTAINS.ordinal());
+      return listAfter(getTableName(), getNameColumn(), team, limit, after, Relationship.HAS.ordinal());
     }
 
     @SqlQuery(
@@ -1061,7 +1065,7 @@ public interface CollectionDAO {
             + "FROM user_entity ue "
             + "LEFT JOIN entity_relationship er on ue.id = er.toId "
             + "LEFT JOIN team_entity te on te.id = er.fromId and er.relation = :relation "
-            + "WHERE (te.name = :team OR :team IS NULL) "
+            + "WHERE (ue.deleted = false AND (te.name = :team OR :team IS NULL)) "
             + "GROUP BY ue.id) subquery")
     int listCount(
         @Define("table") String table,
@@ -1075,7 +1079,7 @@ public interface CollectionDAO {
             + "FROM user_entity ue "
             + "LEFT JOIN entity_relationship er on ue.id = er.toId "
             + "LEFT JOIN team_entity te on te.id = er.fromId and er.relation = :relation "
-            + "WHERE (te.name = :team OR :team IS NULL) AND "
+            + "WHERE (ue.deleted = false AND (te.name = :team OR :team IS NULL)) AND "
             + "ue.<nameColumn> < :before "
             + "GROUP BY ue.<nameColumn>, ue.json "
             + "ORDER BY ue.<nameColumn> DESC "
@@ -1094,7 +1098,7 @@ public interface CollectionDAO {
             + "FROM user_entity ue "
             + "LEFT JOIN entity_relationship er on ue.id = er.toId "
             + "LEFT JOIN team_entity te on te.id = er.fromId and er.relation = :relation "
-            + "WHERE (te.name = :team OR :team IS NULL) AND "
+            + "WHERE (ue.deleted = false AND (te.name = :team OR :team IS NULL)) AND "
             + "ue.<nameColumn> > :after "
             + "GROUP BY ue.json "
             + "ORDER BY ue.<nameColumn> "

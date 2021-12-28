@@ -62,15 +62,6 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   }
 
   @Transaction
-  public void delete(UUID id) {
-    if (dao.relationshipDAO().findToCount(id.toString(), Relationship.CONTAINS.ordinal(), Entity.PIPELINE) > 0) {
-      throw new IllegalArgumentException("Pipeline is not empty");
-    }
-    dao.pipelineDAO().delete(id);
-    dao.relationshipDAO().deleteAll(id.toString());
-  }
-
-  @Transaction
   public EntityReference getOwnerReference(Pipeline pipeline) throws IOException {
     return EntityUtil.populateOwner(dao.userDAO(), dao.teamDAO(), pipeline.getOwner());
   }
@@ -310,6 +301,11 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     @Override
     public void setOwner(EntityReference owner) {
       entity.setOwner(owner);
+    }
+
+    @Override
+    public void setDeleted(boolean flag) {
+      entity.setDeleted(flag);
     }
 
     @Override

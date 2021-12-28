@@ -228,6 +228,11 @@ public class ReportRepository extends EntityRepository<Report> {
     }
 
     @Override
+    public void setDeleted(boolean flag) {
+      entity.setDeleted(flag);
+    }
+
+    @Override
     public Report withHref(URI href) {
       return entity.withHref(href);
     }

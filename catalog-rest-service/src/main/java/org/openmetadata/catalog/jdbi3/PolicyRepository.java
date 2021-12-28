@@ -57,15 +57,6 @@ public class PolicyRepository extends EntityRepository<Policy> {
   }
 
   @Transaction
-  public void delete(UUID id) {
-    if (dao.relationshipDAO().findToCount(id.toString(), Relationship.CONTAINS.ordinal(), Entity.POLICY) > 0) {
-      throw new IllegalArgumentException("Policy is not empty");
-    }
-    dao.policyDAO().delete(id);
-    dao.relationshipDAO().deleteAll(id.toString());
-  }
-
-  @Transaction
   public EntityReference getOwnerReference(Policy policy) throws IOException {
     return EntityUtil.populateOwner(dao.userDAO(), dao.teamDAO(), policy.getOwner());
   }
@@ -296,6 +287,11 @@ public class PolicyRepository extends EntityRepository<Policy> {
     @Override
     public void setOwner(EntityReference owner) {
       entity.setOwner(owner);
+    }
+
+    @Override
+    public void setDeleted(boolean flag) {
+      entity.setDeleted(flag);
     }
 
     public void setRules(List<Object> rules) {

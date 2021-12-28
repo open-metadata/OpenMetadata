@@ -64,15 +64,6 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
   }
 
   @Transaction
-  public void delete(UUID id) {
-    if (dao.relationshipDAO().findToCount(id.toString(), Relationship.CONTAINS.ordinal(), Entity.DASHBOARD) > 0) {
-      throw new IllegalArgumentException("Dashboard is not empty");
-    }
-    dao.dashboardDAO().delete(id);
-    dao.relationshipDAO().deleteAll(id.toString());
-  }
-
-  @Transaction
   public EntityReference getOwnerReference(Dashboard dashboard) throws IOException {
     return EntityUtil.populateOwner(dao.userDAO(), dao.teamDAO(), dashboard.getOwner());
   }
@@ -375,6 +366,11 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     @Override
     public void setOwner(EntityReference owner) {
       entity.setOwner(owner);
+    }
+
+    @Override
+    public void setDeleted(boolean flag) {
+      entity.setDeleted(flag);
     }
 
     @Override

@@ -282,6 +282,11 @@ public class WebhookRepository extends EntityRepository<Webhook> {
     public void setOwner(EntityReference owner) {}
 
     @Override
+    public void setDeleted(boolean flag) {
+      entity.setDeleted(flag);
+    }
+
+    @Override
     public Webhook withHref(URI href) {
       return entity.withHref(href);
     }
