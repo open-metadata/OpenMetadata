@@ -138,3 +138,4 @@ public class MyDataPageTest {
     webDriver.switchTo().window(tabs.get(0)).close();
   }
 }
+
