@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-/* eslint-disable  */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { EditorState, Modifier, SelectionState } from 'draft-js';
 import PropTypes from 'prop-types';
@@ -243,10 +243,6 @@ export class ULLIST extends Component {
     const { editorState, onChange } = this.props as any;
     const selectedText = getSelectedText(editorState);
     const selection = editorState.getSelection();
-    // const currentKey = selection.getStartKey();
-    // const currentBlock = editorState
-    //   .getCurrentContent()
-    //   .getBlockForKey(currentKey);
     const text = selectedText.startsWith('- ')
       ? selectedText.replaceAll('- ', '')
       : `${
@@ -285,7 +281,6 @@ export class OLLIST extends Component {
 
   makeLIST = () => {
     const { editorState, onChange } = this.props as any;
-    // const selectedText = getSelectedText(editorState);
     const selection = editorState.getSelection();
     const currentKey = selection.getStartKey();
     const currentBlock = editorState
@@ -298,7 +293,6 @@ export class OLLIST extends Component {
     for (const txt of textArr) {
       len += txt.length;
       if (len >= selection.focusOffset) {
-        // const index = textArr.indexOf(txt);
         break;
       }
       len++;
@@ -368,7 +362,7 @@ export class Info extends Component {
           position="left"
           size="small"
           trigger="mouseenter">
-          <i className="fas fa-info-circle"></i>
+          <i className="fas fa-info-circle" />
         </PopOver>
       </div>
     );
