@@ -164,97 +164,70 @@ const EntityTable = ({
     setEditColumnTag({ column, index });
   };
 
-  const getCurrentRows = (editColumn: { column: Column; index: number }) => {
-    const data = [];
-    const indexs = editColumn.index.toString().split('.');
-    for (let index = 0; index < indexs.length; index++) {
-      if (index === 0) {
-        // eslint-disable-next-line
-        const column = rows.find((row: any) => row.id === indexs[index]);
-        if (column) {
-          data.push(column);
-        }
+  const updateColumnDescription = (
+    tableCols: Table['columns'],
+    changedColName: string,
+    description: string
+  ) => {
+    tableCols?.forEach((col) => {
+      if (col.name === changedColName) {
+        col.description = description;
       } else {
-        const column = rows.find(
-          // eslint-disable-next-line
-          (row: any) => row.id === indexs.slice(0, index + 1).join('.')
+        updateColumnDescription(
+          col?.children as Table['columns'],
+          changedColName,
+          description
         );
-        if (column) {
-          data.push(column);
-        }
       }
-    }
+    });
+  };
 
-    return data;
+  const updateColumnTags = (
+    tableCols: Table['columns'],
+    changedColName: string,
+    newColumnTags: Array<string>
+  ) => {
+    const getUpdatedTags = (column: Column) => {
+      const prevTags = column?.tags?.filter((tag) => {
+        return newColumnTags.includes(tag?.tagFQN as string);
+      });
+
+      const newTags: Array<EntityTags> = newColumnTags
+        .filter((tag) => {
+          return !prevTags?.map((prevTag) => prevTag.tagFQN).includes(tag);
+        })
+        .map((tag) => ({
+          labelType: LabelType.Manual,
+          state: State.Confirmed,
+          tagFQN: tag,
+        }));
+      const updatedTags = [...(prevTags as TagLabel[]), ...newTags];
+
+      return updatedTags;
+    };
+
+    tableCols?.forEach((col) => {
+      if (col.name === changedColName) {
+        col.tags = getUpdatedTags(col);
+      } else {
+        updateColumnTags(
+          col?.children as Table['columns'],
+          changedColName,
+          newColumnTags
+        );
+      }
+    });
   };
 
   const handleEditColumnChange = (columnDescription: string): void => {
     if (editColumn) {
       const tableCols = cloneDeep(tableColumns);
-      const indexs = getCurrentRows(editColumn).map((row) => row.index);
-      const columnArr: Array<Column & { index: number }> = [] as Array<
-        Column & { index: number }
-      >;
-      if (indexs.length > 0) {
-        indexs.forEach((value, index) => {
-          if (index === 0) {
-            columnArr.push({
-              ...tableCols[value],
-              index: value,
-              description:
-                indexs.length === 1
-                  ? columnDescription
-                  : tableCols[value].description,
-            });
-
-            return;
-          }
-          if (index === indexs.length - 1) {
-            columnArr.push({
-              ...columnArr?.[index - 1]?.children?.[value],
-              description: columnDescription,
-              index: value,
-            } as Column & { index: number });
-
-            return;
-          }
-          columnArr.push({
-            ...columnArr?.[index - 1]?.children?.[value],
-            index: value,
-          } as Column & { index: number });
-        });
-
-        for (let index = columnArr.length - 1; index >= 0; index--) {
-          const colChildren = columnArr[index - 1]?.children as Array<
-            Column & { index: number }
-          >;
-          if (colChildren) {
-            colChildren[columnArr[index].index] = columnArr[index];
-
-            columnArr[index - 1] = {
-              ...columnArr[index - 1],
-              children: colChildren.map((child) => {
-                /* eslint-disable-next-line */
-                const { index, ...rest } = child;
-
-                return rest;
-              }),
-            };
-          }
-        }
-        /* eslint-disable-next-line */
-        const { index, ...updatedColumn } = columnArr[0];
-        const updatedColumns = [
-          ...tableCols.slice(0, indexs[0]),
-          {
-            ...updatedColumn,
-          },
-          ...tableCols.slice(indexs[0] + 1),
-        ];
-
-        onUpdate?.(updatedColumns);
-      }
-
+      updateColumnDescription(
+        tableCols,
+        editColumn.column.name,
+        columnDescription
+      );
+      onUpdate?.(tableCols);
       setEditColumn(undefined);
     } else {
       setEditColumn(undefined);
@@ -265,88 +238,8 @@ const EntityTable = ({
     const newSelectedTags = selectedTags?.map((tag) => tag.tagFQN);
     if (newSelectedTags && editColumnTag) {
       const tableCols = cloneDeep(tableColumns);
-      const indexs = getCurrentRows(editColumnTag).map((row) => row.index);
-      const columnArr: Array<Column & { index: number }> = [] as Array<
-        Column & { index: number }
-      >;
-      if (indexs.length > 0) {
-        const getUpdatedTags = (column: Column) => {
-          const prevTags = column?.tags?.filter((tag) => {
-            return newSelectedTags.includes(tag?.tagFQN as string);
-          });
-
-          const newTags: Array<EntityTags> = newSelectedTags
-            .filter((tag) => {
-              return !prevTags?.map((prevTag) => prevTag.tagFQN).includes(tag);
-            })
-            .map((tag) => ({
-              labelType: LabelType.Manual,
-              state: State.Confirmed,
-              tagFQN: tag,
-            }));
-          const updatedTags = [...(prevTags as TagLabel[]), ...newTags];
-
-          return updatedTags;
-        };
-        indexs.forEach((value, index) => {
-          if (index === 0) {
-            columnArr.push({
-              ...tableCols[value],
-              index: value,
-              tags:
-                indexs.length === 1
-                  ? getUpdatedTags(tableCols[value])
-                  : tableCols[value].tags,
-            });
-
-            return;
-          }
-          if (index === indexs.length - 1) {
-            columnArr.push({
-              ...columnArr?.[index - 1]?.children?.[value],
-              tags: getUpdatedTags(tableCols[value]),
-              index: value,
-            } as Column & { index: number });
-
-            return;
-          }
-          columnArr.push({
-            ...columnArr?.[index - 1]?.children?.[value],
-            index: value,
-          } as Column & { index: number });
-        });
-
-        for (let index = columnArr.length - 1; index >= 0; index--) {
-          const colChildren = columnArr[index - 1]?.children as Array<
-            Column & { index: number }
-          >;
-          if (colChildren) {
-            colChildren[columnArr[index].index] = columnArr[index];
-
-            columnArr[index - 1] = {
-              ...columnArr[index - 1],
-              children: colChildren.map((child) => {
-                /* eslint-disable-next-line */
-                const { index, ...rest } = child;
-
-                return rest;
-              }),
-            };
-          }
-        }
-
-        /* eslint-disable-next-line */
-        const { index, ...updatedColumn } = columnArr[0];
-        const updatedColumns = [
-          ...tableCols.slice(0, indexs[0]),
-          {
-            ...updatedColumn,
-          },
-          ...tableCols.slice(indexs[0] + 1),
-        ];
-
-        onUpdate?.(updatedColumns);
-      }
+      updateColumnTags(tableCols, editColumnTag.column.name, newSelectedTags);
+      onUpdate?.(tableCols);
     }
     setEditColumnTag(undefined);
   };
