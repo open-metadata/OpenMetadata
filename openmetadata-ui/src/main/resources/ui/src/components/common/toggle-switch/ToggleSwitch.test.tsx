@@ -19,7 +19,7 @@ describe('Test Toggle Switch Component', () => {
   it('Renders the Toggle Switch with the label sent to it', async () => {
     const handleToggle = jest.fn();
     const { findByText } = render(
-      <ToggleSwitch label="Test Label" onToggle={handleToggle} />
+      <ToggleSwitch isEnabled label="Test Label" onToggle={handleToggle} />
     );
     const labelElement = await findByText('Test Label');
 
@@ -29,9 +29,11 @@ describe('Test Toggle Switch Component', () => {
   it('Changes the checked state on click on the toggle switch', async () => {
     const handleToggle = jest.fn();
     const { findByTestId } = render(
-      <ToggleSwitch label="Test Label" onToggle={handleToggle} />
+      <ToggleSwitch isEnabled label="Test Label" onToggle={handleToggle} />
     );
-    const toggleSwitchElement = await findByTestId('toggle-checkbox');
+    const toggleSwitchElement = (await findByTestId(
+      'toggle-checkbox'
+    )) as HTMLInputElement;
 
     expect(toggleSwitchElement.checked).toBe(false);
 
@@ -45,7 +47,9 @@ describe('Test Toggle Switch Component', () => {
     const { findByTestId } = render(
       <ToggleSwitch isEnabled label="Test Label" onToggle={handleToggle} />
     );
-    const toggleSwitchElement = await findByTestId('toggle-checkbox');
+    const toggleSwitchElement = (await findByTestId(
+      'toggle-checkbox'
+    )) as HTMLInputElement;
 
     expect(toggleSwitchElement.checked).toBe(true);
   });
