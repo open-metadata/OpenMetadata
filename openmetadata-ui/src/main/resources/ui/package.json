@@ -4,7 +4,7 @@
   "private": true,
   "engines": {
     "node": ">=10.0.0",
-    "npm": "^6.0.0"
+    "yarn": "^1.22.0"
   },
   "repository": {
     "type": "git",
@@ -12,8 +12,8 @@
     "directory": "openmetadata-ui/src/main/resources/ui"
   },
   "dependencies": {
-    "@deuex-solutions/redoc": "2.0.0-rc.31",
     "@deuex-solutions/react-tutorial": "1.0.0",
+    "@deuex-solutions/redoc": "2.0.0-rc.31",
     "autoprefixer": "^9.8.6",
     "axios": "^0.21.1",
     "babel-plugin-named-asset-import": "^0.3.6",
@@ -70,8 +70,7 @@
   "scripts": {
     "start": "NODE_ENV=development BABEL_ENV=development webpack serve --config ./webpack.config.dev.js --env development",
     "build": "NODE_ENV=production BABEL_ENV=production webpack --config ./webpack.config.prod.js --env production",
-    "postbuild": "rm -rf ./dist/ && mkdir -p ./dist/assets && mv build/* ./dist/assets/",
-    "preinstall": "cd ../../../../.. && yarn install --immutable",
+    "preinstall": "cd ../../../../.. && yarn install --frozen-lockfile",
     "test": "jest --passWithNoTests --watch",
     "test:nowatch": "jest --passWithNoTests",
     "lint": "eslint \"./src/**/*.{js,jsx,ts,tsx}\"",
@@ -109,6 +108,7 @@
     "@types/codemirror": "^0.0.104",
     "@types/jest": "^26.0.23",
     "@types/lodash": "^4.14.167",
+    "@types/node": "^15.6.1",
     "@types/react": "^17.0.8",
     "@types/react-dom": "^17.0.11",
     "@types/react-router-dom": "^5.1.7",
@@ -116,7 +116,6 @@
     "@types/react-test-renderer": "^17.0.0",
     "@types/reactjs-localstorage": "^1.0.0",
     "@types/testing-library__jest-dom": "^5.9.5",
-    "@types/node": "^15.6.1",
     "@typescript-eslint/eslint-plugin": "^2.10.0",
     "@typescript-eslint/parser": "^2.10.0",
     "babel-eslint": "^10.1.0",
@@ -129,14 +128,14 @@
     "eslint-config-prettier": "^6.11.0",
     "eslint-config-react-app": "^5.2.1",
     "eslint-loader": "^3.0.3",
+    "eslint-plugin-flowtype": "4.6.0",
     "eslint-plugin-import": "^2.20.1",
+    "eslint-plugin-jest": "^24.0.2",
+    "eslint-plugin-jest-formatting": "^3.0.0",
     "eslint-plugin-jsx-a11y": "^6.2.3",
     "eslint-plugin-prettier": "^3.1.4",
     "eslint-plugin-react": "^7.19.0",
     "eslint-plugin-react-hooks": "^1.6.1",
-    "eslint-plugin-flowtype": "4.6.0",
-    "eslint-plugin-jest": "^24.0.2",
-    "eslint-plugin-jest-formatting": "^3.0.0",
     "file-loader": "4.3.0",
     "fork-ts-checker-webpack-plugin": "^6.0.8",
     "html-webpack-plugin": "^4.5.1",

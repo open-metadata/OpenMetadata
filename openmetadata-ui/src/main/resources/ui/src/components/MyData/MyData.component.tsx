@@ -99,7 +99,7 @@ const MyData: React.FC<MyDataProps> = ({
 
   const getLeftPanel = () => {
     return (
-      <div className="tw-mt-5">
+      <div className="tw-mt-12">
         <MyAssetStats
           countServices={countServices}
           entityCounts={entityCounts}
@@ -116,7 +116,7 @@ const MyData: React.FC<MyDataProps> = ({
 
   const getRightPanel = useCallback(() => {
     return (
-      <div className="tw-mt-5">
+      <div className="tw-mt-12">
         <EntityList
           entityList={ownedData}
           headerText={
@@ -126,7 +126,7 @@ const MyData: React.FC<MyDataProps> = ({
                 <Link
                   data-testid="my-data"
                   to={getLinkByFilter(Ownership.OWNER)}>
-                  <span className="link-text tw-font-light tw-text-xs">
+                  <span className="link-text tw-font-normal tw-text-xs">
                     View All
                   </span>
                 </Link>
@@ -146,7 +146,7 @@ const MyData: React.FC<MyDataProps> = ({
                 <Link
                   data-testid="following-data"
                   to={getLinkByFilter(Ownership.FOLLOWERS)}>
-                  <span className="link-text tw-font-light tw-text-xs">
+                  <span className="link-text tw-font-normal tw-text-xs">
                     View All
                   </span>
                 </Link>

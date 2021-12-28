@@ -40,8 +40,8 @@ const FeedCards: FC<FeedCardsProp> = ({
   return (
     <div id="feedData">
       {relativeDays.map((d, i) => (
-        <div className="tw-grid tw-grid-rows-1 tw-grid-cols-1 tw-mt-3" key={i}>
-          <div className="tw-relative tw-mt-3 tw-mb-3.5">
+        <div className="tw-grid tw-grid-rows-1 tw-grid-cols-1" key={i}>
+          <div className="tw-relative tw-mt-1 tw-mb-3.5">
             <div className="tw-flex tw-justify-center">
               <hr className="tw-absolute tw-top-3 tw-border-b-2 tw-border-main tw-w-full tw-z-0" />
               <span className="tw-bg-white tw-px-4 tw-py-px tw-border tw-border-primary tw-rounded tw-z-10 tw-text-primary tw-font-medium">
