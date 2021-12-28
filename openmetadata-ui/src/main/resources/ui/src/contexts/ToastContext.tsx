@@ -18,8 +18,7 @@ interface Toast {
   variant: string;
   body: string;
 }
-
-// eslint-disable-next-line
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const ToastContext = createContext((_value: Toast) => {
   return;
 });
