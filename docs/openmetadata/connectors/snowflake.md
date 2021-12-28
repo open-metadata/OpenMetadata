@@ -8,22 +8,22 @@ description: >-
 
 ## Requirements
 
-Using the OpenMetadata Snowflake connector requires supporting services and software. Please ensure your host system meets the requirements listed below. Then continue to the procedure for installing and configuring this connector.
+Using the OpenMetadata Snowflake connector requires supporting services and software. Please ensure your host system meets the requirements listed below. Then continue to follow the procedure for installing and configuring this connector.
 
-### OpenMetadata (version 0.7.0 or greater)
+### OpenMetadata (version 0.7.0 or later)
 
-To use this guide you must have a running deployment of OpenMetadata. OpenMetadata includes the following services.
+You must have a running deployment of OpenMetadata to use this guide. OpenMetadata includes the following services:
 
-* The OpenMetadata server supporting the metadata APIs and user interface
+* OpenMetadata server supporting the metadata APIs and user interface
 * Elasticsearch for metadata search and discovery
 * MySQL as the backing store for all metadata
 * Airflow for metadata ingestion workflows
 
-If you have not already deployed OpenMetadata, please follow the guide, [Run OpenMetadata](../../install/run-openmetadata.md) to get up and running.
+If you have not already deployed OpenMetadata, please follow the instructions to [Run OpenMetadata](../../install/run-openmetadata.md) to get up and running.
 
-### Python (version 3.8.0 or greater)
+### Python (version 3.8.0 or later)
 
-To check what version of Python you have, please use the following command.
+Please use the following command to check the version of Python you have.
 
 ```
 python3 --version
@@ -31,36 +31,36 @@ python3 --version
 
 ## Procedure
 
-The following is an overview of the steps in this procedure. Please follow all steps relevant to your use case.
+Here’s an overview of the steps in this procedure. Please follow the steps relevant to your use case.
 
 1. [Prepare a Python virtual environment](snowflake.md#1.-prepare-a-python-virtual-environment)
 2. [Install the Python module for this connector](snowflake.md#install-from-pypi-or-source)
 3. [Create a configuration file using template JSON](snowflake.md#4.-create-a-configuration-file-using-the-json-template)
 4. [Configure service settings](snowflake.md#5.-configure-service-settings)
-5. [Enable / disable the data profiler](snowflake.md#6.-configure-data-profiler-settings-optional)
+5. [Enable/disable the data profiler](snowflake.md#6.-configure-data-profiler-settings-optional)
 6. [Install the data profiler Python module (optional)](snowflake.md#3.-install-the-data-profiler-python-module-optional)
 7. [Configure data filters (optional)](snowflake.md#7.-configure-data-filters-optional)
 8. [Configure sample data (optional)](snowflake.md#8.-configure-sample-data-optional)
 9. [Configure DBT (optional)](snowflake.md#9.-configure-dbt-optional)
 10. [Confirm sink settings](snowflake.md#10.-confirm-sink-settings)
 11. [Confirm metadata\_server settings](snowflake.md#11.-confirm-metadata\_server-settings)
-12. [Run Ingestion Workflow](snowflake.md#run-manually)
+12. [Run ingestion workflow](snowflake.md#run-manually)
 
 ### 1. Prepare a Python virtual environment
 
-In this step we will create a Python virtual environment. Using a virtual environment will enable us to avoid conflicts with other Python installations and packages on your host system.&#x20;
+In this step, we'll create a Python virtual environment. Using a virtual environment enables us to avoid conflicts with other Python installations and packages on your host system.&#x20;
 
-In a later step you will install the Python module for this connector and its dependencies in this virtual environment.
+In a later step, you will install the Python module for this connector and its dependencies in this virtual environment.
 
-#### 1a. Create a directory for openmetadata
+#### 1.1 Create a directory for openmetadata
 
-Throughout the docs we use a consistent directory structure OpenMetadata server and connector installation. If you have not already done so by following another guide, please create an openmetadata directory now and change into that directory in your command line environment.
+Throughout the docs, we use a consistent directory structure, OpenMetadata server, and connector installation. If you have not already done so by following another guide, please create an openmetadata directory now and change into that directory in your command line environment.
 
 ```
 mkdir openmetadata; cd openmetadata
 ```
 
-#### 1b. Create a directory for this connector
+#### 1.2 Create a directory for this connector
 
 Run the following command to create a directory for this connector and change into that directory.
 
@@ -68,7 +68,7 @@ Run the following command to create a directory for this connector and change in
 mkdir snowflake; cd snowflake
 ```
 
-#### 1c. Create the virtual environment
+#### 1.3 Create a virtual environment
 
 Run the following command to create a Python virtual environment called, `snowflake-env`.
 
@@ -76,7 +76,7 @@ Run the following command to create a Python virtual environment called, `snowfl
 python3 -m venv snowflake-env
 ```
 
-#### 1d. Activate the virtual environment
+#### 1.4 Activate the virtual environment
 
 Run the following command to activate the virtual environment.&#x20;
 
@@ -84,11 +84,11 @@ Run the following command to activate the virtual environment.&#x20;
 source snowflake-env/bin/activate
 ```
 
-Once activated, you should see your command prompt change to indicate that your commands will now be executed in the environment named, `snowflake-env`.
+Once activated, you should see your command prompt change to indicate that your commands will now be executed in the environment named `snowflake-env`.
 
-#### 1e. Upgrade pip and setuptools to the latest versions
+#### 1.5 Upgrade pip and setuptools to the latest versions
 
-Ensure you have the latest version of pip by running the following command. If you have followed the steps above, this will upgrade pip in your virtual environment.
+Ensure that you have the latest version of pip by running the following command. If you have followed the steps above, this will upgrade pip in your virtual environment.
 
 ```
 pip3 install --upgrade pip setuptools
@@ -96,7 +96,7 @@ pip3 install --upgrade pip setuptools
 
 ### 2. Install the Python module for this connector <a href="#install-from-pypi-or-source" id="install-from-pypi-or-source"></a>
 
-With the virtual environment set up and activated as described in Step 1, run the following command to install the Python module for the Snowflake connector.
+Once the virtual environment is set up and activated as described in Step 1, run the following command to install the Python module for the Snowflake connector.
 
 ```bash
 pip3 install 'openmetadata-ingestion[snowflake]'
@@ -106,9 +106,7 @@ pip3 install 'openmetadata-ingestion[snowflake]'
 
 Create a new file called `snowflake.json` in the current directory. Note that the current directory should be the `openmetadata/snowflake` directory you created in Step 1.&#x20;
 
-For the Snowflake you will need to consider three options for templates with which to begin creating a configuration file. The choice of templates to begin with depends on how your Snowflake user will be authenticated.
-
-Snowflake Sqlalchemy supports Single Sign-On (SSO) with and without a password parameter. Please refer to [this link](https://github.com/snowflakedb/snowflake-sqlalchemy/issues/115) for more information
+To create a configuration file for Snowflake, you’ll need to consider one of the three options for templates. The choice of a template depends on how your Snowflake user will be authenticated. Snowflake SQLAlchemy supports Single Sign-On (SSO) with and without a password parameter. Please refer to [this link](https://github.com/snowflakedb/snowflake-sqlalchemy/issues/115) for more information
 
 Please select the form of authentication you will use for Snowflake and select the template below that matches your use case. Then, copy and paste the configuration template into the `snowflake.json` file you created.
 
@@ -242,7 +240,7 @@ Note: The `source.config` field in the configuration JSON will include the major
 
 ### 4. Configure service settings&#x20;
 
-In this step we will configure the Snowflake service settings required for this connector. Please follow the instructions below to ensure you have configured the connector to read from your Snowflake service as desired.
+In this step we will configure the Snowflake service settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your Snowflake service as desired.
 
 #### host\_port
 
@@ -252,7 +250,7 @@ Edit the value for `source.config.host_port` in `snowflake.json` for your Snowfl
 "host_port": "account.region.service.snowflakecomputing.com"
 ```
 
-Please ensure your Snowflake deployment is reachable from the host you are using to run metadata ingestion.
+Please ensure that your Snowflake deployment is reachable from the host you are using to run metadata ingestion.
 
 #### username
 
@@ -284,7 +282,7 @@ OpenMetadata uniquely identifies services by their `service_name`. Edit the valu
 
 #### database (optional)
 
-If you want to limit metadata ingestion to a single database, include the  `source.config.database` field in your configuration file. If this field is not included, the connector will ingest metadata from all databases the specified user is authorized to read.&#x20;
+If you want to limit metadata ingestion to a single database, include the  `source.config.database` field in your configuration file. If this field is not included, the connector will ingest metadata from all databases that the specified user is authorized to read.&#x20;
 
 To specify a single database to ingest metadata from, provide the name of the database as the value for the `source.config.database` key as illustrated in the example below.
 
@@ -292,15 +290,15 @@ To specify a single database to ingest metadata from, provide the name of the da
 "database": "SNOWFLAKE_SAMPLE_DATA"
 ```
 
-### 5. Enable / disable the data profiler
+### 5. Enable/disable the data profiler
 
-The data profiler ingests usage information for tables. This enables you to assess frequency of use, reliability, and other details.&#x20;
+The data profiler ingests usage information for tables. This enables you to assess the frequency of use, reliability, and other details.&#x20;
 
 #### data\_profiler\_enabled
 
-When enabled, the data profiler will run as part of metadata ingestion. Running the data profiler increases the amount of time metadata ingestion requires, but provides the benefits described above.
+When enabled, the data profiler will run as part of metadata ingestion. Running the data profiler increases the amount of time it takes for metadata ingestion, but provides the benefits mentioned above.
 
-You may disable the data profiler by setting the value for the key `source.config.data_profiler_enabled` to `"false"` as follows. We have done this in the configuration template provided.
+You may disable the data profiler by setting the value for the key `source.config.data_profiler_enabled` to `"false"` as follows. We've done this in the configuration template provided.
 
 ```json
 "data_profiler_enabled": "false"
@@ -318,7 +316,7 @@ Note: The data profiler is enabled by default if no setting is provided for `dat
 
 ### 6. Install the data profiler Python module (optional)
 
-If you enabled the data profiler in Step 5, run the following command to install the Python module for the data profiler. You will need this to run the ingestion workflow.
+If you've enabled the data profiler in Step 5, run the following command to install the Python module for the data profiler. You'll need this to run the ingestion workflow.
 
 ```bash
 pip3 install 'openmetadata-ingestion[data-profiler]'
@@ -396,17 +394,17 @@ You may use either `excludes` or `includes` but not both in `table_filter_patter
 
 #### schema\_filter\_pattern (optional)
 
-Use `source.config.schema_filter_pattern.excludes` and `source.config.schema_filter_pattern.includes` field to select schemas for metadata ingestion by name. The configuration template provides an example.
+Use `source.config.schema_filter_pattern.excludes` and `source.config.schema_filter_pattern.includes` field to select the schemas for metadata ingestion by name. The configuration template provides an example.
 
-The syntax and semantics for `schema_filter_pattern` are the same as for [`table_filter_pattern`](snowflake.md#table\_filter\_pattern-optional). Please see that section for details on use.
+The syntax and semantics for `schema_filter_pattern` are the same as for [`table_filter_pattern`](snowflake.md#table\_filter\_pattern-optional). Please check that section for details.
 
 ### 8. Configure sample data (optional)
 
 #### generate\_sample\_data (optional)
 
-Use the `source.config.generate_sample_data` field to control whether or not to generate sample data to include in table views in the OpenMetadata user interface. See the figure below for an example.
+Use the `source.config.generate_sample_data` field to control whether or not to generate sample data to include in table views in the OpenMetadata user interface. The image below provides an example.
 
-![](../../.gitbook/assets/sample-data.png)
+![](../../.gitbook/assets/generate\_sample\_data.png)
 
 Explicitly include sample data by adding the following key-value pair in the `source.config` field of your configuration file.
 
@@ -414,9 +412,9 @@ Explicitly include sample data by adding the following key-value pair in the `so
 "generate_sample_data": "true"
 ```
 
-If set to true, the connector will collect the first 50 rows of data from each table included in ingestion and catalog that data as sample data to which users can refer in the OpenMetadata user interface.
+If set to true, the connector will collect the first 50 rows of data from each table included in ingestion, and catalog that data as sample data, which users can refer to in the OpenMetadata user interface.
 
-You can exclude collection of sample data by adding the following key-value pair in the `source.config` field of your configuration file.
+You can exclude the collection of sample data by adding the following key-value pair in the `source.config` field of your configuration file.
 
 ```json
 "generate_sample_data": "false"
@@ -428,9 +426,9 @@ Note: `generate_sample_data` is set to `true` by default.
 
 ### 9. Configure DBT (optional)
 
-DBT provides transformation logic that creates tables and views from raw data. OpenMetadata includes an integration for DBT that enables you to see the models used to generate a table from that table's details page in the OpenMetadata user interface. See the figure below for an example.
+DBT provides transformation logic that creates tables and views from raw data. OpenMetadata includes an integration for DBT that enables you to see the models used to generate a table from that table's details page in the OpenMetadata user interface. The image below provides an example.
 
-![](../../.gitbook/assets/dbt-tab.png)
+![](../../.gitbook/assets/configure\_dbt.png)
 
 To include DBT models and metadata in your ingestion workflows, specify the location of the DBT manifest and catalog files as fields in your configuration file.
 
@@ -452,7 +450,7 @@ Use the field `source.config.dbt_catalog_file` to specify the location of your D
 
 ### 10. Confirm sink settings
 
-You should not need to make any changes to the fields defined for `sink` in the template code you copied into `snowflake.json` in Step 4. This part of your configuration file should be as follows.
+You need not make any changes to the fields defined for `sink` in the template code you copied into `snowflake.json` in Step 4. This part of your configuration file should be as follows.
 
 ```json
 "sink": {
@@ -463,7 +461,7 @@ You should not need to make any changes to the fields defined for `sink` in the 
 
 ### 11. Confirm metadata\_server settings
 
-You should not need to make any changes to the fields defined for `metadata_server` in the template code you copied into `snowflake.json` in Step 4. This part of your configuration file should be as follows.
+You need not make any changes to the fields defined for `metadata_server` in the template code you copied into `snowflake.json` in Step 4. This part of your configuration file should be as follows.
 
 ```json
 "metadata_server": {
@@ -475,7 +473,7 @@ You should not need to make any changes to the fields defined for `metadata_serv
 }
 ```
 
-### 12. Run Ingestion Workflow <a href="#run-manually" id="run-manually"></a>
+### 12. Run ingestion workflow <a href="#run-manually" id="run-manually"></a>
 
 Your `snowflake.json` configuration file should now be fully configured and ready to use in an ingestion workflow.
 
@@ -487,20 +485,22 @@ metadata ingest -c ./snowflake.json
 
 ## Next Steps
 
-As the ingestion workflow runs, you may observe progress both from the command line and from the OpenMetadata user interface. To view the metadata ingested from Snowflake, visit [http://localhost:8585/explore/tables](http://localhost:8585/explore/tables). Select the Snowflake service to filter for the data you have ingested using the workflow you configured and ran following this guide. See the figure below for an example.
+As the ingestion workflow runs, you may observe progress both from the command line and from the OpenMetadata user interface. To view the metadata ingested from Snowflake, visit [http://localhost:8585/explore/tables](http://localhost:8585/explore/tables). Select the Snowflake service to filter for the data you've ingested using the workflow you configured and ran following this guide. The image below provides an example.
+
+![](<../../.gitbook/assets/next\_steps (1).png>)
 
 ## Troubleshooting
 
 ### ERROR: Failed building wheel for cryptography
 
-When attempting to install the `openmetadata-ingestion[snowflake]` Python package in Step 2, you might encounter the following error. The error might also include mention of a Rust compiler.
+When attempting to install the `openmetadata-ingestion[snowflake]` Python package in Step 2, you might encounter the following error. The error might include a mention of a Rust compiler.
 
 ```
 Failed to build cryptography
 ERROR: Could not build wheels for cryptography which use PEP 517 and cannot be installed directly
 ```
 
-This problem is usually due to running on older version of pip. Try upgrading pip as follows.
+This error usually occurs due to an older version of pip. Try upgrading pip as follows.
 
 ```bash
 pip3 install --upgrade pip setuptools
