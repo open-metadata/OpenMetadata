@@ -90,6 +90,7 @@ export const serviceTypes: Record<ServiceTypes, Array<string>> = {
   messagingServices: ['Kafka'],
   dashboardServices: ['Superset', 'Looker', 'Tableau', 'Redash', 'Metabase'],
   pipelineServices: ['Airflow', 'Prefect', 'Glue'],
+  storageServices: ['GCS', 'S3'],
 };
 
 export const arrServiceTypes: Array<ServiceTypes> = [
@@ -97,6 +98,7 @@ export const arrServiceTypes: Array<ServiceTypes> = [
   'messagingServices',
   'dashboardServices',
   'pipelineServices',
+  'storageServices',
 ];
 
 export const servicesDisplayName = {
@@ -104,4 +106,5 @@ export const servicesDisplayName = {
   messagingServices: 'Messaging Service',
   dashboardServices: 'Dashboard Service',
   pipelineServices: 'Pipeline Service',
+  storageServices: 'Storage Service',
 };

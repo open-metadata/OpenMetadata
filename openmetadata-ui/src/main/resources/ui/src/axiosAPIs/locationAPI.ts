@@ -11,17 +11,19 @@
  *  limitations under the License.
  */
 
-export enum EntityType {
-  DATASET = 'dataset',
-  TABLE = 'table',
-  TOPIC = 'topic',
-  DASHBOARD = 'dashboard',
-  PIPELINE = 'pipeline',
-  LOCATION = 'location',
-}
+import { AxiosResponse } from 'axios';
+import { getURLWithQueryFields } from '../utils/APIUtils';
+import APIClient from './index';
 
-export enum ChangeType {
-  ADDED = 'Added',
-  UPDATED = 'Updated',
-  REMOVED = 'Removed',
-}
+export const getLocations: Function = (
+  serviceName: string,
+  paging: string,
+  arrQueryFields: string
+): Promise<AxiosResponse> => {
+  const url = `${getURLWithQueryFields(
+    `/locations`,
+    arrQueryFields
+  )}&service=${serviceName}${paging ? paging : ''}`;
+
+  return APIClient.get(url);
+};

@@ -51,6 +51,13 @@ const mockServiceDetails = {
         href: 'http://pipelineServices',
       },
     },
+    {
+      collection: {
+        name: 'storageServices',
+        documentation: 'Storage service collection',
+        href: 'http://storageServices',
+      },
+    },
   ],
 };
 
@@ -132,6 +139,21 @@ const mockPipelineService = {
   },
 };
 
+const mockStorageService = {
+  data: {
+    data: [
+      {
+        id: '15cfc2e6-889f-46f8-b20a-3dcb4545a346',
+        name: 'gcs',
+        serviceType: 'S3',
+        description: 'S3 storage service',
+        version: 0.1,
+        href: 'http://localhost:8585/api/v1/services/storageServices/715cfc2e6-889f-46f8-b20a-3dcb4545a346',
+      },
+    ],
+  },
+};
+
 jest.mock('../../axiosAPIs/serviceAPI', () => ({
   deleteService: jest.fn(),
   getServiceDetails: jest
@@ -147,6 +169,9 @@ jest.mock('../../axiosAPIs/serviceAPI', () => ({
 
       case 'pipelineServices':
         return Promise.resolve(mockPipelineService);
+
+        case 'storageServices':
+        return Promise.resolve(mockStorageService);
 
       default:
         return Promise.resolve(mockDashboardService);

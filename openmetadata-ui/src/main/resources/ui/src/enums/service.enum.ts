@@ -16,6 +16,7 @@ export enum ServiceCategory {
   MESSAGING_SERVICES = 'messagingServices',
   DASHBOARD_SERVICES = 'dashboardServices',
   PIPELINE_SERVICES = 'pipelineServices',
+  STORAGE_SERVICES = 'storageServices',
 }
 
 export enum DatabaseServiceType {
@@ -66,4 +67,11 @@ export enum IngestionType {
   POSTGRES = 'postgres',
   TRINO = 'trino',
   VERTICA = 'vertica',
+}
+
+export enum StorageServiceType {
+  ABFS = 'ABFS',
+  GCS = 'GCS',
+  HDFS = 'HDFS',
+  S3 = 'S3',
 }

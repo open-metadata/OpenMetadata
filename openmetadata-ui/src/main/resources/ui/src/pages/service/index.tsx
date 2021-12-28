@@ -40,11 +40,13 @@ import {
 import { Dashboard } from '../../generated/entity/data/dashboard';
 import { Database } from '../../generated/entity/data/database';
 import { Pipeline } from '../../generated/entity/data/pipeline';
+import { Location } from '../../generated/entity/data/location';
 import { Topic } from '../../generated/entity/data/topic';
 import { DashboardService } from '../../generated/entity/services/dashboardService';
 import { DatabaseService } from '../../generated/entity/services/databaseService';
 import { MessagingService } from '../../generated/entity/services/messagingService';
 import { PipelineService } from '../../generated/entity/services/pipelineService';
+import { StorageService } from '../../generated/entity/services/storageService';
 import useToastContext from '../../hooks/useToastContext';
 import { isEven } from '../../utils/CommonUtils';
 import {
@@ -54,12 +56,14 @@ import {
 } from '../../utils/ServiceUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import { getEntityLink, getUsagePercentile } from '../../utils/TableUtils';
+import {getLocations} from "../../axiosAPIs/locationAPI";
 
 type Data = Database & Topic & Dashboard;
 type ServiceDataObj = { name: string } & Partial<DatabaseService> &
   Partial<MessagingService> &
   Partial<DashboardService> &
-  Partial<PipelineService>;
+  Partial<PipelineService> &
+  Partial<StorageService>;
 
 const ServicePage: FunctionComponent = () => {
   const { serviceFQN, serviceType, serviceCategory } = useParams() as Record<
@@ -161,6 +165,26 @@ const ServicePage: FunctionComponent = () => {
       });
   };
 
+  const fetchLocations = (paging?: string) => {
+    setIsloading(true);
+    getLocations(serviceFQN, paging, ['owner', 'tags'])
+      .then((res: AxiosResponse) => {
+        if (res.data.data) {
+          setData(res.data.data);
+          setPaging(res.data.paging);
+          setInstanceCount(res.data.paging.total);
+          setIsloading(false);
+        } else {
+          setData([]);
+          setPaging(pagingObject);
+          setIsloading(false);
+        }
+      })
+      .catch(() => {
+        setIsloading(false);
+      });
+  };
+
   const getOtherDetails = (paging?: string) => {
     switch (serviceName) {
       case ServiceCategory.DATABASE_SERVICES: {
@@ -180,6 +204,11 @@ const ServicePage: FunctionComponent = () => {
       }
       case ServiceCategory.PIPELINE_SERVICES: {
         fetchPipeLines(paging);
+
+        break;
+      }
+      case ServiceCategory.STORAGE_SERVICES: {
+        fetchLocations(paging);
 
         break;
       }
@@ -456,6 +485,16 @@ const ServicePage: FunctionComponent = () => {
           </>
         );
       }
+      case ServiceCategory.STORAGE_SERVICES: {
+        return (
+          <>
+            <th className="tableHead-cell">Location Name</th>
+            <th className="tableHead-cell">Description</th>
+            <th className="tableHead-cell">Owner</th>
+            <th className="tableHead-cell">Tags</th>
+          </>
+        );
+      }
       default:
         return <></>;
     }
@@ -551,6 +590,31 @@ const ServicePage: FunctionComponent = () => {
           </td>
         );
       }
+      case ServiceCategory.STORAGE_SERVICES: {
+        const location = data as Location;
+
+        return (
+          <td className="tableBody-cell">
+            {location.tags && location.tags?.length > 0
+              ? location.tags.map((tag, tagIndex) => (
+                <Tags
+                  className="tw-bg-gray-200"
+                  key={tagIndex}
+                  startWith="#"
+                  tag={{
+                    ...tag,
+                    tagFQN: `${
+                      tag.tagFQN?.startsWith('Tier.Tier')
+                        ? tag.tagFQN.split('.')[1]
+                        : tag.tagFQN
+                    }`,
+                  }}
+                />
+              ))
+              : '--'}
+          </td>
+        );
+      }
       default:
         return <></>;
     }
@@ -629,6 +693,8 @@ const ServicePage: FunctionComponent = () => {
         return 'Topics';
       case ServiceCategory.PIPELINE_SERVICES:
         return 'Pipelines';
+      case ServiceCategory.STORAGE_SERVICES:
+        return 'Locations';
       case ServiceCategory.DATABASE_SERVICES:
       default:
         return 'Databases';
@@ -699,9 +765,10 @@ const ServicePage: FunctionComponent = () => {
                         data-testid="column"
                         key={index}>
                         <td className="tableBody-cell">
+                          { serviceName !== ServiceCategory.STORAGE_SERVICES ?(
                           <Link
-                            to={getLinkForFqn(
-                              dataObj.fullyQualifiedName || ''
+                              to={getLinkForFqn(
+                                dataObj.fullyQualifiedName || ''
                             )}>
                             {serviceName ===
                               ServiceCategory.DASHBOARD_SERVICES &&
@@ -709,6 +776,9 @@ const ServicePage: FunctionComponent = () => {
                               ? (dataObj as Dashboard).displayName
                               : dataObj.name}
                           </Link>
+                          ) : (
+                            <p className="tableBody-cell">{dataObj.name}</p>
+                          )}
                         </td>
                         <td className="tableBody-cell">
                           {dataObj.description ? (

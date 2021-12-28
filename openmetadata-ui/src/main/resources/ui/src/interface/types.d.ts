@@ -314,7 +314,8 @@ declare module 'Models' {
     | 'databaseServices'
     | 'messagingServices'
     | 'dashboardServices'
-    | 'pipelineServices';
+    | 'pipelineServices'
+    | 'storageServices';
 
   export type SampleData = {
     columns: Array<string>;

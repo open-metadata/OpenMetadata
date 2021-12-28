@@ -55,6 +55,7 @@ import {
 import { DatabaseService } from '../../generated/entity/services/databaseService';
 import { MessagingService } from '../../generated/entity/services/messagingService';
 import { PipelineService } from '../../generated/entity/services/pipelineService';
+import { StorageService } from '../../generated/entity/services/storageService';
 import { useAuth } from '../../hooks/authHooks';
 import useToastContext from '../../hooks/useToastContext';
 import { getCountBadge, getTabClasses } from '../../utils/CommonUtils';
@@ -66,6 +67,7 @@ type ServiceRecord = {
   messagingServices: Array<MessagingService>;
   dashboardServices: Array<DashboardService>;
   pipelineServices: Array<PipelineService>;
+  storageServices: Array<StorageService>;
 };
 
 type ServicePagingRecord = {
@@ -73,6 +75,7 @@ type ServicePagingRecord = {
   messagingServices: Paging;
   dashboardServices: Paging;
   pipelineServices: Paging;
+  storageServices: Paging;
 };
 
 export type ApiData = {
@@ -101,12 +104,14 @@ const ServicesPage = () => {
     messagingServices: pagingObject,
     dashboardServices: pagingObject,
     pipelineServices: pagingObject,
+    storageServices: pagingObject,
   });
   const [services, setServices] = useState<ServiceRecord>({
     databaseServices: [],
     messagingServices: [],
     dashboardServices: [],
     pipelineServices: [],
+    storageServices: [],
   });
   const [serviceList, setServiceList] = useState<Array<ServiceDataObj>>([]);
   const [editData, setEditData] = useState<ServiceDataObj>();
@@ -119,6 +124,7 @@ const ServicesPage = () => {
     messagingServices: 0,
     dashboardServices: 0,
     pipelineServices: 0,
+    storageServices: 0,
   });
 
   const updateServiceList = (
@@ -157,6 +163,7 @@ const ServicesPage = () => {
               messagingServices: servicePaging.messagingServices.total || 0,
               dashboardServices: servicePaging.dashboardServices.total || 0,
               pipelineServices: servicePaging.pipelineServices.total || 0,
+              storageServices: servicePaging.storageServices.total || 0,
             });
             setServiceList(
               serviceRecord[serviceName] as unknown as Array<ServiceDataObj>
@@ -378,14 +385,14 @@ const ServicesPage = () => {
         const pipelineService = service as unknown as PipelineService;
 
         return (
-          <>
-            <div className="tw-mb-1" data-testid="additional-field">
-              <label className="tw-mb-0">Pipeline URL:</label>
-              <span className=" tw-ml-1 tw-font-normal tw-text-grey-body">
+            <>
+              <div className="tw-mb-1" data-testid="additional-field">
+                <label className="tw-mb-0">Pipeline URL:</label>
+                <span className=" tw-ml-1 tw-font-normal tw-text-grey-body">
                 {pipelineService.pipelineUrl}
               </span>
-            </div>
-          </>
+              </div>
+            </>
         );
       }
       default: {
