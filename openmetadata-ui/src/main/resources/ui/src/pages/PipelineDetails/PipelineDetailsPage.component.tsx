@@ -37,6 +37,7 @@ import PipelineDetails from '../../components/PipelineDetails/PipelineDetails.co
 import {
   getPipelineDetailsPath,
   getServiceDetailsPath,
+  getVersionPath,
 } from '../../constants/constants';
 import { EntityType } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
@@ -98,6 +99,9 @@ const PipelineDetailsPage = () => {
     {} as EntityLineage
   );
   const [leafNodes, setLeafNodes] = useState<LeafNodes>({} as LeafNodes);
+
+  const [currentVersion, setCurrentVersion] = useState<string>();
+
   const activeTabHandler = (tabValue: number) => {
     const currentTabIndex = tabValue - 1;
     if (pipelineDetailsTabs[currentTabIndex].path !== tab) {
@@ -154,9 +158,11 @@ const PipelineDetailsPage = () => {
           displayName,
           tasks,
           pipelineUrl,
+          version,
         } = res.data;
         setDisplayName(displayName);
         setPipelineDetails(res.data);
+        setCurrentVersion(version);
         setPipelineId(id);
         setDescription(description ?? '');
         setFollowers(followers);
@@ -214,7 +220,8 @@ const PipelineDetailsPage = () => {
 
   const descriptionUpdateHandler = (updatedPipeline: Pipeline) => {
     saveUpdatedPipelineData(updatedPipeline).then((res: AxiosResponse) => {
-      const { description } = res.data;
+      const { description, version } = res.data;
+      setCurrentVersion(version);
       setPipelineDetails(res.data);
       setDescription(description);
     });
@@ -225,6 +232,7 @@ const PipelineDetailsPage = () => {
       saveUpdatedPipelineData(updatedPipeline)
         .then((res) => {
           setPipelineDetails(res.data);
+          setCurrentVersion(res.data.version);
           setOwner(getOwnerFromId(res.data.owner?.id));
           setTier(getTierTags(res.data.tags));
           resolve();
@@ -236,6 +244,7 @@ const PipelineDetailsPage = () => {
   const onTagUpdate = (updatedPipeline: Pipeline) => {
     saveUpdatedPipelineData(updatedPipeline).then((res: AxiosResponse) => {
       setTier(getTierTags(res.data.tags));
+      setCurrentVersion(res.data.version);
       setTags(getTagsWithoutTier(res.data.tags));
     });
   };
@@ -270,6 +279,12 @@ const PipelineDetailsPage = () => {
         setNodeLoading((prev) => ({ ...prev, state: false }));
       }, 500);
     });
+  };
+
+  const versionHandler = () => {
+    history.push(
+      getVersionPath(EntityType.PIPELINE, pipelineFQN, currentVersion as string)
+    );
   };
 
   useEffect(() => {
@@ -319,6 +334,8 @@ const PipelineDetailsPage = () => {
           tier={tier as TagLabel}
           unfollowPipelineHandler={unfollowPipeline}
           users={AppState.users}
+          version={currentVersion as string}
+          versionHandler={versionHandler}
         />
       )}
     </>

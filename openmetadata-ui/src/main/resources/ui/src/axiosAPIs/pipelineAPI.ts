@@ -16,6 +16,22 @@ import { Pipeline } from '../generated/entity/data/pipeline';
 import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
 
+export const getPipelineVersions: Function = (
+  id: string
+): Promise<AxiosResponse> => {
+  const url = `/pipelines/${id}/versions`;
+
+  return APIClient.get(url);
+};
+export const getPipelineVersion: Function = (
+  id: string,
+  version: string
+): Promise<AxiosResponse> => {
+  const url = `/pipelines/${id}/versions/${version}`;
+
+  return APIClient.get(url);
+};
+
 export const getPipelines: Function = (
   serviceName: string,
   paging: string,

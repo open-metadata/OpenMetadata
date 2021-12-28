@@ -64,6 +64,8 @@ const PipelineDetails = ({
   loadNodeHandler,
   lineageLeafNodes,
   isNodeLoading,
+  version,
+  versionHandler,
 }: PipeLineDetailsProp) => {
   const { isAuthDisabled } = useAuth();
   const [isEdit, setIsEdit] = useState(false);
@@ -283,6 +285,8 @@ const PipelineDetails = ({
             tagsHandler={onTagUpdate}
             tier={tier}
             titleLinks={slashedPipelineName}
+            version={version}
+            versionHandler={versionHandler}
           />
           <div className="tw-mt-4 tw-flex tw-flex-col tw-flex-grow">
             <TabsPane

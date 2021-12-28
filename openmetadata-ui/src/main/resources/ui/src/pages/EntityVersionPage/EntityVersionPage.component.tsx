@@ -20,6 +20,11 @@ import {
   getDashboardVersions,
 } from '../../axiosAPIs/dashboardAPI';
 import {
+  getPipelineByFqn,
+  getPipelineVersion,
+  getPipelineVersions,
+} from '../../axiosAPIs/pipelineAPI';
+import {
   getTableDetailsByFQN,
   getTableVersion,
   getTableVersions,
@@ -33,11 +38,13 @@ import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/t
 import DashboardVersion from '../../components/DashboardVersion/DashboardVersion.component';
 import DatasetVersion from '../../components/DatasetVersion/DatasetVersion.component';
 import Loader from '../../components/Loader/Loader';
+import PipelineVersion from '../../components/PipelineVersion/PipelineVersion.component';
 import TopicVersion from '../../components/TopicVersion/TopicVersion.component';
 import {
   getDashboardDetailsPath,
   getDatabaseDetailsPath,
   getDatasetDetailsPath,
+  getPipelineDetailsPath,
   getServiceDetailsPath,
   getTopicDetailsPath,
   getVersionPath,
@@ -98,6 +105,11 @@ const EntityVersionPage: FunctionComponent = () => {
 
       case EntityType.DASHBOARD:
         history.push(getDashboardDetailsPath(entityFQN));
+
+        break;
+
+      case EntityType.PIPELINE:
+        history.push(getPipelineDetailsPath(entityFQN));
 
         break;
 
@@ -259,6 +271,55 @@ const EntityVersionPage: FunctionComponent = () => {
             ]);
 
             getDashboardVersions(id)
+              .then((vres: AxiosResponse) => {
+                setVersionList(vres.data);
+                setIsloading(false);
+              })
+              .catch((err: AxiosError) => {
+                const msg = err.message;
+                showToast({
+                  variant: 'error',
+                  body: msg ?? `Error while fetching ${entityFQN} versions`,
+                });
+              });
+          })
+          .catch((err: AxiosError) => {
+            const msg = err.message;
+            showToast({
+              variant: 'error',
+              body: msg ?? `Error while fetching ${entityFQN} versions`,
+            });
+          });
+
+        break;
+      }
+      case EntityType.PIPELINE: {
+        getPipelineByFqn(
+          getPartialNameFromFQN(entityFQN, ['service', 'database'], '.'),
+          ['owner', 'tags', 'tasks']
+        )
+          .then((res: AxiosResponse) => {
+            const { id, owner, tags, name, service, serviceType } = res.data;
+            setEntityState(tags, owner, res.data, [
+              {
+                name: service.name,
+                url: service.name
+                  ? getServiceDetailsPath(
+                      service.name,
+                      serviceType,
+                      ServiceCategory.MESSAGING_SERVICES
+                    )
+                  : '',
+                imgSrc: serviceType ? serviceTypeLogo(serviceType) : undefined,
+              },
+              {
+                name: name,
+                url: '',
+                activeTitle: true,
+              },
+            ]);
+
+            getPipelineVersions(id)
               .then((vres: AxiosResponse) => {
                 setVersionList(vres.data);
                 setIsloading(false);
@@ -455,6 +516,58 @@ const EntityVersionPage: FunctionComponent = () => {
 
         break;
       }
+      case EntityType.PIPELINE: {
+        getPipelineByFqn(
+          getPartialNameFromFQN(entityFQN, ['service', 'database'], '.')
+        )
+          .then((res: AxiosResponse) => {
+            const { id, name, service, serviceType } = res.data;
+            getPipelineVersion(id, version)
+              .then((vRes: AxiosResponse) => {
+                const { owner, tags } = vRes.data;
+                setEntityState(tags, owner, vRes.data, [
+                  {
+                    name: service.name,
+                    url: service.name
+                      ? getServiceDetailsPath(
+                          service.name,
+                          serviceType,
+                          ServiceCategory.MESSAGING_SERVICES
+                        )
+                      : '',
+                    imgSrc: serviceType
+                      ? serviceTypeLogo(serviceType)
+                      : undefined,
+                  },
+                  {
+                    name: name,
+                    url: '',
+                    activeTitle: true,
+                  },
+                ]);
+                setIsVersionLoading(false);
+              })
+              .catch((err: AxiosError) => {
+                const msg = err.message;
+                showToast({
+                  variant: 'error',
+                  body:
+                    msg ??
+                    `Error while fetching ${entityFQN} version ${version}`,
+                });
+              });
+          })
+          .catch((err: AxiosError) => {
+            const msg = err.message;
+            showToast({
+              variant: 'error',
+              body:
+                msg ?? `Error while fetching ${entityFQN}  version ${version}`,
+            });
+          });
+
+        break;
+      }
 
       default:
         break;
@@ -504,6 +617,23 @@ const EntityVersionPage: FunctionComponent = () => {
             isVersionLoading={isVersionLoading}
             owner={owner}
             slashedDashboardName={slashedEntityName}
+            tier={tier as TagLabel}
+            topicFQN={entityFQN}
+            version={version}
+            versionHandler={versionHandler}
+            versionList={versionList}
+          />
+        );
+      }
+
+      case EntityType.PIPELINE: {
+        return (
+          <PipelineVersion
+            backHandler={backHandler}
+            currentVersionData={currentVersionData}
+            isVersionLoading={isVersionLoading}
+            owner={owner}
+            slashedPipelineName={slashedEntityName}
             tier={tier as TagLabel}
             topicFQN={entityFQN}
             version={version}
