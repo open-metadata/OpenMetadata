@@ -204,7 +204,7 @@ The data profiler ingests usage information for tables. This enables you to asse
 
 #### data\_profiler\_enabled
 
-When enabled, the data profiler will run as part of metadata ingestion. Running the data profiler increases the amount of time it takes for metadata ingestion, but provides the benefits described above.
+When enabled, the data profiler will run as part of metadata ingestion. Running the data profiler increases the amount of time it takes for metadata ingestion, but provides the benefits mentioned above.
 
 You may disable the data profiler by setting the value for the key `source.config.data_profiler_enabled` to `"false"` as follows. We've done this in the configuration template provided.
 
