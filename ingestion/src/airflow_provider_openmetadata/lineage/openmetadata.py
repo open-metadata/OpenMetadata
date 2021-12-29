@@ -64,14 +64,14 @@ def get_lineage_config() -> OpenMetadataLineageConfig:
         if openmetadata_config_file:
             config = json.load(open(openmetadata_config_file))
             return OpenMetadataLineageConfig.parse_obj(config)
-        else:
-            return OpenMetadataLineageConfig.parse_obj(
-                {
-                    "airflow_service_name": "airflow",
-                    "api_endpoint": "http://localhost:8585/api",
-                    "auth_provider_type": "no-auth",
-                }
-            )
+
+    return OpenMetadataLineageConfig.parse_obj(
+        {
+            "airflow_service_name": "airflow",
+            "api_endpoint": "http://localhost:8585/api",
+            "auth_provider_type": "no-auth",
+        }
+    )
 
 
 allowed_task_keys = [
