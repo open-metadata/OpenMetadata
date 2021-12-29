@@ -111,16 +111,16 @@ public class TableDetailsPageTest {
     Events.click(webDriver, By.xpath("//div[@data-testid='description']//button"));
     Events.sendKeys(webDriver, By.xpath(enterDescription), editDescription);
     Events.click(webDriver, By.cssSelector("[data-testid='save']"));
-//    webDriver.navigate().refresh();
-//    wait.until(
-//        ExpectedConditions.elementToBeClickable(By.cssSelector("[data-testid='searchbar']")));
-//    Events.sendKeys(webDriver, By.cssSelector("[data-testid='searchbar']"), "address1");
-//    Thread.sleep(2000);
-//    actions
-//        .moveToElement(webDriver.findElement(By.xpath("//div[@data-testid='description']//button")))
-//        .perform();
-//    Events.click(webDriver, By.xpath("//div[@data-testid='description']//button"));
-//    webDriver.findElement(By.xpath("//*[text()[contains(.,'" + editDescription + "')]] "));
+    webDriver.navigate().refresh();
+    wait.until(
+        ExpectedConditions.elementToBeClickable(By.cssSelector("[data-testid='searchbar']")));
+    Events.sendKeys(webDriver, By.cssSelector("[data-testid='searchbar']"), "address1");
+    Thread.sleep(2000);
+    actions
+        .moveToElement(webDriver.findElement(By.xpath("//div[@data-testid='description']//button")))
+        .perform();
+    Events.click(webDriver, By.xpath("//div[@data-testid='description']//button"));
+    webDriver.findElement(By.xpath("//*[text()[contains(.,'" + editDescription + "')]] "));
   }
 
   @Test

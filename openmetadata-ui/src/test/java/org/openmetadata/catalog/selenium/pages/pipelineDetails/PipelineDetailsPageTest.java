@@ -130,13 +130,13 @@ public class PipelineDetailsPageTest {
     Events.click(webDriver, By.xpath("//div[@data-testid='description']/button"));
     Events.sendKeys(webDriver, By.xpath(enterDescription), editDescription);
     Events.click(webDriver, By.cssSelector("[data-testid='save']"));
-//    webDriver.navigate().refresh();
-//    Thread.sleep(1000);
-//    actions
-//        .moveToElement(webDriver.findElement(By.xpath("//div[@data-testid='description']/button")))
-//        .perform();
-//    Events.click(webDriver, By.xpath("//div[@data-testid='description']/button"));
-//    webDriver.findElement(By.xpath("//*[text()[contains(.,'" + editDescription + "')]] "));
+    webDriver.navigate().refresh();
+    Thread.sleep(1000);
+    actions
+        .moveToElement(webDriver.findElement(By.xpath("//div[@data-testid='description']/button")))
+        .perform();
+    Events.click(webDriver, By.xpath("//div[@data-testid='description']/button"));
+    webDriver.findElement(By.xpath("//*[text()[contains(.,'" + editDescription + "')]] "));
   }
 
   @Test
