@@ -16,6 +16,22 @@ import { Dashboard } from '../generated/entity/data/dashboard';
 import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
 
+export const getDashboardVersions: Function = (
+  id: string
+): Promise<AxiosResponse> => {
+  const url = `/dashboards/${id}/versions`;
+
+  return APIClient.get(url);
+};
+export const getDashboardVersion: Function = (
+  id: string,
+  version: string
+): Promise<AxiosResponse> => {
+  const url = `/dashboards/${id}/versions/${version}`;
+
+  return APIClient.get(url);
+};
+
 export const getDashboards: Function = (
   serviceName: string,
   paging: string,
