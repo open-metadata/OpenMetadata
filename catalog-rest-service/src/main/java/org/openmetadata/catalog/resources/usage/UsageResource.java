@@ -40,7 +40,7 @@ import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.UsageRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.resources.teams.UserResource;
-import org.openmetadata.catalog.security.CatalogAuthorizer;
+import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.type.DailyCount;
 import org.openmetadata.catalog.type.EntityUsage;
 import org.openmetadata.catalog.util.RestUtil;
@@ -57,7 +57,7 @@ public class UsageResource {
   private final UsageRepository dao;
 
   @Inject
-  public UsageResource(CollectionDAO dao, CatalogAuthorizer authorizer) {
+  public UsageResource(CollectionDAO dao, Authorizer authorizer) {
     Objects.requireNonNull(dao, "UsageRepository must not be null");
     this.dao = new UsageRepository(dao);
   }

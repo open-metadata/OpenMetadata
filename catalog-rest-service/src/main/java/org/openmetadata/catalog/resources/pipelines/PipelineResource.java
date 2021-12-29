@@ -60,7 +60,7 @@ import org.openmetadata.catalog.entity.data.Pipeline;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.PipelineRepository;
 import org.openmetadata.catalog.resources.Collection;
-import org.openmetadata.catalog.security.CatalogAuthorizer;
+import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
@@ -77,7 +77,7 @@ import org.openmetadata.catalog.util.ResultList;
 public class PipelineResource {
   public static final String COLLECTION_PATH = "v1/pipelines/";
   private final PipelineRepository dao;
-  private final CatalogAuthorizer authorizer;
+  private final Authorizer authorizer;
 
   public static ResultList<Pipeline> addHref(UriInfo uriInfo, ResultList<Pipeline> pipelines) {
     Optional.ofNullable(pipelines.getData()).orElse(Collections.emptyList()).forEach(i -> addHref(uriInfo, i));
@@ -93,7 +93,7 @@ public class PipelineResource {
   }
 
   @Inject
-  public PipelineResource(CollectionDAO dao, CatalogAuthorizer authorizer) {
+  public PipelineResource(CollectionDAO dao, Authorizer authorizer) {
     Objects.requireNonNull(dao, "PipelineRepository must not be null");
     this.dao = new PipelineRepository(dao);
     this.authorizer = authorizer;

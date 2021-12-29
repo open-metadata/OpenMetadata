@@ -58,7 +58,7 @@ import org.openmetadata.catalog.entity.data.MlModel;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.MlModelRepository;
 import org.openmetadata.catalog.resources.Collection;
-import org.openmetadata.catalog.security.CatalogAuthorizer;
+import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
@@ -75,7 +75,7 @@ import org.openmetadata.catalog.util.ResultList;
 public class MlModelResource {
   public static final String COLLECTION_PATH = "v1/mlmodels/";
   private final MlModelRepository dao;
-  private final CatalogAuthorizer authorizer;
+  private final Authorizer authorizer;
 
   public static MlModel addHref(UriInfo uriInfo, MlModel mlmodel) {
     mlmodel.setHref(RestUtil.getHref(uriInfo, COLLECTION_PATH, mlmodel.getId()));
@@ -86,7 +86,7 @@ public class MlModelResource {
   }
 
   @Inject
-  public MlModelResource(CollectionDAO dao, CatalogAuthorizer authorizer) {
+  public MlModelResource(CollectionDAO dao, Authorizer authorizer) {
     Objects.requireNonNull(dao, "ModelRepository must not be null");
     this.dao = new MlModelRepository(dao);
     this.authorizer = authorizer;

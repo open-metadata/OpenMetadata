@@ -58,7 +58,7 @@ import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.TeamRepository;
 import org.openmetadata.catalog.resources.Collection;
-import org.openmetadata.catalog.security.CatalogAuthorizer;
+import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.util.EntityUtil;
@@ -74,7 +74,7 @@ import org.openmetadata.catalog.util.ResultList;
 public class TeamResource {
   public static final String COLLECTION_PATH = "/v1/teams/";
   private final TeamRepository dao;
-  private final CatalogAuthorizer authorizer;
+  private final Authorizer authorizer;
 
   public static Team addHref(UriInfo uriInfo, Team team) {
     Entity.withHref(uriInfo, team.getUsers());
@@ -83,7 +83,7 @@ public class TeamResource {
   }
 
   @Inject
-  public TeamResource(CollectionDAO dao, CatalogAuthorizer authorizer) {
+  public TeamResource(CollectionDAO dao, Authorizer authorizer) {
     Objects.requireNonNull(dao, "TeamRepository must not be null");
     this.dao = new TeamRepository(dao);
     this.authorizer = authorizer;

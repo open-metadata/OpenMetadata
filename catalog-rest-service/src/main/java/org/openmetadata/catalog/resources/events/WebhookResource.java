@@ -50,7 +50,7 @@ import org.openmetadata.catalog.api.events.CreateWebhook;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.WebhookRepository;
 import org.openmetadata.catalog.resources.Collection;
-import org.openmetadata.catalog.security.CatalogAuthorizer;
+import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.ChangeEvent;
 import org.openmetadata.catalog.type.EntityHistory;
@@ -69,7 +69,7 @@ import org.openmetadata.catalog.util.ResultList;
 public class WebhookResource {
   public static final String COLLECTION_PATH = "v1/webhook/";
   private final WebhookRepository dao;
-  private final CatalogAuthorizer authorizer;
+  private final Authorizer authorizer;
 
   public static class WebhookList extends ResultList<Webhook> {
 
@@ -83,7 +83,7 @@ public class WebhookResource {
   }
 
   @Inject
-  public WebhookResource(CollectionDAO dao, CatalogAuthorizer authorizer) {
+  public WebhookResource(CollectionDAO dao, Authorizer authorizer) {
     Objects.requireNonNull(dao, "ChangeEventRepository must not be null");
     this.dao = new WebhookRepository(dao);
     this.authorizer = authorizer;

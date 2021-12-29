@@ -46,7 +46,7 @@ import org.openmetadata.catalog.entity.data.Report;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.ReportRepository;
 import org.openmetadata.catalog.resources.Collection;
-import org.openmetadata.catalog.security.CatalogAuthorizer;
+import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
@@ -61,7 +61,7 @@ public class ReportResource {
   private final ReportRepository dao;
 
   @Inject
-  public ReportResource(CollectionDAO dao, CatalogAuthorizer authorizer) {
+  public ReportResource(CollectionDAO dao, Authorizer authorizer) {
     Objects.requireNonNull(dao, "ReportRepository must not be null");
     this.dao = new ReportRepository(dao);
   }

@@ -34,8 +34,8 @@ import org.openmetadata.catalog.util.EntityUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class DefaultCatalogAuthorizer implements CatalogAuthorizer {
-  private static final Logger LOG = LoggerFactory.getLogger(DefaultCatalogAuthorizer.class);
+public class DefaultAuthorizer implements Authorizer {
+  private static final Logger LOG = LoggerFactory.getLogger(DefaultAuthorizer.class);
 
   private Set<String> adminUsers;
   private Set<String> botUsers;
@@ -46,7 +46,7 @@ public class DefaultCatalogAuthorizer implements CatalogAuthorizer {
 
   @Override
   public void init(AuthorizerConfiguration config, Jdbi dbi) {
-    LOG.debug("Initializing DefaultCatalogAuthorizer with config {}", config);
+    LOG.debug("Initializing DefaultAuthorizer with config {}", config);
     this.adminUsers = new HashSet<>(config.getAdminPrincipals());
     this.botUsers = new HashSet<>(config.getBotPrincipals());
     this.principalDomain = config.getPrincipalDomain();

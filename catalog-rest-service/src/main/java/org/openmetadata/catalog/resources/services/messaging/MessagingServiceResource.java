@@ -51,7 +51,7 @@ import org.openmetadata.catalog.entity.services.MessagingService;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.MessagingServiceRepository;
 import org.openmetadata.catalog.resources.Collection;
-import org.openmetadata.catalog.security.CatalogAuthorizer;
+import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.util.RestUtil;
@@ -66,10 +66,10 @@ import org.openmetadata.catalog.util.ResultList;
 public class MessagingServiceResource {
   public static final String COLLECTION_PATH = "v1/services/messagingServices/";
   private final MessagingServiceRepository dao;
-  private final CatalogAuthorizer authorizer;
+  private final Authorizer authorizer;
 
   @Inject
-  public MessagingServiceResource(CollectionDAO dao, CatalogAuthorizer authorizer) {
+  public MessagingServiceResource(CollectionDAO dao, Authorizer authorizer) {
     Objects.requireNonNull(dao, "MessagingServiceRepository must not be null");
     this.dao = new MessagingServiceRepository(dao);
     this.authorizer = authorizer;

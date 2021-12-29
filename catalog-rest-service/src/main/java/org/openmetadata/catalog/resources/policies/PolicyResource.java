@@ -60,7 +60,7 @@ import org.openmetadata.catalog.entity.policies.Policy;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.PolicyRepository;
 import org.openmetadata.catalog.resources.Collection;
-import org.openmetadata.catalog.security.CatalogAuthorizer;
+import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.EntityReference;
@@ -78,7 +78,7 @@ import org.openmetadata.catalog.util.ResultList;
 public class PolicyResource {
   public static final String COLLECTION_PATH = "v1/policies/";
   private final PolicyRepository dao;
-  private final CatalogAuthorizer authorizer;
+  private final Authorizer authorizer;
 
   public static ResultList<Policy> addHref(UriInfo uriInfo, ResultList<Policy> policies) {
     Optional.ofNullable(policies.getData()).orElse(Collections.emptyList()).forEach(i -> addHref(uriInfo, i));
@@ -91,7 +91,7 @@ public class PolicyResource {
   }
 
   @Inject
-  public PolicyResource(CollectionDAO dao, CatalogAuthorizer authorizer) {
+  public PolicyResource(CollectionDAO dao, Authorizer authorizer) {
     Objects.requireNonNull(dao, "PolicyRepository must not be null");
     this.dao = new PolicyRepository(dao);
     this.authorizer = authorizer;

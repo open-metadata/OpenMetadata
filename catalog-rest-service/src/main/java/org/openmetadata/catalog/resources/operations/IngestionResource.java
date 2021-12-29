@@ -62,7 +62,7 @@ import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.IngestionRepository;
 import org.openmetadata.catalog.operations.workflows.Ingestion;
 import org.openmetadata.catalog.resources.Collection;
-import org.openmetadata.catalog.security.CatalogAuthorizer;
+import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.EntityReference;
@@ -84,7 +84,7 @@ public class IngestionResource {
 
   public static final String COLLECTION_PATH = "operations/v1/ingestion/";
   private final IngestionRepository dao;
-  private final CatalogAuthorizer authorizer;
+  private final Authorizer authorizer;
   private AirflowRESTClient airflowRESTClient;
   private CatalogApplicationConfig config;
 
@@ -104,7 +104,7 @@ public class IngestionResource {
   }
 
   @Inject
-  public IngestionResource(CollectionDAO dao, CatalogAuthorizer authorizer) {
+  public IngestionResource(CollectionDAO dao, Authorizer authorizer) {
     Objects.requireNonNull(dao, "IngestionRepository must not be null");
     this.dao = new IngestionRepository(dao);
     this.authorizer = authorizer;

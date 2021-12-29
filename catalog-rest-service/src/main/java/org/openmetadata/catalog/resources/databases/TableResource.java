@@ -57,7 +57,7 @@ import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.TableRepository;
 import org.openmetadata.catalog.resources.Collection;
-import org.openmetadata.catalog.security.CatalogAuthorizer;
+import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.DataModel;
 import org.openmetadata.catalog.type.EntityHistory;
@@ -80,7 +80,7 @@ import org.openmetadata.catalog.util.ResultList;
 public class TableResource {
   public static final String COLLECTION_PATH = "v1/tables/";
   private final TableRepository dao;
-  private final CatalogAuthorizer authorizer;
+  private final Authorizer authorizer;
 
   public static Table addHref(UriInfo uriInfo, Table table) {
     Entity.withHref(uriInfo, table.getDatabase());
@@ -91,7 +91,7 @@ public class TableResource {
   }
 
   @Inject
-  public TableResource(CollectionDAO dao, CatalogAuthorizer authorizer) {
+  public TableResource(CollectionDAO dao, Authorizer authorizer) {
     this.dao = new TableRepository(dao);
     this.authorizer = authorizer;
   }

@@ -51,7 +51,7 @@ import org.openmetadata.catalog.entity.services.StorageService;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.StorageServiceRepository;
 import org.openmetadata.catalog.resources.Collection;
-import org.openmetadata.catalog.security.CatalogAuthorizer;
+import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.util.RestUtil;
@@ -66,10 +66,10 @@ import org.openmetadata.catalog.util.ResultList;
 public class StorageServiceResource {
   public static final String COLLECTION_PATH = "v1/services/storageServices/";
   private final StorageServiceRepository dao;
-  private final CatalogAuthorizer authorizer;
+  private final Authorizer authorizer;
 
   @Inject
-  public StorageServiceResource(CollectionDAO dao, CatalogAuthorizer authorizer) {
+  public StorageServiceResource(CollectionDAO dao, Authorizer authorizer) {
     Objects.requireNonNull(dao, "StorageServiceRepository must not be null");
     this.dao = new StorageServiceRepository(dao);
     this.authorizer = authorizer;

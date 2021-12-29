@@ -16,7 +16,7 @@ package org.openmetadata.catalog.security;
 import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.catalog.type.EntityReference;
 
-public interface CatalogAuthorizer {
+public interface Authorizer {
 
   /** Initialize the authorizer */
   void init(AuthorizerConfiguration config, Jdbi jdbi);

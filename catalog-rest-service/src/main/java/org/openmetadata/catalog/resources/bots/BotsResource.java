@@ -45,7 +45,7 @@ import org.openmetadata.catalog.entity.Bots;
 import org.openmetadata.catalog.jdbi3.BotsRepository;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.resources.Collection;
-import org.openmetadata.catalog.security.CatalogAuthorizer;
+import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.RestUtil;
@@ -59,10 +59,10 @@ import org.openmetadata.catalog.util.ResultList;
 public class BotsResource {
   public static final String COLLECTION_PATH = "/v1/bots/";
   private final BotsRepository dao;
-  private final CatalogAuthorizer authorizer;
+  private final Authorizer authorizer;
 
   @Inject
-  public BotsResource(CollectionDAO dao, CatalogAuthorizer authorizer) {
+  public BotsResource(CollectionDAO dao, Authorizer authorizer) {
     this.dao = new BotsRepository(dao);
     this.authorizer = authorizer;
   }
