@@ -150,12 +150,6 @@ public class LocationRepository extends EntityRepository<Location> {
   }
 
   @Transaction
-  public void delete(UUID id) {
-    dao.locationDAO().delete(id);
-    dao.relationshipDAO().deleteAll(id.toString()); // Remove all relationships
-  }
-
-  @Transaction
   public EntityReference getOwnerReference(Location location) throws IOException {
     return EntityUtil.populateOwner(dao.userDAO(), dao.teamDAO(), location.getOwner());
   }
@@ -378,6 +372,11 @@ public class LocationRepository extends EntityRepository<Location> {
     @Override
     public void setOwner(EntityReference owner) {
       entity.setOwner(owner);
+    }
+
+    @Override
+    public void setDeleted(boolean flag) {
+      entity.setDeleted(flag);
     }
 
     @Override

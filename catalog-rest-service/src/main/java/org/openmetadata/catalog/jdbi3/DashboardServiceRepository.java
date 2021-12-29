@@ -20,7 +20,6 @@ import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 import javax.ws.rs.core.UriInfo;
-import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.services.DashboardService;
 import org.openmetadata.catalog.resources.services.dashboard.DashboardServiceResource;
@@ -68,12 +67,6 @@ public class DashboardServiceRepository extends EntityRepository<DashboardServic
         .withIngestionSchedule(ingestionSchedule);
     dao.dashboardServiceDAO().update(id, JsonUtils.pojoToJson(dashboardService));
     return withHref(uriInfo, dashboardService);
-  }
-
-  @Transaction
-  public void delete(UUID id) {
-    dao.dashboardServiceDAO().delete(id);
-    dao.relationshipDAO().deleteAll(id.toString());
   }
 
   @Override
@@ -222,6 +215,11 @@ public class DashboardServiceRepository extends EntityRepository<DashboardServic
 
     @Override
     public void setOwner(EntityReference owner) {}
+
+    @Override
+    public void setDeleted(boolean flag) {
+      entity.setDeleted(flag);
+    }
 
     @Override
     public DashboardService withHref(URI href) {

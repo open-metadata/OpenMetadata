@@ -270,7 +270,8 @@ public class StorageServiceResource {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the storage service", schema = @Schema(type = "string")) @PathParam("id")
-          String id) {
+          String id)
+      throws IOException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     dao.delete(UUID.fromString(id));
     return Response.ok().build();

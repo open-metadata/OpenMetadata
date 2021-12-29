@@ -20,7 +20,6 @@ import java.net.URI;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
-import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.services.StorageService;
 import org.openmetadata.catalog.resources.services.storage.StorageServiceResource;
@@ -43,12 +42,6 @@ public class StorageServiceRepository extends EntityRepository<StorageService> {
         Fields.EMPTY_FIELDS,
         Fields.EMPTY_FIELDS);
     this.dao = dao;
-  }
-
-  @Transaction
-  public void delete(UUID id) {
-    dao.storageServiceDAO().delete(id);
-    dao.relationshipDAO().deleteAll(id.toString());
   }
 
   @Override
@@ -190,6 +183,11 @@ public class StorageServiceRepository extends EntityRepository<StorageService> {
 
     @Override
     public void setOwner(EntityReference owner) {}
+
+    @Override
+    public void setDeleted(boolean flag) {
+      entity.setDeleted(flag);
+    }
 
     @Override
     public StorageService withHref(URI href) {

@@ -16,6 +16,7 @@ package org.openmetadata.catalog.resources.teams;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.CREATED;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
+import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.OK;
 import static javax.ws.rs.core.Response.Status.UNAUTHORIZED;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -23,7 +24,6 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.openmetadata.catalog.exception.CatalogExceptionMessage.deactivatedUser;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.readOnlyAttribute;
 import static org.openmetadata.catalog.resources.teams.TeamResourceTest.createTeam;
 import static org.openmetadata.catalog.security.SecurityUtil.authHeaders;
@@ -46,7 +46,6 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Predicate;
 import javax.json.JsonPatch;
-import javax.ws.rs.client.WebTarget;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
@@ -194,6 +193,9 @@ public class UserResourceTest extends EntityResourceTest<User> {
     List<UUID> teams = List.of(team1.getId(), team2.getId());
     List<UUID> team = List.of(team1.getId());
 
+    // user0 is part of no teams
+    // user1 is part of team1
+    // user2 is part of team1, and team2
     CreateUser create = create(test, 0);
     User user0 = createAndCheckEntity(create, adminAuthHeaders());
     create = create(test, 1).withTeams(team);
@@ -238,12 +240,12 @@ public class UserResourceTest extends EntityResourceTest<User> {
 
     // Empty query field .../users?fields=
     HttpResponseException exception =
-        assertThrows(HttpResponseException.class, () -> getUser(user.getId(), "", adminAuthHeaders()));
+        assertThrows(HttpResponseException.class, () -> getEntity(user.getId(), "", adminAuthHeaders()));
     TestUtils.assertResponseContains(exception, BAD_REQUEST, "Invalid field name");
 
     // .../users?fields=invalidField
     exception =
-        assertThrows(HttpResponseException.class, () -> getUser(user.getId(), "invalidField", adminAuthHeaders()));
+        assertThrows(HttpResponseException.class, () -> getEntity(user.getId(), "invalidField", adminAuthHeaders()));
     assertResponse(exception, BAD_REQUEST, CatalogExceptionMessage.invalidField("invalidField"));
   }
 
@@ -301,7 +303,7 @@ public class UserResourceTest extends EntityResourceTest<User> {
     // Ensure user deleted attributed can't be changed using patch
     User user = createUser(create(test), adminAuthHeaders());
     String userJson = JsonUtils.pojoToJson(user);
-    user.setDeactivated(true);
+    user.setDeleted(true);
     HttpResponseException exception =
         assertThrows(HttpResponseException.class, () -> patchUser(userJson, user, adminAuthHeaders()));
     assertResponse(exception, BAD_REQUEST, readOnlyAttribute("User", "deactivated"));
@@ -419,6 +421,7 @@ public class UserResourceTest extends EntityResourceTest<User> {
     Table table = tableResourceTest.createEntity(test, 1);
     tableResourceTest.addAndCheckFollower(table.getId(), user.getId(), CREATED, 1, adminAuthHeaders());
 
+    // Delete user
     deleteEntity(user.getId(), adminAuthHeaders());
 
     // Make sure the user is no longer following the table
@@ -426,17 +429,12 @@ public class UserResourceTest extends EntityResourceTest<User> {
     assertTrue(team.getUsers().isEmpty());
     tableResourceTest.checkFollowerDeleted(table.getId(), user.getId(), adminAuthHeaders());
 
-    // Get deactivated user and ensure the name and display name has deactivated
-    User deactivatedUser = getUser(user.getId(), adminAuthHeaders());
-    assertEquals("deactivated." + user.getName(), deactivatedUser.getName());
-    assertEquals("Deactivated " + user.getDisplayName(), deactivatedUser.getDisplayName());
-
     // User can no longer follow other entities
     HttpResponseException exception =
         assertThrows(
             HttpResponseException.class,
             () -> tableResourceTest.addAndCheckFollower(table.getId(), user.getId(), CREATED, 1, adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, deactivatedUser(user.getId()));
+    assertResponse(exception, NOT_FOUND, CatalogExceptionMessage.entityNotFound("user", user.getId()));
 
     // TODO deactivated user can't be made owner
   }
@@ -479,8 +477,8 @@ public class UserResourceTest extends EntityResourceTest<User> {
     String fields = "profile";
     user =
         byName
-            ? getUserByName(user.getName(), fields, adminAuthHeaders())
-            : getUser(user.getId(), fields, adminAuthHeaders());
+            ? getEntityByName(user.getName(), fields, adminAuthHeaders())
+            : getEntity(user.getId(), fields, adminAuthHeaders());
     assertNotNull(user.getProfile());
     assertNull(user.getTeams());
 
@@ -488,26 +486,9 @@ public class UserResourceTest extends EntityResourceTest<User> {
     fields = "profile, teams";
     user =
         byName
-            ? getUserByName(user.getName(), fields, adminAuthHeaders())
-            : getUser(user.getId(), fields, adminAuthHeaders());
+            ? getEntityByName(user.getName(), fields, adminAuthHeaders())
+            : getEntity(user.getId(), fields, adminAuthHeaders());
     assertListNotNull(user.getProfile(), user.getTeams());
-  }
-
-  public static User getUser(UUID id, Map<String, String> authHeaders) throws HttpResponseException {
-    return getUser(id, null, authHeaders);
-  }
-
-  public static User getUser(UUID id, String fields, Map<String, String> authHeaders) throws HttpResponseException {
-    WebTarget target = CatalogApplicationTest.getResource("users/" + id);
-    target = fields != null ? target.queryParam("fields", fields) : target;
-    return TestUtils.get(target, User.class, authHeaders);
-  }
-
-  public static User getUserByName(String name, String fields, Map<String, String> authHeaders)
-      throws HttpResponseException {
-    WebTarget target = CatalogApplicationTest.getResource("users/name/" + name);
-    target = fields != null ? target.queryParam("fields", fields) : target;
-    return TestUtils.get(target, User.class, authHeaders);
   }
 
   @Override

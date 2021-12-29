@@ -67,12 +67,6 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   }
 
   @Transaction
-  public void delete(UUID id) {
-    dao.mlModelDAO().delete(id);
-    dao.relationshipDAO().deleteAll(id.toString());
-  }
-
-  @Transaction
   public EntityReference getOwnerReference(MlModel mlModel) throws IOException {
     return EntityUtil.populateOwner(dao.userDAO(), dao.teamDAO(), mlModel.getOwner());
   }
@@ -371,6 +365,11 @@ public class MlModelRepository extends EntityRepository<MlModel> {
     @Override
     public void setOwner(EntityReference owner) {
       entity.setOwner(owner);
+    }
+
+    @Override
+    public void setDeleted(boolean flag) {
+      entity.setDeleted(flag);
     }
 
     @Override

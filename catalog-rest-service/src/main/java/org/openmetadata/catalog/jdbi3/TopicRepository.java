@@ -55,15 +55,6 @@ public class TopicRepository extends EntityRepository<Topic> {
   }
 
   @Transaction
-  public void delete(UUID id) {
-    if (dao.relationshipDAO().findToCount(id.toString(), Relationship.CONTAINS.ordinal(), Entity.TOPIC) > 0) {
-      throw new IllegalArgumentException("Topic is not empty");
-    }
-    dao.topicDAO().delete(id);
-    dao.relationshipDAO().deleteAll(id.toString());
-  }
-
-  @Transaction
   public EntityReference getOwnerReference(Topic topic) throws IOException {
     return EntityUtil.populateOwner(dao.userDAO(), dao.teamDAO(), topic.getOwner());
   }
@@ -282,6 +273,11 @@ public class TopicRepository extends EntityRepository<Topic> {
     @Override
     public void setOwner(EntityReference owner) {
       entity.setOwner(owner);
+    }
+
+    @Override
+    public void setDeleted(boolean flag) {
+      entity.setDeleted(flag);
     }
 
     @Override

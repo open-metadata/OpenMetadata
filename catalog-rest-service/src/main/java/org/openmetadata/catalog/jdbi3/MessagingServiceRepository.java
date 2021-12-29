@@ -20,7 +20,6 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
-import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.services.MessagingService;
 import org.openmetadata.catalog.resources.services.messaging.MessagingServiceResource;
@@ -45,12 +44,6 @@ public class MessagingServiceRepository extends EntityRepository<MessagingServic
         Fields.EMPTY_FIELDS,
         Fields.EMPTY_FIELDS);
     this.dao = dao;
-  }
-
-  @Transaction
-  public void delete(UUID id) {
-    dao.messagingServiceDAO().delete(id);
-    dao.relationshipDAO().deleteAll(id.toString());
   }
 
   @Override
@@ -199,6 +192,11 @@ public class MessagingServiceRepository extends EntityRepository<MessagingServic
 
     @Override
     public void setOwner(EntityReference owner) {}
+
+    @Override
+    public void setDeleted(boolean flag) {
+      entity.setDeleted(flag);
+    }
 
     @Override
     public MessagingService withHref(URI href) {

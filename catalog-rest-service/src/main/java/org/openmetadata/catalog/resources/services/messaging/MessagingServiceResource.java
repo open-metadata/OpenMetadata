@@ -279,7 +279,8 @@ public class MessagingServiceResource {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the messaging service", schema = @Schema(type = "string")) @PathParam("id")
-          String id) {
+          String id)
+      throws IOException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     dao.delete(UUID.fromString(id));
     return Response.ok().build();

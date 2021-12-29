@@ -390,7 +390,7 @@ public class ChartResource {
         @ApiResponse(responseCode = "200", description = "OK"),
         @ApiResponse(responseCode = "404", description = "Chart for instance {id} is not found")
       })
-  public Response delete(@Context UriInfo uriInfo, @PathParam("id") String id) {
+  public Response delete(@Context UriInfo uriInfo, @PathParam("id") String id) throws IOException {
     dao.delete(UUID.fromString(id));
     return Response.ok().build();
   }

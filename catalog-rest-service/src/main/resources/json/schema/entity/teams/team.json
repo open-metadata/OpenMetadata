@@ -49,10 +49,6 @@
       "description": "Team profile information.",
       "$ref": "../../type/profile.json"
     },
-    "deleted" : {
-      "description": "When true the team has been deleted.",
-      "type": "boolean"
-    },
     "users" : {
       "description": "Users that are part of the team.",
       "$ref": "../../type/entityReference.json#/definitions/entityReferenceList",
@@ -65,6 +61,11 @@
     "changeDescription": {
       "description" : "Change that lead to this version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "deleted" : {
+      "description": "When `true` indicates the entity has been soft deleted.",
+      "type": "boolean",
+      "default" : false
     }
   },
   "required" : ["id", "name", "href"],

@@ -25,7 +25,6 @@ import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
@@ -53,16 +52,6 @@ public class TeamRepository extends EntityRepository<Team> {
         TEAM_PATCH_FIELDS,
         TEAM_UPDATE_FIELDS);
     this.dao = dao;
-  }
-
-  @Transaction
-  public void delete(UUID id) {
-    // Query 1 - delete team
-    dao.teamDAO().delete(id);
-
-    // Query 2 - Remove all relationship from and to this team
-    // TODO make this UUID based
-    dao.relationshipDAO().deleteAll(id.toString());
   }
 
   public List<EntityReference> getUsers(List<UUID> userIds) {
@@ -133,7 +122,8 @@ public class TeamRepository extends EntityRepository<Team> {
   public void storeRelationships(Team team) {
     for (EntityReference user : Optional.ofNullable(team.getUsers()).orElse(Collections.emptyList())) {
       dao.relationshipDAO()
-          .insert(team.getId().toString(), user.getId().toString(), "team", "user", Relationship.CONTAINS.ordinal());
+          .insert(team.getId().toString(), user.getId().toString(), "team", "user", Relationship.HAS.ordinal());
+      System.out.println("Team " + team.getName() + " has user " + user.getName());
     }
   }
 
@@ -143,7 +133,7 @@ public class TeamRepository extends EntityRepository<Team> {
   }
 
   private List<EntityReference> getUsers(String id) throws IOException {
-    List<String> userIds = dao.relationshipDAO().findTo(id, Relationship.CONTAINS.ordinal(), "user");
+    List<String> userIds = dao.relationshipDAO().findTo(id, Relationship.HAS.ordinal(), "user");
     List<EntityReference> users = new ArrayList<>();
     for (String userId : userIds) {
       users.add(dao.userDAO().findEntityReferenceById(UUID.fromString(userId)));
@@ -265,6 +255,11 @@ public class TeamRepository extends EntityRepository<Team> {
     public void setOwner(EntityReference owner) {}
 
     @Override
+    public void setDeleted(boolean flag) {
+      entity.setDeleted(flag);
+    }
+
+    @Override
     public Team withHref(URI href) {
       return entity.withHref(href);
     }
@@ -302,16 +297,12 @@ public class TeamRepository extends EntityRepository<Team> {
       List<EntityReference> deleted = new ArrayList<>();
       if (recordListChange("users", origUsers, updatedUsers, added, deleted, entityReferenceMatch)) {
         // Remove users from original and add users from updated
-        dao.relationshipDAO().deleteFrom(origTeam.getId().toString(), Relationship.CONTAINS.ordinal(), "user");
+        dao.relationshipDAO().deleteFrom(origTeam.getId().toString(), Relationship.HAS.ordinal(), "user");
         // Add relationships
         for (EntityReference user : updatedUsers) {
           dao.relationshipDAO()
               .insert(
-                  updatedTeam.getId().toString(),
-                  user.getId().toString(),
-                  "team",
-                  "user",
-                  Relationship.CONTAINS.ordinal());
+                  updatedTeam.getId().toString(), user.getId().toString(), "team", "user", Relationship.HAS.ordinal());
         }
 
         updatedUsers.sort(EntityUtil.compareEntityReference);

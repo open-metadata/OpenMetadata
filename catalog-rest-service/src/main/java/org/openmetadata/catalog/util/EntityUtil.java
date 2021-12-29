@@ -195,7 +195,7 @@ public final class EntityUtil {
     if (owner.getType().equalsIgnoreCase("user")) {
       User ownerInstance = userDAO.findEntityById(id);
       owner.setName(ownerInstance.getName());
-      if (Optional.ofNullable(ownerInstance.getDeactivated()).orElse(false)) {
+      if (Optional.ofNullable(ownerInstance.getDeleted()).orElse(false)) {
         throw new IllegalArgumentException(CatalogExceptionMessage.deactivatedUser(id));
       }
     } else if (owner.getType().equalsIgnoreCase("team")) {
@@ -360,7 +360,7 @@ public final class EntityUtil {
       String followerEntity)
       throws IOException {
     User user = userDAO.findEntityById(followerId);
-    if (Optional.ofNullable(user.getDeactivated()).orElse(false)) {
+    if (Optional.ofNullable(user.getDeleted()).orElse(false)) {
       throw new IllegalArgumentException(CatalogExceptionMessage.deactivatedUser(followerId));
     }
     return dao.insert(

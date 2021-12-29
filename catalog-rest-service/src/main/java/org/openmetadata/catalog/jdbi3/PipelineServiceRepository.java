@@ -18,7 +18,6 @@ import java.net.URI;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
-import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.services.PipelineService;
 import org.openmetadata.catalog.resources.services.pipeline.PipelineServiceResource;
@@ -43,12 +42,6 @@ public class PipelineServiceRepository extends EntityRepository<PipelineService>
         Fields.EMPTY_FIELDS,
         Fields.EMPTY_FIELDS);
     this.dao = dao;
-  }
-
-  @Transaction
-  public void delete(UUID id) {
-    dao.pipelineServiceDAO().delete(id);
-    dao.relationshipDAO().deleteAll(id.toString());
   }
 
   @Override
@@ -197,6 +190,11 @@ public class PipelineServiceRepository extends EntityRepository<PipelineService>
 
     @Override
     public void setOwner(EntityReference owner) {}
+
+    @Override
+    public void setDeleted(boolean flag) {
+      entity.setDeleted(flag);
+    }
 
     @Override
     public PipelineService withHref(URI href) {

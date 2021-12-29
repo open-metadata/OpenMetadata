@@ -13,8 +13,8 @@
 
 package org.openmetadata.catalog.jdbi3;
 
-import static org.openmetadata.catalog.jdbi3.Relationship.CONTAINS;
 import static org.openmetadata.catalog.jdbi3.Relationship.FOLLOWS;
+import static org.openmetadata.catalog.jdbi3.Relationship.HAS;
 import static org.openmetadata.catalog.jdbi3.Relationship.OWNS;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -102,18 +102,6 @@ public class UserRepository extends EntityRepository<User> {
     return setFields(user, fields);
   }
 
-  @Transaction
-  public void delete(UUID id) throws IOException {
-    // Query - mark user as deactivated
-    User user = markUserAsDeactivated(id);
-
-    // Remove relationship membership to teams
-    dao.relationshipDAO().deleteTo(user.getId().toString(), CONTAINS.ordinal(), "team");
-
-    // Remove follows relationship to entities
-    dao.relationshipDAO().deleteFrom(id.toString(), FOLLOWS.ordinal());
-  }
-
   @Override
   public User setFields(User user, Fields fields) throws IOException {
     user.setProfile(fields.contains("profile") ? user.getProfile() : null);
@@ -161,7 +149,7 @@ public class UserRepository extends EntityRepository<User> {
 
   /* Add all the teams that user belongs to User entity */
   private List<EntityReference> getTeams(User user) throws IOException {
-    List<String> teamIds = dao.relationshipDAO().findFrom(user.getId().toString(), CONTAINS.ordinal(), "team");
+    List<String> teamIds = dao.relationshipDAO().findFrom(user.getId().toString(), HAS.ordinal(), "team");
     List<EntityReference> teams = new ArrayList<>();
     for (String teamId : teamIds) {
       teams.add(dao.teamDAO().findEntityReferenceById(UUID.fromString(teamId)));
@@ -173,22 +161,8 @@ public class UserRepository extends EntityRepository<User> {
     // Query - add team to the user
     teams = Optional.ofNullable(teams).orElse(Collections.emptyList());
     for (EntityReference team : teams) {
-      dao.relationshipDAO()
-          .insert(team.getId().toString(), user.getId().toString(), "team", "user", CONTAINS.ordinal());
+      dao.relationshipDAO().insert(team.getId().toString(), user.getId().toString(), "team", "user", HAS.ordinal());
     }
-  }
-
-  private User markUserAsDeactivated(UUID id) throws IOException {
-    User user = validateUser(id);
-    if (Optional.ofNullable(user.getDeactivated()).orElse(false)) {
-      // User is already deactivated
-      return user;
-    }
-    user.setDeactivated(true);
-    user.setName("deactivated." + user.getName());
-    user.setDisplayName("Deactivated " + user.getDisplayName());
-    dao.userDAO().update(id, JsonUtils.pojoToJson(user));
-    return user;
   }
 
   public static class UserEntityInterface implements EntityInterface<User> {
@@ -300,6 +274,11 @@ public class UserRepository extends EntityRepository<User> {
     public void setOwner(EntityReference owner) {}
 
     @Override
+    public void setDeleted(boolean flag) {
+      entity.setDeleted(flag);
+    }
+
+    @Override
     public User withHref(URI href) {
       return entity.withHref(href);
     }
@@ -322,7 +301,7 @@ public class UserRepository extends EntityRepository<User> {
     @Override
     public void entitySpecificUpdate() throws IOException {
       // Update operation can't undelete a user
-      if (updated.getEntity().getDeactivated() != original.getEntity().getDeactivated()) {
+      if (updated.getEntity().getDeleted() != original.getEntity().getDeleted()) {
         throw new IllegalArgumentException(CatalogExceptionMessage.readOnlyAttribute("User", "deactivated"));
       }
       updateTeams(original.getEntity(), updated.getEntity());
@@ -335,7 +314,7 @@ public class UserRepository extends EntityRepository<User> {
 
     private void updateTeams(User origUser, User updatedUser) throws JsonProcessingException {
       // Remove teams from original and add teams from updated
-      dao.relationshipDAO().deleteTo(origUser.getId().toString(), CONTAINS.ordinal(), "team");
+      dao.relationshipDAO().deleteTo(origUser.getId().toString(), HAS.ordinal(), "team");
       assignTeams(updatedUser, updatedUser.getTeams());
 
       List<EntityReference> origTeams = Optional.ofNullable(origUser.getTeams()).orElse(Collections.emptyList());

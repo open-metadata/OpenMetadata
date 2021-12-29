@@ -46,14 +46,15 @@ public interface EntityDAO<T> {
   @SqlUpdate("UPDATE <table> SET  json = :json WHERE id = :id")
   void update(@Define("table") String table, @Bind("id") String id, @Bind("json") String json);
 
-  @SqlQuery("SELECT json FROM <table> WHERE id = :id")
+  @SqlQuery("SELECT json FROM <table> WHERE id = :id AND deleted IS NOT TRUE")
   String findById(@Define("table") String table, @Bind("id") String id);
 
-  @SqlQuery("SELECT json FROM <table> WHERE <nameColumn> = :name")
+  @SqlQuery("SELECT json FROM <table> WHERE <nameColumn> = :name AND deleted IS NOT TRUE")
   String findByName(@Define("table") String table, @Define("nameColumn") String nameColumn, @Bind("name") String name);
 
   @SqlQuery(
-      "SELECT count(*) FROM <table> WHERE " + "(<nameColumn> LIKE CONCAT(:fqnPrefix, '.%') OR :fqnPrefix IS NULL)")
+      "SELECT count(*) FROM <table> WHERE "
+          + "(<nameColumn> LIKE CONCAT(:fqnPrefix, '.%') OR :fqnPrefix IS NULL) AND deleted IS NOT TRUE")
   int listCount(
       @Define("table") String table, @Define("nameColumn") String nameColumn, @Bind("fqnPrefix") String fqnPrefix);
 
@@ -61,9 +62,9 @@ public interface EntityDAO<T> {
       "SELECT json FROM ("
           + "SELECT <nameColumn>, json FROM <table> WHERE "
           + "(<nameColumn> LIKE CONCAT(:fqnPrefix, '.%') OR :fqnPrefix IS NULL) AND "
-          + // Filter by
-          // service name
-          "<nameColumn> < :before "
+          + // Filter by service name
+          "<nameColumn> < :before AND "
+          + "deleted = false "
           + // Pagination by chart fullyQualifiedName
           "ORDER BY <nameColumn> DESC "
           + // Pagination ordering by chart fullyQualifiedName
@@ -79,7 +80,8 @@ public interface EntityDAO<T> {
   @SqlQuery(
       "SELECT json FROM <table> WHERE "
           + "(<nameColumn> LIKE CONCAT(:fqnPrefix, '.%') OR :fqnPrefix IS NULL) AND "
-          + "<nameColumn> > :after "
+          + "<nameColumn> > :after AND "
+          + "deleted = false "
           + "ORDER BY <nameColumn> "
           + "LIMIT :limit")
   List<String> listAfter(

@@ -255,6 +255,11 @@ public class MetricsRepository extends EntityRepository<Metrics> {
     }
 
     @Override
+    public void setDeleted(boolean flag) {
+      entity.setDeleted(flag);
+    }
+
+    @Override
     public Metrics withHref(URI href) {
       return entity.withHref(href);
     }

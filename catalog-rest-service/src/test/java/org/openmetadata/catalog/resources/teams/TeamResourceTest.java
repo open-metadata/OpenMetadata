@@ -112,9 +112,9 @@ public class TeamResourceTest extends EntityResourceTest<Team> {
     Team team = createAndCheckEntity(create, adminAuthHeaders());
 
     // Make sure the user entity has relationship to the team
-    user1 = UserResourceTest.getUser(user1.getId(), "teams", authHeaders("test@open-metadata.org"));
+    user1 = userResourceTest.getEntity(user1.getId(), "teams", authHeaders("test@open-metadata.org"));
     assertEquals(team.getId(), user1.getTeams().get(0).getId());
-    user2 = UserResourceTest.getUser(user2.getId(), "teams", authHeaders("test@open-metadata.org"));
+    user2 = userResourceTest.getEntity(user2.getId(), "teams", authHeaders("test@open-metadata.org"));
     assertEquals(team.getId(), user2.getTeams().get(0).getId());
   }
 
@@ -144,10 +144,12 @@ public class TeamResourceTest extends EntityResourceTest<Team> {
     List<UUID> users = Collections.singletonList(user1.getId());
     CreateTeam create = create(test).withUsers(users);
     Team team = createAndCheckEntity(create, adminAuthHeaders());
+
+    // Team with users can be deleted - Team -- has --> User relationships are deleted
     deleteEntity(team.getId(), adminAuthHeaders());
 
     // Make sure user does not have relationship to this team
-    User user = UserResourceTest.getUser(user1.getId(), "teams", adminAuthHeaders());
+    User user = userResourceTest.getEntity(user1.getId(), "teams", adminAuthHeaders());
     assertTrue(user.getTeams().isEmpty());
   }
 

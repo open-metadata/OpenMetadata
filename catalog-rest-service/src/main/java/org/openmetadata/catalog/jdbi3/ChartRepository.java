@@ -19,7 +19,6 @@ import java.net.URI;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
-import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Chart;
 import org.openmetadata.catalog.entity.services.DashboardService;
@@ -53,15 +52,6 @@ public class ChartRepository extends EntityRepository<Chart> {
 
   public static String getFQN(Chart chart) {
     return (chart.getService().getName() + "." + chart.getName());
-  }
-
-  @Transaction
-  public void delete(UUID id) {
-    if (dao.relationshipDAO().findToCount(id.toString(), Relationship.CONTAINS.ordinal(), Entity.CHART) > 0) {
-      throw new IllegalArgumentException("Chart is not empty");
-    }
-    dao.chartDAO().delete(id);
-    dao.relationshipDAO().deleteAll(id.toString());
   }
 
   @Override
@@ -287,6 +277,11 @@ public class ChartRepository extends EntityRepository<Chart> {
     @Override
     public void setOwner(EntityReference owner) {
       entity.setOwner(owner);
+    }
+
+    @Override
+    public void setDeleted(boolean flag) {
+      entity.setDeleted(flag);
     }
 
     @Override
