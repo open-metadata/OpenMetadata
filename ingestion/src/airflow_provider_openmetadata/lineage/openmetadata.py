@@ -152,7 +152,6 @@ def parse_lineage_to_openmetadata(
 
     operator.log.info("Task Properties {}".format(task_properties))
     operator.log.info("DAG properties {}".format(dag_properties))
-    # operator.log.info("Pipeline Context {}".format(context))
     try:
         timestamp = int(dateutil.parser.parse(context["ts"]).timestamp() * 1000)
         owner = dag.owner
@@ -208,8 +207,6 @@ def parse_lineage_to_openmetadata(
                 id=airflow_service_entity.id, type="pipelineService"
             ),
         )
-        operator.log.info("Whats going on 3")
-        operator.log.info(f"create pipeline {create_pipeline}")
         pipeline = client.create_or_update(create_pipeline)
         operator.log.info("Parsing Lineage")
         for table in inlets:
