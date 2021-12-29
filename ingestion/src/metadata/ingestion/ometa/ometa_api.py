@@ -332,6 +332,7 @@ class OpenMetadata(OMetaMlModelMixin, OMetaTableMixin, Generic[T, C]):
             )
 
         resp = self.client.put(self.get_suffix(entity), data=data.json())
+        print(resp)
         return entity_class(**resp)
 
     @staticmethod
