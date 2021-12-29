@@ -60,33 +60,25 @@ Throughout the docs, we use a consistent directory structure, OpenMetadata serve
 mkdir openmetadata; cd openmetadata
 ```
 
-#### 1.2 Create a directory for this connector
+#### 1.2 Create a virtual environment
 
-Run the following command to create a directory for this connector and change into that directory.
-
-```bash
-mkdir mysql; cd mysql
-```
-
-#### 1.3 Create a virtual environment
-
-Run the following command to create a Python virtual environment called, `mysql-env`.
+Run the following command to create a Python virtual environment called, `env`. You can try multiple connectors in the same virtual environment.
 
 ```bash
-python3 -m venv mysql-env
+python3 -m venv env
 ```
 
-#### 1.4 Activate the virtual environment
+#### 1.3 Activate the virtual environment
 
 Run the following command to activate the virtual environment.&#x20;
 
 ```bash
-source mysql-env/bin/activate
+source env/bin/activate
 ```
 
-Once activated, you should see your command prompt change to indicate that your commands will now be executed in the environment named `mysql-env`.
+Once activated, you should see your command prompt change to indicate that your commands will now be executed in the environment named `env`.
 
-#### 1.5 Upgrade pip and setuptools to the latest versions
+#### 1.4 Upgrade pip and setuptools to the latest versions
 
 Ensure that you have the latest version of pip by running the following command. If you have followed the steps above, this will upgrade pip in your virtual environment.
 
