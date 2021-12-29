@@ -53,7 +53,8 @@ metadata ingest -c ./examples/workflows/salesforce.json
 3. **security\_token** - pass the security token.
 4. **sobject\_name** - pass the salesforce object name.
 5. **service\_name** - Service Name for this Salesforce cluster. If you added Salesforce cluster through OpenMetadata UI, make sure the service name matches the same.
-6. **filter\_pattern** - It contains includes, excludes options to choose which pattern of datasets you want to ingest into OpenMetadata
+6. **table\_filter\_pattern** - It contains includes, excludes options to choose which pattern of tables you want to ingest into OpenMetadata.
+7. **schema\_filter\_pattern** - It contains includes, excludes options to choose which pattern of schemas you want to ingest into OpenMetadata.
 
 ## Publish to OpenMetadata
 
