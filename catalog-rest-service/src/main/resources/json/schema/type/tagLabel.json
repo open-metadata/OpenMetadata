@@ -5,10 +5,15 @@
   "description": "This schema defines the type for labeling an entity with a Tag.",
   "type": "object",
   "javaType": "org.openmetadata.catalog.type.TagLabel",
-  "properties": {
+  "definitions": {
     "tagFQN": {
       "type": "string",
       "maxLength": 45
+    }
+  },
+  "properties": {
+    "tagFQN": {
+      "$ref": "#/definitions/tagFQN"
     },
     "description": {
       "description": "Unique name of the tag category.",
