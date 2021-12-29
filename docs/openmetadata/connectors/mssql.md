@@ -81,7 +81,7 @@ Add `metadata-rest` sink along with `metadata-server` config
       "username": "sa",
       "password": "test!Password",
       "table_filter_pattern": {
-        "excludes": ["demo.*","orders.*"]
+        "excludes": ["catalog_test.*","orders.*"]
       },
       "schema_filter_pattern": {
         "excludes": ["information_schema.*"]

@@ -114,7 +114,11 @@ Add `metadata-rest` sink along with `metadata-server` config
         "excludes": ["demo.*","orders.*"]
       },
       "schema_filter_pattern": {
-        "excludes": ["information_schema.*"]
+        "excludes": [
+          "[\\w]*cloudaudit.*",
+          "[\\w]*logging_googleapis_com.*",
+          "[\\w]*clouderrorreporting.*"
+        ]
       }
     }
   },
