@@ -96,7 +96,7 @@ pip3 install 'openmetadata-ingestion[mysql]'
 
 ### 3. Create a configuration file using template JSON
 
-Create a new file called `mysql.json` in the current directory. Note that the current directory should be the `openmetadata/mysql` directory you created in Step 1.&#x20;
+Create a new file called `mysql.json` in the current directory. Note that the current directory should be the `openmetadata` directory you created in Step 1.&#x20;
 
 Copy and paste the configuration template below into the `mysql.json` file you created.
 
@@ -377,7 +377,7 @@ You need not make any changes to the fields defined for `metadata_server` in the
 
 Your `mysql.json` configuration file should now be fully configured and ready to use in an ingestion workflow.
 
-To run an ingestion workflow, execute the following command from the `openmetadata/mysql` directory you created in Step 1.
+To run an ingestion workflow, execute the following command from the `openmetadata` directory you created in Step 1.
 
 ```bash
 metadata ingest -c ./mysql.json

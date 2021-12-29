@@ -96,7 +96,7 @@ pip3 install 'openmetadata-ingestion[snowflake]'
 
 ### 3. Create a configuration file using template JSON
 
-Create a new file called `snowflake.json` in the current directory. Note that the current directory should be the `openmetadata/snowflake` directory you created in Step 1.&#x20;
+Create a new file called `snowflake.json` in the current directory. Note that the current directory should be the `openmetadata` directory you created in Step 1.&#x20;
 
 To create a configuration file for Snowflake, you’ll need to consider one of the three options for templates. The choice of a template depends on how your Snowflake user will be authenticated. Snowflake SQLAlchemy supports Single Sign-On (SSO) with and without a password parameter. Please refer to [this link](https://github.com/snowflakedb/snowflake-sqlalchemy/issues/115) for more information
 
@@ -469,7 +469,7 @@ You need not make any changes to the fields defined for `metadata_server` in the
 
 Your `snowflake.json` configuration file should now be fully configured and ready to use in an ingestion workflow.
 
-To run an ingestion workflow, execute the following command from the `openmetadata/snowflake` directory you created in Step 1.
+To run an ingestion workflow, execute the following command from the `openmetadata` directory you created in Step 1.
 
 ```bash
 metadata ingest -c ./snowflake.json
