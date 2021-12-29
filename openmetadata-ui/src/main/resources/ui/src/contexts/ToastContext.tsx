@@ -11,16 +11,22 @@
  *  limitations under the License.
  */
 
-import propTypes from 'prop-types';
-import React, { createContext, useCallback, useState } from 'react';
+import React, { createContext, ReactNode, useCallback, useState } from 'react';
 import Toaster from '../components/common/toaster/Toaster';
 
-const ToastContext = createContext();
+interface Toast {
+  variant: string;
+  body: string;
+}
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const ToastContext = createContext((_value: Toast) => {
+  return;
+});
 
 export default ToastContext;
 
-export const ToastContextProvider = ({ children }) => {
-  const [toasts, setToasts] = useState([]);
+export const ToastContextProvider = ({ children }: { children: ReactNode }) => {
+  const [toasts, setToasts] = useState<Array<Toast>>([]);
 
   const addToast = useCallback(
     function (toast) {
@@ -37,8 +43,4 @@ export const ToastContextProvider = ({ children }) => {
       </div>
     </ToastContext.Provider>
   );
-};
-
-ToastContextProvider.propTypes = {
-  children: propTypes.object,
 };

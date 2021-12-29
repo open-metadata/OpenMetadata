@@ -115,9 +115,9 @@ class GlueSource(Source[Entity]):
                 yield from self.ingest_tables()
         yield from self.ingest_pipelines()
 
-    def get_columns(self, columnData):
+    def get_columns(self, column_data):
         row_order = 0
-        for column in columnData["Columns"]:
+        for column in column_data["Columns"]:
             if column["Type"].lower().startswith("union"):
                 column["Type"] = column["Type"].replace(" ", "")
             (
@@ -194,26 +194,28 @@ class GlueSource(Source[Entity]):
             logger.error(err)
 
     def get_downstream_tasks(self, task_unique_id, tasks):
-        downstreamTasks = []
+        downstream_tasks = []
         for edges in tasks["Edges"]:
-            if edges["SourceId"] == task_unique_id:
-                if edges["DestinationId"] in self.task_id_mapping.values():
-                    downstreamTasks.append(
-                        list(self.task_id_mapping.keys())[
-                            list(self.task_id_mapping.values()).index(
-                                edges["DestinationId"]
-                            )
-                        ][:128]
-                    )
-        return downstreamTasks
+            if (
+                edges["SourceId"] == task_unique_id
+                and edges["DestinationId"] in self.task_id_mapping.values()
+            ):
+                downstream_tasks.append(
+                    list(self.task_id_mapping.keys())[
+                        list(self.task_id_mapping.values()).index(
+                            edges["DestinationId"]
+                        )
+                    ][:128]
+                )
+        return downstream_tasks
 
     def get_tasks(self, tasks):
-        taskList = []
+        task_list = []
         for task in tasks["Graph"]["Nodes"]:
             task_name = task["Name"][:128]
             self.task_id_mapping[task_name] = task["UniqueId"]
         for task in tasks["Graph"]["Nodes"]:
-            taskList.append(
+            task_list.append(
                 Task(
                     name=task["Name"],
                     displayName=task["Name"],
@@ -223,7 +225,7 @@ class GlueSource(Source[Entity]):
                     ),
                 )
             )
-        return taskList
+        return task_list
 
     def ingest_pipelines(self) -> Iterable[OMetaDatabaseAndTable]:
         try:

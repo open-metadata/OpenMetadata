@@ -278,7 +278,6 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                 except Exception as err:
                     logger.error(repr(err))
                     logger.error(err)
-                    pass
 
                 if self._instantiate_profiler():
                     profile = self.run_data_profiler(table_name, schema)
@@ -408,7 +407,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                     table = table.replace(".", "_DOT_")
                     table_fqn = f"{self.config.service_name}.{database}.{table}"
                     upstream_nodes.append(table_fqn)
-                except Exception as e:
+                except Exception:
                     logger.error(f"Failed to parse the node {node} to capture lineage")
                     continue
         return upstream_nodes
@@ -508,12 +507,13 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                     col_type = get_column_type(
                         self.status, dataset_name, column["type"]
                     )
-                    if col_type == "ARRAY":
-                        if re.match(r"(?:\w*)(?:\()(\w*)(?:.*)", str(column["type"])):
-                            arr_data_type = re.match(
-                                r"(?:\w*)(?:[(]*)(\w*)(?:.*)", str(column["type"])
-                            ).groups()
-                            data_type_display = column["type"]
+                    if col_type == "ARRAY" and re.match(
+                        r"(?:\w*)(?:\()(\w*)(?:.*)", str(column["type"])
+                    ):
+                        arr_data_type = re.match(
+                            r"(?:\w*)(?:[(]*)(\w*)(?:.*)", str(column["type"])
+                        ).groups()
+                        data_type_display = column["type"]
                 col_constraint = None
                 if column["nullable"]:
                     col_constraint = Constraint.NULL

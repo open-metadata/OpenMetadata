@@ -12,18 +12,20 @@
  */
 
 import classNames from 'classnames';
-import PropTypes from 'prop-types';
-import React, { Fragment } from 'react';
-import { Handle } from 'react-flow-renderer';
+import React, { CSSProperties, Fragment } from 'react';
+import { Handle, Position, HandleProps } from 'react-flow-renderer';
 
 const handleStyles = { borderRadius: '50%', position: 'absolute', top: 10 };
-const getHandle = (nodeType, isConnectable) => {
+const getHandle = (
+  nodeType: string,
+  isConnectable: HandleProps['isConnectable']
+) => {
   if (nodeType === 'output') {
     return (
       <Handle
         isConnectable={isConnectable}
-        position="left"
-        style={{ ...handleStyles, left: '-14px' }}
+        position={Position.Left}
+        style={{ ...handleStyles, left: '-14px' } as CSSProperties}
         type="target"
       />
     );
@@ -31,8 +33,8 @@ const getHandle = (nodeType, isConnectable) => {
     return (
       <Handle
         isConnectable={isConnectable}
-        position="right"
-        style={{ ...handleStyles, right: '-14px' }}
+        position={Position.Right}
+        style={{ ...handleStyles, right: '-14px' } as CSSProperties}
         type="source"
       />
     );
@@ -41,14 +43,14 @@ const getHandle = (nodeType, isConnectable) => {
       <Fragment>
         <Handle
           isConnectable={isConnectable}
-          position="left"
-          style={{ ...handleStyles, left: '-14px' }}
+          position={Position.Left}
+          style={{ ...handleStyles, left: '-14px' } as CSSProperties}
           type="target"
         />
         <Handle
           isConnectable={isConnectable}
-          position="right"
-          style={{ ...handleStyles, right: '-14px' }}
+          position={Position.Right}
+          style={{ ...handleStyles, right: '-14px' } as CSSProperties}
           type="source"
         />
       </Fragment>
@@ -56,7 +58,8 @@ const getHandle = (nodeType, isConnectable) => {
   }
 };
 
-const CustomNode = (props) => {
+/* eslint-disable-next-line */
+const CustomNode = (props: any) => {
   /* eslint-disable-next-line */
   const { data, type, isConnectable } = props;
   /* eslint-disable-next-line */
@@ -75,7 +78,7 @@ const CustomNode = (props) => {
         })}
         id="table-columns">
         <div className="tw-flex tw-flex-col tw-gap-y-1">
-          {columns?.map((c) => (
+          {columns?.map((c: { name: string }) => (
             <p
               className="tw-p-1 tw-rounded tw-border tw-text-grey-body"
               key={c.name}>
@@ -86,19 +89,6 @@ const CustomNode = (props) => {
       </section>
     </div>
   );
-};
-
-CustomNode.propTypes = {
-  type: PropTypes.string.isRequired,
-  isConnectable: PropTypes.bool.isRequired,
-  data: PropTypes.shape({
-    label: PropTypes.string.isRequired,
-    columns: PropTypes.arrayOf(
-      PropTypes.shape({
-        name: PropTypes.string.isRequired,
-      })
-    ),
-  }),
 };
 
 export default CustomNode;
