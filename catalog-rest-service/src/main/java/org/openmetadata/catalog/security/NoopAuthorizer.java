@@ -18,7 +18,7 @@ import org.openmetadata.catalog.type.EntityReference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class NoopAuthorizer implements CatalogAuthorizer {
+public class NoopAuthorizer implements Authorizer {
   private static final Logger LOG = LoggerFactory.getLogger(NoopAuthorizer.class);
 
   @Override

@@ -49,7 +49,7 @@ import org.openmetadata.catalog.entity.data.Metrics;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.MetricsRepository;
 import org.openmetadata.catalog.resources.Collection;
-import org.openmetadata.catalog.security.CatalogAuthorizer;
+import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
@@ -65,7 +65,7 @@ public class MetricsResource {
   private final MetricsRepository dao;
 
   @Inject
-  public MetricsResource(CollectionDAO dao, CatalogAuthorizer authorizer) {
+  public MetricsResource(CollectionDAO dao, Authorizer authorizer) {
     Objects.requireNonNull(dao, "MetricsRepository must not be null");
     this.dao = new MetricsRepository(dao);
   }

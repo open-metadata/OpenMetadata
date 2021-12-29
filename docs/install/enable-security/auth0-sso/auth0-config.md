@@ -19,7 +19,7 @@ authenticationConfiguration:
 
 ```
 authorizerConfiguration:
-  className: "org.openmetadata.catalog.security.DefaultCatalogAuthorizer"
+  className: "org.openmetadata.catalog.security.DefaultAuthorizer"
   # JWT Filter
   containerRequestFilter: "org.openmetadata.catalog.security.JwtFilter"
   adminPrincipals:

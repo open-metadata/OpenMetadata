@@ -60,7 +60,7 @@ import org.openmetadata.catalog.jdbi3.ChartRepository;
 import org.openmetadata.catalog.jdbi3.ChartRepository.ChartEntityInterface;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.resources.Collection;
-import org.openmetadata.catalog.security.CatalogAuthorizer;
+import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
@@ -77,7 +77,7 @@ import org.openmetadata.catalog.util.ResultList;
 public class ChartResource {
   public static final String COLLECTION_PATH = "v1/charts/";
   private final ChartRepository dao;
-  private final CatalogAuthorizer authorizer;
+  private final Authorizer authorizer;
 
   public static ResultList<Chart> addHref(UriInfo uriInfo, ResultList<Chart> charts) {
     Optional.ofNullable(charts.getData()).orElse(Collections.emptyList()).forEach(i -> addHref(uriInfo, i));
@@ -93,7 +93,7 @@ public class ChartResource {
   }
 
   @Inject
-  public ChartResource(CollectionDAO dao, CatalogAuthorizer authorizer) {
+  public ChartResource(CollectionDAO dao, Authorizer authorizer) {
     this.dao = new ChartRepository(dao);
     this.authorizer = authorizer;
   }

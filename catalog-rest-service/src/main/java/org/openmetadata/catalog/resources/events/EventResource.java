@@ -40,7 +40,7 @@ import org.openmetadata.catalog.Entity.EntityList;
 import org.openmetadata.catalog.jdbi3.ChangeEventRepository;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.resources.Collection;
-import org.openmetadata.catalog.security.CatalogAuthorizer;
+import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.type.ChangeEvent;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.ResultList;
@@ -52,7 +52,7 @@ import org.openmetadata.catalog.util.ResultList;
 @Collection(name = "events")
 public class EventResource {
   private final ChangeEventRepository dao;
-  private final CatalogAuthorizer authorizer;
+  private final Authorizer authorizer;
 
   public static class ChangeEventList extends ResultList<ChangeEvent> {
 
@@ -66,7 +66,7 @@ public class EventResource {
   }
 
   @Inject
-  public EventResource(CollectionDAO dao, CatalogAuthorizer authorizer) {
+  public EventResource(CollectionDAO dao, Authorizer authorizer) {
     Objects.requireNonNull(dao, "ChangeEventRepository must not be null");
     this.dao = new ChangeEventRepository(dao);
     this.authorizer = authorizer;

@@ -58,7 +58,7 @@ import org.openmetadata.catalog.entity.data.Location;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.LocationRepository;
 import org.openmetadata.catalog.resources.Collection;
-import org.openmetadata.catalog.security.CatalogAuthorizer;
+import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
@@ -75,7 +75,7 @@ import org.openmetadata.catalog.util.ResultList;
 public class LocationResource {
   public static final String COLLECTION_PATH = "v1/locations/";
   private final LocationRepository dao;
-  private final CatalogAuthorizer authorizer;
+  private final Authorizer authorizer;
 
   public static Location addHref(UriInfo uriInfo, Location location) {
     Entity.withHref(uriInfo, location.getOwner());
@@ -85,7 +85,7 @@ public class LocationResource {
   }
 
   @Inject
-  public LocationResource(CollectionDAO dao, CatalogAuthorizer authorizer) {
+  public LocationResource(CollectionDAO dao, Authorizer authorizer) {
     Objects.requireNonNull(dao, "LocationRepository must not be null");
     this.dao = new LocationRepository(dao);
     this.authorizer = authorizer;
