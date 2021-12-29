@@ -104,7 +104,7 @@ pip3 install 'openmetadata-ingestion[redshift]'
 
 ### 3. Create a configuration file using template JSON
 
-Create a new file called `redshift.json` in the current directory. Note that the current directory should be the `openmetadata/redshift` directory you created in Step 1.&#x20;
+Create a new file called `redshift.json` in the current directory. Note that the current directory should be the `openmetadata` directory you created in Step 1.&#x20;
 
 Copy and paste the configuration template below into the `redshift.json` file you created.
 
@@ -385,7 +385,7 @@ You need not make any changes to the fields defined for `metadata_server` in the
 
 Your `redshift.json` configuration file should now be fully configured and ready to use in an ingestion workflow.
 
-To run an ingestion workflow, execute the following command from the `openmetadata/redshift` directory you created in Step 1.
+To run an ingestion workflow, execute the following command from the `openmetadata` directory you created in Step 1.
 
 ```bash
 metadata ingest -c ./redshift.json
