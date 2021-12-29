@@ -41,10 +41,10 @@ metadata ingest -c ./examples/workflows/mariadb.json
       "database": "openmetadata_db",
       "service_name": "local_mysql",
       "table_filter_pattern": {
-        "excludes": ["information_schema.*"]
+        "excludes": ["demo.*","orders.*"]
       },
       "schema_filter_pattern": {
-        "excludes": ["information_schema.*"]
+        "excludes": ["mysql.*", "information_schema.*", "performance_schema.*", "sys.*"]
       }
     }
   },
@@ -82,8 +82,6 @@ Add optionally `pii` processor and `metadata-rest` sink along with `metadata-ser
       },
       "schema_filter_pattern": {
         "excludes": ["information_schema.*"]
-      }: {
-        "excludes": ["mysql.*", "information_schema.*", "performance_schema.*", "sys.*"]
       }
     }
   },
