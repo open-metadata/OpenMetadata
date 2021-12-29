@@ -46,7 +46,7 @@ metadata ingest -c ./examples/workflows/snowflake.json
       "data_profiler_offset": "0",
       "data_profiler_limit": "50000",
       "table_filter_pattern": {
-        "excludes": ["information_schema.*"]
+        "excludes": ["demo.*","orders.*"]
       },
       "schema_filter_pattern": {
         "excludes": ["information_schema.*"]
@@ -139,7 +139,7 @@ Add `metadata-rest` sink along with `metadata-server` config
       "data_profiler_offset": "0",
       "data_profiler_limit": "50000",
       "table_filter_pattern": {
-        "excludes": ["information_schema.*"]
+        "excludes": ["demo.*","orders.*"]
       },
       "schema_filter_pattern": {
         "excludes": ["information_schema.*"]

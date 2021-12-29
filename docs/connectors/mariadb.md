@@ -78,7 +78,7 @@ Add optionally `pii` processor and `metadata-rest` sink along with `metadata-ser
       "database": "openmetadata_db",
       "service_name": "local_mysql",
       "table_filter_pattern": {
-        "excludes": ["information_schema.*"]
+        "excludes": ["demo.*","orders.*"]
       },
       "schema_filter_pattern": {
         "excludes": ["information_schema.*"]

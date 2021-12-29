@@ -41,7 +41,7 @@ metadata ingest -c ./examples/workflows/vertica.json
       "database": "openmetadata_db",
       "service_name": "local_vertica",
       "table_filter_pattern": {
-        "excludes": ["information_schema.*"]
+        "excludes": ["demo.*","orders.*"]
       },
       "schema_filter_pattern": {
         "excludes": ["information_schema.*"]
@@ -75,7 +75,7 @@ Add `metadata-rest` sink along with `metadata-server` config
       "database": "openmetadata_db",
       "service_name": "local_vertica",
       "table_filter_pattern": {
-        "excludes": ["information_schema.*"]
+        "excludes": ["demo.*","orders.*"]
       },
       "schema_filter_pattern": {
         "excludes": ["information_schema.*"]

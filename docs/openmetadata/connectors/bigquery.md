@@ -64,7 +64,7 @@ metadata ingest -c ./examples/workflows/bigquery.json
         "credentials_path": "examples/creds/bigquery-cred.json"
       },
       "table_filter_pattern": {
-        "excludes": ["information_schema.*"]
+        "excludes": ["demo.*","orders.*"]
       },
       "schema_filter_pattern": {
         "excludes": [
@@ -111,7 +111,7 @@ Add `metadata-rest` sink along with `metadata-server` config
         "credentials_path": "examples/creds/bigquery-cred.json"
       },
       "table_filter_pattern": {
-        "excludes": ["information_schema.*"]
+        "excludes": ["demo.*","orders.*"]
       },
       "schema_filter_pattern": {
         "excludes": ["information_schema.*"]

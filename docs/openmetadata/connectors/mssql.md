@@ -43,7 +43,7 @@ metadata ingest -c ./examples/workflows/mssql.json
       "username": "sa",
       "password": "test!Password",
       "table_filter_pattern": {
-        "excludes": ["information_schema.*"]
+        "excludes": ["demo.*","orders.*"]
       },
       "schema_filter_pattern": {
         "excludes": ["information_schema.*"]
@@ -81,7 +81,7 @@ Add `metadata-rest` sink along with `metadata-server` config
       "username": "sa",
       "password": "test!Password",
       "table_filter_pattern": {
-        "excludes": ["information_schema.*"]
+        "excludes": ["demo.*","orders.*"]
       },
       "schema_filter_pattern": {
         "excludes": ["information_schema.*"]
