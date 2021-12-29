@@ -88,8 +88,6 @@ Add `metadata-rest` sink along with `metadata-server` config
       },
       "schema_filter_pattern": {
         "excludes": ["information_schema.*"]
-      }: {
-        "excludes": ["information_schema.*", "[\\w]*event_vw.*"]
       }
     },
   "sink": {
