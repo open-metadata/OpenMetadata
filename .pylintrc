@@ -1,6 +1,10 @@
 [BASIC]
 # W1203: logging-fstring-interpolation - f-string brings better readability and unifies style
-disable=W1203
+# W1202: logging-format-interpolation - lazy formatting in logging functions
+disable=W1203,W1202
+docstring-min-length=20
+max-args=7
+max-attributes=12
 
 [MASTER]
 fail-under=6.0
