@@ -12,8 +12,39 @@
 import os
 from typing import Optional, Tuple
 
+from sqlalchemy_bigquery import _types
+from sqlalchemy_bigquery._struct import STRUCT
+from sqlalchemy_bigquery._types import (
+    _get_sqla_column_type,
+    _get_transitive_schema_fields,
+)
+
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.source.sql_source import SQLConnectionConfig, SQLSource
+
+
+def get_columns(bq_schema):
+    fields = _get_transitive_schema_fields(bq_schema)
+    col_list = []
+    for field in fields:
+        col_obj = {
+            "name": field.name,
+            "type": _get_sqla_column_type(field)
+            if "STRUCT" or "RECORD" not in field
+            else STRUCT,
+            "nullable": field.mode == "NULLABLE" or field.mode == "REPEATED",
+            "comment": field.description,
+            "default": None,
+            "precision": field.precision,
+            "scale": field.scale,
+            "max_length": field.max_length,
+            "raw_data_type": str(_get_sqla_column_type(field)),
+        }
+        col_list.append(col_obj)
+    return col_list
+
+
+_types.get_columns = get_columns
 
 
 class BigQueryConfig(SQLConnectionConfig, SQLSource):
