@@ -53,11 +53,12 @@ metadata ingest -c ./examples/workflows/postgres.json
 1. **username** - pass the Postgres username.
 2. **password** - the password for the Postgres username.
 3. **service\_name** - Service Name for this Postgres cluster. If you added the Postgres cluster through OpenMetadata UI, make sure the service name matches the same.
-4. **filter\_pattern** - It contains includes, excludes options to choose which pattern of datasets you want to ingest into OpenMetadata.
-5. **database -** Database name from where data is to be fetched.
-6. **data\_profiler\_enabled** - Enable data-profiling (Optional). It will provide you the newly ingested data.
-7. **data\_profiler\_offset** - Specify offset.
-8. **data\_profiler\_limit** - Specify limit.
+4. **schema\_filter\_pattern** - It contains includes, excludes options to choose which pattern of schemas you want to ingest into OpenMetadata.
+5. **table\_filter\_pattern** - It contains includes, excludes options to choose which pattern of tables you want to ingest into OpenMetadata.
+6. **database -** Database name from where data is to be fetched.
+7. **data\_profiler\_enabled** - Enable data-profiling (Optional). It will provide you the newly ingested data.
+8. **data\_profiler\_offset** - Specify offset.
+9. **data\_profiler\_limit** - Specify limit.
 
 ## Publish to OpenMetadata
 

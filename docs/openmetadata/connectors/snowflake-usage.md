@@ -51,8 +51,9 @@ metadata ingest -c ./examples/workflows/snowflake_usage.json
 1. **username** - pass the Snowflake username.
 2. **password** - the password for the Snowflake username.
 3. **service\_name** - Service Name for this Snowflake cluster. If you added the Snowflake cluster through OpenMetadata UI, make sure the service name matches the same.
-4. **filter\_pattern** - It contains includes, excludes options to choose which pattern of datasets you want to ingest into OpenMetadata.
-5. **database -** Database name from where data is to be fetched.
+4. **schema\_filter\_pattern** - It contains includes, excludes options to choose which pattern of schemas you want to ingest into OpenMetadata.
+5. **table\_filter\_pattern** - It contains includes, excludes options to choose which pattern of tables you want to ingest into OpenMetadata.
+6. **database -** Database name from where data is to be fetched.
 
 ### Publish to OpenMetadata
 

@@ -63,7 +63,10 @@ metadata ingest -c ./examples/workflows/bigquery.json
       "options": {
         "credentials_path": "examples/creds/bigquery-cred.json"
       },
-      "filter_pattern": {
+      "table_filter_pattern": {
+        "excludes": ["information_schema.*"]
+      },
+      "schema_filter_pattern": {
         "excludes": [
           "[\\w]*cloudaudit.*",
           "[\\w]*logging_googleapis_com.*",
@@ -78,7 +81,8 @@ metadata ingest -c ./examples/workflows/bigquery.json
 1. **username** - pass the Bigquery username.
 2. **password** - the password for the Bigquery username.
 3. **service\_name** - Service Name for this Bigquery cluster. If you added the Bigquery cluster through OpenMetadata UI, make sure the service name matches the same.
-4. **filter\_pattern** - It contains includes, excludes options to choose which pattern of datasets you want to ingest into OpenMetadata.
+4. **schema\_filter\_pattern** - It contains includes, excludes options to choose which pattern of schemas you want to ingest into OpenMetadata.
+5. **table\_filter\_pattern** - It contains includes, excludes options to choose which pattern of tables you want to ingest into OpenMetadata.
 5. **database -** Database name from where data is to be fetched.
 6. **data\_profiler\_enabled** - Enable data-profiling (Optional). It will provide you the newly ingested data.
 7. **data\_profiler\_offset** - Specify offset.
@@ -106,7 +110,12 @@ Add `metadata-rest` sink along with `metadata-server` config
       "options": {
         "credentials_path": "examples/creds/bigquery-cred.json"
       },
-      "filter_pattern": {
+      "table_filter_pattern": {
+        "excludes": ["information_schema.*"]
+      },
+      "schema_filter_pattern": {
+        "excludes": ["information_schema.*"]
+      }: {
         "excludes": [
           "[\\w]*cloudaudit.*",
           "[\\w]*logging_googleapis_com.*",

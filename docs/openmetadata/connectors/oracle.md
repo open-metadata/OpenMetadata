@@ -48,7 +48,8 @@ pip install 'openmetadata-ingestion[oracle]'
 3. **host\_port** - Host Port where Oracle Instance is initiated
 4. **service\_name** - Service Name for this Oracle cluster. If you added Oracle cluster through OpenMetadata UI, make sure the service name matches the same.
 5. **oracle\_service\_name -** Oracle Service Name (TNS alias)
-6. **filter\_pattern** - It contains includes, excludes options to choose which pattern of datasets you want to ingest into OpenMetadata
+6. **table\_filter\_pattern** - It contains includes, excludes options to choose which pattern of tables you want to ingest into OpenMetadata.
+7. **schema\_filter\_pattern** - It contains includes, excludes options to choose which pattern of schemas you want to ingest into OpenMetadata.
 
 ## Publish to OpenMetadata
 
