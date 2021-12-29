@@ -62,6 +62,7 @@ class TableUsageCount(BaseModel):
     database: str
     count: int = 1
     joins: TableColumnJoins
+    service_name: str
 
 
 class QueryParserData(BaseModel):
