@@ -1,0 +1,21 @@
+{
+  "$id": "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/api/teams/createRole.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Create role entity request",
+  "description": "Role entity",
+  "type": "object",
+  "properties" : {
+    "name": {
+      "$ref": "../../entity/teams/role.json#/definitions/roleName"
+    },
+    "displayName": {
+      "description": "Optional name used for display purposes. Example 'Data Consumer'",
+      "type": "string"
+    },
+    "description": {
+      "description": "Optional description of the role",
+      "type": "string"
+    }
+  },
+  "required": ["name"]
+}
