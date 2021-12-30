@@ -146,6 +146,14 @@ public final class Entity {
     return entityRepository.getEntityInterface(entity);
   }
 
+  public static void deleteEntity(String entity, UUID entityId, boolean recursive) throws IOException {
+    EntityRepository<?> dao = ENTITY_REPOSITORY_MAP.get(entity);
+    if (dao == null) {
+      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entity));
+    }
+    dao.delete(entityId, recursive);
+  }
+
   public static <T> String getEntityNameFromClass(Class<T> clz) {
     return CANONICAL_ENTITY_NAME_MAP.get(clz.getSimpleName().toLowerCase(Locale.ROOT));
   }
@@ -154,8 +162,8 @@ public final class Entity {
     return CANONICAL_ENTITY_NAME_MAP.get(object.getClass().getSimpleName().toLowerCase(Locale.ROOT));
   }
 
+  /** Class for getting validated entity list from a queryParam with list of entities. */
   public static class EntityList {
-
     public static List<String> getEntityList(String name, String entitiesParam) {
       if (entitiesParam == null) {
         return null;

@@ -64,6 +64,12 @@ public class LocationResourceTest extends EntityResourceTest<Location> {
   }
 
   @Override
+  public EntityReference getContainer(Object createRequest) throws URISyntaxException {
+    CreateLocation createLocation = (CreateLocation) createRequest;
+    return createLocation.getService();
+  }
+
+  @Override
   public void validateCreatedEntity(Location location, Object request, Map<String, String> authHeaders)
       throws HttpResponseException {
     CreateLocation createRequest = (CreateLocation) request;

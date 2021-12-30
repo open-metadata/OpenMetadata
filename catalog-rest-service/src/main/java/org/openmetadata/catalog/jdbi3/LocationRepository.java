@@ -338,6 +338,11 @@ public class LocationRepository extends EntityRepository<Location> {
     }
 
     @Override
+    public EntityReference getContainer() {
+      return entity.getService();
+    }
+
+    @Override
     public ChangeDescription getChangeDescription() {
       return entity.getChangeDescription();
     }

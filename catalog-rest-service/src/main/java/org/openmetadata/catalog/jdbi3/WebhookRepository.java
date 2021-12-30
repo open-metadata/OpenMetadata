@@ -249,6 +249,11 @@ public class WebhookRepository extends EntityRepository<Webhook> {
     }
 
     @Override
+    public EntityReference getContainer() {
+      return null;
+    }
+
+    @Override
     public ChangeDescription getChangeDescription() {
       return entity.getChangeDescription();
     }

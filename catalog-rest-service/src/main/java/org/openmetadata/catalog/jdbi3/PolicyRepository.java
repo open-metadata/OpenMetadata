@@ -290,6 +290,11 @@ public class PolicyRepository extends EntityRepository<Policy> {
     }
 
     @Override
+    public EntityReference getContainer() {
+      return null;
+    }
+
+    @Override
     public void setId(UUID id) {
       entity.setId(id);
     }

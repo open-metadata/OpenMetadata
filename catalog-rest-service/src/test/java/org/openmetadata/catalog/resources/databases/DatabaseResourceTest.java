@@ -183,6 +183,12 @@ public class DatabaseResourceTest extends EntityResourceTest<Database> {
   }
 
   @Override
+  public EntityReference getContainer(Object createRequest) throws URISyntaxException {
+    CreateDatabase createDatabase = (CreateDatabase) createRequest;
+    return createDatabase.getService();
+  }
+
+  @Override
   public void validateCreatedEntity(Database database, Object request, Map<String, String> authHeaders) {
     CreateDatabase createRequest = (CreateDatabase) request;
     validateCommonEntityFields(

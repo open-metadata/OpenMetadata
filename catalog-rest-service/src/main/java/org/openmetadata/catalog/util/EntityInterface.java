@@ -51,6 +51,8 @@ public interface EntityInterface<T> {
 
   T getEntity();
 
+  EntityReference getContainer();
+
   void setId(UUID id);
 
   void setDescription(String description);

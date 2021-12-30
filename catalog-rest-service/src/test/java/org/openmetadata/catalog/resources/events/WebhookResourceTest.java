@@ -192,6 +192,11 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook> {
   }
 
   @Override
+  public EntityReference getContainer(Object createRequest) throws URISyntaxException {
+    return null; // No container entity
+  }
+
+  @Override
   public void validateCreatedEntity(Webhook webhook, Object request, Map<String, String> authHeaders)
       throws HttpResponseException {
     CreateWebhook createRequest = (CreateWebhook) request;
@@ -304,8 +309,6 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook> {
     waitForFirstEvent(callbackEvents, 100, 100);
     assertNotNull(callbackEvents.peek());
 
-    Thread.sleep(1000); // Wait for change events to be recorded
-
     List<ChangeEvent> actualEvents =
         getChangeEvents("*", "*", "*", callbackEvents.peek().getDateTime(), adminAuthHeaders()).getData();
     waitAndCheckForEvents(callbackEvents, actualEvents, 30, 100);
@@ -355,9 +358,10 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook> {
   public void waitAndCheckForEvents(
       Collection<ChangeEvent> expected, Collection<ChangeEvent> received, int iteration, long sleepMillis)
       throws InterruptedException {
-    while (expected.size() < received.size() && iteration < 10) {
+    int i = 0;
+    while (expected.size() < received.size() && i < iteration) {
       Thread.sleep(sleepMillis);
-      iteration++;
+      i++;
     }
     if (expected.size() != received.size()) {
       expected.forEach(
@@ -381,9 +385,10 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook> {
   }
 
   public void waitForFirstEvent(Collection c1, int iteration, long sleepMillis) throws InterruptedException {
-    while (c1.size() > 0 && iteration < 10) {
+    int i = 0;
+    while (c1.size() > 0 && i < iteration) {
       Thread.sleep(sleepMillis);
-      iteration++;
+      i++;
     }
   }
 }

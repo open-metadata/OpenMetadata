@@ -171,8 +171,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     if (dashboard.getCharts() != null) {
       for (EntityReference chart : dashboard.getCharts()) {
         dao.relationshipDAO()
-            .insert(
-                dashboardId, chart.getId().toString(), Entity.DASHBOARD, Entity.CHART, Relationship.HAS.ordinal());
+            .insert(dashboardId, chart.getId().toString(), Entity.DASHBOARD, Entity.CHART, Relationship.HAS.ordinal());
       }
     }
     // Add owner relationship
@@ -249,8 +248,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     if (updated.getCharts() != null) {
       for (EntityReference chart : updated.getCharts()) {
         dao.relationshipDAO()
-            .insert(
-                dashboardId, chart.getId().toString(), Entity.DASHBOARD, Entity.CHART, Relationship.HAS.ordinal());
+            .insert(dashboardId, chart.getId().toString(), Entity.DASHBOARD, Entity.CHART, Relationship.HAS.ordinal());
       }
     }
     List<UUID> origChartIds = EntityUtil.getIDList(original.getCharts());
@@ -337,6 +335,11 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     }
 
     @Override
+    public EntityReference getContainer() {
+      return entity.getService();
+    }
+
+    @Override
     public void setId(UUID id) {
       entity.setId(id);
     }
@@ -413,8 +416,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
           Optional.ofNullable(original.getEntity().getCharts()).orElse(Collections.emptyList());
       for (EntityReference chart : updatedCharts) {
         dao.relationshipDAO()
-            .insert(
-                dashboardId, chart.getId().toString(), Entity.DASHBOARD, Entity.CHART, Relationship.HAS.ordinal());
+            .insert(dashboardId, chart.getId().toString(), Entity.DASHBOARD, Entity.CHART, Relationship.HAS.ordinal());
       }
 
       List<EntityReference> added = new ArrayList<>();

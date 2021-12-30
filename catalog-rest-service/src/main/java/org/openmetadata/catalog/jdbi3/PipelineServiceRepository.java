@@ -162,6 +162,11 @@ public class PipelineServiceRepository extends EntityRepository<PipelineService>
     }
 
     @Override
+    public EntityReference getContainer() {
+      return null;
+    }
+
+    @Override
     public void setId(UUID id) {
       entity.setId(id);
     }

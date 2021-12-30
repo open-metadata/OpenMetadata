@@ -85,6 +85,11 @@ public class PolicyResourceTest extends EntityResourceTest<Policy> {
   }
 
   @Override
+  public EntityReference getContainer(Object createRequest) throws URISyntaxException {
+    return null; // No container entity for Policy
+  }
+
+  @Override
   public void validateCreatedEntity(Policy policy, Object request, Map<String, String> authHeaders) {
     CreatePolicy createRequest = (CreatePolicy) request;
     validateCommonEntityFields(

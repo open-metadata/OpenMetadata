@@ -36,6 +36,7 @@ import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -102,7 +103,7 @@ public class UserResourceTest extends EntityResourceTest<User> {
   }
 
   @Test
-  public void post_validUser_200_ok_without_login(TestInfo test) {
+  void post_validUser_200_ok_without_login(TestInfo test) {
     CreateUser create = create(test, 6).withDisplayName("displayName").withEmail("test@email.com").withIsAdmin(true);
 
     HttpResponseException exception =
@@ -494,6 +495,11 @@ public class UserResourceTest extends EntityResourceTest<User> {
   @Override
   public Object createRequest(String name, String description, String displayName, EntityReference owner) {
     return create(name).withDescription(description).withDisplayName(displayName).withProfile(PROFILE);
+  }
+
+  @Override
+  public EntityReference getContainer(Object createRequest) throws URISyntaxException {
+    return null; // No container entity
   }
 
   @Override

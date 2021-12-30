@@ -253,6 +253,11 @@ public class TopicRepository extends EntityRepository<Topic> {
     }
 
     @Override
+    public EntityReference getContainer() {
+      return entity.getService();
+    }
+
+    @Override
     public void setId(UUID id) {
       entity.setId(id);
     }

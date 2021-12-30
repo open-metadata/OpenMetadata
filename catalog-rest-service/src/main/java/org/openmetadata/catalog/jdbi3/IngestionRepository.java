@@ -241,6 +241,11 @@ public class IngestionRepository extends EntityRepository<Ingestion> {
     }
 
     @Override
+    public EntityReference getContainer() {
+      return entity.getService();
+    }
+
+    @Override
     public List<EntityReference> getFollowers() {
       // Ingestion does not have followers.
       return null;

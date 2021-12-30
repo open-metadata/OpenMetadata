@@ -194,7 +194,7 @@ public class TableResourceTest extends EntityResourceTest<Table> {
     // check the FQN
     Database db = new DatabaseResourceTest().getEntity(table.getDatabase().getId(), null, adminAuthHeaders());
     String expectedFQN = db.getFullyQualifiedName() + "." + table.getName();
-    assertEquals(expectedFQN, expectedFQN);
+    assertEquals(expectedFQN, table.getFullyQualifiedName());
   }
 
   private static Column getColumn(String name, ColumnDataType columnDataType, TagLabel tag) {
@@ -1373,6 +1373,11 @@ public class TableResourceTest extends EntityResourceTest<Table> {
   @Override
   public Object createRequest(String name, String description, String displayName, EntityReference owner) {
     return create(name).withDescription(description).withOwner(owner);
+  }
+
+  @Override
+  public EntityReference getContainer(Object createRequest) throws URISyntaxException {
+    return Entity.getEntityReference(DATABASE); // TODO clean this up
   }
 
   @Override
