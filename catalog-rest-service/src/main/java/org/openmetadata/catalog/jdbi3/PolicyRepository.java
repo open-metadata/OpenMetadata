@@ -23,9 +23,11 @@ import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Location;
 import org.openmetadata.catalog.entity.policies.Policy;
+import org.openmetadata.catalog.entity.policies.accessControl.Rule;
 import org.openmetadata.catalog.resources.policies.PolicyResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.PolicyType;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
@@ -106,6 +108,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
 
   @Override
   public void prepare(Policy policy) throws IOException {
+    isValid(policy);
     policy.setFullyQualifiedName(getFQN(policy));
     policy.setLocation(getLocationReference(policy));
     // Check if owner is valid and set the relationship
@@ -143,6 +146,40 @@ public class PolicyRepository extends EntityRepository<Policy> {
   @Override
   public EntityUpdater getUpdater(Policy original, Policy updated, boolean patchOperation) {
     return new PolicyUpdater(original, updated, patchOperation);
+  }
+
+  /**
+   * Validates policy schema beyond what json-schema validation supports. If policy is invalid, throws {@link
+   * IllegalArgumentException}
+   *
+   * <p>Example of validation that jsonschema2pojo does not support: <code>
+   *  "anyOf": [
+   *     {"required": ["entityTypeAttr"]},
+   *     {"required": ["entityTagAttr"]},
+   *     {"required": ["userRoleAttr"]}
+   *   ]
+   * </code>
+   */
+  public void isValid(Policy policy) throws IOException {
+    if (!policy.getPolicyType().equals(PolicyType.AccessControl)) {
+      return;
+    }
+    log.debug("Validating rules for {} policy: {}", PolicyType.AccessControl, policy.getName());
+    for (Object ruleObject : policy.getRules()) {
+      // Cast to access control policy Rule.
+      Rule rule = JsonUtils.readValue(JsonUtils.getJsonStructure(ruleObject).toString(), Rule.class);
+      // If the operation is not specified or if all user (subject) and entity (object) attributes are null, the rule
+      // is invalid.
+      if (rule.getOperation() == null
+          || (rule.getEntityTagAttr() == null && rule.getEntityTypeAttr() == null && rule.getUserRoleAttr() == null)) {
+        throw new IllegalArgumentException(
+            String.format(
+                "Found invalid rule %s within policy %s. Check if operation is non-null "
+                    + "and at least one among the user (subject) and entity (object) attributes is specified",
+                rule, policy.getName()));
+      }
+    }
+    // No validation errors, if execution reaches here.
   }
 
   private EntityReference getOwner(Policy policy) throws IOException {

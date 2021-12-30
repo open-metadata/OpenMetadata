@@ -16,14 +16,6 @@ class RuleCondition implements Condition {
     this.rule = rule;
   }
 
-  public boolean isValid() {
-    // TODO: This needs to be moved to Policy Repository rule creation, so that rules are always valid.
-    // At least one of the attributes must be specified in addition to the operation for a rule to be valid.
-    log.debug("Validating rule condition - rule: {}", rule);
-    return rule.getOperation() != null
-        && (rule.getEntityTagAttr() != null || rule.getEntityTypeAttr() != null || rule.getUserRoleAttr() != null);
-  }
-
   @Override
   public boolean evaluate(Facts facts) {
     // Check against operation and each of the entity and user attributes.

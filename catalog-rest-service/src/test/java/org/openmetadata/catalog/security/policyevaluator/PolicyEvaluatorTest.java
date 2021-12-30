@@ -20,6 +20,7 @@ import org.openmetadata.catalog.jdbi3.TeamRepository;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.MetadataOperation;
 import org.openmetadata.catalog.type.TagLabel;
+import org.openmetadata.catalog.util.PolicyUtils;
 
 public class PolicyEvaluatorTest {
 
@@ -40,14 +41,18 @@ public class PolicyEvaluatorTest {
   @BeforeAll
   static void setup() {
     rules = new ArrayList<>();
-    rules.add(createRule(null, "table", DATA_STEWARD, MetadataOperation.UpdateOwner, true, 1, true));
-    rules.add(createRule(PII_SENSITIVE, null, LEGAL, MetadataOperation.UpdateTags, true, 2, true));
-    rules.add(createRule(PII_SENSITIVE, null, DATA_CONSUMER, MetadataOperation.SuggestTags, true, 3, true));
-    rules.add(createRule(null, null, DATA_CONSUMER, MetadataOperation.SuggestDescription, true, 4, true));
-    rules.add(createRule(null, null, DEV_OPS, MetadataOperation.UpdateTags, true, 5, false)); // disabled rule.
-    rules.add(createRule(null, null, DEV_OPS, MetadataOperation.UpdateTags, false, 6, true));
-    rules.add(createRule(null, null, DEV_OPS, MetadataOperation.UpdateDescription, false, 7, true));
-    rules.add(createRule(null, null, DEV_OPS, MetadataOperation.SuggestDescription, true, 8, true));
+    rules.add(PolicyUtils.accessControlRule(null, "table", DATA_STEWARD, MetadataOperation.UpdateOwner, true, 1, true));
+    rules.add(PolicyUtils.accessControlRule(PII_SENSITIVE, null, LEGAL, MetadataOperation.UpdateTags, true, 2, true));
+    rules.add(
+        PolicyUtils.accessControlRule(
+            PII_SENSITIVE, null, DATA_CONSUMER, MetadataOperation.SuggestTags, true, 3, true));
+    rules.add(
+        PolicyUtils.accessControlRule(null, null, DATA_CONSUMER, MetadataOperation.SuggestDescription, true, 4, true));
+    // Add a disabled rule.
+    rules.add(PolicyUtils.accessControlRule(null, null, DEV_OPS, MetadataOperation.UpdateTags, true, 5, false));
+    rules.add(PolicyUtils.accessControlRule(null, null, DEV_OPS, MetadataOperation.UpdateTags, false, 6, true));
+    rules.add(PolicyUtils.accessControlRule(null, null, DEV_OPS, MetadataOperation.UpdateDescription, false, 7, true));
+    rules.add(PolicyUtils.accessControlRule(null, null, DEV_OPS, MetadataOperation.SuggestDescription, true, 8, true));
   }
 
   @BeforeEach
@@ -118,25 +123,6 @@ public class PolicyEvaluatorTest {
     Table table = createTable();
     boolean hasPermission = policyEvaluator.hasPermission(dataConsumer, table, MetadataOperation.UpdateTags);
     assertFalse(hasPermission);
-  }
-
-  private static Rule createRule(
-      String entityTag,
-      String entityType,
-      String userRole,
-      MetadataOperation operation,
-      boolean allow,
-      int priority,
-      boolean enabled) {
-    return new Rule()
-        .withName("rule" + random.nextInt(21)) // Create random rule name.
-        .withEntityTagAttr(entityTag)
-        .withEntityTypeAttr(entityType)
-        .withUserRoleAttr(userRole)
-        .withOperation(operation)
-        .withAllow(allow)
-        .withPriority(priority)
-        .withEnabled(enabled);
   }
 
   private User createUser(List<String> teamNames) {

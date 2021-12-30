@@ -25,13 +25,17 @@ import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
 import static org.openmetadata.catalog.util.TestUtils.assertEntityPagination;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
+import static org.openmetadata.catalog.util.TestUtils.assertResponseContains;
 
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import javax.ws.rs.client.WebTarget;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
@@ -43,6 +47,7 @@ import org.openmetadata.catalog.api.data.CreateLocation;
 import org.openmetadata.catalog.api.policies.CreatePolicy;
 import org.openmetadata.catalog.entity.data.Location;
 import org.openmetadata.catalog.entity.policies.Policy;
+import org.openmetadata.catalog.entity.policies.accessControl.Rule;
 import org.openmetadata.catalog.jdbi3.LocationRepository;
 import org.openmetadata.catalog.jdbi3.PolicyRepository.PolicyEntityInterface;
 import org.openmetadata.catalog.resources.EntityResourceTest;
@@ -51,9 +56,11 @@ import org.openmetadata.catalog.resources.policies.PolicyResource.PolicyList;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.FieldChange;
+import org.openmetadata.catalog.type.MetadataOperation;
 import org.openmetadata.catalog.type.PolicyType;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.JsonUtils;
+import org.openmetadata.catalog.util.PolicyUtils;
 import org.openmetadata.catalog.util.TestUtils;
 
 @Slf4j
@@ -142,6 +149,24 @@ public class PolicyResourceTest extends EntityResourceTest<Policy> {
   public void post_PolicyWithTeamOwner_200_ok(TestInfo test) throws IOException {
     CreatePolicy create = create(test).withOwner(TEAM_OWNER1);
     createAndCheckEntity(create, adminAuthHeaders());
+  }
+
+  @Test
+  public void post_AccessControlPolicyWithValidRules_200_ok(TestInfo test) throws IOException {
+    CreatePolicy create = createAccessControlPolicyWithValidRules(test);
+    createAndCheckEntity(create, adminAuthHeaders());
+  }
+
+  @Test
+  public void post_AccessControlPolicyWithInvalidRules_400_error(TestInfo test) throws IOException {
+    CreatePolicy create = createAccessControlPolicyWithInvalidRules(test);
+    HttpResponseException exception =
+        assertThrows(HttpResponseException.class, () -> createEntity(create, adminAuthHeaders()));
+    assertResponseContains(
+        exception,
+        BAD_REQUEST,
+        "Check if operation is non-null and at least one among the user (subject) "
+            + "and entity (object) attributes is specified");
   }
 
   @Test
@@ -358,6 +383,29 @@ public class PolicyResourceTest extends EntityResourceTest<Policy> {
         .withDescription("description")
         .withPolicyType(PolicyType.Lifecycle)
         .withOwner(USER_OWNER1);
+  }
+
+  private CreatePolicy createAccessControlPolicyWithRules(String name, List<Rule> rules) {
+    return new CreatePolicy()
+        .withName(name)
+        .withDescription("description")
+        .withPolicyType(PolicyType.AccessControl)
+        .withRules(rules.stream().map(rule -> (Object) rule).collect(Collectors.toList()))
+        .withOwner(USER_OWNER1);
+  }
+
+  private CreatePolicy createAccessControlPolicyWithInvalidRules(TestInfo test) {
+    List<Rule> rules = new ArrayList<>();
+    rules.add(PolicyUtils.accessControlRule(null, null, null, MetadataOperation.UpdateDescription, true, 0, true));
+    return createAccessControlPolicyWithRules(getEntityName(test), rules);
+  }
+
+  private CreatePolicy createAccessControlPolicyWithValidRules(TestInfo test) {
+    List<Rule> rules = new ArrayList<>();
+    rules.add(
+        PolicyUtils.accessControlRule(null, null, "DataConsumer", MetadataOperation.UpdateDescription, true, 0, true));
+    rules.add(PolicyUtils.accessControlRule(null, null, "DataConsumer", MetadataOperation.UpdateTags, true, 1, true));
+    return createAccessControlPolicyWithRules(getEntityName(test), rules);
   }
 
   private static Location createLocation() throws HttpResponseException {
