@@ -29,7 +29,7 @@ Please use the following command to check the version of Python you have.
 python3 --version
 ```
 
-## **rocedure**
+## **Procedure**
 
 Here’s an overview of the steps in this procedure. Please follow the steps relevant to your use case.
 
