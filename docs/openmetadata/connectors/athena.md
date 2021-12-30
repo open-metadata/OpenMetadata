@@ -113,11 +113,30 @@ Note: The `source.config` field in the configuration JSON will include the major
       "host_port":"host_port",
       "username": "openmetadata_user",
       "password": "openmetadata_password",
-      "service_name": "local_athena",
+      "database": "openmetadata_db",
+      "service_name": "athena",
       "service_type": "Athena"
+      "data_profiler_enabled": "false",
+      "table_filter_pattern": {
+        "excludes": ["[\\w]*event_vw.*"]
+      },
+      "schema_filter_pattern": {
+        "excludes": ["athena.*", "information_schema.*", "performance_schema.*", "sys.*"]
+      }
     }
   },
- ...
+  "sink": {
+    "type": "metadata-rest",
+    "config": {}
+  },
+  "metadata_server": {
+    "type": "metadata-server",
+    "config": {
+      "api_endpoint": "http://localhost:8585/api",
+      "auth_provider_type": "no-auth"
+    }
+  }
+}  
 ```
 {% endcode %}
 
