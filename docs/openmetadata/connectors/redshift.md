@@ -122,6 +122,7 @@ Note: The `source.config` field in the configuration JSON will include the major
       "username": "username",
       "password": "strong_password",
       "service_name": "aws_redshift",
+      "query": "select top 50 * from {}.{}",
       "data_profiler_enabled": "false",
       "table_filter_pattern": {
         "excludes": ["[\\w]*event_vw.*"]
