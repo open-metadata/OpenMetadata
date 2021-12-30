@@ -282,7 +282,9 @@ public class TopicResource {
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTopic create)
       throws IOException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
+    System.out.println("XXX topic retention time" + create.getRetentionTime());
     Topic topic = getTopic(securityContext, create);
+    System.out.println("XXX topic retention time" + topic.getRetentionTime());
 
     topic = addHref(uriInfo, dao.create(uriInfo, topic));
     return Response.created(topic.getHref()).entity(topic).build();
@@ -334,7 +336,9 @@ public class TopicResource {
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTopic create)
       throws IOException, ParseException {
 
+    System.out.println("XXX topic retention time" + create.getRetentionTime());
     Topic topic = getTopic(securityContext, create);
+    System.out.println("XXX topic retention time" + topic.getRetentionTime());
     PutResponse<Topic> response = dao.createOrUpdate(uriInfo, topic);
     addHref(uriInfo, response.getEntity());
     return response.toResponse();

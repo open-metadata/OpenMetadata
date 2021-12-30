@@ -1104,6 +1104,8 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
       throws IOException {
     expectedList.sort(EntityUtil.compareFieldChange);
     actualList.sort(EntityUtil.compareFieldChange);
+    System.out.println("XXX " + expectedList);
+    System.out.println("XXX " + actualList);
     assertEquals(expectedList.size(), actualList.size());
 
     for (int i = 0; i < expectedList.size(); i++) {

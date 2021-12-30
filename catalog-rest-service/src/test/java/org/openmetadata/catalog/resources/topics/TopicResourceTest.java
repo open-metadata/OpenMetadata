@@ -24,9 +24,11 @@ import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import javax.ws.rs.client.WebTarget;
+import javax.ws.rs.core.Response.Status;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
@@ -36,10 +38,16 @@ import org.openmetadata.catalog.entity.data.Topic;
 import org.openmetadata.catalog.jdbi3.TopicRepository.TopicEntityInterface;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.topics.TopicResource.TopicList;
+import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.FieldChange;
+import org.openmetadata.catalog.type.topic.CleanupPolicy;
+import org.openmetadata.catalog.type.topic.SchemaType;
 import org.openmetadata.catalog.util.EntityInterface;
+import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.TestUtils;
+import org.openmetadata.catalog.util.TestUtils.UpdateType;
 
 public class TopicResourceTest extends EntityResourceTest<Topic> {
 
@@ -121,6 +129,117 @@ public class TopicResourceTest extends EntityResourceTest<Topic> {
   }
 
   @Test
+  public void put_topicAttributes_200_ok(TestInfo test) throws IOException {
+    CreateTopic createTopic =
+        create(test)
+            .withOwner(USER_OWNER1)
+            .withMaximumMessageSize(1)
+            .withMinimumInSyncReplicas(1)
+            .withPartitions(1)
+            .withReplicationFactor(1)
+            .withRetentionTime(1)
+            .withRetentionSize(1)
+            .withSchemaText("abc")
+            .withSchemaType(SchemaType.Avro)
+            .withCleanupPolicies(List.of(CleanupPolicy.COMPACT));
+
+    // Patch and update the topic
+    Topic topic = createEntity(createTopic, adminAuthHeaders());
+    String origJson = JsonUtils.pojoToJson(topic);
+
+    createTopic
+        .withOwner(TEAM_OWNER1)
+        .withMinimumInSyncReplicas(2)
+        .withMaximumMessageSize(2)
+        .withPartitions(2)
+        .withReplicationFactor(2)
+        .withRetentionTime(2)
+        .withRetentionSize(2)
+        .withSchemaText("bcd")
+        .withSchemaType(SchemaType.JSON)
+        .withCleanupPolicies(List.of(CleanupPolicy.DELETE));
+
+    ChangeDescription change = getChangeDescription(topic.getVersion());
+    change
+        .getFieldsUpdated()
+        .add(new FieldChange().withName("owner").withOldValue(USER_OWNER1).withNewValue(TEAM_OWNER1));
+    change.getFieldsUpdated().add(new FieldChange().withName("maximumMessageSize").withOldValue(1).withNewValue(2));
+    change.getFieldsUpdated().add(new FieldChange().withName("minimumInSyncReplicas").withOldValue(1).withNewValue(2));
+    change.getFieldsUpdated().add(new FieldChange().withName("partitions").withOldValue(1).withNewValue(2));
+    change.getFieldsUpdated().add(new FieldChange().withName("replicationFactor").withOldValue(1).withNewValue(2));
+    change.getFieldsUpdated().add(new FieldChange().withName("retentionTime").withOldValue(1).withNewValue(2));
+    change.getFieldsUpdated().add(new FieldChange().withName("retentionSize").withOldValue(1).withNewValue(2));
+    change.getFieldsUpdated().add(new FieldChange().withName("schemaText").withOldValue("abc").withNewValue("bcd"));
+    change
+        .getFieldsUpdated()
+        .add(new FieldChange().withName("schemaType").withOldValue(SchemaType.Avro).withNewValue(SchemaType.JSON));
+    change
+        .getFieldsDeleted()
+        .add(new FieldChange().withName("cleanupPolicies").withOldValue(List.of(CleanupPolicy.COMPACT)));
+    change
+        .getFieldsAdded()
+        .add(new FieldChange().withName("cleanupPolicies").withNewValue(List.of(CleanupPolicy.DELETE)));
+
+    updateAndCheckEntity(createTopic, Status.OK, adminAuthHeaders(), UpdateType.MINOR_UPDATE, change);
+  }
+
+  @Test
+  public void patch_topicAttributes_200_ok(TestInfo test) throws IOException {
+    CreateTopic createTopic =
+        create(test)
+            .withOwner(USER_OWNER1)
+            .withMaximumMessageSize(1)
+            .withMinimumInSyncReplicas(1)
+            .withPartitions(1)
+            .withReplicationFactor(1)
+            .withRetentionTime(1)
+            .withRetentionSize(1)
+            .withSchemaText("abc")
+            .withSchemaType(SchemaType.Avro)
+            .withCleanupPolicies(List.of(CleanupPolicy.COMPACT));
+
+    // Patch and update the topic
+    Topic topic = createEntity(createTopic, adminAuthHeaders());
+    topic.setHref(null);
+    topic.getOwner().withHref(null);
+    String origJson = JsonUtils.pojoToJson(topic);
+
+    topic
+        .withOwner(TEAM_OWNER1)
+        .withMinimumInSyncReplicas(2)
+        .withMaximumMessageSize(2)
+        .withPartitions(2)
+        .withReplicationFactor(2)
+        .withRetentionTime(2)
+        .withRetentionSize(2)
+        .withSchemaText("bcd")
+        .withSchemaType(SchemaType.JSON)
+        .withCleanupPolicies(List.of(CleanupPolicy.DELETE));
+
+    ChangeDescription change = getChangeDescription(topic.getVersion());
+    change
+        .getFieldsUpdated()
+        .add(new FieldChange().withName("owner").withOldValue(USER_OWNER1).withNewValue(TEAM_OWNER1));
+    change.getFieldsUpdated().add(new FieldChange().withName("maximumMessageSize").withOldValue(1).withNewValue(2));
+    change.getFieldsUpdated().add(new FieldChange().withName("minimumInSyncReplicas").withOldValue(1).withNewValue(2));
+    change.getFieldsUpdated().add(new FieldChange().withName("partitions").withOldValue(1).withNewValue(2));
+    change.getFieldsUpdated().add(new FieldChange().withName("replicationFactor").withOldValue(1).withNewValue(2));
+    change.getFieldsUpdated().add(new FieldChange().withName("retentionTime").withOldValue(1).withNewValue(2));
+    change.getFieldsUpdated().add(new FieldChange().withName("retentionSize").withOldValue(1).withNewValue(2));
+    change.getFieldsUpdated().add(new FieldChange().withName("schemaText").withOldValue("abc").withNewValue("bcd"));
+    change
+        .getFieldsUpdated()
+        .add(new FieldChange().withName("schemaType").withOldValue(SchemaType.Avro).withNewValue(SchemaType.JSON));
+    change
+        .getFieldsDeleted()
+        .add(new FieldChange().withName("cleanupPolicies").withOldValue(List.of(CleanupPolicy.COMPACT)));
+    change
+        .getFieldsAdded()
+        .add(new FieldChange().withName("cleanupPolicies").withNewValue(List.of(CleanupPolicy.DELETE)));
+    patchEntityAndCheck(topic, origJson, adminAuthHeaders(), UpdateType.MINOR_UPDATE, change);
+  }
+
+  @Test
   public void delete_emptyTopic_200_ok(TestInfo test) throws HttpResponseException {
     Topic topic = createTopic(create(test), adminAuthHeaders());
     deleteEntity(topic.getId(), adminAuthHeaders());
@@ -183,6 +302,7 @@ public class TopicResourceTest extends EntityResourceTest<Topic> {
         TestUtils.getPrincipal(authHeaders),
         createRequest.getOwner());
     assertService(createRequest.getService(), topic.getService());
+    // TODO add other fields
     TestUtils.validateTags(createRequest.getTags(), topic.getTags());
   }
 
@@ -201,6 +321,7 @@ public class TopicResourceTest extends EntityResourceTest<Topic> {
         TestUtils.getPrincipal(authHeaders),
         expected.getOwner());
     assertService(expected.getService(), expected.getService());
+    // TODO add other fields
     TestUtils.validateTags(expected.getTags(), updated.getTags());
   }
 
@@ -211,6 +332,19 @@ public class TopicResourceTest extends EntityResourceTest<Topic> {
 
   @Override
   public void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException {
-    assertCommonFieldChange(fieldName, expected, actual);
+    if (expected == actual) {
+      return;
+    }
+    if (fieldName.equals("cleanupPolicies")) {
+      List<CleanupPolicy> expectedCleanupPolicies = (List<CleanupPolicy>) expected;
+      List<CleanupPolicy> actualCleanupPolicies = JsonUtils.readObjects(actual.toString(), CleanupPolicy.class);
+      assertEquals(expectedCleanupPolicies, actualCleanupPolicies);
+    } else if (fieldName.equals("schemaType")){
+      SchemaType expectedSchemaType = (SchemaType) expected;
+      SchemaType actualSchemaType = SchemaType.fromValue(actual.toString());
+      assertEquals(expectedSchemaType, actualSchemaType);
+    } else {
+      assertCommonFieldChange(fieldName, expected, actual);
+    }
   }
 }
