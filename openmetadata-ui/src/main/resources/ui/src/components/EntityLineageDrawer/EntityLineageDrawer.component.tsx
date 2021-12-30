@@ -201,9 +201,10 @@ const EntityLineageDrawer = ({
         break;
     }
     addLineage(data)
-      .then((res: AxiosResponse) => {
-        // eslint-disable-next-line
-        console.log(res);
+      .then(() => {
+        onCancel(false);
+        setEntityType('');
+        setEdgeType('');
       })
       .catch((err: AxiosError) => {
         // eslint-disable-next-line
