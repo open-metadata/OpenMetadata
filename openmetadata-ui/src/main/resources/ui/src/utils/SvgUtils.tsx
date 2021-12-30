@@ -36,6 +36,8 @@ import IconCheckCircle from '../assets/svg/ic-check-circle.svg';
 import IconDelete from '../assets/svg/ic-delete.svg';
 import IconDownArrow from '../assets/svg/ic-down-arrow.svg';
 import IconEdit from '../assets/svg/ic-edit.svg';
+import IconEditBlack from '../assets/svg/edit-black.svg';
+import IconEditPrimary from '../assets/svg/edit-primary.svg';
 import IconExclamationCircle from '../assets/svg/ic-exclamation-circle.svg';
 import IconExplore from '../assets/svg/ic-explore.svg';
 import IconFeed from '../assets/svg/ic-feed.svg';
@@ -117,6 +119,8 @@ export const Icons = {
   GITHUB_ICON: 'github-icon',
   AUTH0_ICON: 'auth0-icon',
   EDIT: 'icon-edit',
+  EDIT_BLACK: 'icon-edit-black',
+  EDIT_PRIMARY: 'icon-edit-primary',
   EXPLORE: 'icon-explore',
   MY_DATA: 'icon-my-data',
   REPORTS: 'icon-reports',
@@ -567,6 +571,14 @@ const SVGIcons: FunctionComponent<Props> = ({
       break;
     case Icons.SEARCHV1COLOR:
       IconComponent = IconSearchV1Color;
+
+      break;
+    case Icons.EDIT_BLACK:
+      IconComponent = IconEditBlack;
+
+      break;
+    case Icons.EDIT_PRIMARY:
+      IconComponent = IconEditPrimary;
 
       break;
 

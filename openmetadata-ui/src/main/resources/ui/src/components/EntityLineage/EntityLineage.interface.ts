@@ -21,6 +21,7 @@ export interface SelectedNode {
   name: string;
   type: string;
   id?: string;
+  entityId: string;
 }
 
 export interface EntityLineageProp {
@@ -28,4 +29,23 @@ export interface EntityLineageProp {
   lineageLeafNodes: LeafNodes;
   entityLineage: EntityLineage;
   loadNodeHandler: (node: EntityReference, pos: LineagePos) => void;
+}
+
+export interface LineageDrawerProps {
+  show: boolean;
+  onCancel: (value: boolean) => void;
+  selectedNode: SelectedNode;
+}
+
+export interface Edge {
+  edge: {
+    fromEntity: {
+      id: string;
+      type: string;
+    };
+    toEntity: {
+      id: string;
+      type: string;
+    };
+  };
 }

@@ -12,6 +12,7 @@
  */
 
 import { AxiosResponse } from 'axios';
+import { Edge } from '../components/EntityLineage/EntityLineage.interface';
 import { SearchIndex } from '../enums/search.enum';
 import { getCurrentUserId } from '../utils/CommonUtils';
 import { getSearchAPIQuery } from '../utils/SearchUtils';
@@ -62,4 +63,8 @@ export const getSuggestions: Function = (
 
 export const getVersion: Function = () => {
   return APIClient.get('/version');
+};
+
+export const addLineage: Function = (data: Edge): Promise<AxiosResponse> => {
+  return APIClient.put(`/lineage`, data);
 };

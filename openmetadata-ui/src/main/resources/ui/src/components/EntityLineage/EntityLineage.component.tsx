@@ -34,6 +34,9 @@ import ReactFlow, {
   Position,
   ReactFlowProvider,
   removeElements,
+  ControlButton,
+  Background,
+  BackgroundVariant,
 } from 'react-flow-renderer';
 import { Link } from 'react-router-dom';
 import { getTableDetails } from '../../axiosAPIs/tableAPI';
@@ -48,6 +51,7 @@ import { isLeafNode } from '../../utils/EntityUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import { getEntityIcon } from '../../utils/TableUtils';
 import EntityInfoDrawer from '../EntityInfoDrawer/EntityInfoDrawer.component';
+import EntityLineageDrawer from '../EntityLineageDrawer/EntityLineageDrawer.component';
 import Loader from '../Loader/Loader';
 import CustomNode from './CustomNode.component';
 import { EntityLineageProp, SelectedNode } from './EntityLineage.interface';
@@ -120,7 +124,8 @@ const getLineageData = (
   loadNodeHandler: (node: EntityReference, pos: LineagePos) => void,
   lineageLeafNodes: LeafNodes,
   isNodeLoading: LoadingNodeState,
-  getNodeLable: (node: EntityReference) => React.ReactNode
+  getNodeLable: (node: EntityReference) => React.ReactNode,
+  isEditMode: boolean
 ) => {
   const [x, y] = [0, 0];
   const nodes = entityLineage['nodes'];
@@ -325,7 +330,9 @@ const getLineageData = (
                       lineageLeafNodes,
                       node?.id as string,
                       'from'
-                    ) && !up.id.includes(isNodeLoading.id as string) ? (
+                    ) &&
+                    !up.id.includes(isNodeLoading.id as string) &&
+                    !isEditMode ? (
                       <i className="fas fa-chevron-left tw-text-primary tw-mr-2" />
                     ) : null}
                     {isNodeLoading.state &&
@@ -365,7 +372,8 @@ const getLineageData = (
                       }
                     }}>
                     {!isLeafNode(lineageLeafNodes, node?.id as string, 'to') &&
-                    !down.id.includes(isNodeLoading.id as string) ? (
+                    !down.id.includes(isNodeLoading.id as string) &&
+                    !isEditMode ? (
                       <i className="fas fa-chevron-right tw-text-primary tw-ml-2" />
                     ) : null}
                     {isNodeLoading.state &&
@@ -399,6 +407,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
   const [expandNode, setExpandNode] = useState<EntityReference | undefined>(
     undefined
   );
+  const [isEditMode, setEditMode] = useState<boolean>(false);
 
   const [tableColumns, setTableColumns] = useState<Column[]>([] as Column[]);
 
@@ -410,7 +419,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
   const getNodeLable = (node: EntityReference) => {
     return (
       <>
-        {node.type === 'table' ? (
+        {node.type === 'table' && !isEditMode ? (
           <button
             className="tw-absolute tw--top-4 tw--left-5 tw-cursor-pointer tw-z-9999"
             onClick={(e) => {
@@ -442,7 +451,8 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
       loadNodeHandler,
       lineageLeafNodes,
       isNodeLoading,
-      getNodeLable
+      getNodeLable,
+      isEditMode
     ) as Elements;
   };
 
@@ -459,6 +469,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
         }
       });
     });
+    setSelectedNode({} as SelectedNode);
   };
   const onElementsRemove = (elementsToRemove: Elements) =>
     setElements((els) => removeElements(elementsToRemove, els));
@@ -475,6 +486,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
         name: node?.name as string,
         id: el.id,
         type: node?.type as string,
+        entityId: node?.id as string,
       });
       setElements((prevElements) => {
         return prevElements.map((preEl) => {
@@ -531,7 +543,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
     setElements(setElementsHandle());
     setExpandNode(undefined);
     setTableColumns([]);
-  }, [entityLineage, isNodeLoading]);
+  }, [entityLineage, isNodeLoading, isEditMode]);
 
   useEffect(() => {
     onNodeExpand();
@@ -576,10 +588,30 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
               onNodeMouseEnter={onNodeMouseEnter}
               onNodeMouseLeave={onNodeMouseLeave}
               onNodeMouseMove={onNodeMouseMove}>
+              {isEditMode ? (
+                <Background
+                  className="tw-text-grey-muted-lite tw-bg-body-main"
+                  color="#ffffff"
+                  gap={12}
+                  size={1}
+                  variant={BackgroundVariant.Lines}
+                />
+              ) : null}
               <Controls
                 className="tw-top-1 tw-left-1 tw-bottom-full tw-ml-4 tw-mt-4"
-                showInteractive={false}
-              />
+                showInteractive={false}>
+                <ControlButton
+                  onClick={() => {
+                    setEditMode((pre) => !pre);
+                    closeDrawer(false);
+                  }}>
+                  <SVGIcons
+                    alt="edit"
+                    icon={isEditMode ? 'icon-edit-primary' : 'icon-edit-black'}
+                    width="12"
+                  />
+                </ControlButton>
+              </Controls>
             </ReactFlow>
           </ReactFlowProvider>
         ) : (
@@ -589,7 +621,12 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
       <EntityInfoDrawer
         isMainNode={selectedNode.name === entityLineage.entity.name}
         selectedNode={selectedNode}
-        show={isDrawerOpen}
+        show={isDrawerOpen && !isEditMode}
+        onCancel={closeDrawer}
+      />
+      <EntityLineageDrawer
+        selectedNode={selectedNode}
+        show={isEditMode && !isEmpty(selectedNode)}
         onCancel={closeDrawer}
       />
     </div>
