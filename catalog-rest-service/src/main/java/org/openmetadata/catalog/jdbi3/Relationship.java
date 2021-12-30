@@ -33,7 +33,9 @@ public enum Relationship {
    *   <li>Database --- contains --> Table
    *   <li>Organization --- contains --> Team
    *   <li>Team --- contains --> User
-   *   <li>Service --- contains --> Database
+   *   <li>DatabaseService --- contains --> Databas
+   *   <li>DashboardService --- contains --> Charts
+   *   <li>DashboardService --- contains --> Dashboard
    * </ul>
    */
   CONTAINS("contains"), // 0
@@ -72,9 +74,10 @@ public enum Relationship {
    * can be deleted. During deletion, the HAS relationship is simply deleted. Examples of HAS relationship:
    *
    * <ul>
-   *   <li>{User} --- has ---> {Role}
-   *   <li>{Table} --- has ---> {Location}
-   *   <li>{Database} --- has ---> {Location}
+   *   <li>User --- has ---> Role
+   *   <li>Table --- has ---> Location
+   *   <li>Database --- has ---> Location
+   *   <li>Dashboard --- has ---> Chart
    * </ul>
    */
   HAS("has"), // 10

@@ -362,7 +362,7 @@ public abstract class EntityRepository<T> {
   }
 
   @Transaction
-  public final void delete(UUID id) throws IOException {
+  public final void delete(UUID id, boolean recursive) throws IOException {
     // If an entity being deleted contains other children entities, it can't be deleted
     if (daoCollection.relationshipDAO().findToCount(id.toString(), Relationship.CONTAINS.ordinal(), null) > 0) {
       throw new IllegalArgumentException(entityName + " is not empty");
