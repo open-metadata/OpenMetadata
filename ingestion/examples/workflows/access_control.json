@@ -1,0 +1,19 @@
+{
+  "source": {
+    "type": "access_control_policies",
+    "config": {
+      "policies_file": "ingestion/examples/sample_data/policies/access_control.json"
+    }
+  },
+  "sink": {
+    "type": "metadata-rest",
+    "config": {}
+  },
+  "metadata_server": {
+    "type": "metadata-server",
+    "config": {
+      "api_endpoint": "http://localhost:8585/api",
+      "auth_provider_type": "no-auth"
+    }
+  }
+}
