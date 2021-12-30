@@ -170,6 +170,14 @@ Note: The `source.config` field in the configuration JSON will include the major
 
 In this step we will configure the BigQuery service settings required for this connector. Please follow the instructions below to ensure that you’ve configured the connector to read from your BigQuery service as desired.
 
+#### project\_id
+
+Edit the value for `source.config.project_id` in `bigquery.json`. The `project_id` is a mandatory field.
+
+```javascript
+   "project_id": "project_id"
+```
+
 #### **host\_port**
 
 Edit the value for `source.config.host_port` in `bigquery.json` for your BigQuery deployment. Use the `host:port` format illustrated in the example below.
