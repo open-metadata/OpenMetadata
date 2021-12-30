@@ -151,7 +151,7 @@ Edit the value for `source.config.host_port` in `elasticsearch.json` for your El
 
 Please ensure that your Elasticsearch deployment is reachable from the host you are using to run metadata ingestion.
 
-#### **username**
+#### **username (optional)**
 
 Edit the value for `source.config.username` to identify your Elasticsearch user.
 
@@ -159,11 +159,7 @@ Edit the value for `source.config.username` to identify your Elasticsearch user.
 "username": "username"
 ```
 
-{% hint style="danger" %}
-**Note:** The user specified should be authorized to read all databases you want to include in the metadata ingestion workflow.
-{% endhint %}
-
-#### **password**
+#### **password (optional)**
 
 Edit the value for `source.config.password` with the password for your Elasticsearch user.
 

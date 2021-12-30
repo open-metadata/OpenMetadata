@@ -121,7 +121,7 @@ Note: The `source.config` field in the configuration JSON will include the major
 ```
 {% endcode %}
 
-You can optionally add the `query-parser` processor, `table-usage` stage and `metadata-usage` `bulk_sink` along with `metadata-server` config. The `duration` is added in days.
+You can optionally add the `query-parser` processor, `table-usage` stage and `metadata-usage` `bulk_sink` along with `metadata-server` config.
 
 {% code title="bigquery_usage.json" %}
 ```javascript
@@ -208,6 +208,14 @@ OpenMetadata uniquely identifies services by their `service_name`. Edit the valu
 
 ```javascript
 "service_name": "gcp_bigquery"
+```
+
+#### duration
+
+The `duration` is added in days.
+
+```javascript
+"duration": 2
 ```
 
 #### **database (optional)**
