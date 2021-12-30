@@ -13,8 +13,10 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.net.URI;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
@@ -23,11 +25,13 @@ import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Topic;
 import org.openmetadata.catalog.entity.services.MessagingService;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
+import org.openmetadata.catalog.jdbi3.EntityRepository.EntityUpdater;
 import org.openmetadata.catalog.jdbi3.MessagingServiceRepository.MessagingServiceEntityInterface;
 import org.openmetadata.catalog.resources.topics.TopicResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.TagLabel;
+import org.openmetadata.catalog.type.topic.CleanupPolicy;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
@@ -123,6 +127,11 @@ public class TopicRepository extends EntityRepository<Topic> {
 
   @Override
   public void restorePatchAttributes(Topic original, Topic updated) {}
+
+  @Override
+  public EntityRepository<Topic>.EntityUpdater getUpdater(Topic original, Topic updated, boolean patchOperation) {
+    return new TopicUpdater(original, updated, patchOperation);
+  }
 
   @Override
   public EntityInterface<Topic> getEntityInterface(Topic entity) {
@@ -293,6 +302,40 @@ public class TopicRepository extends EntityRepository<Topic> {
     @Override
     public void setTags(List<TagLabel> tags) {
       entity.setTags(tags);
+    }
+  }
+
+  public class TopicUpdater extends EntityUpdater {
+    public TopicUpdater(Topic original, Topic updated, boolean patchOperation) {
+      super(original, updated, patchOperation);
+    }
+
+    @Override
+    public void entitySpecificUpdate() throws IOException {
+      Topic origTopic = original.getEntity();
+      Topic updatedTopic = updated.getEntity();
+      recordChange("maximumMessageSize", origTopic.getMaximumMessageSize(), updatedTopic.getMaximumMessageSize());
+      recordChange(
+          "minimumInSyncReplicas", origTopic.getMinimumInSyncReplicas(), updatedTopic.getMinimumInSyncReplicas());
+      recordChange("partitions", origTopic.getPartitions(), updatedTopic.getPartitions());
+      recordChange("replicationFactor", origTopic.getReplicationFactor(), updatedTopic.getReplicationFactor());
+      recordChange("retentionTime", origTopic.getRetentionTime(), updatedTopic.getRetentionTime());
+      recordChange("retentionSize", origTopic.getRetentionSize(), updatedTopic.getRetentionSize());
+      recordChange("schemaText", origTopic.getSchemaText(), updatedTopic.getSchemaText());
+      recordChange("schemaType", origTopic.getSchemaType(), updatedTopic.getSchemaType());
+      updateCleanupPolicies(origTopic, updatedTopic);
+    }
+
+    private void updateCleanupPolicies(Topic origTopic, Topic updatedTopic) throws JsonProcessingException {
+      List<CleanupPolicy> added = new ArrayList<>();
+      List<CleanupPolicy> deleted = new ArrayList<>();
+      recordListChange(
+          "cleanupPolicies",
+          origTopic.getCleanupPolicies(),
+          updatedTopic.getCleanupPolicies(),
+          added,
+          deleted,
+          CleanupPolicy::equals);
     }
   }
 }
