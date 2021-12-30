@@ -86,6 +86,7 @@ public class UserResource {
 
   public static User addHref(UriInfo uriInfo, User user) {
     Entity.withHref(uriInfo, user.getTeams());
+    Entity.withHref(uriInfo, user.getRoles());
     Entity.withHref(uriInfo, user.getOwns());
     Entity.withHref(uriInfo, user.getFollows());
     return user;
@@ -108,7 +109,7 @@ public class UserResource {
     }
   }
 
-  static final String FIELDS = "profile,teams,follows,owns";
+  static final String FIELDS = "profile,roles,teams,follows,owns";
   public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replaceAll(" ", "").split(","));
 
   @GET
@@ -418,6 +419,7 @@ public class UserResource {
         .withTimezone(create.getTimezone())
         .withUpdatedBy(securityContext.getUserPrincipal().getName())
         .withUpdatedAt(new Date())
-        .withTeams(dao.validateTeams(create.getTeams()));
+        .withTeams(dao.validateTeams(create.getTeams()))
+        .withRoles(dao.validateRoles(create.getRoles()));
   }
 }
