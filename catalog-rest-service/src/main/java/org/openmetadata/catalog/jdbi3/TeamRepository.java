@@ -31,11 +31,9 @@ import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.resources.teams.TeamResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
-import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
-import org.openmetadata.catalog.util.JsonUtils;
 
 public class TeamRepository extends EntityRepository<Team> {
   static final Fields TEAM_UPDATE_FIELDS = new Fields(TeamResource.FIELD_LIST, "profile,users");
@@ -49,7 +47,10 @@ public class TeamRepository extends EntityRepository<Team> {
         dao.teamDAO(),
         dao,
         TEAM_PATCH_FIELDS,
-        TEAM_UPDATE_FIELDS);
+        TEAM_UPDATE_FIELDS,
+        false,
+        false,
+        false);
   }
 
   public List<EntityReference> getUsers(List<UUID> userIds) {
@@ -106,11 +107,7 @@ public class TeamRepository extends EntityRepository<Team> {
     // Don't store users, href as JSON. Build it on the fly based on relationships
     team.withUsers(null).withHref(null);
 
-    if (update) {
-      daoCollection.teamDAO().update(team.getId(), JsonUtils.pojoToJson(team));
-    } else {
-      daoCollection.teamDAO().insert(team);
-    }
+    store(team.getId(), team, update);
 
     // Restore the relationships
     team.withUsers(users);
@@ -168,18 +165,8 @@ public class TeamRepository extends EntityRepository<Team> {
     }
 
     @Override
-    public EntityReference getOwner() {
-      return null;
-    }
-
-    @Override
     public String getFullyQualifiedName() {
       return entity.getName();
-    }
-
-    @Override
-    public List<TagLabel> getTags() {
-      return null;
     }
 
     @Override
@@ -203,11 +190,6 @@ public class TeamRepository extends EntityRepository<Team> {
     }
 
     @Override
-    public List<EntityReference> getFollowers() {
-      throw new UnsupportedOperationException("Team does not support followers");
-    }
-
-    @Override
     public EntityReference getEntityReference() {
       return new EntityReference()
           .withId(getId())
@@ -221,11 +203,6 @@ public class TeamRepository extends EntityRepository<Team> {
     @Override
     public Team getEntity() {
       return entity;
-    }
-
-    @Override
-    public EntityReference getContainer() {
-      return null;
     }
 
     @Override
@@ -256,9 +233,6 @@ public class TeamRepository extends EntityRepository<Team> {
     }
 
     @Override
-    public void setOwner(EntityReference owner) {}
-
-    @Override
     public void setDeleted(boolean flag) {
       entity.setDeleted(flag);
     }
@@ -272,9 +246,6 @@ public class TeamRepository extends EntityRepository<Team> {
     public ChangeDescription getChangeDescription() {
       return entity.getChangeDescription();
     }
-
-    @Override
-    public void setTags(List<TagLabel> tags) {}
   }
 
   /** Handles entity updated from PUT and POST operation. */

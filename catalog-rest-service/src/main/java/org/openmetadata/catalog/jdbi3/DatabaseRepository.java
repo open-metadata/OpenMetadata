@@ -31,7 +31,6 @@ import org.openmetadata.catalog.jdbi3.DatabaseServiceRepository.DatabaseServiceE
 import org.openmetadata.catalog.resources.databases.DatabaseResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
-import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
@@ -49,7 +48,10 @@ public class DatabaseRepository extends EntityRepository<Database> {
         dao.databaseDAO(),
         dao,
         DATABASE_PATCH_FIELDS,
-        DATABASE_UPDATE_FIELDS);
+        DATABASE_UPDATE_FIELDS,
+        false,
+        true,
+        false);
   }
 
   public static String getFQN(Database database) {
@@ -100,13 +102,6 @@ public class DatabaseRepository extends EntityRepository<Database> {
             Entity.DATABASE,
             Relationship.CONTAINS.ordinal());
     EntityUtil.setOwner(daoCollection.relationshipDAO(), database.getId(), Entity.DATABASE, database.getOwner());
-  }
-
-  public EntityReference getOwner(Database database) throws IOException {
-    return database != null
-        ? EntityUtil.populateOwner(
-            database.getId(), daoCollection.relationshipDAO(), daoCollection.userDAO(), daoCollection.teamDAO())
-        : null;
   }
 
   private List<EntityReference> getTables(Database database) throws IOException {
@@ -233,11 +228,6 @@ public class DatabaseRepository extends EntityRepository<Database> {
     }
 
     @Override
-    public List<TagLabel> getTags() {
-      return null;
-    }
-
-    @Override
     public Double getVersion() {
       return entity.getVersion();
     }
@@ -255,11 +245,6 @@ public class DatabaseRepository extends EntityRepository<Database> {
     @Override
     public URI getHref() {
       return entity.getHref();
-    }
-
-    @Override
-    public List<EntityReference> getFollowers() {
-      throw new UnsupportedOperationException("Database does not support followers");
     }
 
     @Override
@@ -328,8 +313,5 @@ public class DatabaseRepository extends EntityRepository<Database> {
     public ChangeDescription getChangeDescription() {
       return entity.getChangeDescription();
     }
-
-    @Override
-    public void setTags(List<TagLabel> tags) {}
   }
 }

@@ -37,7 +37,6 @@ import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
-import org.openmetadata.catalog.util.JsonUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -57,7 +56,10 @@ public class MlModelRepository extends EntityRepository<MlModel> {
         dao.mlModelDAO(),
         dao,
         MODEL_PATCH_FIELDS,
-        MODEL_UPDATE_FIELDS);
+        MODEL_UPDATE_FIELDS,
+        true,
+        true,
+        true);
   }
 
   public static String getFQN(MlModel model) {
@@ -97,10 +99,6 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   @Override
   public EntityInterface<MlModel> getEntityInterface(MlModel entity) {
     return new MlModelEntityInterface(entity);
-  }
-
-  private List<TagLabel> getTags(String fqn) {
-    return daoCollection.tagDAO().getTags(fqn);
   }
 
   private void setMlFeatureSourcesFQN(List<MlFeatureSource> mlSources) {
@@ -172,11 +170,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
     // Don't store owner, dashboard, href and tags as JSON. Build it on the fly based on relationships
     mlModel.withOwner(null).withDashboard(null).withHref(null).withTags(null);
 
-    if (update) {
-      daoCollection.mlModelDAO().update(mlModel.getId(), JsonUtils.pojoToJson(mlModel));
-    } else {
-      daoCollection.mlModelDAO().insert(mlModel);
-    }
+    store(mlModel.getId(), mlModel, update);
 
     // Restore the relationships
     mlModel.withOwner(owner).withDashboard(dashboard).withTags(tags);
@@ -204,13 +198,6 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   @Override
   public EntityUpdater getUpdater(MlModel original, MlModel updated, boolean patchOperation) {
     return new MlModelUpdater(original, updated, patchOperation);
-  }
-
-  private EntityReference getOwner(MlModel mlModel) throws IOException {
-    return mlModel == null
-        ? null
-        : EntityUtil.populateOwner(
-            mlModel.getId(), daoCollection.relationshipDAO(), daoCollection.userDAO(), daoCollection.teamDAO());
   }
 
   private EntityReference getDashboard(MlModel mlModel) throws IOException {
@@ -245,18 +232,6 @@ public class MlModelRepository extends EntityRepository<MlModel> {
     daoCollection
         .relationshipDAO()
         .deleteFrom(mlModel.getId().toString(), Relationship.USES.ordinal(), Entity.DASHBOARD);
-  }
-
-  private void applyTags(MlModel mlModel) {
-    // Add model level tags by adding tag to model relationship
-    EntityUtil.applyTags(daoCollection.tagDAO(), mlModel.getTags(), mlModel.getFullyQualifiedName());
-    mlModel.setTags(getTags(mlModel.getFullyQualifiedName())); // Update tag to handle additional derived tags
-  }
-
-  private List<EntityReference> getFollowers(MlModel model) throws IOException {
-    return model == null
-        ? null
-        : EntityUtil.getFollowers(model.getId(), daoCollection.relationshipDAO(), daoCollection.userDAO());
   }
 
   public static class MlModelEntityInterface implements EntityInterface<MlModel> {

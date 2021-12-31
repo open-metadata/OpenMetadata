@@ -28,7 +28,6 @@ import org.openmetadata.catalog.resources.policies.PolicyResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.PolicyType;
-import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
@@ -49,7 +48,10 @@ public class PolicyRepository extends EntityRepository<Policy> {
         dao.policyDAO(),
         dao,
         POLICY_PATCH_FIELDS,
-        POLICY_UPDATE_FIELDS);
+        POLICY_UPDATE_FIELDS,
+        false,
+        true,
+        false);
   }
 
   public static String getFQN(Policy policy) {
@@ -85,7 +87,9 @@ public class PolicyRepository extends EntityRepository<Policy> {
   }
 
   @Override
-  public void restorePatchAttributes(Policy original, Policy updated) {}
+  public void restorePatchAttributes(Policy original, Policy updated) {
+    /* Nothing to do */
+  }
 
   @Override
   public EntityInterface<Policy> getEntityInterface(Policy entity) {
@@ -125,11 +129,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
     // Don't store owner, location and href as JSON. Build it on the fly based on relationships
     policy.withOwner(null).withLocation(null).withHref(null);
 
-    if (update) {
-      daoCollection.policyDAO().update(policy.getId(), JsonUtils.pojoToJson(policy));
-    } else {
-      daoCollection.policyDAO().insert(policy);
-    }
+    store(policy.getId(), policy, update);
 
     // Restore the relationships
     policy.withOwner(owner).withLocation(location).withHref(href);
@@ -182,18 +182,6 @@ public class PolicyRepository extends EntityRepository<Policy> {
     // No validation errors, if execution reaches here.
   }
 
-  private EntityReference getOwner(Policy policy) throws IOException {
-    return policy == null
-        ? null
-        : EntityUtil.populateOwner(
-            policy.getId(), daoCollection.relationshipDAO(), daoCollection.userDAO(), daoCollection.teamDAO());
-  }
-
-  private void setOwner(Policy policy, EntityReference owner) {
-    EntityUtil.setOwner(daoCollection.relationshipDAO(), policy.getId(), Entity.POLICY, owner);
-    policy.setOwner(owner);
-  }
-
   private void setLocation(Policy policy, EntityReference location) {
     if (location == null || location.getId() == null) {
       return;
@@ -240,12 +228,6 @@ public class PolicyRepository extends EntityRepository<Policy> {
       return entity.getFullyQualifiedName();
     }
 
-    @Override
-    public List<TagLabel> getTags() {
-      // Policy does not have tags.
-      return null;
-    }
-
     public List<Object> getRules() {
       return entity.getRules();
     }
@@ -271,12 +253,6 @@ public class PolicyRepository extends EntityRepository<Policy> {
     }
 
     @Override
-    public List<EntityReference> getFollowers() {
-      // Policy does not have followers.
-      return null;
-    }
-
-    @Override
     public EntityReference getEntityReference() {
       return new EntityReference()
           .withId(getId())
@@ -289,11 +265,6 @@ public class PolicyRepository extends EntityRepository<Policy> {
     @Override
     public Policy getEntity() {
       return entity;
-    }
-
-    @Override
-    public EntityReference getContainer() {
-      return null;
     }
 
     @Override
@@ -321,11 +292,6 @@ public class PolicyRepository extends EntityRepository<Policy> {
     public void setChangeDescription(Double newVersion, ChangeDescription changeDescription) {
       entity.setVersion(newVersion);
       entity.setChangeDescription(changeDescription);
-    }
-
-    @Override
-    public void setTags(List<TagLabel> tags) {
-      // Policy does not have tags.
     }
 
     @Override

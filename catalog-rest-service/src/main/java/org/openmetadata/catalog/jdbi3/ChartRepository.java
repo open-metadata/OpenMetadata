@@ -31,7 +31,6 @@ import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
-import org.openmetadata.catalog.util.JsonUtils;
 
 public class ChartRepository extends EntityRepository<Chart> {
   private static final Fields CHART_UPDATE_FIELDS = new Fields(ChartResource.FIELD_LIST, "owner");
@@ -45,7 +44,10 @@ public class ChartRepository extends EntityRepository<Chart> {
         dao.chartDAO(),
         dao,
         CHART_PATCH_FIELDS,
-        CHART_UPDATE_FIELDS);
+        CHART_UPDATE_FIELDS,
+        true,
+        true,
+        true);
   }
 
   public static String getFQN(Chart chart) {
@@ -71,11 +73,7 @@ public class ChartRepository extends EntityRepository<Chart> {
     // Don't store owner, database, href and tags as JSON. Build it on the fly based on relationships
     chart.withOwner(null).withService(null).withHref(null).withTags(null);
 
-    if (update) {
-      daoCollection.chartDAO().update(chart.getId(), JsonUtils.pojoToJson(chart));
-    } else {
-      daoCollection.chartDAO().insert(chart);
-    }
+    store(chart.getId(), chart, update);
 
     // Restore the relationships
     chart.withOwner(owner).withService(service).withTags(tags);
@@ -94,25 +92,6 @@ public class ChartRepository extends EntityRepository<Chart> {
             Relationship.CONTAINS.ordinal());
     setOwner(chart, chart.getOwner());
     applyTags(chart);
-  }
-
-  private void applyTags(Chart chart) {
-    // Add chart level tags by adding tag to chart relationship
-    EntityUtil.applyTags(daoCollection.tagDAO(), chart.getTags(), chart.getFullyQualifiedName());
-    chart.setTags(getTags(chart.getFullyQualifiedName())); // Update tag to handle additional derived tags
-  }
-
-  public EntityReference getOwner(Chart chart) throws IOException {
-    return chart != null
-        ? EntityUtil.populateOwner(
-            chart.getId(), daoCollection.relationshipDAO(), daoCollection.userDAO(), daoCollection.teamDAO())
-        : null;
-  }
-
-  private void setOwner(Chart chart, EntityReference owner) {
-    EntityUtil.setOwner(daoCollection.relationshipDAO(), chart.getId(), Entity.CHART, owner);
-    // TODO not required
-    chart.setOwner(owner);
   }
 
   @Override
@@ -137,16 +116,6 @@ public class ChartRepository extends EntityRepository<Chart> {
   @Override
   public EntityInterface<Chart> getEntityInterface(Chart entity) {
     return new ChartEntityInterface(entity);
-  }
-
-  private List<EntityReference> getFollowers(Chart chart) throws IOException {
-    return chart == null
-        ? null
-        : EntityUtil.getFollowers(chart.getId(), daoCollection.relationshipDAO(), daoCollection.userDAO());
-  }
-
-  private List<TagLabel> getTags(String fqn) {
-    return daoCollection.tagDAO().getTags(fqn);
   }
 
   private EntityReference getService(Chart chart) throws IOException {

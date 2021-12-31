@@ -25,7 +25,6 @@ import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Topic;
 import org.openmetadata.catalog.entity.services.MessagingService;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
-import org.openmetadata.catalog.jdbi3.EntityRepository.EntityUpdater;
 import org.openmetadata.catalog.jdbi3.MessagingServiceRepository.MessagingServiceEntityInterface;
 import org.openmetadata.catalog.resources.topics.TopicResource;
 import org.openmetadata.catalog.type.ChangeDescription;
@@ -35,7 +34,6 @@ import org.openmetadata.catalog.type.topic.CleanupPolicy;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
-import org.openmetadata.catalog.util.JsonUtils;
 
 public class TopicRepository extends EntityRepository<Topic> {
   private static final Fields TOPIC_UPDATE_FIELDS = new Fields(TopicResource.FIELD_LIST, "owner,tags");
@@ -53,7 +51,10 @@ public class TopicRepository extends EntityRepository<Topic> {
         dao.topicDAO(),
         dao,
         TOPIC_PATCH_FIELDS,
-        TOPIC_UPDATE_FIELDS);
+        TOPIC_UPDATE_FIELDS,
+        true,
+        true,
+        true);
   }
 
   @Transaction
@@ -81,11 +82,7 @@ public class TopicRepository extends EntityRepository<Topic> {
     // Don't store owner, database, href and tags as JSON. Build it on the fly based on relationships
     topic.withOwner(null).withService(null).withHref(null).withTags(null);
 
-    if (update) {
-      daoCollection.topicDAO().update(topic.getId(), JsonUtils.pojoToJson(topic));
-    } else {
-      daoCollection.topicDAO().insert(topic);
-    }
+    store(topic.getId(), topic, update);
 
     // Restore the relationships
     topic.withOwner(owner).withService(service).withTags(tags);
@@ -98,23 +95,6 @@ public class TopicRepository extends EntityRepository<Topic> {
     applyTags(topic);
   }
 
-  private void applyTags(Topic topic) {
-    // Add topic level tags by adding tag to topic relationship
-    EntityUtil.applyTags(daoCollection.tagDAO(), topic.getTags(), topic.getFullyQualifiedName());
-    topic.setTags(getTags(topic.getFullyQualifiedName())); // Update tag to handle additional derived tags
-  }
-
-  public EntityReference getOwner(Topic topic) throws IOException {
-    return topic != null
-        ? EntityUtil.populateOwner(
-            topic.getId(), daoCollection.relationshipDAO(), daoCollection.userDAO(), daoCollection.teamDAO())
-        : null;
-  }
-
-  private void setOwner(Topic topic, EntityReference owner) {
-    EntityUtil.setOwner(daoCollection.relationshipDAO(), topic.getId(), Entity.TOPIC, owner);
-  }
-
   @Override
   public Topic setFields(Topic topic, Fields fields) throws IOException {
     topic.setService(getService(topic));
@@ -125,7 +105,9 @@ public class TopicRepository extends EntityRepository<Topic> {
   }
 
   @Override
-  public void restorePatchAttributes(Topic original, Topic updated) {}
+  public void restorePatchAttributes(Topic original, Topic updated) {
+    /* Nothing to do */
+  }
 
   @Override
   public EntityRepository<Topic>.EntityUpdater getUpdater(Topic original, Topic updated, boolean patchOperation) {
@@ -135,16 +117,6 @@ public class TopicRepository extends EntityRepository<Topic> {
   @Override
   public EntityInterface<Topic> getEntityInterface(Topic entity) {
     return new TopicEntityInterface(entity);
-  }
-
-  private List<EntityReference> getFollowers(Topic topic) throws IOException {
-    return topic == null
-        ? null
-        : EntityUtil.getFollowers(topic.getId(), daoCollection.relationshipDAO(), daoCollection.userDAO());
-  }
-
-  private List<TagLabel> getTags(String fqn) {
-    return daoCollection.tagDAO().getTags(fqn);
   }
 
   private EntityReference getService(Topic topic) throws IOException {

@@ -63,8 +63,6 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
   private Injector injector;
   private Authorizer authorizer;
 
-  public CatalogApplication() {}
-
   @Override
   public void run(CatalogApplicationConfig catalogConfig, Environment environment)
       throws ClassNotFoundException, IllegalAccessException, InstantiationException, NoSuchMethodException,
@@ -176,7 +174,9 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
         .manage(
             new Managed() {
               @Override
-              public void start() {}
+              public void start() {
+                LOG.info("Application starting");
+              }
 
               @Override
               public void stop() {

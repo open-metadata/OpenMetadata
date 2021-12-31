@@ -16,7 +16,6 @@ package org.openmetadata.catalog.jdbi3;
 import java.io.IOException;
 import java.net.URI;
 import java.util.Date;
-import java.util.List;
 import java.util.UUID;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.teams.Role;
@@ -24,10 +23,8 @@ import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.resources.teams.RoleResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
-import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
-import org.openmetadata.catalog.util.JsonUtils;
 
 public class RoleRepository extends EntityRepository<Role> {
   static final Fields ROLE_UPDATE_FIELDS = new Fields(RoleResource.FIELD_LIST, null);
@@ -41,7 +38,10 @@ public class RoleRepository extends EntityRepository<Role> {
         dao.roleDAO(),
         dao,
         ROLE_PATCH_FIELDS,
-        ROLE_UPDATE_FIELDS);
+        ROLE_UPDATE_FIELDS,
+        false,
+        false,
+        false);
   }
 
   @Override
@@ -62,22 +62,21 @@ public class RoleRepository extends EntityRepository<Role> {
   }
 
   @Override
-  public void prepare(Role role) throws IOException {}
+  public void prepare(Role role) throws IOException {
+    /* Nothing to do */
+  }
 
   @Override
   public void storeEntity(Role role, boolean update) throws IOException {
     // Don't store href as JSON. Build it on the fly based on relationships
     role.withHref(null);
-
-    if (update) {
-      daoCollection.roleDAO().update(role.getId(), JsonUtils.pojoToJson(role));
-    } else {
-      daoCollection.roleDAO().insert(role);
-    }
+    store(role.getId(), role, update);
   }
 
   @Override
-  public void storeRelationships(Role role) {}
+  public void storeRelationships(Role role) {
+    /* Nothing to do */
+  }
 
   @Override
   public EntityUpdater getUpdater(Role original, Role updated, boolean patchOperation) {
@@ -107,18 +106,8 @@ public class RoleRepository extends EntityRepository<Role> {
     }
 
     @Override
-    public EntityReference getOwner() {
-      return null;
-    }
-
-    @Override
     public String getFullyQualifiedName() {
       return entity.getName();
-    }
-
-    @Override
-    public List<TagLabel> getTags() {
-      return null;
     }
 
     @Override
@@ -142,11 +131,6 @@ public class RoleRepository extends EntityRepository<Role> {
     }
 
     @Override
-    public List<EntityReference> getFollowers() {
-      throw new UnsupportedOperationException("Role does not support followers");
-    }
-
-    @Override
     public EntityReference getEntityReference() {
       return new EntityReference()
           .withId(getId())
@@ -160,11 +144,6 @@ public class RoleRepository extends EntityRepository<Role> {
     @Override
     public Role getEntity() {
       return entity;
-    }
-
-    @Override
-    public EntityReference getContainer() {
-      return null;
     }
 
     @Override
@@ -195,9 +174,6 @@ public class RoleRepository extends EntityRepository<Role> {
     }
 
     @Override
-    public void setOwner(EntityReference owner) {}
-
-    @Override
     public void setDeleted(boolean flag) {
       entity.setDeleted(flag);
     }
@@ -211,9 +187,6 @@ public class RoleRepository extends EntityRepository<Role> {
     public ChangeDescription getChangeDescription() {
       return entity.getChangeDescription();
     }
-
-    @Override
-    public void setTags(List<TagLabel> tags) {}
   }
 
   /** Handles entity updated from PUT and POST operation. */
