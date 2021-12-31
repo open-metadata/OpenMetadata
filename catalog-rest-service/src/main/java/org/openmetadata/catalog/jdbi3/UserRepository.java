@@ -33,11 +33,9 @@ import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.resources.teams.UserResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
-import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
-import org.openmetadata.catalog.util.JsonUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -54,7 +52,10 @@ public class UserRepository extends EntityRepository<User> {
         dao.userDAO(),
         dao,
         USER_PATCH_FIELDS,
-        USER_UPDATE_FIELDS);
+        USER_UPDATE_FIELDS,
+        false,
+        false,
+        false);
   }
 
   @Override
@@ -74,11 +75,7 @@ public class UserRepository extends EntityRepository<User> {
     // Don't store roles, teams and href as JSON. Build it on the fly based on relationships
     user.withRoles(null).withTeams(null).withHref(null);
 
-    if (update) {
-      daoCollection.userDAO().update(user.getId(), JsonUtils.pojoToJson(user));
-    } else {
-      daoCollection.userDAO().insert(user);
-    }
+    store(user.getId(), user, update);
 
     // Restore the relationships
     user.withRoles(roles).withTeams(teams);
@@ -131,10 +128,6 @@ public class UserRepository extends EntityRepository<User> {
   private List<EntityReference> getFollows(User user) throws IOException {
     return EntityUtil.populateEntityReferences(
         daoCollection.relationshipDAO().findTo(user.getId().toString(), FOLLOWS.ordinal()));
-  }
-
-  private User validateUser(UUID userId) throws IOException {
-    return daoCollection.userDAO().findEntityById(userId);
   }
 
   public List<EntityReference> validateRoles(List<UUID> roleIds) throws IOException {
@@ -222,18 +215,8 @@ public class UserRepository extends EntityRepository<User> {
     }
 
     @Override
-    public EntityReference getOwner() {
-      return null;
-    }
-
-    @Override
     public String getFullyQualifiedName() {
       return entity.getName();
-    }
-
-    @Override
-    public List<TagLabel> getTags() {
-      return null;
     }
 
     @Override
@@ -257,11 +240,6 @@ public class UserRepository extends EntityRepository<User> {
     }
 
     @Override
-    public List<EntityReference> getFollowers() {
-      throw new UnsupportedOperationException("User does not support followers");
-    }
-
-    @Override
     public EntityReference getEntityReference() {
       return new EntityReference()
           .withId(getId())
@@ -275,11 +253,6 @@ public class UserRepository extends EntityRepository<User> {
     @Override
     public User getEntity() {
       return entity;
-    }
-
-    @Override
-    public EntityReference getContainer() {
-      return null;
     }
 
     @Override
@@ -310,9 +283,6 @@ public class UserRepository extends EntityRepository<User> {
     }
 
     @Override
-    public void setOwner(EntityReference owner) {}
-
-    @Override
     public void setDeleted(boolean flag) {
       entity.setDeleted(flag);
     }
@@ -326,9 +296,6 @@ public class UserRepository extends EntityRepository<User> {
     public ChangeDescription getChangeDescription() {
       return entity.getChangeDescription();
     }
-
-    @Override
-    public void setTags(List<TagLabel> tags) {}
   }
 
   /** Handles entity updated from PUT and POST operation. */

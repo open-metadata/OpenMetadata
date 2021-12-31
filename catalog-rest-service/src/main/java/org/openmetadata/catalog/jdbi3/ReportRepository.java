@@ -39,7 +39,10 @@ public class ReportRepository extends EntityRepository<Report> {
         dao.reportDAO(),
         dao,
         Fields.EMPTY_FIELDS,
-        REPORT_UPDATE_FIELDS);
+        REPORT_UPDATE_FIELDS,
+        true,
+        true,
+        true);
   }
 
   @Override
@@ -68,8 +71,8 @@ public class ReportRepository extends EntityRepository<Report> {
 
   @Override
   public void storeEntity(Report report, boolean update) throws IOException {
-    // TODO add right checks
-    daoCollection.reportDAO().insert(report);
+    report.setHref(null);
+    store(report.getId(), report, update);
   }
 
   @Override
@@ -99,18 +102,6 @@ public class ReportRepository extends EntityRepository<Report> {
               Relationship.CONTAINS.ordinal());
       report.setService(service);
     }
-  }
-
-  private EntityReference getOwner(Report report) throws IOException {
-    return report == null
-        ? null
-        : EntityUtil.populateOwner(
-            report.getId(), daoCollection.relationshipDAO(), daoCollection.userDAO(), daoCollection.teamDAO());
-  }
-
-  public void setOwner(Report report, EntityReference owner) {
-    EntityUtil.setOwner(daoCollection.relationshipDAO(), report.getId(), Entity.REPORT, owner);
-    report.setOwner(owner);
   }
 
   public static class ReportEntityInterface implements EntityInterface<Report> {
@@ -168,11 +159,6 @@ public class ReportRepository extends EntityRepository<Report> {
     @Override
     public URI getHref() {
       return entity.getHref();
-    }
-
-    @Override
-    public List<EntityReference> getFollowers() {
-      throw new UnsupportedOperationException("Report does not support followers");
     }
 
     @Override

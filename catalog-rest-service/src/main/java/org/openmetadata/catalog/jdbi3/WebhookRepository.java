@@ -48,12 +48,10 @@ import org.openmetadata.catalog.type.ChangeEvent;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.EventType;
 import org.openmetadata.catalog.type.FailureDetails;
-import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.type.Webhook;
 import org.openmetadata.catalog.type.Webhook.Status;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
-import org.openmetadata.catalog.util.JsonUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -69,7 +67,10 @@ public class WebhookRepository extends EntityRepository<Webhook> {
         dao.webhookDAO(),
         dao,
         Fields.EMPTY_FIELDS,
-        Fields.EMPTY_FIELDS);
+        Fields.EMPTY_FIELDS,
+        false,
+        false,
+        false);
   }
 
   @Override
@@ -90,11 +91,7 @@ public class WebhookRepository extends EntityRepository<Webhook> {
   @Override
   public void storeEntity(Webhook entity, boolean update) throws IOException {
     entity.setHref(null);
-    if (update) {
-      daoCollection.webhookDAO().update(entity.getId(), JsonUtils.pojoToJson(entity));
-    } else {
-      daoCollection.webhookDAO().insert(entity);
-    }
+    store(entity.getId(), entity, update);
   }
 
   @Override
@@ -192,18 +189,8 @@ public class WebhookRepository extends EntityRepository<Webhook> {
     }
 
     @Override
-    public EntityReference getOwner() {
-      return null;
-    }
-
-    @Override
     public String getFullyQualifiedName() {
       return entity.getName();
-    }
-
-    @Override
-    public List<TagLabel> getTags() {
-      return null;
     }
 
     @Override
@@ -237,18 +224,8 @@ public class WebhookRepository extends EntityRepository<Webhook> {
     }
 
     @Override
-    public List<EntityReference> getFollowers() {
-      return null;
-    }
-
-    @Override
     public Webhook getEntity() {
       return entity;
-    }
-
-    @Override
-    public EntityReference getContainer() {
-      return null;
     }
 
     @Override
@@ -267,7 +244,9 @@ public class WebhookRepository extends EntityRepository<Webhook> {
     }
 
     @Override
-    public void setDisplayName(String displayName) {}
+    public void setDisplayName(String displayName) {
+      /* No display name */
+    }
 
     @Override
     public void setUpdateDetails(String updatedBy, Date updatedAt) {
@@ -282,9 +261,6 @@ public class WebhookRepository extends EntityRepository<Webhook> {
     }
 
     @Override
-    public void setOwner(EntityReference owner) {}
-
-    @Override
     public void setDeleted(boolean flag) {
       entity.setDeleted(flag);
     }
@@ -293,9 +269,6 @@ public class WebhookRepository extends EntityRepository<Webhook> {
     public Webhook withHref(URI href) {
       return entity.withHref(href);
     }
-
-    @Override
-    public void setTags(List<TagLabel> tags) {}
   }
 
   /**

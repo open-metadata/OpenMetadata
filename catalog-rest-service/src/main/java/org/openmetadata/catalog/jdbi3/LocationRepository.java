@@ -51,7 +51,10 @@ public class LocationRepository extends EntityRepository<Location> {
         dao.locationDAO(),
         dao,
         LOCATION_PATCH_FIELDS,
-        LOCATION_UPDATE_FIELDS);
+        LOCATION_UPDATE_FIELDS,
+        true,
+        true,
+        true);
   }
 
   @Override
@@ -185,11 +188,7 @@ public class LocationRepository extends EntityRepository<Location> {
     // Don't store owner, href and tags as JSON. Build it on the fly based on relationships
     location.withOwner(null).withService(null).withHref(null).withTags(null);
 
-    if (update) {
-      daoCollection.locationDAO().update(location.getId(), JsonUtils.pojoToJson(location));
-    } else {
-      daoCollection.locationDAO().insert(location);
-    }
+    store(location.getId(), location, update);
 
     // Restore the relationships
     location.withOwner(owner).withService(service).withTags(tags);
@@ -215,19 +214,6 @@ public class LocationRepository extends EntityRepository<Location> {
   @Override
   public EntityUpdater getUpdater(Location original, Location updated, boolean patchOperation) {
     return new LocationUpdater(original, updated, patchOperation);
-  }
-
-  public EntityReference getOwner(Location location) throws IOException {
-    return location != null
-        ? EntityUtil.populateOwner(
-            location.getId(), daoCollection.relationshipDAO(), daoCollection.userDAO(), daoCollection.teamDAO())
-        : null;
-  }
-
-  private List<EntityReference> getFollowers(Location location) throws IOException {
-    return location == null
-        ? null
-        : EntityUtil.getFollowers(location.getId(), daoCollection.relationshipDAO(), daoCollection.userDAO());
   }
 
   private EntityReference getService(Location location) throws IOException {
@@ -257,16 +243,6 @@ public class LocationRepository extends EntityRepository<Location> {
               Relationship.CONTAINS.ordinal());
       location.setService(service);
     }
-  }
-
-  private void applyTags(Location location) {
-    // Add location level tags by adding tag to location relationship
-    EntityUtil.applyTags(daoCollection.tagDAO(), location.getTags(), location.getFullyQualifiedName());
-    location.setTags(getTags(location.getFullyQualifiedName())); // Update tag to handle additional derived tags
-  }
-
-  private List<TagLabel> getTags(String fqn) {
-    return daoCollection.tagDAO().getTags(fqn);
   }
 
   public static class LocationEntityInterface implements EntityInterface<Location> {

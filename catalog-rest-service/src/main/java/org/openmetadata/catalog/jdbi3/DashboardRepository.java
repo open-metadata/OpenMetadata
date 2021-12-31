@@ -35,7 +35,6 @@ import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
-import org.openmetadata.catalog.util.JsonUtils;
 
 public class DashboardRepository extends EntityRepository<Dashboard> {
   private static final Fields DASHBOARD_UPDATE_FIELDS = new Fields(DashboardResource.FIELD_LIST, "owner,tags,charts");
@@ -49,7 +48,10 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
         dao.dashboardDAO(),
         dao,
         DASHBOARD_PATCH_FIELDS,
-        DASHBOARD_UPDATE_FIELDS);
+        DASHBOARD_UPDATE_FIELDS,
+        true,
+        true,
+        true);
   }
 
   public static String getFQN(Dashboard dashboard) {
@@ -90,10 +92,6 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
         .withName(original.getName())
         .withService(original.getService())
         .withId(original.getId());
-  }
-
-  private List<TagLabel> getTags(String fqn) {
-    return daoCollection.tagDAO().getTags(fqn);
   }
 
   private EntityReference getService(Dashboard dashboard) throws IOException {
@@ -154,11 +152,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     // Don't store owner, database, href and tags as JSON. Build it on the fly based on relationships
     dashboard.withOwner(null).withHref(null).withTags(null).withService(null);
 
-    if (update) {
-      daoCollection.dashboardDAO().update(dashboard.getId(), JsonUtils.pojoToJson(dashboard));
-    } else {
-      daoCollection.dashboardDAO().insert(dashboard);
-    }
+    store(dashboard.getId(), dashboard, update);
 
     // Restore the relationships
     dashboard.withOwner(owner).withTags(tags).withService(service);
@@ -187,30 +181,6 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
   @Override
   public EntityUpdater getUpdater(Dashboard original, Dashboard updated, boolean patchOperation) {
     return new DashboardUpdater(original, updated, patchOperation);
-  }
-
-  private EntityReference getOwner(Dashboard dashboard) throws IOException {
-    return dashboard == null
-        ? null
-        : EntityUtil.populateOwner(
-            dashboard.getId(), daoCollection.relationshipDAO(), daoCollection.userDAO(), daoCollection.teamDAO());
-  }
-
-  public void setOwner(Dashboard dashboard, EntityReference owner) {
-    EntityUtil.setOwner(daoCollection.relationshipDAO(), dashboard.getId(), Entity.DASHBOARD, owner);
-    dashboard.setOwner(owner);
-  }
-
-  private void applyTags(Dashboard dashboard) {
-    // Add dashboard level tags by adding tag to dashboard relationship
-    EntityUtil.applyTags(daoCollection.tagDAO(), dashboard.getTags(), dashboard.getFullyQualifiedName());
-    dashboard.setTags(getTags(dashboard.getFullyQualifiedName())); // Update tag to handle additional derived tags
-  }
-
-  private List<EntityReference> getFollowers(Dashboard dashboard) throws IOException {
-    return dashboard == null
-        ? null
-        : EntityUtil.getFollowers(dashboard.getId(), daoCollection.relationshipDAO(), daoCollection.userDAO());
   }
 
   private List<EntityReference> getCharts(Dashboard dashboard) throws IOException {

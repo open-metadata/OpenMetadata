@@ -16,14 +16,12 @@ package org.openmetadata.catalog.jdbi3;
 import java.io.IOException;
 import java.net.URI;
 import java.util.Date;
-import java.util.List;
 import java.util.UUID;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.Bots;
 import org.openmetadata.catalog.resources.bots.BotsResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
-import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 
@@ -36,7 +34,10 @@ public class BotsRepository extends EntityRepository<Bots> {
         dao.botsDAO(),
         dao,
         Fields.EMPTY_FIELDS,
-        Fields.EMPTY_FIELDS);
+        Fields.EMPTY_FIELDS,
+        false,
+        false,
+        false);
   }
 
   @Override
@@ -45,7 +46,9 @@ public class BotsRepository extends EntityRepository<Bots> {
   }
 
   @Override
-  public void restorePatchAttributes(Bots original, Bots update) {}
+  public void restorePatchAttributes(Bots original, Bots update) {
+    /* Nothing to do */
+  }
 
   @Override
   public EntityInterface<Bots> getEntityInterface(Bots entity) {
@@ -53,15 +56,19 @@ public class BotsRepository extends EntityRepository<Bots> {
   }
 
   @Override
-  public void prepare(Bots entity) {}
-
-  @Override
-  public void storeEntity(Bots entity, boolean update) throws IOException {
-    daoCollection.botsDAO().insert(entity);
+  public void prepare(Bots entity) {
+    /* Nothing to do */
   }
 
   @Override
-  public void storeRelationships(Bots entity) {}
+  public void storeEntity(Bots entity, boolean update) throws IOException {
+    store(entity.getId(), entity, update);
+  }
+
+  @Override
+  public void storeRelationships(Bots entity) {
+    /* Nothing to do */
+  }
 
   public static class BotsEntityInterface implements EntityInterface<Bots> {
     private final Bots entity;
@@ -86,18 +93,8 @@ public class BotsRepository extends EntityRepository<Bots> {
     }
 
     @Override
-    public EntityReference getOwner() {
-      return null;
-    }
-
-    @Override
     public String getFullyQualifiedName() {
       return entity.getName();
-    }
-
-    @Override
-    public List<TagLabel> getTags() {
-      return null;
     }
 
     @Override
@@ -118,11 +115,6 @@ public class BotsRepository extends EntityRepository<Bots> {
     @Override
     public URI getHref() {
       return entity.getHref();
-    }
-
-    @Override
-    public List<EntityReference> getFollowers() {
-      throw new UnsupportedOperationException("Dashboard service does not support followers");
     }
 
     @Override
@@ -178,9 +170,6 @@ public class BotsRepository extends EntityRepository<Bots> {
     }
 
     @Override
-    public void setOwner(EntityReference owner) {}
-
-    @Override
     public void setDeleted(boolean flag) {
       entity.setDeleted(flag);
     }
@@ -189,8 +178,5 @@ public class BotsRepository extends EntityRepository<Bots> {
     public Bots withHref(URI href) {
       return entity.withHref(href);
     }
-
-    @Override
-    public void setTags(List<TagLabel> tags) {}
   }
 }

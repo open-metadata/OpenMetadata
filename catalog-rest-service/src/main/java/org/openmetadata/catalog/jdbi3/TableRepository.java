@@ -82,7 +82,10 @@ public class TableRepository extends EntityRepository<Table> {
         dao.tableDAO(),
         dao,
         TABLE_PATCH_FIELDS,
-        TABLE_UPDATE_FIELDS);
+        TABLE_UPDATE_FIELDS,
+        true,
+        true,
+        true);
   }
 
   @Override
@@ -362,11 +365,7 @@ public class TableRepository extends EntityRepository<Table> {
     table.setColumns(cloneWithoutTags(columnWithTags));
     table.getColumns().forEach(column -> column.setTags(null));
 
-    if (update) {
-      daoCollection.tableDAO().update(table.getId(), JsonUtils.pojoToJson(table));
-    } else {
-      daoCollection.tableDAO().insert(table);
-    }
+    store(table.getId(), table, update);
 
     // Restore the relationships
     table.withOwner(owner).withDatabase(database).withTags(tags).withColumns(columnWithTags).withService(service);
@@ -427,9 +426,10 @@ public class TableRepository extends EntityRepository<Table> {
     }
   }
 
-  private void applyTags(Table table) {
+  @Override
+  public void applyTags(Table table) {
     // Add table level tags by adding tag to table relationship
-    EntityUtil.applyTags(daoCollection.tagDAO(), table.getTags(), table.getFullyQualifiedName());
+    super.applyTags(table);
     applyTags(table.getColumns());
   }
 
@@ -452,23 +452,6 @@ public class TableRepository extends EntityRepository<Table> {
     } else {
       return null;
     }
-  }
-
-  private EntityReference getOwner(Table table) throws IOException {
-    return table == null
-        ? null
-        : EntityUtil.populateOwner(
-            table.getId(), daoCollection.relationshipDAO(), daoCollection.userDAO(), daoCollection.teamDAO());
-  }
-
-  private List<EntityReference> getFollowers(Table table) throws IOException {
-    return table == null
-        ? null
-        : EntityUtil.getFollowers(table.getId(), daoCollection.relationshipDAO(), daoCollection.userDAO());
-  }
-
-  private List<TagLabel> getTags(String fqn) {
-    return daoCollection.tagDAO().getTags(fqn);
   }
 
   private void getColumnTags(boolean setTags, List<Column> columns) {

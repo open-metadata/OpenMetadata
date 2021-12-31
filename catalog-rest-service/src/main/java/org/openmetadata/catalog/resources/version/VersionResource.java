@@ -52,8 +52,6 @@ public class VersionResource {
     }
   }
 
-  public VersionResource() {}
-
   @GET
   @Operation(
       summary = "Get version of metadata service",

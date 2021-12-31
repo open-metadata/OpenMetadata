@@ -30,7 +30,6 @@ import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
-import org.openmetadata.catalog.util.JsonUtils;
 
 public class IngestionRepository extends EntityRepository<Ingestion> {
   private static final Fields INGESTION_UPDATE_FIELDS =
@@ -46,7 +45,10 @@ public class IngestionRepository extends EntityRepository<Ingestion> {
         dao.ingestionDAO(),
         dao,
         INGESTION_PATCH_FIELDS,
-        INGESTION_UPDATE_FIELDS);
+        INGESTION_UPDATE_FIELDS,
+        true,
+        true,
+        false);
   }
 
   public static String getFQN(Ingestion ingestion) {
@@ -77,10 +79,6 @@ public class IngestionRepository extends EntityRepository<Ingestion> {
     return new IngestionEntityInterface(entity);
   }
 
-  private List<TagLabel> getTags(String fqn) {
-    return daoCollection.tagDAO().getTags(fqn);
-  }
-
   @Override
   public void prepare(Ingestion ingestion) throws IOException {
     ingestion.setService(getService(ingestion.getService()));
@@ -100,11 +98,7 @@ public class IngestionRepository extends EntityRepository<Ingestion> {
     // Don't store owner, dashboard, href and tags as JSON. Build it on the fly based on relationships
     ingestion.withOwner(null).withHref(null).withTags(null);
 
-    if (update) {
-      daoCollection.ingestionDAO().update(ingestion.getId(), JsonUtils.pojoToJson(ingestion));
-    } else {
-      daoCollection.ingestionDAO().insert(ingestion);
-    }
+    store(ingestion.getId(), ingestion, update);
 
     // Restore the relationships
     ingestion.withOwner(owner).withService(service).withTags(tags);
@@ -128,24 +122,6 @@ public class IngestionRepository extends EntityRepository<Ingestion> {
   @Override
   public EntityUpdater getUpdater(Ingestion original, Ingestion updated, boolean patchOperation) {
     return new IngestionUpdater(original, updated, patchOperation);
-  }
-
-  private EntityReference getOwner(Ingestion ingestion) throws IOException {
-    return ingestion == null
-        ? null
-        : EntityUtil.populateOwner(
-            ingestion.getId(), daoCollection.relationshipDAO(), daoCollection.userDAO(), daoCollection.teamDAO());
-  }
-
-  public void setOwner(Ingestion ingestion, EntityReference owner) {
-    EntityUtil.setOwner(daoCollection.relationshipDAO(), ingestion.getId(), Entity.INGESTION, owner);
-    ingestion.setOwner(owner);
-  }
-
-  private void applyTags(Ingestion ingestion) {
-    // Add ingestion level tags by adding tag to ingestion relationship
-    EntityUtil.applyTags(daoCollection.tagDAO(), ingestion.getTags(), ingestion.getFullyQualifiedName());
-    ingestion.setTags(getTags(ingestion.getFullyQualifiedName())); // Update tag to handle additional derived tags
   }
 
   private EntityReference getService(Ingestion ingestion) throws IOException {
@@ -243,12 +219,6 @@ public class IngestionRepository extends EntityRepository<Ingestion> {
     @Override
     public EntityReference getContainer() {
       return entity.getService();
-    }
-
-    @Override
-    public List<EntityReference> getFollowers() {
-      // Ingestion does not have followers.
-      return null;
     }
 
     @Override

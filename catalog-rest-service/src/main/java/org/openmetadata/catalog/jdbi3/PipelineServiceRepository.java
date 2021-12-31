@@ -16,14 +16,12 @@ package org.openmetadata.catalog.jdbi3;
 import java.io.IOException;
 import java.net.URI;
 import java.util.Date;
-import java.util.List;
 import java.util.UUID;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.services.PipelineService;
 import org.openmetadata.catalog.resources.services.pipeline.PipelineServiceResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
-import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
@@ -38,7 +36,10 @@ public class PipelineServiceRepository extends EntityRepository<PipelineService>
         dao.pipelineServiceDAO(),
         dao,
         Fields.EMPTY_FIELDS,
-        Fields.EMPTY_FIELDS);
+        Fields.EMPTY_FIELDS,
+        false,
+        false,
+        false);
   }
 
   @Override
@@ -47,7 +48,9 @@ public class PipelineServiceRepository extends EntityRepository<PipelineService>
   }
 
   @Override
-  public void restorePatchAttributes(PipelineService original, PipelineService updated) {}
+  public void restorePatchAttributes(PipelineService original, PipelineService updated) {
+    /* Nothing to do */
+  }
 
   @Override
   public EntityInterface<PipelineService> getEntityInterface(PipelineService entity) {
@@ -69,7 +72,9 @@ public class PipelineServiceRepository extends EntityRepository<PipelineService>
   }
 
   @Override
-  public void storeRelationships(PipelineService entity) {}
+  public void storeRelationships(PipelineService entity) {
+    /* Nothing to do */
+  }
 
   @Override
   public EntityUpdater getUpdater(PipelineService original, PipelineService updated, boolean patchOperation) {
@@ -99,18 +104,8 @@ public class PipelineServiceRepository extends EntityRepository<PipelineService>
     }
 
     @Override
-    public EntityReference getOwner() {
-      return null;
-    }
-
-    @Override
     public String getFullyQualifiedName() {
       return entity.getName();
-    }
-
-    @Override
-    public List<TagLabel> getTags() {
-      return null;
     }
 
     @Override
@@ -134,11 +129,6 @@ public class PipelineServiceRepository extends EntityRepository<PipelineService>
     }
 
     @Override
-    public List<EntityReference> getFollowers() {
-      throw new UnsupportedOperationException("Pipeline service does not support followers");
-    }
-
-    @Override
     public ChangeDescription getChangeDescription() {
       return entity.getChangeDescription();
     }
@@ -156,11 +146,6 @@ public class PipelineServiceRepository extends EntityRepository<PipelineService>
     @Override
     public PipelineService getEntity() {
       return entity;
-    }
-
-    @Override
-    public EntityReference getContainer() {
-      return null;
     }
 
     @Override
@@ -191,9 +176,6 @@ public class PipelineServiceRepository extends EntityRepository<PipelineService>
     }
 
     @Override
-    public void setOwner(EntityReference owner) {}
-
-    @Override
     public void setDeleted(boolean flag) {
       entity.setDeleted(flag);
     }
@@ -202,9 +184,6 @@ public class PipelineServiceRepository extends EntityRepository<PipelineService>
     public PipelineService withHref(URI href) {
       return entity.withHref(href);
     }
-
-    @Override
-    public void setTags(List<TagLabel> tags) {}
   }
 
   public class PipelineServiceUpdater extends EntityUpdater {
