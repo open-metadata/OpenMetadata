@@ -362,11 +362,22 @@ public abstract class EntityRepository<T> {
   }
 
   @Transaction
-  public final void delete(UUID id) throws IOException {
+  public final void delete(UUID id, boolean recursive) throws IOException {
     // If an entity being deleted contains other children entities, it can't be deleted
-    if (daoCollection.relationshipDAO().findToCount(id.toString(), Relationship.CONTAINS.ordinal(), null) > 0) {
-      throw new IllegalArgumentException(entityName + " is not empty");
+    List<EntityReference> contains =
+        daoCollection.relationshipDAO().findTo(id.toString(), Relationship.CONTAINS.ordinal());
+
+    if (contains.size() > 0) {
+      if (!recursive) {
+        throw new IllegalArgumentException(entityName + " is not empty");
+      }
+      // Soft delete all the contained entities
+      for (EntityReference entityReference : contains) {
+        LOG.info("Recursively deleting " + entityReference.getType() + " " + entityReference.getId());
+        Entity.deleteEntity(entityReference.getType(), entityReference.getId(), recursive);
+      }
     }
+
     if (softDelete) {
       T entity = dao.findEntityById(id);
       EntityInterface<T> entityInterface = getEntityInterface(entity);

@@ -443,6 +443,11 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
   }
 
   @Override
+  public EntityReference getContainer(Object createRequest) throws URISyntaxException {
+    return null; // No container entity
+  }
+
+  @Override
   public void validateUpdatedEntity(MlModel mlModel, Object request, Map<String, String> authHeaders)
       throws HttpResponseException {
     validateCreatedEntity(mlModel, request, authHeaders);

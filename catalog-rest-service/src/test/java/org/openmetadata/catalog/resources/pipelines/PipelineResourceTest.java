@@ -85,6 +85,12 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline> {
   }
 
   @Override
+  public EntityReference getContainer(Object createRequest) throws URISyntaxException {
+    CreatePipeline createPipeline = (CreatePipeline) createRequest;
+    return createPipeline.getService();
+  }
+
+  @Override
   public void validateCreatedEntity(Pipeline pipeline, Object request, Map<String, String> authHeaders)
       throws HttpResponseException {
     CreatePipeline createRequest = (CreatePipeline) request;

@@ -396,7 +396,7 @@ public class DashboardResource {
         @ApiResponse(responseCode = "404", description = "Dashboard for instance {id} is not found")
       })
   public Response delete(@Context UriInfo uriInfo, @PathParam("id") String id) throws IOException {
-    dao.delete(UUID.fromString(id));
+    dao.delete(UUID.fromString(id), false);
     return Response.ok().build();
   }
 

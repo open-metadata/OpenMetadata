@@ -277,6 +277,11 @@ public class UserRepository extends EntityRepository<User> {
     }
 
     @Override
+    public EntityReference getContainer() {
+      return null;
+    }
+
+    @Override
     public void setId(UUID id) {
       entity.setId(id);
     }

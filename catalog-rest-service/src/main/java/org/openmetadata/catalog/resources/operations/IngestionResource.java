@@ -402,7 +402,7 @@ public class IngestionResource {
         @ApiResponse(responseCode = "404", description = "ingestion for instance {id} is not found")
       })
   public Response delete(@Context UriInfo uriInfo, @PathParam("id") String id) throws IOException {
-    dao.delete(UUID.fromString(id));
+    dao.delete(UUID.fromString(id), false);
     return Response.ok().build();
   }
 

@@ -165,6 +165,11 @@ public class RoleRepository extends EntityRepository<Role> {
     }
 
     @Override
+    public EntityReference getContainer() {
+      return null;
+    }
+
+    @Override
     public void setId(UUID id) {
       entity.setId(id);
     }

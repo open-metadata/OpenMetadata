@@ -390,11 +390,9 @@ public class UserResource {
   @DELETE
   @Path("/{id}")
   @Operation(
-      summary = "Deactivate a user",
+      summary = "Delete a user",
       tags = "users",
-      description =
-          "Users can't be deleted but are deactivated. The name and display name is prefixed with "
-              + "the string `deactivated`.",
+      description = "Users can't be deleted but are soft-deleted.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
         @ApiResponse(responseCode = "404", description = "User for instance {id} is not found")
@@ -402,7 +400,7 @@ public class UserResource {
   public Response delete(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("id") String id)
       throws IOException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    dao.delete(UUID.fromString(id));
+    dao.delete(UUID.fromString(id), false);
     return Response.ok().build();
   }
 

@@ -196,6 +196,11 @@ public class ReportRepository extends EntityRepository<Report> {
     }
 
     @Override
+    public EntityReference getContainer() {
+      return entity.getService();
+    }
+
+    @Override
     public void setId(UUID id) {
       entity.setId(id);
     }

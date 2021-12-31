@@ -24,6 +24,7 @@ import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
+import java.net.URISyntaxException;
 import java.util.Map;
 import java.util.UUID;
 import javax.json.JsonPatch;
@@ -193,6 +194,11 @@ public class RoleResourceTest extends EntityResourceTest<Role> {
   @Override
   public Object createRequest(String name, String description, String displayName, EntityReference owner) {
     return create(name).withDescription(description).withDisplayName(displayName);
+  }
+
+  @Override
+  public EntityReference getContainer(Object createRequest) throws URISyntaxException {
+    return null;
   }
 
   @Override

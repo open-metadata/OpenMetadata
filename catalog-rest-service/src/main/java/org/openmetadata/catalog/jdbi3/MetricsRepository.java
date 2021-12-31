@@ -225,6 +225,11 @@ public class MetricsRepository extends EntityRepository<Metrics> {
     }
 
     @Override
+    public EntityReference getContainer() {
+      return entity.getService();
+    }
+
+    @Override
     public void setId(UUID id) {}
 
     @Override

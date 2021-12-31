@@ -272,6 +272,11 @@ public class DatabaseRepository extends EntityRepository<Database> {
     }
 
     @Override
+    public EntityReference getContainer() {
+      return entity.getService();
+    }
+
+    @Override
     public void setId(UUID id) {
       entity.setId(id);
     }

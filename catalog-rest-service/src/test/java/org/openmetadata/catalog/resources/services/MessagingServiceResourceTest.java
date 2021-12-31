@@ -293,6 +293,11 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
   }
 
   @Override
+  public EntityReference getContainer(Object createRequest) throws URISyntaxException {
+    return null; //// No container entity
+  }
+
+  @Override
   public void validateCreatedEntity(MessagingService service, Object request, Map<String, String> authHeaders) {
     CreateMessagingService createRequest = (CreateMessagingService) request;
     validateCommonEntityFields(

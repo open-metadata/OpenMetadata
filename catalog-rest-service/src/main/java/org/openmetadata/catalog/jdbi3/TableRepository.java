@@ -749,6 +749,11 @@ public class TableRepository extends EntityRepository<Table> {
     }
 
     @Override
+    public EntityReference getContainer() {
+      return entity.getDatabase();
+    }
+
+    @Override
     public ChangeDescription getChangeDescription() {
       return entity.getChangeDescription();
     }

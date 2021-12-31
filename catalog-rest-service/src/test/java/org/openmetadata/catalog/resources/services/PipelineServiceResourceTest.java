@@ -272,6 +272,11 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
   }
 
   @Override
+  public EntityReference getContainer(Object createRequest) throws URISyntaxException {
+    return null; // No container entity
+  }
+
+  @Override
   public void validateCreatedEntity(PipelineService service, Object request, Map<String, String> authHeaders) {
     CreatePipelineService createRequest = (CreatePipelineService) request;
     validateCommonEntityFields(

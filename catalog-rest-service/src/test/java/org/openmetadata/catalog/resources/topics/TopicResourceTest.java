@@ -23,6 +23,7 @@ import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 
 import java.io.IOException;
+import java.net.URISyntaxException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -145,8 +146,6 @@ public class TopicResourceTest extends EntityResourceTest<Topic> {
 
     // Patch and update the topic
     Topic topic = createEntity(createTopic, adminAuthHeaders());
-    String origJson = JsonUtils.pojoToJson(topic);
-
     createTopic
         .withOwner(TEAM_OWNER1)
         .withMinimumInSyncReplicas(2)
@@ -293,6 +292,12 @@ public class TopicResourceTest extends EntityResourceTest<Topic> {
   }
 
   @Override
+  public EntityReference getContainer(Object createRequest) throws URISyntaxException {
+    CreateTopic createTopic = (CreateTopic) createRequest;
+    return createTopic.getService();
+  }
+
+  @Override
   public void validateCreatedEntity(Topic topic, Object request, Map<String, String> authHeaders)
       throws HttpResponseException {
     CreateTopic createRequest = (CreateTopic) request;
@@ -339,7 +344,7 @@ public class TopicResourceTest extends EntityResourceTest<Topic> {
       List<CleanupPolicy> expectedCleanupPolicies = (List<CleanupPolicy>) expected;
       List<CleanupPolicy> actualCleanupPolicies = JsonUtils.readObjects(actual.toString(), CleanupPolicy.class);
       assertEquals(expectedCleanupPolicies, actualCleanupPolicies);
-    } else if (fieldName.equals("schemaType")){
+    } else if (fieldName.equals("schemaType")) {
       SchemaType expectedSchemaType = (SchemaType) expected;
       SchemaType actualSchemaType = SchemaType.fromValue(actual.toString());
       assertEquals(expectedSchemaType, actualSchemaType);

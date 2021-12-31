@@ -187,6 +187,11 @@ public class DashboardServiceRepository extends EntityRepository<DashboardServic
     }
 
     @Override
+    public EntityReference getContainer() {
+      return null;
+    }
+
+    @Override
     public void setId(UUID id) {
       entity.setId(id);
     }

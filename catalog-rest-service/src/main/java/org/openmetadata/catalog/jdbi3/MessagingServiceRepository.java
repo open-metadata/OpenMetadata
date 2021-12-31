@@ -164,6 +164,11 @@ public class MessagingServiceRepository extends EntityRepository<MessagingServic
     }
 
     @Override
+    public EntityReference getContainer() {
+      return null;
+    }
+
+    @Override
     public void setId(UUID id) {
       entity.setId(id);
     }

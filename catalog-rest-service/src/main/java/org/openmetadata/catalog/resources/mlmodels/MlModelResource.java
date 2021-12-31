@@ -389,7 +389,7 @@ public class MlModelResource {
       @Parameter(description = "Id of the ML Model", schema = @Schema(type = "string")) @PathParam("id") String id)
       throws IOException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    dao.delete(UUID.fromString(id));
+    dao.delete(UUID.fromString(id), false);
     return Response.ok().build();
   }
 
