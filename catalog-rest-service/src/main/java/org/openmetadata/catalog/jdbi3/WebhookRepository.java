@@ -59,7 +59,6 @@ import org.slf4j.LoggerFactory;
 
 public class WebhookRepository extends EntityRepository<Webhook> {
   public static final Logger LOG = LoggerFactory.getLogger(WebhookRepository.class);
-  private final CollectionDAO dao;
   private static final ConcurrentHashMap<UUID, WebhookPublisher> webhookPublisherMap = new ConcurrentHashMap<>();
 
   public WebhookRepository(CollectionDAO dao) {
@@ -71,7 +70,6 @@ public class WebhookRepository extends EntityRepository<Webhook> {
         dao,
         Fields.EMPTY_FIELDS,
         Fields.EMPTY_FIELDS);
-    this.dao = dao;
   }
 
   @Override
@@ -93,9 +91,9 @@ public class WebhookRepository extends EntityRepository<Webhook> {
   public void storeEntity(Webhook entity, boolean update) throws IOException {
     entity.setHref(null);
     if (update) {
-      dao.webhookDAO().update(entity.getId(), JsonUtils.pojoToJson(entity));
+      daoCollection.webhookDAO().update(entity.getId(), JsonUtils.pojoToJson(entity));
     } else {
-      dao.webhookDAO().insert(entity);
+      daoCollection.webhookDAO().insert(entity);
     }
   }
 
@@ -168,7 +166,7 @@ public class WebhookRepository extends EntityRepository<Webhook> {
 
   @Transaction
   public boolean delete(String id) {
-    return dao.webhookDAO().delete(UUID.fromString(id)) > 0;
+    return daoCollection.webhookDAO().delete(UUID.fromString(id)) > 0;
   }
 
   public static class WebhookEntityInterface implements EntityInterface<Webhook> {
@@ -448,7 +446,7 @@ public class WebhookRepository extends EntityRepository<Webhook> {
 
     private void setStatus(Status status, Long attemptTime, Integer statusCode, String reason, Date date)
         throws IOException {
-      Webhook stored = dao.webhookDAO().findEntityById(webhook.getId());
+      Webhook stored = daoCollection.webhookDAO().findEntityById(webhook.getId());
       webhook.setStatus(status);
       webhook
           .getFailureDetails()

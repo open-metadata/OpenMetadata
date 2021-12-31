@@ -32,7 +32,6 @@ import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
 
 public class MessagingServiceRepository extends EntityRepository<MessagingService> {
-  private final CollectionDAO dao;
 
   public MessagingServiceRepository(CollectionDAO dao) {
     super(
@@ -43,7 +42,6 @@ public class MessagingServiceRepository extends EntityRepository<MessagingServic
         dao,
         Fields.EMPTY_FIELDS,
         Fields.EMPTY_FIELDS);
-    this.dao = dao;
   }
 
   @Override
@@ -67,9 +65,9 @@ public class MessagingServiceRepository extends EntityRepository<MessagingServic
   @Override
   public void storeEntity(MessagingService service, boolean update) throws IOException {
     if (update) {
-      dao.messagingServiceDAO().update(service.getId(), JsonUtils.pojoToJson(service));
+      daoCollection.messagingServiceDAO().update(service.getId(), JsonUtils.pojoToJson(service));
     } else {
-      dao.messagingServiceDAO().insert(service);
+      daoCollection.messagingServiceDAO().insert(service);
     }
   }
 

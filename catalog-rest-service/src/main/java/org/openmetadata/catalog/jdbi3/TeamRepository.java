@@ -40,7 +40,6 @@ import org.openmetadata.catalog.util.JsonUtils;
 public class TeamRepository extends EntityRepository<Team> {
   static final Fields TEAM_UPDATE_FIELDS = new Fields(TeamResource.FIELD_LIST, "profile,users");
   static final Fields TEAM_PATCH_FIELDS = new Fields(TeamResource.FIELD_LIST, "profile,users");
-  private final CollectionDAO dao;
 
   public TeamRepository(CollectionDAO dao) {
     super(
@@ -51,7 +50,6 @@ public class TeamRepository extends EntityRepository<Team> {
         dao,
         TEAM_PATCH_FIELDS,
         TEAM_UPDATE_FIELDS);
-    this.dao = dao;
   }
 
   public List<EntityReference> getUsers(List<UUID> userIds) {
@@ -68,7 +66,7 @@ public class TeamRepository extends EntityRepository<Team> {
   public void validateUsers(List<EntityReference> users) throws IOException {
     if (users != null) {
       for (EntityReference user : users) {
-        EntityReference ref = dao.userDAO().findEntityReferenceById(user.getId());
+        EntityReference ref = daoCollection.userDAO().findEntityReferenceById(user.getId());
         user.withType(ref.getType()).withName(ref.getName()).withDisplayName(ref.getDisplayName());
       }
     }
@@ -109,9 +107,9 @@ public class TeamRepository extends EntityRepository<Team> {
     team.withUsers(null).withHref(null);
 
     if (update) {
-      dao.teamDAO().update(team.getId(), JsonUtils.pojoToJson(team));
+      daoCollection.teamDAO().update(team.getId(), JsonUtils.pojoToJson(team));
     } else {
-      dao.teamDAO().insert(team);
+      daoCollection.teamDAO().insert(team);
     }
 
     // Restore the relationships
@@ -121,7 +119,8 @@ public class TeamRepository extends EntityRepository<Team> {
   @Override
   public void storeRelationships(Team team) {
     for (EntityReference user : Optional.ofNullable(team.getUsers()).orElse(Collections.emptyList())) {
-      dao.relationshipDAO()
+      daoCollection
+          .relationshipDAO()
           .insert(team.getId().toString(), user.getId().toString(), "team", "user", Relationship.HAS.ordinal());
       System.out.println("Team " + team.getName() + " has user " + user.getName());
     }
@@ -133,17 +132,17 @@ public class TeamRepository extends EntityRepository<Team> {
   }
 
   private List<EntityReference> getUsers(String id) throws IOException {
-    List<String> userIds = dao.relationshipDAO().findTo(id, Relationship.HAS.ordinal(), "user");
+    List<String> userIds = daoCollection.relationshipDAO().findTo(id, Relationship.HAS.ordinal(), "user");
     List<EntityReference> users = new ArrayList<>();
     for (String userId : userIds) {
-      users.add(dao.userDAO().findEntityReferenceById(UUID.fromString(userId)));
+      users.add(daoCollection.userDAO().findEntityReferenceById(UUID.fromString(userId)));
     }
     return users;
   }
 
   private List<EntityReference> getOwns(String teamId) throws IOException {
     // Compile entities owned by the team
-    return EntityUtil.populateEntityReferences(dao.relationshipDAO().findTo(teamId, OWNS.ordinal()));
+    return EntityUtil.populateEntityReferences(daoCollection.relationshipDAO().findTo(teamId, OWNS.ordinal()));
   }
 
   public static class TeamEntityInterface implements EntityInterface<Team> {
@@ -302,10 +301,11 @@ public class TeamRepository extends EntityRepository<Team> {
       List<EntityReference> deleted = new ArrayList<>();
       if (recordListChange("users", origUsers, updatedUsers, added, deleted, entityReferenceMatch)) {
         // Remove users from original and add users from updated
-        dao.relationshipDAO().deleteFrom(origTeam.getId().toString(), Relationship.HAS.ordinal(), "user");
+        daoCollection.relationshipDAO().deleteFrom(origTeam.getId().toString(), Relationship.HAS.ordinal(), "user");
         // Add relationships
         for (EntityReference user : updatedUsers) {
-          dao.relationshipDAO()
+          daoCollection
+              .relationshipDAO()
               .insert(
                   updatedTeam.getId().toString(), user.getId().toString(), "team", "user", Relationship.HAS.ordinal());
         }

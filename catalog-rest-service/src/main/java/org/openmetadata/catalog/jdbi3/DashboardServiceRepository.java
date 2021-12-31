@@ -33,8 +33,6 @@ import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
 
 public class DashboardServiceRepository extends EntityRepository<DashboardService> {
-  private final CollectionDAO dao;
-
   public DashboardServiceRepository(CollectionDAO dao) {
     super(
         DashboardServiceResource.COLLECTION_PATH,
@@ -44,7 +42,6 @@ public class DashboardServiceRepository extends EntityRepository<DashboardServic
         dao,
         Fields.EMPTY_FIELDS,
         Fields.EMPTY_FIELDS);
-    this.dao = dao;
   }
 
   public DashboardService update(
@@ -57,7 +54,7 @@ public class DashboardServiceRepository extends EntityRepository<DashboardServic
       Schedule ingestionSchedule)
       throws IOException {
     EntityUtil.validateIngestionSchedule(ingestionSchedule);
-    DashboardService dashboardService = dao.dashboardServiceDAO().findEntityById(id);
+    DashboardService dashboardService = daoCollection.dashboardServiceDAO().findEntityById(id);
     // Update fields
     dashboardService
         .withDescription(description)
@@ -65,7 +62,7 @@ public class DashboardServiceRepository extends EntityRepository<DashboardServic
         .withUsername(username)
         .withPassword(password)
         .withIngestionSchedule(ingestionSchedule);
-    dao.dashboardServiceDAO().update(id, JsonUtils.pojoToJson(dashboardService));
+    daoCollection.dashboardServiceDAO().update(id, JsonUtils.pojoToJson(dashboardService));
     return withHref(uriInfo, dashboardService);
   }
 
@@ -90,9 +87,9 @@ public class DashboardServiceRepository extends EntityRepository<DashboardServic
   @Override
   public void storeEntity(DashboardService service, boolean update) throws IOException {
     if (update) {
-      dao.dashboardServiceDAO().update(service.getId(), JsonUtils.pojoToJson(service));
+      daoCollection.dashboardServiceDAO().update(service.getId(), JsonUtils.pojoToJson(service));
     } else {
-      dao.dashboardServiceDAO().insert(service);
+      daoCollection.dashboardServiceDAO().insert(service);
     }
   }
 
