@@ -108,7 +108,6 @@ import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.TestUtils;
-import org.openmetadata.common.utils.JsonSchemaUtil;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
@@ -861,7 +860,7 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
   protected final T patchEntity(UUID id, String originalJson, T updated, Map<String, String> authHeaders)
       throws JsonProcessingException, HttpResponseException {
     String updatedEntityJson = JsonUtils.pojoToJson(updated);
-    JsonPatch patch = JsonSchemaUtil.getJsonPatch(originalJson, updatedEntityJson);
+    JsonPatch patch = JsonUtils.getJsonPatch(originalJson, updatedEntityJson);
     return TestUtils.patch(getResource(id), patch, entityClass, authHeaders);
   }
 

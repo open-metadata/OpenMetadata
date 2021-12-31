@@ -13,7 +13,6 @@
 
 package org.openmetadata.catalog.jdbi3;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.net.URI;
 import java.util.Date;
@@ -38,12 +37,6 @@ public class BotsRepository extends EntityRepository<Bots> {
         dao,
         Fields.EMPTY_FIELDS,
         Fields.EMPTY_FIELDS);
-  }
-
-  public Bots insert(Bots bots) throws JsonProcessingException {
-    bots.setHref(null);
-    daoCollection.botsDAO().insert(bots);
-    return bots;
   }
 
   @Override

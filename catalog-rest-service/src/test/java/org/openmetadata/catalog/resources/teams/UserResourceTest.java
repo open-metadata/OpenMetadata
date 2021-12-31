@@ -77,7 +77,6 @@ import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.TestUtils;
 import org.openmetadata.catalog.util.TestUtils.UpdateType;
-import org.openmetadata.common.utils.JsonSchemaUtil;
 
 public class UserResourceTest extends EntityResourceTest<User> {
   final Profile PROFILE = new Profile().withImages(new ImageList().withImage(URI.create("http://image.com")));
@@ -489,7 +488,7 @@ public class UserResourceTest extends EntityResourceTest<User> {
   private User patchUser(UUID userId, String originalJson, User updated, Map<String, String> headers)
       throws JsonProcessingException, HttpResponseException {
     String updatedJson = JsonUtils.pojoToJson(updated);
-    JsonPatch patch = JsonSchemaUtil.getJsonPatch(originalJson, updatedJson);
+    JsonPatch patch = JsonUtils.getJsonPatch(originalJson, updatedJson);
     return TestUtils.patch(CatalogApplicationTest.getResource("users/" + userId), patch, User.class, headers);
   }
 

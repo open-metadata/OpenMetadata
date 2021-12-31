@@ -45,7 +45,6 @@ import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
-import org.openmetadata.common.utils.JsonSchemaUtil;
 
 public class RoleResourceTest extends EntityResourceTest<Role> {
 
@@ -166,7 +165,7 @@ public class RoleResourceTest extends EntityResourceTest<Role> {
   private Role patchRole(UUID roleId, String originalJson, Role updated, Map<String, String> authHeaders)
       throws JsonProcessingException, HttpResponseException {
     String updatedJson = JsonUtils.pojoToJson(updated);
-    JsonPatch patch = JsonSchemaUtil.getJsonPatch(originalJson, updatedJson);
+    JsonPatch patch = JsonUtils.getJsonPatch(originalJson, updatedJson);
     return TestUtils.patch(CatalogApplicationTest.getResource("roles/" + roleId), patch, Role.class, authHeaders);
   }
 
