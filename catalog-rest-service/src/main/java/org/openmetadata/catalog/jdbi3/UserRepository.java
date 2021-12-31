@@ -43,8 +43,8 @@ import org.slf4j.LoggerFactory;
 
 public class UserRepository extends EntityRepository<User> {
   public static final Logger LOG = LoggerFactory.getLogger(UserRepository.class);
-  static final Fields USER_PATCH_FIELDS = new Fields(UserResource.FIELD_LIST, "profile,teams");
-  static final Fields USER_UPDATE_FIELDS = new Fields(UserResource.FIELD_LIST, "profile,teams");
+  static final Fields USER_PATCH_FIELDS = new Fields(UserResource.FIELD_LIST, "profile,roles,teams");
+  static final Fields USER_UPDATE_FIELDS = new Fields(UserResource.FIELD_LIST, "profile,roles,teams");
 
   private final CollectionDAO dao;
 
@@ -71,10 +71,11 @@ public class UserRepository extends EntityRepository<User> {
   @Override
   public void storeEntity(User user, boolean update) throws IOException {
     // Relationships and fields such as href are derived and not stored as part of json
+    List<EntityReference> roles = user.getRoles();
     List<EntityReference> teams = user.getTeams();
 
-    // Don't store owner, database, href and tags as JSON. Build it on the fly based on relationships
-    user.withTeams(null).withHref(null);
+    // Don't store roles, teams and href as JSON. Build it on the fly based on relationships
+    user.withRoles(null).withTeams(null).withHref(null);
 
     if (update) {
       dao.userDAO().update(user.getId(), JsonUtils.pojoToJson(user));
@@ -83,11 +84,12 @@ public class UserRepository extends EntityRepository<User> {
     }
 
     // Restore the relationships
-    user.withTeams(teams);
+    user.withRoles(roles).withTeams(teams);
   }
 
   @Override
   public void storeRelationships(User user) {
+    assignRoles(user, user.getRoles());
     assignTeams(user, user.getTeams());
   }
 
@@ -106,6 +108,7 @@ public class UserRepository extends EntityRepository<User> {
   public User setFields(User user, Fields fields) throws IOException {
     user.setProfile(fields.contains("profile") ? user.getProfile() : null);
     user.setTeams(fields.contains("teams") ? getTeams(user) : null);
+    user.setRoles(fields.contains("roles") ? getRoles(user) : null);
     user.setOwns(fields.contains("owns") ? getOwns(user) : null);
     user.setFollows(fields.contains("follows") ? getFollows(user) : null);
     return user;
@@ -136,9 +139,20 @@ public class UserRepository extends EntityRepository<User> {
     return dao.userDAO().findEntityById(userId);
   }
 
+  public List<EntityReference> validateRoles(List<UUID> roleIds) throws IOException {
+    if (roleIds == null) {
+      return Collections.emptyList(); // Return an empty roles list
+    }
+    List<EntityReference> validatedRoles = new ArrayList<>();
+    for (UUID roleId : roleIds) {
+      validatedRoles.add(dao.roleDAO().findEntityReferenceById(roleId));
+    }
+    return validatedRoles;
+  }
+
   public List<EntityReference> validateTeams(List<UUID> teamIds) throws IOException {
     if (teamIds == null) {
-      return Collections.emptyList(); // Return empty team list
+      return Collections.emptyList(); // Return an empty teams list
     }
     List<EntityReference> validatedTeams = new ArrayList<>();
     for (UUID teamId : teamIds) {
@@ -147,21 +161,40 @@ public class UserRepository extends EntityRepository<User> {
     return validatedTeams;
   }
 
+  /* Add all the roles that user has been assigned, to User entity */
+  private List<EntityReference> getRoles(User user) throws IOException {
+    List<String> roleIds = dao.relationshipDAO().findTo(user.getId().toString(), HAS.ordinal(), Entity.ROLE);
+    List<EntityReference> roles = new ArrayList<>(roleIds.size());
+    for (String roleId : roleIds) {
+      roles.add(dao.roleDAO().findEntityReferenceById(UUID.fromString(roleId)));
+    }
+    return roles;
+  }
+
   /* Add all the teams that user belongs to User entity */
   private List<EntityReference> getTeams(User user) throws IOException {
-    List<String> teamIds = dao.relationshipDAO().findFrom(user.getId().toString(), HAS.ordinal(), "team");
-    List<EntityReference> teams = new ArrayList<>();
+    List<String> teamIds = dao.relationshipDAO().findFrom(user.getId().toString(), HAS.ordinal(), Entity.TEAM);
+    List<EntityReference> teams = new ArrayList<>(teamIds.size());
     for (String teamId : teamIds) {
       teams.add(dao.teamDAO().findEntityReferenceById(UUID.fromString(teamId)));
     }
     return teams;
   }
 
+  private void assignRoles(User user, List<EntityReference> roles) {
+    roles = Optional.ofNullable(roles).orElse(Collections.emptyList());
+    for (EntityReference role : roles) {
+      dao.relationshipDAO()
+          .insert(user.getId().toString(), role.getId().toString(), Entity.USER, Entity.ROLE, HAS.ordinal());
+    }
+  }
+
   private void assignTeams(User user, List<EntityReference> teams) {
     // Query - add team to the user
     teams = Optional.ofNullable(teams).orElse(Collections.emptyList());
     for (EntityReference team : teams) {
-      dao.relationshipDAO().insert(team.getId().toString(), user.getId().toString(), "team", "user", HAS.ordinal());
+      dao.relationshipDAO()
+          .insert(team.getId().toString(), user.getId().toString(), Entity.TEAM, Entity.USER, HAS.ordinal());
     }
   }
 
@@ -304,6 +337,7 @@ public class UserRepository extends EntityRepository<User> {
       if (updated.getEntity().getDeleted() != original.getEntity().getDeleted()) {
         throw new IllegalArgumentException(CatalogExceptionMessage.readOnlyAttribute("User", "deactivated"));
       }
+      updateRoles(original.getEntity(), updated.getEntity());
       updateTeams(original.getEntity(), updated.getEntity());
       recordChange("profile", original.getEntity().getProfile(), updated.getEntity().getProfile(), true);
       recordChange("timezone", original.getEntity().getTimezone(), updated.getEntity().getTimezone());
@@ -312,9 +346,25 @@ public class UserRepository extends EntityRepository<User> {
       recordChange("email", original.getEntity().getEmail(), updated.getEntity().getEmail());
     }
 
+    private void updateRoles(User origUser, User updatedUser) throws JsonProcessingException {
+      // Remove roles from original and add roles from updated
+      dao.relationshipDAO().deleteFrom(origUser.getId().toString(), HAS.ordinal(), Entity.ROLE);
+      assignRoles(updatedUser, updatedUser.getRoles());
+
+      List<EntityReference> origRoles = Optional.ofNullable(origUser.getRoles()).orElse(Collections.emptyList());
+      List<EntityReference> updatedRoles = Optional.ofNullable(updatedUser.getRoles()).orElse(Collections.emptyList());
+
+      origRoles.sort(EntityUtil.compareEntityReference);
+      updatedRoles.sort(EntityUtil.compareEntityReference);
+
+      List<EntityReference> added = new ArrayList<>();
+      List<EntityReference> deleted = new ArrayList<>();
+      recordListChange("roles", origRoles, updatedRoles, added, deleted, EntityUtil.entityReferenceMatch);
+    }
+
     private void updateTeams(User origUser, User updatedUser) throws JsonProcessingException {
       // Remove teams from original and add teams from updated
-      dao.relationshipDAO().deleteTo(origUser.getId().toString(), HAS.ordinal(), "team");
+      dao.relationshipDAO().deleteTo(origUser.getId().toString(), HAS.ordinal(), Entity.TEAM);
       assignTeams(updatedUser, updatedUser.getTeams());
 
       List<EntityReference> origTeams = Optional.ofNullable(origUser.getTeams()).orElse(Collections.emptyList());

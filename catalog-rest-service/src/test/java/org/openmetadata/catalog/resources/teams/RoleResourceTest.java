@@ -34,6 +34,7 @@ import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.catalog.CatalogApplicationTest;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.teams.CreateRole;
+import org.openmetadata.catalog.api.teams.CreateTeam;
 import org.openmetadata.catalog.entity.teams.Role;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.jdbi3.RoleRepository.RoleEntityInterface;
@@ -171,6 +172,10 @@ public class RoleResourceTest extends EntityResourceTest<Role> {
   private Role patchRole(String originalJson, Role updated, Map<String, String> authHeaders)
       throws JsonProcessingException, HttpResponseException {
     return patchRole(updated.getId(), originalJson, updated, authHeaders);
+  }
+
+  public static Role createRole(CreateTeam create, Map<String, String> authHeaders) throws HttpResponseException {
+    return TestUtils.post(CatalogApplicationTest.getResource("roles"), create, Role.class, authHeaders);
   }
 
   CreateRole create(TestInfo test, int index) {
