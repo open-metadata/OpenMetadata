@@ -29,8 +29,6 @@ import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 
 public class BotsRepository extends EntityRepository<Bots> {
-  private final CollectionDAO dao;
-
   public BotsRepository(CollectionDAO dao) {
     super(
         BotsResource.COLLECTION_PATH,
@@ -40,12 +38,11 @@ public class BotsRepository extends EntityRepository<Bots> {
         dao,
         Fields.EMPTY_FIELDS,
         Fields.EMPTY_FIELDS);
-    this.dao = dao;
   }
 
   public Bots insert(Bots bots) throws JsonProcessingException {
     bots.setHref(null);
-    dao.botsDAO().insert(bots);
+    daoCollection.botsDAO().insert(bots);
     return bots;
   }
 
@@ -67,7 +64,7 @@ public class BotsRepository extends EntityRepository<Bots> {
 
   @Override
   public void storeEntity(Bots entity, boolean update) throws IOException {
-    dao.botsDAO().insert(entity);
+    daoCollection.botsDAO().insert(entity);
   }
 
   @Override

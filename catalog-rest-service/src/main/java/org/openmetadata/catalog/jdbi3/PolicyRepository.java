@@ -40,7 +40,6 @@ public class PolicyRepository extends EntityRepository<Policy> {
       new Fields(PolicyResource.FIELD_LIST, "displayName,description,owner,policyUrl,enabled,rules,location");
   private static final Fields POLICY_PATCH_FIELDS =
       new Fields(PolicyResource.FIELD_LIST, "displayName,description,owner,policyUrl,enabled,rules,location");
-  private final CollectionDAO dao;
 
   public PolicyRepository(CollectionDAO dao) {
     super(
@@ -51,7 +50,6 @@ public class PolicyRepository extends EntityRepository<Policy> {
         dao,
         POLICY_PATCH_FIELDS,
         POLICY_UPDATE_FIELDS);
-    this.dao = dao;
   }
 
   public static String getFQN(Policy policy) {
@@ -60,16 +58,18 @@ public class PolicyRepository extends EntityRepository<Policy> {
 
   @Transaction
   public EntityReference getOwnerReference(Policy policy) throws IOException {
-    return EntityUtil.populateOwner(dao.userDAO(), dao.teamDAO(), policy.getOwner());
+    return EntityUtil.populateOwner(daoCollection.userDAO(), daoCollection.teamDAO(), policy.getOwner());
   }
 
   /** Find the location to which this policy applies to. * */
   @Transaction
   private EntityReference getLocationForPolicy(UUID policyId) throws IOException {
     List<String> result =
-        dao.relationshipDAO().findTo(policyId.toString(), Relationship.APPLIED_TO.ordinal(), Entity.LOCATION);
+        daoCollection.relationshipDAO().findTo(policyId.toString(), Relationship.APPLIED_TO.ordinal(), Entity.LOCATION);
     // There is at most one location for a policy.
-    return result.size() == 1 ? dao.locationDAO().findEntityReferenceById(UUID.fromString(result.get(0))) : null;
+    return result.size() == 1
+        ? daoCollection.locationDAO().findEntityReferenceById(UUID.fromString(result.get(0)))
+        : null;
   }
 
   @Override
@@ -99,7 +99,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
       return null;
     }
 
-    Location location = dao.locationDAO().findEntityById(policy.getLocation().getId());
+    Location location = daoCollection.locationDAO().findEntityById(policy.getLocation().getId());
     if (location == null) {
       return null;
     }
@@ -112,7 +112,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
     policy.setFullyQualifiedName(getFQN(policy));
     policy.setLocation(getLocationReference(policy));
     // Check if owner is valid and set the relationship
-    policy.setOwner(EntityUtil.populateOwner(dao.userDAO(), dao.teamDAO(), policy.getOwner()));
+    policy.setOwner(EntityUtil.populateOwner(daoCollection.userDAO(), daoCollection.teamDAO(), policy.getOwner()));
   }
 
   @Override
@@ -126,9 +126,9 @@ public class PolicyRepository extends EntityRepository<Policy> {
     policy.withOwner(null).withLocation(null).withHref(null);
 
     if (update) {
-      dao.policyDAO().update(policy.getId(), JsonUtils.pojoToJson(policy));
+      daoCollection.policyDAO().update(policy.getId(), JsonUtils.pojoToJson(policy));
     } else {
-      dao.policyDAO().insert(policy);
+      daoCollection.policyDAO().insert(policy);
     }
 
     // Restore the relationships
@@ -185,11 +185,12 @@ public class PolicyRepository extends EntityRepository<Policy> {
   private EntityReference getOwner(Policy policy) throws IOException {
     return policy == null
         ? null
-        : EntityUtil.populateOwner(policy.getId(), dao.relationshipDAO(), dao.userDAO(), dao.teamDAO());
+        : EntityUtil.populateOwner(
+            policy.getId(), daoCollection.relationshipDAO(), daoCollection.userDAO(), daoCollection.teamDAO());
   }
 
   private void setOwner(Policy policy, EntityReference owner) {
-    EntityUtil.setOwner(dao.relationshipDAO(), policy.getId(), Entity.POLICY, owner);
+    EntityUtil.setOwner(daoCollection.relationshipDAO(), policy.getId(), Entity.POLICY, owner);
     policy.setOwner(owner);
   }
 
@@ -197,7 +198,8 @@ public class PolicyRepository extends EntityRepository<Policy> {
     if (location == null || location.getId() == null) {
       return;
     }
-    dao.relationshipDAO()
+    daoCollection
+        .relationshipDAO()
         .insert(
             policy.getId().toString(),
             policy.getLocation().getId().toString(),
@@ -368,7 +370,8 @@ public class PolicyRepository extends EntityRepository<Policy> {
     private void updateLocation(Policy origPolicy, Policy updatedPolicy) throws IOException {
       // remove original Policy --> Location relationship if exists.
       if (origPolicy.getLocation() != null && origPolicy.getLocation().getId() != null) {
-        dao.relationshipDAO()
+        daoCollection
+            .relationshipDAO()
             .delete(
                 origPolicy.getId().toString(),
                 origPolicy.getLocation().getId().toString(),
@@ -376,7 +379,8 @@ public class PolicyRepository extends EntityRepository<Policy> {
       }
       // insert updated Policy --> Location relationship.
       if (updatedPolicy.getLocation() != null && updatedPolicy.getLocation().getId() != null) {
-        dao.relationshipDAO()
+        daoCollection
+            .relationshipDAO()
             .insert(
                 updatedPolicy.getId().toString(),
                 updatedPolicy.getLocation().getId().toString(),

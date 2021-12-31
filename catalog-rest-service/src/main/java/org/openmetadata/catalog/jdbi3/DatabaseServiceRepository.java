@@ -33,7 +33,6 @@ import org.openmetadata.catalog.util.JsonUtils;
 
 public class DatabaseServiceRepository extends EntityRepository<DatabaseService> {
   public static final String COLLECTION_PATH = "v1/services/databaseServices";
-  private final CollectionDAO dao;
 
   public DatabaseServiceRepository(CollectionDAO dao) {
     super(
@@ -44,7 +43,6 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
         dao,
         Fields.EMPTY_FIELDS,
         Fields.EMPTY_FIELDS);
-    this.dao = dao;
   }
 
   @Override
@@ -68,9 +66,9 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
   @Override
   public void storeEntity(DatabaseService service, boolean update) throws IOException {
     if (update) {
-      dao.dbServiceDAO().update(service.getId(), JsonUtils.pojoToJson(service));
+      daoCollection.dbServiceDAO().update(service.getId(), JsonUtils.pojoToJson(service));
     } else {
-      dao.dbServiceDAO().insert(service);
+      daoCollection.dbServiceDAO().insert(service);
     }
   }
 

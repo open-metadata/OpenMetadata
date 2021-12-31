@@ -16,14 +16,12 @@ package org.openmetadata.catalog.jdbi3;
 /**
  * This enum captures all the relationships between Catalog entities Note that the relationship from is a Strong entity
  * and to is Weak entity when possible.
+ *
+ * <p>Note: Rules for changing enums since the ordinal position is stored in the database. - Don't remove an enum, since
+ * the database might have stored the enum ordinal number - When adding a new enum, add it as the last enum to preserve
+ * the ordinal positions of the existing enums
  */
 public enum Relationship {
-
-  /**
-   * Rules for changing enums since the ordinal position is stored in the database. - Don't remove an enum, since the
-   * database might have stored the enum ordinal number - When adding a new enum, add it as the last enum to preserve
-   * the ordinal positions of the existing enums
-   */
 
   /**
    * CONTAINS relationship is a stronger relationship than HAS. The entity that contains other entities can't be deleted

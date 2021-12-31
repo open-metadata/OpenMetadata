@@ -37,7 +37,6 @@ public class IngestionRepository extends EntityRepository<Ingestion> {
       new Fields(IngestionResource.FIELD_LIST, "scheduleInterval,owner,tags");
   private static final Fields INGESTION_PATCH_FIELDS =
       new Fields(IngestionResource.FIELD_LIST, "scheduleInterval,owner,tags");
-  private final CollectionDAO dao;
 
   public IngestionRepository(CollectionDAO dao) {
     super(
@@ -48,7 +47,6 @@ public class IngestionRepository extends EntityRepository<Ingestion> {
         dao,
         INGESTION_PATCH_FIELDS,
         INGESTION_UPDATE_FIELDS);
-    this.dao = dao;
   }
 
   public static String getFQN(Ingestion ingestion) {
@@ -57,7 +55,7 @@ public class IngestionRepository extends EntityRepository<Ingestion> {
 
   @Transaction
   public EntityReference getOwnerReference(Ingestion ingestion) throws IOException {
-    return EntityUtil.populateOwner(dao.userDAO(), dao.teamDAO(), ingestion.getOwner());
+    return EntityUtil.populateOwner(daoCollection.userDAO(), daoCollection.teamDAO(), ingestion.getOwner());
   }
 
   @Override
@@ -80,16 +78,16 @@ public class IngestionRepository extends EntityRepository<Ingestion> {
   }
 
   private List<TagLabel> getTags(String fqn) {
-    return dao.tagDAO().getTags(fqn);
+    return daoCollection.tagDAO().getTags(fqn);
   }
 
   @Override
   public void prepare(Ingestion ingestion) throws IOException {
     ingestion.setService(getService(ingestion.getService()));
     ingestion.setFullyQualifiedName(getFQN(ingestion));
-    EntityUtil.populateOwner(dao.userDAO(), dao.teamDAO(), ingestion.getOwner()); // Validate owner
+    EntityUtil.populateOwner(daoCollection.userDAO(), daoCollection.teamDAO(), ingestion.getOwner()); // Validate owner
     getService(ingestion.getService());
-    ingestion.setTags(EntityUtil.addDerivedTags(dao.tagDAO(), ingestion.getTags()));
+    ingestion.setTags(EntityUtil.addDerivedTags(daoCollection.tagDAO(), ingestion.getTags()));
   }
 
   @Override
@@ -103,9 +101,9 @@ public class IngestionRepository extends EntityRepository<Ingestion> {
     ingestion.withOwner(null).withHref(null).withTags(null);
 
     if (update) {
-      dao.ingestionDAO().update(ingestion.getId(), JsonUtils.pojoToJson(ingestion));
+      daoCollection.ingestionDAO().update(ingestion.getId(), JsonUtils.pojoToJson(ingestion));
     } else {
-      dao.ingestionDAO().insert(ingestion);
+      daoCollection.ingestionDAO().insert(ingestion);
     }
 
     // Restore the relationships
@@ -115,7 +113,8 @@ public class IngestionRepository extends EntityRepository<Ingestion> {
   @Override
   public void storeRelationships(Ingestion ingestion) {
     EntityReference service = ingestion.getService();
-    dao.relationshipDAO()
+    daoCollection
+        .relationshipDAO()
         .insert(
             service.getId().toString(),
             ingestion.getId().toString(),
@@ -134,30 +133,31 @@ public class IngestionRepository extends EntityRepository<Ingestion> {
   private EntityReference getOwner(Ingestion ingestion) throws IOException {
     return ingestion == null
         ? null
-        : EntityUtil.populateOwner(ingestion.getId(), dao.relationshipDAO(), dao.userDAO(), dao.teamDAO());
+        : EntityUtil.populateOwner(
+            ingestion.getId(), daoCollection.relationshipDAO(), daoCollection.userDAO(), daoCollection.teamDAO());
   }
 
   public void setOwner(Ingestion ingestion, EntityReference owner) {
-    EntityUtil.setOwner(dao.relationshipDAO(), ingestion.getId(), Entity.INGESTION, owner);
+    EntityUtil.setOwner(daoCollection.relationshipDAO(), ingestion.getId(), Entity.INGESTION, owner);
     ingestion.setOwner(owner);
   }
 
   private void applyTags(Ingestion ingestion) {
     // Add ingestion level tags by adding tag to ingestion relationship
-    EntityUtil.applyTags(dao.tagDAO(), ingestion.getTags(), ingestion.getFullyQualifiedName());
+    EntityUtil.applyTags(daoCollection.tagDAO(), ingestion.getTags(), ingestion.getFullyQualifiedName());
     ingestion.setTags(getTags(ingestion.getFullyQualifiedName())); // Update tag to handle additional derived tags
   }
 
   private EntityReference getService(Ingestion ingestion) throws IOException {
-    EntityReference ref = EntityUtil.getService(dao.relationshipDAO(), ingestion.getId());
+    EntityReference ref = EntityUtil.getService(daoCollection.relationshipDAO(), ingestion.getId());
     return getService(Objects.requireNonNull(ref));
   }
 
   private EntityReference getService(EntityReference service) throws IOException {
     if (service.getType().equalsIgnoreCase(Entity.DATABASE_SERVICE)) {
-      return dao.dbServiceDAO().findEntityReferenceById(service.getId());
+      return daoCollection.dbServiceDAO().findEntityReferenceById(service.getId());
     } else if (service.getType().equalsIgnoreCase(Entity.DASHBOARD_SERVICE)) {
-      return dao.dashboardServiceDAO().findEntityReferenceById(service.getId());
+      return daoCollection.dashboardServiceDAO().findEntityReferenceById(service.getId());
     }
     throw new IllegalArgumentException(
         CatalogExceptionMessage.invalidServiceEntity(service.getType(), Entity.INGESTION));

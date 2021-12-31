@@ -30,8 +30,6 @@ import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.JsonUtils;
 
 public class StorageServiceRepository extends EntityRepository<StorageService> {
-  private final CollectionDAO dao;
-
   public StorageServiceRepository(CollectionDAO dao) {
     super(
         StorageServiceResource.COLLECTION_PATH,
@@ -41,7 +39,6 @@ public class StorageServiceRepository extends EntityRepository<StorageService> {
         dao,
         Fields.EMPTY_FIELDS,
         Fields.EMPTY_FIELDS);
-    this.dao = dao;
   }
 
   @Override
@@ -63,9 +60,9 @@ public class StorageServiceRepository extends EntityRepository<StorageService> {
   @Override
   public void storeEntity(StorageService service, boolean update) throws IOException {
     if (update) {
-      dao.storageServiceDAO().update(service.getId(), JsonUtils.pojoToJson(service));
+      daoCollection.storageServiceDAO().update(service.getId(), JsonUtils.pojoToJson(service));
     } else {
-      dao.storageServiceDAO().insert(service);
+      daoCollection.storageServiceDAO().insert(service);
     }
   }
 

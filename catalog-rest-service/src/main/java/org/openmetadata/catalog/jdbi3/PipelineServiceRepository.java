@@ -30,8 +30,6 @@ import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
 
 public class PipelineServiceRepository extends EntityRepository<PipelineService> {
-  private final CollectionDAO dao;
-
   public PipelineServiceRepository(CollectionDAO dao) {
     super(
         PipelineServiceResource.COLLECTION_PATH,
@@ -41,7 +39,6 @@ public class PipelineServiceRepository extends EntityRepository<PipelineService>
         dao,
         Fields.EMPTY_FIELDS,
         Fields.EMPTY_FIELDS);
-    this.dao = dao;
   }
 
   @Override
@@ -65,9 +62,9 @@ public class PipelineServiceRepository extends EntityRepository<PipelineService>
   @Override
   public void storeEntity(PipelineService service, boolean update) throws IOException {
     if (update) {
-      dao.pipelineServiceDAO().update(service.getId(), JsonUtils.pojoToJson(service));
+      daoCollection.pipelineServiceDAO().update(service.getId(), JsonUtils.pojoToJson(service));
     } else {
-      dao.pipelineServiceDAO().insert(service);
+      daoCollection.pipelineServiceDAO().insert(service);
     }
   }
 

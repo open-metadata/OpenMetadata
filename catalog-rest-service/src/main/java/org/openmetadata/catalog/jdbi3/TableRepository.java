@@ -74,8 +74,6 @@ public class TableRepository extends EntityRepository<Table> {
   static final Fields TABLE_UPDATE_FIELDS =
       new Fields(TableResource.FIELD_LIST, "owner,columns,tags,tableConstraints,dataModel");
 
-  private final CollectionDAO dao;
-
   public TableRepository(CollectionDAO dao) {
     super(
         TableResource.COLLECTION_PATH,
@@ -85,7 +83,6 @@ public class TableRepository extends EntityRepository<Table> {
         dao,
         TABLE_PATCH_FIELDS,
         TABLE_UPDATE_FIELDS);
-    this.dao = dao;
   }
 
   @Override
@@ -96,7 +93,7 @@ public class TableRepository extends EntityRepository<Table> {
     table.setOwner(fields.contains("owner") ? getOwner(table) : null);
     table.setFollowers(fields.contains("followers") ? getFollowers(table) : null);
     table.setUsageSummary(
-        fields.contains("usageSummary") ? EntityUtil.getLatestUsage(dao.usageDAO(), table.getId()) : null);
+        fields.contains("usageSummary") ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), table.getId()) : null);
     table.setTags(fields.contains("tags") ? getTags(table.getFullyQualifiedName()) : null);
     getColumnTags(fields.contains("tags"), table.getColumns());
     table.setJoins(fields.contains("joins") ? getJoins(table) : null);
@@ -131,7 +128,7 @@ public class TableRepository extends EntityRepository<Table> {
   @Transaction
   public Table addJoins(UUID tableId, TableJoins joins) throws IOException, ParseException {
     // Validate the request content
-    Table table = dao.tableDAO().findEntityById(tableId);
+    Table table = daoCollection.tableDAO().findEntityById(tableId);
     if (!CommonUtil.dateInRange(RestUtil.DATE_FORMAT, joins.getStartDate(), 0, 30)) {
       throw new IllegalArgumentException("Date range can only include past 30 days starting today");
     }
@@ -153,7 +150,7 @@ public class TableRepository extends EntityRepository<Table> {
   @Transaction
   public Table addSampleData(UUID tableId, TableData tableData) throws IOException, ParseException {
     // Validate the request content
-    Table table = dao.tableDAO().findEntityById(tableId);
+    Table table = daoCollection.tableDAO().findEntityById(tableId);
 
     // Validate all the columns
     for (String columnName : tableData.getColumns()) {
@@ -168,7 +165,8 @@ public class TableRepository extends EntityRepository<Table> {
       }
     }
 
-    dao.entityExtensionDAO()
+    daoCollection
+        .entityExtensionDAO()
         .insert(tableId.toString(), "table.sampleData", "tableData", JsonUtils.pojoToJson(tableData));
     setFields(table, Fields.EMPTY_FIELDS);
     return table.withSampleData(tableData);
@@ -177,7 +175,7 @@ public class TableRepository extends EntityRepository<Table> {
   @Transaction
   public Table addTableProfileData(UUID tableId, TableProfile tableProfile) throws IOException, ParseException {
     // Validate the request content
-    Table table = dao.tableDAO().findEntityById(tableId);
+    Table table = daoCollection.tableDAO().findEntityById(tableId);
 
     List<TableProfile> storedTableProfiles = getTableProfile(table);
     Map<String, TableProfile> storedMapTableProfiles = new HashMap<>();
@@ -193,7 +191,8 @@ public class TableRepository extends EntityRepository<Table> {
     storedMapTableProfiles.put(tableProfile.getProfileDate(), tableProfile);
     List<TableProfile> updatedProfiles = new ArrayList<>(storedMapTableProfiles.values());
 
-    dao.entityExtensionDAO()
+    daoCollection
+        .entityExtensionDAO()
         .insert(tableId.toString(), "table.tableProfile", "tableProfile", JsonUtils.pojoToJson(updatedProfiles));
     setFields(table, Fields.EMPTY_FIELDS);
     return table.withTableProfile(getTableProfile(table));
@@ -201,11 +200,12 @@ public class TableRepository extends EntityRepository<Table> {
 
   @Transaction
   public Table addLocation(UUID tableId, UUID locationId) throws IOException, ParseException {
-    Table table = dao.tableDAO().findEntityById(tableId);
-    EntityReference location = dao.locationDAO().findEntityReferenceById(locationId);
+    Table table = daoCollection.tableDAO().findEntityById(tableId);
+    EntityReference location = daoCollection.locationDAO().findEntityReferenceById(locationId);
     // A table has only one location.
-    dao.relationshipDAO().deleteFrom(tableId.toString(), Relationship.HAS.ordinal(), Entity.LOCATION);
-    dao.relationshipDAO()
+    daoCollection.relationshipDAO().deleteFrom(tableId.toString(), Relationship.HAS.ordinal(), Entity.LOCATION);
+    daoCollection
+        .relationshipDAO()
         .insert(tableId.toString(), locationId.toString(), Entity.TABLE, Entity.LOCATION, Relationship.HAS.ordinal());
     setFields(table, Fields.EMPTY_FIELDS);
     return table.withLocation(location);
@@ -220,7 +220,7 @@ public class TableRepository extends EntityRepository<Table> {
     } catch (NoSuchAlgorithmException e) {
       throw new RuntimeException(e);
     }
-    Table table = dao.tableDAO().findEntityById(tableId);
+    Table table = daoCollection.tableDAO().findEntityById(tableId);
     List<SQLQuery> storedQueries = getQueries(table);
     Map<String, SQLQuery> storedMapQueries = new HashMap<>();
     if (storedQueries != null) {
@@ -230,7 +230,8 @@ public class TableRepository extends EntityRepository<Table> {
     }
     storedMapQueries.put(query.getChecksum(), query);
     List<SQLQuery> updatedQueries = new ArrayList<>(storedMapQueries.values());
-    dao.entityExtensionDAO()
+    daoCollection
+        .entityExtensionDAO()
         .insert(tableId.toString(), "table.tableQueries", "sqlQuery", JsonUtils.pojoToJson(updatedQueries));
     setFields(table, Fields.EMPTY_FIELDS);
     return table.withTableQueries(getQueries(table));
@@ -238,7 +239,7 @@ public class TableRepository extends EntityRepository<Table> {
 
   @Transaction
   public Table addDataModel(UUID tableId, DataModel dataModel) throws IOException, ParseException {
-    Table table = dao.tableDAO().findEntityById(tableId);
+    Table table = daoCollection.tableDAO().findEntityById(tableId);
     table.withDataModel(dataModel);
 
     // Carry forward the table description from the model to table entity, if empty
@@ -259,19 +260,19 @@ public class TableRepository extends EntityRepository<Table> {
         stored.setDescription(modelColumn.getDescription());
       }
     }
-    dao.tableDAO().update(table.getId(), JsonUtils.pojoToJson(table));
+    daoCollection.tableDAO().update(table.getId(), JsonUtils.pojoToJson(table));
     setFields(table, Fields.EMPTY_FIELDS);
     return table;
   }
 
   @Transaction
   public void deleteLocation(String tableId) {
-    dao.relationshipDAO().deleteFrom(tableId, Relationship.HAS.ordinal(), Entity.LOCATION);
+    daoCollection.relationshipDAO().deleteFrom(tableId, Relationship.HAS.ordinal(), Entity.LOCATION);
   }
 
   @Transaction
   public EntityReference getOwnerReference(Table table) throws IOException {
-    return EntityUtil.populateOwner(dao.userDAO(), dao.teamDAO(), table.getOwner());
+    return EntityUtil.populateOwner(daoCollection.userDAO(), daoCollection.teamDAO(), table.getOwner());
   }
 
   private void setColumnFQN(String parentFQN, List<Column> columns) {
@@ -291,7 +292,7 @@ public class TableRepository extends EntityRepository<Table> {
     }
 
     for (Column column : columns) {
-      column.setTags(EntityUtil.addDerivedTags(dao.tagDAO(), column.getTags()));
+      column.setTags(EntityUtil.addDerivedTags(daoCollection.tagDAO(), column.getTags()));
       if (column.getChildren() != null) {
         addDerivedTags(column.getChildren());
       }
@@ -300,7 +301,7 @@ public class TableRepository extends EntityRepository<Table> {
 
   @Override
   public void prepare(Table table) throws IOException {
-    table.setDatabase(dao.databaseDAO().findEntityReferenceById(table.getDatabase().getId()));
+    table.setDatabase(daoCollection.databaseDAO().findEntityReferenceById(table.getDatabase().getId()));
     populateService(table);
 
     // Set data in table entity based on database relationship
@@ -308,10 +309,10 @@ public class TableRepository extends EntityRepository<Table> {
     setColumnFQN(table.getFullyQualifiedName(), table.getColumns());
 
     // Check if owner is valid and set the relationship
-    table.setOwner(EntityUtil.populateOwner(dao.userDAO(), dao.teamDAO(), table.getOwner()));
+    table.setOwner(EntityUtil.populateOwner(daoCollection.userDAO(), daoCollection.teamDAO(), table.getOwner()));
 
     // Validate table tags and add derived tags to the list
-    table.setTags(EntityUtil.addDerivedTags(dao.tagDAO(), table.getTags()));
+    table.setTags(EntityUtil.addDerivedTags(daoCollection.tagDAO(), table.getTags()));
 
     // Validate column tags
     addDerivedTags(table.getColumns());
@@ -319,14 +320,14 @@ public class TableRepository extends EntityRepository<Table> {
 
   private DatabaseService getService(UUID serviceId, String entityType) throws IOException {
     if (entityType.equalsIgnoreCase(Entity.DATABASE_SERVICE)) {
-      return dao.dbServiceDAO().findEntityById(serviceId);
+      return daoCollection.dbServiceDAO().findEntityById(serviceId);
     }
     throw new IllegalArgumentException(CatalogExceptionMessage.invalidServiceEntity(entityType, Entity.TABLE));
   }
 
   private EntityReference getService(Table table) throws IOException {
     EntityReference ref =
-        EntityUtil.getService(dao.relationshipDAO(), table.getDatabase().getId(), Entity.DATABASE_SERVICE);
+        EntityUtil.getService(daoCollection.relationshipDAO(), table.getDatabase().getId(), Entity.DATABASE_SERVICE);
     DatabaseService service = getService(ref.getId(), ref.getType());
     ref.setName(service.getName());
     ref.setDescription(service.getDescription());
@@ -336,10 +337,11 @@ public class TableRepository extends EntityRepository<Table> {
   private void populateService(Table table) throws IOException {
     // Find database service from the database that table is contained in
     String serviceId =
-        dao.relationshipDAO()
+        daoCollection
+            .relationshipDAO()
             .findFrom(table.getDatabase().getId().toString(), Relationship.CONTAINS.ordinal(), Entity.DATABASE_SERVICE)
             .get(0);
-    DatabaseService service = dao.dbServiceDAO().findEntityById(UUID.fromString(serviceId));
+    DatabaseService service = daoCollection.dbServiceDAO().findEntityById(UUID.fromString(serviceId));
     table.setService(new DatabaseServiceEntityInterface(service).getEntityReference());
     table.setServiceType(service.getServiceType());
   }
@@ -361,9 +363,9 @@ public class TableRepository extends EntityRepository<Table> {
     table.getColumns().forEach(column -> column.setTags(null));
 
     if (update) {
-      dao.tableDAO().update(table.getId(), JsonUtils.pojoToJson(table));
+      daoCollection.tableDAO().update(table.getId(), JsonUtils.pojoToJson(table));
     } else {
-      dao.tableDAO().insert(table);
+      daoCollection.tableDAO().insert(table);
     }
 
     // Restore the relationships
@@ -374,11 +376,12 @@ public class TableRepository extends EntityRepository<Table> {
   public void storeRelationships(Table table) {
     // Add relationship from database to table
     String databaseId = table.getDatabase().getId().toString();
-    dao.relationshipDAO()
+    daoCollection
+        .relationshipDAO()
         .insert(databaseId, table.getId().toString(), Entity.DATABASE, Entity.TABLE, Relationship.CONTAINS.ordinal());
 
     // Add table owner relationship
-    EntityUtil.setOwner(dao.relationshipDAO(), table.getId(), Entity.TABLE, table.getOwner());
+    EntityUtil.setOwner(daoCollection.relationshipDAO(), table.getId(), Entity.TABLE, table.getOwner());
 
     // Add tag to table relationship
     applyTags(table);
@@ -417,7 +420,7 @@ public class TableRepository extends EntityRepository<Table> {
   private void applyTags(List<Column> columns) {
     // Add column level tags by adding tag to column relationship
     for (Column column : columns) {
-      EntityUtil.applyTags(dao.tagDAO(), column.getTags(), column.getFullyQualifiedName());
+      EntityUtil.applyTags(daoCollection.tagDAO(), column.getTags(), column.getFullyQualifiedName());
       if (column.getChildren() != null) {
         applyTags(column.getChildren());
       }
@@ -426,25 +429,26 @@ public class TableRepository extends EntityRepository<Table> {
 
   private void applyTags(Table table) {
     // Add table level tags by adding tag to table relationship
-    EntityUtil.applyTags(dao.tagDAO(), table.getTags(), table.getFullyQualifiedName());
+    EntityUtil.applyTags(daoCollection.tagDAO(), table.getTags(), table.getFullyQualifiedName());
     applyTags(table.getColumns());
   }
 
   private EntityReference getDatabase(UUID tableId) throws IOException {
     // Find database for the table
     List<String> result =
-        dao.relationshipDAO().findFrom(tableId.toString(), Relationship.CONTAINS.ordinal(), Entity.DATABASE);
+        daoCollection.relationshipDAO().findFrom(tableId.toString(), Relationship.CONTAINS.ordinal(), Entity.DATABASE);
     if (result.size() != 1) {
       throw EntityNotFoundException.byMessage(String.format("Database for table %s Not found", tableId));
     }
-    return dao.databaseDAO().findEntityReferenceById(UUID.fromString(result.get(0)));
+    return daoCollection.databaseDAO().findEntityReferenceById(UUID.fromString(result.get(0)));
   }
 
   private EntityReference getLocation(UUID tableId) throws IOException {
     // Find the location of the table
-    List<String> result = dao.relationshipDAO().findTo(tableId.toString(), Relationship.HAS.ordinal(), Entity.LOCATION);
+    List<String> result =
+        daoCollection.relationshipDAO().findTo(tableId.toString(), Relationship.HAS.ordinal(), Entity.LOCATION);
     if (result.size() == 1) {
-      return dao.locationDAO().findEntityReferenceById(UUID.fromString(result.get(0)));
+      return daoCollection.locationDAO().findEntityReferenceById(UUID.fromString(result.get(0)));
     } else {
       return null;
     }
@@ -453,15 +457,18 @@ public class TableRepository extends EntityRepository<Table> {
   private EntityReference getOwner(Table table) throws IOException {
     return table == null
         ? null
-        : EntityUtil.populateOwner(table.getId(), dao.relationshipDAO(), dao.userDAO(), dao.teamDAO());
+        : EntityUtil.populateOwner(
+            table.getId(), daoCollection.relationshipDAO(), daoCollection.userDAO(), daoCollection.teamDAO());
   }
 
   private List<EntityReference> getFollowers(Table table) throws IOException {
-    return table == null ? null : EntityUtil.getFollowers(table.getId(), dao.relationshipDAO(), dao.userDAO());
+    return table == null
+        ? null
+        : EntityUtil.getFollowers(table.getId(), daoCollection.relationshipDAO(), daoCollection.userDAO());
   }
 
   private List<TagLabel> getTags(String fqn) {
-    return dao.tagDAO().getTags(fqn);
+    return daoCollection.tagDAO().getTags(fqn);
   }
 
   private void getColumnTags(boolean setTags, List<Column> columns) {
@@ -503,7 +510,7 @@ public class TableRepository extends EntityRepository<Table> {
     for (JoinedWith joinedWith : joinedWithList) {
       // Validate table
       String tableFQN = getTableFQN(joinedWith.getFullyQualifiedName());
-      Table joinedWithTable = dao.tableDAO().findEntityByName(tableFQN);
+      Table joinedWithTable = daoCollection.tableDAO().findEntityByName(tableFQN);
 
       // Validate column
       validateColumnFQN(joinedWithTable, joinedWith.getFullyQualifiedName());
@@ -539,7 +546,8 @@ public class TableRepository extends EntityRepository<Table> {
         toColumnFQN = columnFQN;
       }
       String json =
-          dao.fieldRelationshipDAO()
+          daoCollection
+              .fieldRelationshipDAO()
               .find(fromColumnFQN, toColumnFQN, "table.columns.column", "table.columns.column", JOINED_WITH.ordinal());
 
       DailyCount dailyCount = new DailyCount().withCount(joinedWith.getJoinCount()).withDate(date);
@@ -588,7 +596,8 @@ public class TableRepository extends EntityRepository<Table> {
       }
       json = JsonUtils.pojoToJson(dailyCountList);
 
-      dao.fieldRelationshipDAO()
+      daoCollection
+          .fieldRelationshipDAO()
           .upsert(
               fromColumnFQN,
               toColumnFQN,
@@ -607,11 +616,13 @@ public class TableRepository extends EntityRepository<Table> {
         new TableJoins().withStartDate(todayMinus30Days).withDayCount(30).withColumnJoins(Collections.emptyList());
 
     List<List<String>> list =
-        dao.fieldRelationshipDAO()
+        daoCollection
+            .fieldRelationshipDAO()
             .listToByPrefix(
                 table.getFullyQualifiedName(), "table.columns.column", "table.columns.column", JOINED_WITH.ordinal());
     list.addAll(
-        dao.fieldRelationshipDAO()
+        daoCollection
+            .fieldRelationshipDAO()
             .listFromByPrefix(
                 table.getFullyQualifiedName(), "table.columns.column", "table.columns.column", JOINED_WITH.ordinal()));
 
@@ -647,13 +658,14 @@ public class TableRepository extends EntityRepository<Table> {
 
   private TableData getSampleData(Table table) throws IOException {
     return JsonUtils.readValue(
-        dao.entityExtensionDAO().getExtension(table.getId().toString(), "table.sampleData"), TableData.class);
+        daoCollection.entityExtensionDAO().getExtension(table.getId().toString(), "table.sampleData"), TableData.class);
   }
 
   private List<TableProfile> getTableProfile(Table table) throws IOException {
     List<TableProfile> tableProfiles =
         JsonUtils.readObjects(
-            dao.entityExtensionDAO().getExtension(table.getId().toString(), "table.tableProfile"), TableProfile.class);
+            daoCollection.entityExtensionDAO().getExtension(table.getId().toString(), "table.tableProfile"),
+            TableProfile.class);
     if (tableProfiles != null) {
       tableProfiles.sort(
           Comparator.comparing(p -> parseDate(p.getProfileDate(), RestUtil.DATE_FORMAT), Comparator.reverseOrder()));
@@ -664,7 +676,8 @@ public class TableRepository extends EntityRepository<Table> {
   private List<SQLQuery> getQueries(Table table) throws IOException {
     List<SQLQuery> tableQueries =
         JsonUtils.readObjects(
-            dao.entityExtensionDAO().getExtension(table.getId().toString(), "table.tableQueries"), SQLQuery.class);
+            daoCollection.entityExtensionDAO().getExtension(table.getId().toString(), "table.tableQueries"),
+            SQLQuery.class);
     if (tableQueries != null) {
       tableQueries.sort(Comparator.comparing(SQLQuery::getVote, Comparator.reverseOrder()));
     }
@@ -850,11 +863,11 @@ public class TableRepository extends EntityRepository<Table> {
       recordListChange(fieldName, origColumns, updatedColumns, addedColumns, deletedColumns, columnMatch);
 
       // Delete tags related to deleted columns
-      deletedColumns.forEach(deleted -> EntityUtil.removeTags(dao.tagDAO(), deleted.getFullyQualifiedName()));
+      deletedColumns.forEach(deleted -> EntityUtil.removeTags(daoCollection.tagDAO(), deleted.getFullyQualifiedName()));
 
       // Add tags related to newly added columns
       for (Column added : addedColumns) {
-        EntityUtil.applyTags(dao.tagDAO(), added.getTags(), added.getFullyQualifiedName());
+        EntityUtil.applyTags(daoCollection.tagDAO(), added.getTags(), added.getFullyQualifiedName());
       }
 
       // Carry forward the user generated metadata from existing columns to new columns

@@ -32,7 +32,6 @@ import org.openmetadata.catalog.util.JsonUtils;
 public class RoleRepository extends EntityRepository<Role> {
   static final Fields ROLE_UPDATE_FIELDS = new Fields(RoleResource.FIELD_LIST, null);
   static final Fields ROLE_PATCH_FIELDS = new Fields(RoleResource.FIELD_LIST, null);
-  private final CollectionDAO dao;
 
   public RoleRepository(CollectionDAO dao) {
     super(
@@ -43,7 +42,6 @@ public class RoleRepository extends EntityRepository<Role> {
         dao,
         ROLE_PATCH_FIELDS,
         ROLE_UPDATE_FIELDS);
-    this.dao = dao;
   }
 
   @Override
@@ -72,9 +70,9 @@ public class RoleRepository extends EntityRepository<Role> {
     role.withHref(null);
 
     if (update) {
-      dao.roleDAO().update(role.getId(), JsonUtils.pojoToJson(role));
+      daoCollection.roleDAO().update(role.getId(), JsonUtils.pojoToJson(role));
     } else {
-      dao.roleDAO().insert(role);
+      daoCollection.roleDAO().insert(role);
     }
   }
 
