@@ -298,7 +298,8 @@ public abstract class EntityRepository<T> {
   @Transaction
   public final PutResponse<T> createOrUpdate(UriInfo uriInfo, T updated) throws IOException, ParseException {
     prepare(updated);
-    T original = JsonUtils.readValue(dao.findJsonByFqn(getFullyQualifiedName(updated)), entityClass);
+    // Check if there is any original, deleted or not
+    T original = JsonUtils.readValue(dao.findDeletedOrAlive(getFullyQualifiedName(updated)), entityClass);
     if (original == null) {
       return new PutResponse<>(Status.CREATED, withHref(uriInfo, createNewEntity(updated)), RestUtil.ENTITY_CREATED);
     }
@@ -528,6 +529,7 @@ public abstract class EntityRepository<T> {
     /** Compare original and updated entities and perform updates. Update the entity version and track changes. */
     public final void update() throws IOException {
       updated.setId(original.getId());
+      updateDeleted();
       updateDescription();
       updateDisplayName();
       updateOwner();
@@ -549,6 +551,15 @@ public abstract class EntityRepository<T> {
         return;
       }
       recordChange("description", original.getDescription(), updated.getDescription());
+    }
+
+    private void updateDeleted() throws JsonProcessingException {
+      if (original.getDeleted()) {
+        majorVersionChange = true;
+        updated.setDeleted(false);
+        daoCollection.relationshipDAO().recoverSoftDeleteAll(updated.getId().toString());
+        recordChange("deleted", true, false);
+      }
     }
 
     private void updateDisplayName() throws JsonProcessingException {

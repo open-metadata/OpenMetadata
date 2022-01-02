@@ -29,6 +29,8 @@ public interface EntityInterface<T> {
 
   String getDisplayName();
 
+  Boolean getDeleted();
+
   default EntityReference getOwner() {
     return null;
   }
