@@ -3,3 +3,4 @@ isort
 pre-commit
 pylint
 faker
+coverage
