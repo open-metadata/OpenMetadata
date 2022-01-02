@@ -39,8 +39,26 @@ generate:
 	datamodel-codegen  --input catalog-rest-service/src/main/resources/json  --input-file-type jsonschema --output ingestion/src/metadata/generated
 
 run_ometa_integration_tests:
-	cd ingestion; \
-	pytest -c setup.cfg --override-ini=testpaths="tests/integration/ometa tests/unit/stage_test.py"
+	coverage run -m pytest -c ingestion/setup.cfg --junitxml=ingestion/junit/integration-test-results.xml --override-ini=testpaths="ingestion/tests/integration/ometa ingestion/tests/integration/stage"
+
+unit_ingestion:
+	coverage run -m pytest -c ingestion/setup.cfg -s --doctest-modules --junitxml=ingestion/junit/test-results.xml ingestion/tests/unit
+
+coverage:
+	coverage erase
+	make unit_ingestion
+	make run_ometa_integration_tests
+	coverage xml -i -o ingestion/coverage.xml
+
+sonar_ingestion:
+	docker run \
+		--rm \
+		-e SONAR_HOST_URL="http://localhost:9000" \
+		#-e SONAR_LOGIN=$(token) \
+		-e SONAR_LOGIN=21482c1c85cc3d2d6860fff4c5ad9f3fb0a66e6a \
+		-v ${PWD}:/usr/src \
+		sonarsource/sonar-scanner-cli \
+		-Dproject.settings=ingestion/sonar-project.properties
 
 publish:
 	make install_dev generate
