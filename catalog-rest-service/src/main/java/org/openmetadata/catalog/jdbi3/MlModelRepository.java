@@ -257,6 +257,11 @@ public class MlModelRepository extends EntityRepository<MlModel> {
     }
 
     @Override
+    public Boolean getDeleted() {
+      return entity.getDeleted();
+    }
+
+    @Override
     public EntityReference getOwner() {
       return entity.getOwner();
     }

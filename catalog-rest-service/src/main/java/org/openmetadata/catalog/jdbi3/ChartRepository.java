@@ -166,6 +166,11 @@ public class ChartRepository extends EntityRepository<Chart> {
     }
 
     @Override
+    public Boolean getDeleted() {
+      return entity.getDeleted();
+    }
+
+    @Override
     public EntityReference getOwner() {
       return entity.getOwner();
     }

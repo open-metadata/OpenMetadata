@@ -93,6 +93,11 @@ public class BotsRepository extends EntityRepository<Bots> {
     }
 
     @Override
+    public Boolean getDeleted() {
+      return entity.getDeleted();
+    }
+
+    @Override
     public String getFullyQualifiedName() {
       return entity.getName();
     }

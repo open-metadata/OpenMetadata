@@ -165,6 +165,11 @@ public class TeamRepository extends EntityRepository<Team> {
     }
 
     @Override
+    public Boolean getDeleted() {
+      return entity.getDeleted();
+    }
+
+    @Override
     public String getFullyQualifiedName() {
       return entity.getName();
     }

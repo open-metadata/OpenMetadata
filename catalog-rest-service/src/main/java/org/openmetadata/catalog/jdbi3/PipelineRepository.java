@@ -190,6 +190,11 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     }
 
     @Override
+    public Boolean getDeleted() {
+      return entity.getDeleted();
+    }
+
+    @Override
     public EntityReference getOwner() {
       return entity.getOwner();
     }
