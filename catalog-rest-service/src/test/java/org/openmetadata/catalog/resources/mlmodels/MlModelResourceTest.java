@@ -383,7 +383,7 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
 
   @Test
   public void delete_put_MlModel_200(TestInfo test) throws IOException {
-    // Create with null description
+    // Create with empty description
     CreateMlModel request = create(test).withDescription("");
     MlModel model = createAndCheckEntity(request, adminAuthHeaders());
 
@@ -398,7 +398,7 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
         )
     );
 
-    // PUT with updated description
+    // PUT with updated description and expect a MAJOR_UPDATE with updated description
     updateAndCheckEntity(
             request.withDescription("updatedDescription"), Status.OK, adminAuthHeaders(), MAJOR_UPDATE, change);
   }
