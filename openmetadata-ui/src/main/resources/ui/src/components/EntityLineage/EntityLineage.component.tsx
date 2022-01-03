@@ -459,7 +459,6 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
   const [elements, setElements] = useState<Elements>(setElementsHandle());
   const closeDrawer = (value: boolean) => {
     setIsDrawerOpen(value);
-
     setElements((prevElements) => {
       return prevElements.map((el) => {
         if (el.id === selectedNode.id) {
@@ -625,6 +624,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
         onCancel={closeDrawer}
       />
       <EntityLineageDrawer
+        editModeHandler={(v: boolean) => setEditMode(v)}
         selectedNode={selectedNode}
         show={isEditMode && !isEmpty(selectedNode)}
         onCancel={closeDrawer}

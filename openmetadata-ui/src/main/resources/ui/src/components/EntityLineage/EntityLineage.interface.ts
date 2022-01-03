@@ -33,8 +33,9 @@ export interface EntityLineageProp {
 
 export interface LineageDrawerProps {
   show: boolean;
-  onCancel: (value: boolean) => void;
   selectedNode: SelectedNode;
+  onCancel: (value: boolean) => void;
+  editModeHandler: (value: boolean) => void;
 }
 
 export interface Edge {

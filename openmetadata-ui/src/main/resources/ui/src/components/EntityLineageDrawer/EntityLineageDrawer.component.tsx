@@ -97,6 +97,7 @@ const EntityLineageDrawer = ({
   show,
   onCancel,
   selectedNode,
+  editModeHandler,
 }: LineageDrawerProps) => {
   const [edgeType, setEdgeType] = useState<string>('');
   const [entityType, setEntityType] = useState<string>('');
@@ -258,6 +259,10 @@ const EntityLineageDrawer = ({
         .catch((err: AxiosError) => {
           // eslint-disable-next-line
           console.log(err);
+        })
+        .finally(() => {
+          editModeHandler(false);
+          setSelectedEntity({} as FormatedTableData);
         });
     }
   };
