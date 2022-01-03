@@ -124,7 +124,7 @@ public class TopicRepository extends EntityRepository<Topic> {
       return null;
     }
     // Find service by topic Id
-    EntityReference service = EntityUtil.getService(daoCollection.relationshipDAO(), topic.getId());
+    EntityReference service = EntityUtil.getService(daoCollection.relationshipDAO(), Entity.TOPIC, topic.getId());
     return new MessagingServiceEntityInterface(getService(service.getId(), service.getType())).getEntityReference();
   }
 

@@ -67,7 +67,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
   @Transaction
   private EntityReference getLocationForPolicy(UUID policyId) throws IOException {
     List<String> result =
-        daoCollection.relationshipDAO().findTo(policyId.toString(), Relationship.APPLIED_TO.ordinal(), Entity.LOCATION);
+        daoCollection.relationshipDAO().findTo(policyId.toString(), Entity.POLICY, Relationship.APPLIED_TO.ordinal(), Entity.LOCATION);
     // There is at most one location for a policy.
     return result.size() == 1
         ? daoCollection.locationDAO().findEntityReferenceById(UUID.fromString(result.get(0)))
@@ -340,7 +340,9 @@ public class PolicyRepository extends EntityRepository<Policy> {
             .relationshipDAO()
             .delete(
                 origPolicy.getId().toString(),
+                Entity.POLICY,
                 origPolicy.getLocation().getId().toString(),
+                Entity.LOCATION,
                 Relationship.APPLIED_TO.ordinal());
       }
       // insert updated Policy --> Location relationship.

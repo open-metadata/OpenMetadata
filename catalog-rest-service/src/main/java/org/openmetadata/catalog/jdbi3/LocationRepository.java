@@ -218,7 +218,7 @@ public class LocationRepository extends EntityRepository<Location> {
 
   private EntityReference getService(Location location) throws IOException {
     EntityReference ref =
-        EntityUtil.getService(daoCollection.relationshipDAO(), location.getId(), Entity.STORAGE_SERVICE);
+        EntityUtil.getService(daoCollection.relationshipDAO(), Entity.LOCATION, location.getId(), Entity.STORAGE_SERVICE);
     return getService(Objects.requireNonNull(ref));
   }
 
