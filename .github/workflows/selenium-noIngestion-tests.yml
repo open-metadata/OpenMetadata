@@ -12,19 +12,19 @@
 # This workflow will build a package using Maven and then publish it to GitHub packages when a release is created
 # For more information see: https://github.com/actions/setup-java/blob/main/docs/advanced-usage.md#apache-maven-with-a-settings-path
 
-name: Selenium Java CI
+name: Selenium No Ingestion Java CI
 
 on:
   push:
-    branches: [main]
+    branches: [ main ]
     paths:
       - 'openmetadata-ui/src/main/resources/ui/**'
-      - 'openmetadata-ui/src/test/java/org/openmetadata/catalog/selenium/pages/**'
+      - 'openmetadata-ui/src/test/java/org/openmetadata/catalog/selenium/pagesWithoutData/**'
   pull_request:
-    branches: [main]
+    branches: [ main ]
     paths:
       - 'openmetadata-ui/src/main/resources/ui/**'
-      - 'openmetadata-ui/src/test/java/org/openmetadata/catalog/selenium/pages/**'
+      - 'openmetadata-ui/src/test/java/org/openmetadata/catalog/selenium/pagesWithoutData/**'
 
 jobs:
   build:
@@ -42,9 +42,17 @@ jobs:
     - name: Generating Data Models
       run: make install_dev generate
 
-    - name: Start Server and Ingest Sample Data
-      run: ./docker/run_local_docker.sh
+    - name: Maven Package
+      run: mvn -DskipTests clean package
 
-    - name: Run Page Tests
-      run: mvn clean test -Dtest="org.openmetadata.catalog.selenium.pages.**.*.java" -DfailIfNoTests=false
+    - name: Start Server
+      run: cd docker/local-metadata && docker-compose up -d openmetadata-server mysql elasticsearch
+      timeout-minutes: 20
+
+    - name: Sleep for 30 seconds
+      run: sleep 30s
+      shell: bash
+
+    - name: Run Page Tests without data
+      run: mvn clean test -Dtest="org.openmetadata.catalog.selenium.pagesWithoutData.**.*.java" -DfailIfNoTests=false
 
