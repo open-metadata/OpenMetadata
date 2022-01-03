@@ -416,8 +416,9 @@ public interface CollectionDAO {
             + "(fromId = :id AND toEntity = :entity)")
     void deleteAll(@Bind("id") String id, @Bind("entity") String entity);
 
-    @SqlUpdate("UPDATE entity_relationship SET deleted = true WHERE toId = :id OR fromId = :id")
-    void softDeleteAll(@Bind("id") String id);
+    @SqlUpdate("UPDATE entity_relationship SET deleted = true WHERE (toId = :id AND toEntity = :entity) "
+            + "OR (fromId = :id AND fromEntity = :entity)")
+    void softDeleteAll(@Bind("id") String id, @Bind("entity") String entity);
   }
 
   interface FeedDAO {

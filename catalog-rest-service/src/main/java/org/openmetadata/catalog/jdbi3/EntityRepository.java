@@ -392,7 +392,7 @@ public abstract class EntityRepository<T> {
       EntityInterface<T> entityInterface = getEntityInterface(entity);
       entityInterface.setDeleted(true);
       storeEntity(entity, true);
-      daoCollection.relationshipDAO().softDeleteAll(id.toString());
+      daoCollection.relationshipDAO().softDeleteAll(id.toString(), entityName);
       return;
     }
     // Hard delete
