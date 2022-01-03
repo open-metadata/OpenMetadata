@@ -42,11 +42,15 @@ jobs:
     - name: Generating Data Models
       run: make install_dev generate
 
-    - name: Start Server and Ingest Sample Data
-      run: ./docker/run_local_docker.sh
+    - name: Maven Package
+      run: mvn -DskipTests clean package
 
-    - name: Drop-Create
-      run: docker exec openmetadata_server ./openmetadata-0.8.0-SNAPSHOT/bootstrap/bootstrap_storage.sh drop-create-all
+    - name: Start Server
+      run: cd docker/local-metadata && docker-compose up openmetadata-server mysql elasticsearch -d
+
+    - name: Sleep for 30 seconds
+      run: sleep 30s
+      shell: bash
 
     - name: Run Page Tests without data
       run: mvn clean test -Dtest="org.openmetadata.catalog.selenium.pagesWithoutData.**.*.java" -DfailIfNoTests=false
