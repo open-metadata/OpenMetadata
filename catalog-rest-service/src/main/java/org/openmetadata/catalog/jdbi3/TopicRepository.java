@@ -172,7 +172,7 @@ public class TopicRepository extends EntityRepository<Topic> {
     }
 
     @Override
-    public Boolean getDeleted() {
+    public Boolean isDeleted() {
       return entity.getDeleted();
     }
 

@@ -165,7 +165,7 @@ public class TeamRepository extends EntityRepository<Team> {
     }
 
     @Override
-    public Boolean getDeleted() {
+    public Boolean isDeleted() {
       return entity.getDeleted();
     }
 

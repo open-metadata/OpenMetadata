@@ -106,7 +106,7 @@ public class RoleRepository extends EntityRepository<Role> {
     }
 
     @Override
-    public Boolean getDeleted() {
+    public Boolean isDeleted() {
       return entity.getDeleted();
     }
 

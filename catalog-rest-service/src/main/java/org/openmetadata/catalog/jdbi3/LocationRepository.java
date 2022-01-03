@@ -268,7 +268,7 @@ public class LocationRepository extends EntityRepository<Location> {
     }
 
     @Override
-    public Boolean getDeleted() {
+    public Boolean isDeleted() {
       return entity.getDeleted();
     }
 

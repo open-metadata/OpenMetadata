@@ -219,7 +219,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
     }
 
     @Override
-    public Boolean getDeleted() {
+    public Boolean isDeleted() {
       return entity.getDeleted();
     }
 

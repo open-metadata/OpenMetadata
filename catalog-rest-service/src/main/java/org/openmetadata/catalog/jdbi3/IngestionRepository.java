@@ -162,7 +162,7 @@ public class IngestionRepository extends EntityRepository<Ingestion> {
     }
 
     @Override
-    public Boolean getDeleted() {
+    public Boolean isDeleted() {
       return entity.getDeleted();
     }
 

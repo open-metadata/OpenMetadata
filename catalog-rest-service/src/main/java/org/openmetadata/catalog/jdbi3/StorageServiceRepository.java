@@ -94,7 +94,7 @@ public class StorageServiceRepository extends EntityRepository<StorageService> {
     }
 
     @Override
-    public Boolean getDeleted() {
+    public Boolean isDeleted() {
       return entity.getDeleted();
     }
 

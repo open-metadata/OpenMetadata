@@ -189,7 +189,7 @@ public class WebhookRepository extends EntityRepository<Webhook> {
     }
 
     @Override
-    public Boolean getDeleted() {
+    public Boolean isDeleted() {
       return entity.getDeleted();
     }
 

@@ -215,7 +215,7 @@ public class UserRepository extends EntityRepository<User> {
     }
 
     @Override
-    public Boolean getDeleted() {
+    public Boolean isDeleted() {
       return entity.getDeleted();
     }
 

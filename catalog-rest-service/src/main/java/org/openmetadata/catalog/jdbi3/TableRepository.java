@@ -690,7 +690,7 @@ public class TableRepository extends EntityRepository<Table> {
     }
 
     @Override
-    public Boolean getDeleted() {
+    public Boolean isDeleted() {
       return entity.getDeleted();
     }
 

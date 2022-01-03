@@ -257,7 +257,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     }
 
     @Override
-    public Boolean getDeleted() {
+    public Boolean isDeleted() {
       return entity.getDeleted();
     }
 

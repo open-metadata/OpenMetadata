@@ -166,7 +166,7 @@ public class ChartRepository extends EntityRepository<Chart> {
     }
 
     @Override
-    public Boolean getDeleted() {
+    public Boolean isDeleted() {
       return entity.getDeleted();
     }
 

@@ -104,7 +104,7 @@ public class MessagingServiceRepository extends EntityRepository<MessagingServic
     }
 
     @Override
-    public Boolean getDeleted() {
+    public Boolean isDeleted() {
       return entity.getDeleted();
     }
 

@@ -127,7 +127,7 @@ public class ReportRepository extends EntityRepository<Report> {
     }
 
     @Override
-    public Boolean getDeleted() {
+    public Boolean isDeleted() {
       return entity.getDeleted();
     }
 

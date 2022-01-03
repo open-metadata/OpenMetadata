@@ -257,7 +257,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
     }
 
     @Override
-    public Boolean getDeleted() {
+    public Boolean isDeleted() {
       return entity.getDeleted();
     }
 

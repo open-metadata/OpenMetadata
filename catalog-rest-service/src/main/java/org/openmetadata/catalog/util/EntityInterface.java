@@ -29,7 +29,7 @@ public interface EntityInterface<T> {
 
   String getDisplayName();
 
-  Boolean getDeleted();
+  Boolean isDeleted();
 
   default EntityReference getOwner() {
     return null;

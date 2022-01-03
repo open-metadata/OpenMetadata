@@ -104,7 +104,7 @@ public class PipelineServiceRepository extends EntityRepository<PipelineService>
     }
 
     @Override
-    public Boolean getDeleted() {
+    public Boolean isDeleted() {
       return entity.getDeleted();
     }
 
