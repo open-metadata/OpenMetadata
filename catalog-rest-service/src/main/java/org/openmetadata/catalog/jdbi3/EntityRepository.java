@@ -457,7 +457,7 @@ public abstract class EntityRepository<T> {
     EntityInterface entityInterface = getEntityInterface(entity);
     return supportsOwner && entity != null
         ? EntityUtil.populateOwner(
-            entityInterface.getId(), daoCollection.relationshipDAO(), daoCollection.userDAO(), daoCollection.teamDAO())
+            entityInterface.getId(), entityName, daoCollection.relationshipDAO(), daoCollection.userDAO(), daoCollection.teamDAO())
         : null;
   }
 

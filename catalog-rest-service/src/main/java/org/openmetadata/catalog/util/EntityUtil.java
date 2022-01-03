@@ -152,8 +152,8 @@ public final class EntityUtil {
     return entity;
   }
 
-  public static EntityReference getService(EntityRelationshipDAO dao, UUID entityId) {
-    List<EntityReference> refs = dao.findFrom(entityId.toString(), Relationship.CONTAINS.ordinal());
+  public static EntityReference getService(EntityRelationshipDAO dao, String entityType, UUID entityId) {
+    List<EntityReference> refs = dao.findFrom(entityId.toString(), entityType, Relationship.CONTAINS.ordinal());
     if (refs.size() > 1) {
       LOG.warn("Possible database issues - multiple services found for entity {}", entityId);
       return refs.get(0);
@@ -178,8 +178,8 @@ public final class EntityUtil {
 
   // Get owner for a given entity
   public static EntityReference populateOwner(
-      UUID id, EntityRelationshipDAO entityRelationshipDAO, UserDAO userDAO, TeamDAO teamDAO) throws IOException {
-    List<EntityReference> ids = entityRelationshipDAO.findFrom(id.toString(), Relationship.OWNS.ordinal());
+      UUID id, String entityType, EntityRelationshipDAO entityRelationshipDAO, UserDAO userDAO, TeamDAO teamDAO) throws IOException {
+    List<EntityReference> ids = entityRelationshipDAO.findFrom(id.toString(), entityType, Relationship.OWNS.ordinal());
     if (ids.size() > 1) {
       LOG.warn("Possible database issues - multiple owners {} found for entity {}", ids, id);
     }

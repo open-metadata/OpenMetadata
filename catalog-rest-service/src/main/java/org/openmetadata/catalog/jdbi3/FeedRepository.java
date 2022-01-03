@@ -50,7 +50,7 @@ public class FeedRepository {
 
     // Get owner for the addressed to Entity
     EntityReference owner =
-        EntityUtil.populateOwner(aboutRef.getId(), dao.relationshipDAO(), dao.userDAO(), dao.teamDAO());
+        EntityUtil.populateOwner(aboutRef.getId(), aboutRef.getType(), dao.relationshipDAO(), dao.userDAO(), dao.teamDAO());
 
     // Insert a new thread
     dao.feedDAO().insert(JsonUtils.pojoToJson(thread));

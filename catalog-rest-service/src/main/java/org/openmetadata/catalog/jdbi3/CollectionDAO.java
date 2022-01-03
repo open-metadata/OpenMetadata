@@ -373,10 +373,10 @@ public interface CollectionDAO {
 
     @SqlQuery(
         "SELECT fromId, fromEntity FROM entity_relationship "
-            + "WHERE toId = :toId AND relation = :relation AND deleted =  false "
+            + "WHERE toId = :toId AND toEntity = :toEntity AND relation = :relation AND deleted =  false "
             + "ORDER BY fromId")
     @RegisterRowMapper(FromEntityReferenceMapper.class)
-    List<EntityReference> findFrom(@Bind("toId") String toId, @Bind("relation") int relation);
+    List<EntityReference> findFrom(@Bind("toId") String toId, @Bind("toEntity") String toEntity, @Bind("relation") int relation);
 
     @SqlQuery(
         "SELECT fromId, fromEntity FROM entity_relationship "
