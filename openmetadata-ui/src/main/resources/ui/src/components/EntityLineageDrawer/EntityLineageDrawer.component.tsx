@@ -112,6 +112,10 @@ const EntityLineageDrawer = ({
     entityType: false,
     edgeType: false,
   });
+  const [isAddingLineage, setIsAddingLineage] = useState<{
+    state: string;
+    loading: boolean;
+  }>({ state: '', loading: false });
 
   const handleValidation = (
     event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
@@ -212,6 +216,7 @@ const EntityLineageDrawer = ({
       });
     } else {
       let data: Edge;
+      setIsAddingLineage({ state: 'waiting', loading: true });
       switch (edgeType) {
         case 'upstream':
           data = {
@@ -252,17 +257,19 @@ const EntityLineageDrawer = ({
       }
       addLineage(data)
         .then(() => {
-          onCancel(false);
-          setEntityType('');
-          setEdgeType('');
+          setIsAddingLineage({ state: 'success', loading: false });
+          setTimeout(() => {
+            editModeHandler(false);
+            onCancel(false);
+            setEntityType('');
+            setEdgeType('');
+            setIsAddingLineage({ state: '', loading: false });
+            setSelectedEntity({} as FormatedTableData);
+          }, 1000);
         })
         .catch((err: AxiosError) => {
           // eslint-disable-next-line
           console.log(err);
-        })
-        .finally(() => {
-          editModeHandler(false);
-          setSelectedEntity({} as FormatedTableData);
         });
     }
   };
@@ -415,7 +422,14 @@ const EntityLineageDrawer = ({
 
           <div className="tw-mt-3">
             <Button theme="primary" onClick={() => addLineageEdge()}>
-              Save
+              {isAddingLineage.loading &&
+              isAddingLineage.state === 'waiting' ? (
+                <Loader size="small" type="white" />
+              ) : isAddingLineage.state === 'success' ? (
+                <i aria-hidden="true" className="fa fa-check" />
+              ) : (
+                'Save'
+              )}
             </Button>
           </div>
         </Fragment>
