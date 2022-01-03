@@ -110,7 +110,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
     }
     String databaseId = database.getId().toString();
     List<String> tableIds =
-        daoCollection.relationshipDAO().findTo(databaseId, Relationship.CONTAINS.ordinal(), Entity.TABLE);
+        daoCollection.relationshipDAO().findTo(databaseId, Entity.DATABASE, Relationship.CONTAINS.ordinal(), Entity.TABLE);
     List<EntityReference> tables = new ArrayList<>();
     for (String tableId : tableIds) {
       tables.add(daoCollection.tableDAO().findEntityReferenceById(UUID.fromString(tableId)));
@@ -149,7 +149,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
     }
     String databaseId = database.getId().toString();
     List<String> result =
-        daoCollection.relationshipDAO().findTo(databaseId, Relationship.HAS.ordinal(), Entity.LOCATION);
+        daoCollection.relationshipDAO().findTo(databaseId, Entity.DATABASE, Relationship.HAS.ordinal(), Entity.LOCATION);
     if (result.size() == 1) {
       String locationId = result.get(0);
       return daoCollection.locationDAO().findEntityReferenceById(UUID.fromString(locationId));

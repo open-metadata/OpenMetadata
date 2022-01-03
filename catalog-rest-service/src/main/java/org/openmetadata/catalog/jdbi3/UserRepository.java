@@ -154,7 +154,7 @@ public class UserRepository extends EntityRepository<User> {
 
   /* Add all the roles that user has been assigned, to User entity */
   private List<EntityReference> getRoles(User user) throws IOException {
-    List<String> roleIds = daoCollection.relationshipDAO().findTo(user.getId().toString(), HAS.ordinal(), Entity.ROLE);
+    List<String> roleIds = daoCollection.relationshipDAO().findTo(user.getId().toString(), Entity.USER, HAS.ordinal(), Entity.ROLE);
     List<EntityReference> roles = new ArrayList<>(roleIds.size());
     for (String roleId : roleIds) {
       roles.add(daoCollection.roleDAO().findEntityReferenceById(UUID.fromString(roleId)));

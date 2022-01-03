@@ -446,7 +446,7 @@ public class TableRepository extends EntityRepository<Table> {
   private EntityReference getLocation(UUID tableId) throws IOException {
     // Find the location of the table
     List<String> result =
-        daoCollection.relationshipDAO().findTo(tableId.toString(), Relationship.HAS.ordinal(), Entity.LOCATION);
+        daoCollection.relationshipDAO().findTo(tableId.toString(), Entity.TABLE, Relationship.HAS.ordinal(), Entity.LOCATION);
     if (result.size() == 1) {
       return daoCollection.locationDAO().findEntityReferenceById(UUID.fromString(result.get(0)));
     } else {

@@ -189,7 +189,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     }
     String dashboardId = dashboard.getId().toString();
     List<String> chartIds =
-        daoCollection.relationshipDAO().findTo(dashboardId, Relationship.HAS.ordinal(), Entity.CHART);
+        daoCollection.relationshipDAO().findTo(dashboardId, Entity.DASHBOARD, Relationship.HAS.ordinal(), Entity.CHART);
     List<EntityReference> charts = new ArrayList<>();
     for (String chartId : chartIds) {
       charts.add(daoCollection.chartDAO().findEntityReferenceById(UUID.fromString(chartId)));
