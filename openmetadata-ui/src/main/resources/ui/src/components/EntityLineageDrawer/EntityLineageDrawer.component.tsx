@@ -16,6 +16,11 @@ import {
 } from '../EntityLineage/EntityLineage.interface';
 import Loader from '../Loader/Loader';
 
+type ValidationType = {
+  edgeType: boolean;
+  entityType: boolean;
+};
+
 const getEntityName = (name = '') => {
   const nameArr = name.split('.');
 
@@ -80,6 +85,14 @@ const getEntityCard = (
   );
 };
 
+const errorMsg = (value: string) => {
+  return (
+    <div className="tw-mt-1">
+      <strong className="tw-text-red-500 tw-text-xs tw-italic">{value}</strong>
+    </div>
+  );
+};
+
 const EntityLineageDrawer = ({
   show,
   onCancel,
@@ -94,6 +107,35 @@ const EntityLineageDrawer = ({
     {} as FormatedTableData
   );
   const [showSuggestions, setShowSuggestions] = useState<boolean>(false);
+  const [showErrorMsg, setShowErrorMsg] = useState<ValidationType>({
+    entityType: false,
+    edgeType: false,
+  });
+
+  const handleValidation = (
+    event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  ) => {
+    const value = event.target.value;
+    const name = event.target.name;
+
+    switch (name) {
+      case 'edgeType':
+        setEdgeType(value);
+
+        break;
+      case 'entityType':
+        setEntityType(value);
+
+        break;
+
+      default:
+        break;
+    }
+    setShowErrorMsg({
+      ...showErrorMsg,
+      [name]: !value,
+    });
+  };
 
   const getEntityData = (text: string, type: string) => {
     let index = '';
@@ -161,55 +203,63 @@ const EntityLineageDrawer = ({
   ]);
 
   const addLineageEdge = () => {
-    let data: Edge;
-    switch (edgeType) {
-      case 'upstream':
-        data = {
-          edge: {
-            fromEntity: {
-              id: selectedEntity.id,
-              type: selectedEntity.entityType as string,
-            },
-            toEntity: {
-              id: selectedNode.entityId,
-              type: selectedNode.type,
-            },
-          },
-        };
-
-        break;
-
-      case 'downstream':
-        data = {
-          edge: {
-            toEntity: {
-              id: selectedEntity.id,
-              type: selectedEntity.entityType as string,
-            },
-            fromEntity: {
-              id: selectedNode.entityId,
-              type: selectedNode.type,
-            },
-          },
-        };
-
-        break;
-
-      default:
-        data = {} as Edge;
-
-        break;
-    }
-    addLineage(data)
-      .then(() => {
-        onCancel(false);
-        setEntityType('');
-        setEdgeType('');
-      })
-      .catch((err: AxiosError) => {
-        // eslint-disable-next-line
-        console.log(err);
+    if (!entityType || !edgeType) {
+      setShowErrorMsg({
+        ...showErrorMsg,
+        entityType: !entityType,
+        edgeType: !edgeType,
       });
+    } else {
+      let data: Edge;
+      switch (edgeType) {
+        case 'upstream':
+          data = {
+            edge: {
+              fromEntity: {
+                id: selectedEntity.id,
+                type: selectedEntity.entityType as string,
+              },
+              toEntity: {
+                id: selectedNode.entityId,
+                type: selectedNode.type,
+              },
+            },
+          };
+
+          break;
+
+        case 'downstream':
+          data = {
+            edge: {
+              toEntity: {
+                id: selectedEntity.id,
+                type: selectedEntity.entityType as string,
+              },
+              fromEntity: {
+                id: selectedNode.entityId,
+                type: selectedNode.type,
+              },
+            },
+          };
+
+          break;
+
+        default:
+          data = {} as Edge;
+
+          break;
+      }
+      addLineage(data)
+        .then(() => {
+          onCancel(false);
+          setEntityType('');
+          setEdgeType('');
+        })
+        .catch((err: AxiosError) => {
+          // eslint-disable-next-line
+          console.log(err);
+        });
+    }
   };
 
   useEffect(() => {
@@ -250,9 +300,9 @@ const EntityLineageDrawer = ({
           className={classNames('tw-form-inputs tw-px-3 tw-py-1')}
           data-testid="select-node-type"
           id="selectNode"
-          name="selectNode"
+          name="edgeType"
           value={edgeType}
-          onChange={(e) => setEdgeType(e.target.value)}>
+          onChange={handleValidation}>
           <option value="">Select Edge Type</option>
           {nodeTypeArr.map((node, index) => (
             <option key={index} value={node.value}>
@@ -260,15 +310,16 @@ const EntityLineageDrawer = ({
             </option>
           ))}
         </select>
+        {showErrorMsg.edgeType && errorMsg('EntityType is required')}
       </div>
       <div className="tw-mt-3">
         <select
           className={classNames('tw-form-inputs tw-px-3 tw-py-1')}
           data-testid="select-entity-type"
           id="selectEntity"
-          name="selectEntity"
+          name="entityType"
           value={entityType}
-          onChange={(e) => setEntityType(e.target.value)}>
+          onChange={handleValidation}>
           <option value="">Select Entity Type</option>
           {entityTypeArr.map((entity, index) => (
             <option key={index} value={entity.value}>
@@ -276,6 +327,7 @@ const EntityLineageDrawer = ({
             </option>
           ))}
         </select>
+        {showErrorMsg.entityType && errorMsg('EntityType is required')}
       </div>
       {entityType && (
         <div className="tw-mt-3 tw-relative">
