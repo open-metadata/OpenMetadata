@@ -46,7 +46,7 @@ jobs:
       run: mvn -DskipTests clean package
 
     - name: Start Server
-      run: cd docker/local-metadata && docker-compose up openmetadata-server mysql elasticsearch --detach
+      run: cd docker/local-metadata && docker-compose up -d openmetadata-server mysql elasticsearch
 
     - name: Sleep for 30 seconds
       run: sleep 30s
