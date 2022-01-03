@@ -231,7 +231,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   public void removeDashboard(MlModel mlModel) {
     daoCollection
         .relationshipDAO()
-        .deleteFrom(mlModel.getId().toString(), Relationship.USES.ordinal(), Entity.DASHBOARD);
+        .deleteFrom(mlModel.getId().toString(), Entity.MLMODEL, Relationship.USES.ordinal(), Entity.DASHBOARD);
   }
 
   public static class MlModelEntityInterface implements EntityInterface<MlModel> {
@@ -439,7 +439,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
         // Remove the dashboard associated with the model, if any
         String modelId = updatedModel.getId().toString();
         if (origModel.getDashboard() != null) {
-          daoCollection.relationshipDAO().deleteFrom(modelId, Relationship.USES.ordinal(), "dashboard");
+          daoCollection.relationshipDAO().deleteFrom(modelId, Entity.MLMODEL, Relationship.USES.ordinal(), "dashboard");
         }
 
         // Add relationship from model to dashboard

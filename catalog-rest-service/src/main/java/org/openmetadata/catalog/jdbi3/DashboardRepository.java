@@ -219,7 +219,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     String dashboardId = updated.getId().toString();
 
     // Remove all charts associated with this dashboard
-    daoCollection.relationshipDAO().deleteFrom(dashboardId, Relationship.HAS.ordinal(), Entity.CHART);
+    daoCollection.relationshipDAO().deleteFrom(dashboardId, Entity.DASHBOARD, Relationship.HAS.ordinal(), Entity.CHART);
 
     // Add relationship from dashboard to chart
     if (updated.getCharts() != null) {
@@ -385,7 +385,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
       String dashboardId = updated.getId().toString();
 
       // Remove all charts associated with this dashboard
-      daoCollection.relationshipDAO().deleteFrom(dashboardId, Relationship.HAS.ordinal(), Entity.CHART);
+      daoCollection.relationshipDAO().deleteFrom(dashboardId, Entity.DASHBOARD, Relationship.HAS.ordinal(), Entity.CHART);
 
       // Add relationship from dashboard to chart
       List<EntityReference> updatedCharts =

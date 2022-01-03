@@ -321,7 +321,7 @@ public class UserRepository extends EntityRepository<User> {
 
     private void updateRoles(User origUser, User updatedUser) throws JsonProcessingException {
       // Remove roles from original and add roles from updated
-      daoCollection.relationshipDAO().deleteFrom(origUser.getId().toString(), HAS.ordinal(), Entity.ROLE);
+      daoCollection.relationshipDAO().deleteFrom(origUser.getId().toString(), Entity.USER, HAS.ordinal(), Entity.ROLE);
       assignRoles(updatedUser, updatedUser.getRoles());
 
       List<EntityReference> origRoles = Optional.ofNullable(origUser.getRoles()).orElse(Collections.emptyList());

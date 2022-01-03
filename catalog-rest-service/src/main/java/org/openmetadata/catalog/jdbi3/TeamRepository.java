@@ -272,7 +272,7 @@ public class TeamRepository extends EntityRepository<Team> {
       List<EntityReference> deleted = new ArrayList<>();
       if (recordListChange("users", origUsers, updatedUsers, added, deleted, entityReferenceMatch)) {
         // Remove users from original and add users from updated
-        daoCollection.relationshipDAO().deleteFrom(origTeam.getId().toString(), Relationship.HAS.ordinal(), "user");
+        daoCollection.relationshipDAO().deleteFrom(origTeam.getId().toString(), Entity.TEAM, Relationship.HAS.ordinal(), "user");
         // Add relationships
         for (EntityReference user : updatedUsers) {
           daoCollection
