@@ -29,7 +29,7 @@ class TableQuery(JsonSerializable):
         database: str,
         aborted: bool,
         sql: str,
-        service_name:str
+        service_name: str,
     ) -> None:
         """ """
         self.query = query
