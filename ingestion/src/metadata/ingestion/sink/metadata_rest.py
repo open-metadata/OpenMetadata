@@ -42,6 +42,7 @@ from metadata.generated.schema.entity.data.chart import ChartType
 from metadata.generated.schema.entity.data.location import Location
 from metadata.generated.schema.entity.data.mlmodel import MlModel
 from metadata.generated.schema.entity.data.pipeline import Pipeline
+from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.policies.policy import Policy
 from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.type.entityReference import EntityReference
@@ -49,7 +50,7 @@ from metadata.ingestion.api.common import Entity, WorkflowContext
 from metadata.ingestion.api.sink import Sink, SinkStatus
 from metadata.ingestion.models.ometa_policy import OMetaPolicy
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
-from metadata.ingestion.models.table_metadata import Chart, Dashboard
+from metadata.ingestion.models.table_metadata import Chart, Dashboard, DeleteTable
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
@@ -128,6 +129,8 @@ class MetadataRestSink(Sink[Entity]):
             self.write_users(record)
         elif isinstance(record, CreateMlModelEntityRequest):
             self.write_ml_model(record)
+        elif isinstance(record, DeleteTable):
+            self.delete_table(record)
         else:
             logging.info(
                 f"Ignoring the record due to unknown Record type {type(record)}"
@@ -416,8 +419,19 @@ class MetadataRestSink(Sink[Entity]):
             self.status.records_written(record.displayName)
             logger.info("Sink: {}".format(record.displayName))
         except Exception as err:
-            logger.error(traceback.format_exc())
-            logger.error(traceback.print_exc())
+            logger.debug(traceback.format_exc())
+            logger.debug(traceback.print_exc())
+            logger.error(err)
+
+    def delete_table(self, record: DeleteTable):
+        try:
+            self.metadata.delete(entity=Table, entity_id=record.table.id)
+            logger.info(
+                f"{record.table.name} doesn't exist in source state, marking it as deleted"
+            )
+        except Exception as err:
+            logger.debug(traceback.format_exc())
+            logger.debug(traceback.print_exc())
             logger.error(err)
 
     def get_status(self):
