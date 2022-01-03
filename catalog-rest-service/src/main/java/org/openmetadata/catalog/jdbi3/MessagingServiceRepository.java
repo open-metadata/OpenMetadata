@@ -20,20 +20,16 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
-import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.services.MessagingService;
 import org.openmetadata.catalog.resources.services.messaging.MessagingServiceResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
-import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
-import org.openmetadata.catalog.util.JsonUtils;
 
 public class MessagingServiceRepository extends EntityRepository<MessagingService> {
-  private final CollectionDAO dao;
 
   public MessagingServiceRepository(CollectionDAO dao) {
     super(
@@ -43,14 +39,10 @@ public class MessagingServiceRepository extends EntityRepository<MessagingServic
         dao.messagingServiceDAO(),
         dao,
         Fields.EMPTY_FIELDS,
-        Fields.EMPTY_FIELDS);
-    this.dao = dao;
-  }
-
-  @Transaction
-  public void delete(UUID id) {
-    dao.messagingServiceDAO().delete(id);
-    dao.relationshipDAO().deleteAll(id.toString());
+        Fields.EMPTY_FIELDS,
+        false,
+        false,
+        false);
   }
 
   @Override
@@ -59,7 +51,9 @@ public class MessagingServiceRepository extends EntityRepository<MessagingServic
   }
 
   @Override
-  public void restorePatchAttributes(MessagingService original, MessagingService updated) {}
+  public void restorePatchAttributes(MessagingService original, MessagingService updated) {
+    /* Nothing to do */
+  }
 
   @Override
   public EntityInterface<MessagingService> getEntityInterface(MessagingService entity) {
@@ -73,15 +67,14 @@ public class MessagingServiceRepository extends EntityRepository<MessagingServic
 
   @Override
   public void storeEntity(MessagingService service, boolean update) throws IOException {
-    if (update) {
-      dao.messagingServiceDAO().update(service.getId(), JsonUtils.pojoToJson(service));
-    } else {
-      dao.messagingServiceDAO().insert(service);
-    }
+    service.withHref(null);
+    store(service.getId(), service, update);
   }
 
   @Override
-  public void storeRelationships(MessagingService entity) {}
+  public void storeRelationships(MessagingService entity) {
+    /* Nothing to do */
+  }
 
   @Override
   public EntityUpdater getUpdater(MessagingService original, MessagingService updated, boolean patchOperation) {
@@ -111,18 +104,8 @@ public class MessagingServiceRepository extends EntityRepository<MessagingServic
     }
 
     @Override
-    public EntityReference getOwner() {
-      return null;
-    }
-
-    @Override
     public String getFullyQualifiedName() {
       return entity.getName();
-    }
-
-    @Override
-    public List<TagLabel> getTags() {
-      return null;
     }
 
     @Override
@@ -143,11 +126,6 @@ public class MessagingServiceRepository extends EntityRepository<MessagingServic
     @Override
     public URI getHref() {
       return entity.getHref();
-    }
-
-    @Override
-    public List<EntityReference> getFollowers() {
-      throw new UnsupportedOperationException("Messaging service does not support followers");
     }
 
     @Override
@@ -198,15 +176,14 @@ public class MessagingServiceRepository extends EntityRepository<MessagingServic
     }
 
     @Override
-    public void setOwner(EntityReference owner) {}
+    public void setDeleted(boolean flag) {
+      entity.setDeleted(flag);
+    }
 
     @Override
     public MessagingService withHref(URI href) {
       return entity.withHref(href);
     }
-
-    @Override
-    public void setTags(List<TagLabel> tags) {}
   }
 
   public class MessagingServiceUpdater extends EntityUpdater {

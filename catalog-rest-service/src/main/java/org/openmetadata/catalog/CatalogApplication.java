@@ -49,8 +49,8 @@ import org.openmetadata.catalog.resources.CollectionRegistry;
 import org.openmetadata.catalog.resources.config.ConfigResource;
 import org.openmetadata.catalog.resources.search.SearchResource;
 import org.openmetadata.catalog.security.AuthenticationConfiguration;
+import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.AuthorizerConfiguration;
-import org.openmetadata.catalog.security.CatalogAuthorizer;
 import org.openmetadata.catalog.security.NoopAuthorizer;
 import org.openmetadata.catalog.security.NoopFilter;
 import org.openmetadata.catalog.security.auth.CatalogSecurityContextRequestFilter;
@@ -61,9 +61,7 @@ import org.slf4j.LoggerFactory;
 public class CatalogApplication extends Application<CatalogApplicationConfig> {
   public static final Logger LOG = LoggerFactory.getLogger(CatalogApplication.class);
   private Injector injector;
-  private CatalogAuthorizer authorizer;
-
-  public CatalogApplication() {}
+  private Authorizer authorizer;
 
   @Override
   public void run(CatalogApplicationConfig catalogConfig, Environment environment)
@@ -138,8 +136,7 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
     AuthorizerConfiguration authorizerConf = catalogConfig.getAuthorizerConfiguration();
     AuthenticationConfiguration authenticationConfiguration = catalogConfig.getAuthenticationConfiguration();
     if (authorizerConf != null) {
-      authorizer =
-          ((Class<CatalogAuthorizer>) Class.forName(authorizerConf.getClassName())).getConstructor().newInstance();
+      authorizer = ((Class<Authorizer>) Class.forName(authorizerConf.getClassName())).getConstructor().newInstance();
       authorizer.init(authorizerConf, jdbi);
       String filterClazzName = authorizerConf.getContainerRequestFilter();
       ContainerRequestFilter filter;
@@ -177,7 +174,9 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
         .manage(
             new Managed() {
               @Override
-              public void start() {}
+              public void start() {
+                LOG.info("Application starting");
+              }
 
               @Override
               public void stop() {

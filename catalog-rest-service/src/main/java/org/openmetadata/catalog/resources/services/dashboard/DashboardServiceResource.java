@@ -51,7 +51,7 @@ import org.openmetadata.catalog.entity.services.DashboardService;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.DashboardServiceRepository;
 import org.openmetadata.catalog.resources.Collection;
-import org.openmetadata.catalog.security.CatalogAuthorizer;
+import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.util.RestUtil;
@@ -66,10 +66,10 @@ import org.openmetadata.catalog.util.ResultList;
 public class DashboardServiceResource {
   public static final String COLLECTION_PATH = "v1/services/dashboardServices";
   private final DashboardServiceRepository dao;
-  private final CatalogAuthorizer authorizer;
+  private final Authorizer authorizer;
 
   @Inject
-  public DashboardServiceResource(CollectionDAO dao, CatalogAuthorizer authorizer) {
+  public DashboardServiceResource(CollectionDAO dao, Authorizer authorizer) {
     Objects.requireNonNull(dao, "DashboardServiceRepository must not be null");
     this.dao = new DashboardServiceRepository(dao);
     this.authorizer = authorizer;
@@ -272,10 +272,15 @@ public class DashboardServiceResource {
   public Response delete(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
+      @Parameter(description = "Recursively delete this entity and it's children. (Default `false`)")
+          @DefaultValue("false")
+          @QueryParam("recursive")
+          boolean recursive,
       @Parameter(description = "Id of the dashboard service", schema = @Schema(type = "string")) @PathParam("id")
-          String id) {
+          String id)
+      throws IOException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    dao.delete(UUID.fromString(id));
+    dao.delete(UUID.fromString(id), recursive);
     return Response.ok().build();
   }
 

@@ -27,8 +27,6 @@ public class AuthorizerConfiguration {
 
   @NotEmpty private String principalDomain;
 
-  private CatalogAuthorizerConfiguration catalogAuthorizerConfiguration;
-
   public String getClassName() {
     return className;
   }
@@ -43,14 +41,6 @@ public class AuthorizerConfiguration {
 
   public void setContainerRequestFilter(String containerRequestFilter) {
     this.containerRequestFilter = containerRequestFilter;
-  }
-
-  public CatalogAuthorizerConfiguration getCatalogAuthorizerConfiguration() {
-    return catalogAuthorizerConfiguration;
-  }
-
-  public void setCatalogAuthorizerConfiguration(CatalogAuthorizerConfiguration catalogAuthorizerConfiguration) {
-    this.catalogAuthorizerConfiguration = catalogAuthorizerConfiguration;
   }
 
   public Set<String> getAdminPrincipals() {

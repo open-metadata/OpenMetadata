@@ -42,8 +42,11 @@ metadata ingest -c ./examples/workflows/mssql.json
       "query": "select top 50 * from {}.{}",
       "username": "sa",
       "password": "test!Password",
-      "filter_pattern": {
-        "excludes": ["catalog_test.*"]
+      "table_filter_pattern": {
+        "excludes": ["demo.*","orders.*"]
+      },
+      "schema_filter_pattern": {
+        "excludes": ["information_schema.*"]
       }
     }
   },
@@ -55,8 +58,9 @@ metadata ingest -c ./examples/workflows/mssql.json
 2. **password** - the password for the mssql username.
 3. **service\_name** - Service Name for this mssql cluster. If you added the mssql cluster through OpenMetadata UI, make sure the service name matches the same.
 4. **host\_port** - Hostname and Port number where the service is being initialized.
-5. **filter\_pattern** - It contains includes, excludes options to choose which pattern of datasets you want to ingest into OpenMetadata
-6. **database** - Database name from where data is to be fetched from.
+5. **table\_filter\_pattern** - It contains includes, excludes options to choose which pattern of tables you want to ingest into OpenMetadata.
+6. **schema\_filter\_pattern** - It contains includes, excludes options to choose which pattern of schemas you want to ingest into OpenMetadata.
+7. **database** - Database name from where data is to be fetched from.
 
 ## Publish to OpenMetadata
 
@@ -76,8 +80,11 @@ Add `metadata-rest` sink along with `metadata-server` config
       "query": "select top 50 * from {}.{}",
       "username": "sa",
       "password": "test!Password",
-      "filter_pattern": {
-        "excludes": ["catalog_test.*"]
+      "table_filter_pattern": {
+        "excludes": ["catalog_test.*","orders.*"]
+      },
+      "schema_filter_pattern": {
+        "excludes": ["information_schema.*"]
       }
     }
   },

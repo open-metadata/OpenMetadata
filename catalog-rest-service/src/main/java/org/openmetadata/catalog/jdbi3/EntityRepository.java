@@ -97,6 +97,10 @@ public abstract class EntityRepository<T> {
   private final String entityName;
   protected final EntityDAO<T> dao;
   protected final CollectionDAO daoCollection;
+  protected boolean softDelete = true;
+  protected final boolean supportsTags;
+  protected final boolean supportsOwner;
+  protected final boolean supportsFollower;
 
   /** Fields that can be updated during PATCH operation */
   private final Fields patchFields;
@@ -111,7 +115,10 @@ public abstract class EntityRepository<T> {
       EntityDAO<T> entityDAO,
       CollectionDAO collectionDAO,
       Fields patchFields,
-      Fields putFields) {
+      Fields putFields,
+      boolean supportsTags,
+      boolean supportsOwner,
+      boolean supportsFollower) {
     this.collectionPath = collectionPath;
     this.entityClass = entityClass;
     this.dao = entityDAO;
@@ -119,6 +126,9 @@ public abstract class EntityRepository<T> {
     this.patchFields = patchFields;
     this.putFields = putFields;
     this.entityName = entityName;
+    this.supportsTags = supportsTags;
+    this.supportsOwner = supportsOwner;
+    this.supportsFollower = supportsFollower;
     Entity.registerEntity(entityName, dao, this);
   }
 
@@ -331,7 +341,7 @@ public abstract class EntityRepository<T> {
 
     // Validate follower
     User user = daoCollection.userDAO().findEntityById(userId);
-    if (user.getDeactivated()) {
+    if (user.getDeleted()) {
       throw new IllegalArgumentException(CatalogExceptionMessage.deactivatedUser(userId));
     }
 
@@ -358,6 +368,36 @@ public abstract class EntityRepository<T> {
             .withPreviousVersion(change.getPreviousVersion());
 
     return new PutResponse<>(added > 0 ? Status.CREATED : Status.OK, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
+  }
+
+  @Transaction
+  public final void delete(UUID id, boolean recursive) throws IOException {
+    // If an entity being deleted contains other children entities, it can't be deleted
+    List<EntityReference> contains =
+        daoCollection.relationshipDAO().findTo(id.toString(), Relationship.CONTAINS.ordinal());
+
+    if (contains.size() > 0) {
+      if (!recursive) {
+        throw new IllegalArgumentException(entityName + " is not empty");
+      }
+      // Soft delete all the contained entities
+      for (EntityReference entityReference : contains) {
+        LOG.info("Recursively deleting " + entityReference.getType() + " " + entityReference.getId());
+        Entity.deleteEntity(entityReference.getType(), entityReference.getId(), recursive);
+      }
+    }
+
+    if (softDelete) {
+      T entity = dao.findEntityById(id);
+      EntityInterface<T> entityInterface = getEntityInterface(entity);
+      entityInterface.setDeleted(true);
+      storeEntity(entity, true);
+      daoCollection.relationshipDAO().softDeleteAll(id.toString());
+      return;
+    }
+    // Hard delete
+    dao.delete(id);
+    daoCollection.relationshipDAO().deleteAll(id.toString());
   }
 
   @Transaction
@@ -403,6 +443,51 @@ public abstract class EntityRepository<T> {
     storeEntity(entity, false);
     storeRelationships(entity);
     return entity;
+  }
+
+  protected void store(UUID id, T entity, boolean update) throws JsonProcessingException {
+    if (update) {
+      dao.update(id, JsonUtils.pojoToJson(entity));
+    } else {
+      dao.insert(entity);
+    }
+  }
+
+  protected EntityReference getOwner(T entity) throws IOException {
+    EntityInterface entityInterface = getEntityInterface(entity);
+    return supportsOwner && entity != null
+        ? EntityUtil.populateOwner(
+            entityInterface.getId(), daoCollection.relationshipDAO(), daoCollection.userDAO(), daoCollection.teamDAO())
+        : null;
+  }
+
+  protected void setOwner(T entity, EntityReference owner) {
+    if (supportsOwner) {
+      EntityInterface<T> entityInterface = getEntityInterface(entity);
+      EntityUtil.setOwner(daoCollection.relationshipDAO(), entityInterface.getId(), entityName, owner);
+      entityInterface.setOwner(owner);
+    }
+  }
+
+  protected void applyTags(T entity) {
+    if (supportsTags) {
+      // Add entity level tags by adding tag to the entity relationship
+      EntityInterface<T> entityInterface = getEntityInterface(entity);
+      EntityUtil.applyTags(daoCollection.tagDAO(), entityInterface.getTags(), entityInterface.getFullyQualifiedName());
+      // Update tag to handle additional derived tags
+      entityInterface.setTags(getTags(entityInterface.getFullyQualifiedName()));
+    }
+  }
+
+  protected List<TagLabel> getTags(String fqn) {
+    return !supportsOwner ? null : daoCollection.tagDAO().getTags(fqn);
+  }
+
+  protected List<EntityReference> getFollowers(T entity) throws IOException {
+    EntityInterface<T> entityInterface = getEntityInterface(entity);
+    return !supportsFollower || entity == null
+        ? null
+        : EntityUtil.getFollowers(entityInterface.getId(), daoCollection.relationshipDAO(), daoCollection.userDAO());
   }
 
   public T withHref(UriInfo uriInfo, T entity) {

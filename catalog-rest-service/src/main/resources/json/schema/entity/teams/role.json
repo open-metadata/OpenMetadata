@@ -1,0 +1,61 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/teams/role.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Role",
+  "description": "This schema defines the Role entity. A Role has access to zero or more data assets",
+  "type": "object",
+  "definitions" : {
+    "roleName" : {
+      "description": "A unique name of the role.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    }
+  },
+  "properties" : {
+    "id": {
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "$ref": "#/definitions/roleName"
+    },
+    "displayName": {
+      "description": "Name used for display purposes. Example 'Data Consumer'.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of the role.",
+      "type": "string"
+    },
+    "version" : {
+      "description": "Metadata version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
+    },
+    "updatedAt" : {
+      "description": "Last update time corresponding to the new version of the entity.",
+      "$ref": "../../type/basic.json#/definitions/dateTime"
+    },
+    "updatedBy" : {
+      "description": "User who made the update.",
+      "type": "string"
+    },
+    "href": {
+      "description": "Link to the resource corresponding to this entity.",
+      "$ref": "../../type/basic.json#/definitions/href"
+    },
+    "changeDescription": {
+      "description" : "Change that lead to this version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "deleted" : {
+      "description": "When `true` indicates the entity has been soft deleted.",
+      "type": "boolean",
+      "default" : false
+    }
+  },
+  "required" : [
+    "id",
+    "name"
+  ],
+  "additionalProperties": false
+}

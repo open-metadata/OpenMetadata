@@ -45,10 +45,11 @@ metadata ingest -c ./examples/workflows/snowflake.json
       "data_profiler_enabled": "true",
       "data_profiler_offset": "0",
       "data_profiler_limit": "50000",
-      "filter_pattern": {
-        "excludes": [
-          "tpcds_sf100tcl"
-        ]
+      "table_filter_pattern": {
+        "excludes": ["demo.*","orders.*"]
+      },
+      "schema_filter_pattern": {
+        "excludes": ["information_schema.*"]
       }
     }
   },
@@ -58,11 +59,12 @@ metadata ingest -c ./examples/workflows/snowflake.json
 1. **username** - pass the Snowflake username.
 2. **password** - the password for the Snowflake username.
 3. **service\_name** - Service Name for this Snowflake cluster. If you added the Snowflake cluster through OpenMetadata UI, make sure the service name matches the same.
-4. **filter\_pattern** - It contains includes, excludes options to choose which pattern of datasets you want to ingest into OpenMetadata.
-5. **database -** Database name from where data is to be fetched.
-6. **data\_profiler\_enabled** - Enable data-profiling (Optional). It will provide you with the newly ingested data.
-7. **data\_profiler\_offset** - Specify offset.
-8. **data\_profiler\_limit** - Specify limit.
+4. **schema\_filter\_pattern** - It contains includes, excludes options to choose which pattern of schemas you want to ingest into OpenMetadata.
+5. **table\_filter\_pattern** - It contains includes, excludes options to choose which pattern of tables you want to ingest into OpenMetadata.
+6. **database -** Database name from where data is to be fetched.
+7. **data\_profiler\_enabled** - Enable data-profiling (Optional). It will provide you with the newly ingested data.
+8. **data\_profiler\_offset** - Specify offset.
+9. **data\_profiler\_limit** - Specify limit.
 
 ### SSO Configuration
 
@@ -136,10 +138,11 @@ Add `metadata-rest` sink along with `metadata-server` config
       "data_profiler_enabled": "true",
       "data_profiler_offset": "0",
       "data_profiler_limit": "50000",
-      "filter_pattern": {
-        "excludes": [
-          "tpcds_sf100tcl"
-        ]
+      "table_filter_pattern": {
+        "excludes": ["demo.*","orders.*"]
+      },
+      "schema_filter_pattern": {
+        "excludes": ["information_schema.*"]
       }
     }
   },

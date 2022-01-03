@@ -16,15 +16,17 @@ package org.openmetadata.catalog.resources.teams;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.CREATED;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
+import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.OK;
 import static javax.ws.rs.core.Response.Status.UNAUTHORIZED;
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.openmetadata.catalog.exception.CatalogExceptionMessage.deactivatedUser;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.readOnlyAttribute;
+import static org.openmetadata.catalog.resources.teams.RoleResourceTest.createRole;
 import static org.openmetadata.catalog.resources.teams.TeamResourceTest.createTeam;
 import static org.openmetadata.catalog.security.SecurityUtil.authHeaders;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
@@ -36,6 +38,7 @@ import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -46,7 +49,6 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Predicate;
 import javax.json.JsonPatch;
-import javax.ws.rs.client.WebTarget;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
@@ -54,9 +56,11 @@ import org.openmetadata.catalog.CatalogApplicationTest;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.teams.CreateUser;
 import org.openmetadata.catalog.entity.data.Table;
+import org.openmetadata.catalog.entity.teams.Role;
 import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
+import org.openmetadata.catalog.jdbi3.RoleRepository;
 import org.openmetadata.catalog.jdbi3.TeamRepository.TeamEntityInterface;
 import org.openmetadata.catalog.jdbi3.UserRepository.UserEntityInterface;
 import org.openmetadata.catalog.resources.EntityResourceTest;
@@ -73,7 +77,6 @@ import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.TestUtils;
 import org.openmetadata.catalog.util.TestUtils.UpdateType;
-import org.openmetadata.common.utils.JsonSchemaUtil;
 
 public class UserResourceTest extends EntityResourceTest<User> {
   final Profile PROFILE = new Profile().withImages(new ImageList().withImage(URI.create("http://image.com")));
@@ -103,7 +106,7 @@ public class UserResourceTest extends EntityResourceTest<User> {
   }
 
   @Test
-  public void post_validUser_200_ok_without_login(TestInfo test) {
+  void post_validUser_200_ok_without_login(TestInfo test) {
     CreateUser create = create(test, 6).withDisplayName("displayName").withEmail("test@email.com").withIsAdmin(true);
 
     HttpResponseException exception =
@@ -179,11 +182,28 @@ public class UserResourceTest extends EntityResourceTest<User> {
     CreateUser create = create(test).withTeams(teams);
     User user = createAndCheckEntity(create, adminAuthHeaders());
 
-    // Make sure Team has relationship to this user
+    // Ensure Team has relationship to this user
     team1 = TeamResourceTest.getTeam(team1.getId(), "users", adminAuthHeaders());
     assertEquals(user.getId(), team1.getUsers().get(0).getId());
     team2 = TeamResourceTest.getTeam(team2.getId(), "users", adminAuthHeaders());
     assertEquals(user.getId(), team2.getUsers().get(0).getId());
+  }
+
+  @Test
+  public void post_validUserWithRoles_200_ok(TestInfo test) throws IOException {
+    // Create user with different optional fields
+    RoleResourceTest roleResourceTest = new RoleResourceTest();
+    Role role1 = createRole(roleResourceTest.create(test, 1), adminAuthHeaders());
+    Role role2 = createRole(roleResourceTest.create(test, 2), adminAuthHeaders());
+    List<UUID> roles = Arrays.asList(role1.getId(), role2.getId());
+    CreateUser create = create(test).withRoles(roles);
+    User user = createAndCheckEntity(create, adminAuthHeaders());
+
+    // Ensure User has relationship to these roles
+    String[] expectedRoles = roles.stream().map(UUID::toString).sorted().toArray(String[]::new);
+    List<EntityReference> roleReferences = user.getRoles();
+    String[] actualRoles = roleReferences.stream().map(ref -> ref.getId().toString()).sorted().toArray(String[]::new);
+    assertArrayEquals(expectedRoles, actualRoles);
   }
 
   @Test
@@ -194,6 +214,9 @@ public class UserResourceTest extends EntityResourceTest<User> {
     List<UUID> teams = List.of(team1.getId(), team2.getId());
     List<UUID> team = List.of(team1.getId());
 
+    // user0 is part of no teams
+    // user1 is part of team1
+    // user2 is part of team1, and team2
     CreateUser create = create(test, 0);
     User user0 = createAndCheckEntity(create, adminAuthHeaders());
     create = create(test, 1).withTeams(team);
@@ -238,12 +261,12 @@ public class UserResourceTest extends EntityResourceTest<User> {
 
     // Empty query field .../users?fields=
     HttpResponseException exception =
-        assertThrows(HttpResponseException.class, () -> getUser(user.getId(), "", adminAuthHeaders()));
+        assertThrows(HttpResponseException.class, () -> getEntity(user.getId(), "", adminAuthHeaders()));
     TestUtils.assertResponseContains(exception, BAD_REQUEST, "Invalid field name");
 
     // .../users?fields=invalidField
     exception =
-        assertThrows(HttpResponseException.class, () -> getUser(user.getId(), "invalidField", adminAuthHeaders()));
+        assertThrows(HttpResponseException.class, () -> getEntity(user.getId(), "invalidField", adminAuthHeaders()));
     assertResponse(exception, BAD_REQUEST, CatalogExceptionMessage.invalidField("invalidField"));
   }
 
@@ -301,7 +324,7 @@ public class UserResourceTest extends EntityResourceTest<User> {
     // Ensure user deleted attributed can't be changed using patch
     User user = createUser(create(test), adminAuthHeaders());
     String userJson = JsonUtils.pojoToJson(user);
-    user.setDeactivated(true);
+    user.setDeleted(true);
     HttpResponseException exception =
         assertThrows(HttpResponseException.class, () -> patchUser(userJson, user, adminAuthHeaders()));
     assertResponse(exception, BAD_REQUEST, readOnlyAttribute("User", "deactivated"));
@@ -329,13 +352,21 @@ public class UserResourceTest extends EntityResourceTest<User> {
     List<EntityReference> teams = Arrays.asList(team1, team2);
     Profile profile = new Profile().withImages(new ImageList().withImage(URI.create("http://image.com")));
 
+    RoleResourceTest roleResourceTest = new RoleResourceTest();
+    EntityReference role1 =
+        new RoleRepository.RoleEntityInterface(createRole(roleResourceTest.create(test, 1), adminAuthHeaders()))
+            .getEntityReference()
+            .withHref(null);
+    List<EntityReference> roles1 = Arrays.asList(role1);
+
     //
     // Add previously absent attributes
     //
     String origJson = JsonUtils.pojoToJson(user);
 
     String timezone = "America/Los_Angeles";
-    user.withTeams(teams)
+    user.withRoles(roles1)
+        .withTeams(teams)
         .withTimezone(timezone)
         .withDisplayName("displayName")
         .withProfile(profile)
@@ -343,6 +374,7 @@ public class UserResourceTest extends EntityResourceTest<User> {
         .withIsAdmin(false);
 
     ChangeDescription change = getChangeDescription(user.getVersion());
+    change.getFieldsAdded().add(new FieldChange().withName("roles").withNewValue(roles1));
     change.getFieldsAdded().add(new FieldChange().withName("teams").withNewValue(teams));
     change.getFieldsAdded().add(new FieldChange().withName("timezone").withNewValue(timezone));
     change.getFieldsAdded().add(new FieldChange().withName("displayName").withNewValue("displayName"));
@@ -357,8 +389,15 @@ public class UserResourceTest extends EntityResourceTest<User> {
     List<EntityReference> teams1 = Arrays.asList(team1, team3); // team2 dropped and team3 is added
     Profile profile1 = new Profile().withImages(new ImageList().withImage(URI.create("http://image2.com")));
 
+    EntityReference role2 =
+        new RoleRepository.RoleEntityInterface(createRole(roleResourceTest.create(test, 2), adminAuthHeaders()))
+            .getEntityReference()
+            .withHref(null);
+    List<EntityReference> roles2 = Arrays.asList(role2);
+
     origJson = JsonUtils.pojoToJson(user);
-    user.withTeams(teams1)
+    user.withRoles(roles2)
+        .withTeams(teams1)
         .withTimezone(timezone1)
         .withDisplayName("displayName1")
         .withProfile(profile1)
@@ -366,6 +405,8 @@ public class UserResourceTest extends EntityResourceTest<User> {
         .withIsAdmin(false);
 
     change = getChangeDescription(user.getVersion());
+    change.getFieldsDeleted().add(new FieldChange().withName("roles").withOldValue(roles1));
+    change.getFieldsAdded().add(new FieldChange().withName("roles").withNewValue(roles2));
     change.getFieldsDeleted().add(new FieldChange().withName("teams").withOldValue(List.of(team2)));
     change.getFieldsAdded().add(new FieldChange().withName("teams").withNewValue(List.of(team3)));
     change
@@ -383,10 +424,17 @@ public class UserResourceTest extends EntityResourceTest<User> {
     // Remove the attributes
     //
     origJson = JsonUtils.pojoToJson(user);
-    user.withTeams(null).withTimezone(null).withDisplayName(null).withProfile(null).withIsBot(null).withIsAdmin(false);
+    user.withRoles(null)
+        .withTeams(null)
+        .withTimezone(null)
+        .withDisplayName(null)
+        .withProfile(null)
+        .withIsBot(null)
+        .withIsAdmin(false);
 
     // Note non-empty display field is not deleted
     change = getChangeDescription(user.getVersion());
+    change.getFieldsDeleted().add(new FieldChange().withName("roles").withOldValue(roles2));
     change.getFieldsDeleted().add(new FieldChange().withName("teams").withOldValue(teams1));
     change.getFieldsDeleted().add(new FieldChange().withName("timezone").withOldValue(timezone1));
     change.getFieldsDeleted().add(new FieldChange().withName("displayName").withOldValue("displayName1"));
@@ -419,6 +467,7 @@ public class UserResourceTest extends EntityResourceTest<User> {
     Table table = tableResourceTest.createEntity(test, 1);
     tableResourceTest.addAndCheckFollower(table.getId(), user.getId(), CREATED, 1, adminAuthHeaders());
 
+    // Delete user
     deleteEntity(user.getId(), adminAuthHeaders());
 
     // Make sure the user is no longer following the table
@@ -426,17 +475,12 @@ public class UserResourceTest extends EntityResourceTest<User> {
     assertTrue(team.getUsers().isEmpty());
     tableResourceTest.checkFollowerDeleted(table.getId(), user.getId(), adminAuthHeaders());
 
-    // Get deactivated user and ensure the name and display name has deactivated
-    User deactivatedUser = getUser(user.getId(), adminAuthHeaders());
-    assertEquals("deactivated." + user.getName(), deactivatedUser.getName());
-    assertEquals("Deactivated " + user.getDisplayName(), deactivatedUser.getDisplayName());
-
     // User can no longer follow other entities
     HttpResponseException exception =
         assertThrows(
             HttpResponseException.class,
             () -> tableResourceTest.addAndCheckFollower(table.getId(), user.getId(), CREATED, 1, adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, deactivatedUser(user.getId()));
+    assertResponse(exception, NOT_FOUND, CatalogExceptionMessage.entityNotFound("user", user.getId()));
 
     // TODO deactivated user can't be made owner
   }
@@ -444,7 +488,7 @@ public class UserResourceTest extends EntityResourceTest<User> {
   private User patchUser(UUID userId, String originalJson, User updated, Map<String, String> headers)
       throws JsonProcessingException, HttpResponseException {
     String updatedJson = JsonUtils.pojoToJson(updated);
-    JsonPatch patch = JsonSchemaUtil.getJsonPatch(originalJson, updatedJson);
+    JsonPatch patch = JsonUtils.getJsonPatch(originalJson, updatedJson);
     return TestUtils.patch(CatalogApplicationTest.getResource("users/" + userId), patch, User.class, headers);
   }
 
@@ -479,8 +523,8 @@ public class UserResourceTest extends EntityResourceTest<User> {
     String fields = "profile";
     user =
         byName
-            ? getUserByName(user.getName(), fields, adminAuthHeaders())
-            : getUser(user.getId(), fields, adminAuthHeaders());
+            ? getEntityByName(user.getName(), fields, adminAuthHeaders())
+            : getEntity(user.getId(), fields, adminAuthHeaders());
     assertNotNull(user.getProfile());
     assertNull(user.getTeams());
 
@@ -488,31 +532,19 @@ public class UserResourceTest extends EntityResourceTest<User> {
     fields = "profile, teams";
     user =
         byName
-            ? getUserByName(user.getName(), fields, adminAuthHeaders())
-            : getUser(user.getId(), fields, adminAuthHeaders());
+            ? getEntityByName(user.getName(), fields, adminAuthHeaders())
+            : getEntity(user.getId(), fields, adminAuthHeaders());
     assertListNotNull(user.getProfile(), user.getTeams());
-  }
-
-  public static User getUser(UUID id, Map<String, String> authHeaders) throws HttpResponseException {
-    return getUser(id, null, authHeaders);
-  }
-
-  public static User getUser(UUID id, String fields, Map<String, String> authHeaders) throws HttpResponseException {
-    WebTarget target = CatalogApplicationTest.getResource("users/" + id);
-    target = fields != null ? target.queryParam("fields", fields) : target;
-    return TestUtils.get(target, User.class, authHeaders);
-  }
-
-  public static User getUserByName(String name, String fields, Map<String, String> authHeaders)
-      throws HttpResponseException {
-    WebTarget target = CatalogApplicationTest.getResource("users/name/" + name);
-    target = fields != null ? target.queryParam("fields", fields) : target;
-    return TestUtils.get(target, User.class, authHeaders);
   }
 
   @Override
   public Object createRequest(String name, String description, String displayName, EntityReference owner) {
     return create(name).withDescription(description).withDisplayName(displayName).withProfile(PROFILE);
+  }
+
+  @Override
+  public EntityReference getContainer(Object createRequest) throws URISyntaxException {
+    return null; // No container entity
   }
 
   @Override
@@ -527,11 +559,21 @@ public class UserResourceTest extends EntityResourceTest<User> {
     assertEquals(createRequest.getIsBot(), user.getIsBot());
     assertEquals(createRequest.getIsAdmin(), user.getIsAdmin());
 
+    List<EntityReference> expectedRoles = new ArrayList<>();
+    for (UUID roleId : Optional.ofNullable(createRequest.getRoles()).orElse(Collections.emptyList())) {
+      expectedRoles.add(new EntityReference().withId(roleId).withType(Entity.ROLE));
+    }
+    if (!expectedRoles.isEmpty()) {
+      assertEquals(expectedRoles.size(), user.getRoles().size());
+      for (EntityReference role : expectedRoles) {
+        TestUtils.existsInEntityReferenceList(user.getRoles(), role.getId(), true);
+      }
+    }
+
     List<EntityReference> expectedTeams = new ArrayList<>();
     for (UUID teamId : Optional.ofNullable(createRequest.getTeams()).orElse(Collections.emptyList())) {
       expectedTeams.add(new EntityReference().withId(teamId).withType(Entity.TEAM));
     }
-
     if (!expectedTeams.isEmpty()) {
       assertEquals(expectedTeams.size(), user.getTeams().size());
       for (EntityReference team : expectedTeams) {
@@ -559,20 +601,24 @@ public class UserResourceTest extends EntityResourceTest<User> {
     assertEquals(expected.getIsBot(), expected.getIsBot());
     assertEquals(expected.getIsAdmin(), expected.getIsAdmin());
 
-    List<EntityReference> expectedTeams = Optional.ofNullable(expected.getTeams()).orElse(Collections.emptyList());
-    List<EntityReference> updatedTeams =
-        new ArrayList<>(Optional.ofNullable(updated.getTeams()).orElse(Collections.emptyList()));
+    compareEntityReferenceLists(expected.getRoles(), updated.getRoles());
+    compareEntityReferenceLists(expected.getTeams(), updated.getTeams());
 
-    updatedTeams.forEach(TestUtils::validateEntityReference);
-
-    expectedTeams.sort(EntityUtil.compareEntityReference);
-    updatedTeams.sort(EntityUtil.compareEntityReference);
-    updatedTeams.forEach(t -> t.setHref(null));
-    expectedTeams.forEach(t -> t.setHref(null));
-    assertEquals(expectedTeams, updatedTeams);
     if (expected.getProfile() != null) {
       assertEquals(expected.getProfile(), updated.getProfile());
     }
+  }
+
+  private void compareEntityReferenceLists(List<EntityReference> expected, List<EntityReference> updated) {
+    List<EntityReference> expectedList = Optional.ofNullable(expected).orElse(Collections.emptyList());
+    List<EntityReference> updatedList = new ArrayList<>(Optional.ofNullable(updated).orElse(Collections.emptyList()));
+
+    updatedList.forEach(TestUtils::validateEntityReference);
+    expectedList.sort(EntityUtil.compareEntityReference);
+    updatedList.sort(EntityUtil.compareEntityReference);
+    updatedList.forEach(t -> t.setHref(null));
+    expectedList.forEach(t -> t.setHref(null));
+    assertEquals(expectedList, updatedList);
   }
 
   @Override
@@ -589,10 +635,10 @@ public class UserResourceTest extends EntityResourceTest<User> {
       Profile expectedProfile = (Profile) expected;
       Profile actualProfile = JsonUtils.readValue(actual.toString(), Profile.class);
       assertEquals(expectedProfile, actualProfile);
-    } else if (fieldName.equals("teams")) {
-      List<EntityReference> expectedTeams = (List<EntityReference>) expected;
-      List<EntityReference> actualTeams = JsonUtils.readObjects(actual.toString(), EntityReference.class);
-      assertEquals(expectedTeams, actualTeams);
+    } else if (fieldName.equals("teams") || fieldName.equals("roles")) {
+      List<EntityReference> expectedList = (List<EntityReference>) expected;
+      List<EntityReference> actualList = JsonUtils.readObjects(actual.toString(), EntityReference.class);
+      assertEquals(expectedList, actualList);
     } else {
       assertCommonFieldChange(fieldName, expected, actual);
     }

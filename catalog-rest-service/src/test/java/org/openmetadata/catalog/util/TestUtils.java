@@ -278,7 +278,7 @@ public final class TestUtils {
       UUID userId, UUID entityId, boolean expectedFollowing, Map<String, String> authHeaders)
       throws HttpResponseException {
     // GET .../users/{userId} shows user as following table
-    User user = UserResourceTest.getUser(userId, "follows", authHeaders);
+    User user = new UserResourceTest().getEntity(userId, "follows", authHeaders);
     existsInEntityReferenceList(user.getFollows(), entityId, expectedFollowing);
   }
 

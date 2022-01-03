@@ -23,6 +23,7 @@ import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
 import static org.openmetadata.catalog.util.TestUtils.getPrincipal;
 
 import java.io.IOException;
+import java.net.URISyntaxException;
 import java.util.Date;
 import java.util.Map;
 import org.apache.http.client.HttpResponseException;
@@ -228,6 +229,11 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
   @Override
   public Object createRequest(String name, String description, String displayName, EntityReference owner) {
     return create(name).withDescription(description);
+  }
+
+  @Override
+  public EntityReference getContainer(Object createRequest) throws URISyntaxException {
+    return null; // No container entity
   }
 
   @Override

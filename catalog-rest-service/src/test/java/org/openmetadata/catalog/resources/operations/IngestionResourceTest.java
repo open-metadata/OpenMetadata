@@ -78,6 +78,12 @@ public class IngestionResourceTest extends EntityOperationsResourceTest<Ingestio
   }
 
   @Override
+  public EntityReference getContainer(Object createRequest) throws URISyntaxException {
+    CreateIngestion createIngestion = (CreateIngestion) createRequest;
+    return createIngestion.getService();
+  }
+
+  @Override
   public void validateCreatedEntity(Ingestion ingestion, Object request, Map<String, String> authHeaders)
       throws HttpResponseException {
     CreateIngestion createRequest = (CreateIngestion) request;

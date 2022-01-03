@@ -111,6 +111,11 @@
     "location": {
       "$ref": "../../type/entityReference.json",
       "default": null
+    },
+    "deleted" : {
+      "description": "When `true` indicates the entity has been soft deleted.",
+      "type" : "boolean",
+      "default": false
     }
   },
   "required": [

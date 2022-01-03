@@ -47,7 +47,8 @@ metadata ingest -c ./examples/workflows/trino.json
 2. **password** - password for the username
 3. **host\_port** - host and port of the Trino cluster
 4. **service\_name** - Service Name for this Trino cluster. If you added the Trino cluster through OpenMetadata UI, make sure the service name matches the same.
-5. **filter\_pattern** - It contains includes, excludes options to choose which pattern of datasets you want to ingest into OpenMetadata
+5. **table\_filter\_pattern** - It contains includes, excludes options to choose which pattern of tables you want to ingest into OpenMetadata.
+6. **schema\_filter\_pattern** - It contains includes, excludes options to choose which pattern of schemas you want to ingest into OpenMetadata.
 
 ## Publish to OpenMetadata
 
