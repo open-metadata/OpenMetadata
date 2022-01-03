@@ -138,6 +138,7 @@ class SQLConnectionConfig(ConfigModel):
     schema_filter_pattern: IncludeFilterPattern = IncludeFilterPattern.allow_all()
     dbt_manifest_file: Optional[str] = None
     dbt_catalog_file: Optional[str] = None
+    mark_deleted_tables_as_deleted: Optional[bool] = True
 
     @abstractmethod
     def get_connection_url(self):
@@ -186,6 +187,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         self.config = config
         self.metadata_config = metadata_config
         self.service = get_database_service_or_create(config, metadata_config)
+        self.metadata = OpenMetadata(metadata_config)
         self.status = SQLSourceStatus()
         self.sql_config = self.config
         self.connection_string = self.sql_config.get_connection_url()
@@ -197,6 +199,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         self.connection = self.engine.connect()
         self.data_profiler = None
         self.data_models = {}
+        self.database_source_state = set()
         if self.config.dbt_catalog_file is not None:
             with open(self.config.dbt_catalog_file, "r", encoding="utf-8") as catalog:
                 self.dbt_catalog = json.load(catalog)
@@ -274,7 +277,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
             if not self.sql_config.schema_filter_pattern.included(schema):
                 self.status.filter(schema, "Schema pattern not allowed")
                 continue
-            logger.debug(f"Total tables {inspector.get_table_names(schema)}")
+            schema_fqdn = f"{self.config.service_name}.{schema}"
             if self.config.include_tables:
                 yield from self.fetch_tables(inspector, schema)
             if self.config.include_views:
@@ -303,7 +306,8 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                 self.status.scanned(f"{self.config.get_service_name()}.{table_name}")
 
                 description = _get_table_description(schema, table_name, inspector)
-                fqn = f"{self.config.service_name}.{self.config.database}.{schema}.{table_name}"
+                fqn = f"{self.config.service_name}.{schema}.{table_name}"
+                self.database_source_state.add(fqn)
                 table_columns = self._get_columns(schema, table_name, inspector)
                 table_entity = Table(
                     id=uuid.uuid4(),
@@ -373,7 +377,8 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                     )
                 except NotImplementedError:
                     view_definition = ""
-
+                fqn = f"{self.config.service_name}.{schema}.{view_name}"
+                self.database_source_state.add(fqn)
                 table = Table(
                     id=uuid.uuid4(),
                     name=view_name.replace(".", "_DOT_"),
@@ -655,6 +660,12 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         )
         logger.debug(f"Finished profiling {dataset_name}")
         return profile
+
+    def _build_database_state(self, schema_fqdn: str) -> [EntityReference]:
+        database = self.metadata.get_by_name(
+            entity=Database, fqdn=schema_fqdn, fields=["tables"]
+        )
+        return database.tables.__root__
 
     def close(self):
         if self.connection is not None:

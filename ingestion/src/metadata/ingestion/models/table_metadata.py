@@ -17,6 +17,12 @@ from pydantic import BaseModel
 from metadata.generated.schema.type.entityReference import EntityReference
 
 
+class DatabaseAndTableState(BaseModel):
+    database: str
+    table: str
+    exists: bool
+
+
 class Table(BaseModel):
     """Table Fully Qualified Name"""
 
