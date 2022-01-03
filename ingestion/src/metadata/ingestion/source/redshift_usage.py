@@ -106,7 +106,7 @@ class RedshiftUsageSource(Source[TableQuery]):
                 database=row["database"],
                 aborted=row["aborted"],
                 sql=row["querytxt"],
-                service_name=self.config.service_name
+                service_name=self.config.service_name,
             )
             yield tq
 

@@ -91,7 +91,7 @@ class SnowflakeUsageSource(Source[TableQuery]):
                 aborted=True if "1969" in str(row["end_time"]) else False,
                 database=row["database_name"],
                 sql=row["query_text"],
-                service_name=self.config.service_name
+                service_name=self.config.service_name,
             )
             if row["schema_name"] is not None:
                 self.report.scanned(f"{row['database_name']}.{row['schema_name']}")
