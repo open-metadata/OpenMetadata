@@ -60,7 +60,7 @@ import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.DatabaseRepository;
 import org.openmetadata.catalog.jdbi3.DatabaseRepository.DatabaseEntityInterface;
 import org.openmetadata.catalog.resources.Collection;
-import org.openmetadata.catalog.security.CatalogAuthorizer;
+import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.EntityReference;
@@ -78,7 +78,7 @@ import org.openmetadata.catalog.util.ResultList;
 public class DatabaseResource {
   public static final String COLLECTION_PATH = "v1/databases/";
   private final DatabaseRepository dao;
-  private final CatalogAuthorizer authorizer;
+  private final Authorizer authorizer;
 
   public static ResultList<Database> addHref(UriInfo uriInfo, ResultList<Database> databases) {
     Optional.ofNullable(databases.getData())
@@ -104,7 +104,7 @@ public class DatabaseResource {
   }
 
   @Inject
-  public DatabaseResource(CollectionDAO dao, CatalogAuthorizer authorizer) {
+  public DatabaseResource(CollectionDAO dao, Authorizer authorizer) {
     this.dao = new DatabaseRepository(dao);
     this.authorizer = authorizer;
   }
@@ -380,8 +380,15 @@ public class DatabaseResource {
         @ApiResponse(responseCode = "200", description = "OK"),
         @ApiResponse(responseCode = "404", description = "Database for instance {id} is not found")
       })
-  public Response delete(@Context UriInfo uriInfo, @PathParam("id") String id) {
-    dao.delete(UUID.fromString(id));
+  public Response delete(
+      @Context UriInfo uriInfo,
+      @Parameter(description = "Recursively delete this entity and it's children. (Default `false`)")
+          @DefaultValue("false")
+          @QueryParam("recursive")
+          boolean recursive,
+      @PathParam("id") String id)
+      throws IOException {
+    dao.delete(UUID.fromString(id), recursive);
     return Response.ok().build();
   }
 

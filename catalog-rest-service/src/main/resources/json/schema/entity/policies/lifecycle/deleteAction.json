@@ -17,17 +17,5 @@
       "minimum": 1
     }
   },
-  "oneOf": [
-    {
-      "required": [
-        "daysAfterCreation"
-      ]
-    },
-    {
-      "required": [
-        "daysAfterModification"
-      ]
-    }
-  ],
   "additionalProperties": false
 }

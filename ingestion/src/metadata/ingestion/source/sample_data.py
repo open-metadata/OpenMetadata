@@ -26,7 +26,6 @@ from metadata.generated.schema.api.data.createTopic import CreateTopicEntityRequ
 from metadata.generated.schema.api.lineage.addLineage import AddLineage
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.location import Location, LocationType
-from metadata.generated.schema.entity.data.mlmodel import MlModel
 from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.teams.user import User
@@ -39,6 +38,10 @@ from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.models.table_metadata import Chart, Dashboard
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
+from metadata.ingestion.source.access_control_policies import (
+    AccessControlPoliciesConfig,
+    AccessControlPoliciesSource,
+)
 from metadata.utils.helpers import (
     get_dashboard_service_or_create,
     get_database_service_or_create,
@@ -261,6 +264,13 @@ class SampleDataSource(Source[Entity]):
         self.models = json.load(
             open(self.config.sample_data_folder + "/models/models.json", "r")
         )
+        policies_config = AccessControlPoliciesConfig(
+            policies_file=self.config.sample_data_folder
+            + "/policies/access_control.json"
+        )
+        self.policies_source = AccessControlPoliciesSource(
+            policies_config, metadata_config, ctx
+        )
 
     @classmethod
     def create(cls, config_dict, metadata_config_dict, ctx):
@@ -269,7 +279,7 @@ class SampleDataSource(Source[Entity]):
         return cls(config, metadata_config, ctx)
 
     def prepare(self):
-        pass
+        self.policies_source.prepare()
 
     def next_record(self) -> Iterable[Entity]:
         yield from self.ingest_locations()
@@ -282,6 +292,7 @@ class SampleDataSource(Source[Entity]):
         yield from self.ingest_lineage()
         yield from self.ingest_users()
         yield from self.ingest_mlmodels()
+        yield from self.policies_source.next_record()
 
     def ingest_locations(self) -> Iterable[Location]:
         for location in self.locations["locations"]:

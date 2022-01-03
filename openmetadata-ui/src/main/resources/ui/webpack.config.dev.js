@@ -43,7 +43,7 @@ module.exports = {
       // .js and .jsx files to be handled by babel-loader
       {
         test: /\.(js|jsx)$/,
-        exclude: /node_modules/,
+        include: path.resolve(__dirname, 'src'),
         use: {
           loader: 'babel-loader',
           options: {
@@ -58,7 +58,7 @@ module.exports = {
         options: {
           transpileOnly: true, // Speed up compilation in development mode
         },
-        exclude: /node_modules/, // Just the source code
+        include: path.resolve(__dirname, 'src'), // Just the source code
       },
       // .css and .scss files to be handled by sass-loader
       // include scss rule and sass-loader if injecting scss/sass file
@@ -76,14 +76,21 @@ module.exports = {
           },
           'postcss-loader',
         ],
-        // No exclude, may need to handle files outside the source code
+        include: [
+          path.resolve(__dirname, 'src'),
+          path.resolve(__dirname, 'node_modules/tailwindcss'),
+          path.resolve(__dirname, 'node_modules/react-tippy'),
+          path.resolve(__dirname, 'node_modules/react-draft-wysiwyg'),
+          path.resolve(__dirname, 'node_modules/codemirror'),
+        ],
+        // May need to handle files outside the source code
         // (from node_modules)
       },
       // .svg files to be handled by @svgr/webpack
       {
         test: /\.svg$/,
         use: ['@svgr/webpack'],
-        exclude: /node_modules/, // Just the source code
+        include: path.resolve(__dirname, 'src'), // Just the source code
       },
       // different urls to be handled by url-loader
       {
@@ -97,21 +104,10 @@ module.exports = {
             },
           },
         ],
-        exclude: /node_modules/, // Just the source code
-      },
-      // different urls to be handled by url-loader in node_modules
-      {
-        test: /\.(png|jpg|jpeg|gif|svg|ico|eot|woff|woff2)$/i,
-        use: [
-          {
-            loader: 'url-loader',
-            options: {
-              limit: 8192,
-              name: `[name].[ext]`,
-            },
-          },
-        ],
-        include: /node_modules\/slick-carousel/, // Just slick-carousel from node_modules
+        include: [
+          path.resolve(__dirname, 'src'),
+          path.resolve(__dirname, 'node_modules/slick-carousel'),
+        ], // Just the source code
       },
       // Font files to be handled by file-loader
       {
@@ -125,21 +121,10 @@ module.exports = {
             },
           },
         ],
-        exclude: /node_modules/, // Just the source code
-      },
-      // Font files to be handled by file-loader in node_modules
-      {
-        test: /\.ttf$/,
-        use: [
-          {
-            loader: 'file-loader',
-            options: {
-              name: '[name].[ext]',
-              outputPath: 'fonts/',
-            },
-          },
-        ],
-        include: /node_modules\/slick-carousel/, // Just slick-carousel from node_modules
+        include: [
+          path.resolve(__dirname, 'src'),
+          path.resolve(__dirname, 'node_modules/slick-carousel'),
+        ], // Just the source code
       },
     ],
   },

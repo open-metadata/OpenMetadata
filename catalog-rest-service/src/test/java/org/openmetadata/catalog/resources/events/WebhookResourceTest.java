@@ -14,6 +14,7 @@
 package org.openmetadata.catalog.resources.events;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
 
@@ -21,35 +22,40 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import javax.ws.rs.core.Response;
 import org.apache.http.client.HttpResponseException;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.events.CreateWebhook;
 import org.openmetadata.catalog.jdbi3.WebhookRepository.WebhookEntityInterface;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.events.WebhookResource.WebhookList;
+import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.ChangeEvent;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.EventFilter;
 import org.openmetadata.catalog.type.EventType;
+import org.openmetadata.catalog.type.FailureDetails;
+import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.type.Webhook;
 import org.openmetadata.catalog.type.Webhook.Status;
 import org.openmetadata.catalog.util.EntityInterface;
+import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
+import org.openmetadata.catalog.util.TestUtils.UpdateType;
 
 public class WebhookResourceTest extends EntityResourceTest<Webhook> {
   public static List<EventFilter> ALL_EVENTS_FILTER = new ArrayList<>();
 
   static {
-    ALL_EVENTS_FILTER.add(new EventFilter().withEventType(EventType.ENTITY_CREATED));
-    ALL_EVENTS_FILTER.add(new EventFilter().withEventType(EventType.ENTITY_UPDATED));
-    ALL_EVENTS_FILTER.add(new EventFilter().withEventType(EventType.ENTITY_DELETED));
+    ALL_EVENTS_FILTER.add(new EventFilter().withEventType(EventType.ENTITY_CREATED).withEntities(List.of("*")));
+    ALL_EVENTS_FILTER.add(new EventFilter().withEventType(EventType.ENTITY_UPDATED).withEntities(List.of("*")));
+    ALL_EVENTS_FILTER.add(new EventFilter().withEventType(EventType.ENTITY_DELETED).withEntities(List.of("*")));
   }
 
   public WebhookResourceTest() {
@@ -57,53 +63,119 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook> {
     supportsPatch = false;
   }
 
-  @BeforeAll
-  public static void setup(TestInfo test) throws IOException, URISyntaxException {
-    EntityResourceTest.setup(test);
-  }
-
   @Test
   public void post_webhookEnabledStateChange() throws URISyntaxException, IOException, InterruptedException {
-    // Disabled webhook will not start webhook publisher
+    //
+    // Create webhook in disabled state. It will not start webhook publisher
+    //
+    LOG.info("creating webhook in disabled state");
+    webhookCallbackResource.resetCount();
     String uri = "http://localhost:" + APP.getLocalPort() + "/api/v1/test/webhook/counter";
-    CreateWebhook create =
-        createRequest("disabledWebhook", "", "", null).withEnabled(false).withEndPoint(URI.create(uri));
+    CreateWebhook create = createRequest("counter", "", "", null).withEnabled(false).withEndpoint(URI.create(uri));
     Webhook webhook = createAndCheckEntity(create, adminAuthHeaders());
     assertEquals(Status.NOT_STARTED, webhook.getStatus());
     Webhook getWebhook = getEntity(webhook.getId(), adminAuthHeaders());
     assertEquals(Status.NOT_STARTED, getWebhook.getStatus());
     assertEquals(0, webhookCallbackResource.getCount());
 
+    //
     // Now enable the webhook
+    //
+    LOG.info("Enabling webhook");
     int counter = webhookCallbackResource.getCount();
-    create.withEnabled(true);
-    getWebhook = updateEntity(create, Response.Status.OK, adminAuthHeaders());
-    assertEquals(Status.SUCCESS, getWebhook.getStatus());
-    getWebhook = getEntity(webhook.getId(), adminAuthHeaders());
-    assertEquals(Status.SUCCESS, getWebhook.getStatus());
+    ChangeDescription change = getChangeDescription(webhook.getVersion());
+    change.getFieldsUpdated().add(new FieldChange().withName("enabled").withOldValue(false).withNewValue(true));
+    change
+        .getFieldsUpdated()
+        .add(new FieldChange().withName("status").withOldValue(Status.NOT_STARTED).withNewValue(Status.STARTED));
+    change.getFieldsUpdated().add(new FieldChange().withName("batchSize").withOldValue(10).withNewValue(50));
+    create.withEnabled(true).withBatchSize(50);
 
-    // Change event for webhook enabling is received to ensure the call back has started
+    webhook = updateAndCheckEntity(create, Response.Status.OK, adminAuthHeaders(), UpdateType.MINOR_UPDATE, change);
+    assertEquals(Status.STARTED, webhook.getStatus());
+    getWebhook = getEntity(webhook.getId(), adminAuthHeaders());
+    assertEquals(Status.STARTED, getWebhook.getStatus());
+
+    // Ensure the call back notification has started
     int iterations = 0;
     while (webhookCallbackResource.getCount() <= counter && iterations < 100) {
       Thread.sleep(10);
       iterations++;
     }
     assertEquals(counter + 1, webhookCallbackResource.getCount());
+    long lastSuccessfulEventTime = webhookCallbackResource.getCounterLatestTime();
+    FailureDetails failureDetails = new FailureDetails().withLastSuccessfulAt(lastSuccessfulEventTime);
 
-    // Disable the webhook and ensure it is disabled
+    //
+    // Disable the webhook and ensure notification is disabled
+    //
+    LOG.info("Disabling webhook");
     create.withEnabled(false);
-    getWebhook = updateEntity(create, Response.Status.OK, adminAuthHeaders());
+    change = getChangeDescription(getWebhook.getVersion());
+    change
+        .getFieldsAdded()
+        .add(new FieldChange().withName("failureDetails").withNewValue(JsonUtils.pojoToJson(failureDetails)));
+    change.getFieldsUpdated().add(new FieldChange().withName("enabled").withOldValue(true).withNewValue(false));
+    change
+        .getFieldsUpdated()
+        .add(new FieldChange().withName("status").withOldValue(Status.STARTED).withNewValue(Status.NOT_STARTED));
+
+    // Disabled webhook state is NOT_STARTED
+    getWebhook = updateAndCheckEntity(create, Response.Status.OK, adminAuthHeaders(), UpdateType.MINOR_UPDATE, change);
     assertEquals(Status.NOT_STARTED, getWebhook.getStatus());
+
+    // Disabled webhook state also records last successful time when event was sent
     getWebhook = getEntity(webhook.getId(), adminAuthHeaders());
     assertEquals(Status.NOT_STARTED, getWebhook.getStatus());
+    assertEquals(webhookCallbackResource.getCounterStartTime(), getWebhook.getFailureDetails().getLastSuccessfulAt());
 
-    // Ensure callback is disabled and no further events are received
+    // Ensure callback back notification is disabled with no new events
     iterations = 0;
     while (iterations < 100) {
       Thread.sleep(10);
       iterations++;
       assertEquals(counter + 1, webhookCallbackResource.getCount()); // Event counter remains the same
     }
+
+    deleteEntity(webhook.getId(), adminAuthHeaders());
+  }
+
+  @Test
+  public void put_updateEndpointURL() throws URISyntaxException, IOException, InterruptedException {
+    CreateWebhook create =
+        createRequest("counter", "", "", null).withEnabled(true).withEndpoint(URI.create("http://invalidUnknowHost"));
+    Webhook webhook = createAndCheckEntity(create, adminAuthHeaders());
+
+    // Wait for webhook to be marked as failed
+    int iteration = 0;
+    Webhook getWebhook = getEntity(webhook.getId(), adminAuthHeaders());
+    LOG.info("getWebhook {}", getWebhook);
+    while (getWebhook.getStatus() != Status.FAILED && iteration < 100) {
+      getWebhook = getEntity(webhook.getId(), adminAuthHeaders());
+      LOG.info("getWebhook {}", getWebhook);
+      Thread.sleep(100);
+      iteration++;
+    }
+    assertEquals(Status.FAILED, getWebhook.getStatus());
+    FailureDetails failureDetails = getWebhook.getFailureDetails();
+
+    // Now change the webhook URL to a valid URL and ensure callbacks resume
+    String baseUri = "http://localhost:" + APP.getLocalPort() + "/api/v1/test/webhook/counter";
+    create = create.withEndpoint(URI.create(baseUri));
+    ChangeDescription change = getChangeDescription(getWebhook.getVersion());
+    change
+        .getFieldsUpdated()
+        .add(
+            new FieldChange()
+                .withName("endPoint")
+                .withOldValue(webhook.getEndpoint())
+                .withNewValue(create.getEndpoint()));
+    change
+        .getFieldsUpdated()
+        .add(new FieldChange().withName("status").withOldValue(Status.FAILED).withNewValue(Status.STARTED));
+    webhook = updateAndCheckEntity(create, Response.Status.OK, adminAuthHeaders(), UpdateType.MINOR_UPDATE, change);
+
+    deleteEntity(webhook.getId(), adminAuthHeaders());
   }
 
   @Override
@@ -114,8 +186,14 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook> {
         .withName(name)
         .withDescription(description)
         .withEventFilters(ALL_EVENTS_FILTER)
-        .withEndPoint(URI.create(uri))
-        .withBatchSize(100);
+        .withEndpoint(URI.create(uri))
+        .withBatchSize(100)
+        .withEnabled(false);
+  }
+
+  @Override
+  public EntityReference getContainer(Object createRequest) throws URISyntaxException {
+    return null; // No container entity
   }
 
   @Override
@@ -151,89 +229,166 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook> {
   @Override
   public void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException {}
 
-  public void createWebhooks() throws IOException, URISyntaxException {
+  /**
+   * Before a test for every entity resource, create a webhook subscription. At the end of the test, ensure all events
+   * are delivered over web subscription comparing it with number of events stored in the system.
+   */
+  public void startWebhookSubscription() throws IOException, URISyntaxException {
     // Valid webhook callback
     String baseUri = "http://localhost:" + APP.getLocalPort() + "/api/v1/test/webhook";
-    CreateWebhook createWebhook =
-        createRequest("validWebhook", "validWebhook", "", null).withEndPoint(URI.create(baseUri));
-    createEntity(createWebhook, adminAuthHeaders());
-
-    // Webhook callback that responds slowly with 5 seconds delay
-    createWebhook.withName("slowServer").withEndPoint(URI.create(baseUri + "/slowServer"));
-    createEntity(createWebhook, adminAuthHeaders());
-
-    // Webhook callback that responds slowly with after 12 seconds (beyond connection + read response timeout)
-    createWebhook.withName("callbackTimeout").withEndPoint(URI.create(baseUri + "/timeout"));
-    createEntity(createWebhook, adminAuthHeaders());
-
-    // Webhook callback that responds with 300 error
-    createWebhook.withName("callbackResponse300").withEndPoint(URI.create(baseUri + "/300"));
-    createEntity(createWebhook, adminAuthHeaders());
-
-    // Webhook callback that responds with 400 error
-    createWebhook.withName("callbackResponse400").withEndPoint(URI.create(baseUri + "/400"));
-    createEntity(createWebhook, adminAuthHeaders());
-
-    // Webhook callback that responds with 400 error
-    createWebhook.withName("callbackResponse500").withEndPoint(URI.create(baseUri + "/500"));
-    createEntity(createWebhook, adminAuthHeaders());
-
-    // Webhook callback with invalid endpoint URI
-    createWebhook.withName("invalidEndpoint").withEndPoint(URI.create("http://invalidUnknownHost"));
-    createEntity(createWebhook, adminAuthHeaders());
+    createWebhook("validWebhook", baseUri);
   }
 
+  /** Start webhook subscription for given entity and various event types */
+  public void startWebhookEntitySubscriptions(String entity) throws IOException, URISyntaxException {
+    String baseUri = "http://localhost:" + APP.getLocalPort() + "/api/v1/test/webhook";
+
+    // Create webhook with endpoint api/v1/test/webhook/entityCreated/<entity> to receive entityCreated events
+    String name = EventType.ENTITY_CREATED + ":" + entity;
+    String uri = baseUri + "/" + EventType.ENTITY_CREATED + "/" + entity;
+    List<EventFilter> filters =
+        List.of(new EventFilter().withEventType(EventType.ENTITY_CREATED).withEntities(List.of(entity)));
+    createWebhook(name, uri, filters);
+
+    // Create webhook with endpoint api/v1/test/webhook/entityUpdated/<entity> to receive entityUpdated events
+    name = EventType.ENTITY_UPDATED + ":" + entity;
+    uri = baseUri + "/" + EventType.ENTITY_UPDATED + "/" + entity;
+    filters = List.of(new EventFilter().withEventType(EventType.ENTITY_UPDATED).withEntities(List.of(entity)));
+    createWebhook(name, uri, filters);
+
+    // TODO entity deleted events
+  }
+
+  /**
+   * At the end of the test, ensure all events are delivered over web subscription comparing it with number of events
+   * stored in the system.
+   */
   public void validateWebhookEvents() throws HttpResponseException, InterruptedException {
     // Check the healthy callback server received all the change events
     ConcurrentLinkedQueue<ChangeEvent> callbackEvents = webhookCallbackResource.getEvents();
     List<ChangeEvent> actualEvents =
-        getChangeEvents(null, null, null, callbackEvents.peek().getDateTime(), adminAuthHeaders()).getData();
-    int iteration = 0;
-    while (callbackEvents.size() < actualEvents.size() && iteration < 100) {
-      Thread.sleep(10);
-      iteration++;
-    }
-    assertEquals(actualEvents.size(), callbackEvents.size());
+        getChangeEvents("*", "*", "*", callbackEvents.peek().getDateTime(), adminAuthHeaders()).getData();
+    waitAndCheckForEvents(callbackEvents, actualEvents, 10, 100);
+    assertWebhookStatusSuccess("validWebhook");
+  }
 
-    // TODO enable this test
-    // Check the slow callback server received all the change events
-    callbackEvents = webhookCallbackResource.getEventsSlowServer();
-    actualEvents = getChangeEvents(null, null, null, callbackEvents.peek().getDateTime(), adminAuthHeaders()).getData();
-    iteration = 0;
-    while (callbackEvents.size() < actualEvents.size() - 1 && iteration < 300) {
-      Thread.sleep(10);
-      iteration++;
-    }
-    assertEquals(actualEvents.size() - 1, callbackEvents.size());
-    webhookCallbackResource.clearAllEvents();
+  /** At the end of the test, ensure all events are delivered for the combination of entity and eventTypes */
+  public void validateWebhookEntityEvents(String entity) throws HttpResponseException, InterruptedException {
+    // Check the healthy callback server received all the change events
+    // For the entity all the webhooks registered for created events have the right number of events
+    List<ChangeEvent> callbackEvents =
+        webhookCallbackResource.getEntityCallbackEvents(EventType.ENTITY_CREATED, entity);
+    Date date = callbackEvents.get(0).getDateTime();
+    List<ChangeEvent> events = getChangeEvents(entity, null, null, date, adminAuthHeaders()).getData();
+    waitAndCheckForEvents(callbackEvents, events, 30, 100);
+
+    // For the entity all the webhooks registered for updated events have the right number of events
+    callbackEvents = webhookCallbackResource.getEntityCallbackEvents(EventType.ENTITY_UPDATED, entity);
+    // Use previous date if no update events
+    date = callbackEvents.size() > 0 ? callbackEvents.get(0).getDateTime() : date;
+    events = getChangeEvents(null, entity, null, date, adminAuthHeaders()).getData();
+    waitAndCheckForEvents(callbackEvents, events, 30, 100);
+
+    // TODO add delete event support
+  }
+
+  @Test
+  public void testDifferentTypesOfWebhooks() throws IOException, InterruptedException, URISyntaxException {
+    String baseUri = "http://localhost:" + APP.getLocalPort() + "/api/v1/test/webhook";
+
+    // Create multiple webhooks each with different type of response to callback
+    Webhook w1 = createWebhook("slowServer", baseUri + "/slowServer"); // Callback response 1 second slower
+    Webhook w2 = createWebhook("callbackTimeout", baseUri + "/timeout"); // Callback response 12 seconds slower
+    Webhook w3 = createWebhook("callbackResponse300", baseUri + "/300"); // 3xx response
+    Webhook w4 = createWebhook("callbackResponse400", baseUri + "/400"); // 4xx response
+    Webhook w5 = createWebhook("callbackResponse500", baseUri + "/500"); // 5xx response
+    Webhook w6 = createWebhook("invalidEndpoint", "http://invalidUnknownHost"); // Invalid URL
+
+    // Now check state of webhooks created
+    ConcurrentLinkedQueue<ChangeEvent> callbackEvents = webhookCallbackResource.getEventsSlowServer();
+    waitForFirstEvent(callbackEvents, 100, 100);
+    assertNotNull(callbackEvents.peek());
+
+    List<ChangeEvent> actualEvents =
+        getChangeEvents("*", "*", "*", callbackEvents.peek().getDateTime(), adminAuthHeaders()).getData();
+    waitAndCheckForEvents(callbackEvents, actualEvents, 30, 100);
+    webhookCallbackResource.clearEventsSlowServer();
 
     // Check all webhook status
-    Webhook webhook = getEntityByName("validWebhook", "", adminAuthHeaders());
-    assertEquals(Status.SUCCESS, webhook.getStatus());
+    assertWebhookStatusSuccess("slowServer");
+    assertWebhookStatus("callbackResponse300", Status.FAILED, 301, "Moved Permanently");
+    assertWebhookStatus("callbackResponse400", Status.AWAITING_RETRY, 400, "Bad Request");
+    assertWebhookStatus("callbackResponse500", Status.AWAITING_RETRY, 500, "Internal Server Error");
+    assertWebhookStatus("invalidEndpoint", Status.FAILED, null, "UnknownHostException");
+
+    // Delete all webhooks
+    deleteEntity(w1.getId(), adminAuthHeaders());
+    deleteEntity(w2.getId(), adminAuthHeaders());
+    deleteEntity(w3.getId(), adminAuthHeaders());
+    deleteEntity(w4.getId(), adminAuthHeaders());
+    deleteEntity(w5.getId(), adminAuthHeaders());
+    deleteEntity(w6.getId(), adminAuthHeaders());
+  }
+
+  public Webhook createWebhook(String name, String uri) throws URISyntaxException, IOException {
+    return createWebhook(name, uri, ALL_EVENTS_FILTER);
+  }
+
+  public Webhook createWebhook(String name, String uri, List<EventFilter> filters)
+      throws URISyntaxException, IOException {
+    CreateWebhook createWebhook =
+        createRequest(name, "", "", null).withEndpoint(URI.create(uri)).withEventFilters(filters).withEnabled(true);
+    return createAndCheckEntity(createWebhook, adminAuthHeaders());
+  }
+
+  public void assertWebhookStatusSuccess(String name) throws HttpResponseException {
+    Webhook webhook = getEntityByName(name, "", adminAuthHeaders());
+    assertEquals(Status.STARTED, webhook.getStatus());
     assertNull(webhook.getFailureDetails());
+  }
 
-    webhook = getEntityByName("slowServer", "", adminAuthHeaders());
-    assertEquals(Status.SUCCESS, webhook.getStatus());
-    assertNull(webhook.getFailureDetails());
+  public void assertWebhookStatus(String name, Status status, Integer statusCode, String failedReason)
+      throws HttpResponseException {
+    Webhook webhook = getEntityByName(name, "", adminAuthHeaders());
+    assertEquals(status, webhook.getStatus());
+    assertEquals(statusCode, webhook.getFailureDetails().getLastFailedStatusCode());
+    assertEquals(failedReason, webhook.getFailureDetails().getLastFailedReason());
+  }
 
-    webhook = getEntityByName("callbackResponse300", "", adminAuthHeaders());
-    assertEquals(Status.ERROR, webhook.getStatus());
-    assertEquals(301, webhook.getFailureDetails().getLastFailedStatusCode());
-    assertEquals("Moved Permanently", webhook.getFailureDetails().getLastFailedReason());
+  public void waitAndCheckForEvents(
+      Collection<ChangeEvent> expected, Collection<ChangeEvent> received, int iteration, long sleepMillis)
+      throws InterruptedException {
+    int i = 0;
+    while (expected.size() < received.size() && i < iteration) {
+      Thread.sleep(sleepMillis);
+      i++;
+    }
+    if (expected.size() != received.size()) {
+      expected.forEach(
+          c1 ->
+              LOG.info(
+                  "expected {}:{}:{}:{}",
+                  c1.getDateTime().getTime(),
+                  c1.getEventType(),
+                  c1.getEntityType(),
+                  c1.getEntityId()));
+      received.forEach(
+          c1 ->
+              LOG.info(
+                  "received {}:{}:{}:{}",
+                  c1.getDateTime().getTime(),
+                  c1.getEventType(),
+                  c1.getEntityType(),
+                  c1.getEntityId()));
+    }
+    assertEquals(expected.size(), received.size());
+  }
 
-    webhook = getEntityByName("callbackResponse400", "", adminAuthHeaders());
-    assertEquals(Status.AWAITING_RETRY, webhook.getStatus());
-    assertEquals(400, webhook.getFailureDetails().getLastFailedStatusCode());
-    assertEquals("Bad Request", webhook.getFailureDetails().getLastFailedReason());
-
-    webhook = getEntityByName("callbackResponse500", "", adminAuthHeaders());
-    assertEquals(Status.AWAITING_RETRY, webhook.getStatus());
-    assertEquals(500, webhook.getFailureDetails().getLastFailedStatusCode());
-    assertEquals("Internal Server Error", webhook.getFailureDetails().getLastFailedReason());
-
-    webhook = getEntityByName("invalidEndpoint", "", adminAuthHeaders());
-    assertEquals(Status.ERROR, webhook.getStatus());
-    assertNull(webhook.getFailureDetails().getLastFailedStatusCode());
-    assertEquals("UnknownHostException", webhook.getFailureDetails().getLastFailedReason());
+  public void waitForFirstEvent(Collection c1, int iteration, long sleepMillis) throws InterruptedException {
+    int i = 0;
+    while (c1.size() > 0 && i < iteration) {
+      Thread.sleep(sleepMillis);
+      i++;
+    }
   }
 }

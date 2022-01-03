@@ -51,7 +51,7 @@ import org.openmetadata.catalog.entity.services.PipelineService;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.PipelineServiceRepository;
 import org.openmetadata.catalog.resources.Collection;
-import org.openmetadata.catalog.security.CatalogAuthorizer;
+import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.EntityReference;
@@ -67,14 +67,14 @@ import org.openmetadata.catalog.util.ResultList;
 public class PipelineServiceResource {
   public static final String COLLECTION_PATH = "v1/services/pipelineServices/";
   private final PipelineServiceRepository dao;
-  private final CatalogAuthorizer authorizer;
+  private final Authorizer authorizer;
 
   public static EntityReference addHref(UriInfo uriInfo, EntityReference service) {
     return service.withHref(RestUtil.getHref(uriInfo, "v1/services/pipelineServices/", service.getId()));
   }
 
   @Inject
-  public PipelineServiceResource(CollectionDAO dao, CatalogAuthorizer authorizer) {
+  public PipelineServiceResource(CollectionDAO dao, Authorizer authorizer) {
     Objects.requireNonNull(dao, "PipelineServiceRepository must not be null");
     this.dao = new PipelineServiceRepository(dao);
     this.authorizer = authorizer;
@@ -280,10 +280,15 @@ public class PipelineServiceResource {
   public Response delete(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
+      @Parameter(description = "Recursively delete this entity and it's children. (Default `false`)")
+          @DefaultValue("false")
+          @QueryParam("recursive")
+          boolean recursive,
       @Parameter(description = "Id of the pipeline service", schema = @Schema(type = "string")) @PathParam("id")
-          String id) {
+          String id)
+      throws IOException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    dao.delete(UUID.fromString(id));
+    dao.delete(UUID.fromString(id), recursive);
     return Response.ok().build();
   }
 

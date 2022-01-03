@@ -11,19 +11,23 @@
  *  limitations under the License.
  */
 
-import PropTypes from 'prop-types';
-import React from 'react';
+package org.openmetadata.catalog.security;
 
-const StepIcon = ({ stepNumber }) => {
-  return (
-    <span className="step-icon" data-testid="step-icon">
-      {stepNumber}
-    </span>
-  );
-};
+import org.jdbi.v3.core.Jdbi;
+import org.openmetadata.catalog.type.EntityReference;
 
-StepIcon.propTypes = {
-  stepNumber: PropTypes.number,
-};
+public interface Authorizer {
 
-export default StepIcon;
+  /** Initialize the authorizer */
+  void init(AuthorizerConfiguration config, Jdbi jdbi);
+
+  /**
+   * Check if the authenticated user has given permission on the target entity identified by the given resourceType and
+   * resourceName
+   */
+  boolean hasPermissions(AuthenticationContext ctx, EntityReference entityReference);
+
+  boolean isAdmin(AuthenticationContext ctx);
+
+  boolean isBot(AuthenticationContext ctx);
+}

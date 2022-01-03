@@ -49,5 +49,15 @@ jobs:
         with:
           java-version: 11
 
+      - name: Build PR with Maven
+        if: ${{ github.event_name == 'pull_request' }}
+        run: |
+          mvn -Dsonar.login=${{ secrets.SONAR_TOKEN }} \
+              -Dsonar.pullrequest.key=${{ github.event.pull_request.number }} \
+              -Dsonar.pullrequest.branch=${{ github.head_ref }} \
+              -Dsonar.pullrequest.base=origin/main \
+              -Dsonar.pullrequest.provider=github clean install
+
       - name: Build with Maven
-        run: mvn clean package
+        if: ${{ github.event_name == 'push' }}
+        run: mvn -Dsonar.login=${{ secrets.SONAR_TOKEN }} clean install

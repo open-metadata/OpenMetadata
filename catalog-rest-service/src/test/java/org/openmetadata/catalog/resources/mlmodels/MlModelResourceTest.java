@@ -120,8 +120,8 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
   }
 
   @BeforeAll
-  public static void setup(TestInfo test) throws IOException, URISyntaxException {
-    EntityResourceTest.setup(test);
+  public void setup(TestInfo test) throws IOException, URISyntaxException {
+    super.setup(test);
 
     CreateDashboardService createService =
         new CreateDashboardService()
@@ -440,6 +440,11 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
         .withDisplayName(displayName)
         .withOwner(owner)
         .withDashboard(DASHBOARD_REFERENCE);
+  }
+
+  @Override
+  public EntityReference getContainer(Object createRequest) throws URISyntaxException {
+    return null; // No container entity
   }
 
   @Override

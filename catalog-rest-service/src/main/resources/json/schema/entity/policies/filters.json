@@ -11,23 +11,11 @@
       "description": "Regex that matches the entity.",
       "type": "string"
     },
-    "filters": {
-      "description": "The set of filters that are used to match on entities. A logical AND operation is applied across all filters.",
+    "tags": {
+      "description": "Set of tags to match on (OR among all tags).",
       "type": "array",
-      "minItems": 1,
       "items": {
-        "anyOf": [
-          {
-            "$ref": "#/definitions/prefix"
-          },
-          {
-            "$ref": "#/definitions/regex"
-          },
-          {
-            "description": "Entity tags to match on.",
-            "$ref": "../../type/tagLabel.json"
-          }
-        ]
+        "$ref": "../tags/tagCategory.json#/definitions/tagName"
       }
     }
   }

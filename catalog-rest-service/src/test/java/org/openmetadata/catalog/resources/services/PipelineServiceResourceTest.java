@@ -66,8 +66,9 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
   }
 
   @BeforeAll
-  public static void setup(TestInfo test) throws URISyntaxException, IOException {
-    EntityResourceTest.setup(test);
+  @Override
+  public void setup(TestInfo test) throws URISyntaxException, IOException {
+    super.setup(test);
     PIPELINE_SERVICE_URL = new URI("http://localhost:8080");
   }
 
@@ -268,6 +269,11 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
   @Override
   public Object createRequest(String name, String description, String displayName, EntityReference owner) {
     return create(name).withDescription(description).withIngestionSchedule(null);
+  }
+
+  @Override
+  public EntityReference getContainer(Object createRequest) throws URISyntaxException {
+    return null; // No container entity
   }
 
   @Override

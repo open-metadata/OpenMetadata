@@ -71,18 +71,15 @@ import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.data.CreateDatabase;
 import org.openmetadata.catalog.api.data.CreateLocation;
 import org.openmetadata.catalog.api.data.CreateTable;
-import org.openmetadata.catalog.api.services.CreateStorageService;
 import org.openmetadata.catalog.entity.data.Database;
 import org.openmetadata.catalog.entity.data.Location;
 import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.entity.services.DatabaseService;
-import org.openmetadata.catalog.entity.services.StorageService;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.jdbi3.TableRepository.TableEntityInterface;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.databases.TableResource.TableList;
 import org.openmetadata.catalog.resources.services.DatabaseServiceResourceTest;
-import org.openmetadata.catalog.resources.services.StorageServiceResourceTest;
 import org.openmetadata.catalog.resources.tags.TagResourceTest;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.Column;
@@ -96,7 +93,6 @@ import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.type.JoinedWith;
 import org.openmetadata.catalog.type.SQLQuery;
-import org.openmetadata.catalog.type.StorageServiceType;
 import org.openmetadata.catalog.type.TableConstraint;
 import org.openmetadata.catalog.type.TableConstraint.ConstraintType;
 import org.openmetadata.catalog.type.TableData;
@@ -114,15 +110,19 @@ import org.openmetadata.catalog.util.TestUtils;
 public class TableResourceTest extends EntityResourceTest<Table> {
   public static Database DATABASE;
 
-  public static List<Column> COLUMNS;
+  public static List<Column> COLUMNS =
+      Arrays.asList(
+          getColumn("c1", BIGINT, USER_ADDRESS_TAG_LABEL),
+          getColumn("c2", ColumnDataType.VARCHAR, USER_ADDRESS_TAG_LABEL).withDataLength(10),
+          getColumn("c3", BIGINT, USER_BANK_ACCOUNT_TAG_LABEL));
 
   public TableResourceTest() {
     super(Entity.TABLE, Table.class, TableList.class, "tables", TableResource.FIELDS, true, true, true);
   }
 
   @BeforeAll
-  public static void setup(TestInfo test) throws IOException, URISyntaxException {
-    EntityResourceTest.setup(test);
+  public void setup(TestInfo test) throws IOException, URISyntaxException {
+    super.setup(test);
     DatabaseResourceTest databaseResourceTest = new DatabaseResourceTest();
     CreateDatabase create = databaseResourceTest.create(test).withService(SNOWFLAKE_REFERENCE);
     DATABASE = databaseResourceTest.createAndCheckEntity(create, adminAuthHeaders());
@@ -194,7 +194,7 @@ public class TableResourceTest extends EntityResourceTest<Table> {
     // check the FQN
     Database db = new DatabaseResourceTest().getEntity(table.getDatabase().getId(), null, adminAuthHeaders());
     String expectedFQN = db.getFullyQualifiedName() + "." + table.getName();
-    assertEquals(expectedFQN, expectedFQN);
+    assertEquals(expectedFQN, table.getFullyQualifiedName());
   }
 
   private static Column getColumn(String name, ColumnDataType columnDataType, TagLabel tag) {
@@ -278,7 +278,8 @@ public class TableResourceTest extends EntityResourceTest<Table> {
 
     // Update the columns with PUT operation and validate update
     // c1 array<int>                                   --> c1 array<chart
-    // c2 struct<a: int, b:string, c: struct<int:d>>   --> c2 struct<b:char, c:struct<d:int, e:char>, f:char>
+    // c2 struct<a: int, b:string, c: struct<int:d>>   --> c2 struct<b:char, c:struct<d:int,
+    // e:char>, f:char>
     //   c2.a int                                      --> DELETED
     //   c2.b char                                     --> SAME
     //   c2.c struct<int: d>>
@@ -287,7 +288,8 @@ public class TableResourceTest extends EntityResourceTest<Table> {
         create2.withName("put_complexColumnType"), Status.OK, adminAuthHeaders(), MAJOR_UPDATE, change);
 
     //
-    // Patch operations on table1 created by POST operation. Columns can't be added or deleted. Only tags and
+    // Patch operations on table1 created by POST operation. Columns can't be added or deleted. Only
+    // tags and
     // description can be changed
     //
     String tableJson = JsonUtils.pojoToJson(table1);
@@ -533,7 +535,8 @@ public class TableResourceTest extends EntityResourceTest<Table> {
                         new JoinedWith().withFullyQualifiedName(t3c3).withJoinCount(30))));
 
     for (int i = 1; i <= 30; i++) {
-      // Report joins starting from today back to 30 days. After every report, check the cumulative join count
+      // Report joins starting from today back to 30 days. After every report, check the cumulative
+      // join count
       TableJoins table1Joins =
           new TableJoins().withDayCount(1).withStartDate(RestUtil.today(-(i - 1))).withColumnJoins(reportedJoins);
       Table putResponse = putJoins(table1.getId(), table1Joins, adminAuthHeaders());
@@ -882,7 +885,8 @@ public class TableResourceTest extends EntityResourceTest<Table> {
 
     //
     // Update the data model and validate the response.
-    // Make sure table and column description is carried forward if the original entity had them as null
+    // Make sure table and column description is carried forward if the original entity had them as
+    // null
     //
     columns.get(0).setDescription("updatedDescription");
     columns.get(1).setDescription("updatedDescription");
@@ -1146,12 +1150,8 @@ public class TableResourceTest extends EntityResourceTest<Table> {
     Table table = createAndCheckEntity(create(test), adminAuthHeaders());
 
     // Add location to the table
-    CreateStorageService createService =
-        new CreateStorageService().withName("s3").withServiceType(StorageServiceType.S3);
-    StorageService service = new StorageServiceResourceTest().createEntity(createService, adminAuthHeaders());
-    EntityReference serviceRef =
-        new EntityReference().withName(service.getName()).withId(service.getId()).withType(Entity.STORAGE_SERVICE);
-    CreateLocation create = new CreateLocation().withName(getLocationName(test)).withService(serviceRef);
+    CreateLocation create =
+        new CreateLocation().withName(getLocationName(test)).withService(AWS_STORAGE_SERVICE_REFERENCE);
     Location location = createLocation(create, adminAuthHeaders());
     addAndCheckLocation(table, location.getId(), OK, userAuthHeaders());
     // Delete location and make sure it is deleted
@@ -1373,6 +1373,11 @@ public class TableResourceTest extends EntityResourceTest<Table> {
   @Override
   public Object createRequest(String name, String description, String displayName, EntityReference owner) {
     return create(name).withDescription(description).withOwner(owner);
+  }
+
+  @Override
+  public EntityReference getContainer(Object createRequest) throws URISyntaxException {
+    return Entity.getEntityReference(DATABASE); // TODO clean this up
   }
 
   @Override

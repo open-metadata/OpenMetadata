@@ -38,8 +38,6 @@ import org.slf4j.LoggerFactory;
 public class CatalogGenericExceptionMapper implements ExceptionMapper<Throwable> {
   private static final Logger LOG = LoggerFactory.getLogger(CatalogGenericExceptionMapper.class);
 
-  public CatalogGenericExceptionMapper() {}
-
   @Override
   public Response toResponse(Throwable ex) {
     if (ex instanceof ProcessingException || ex instanceof IllegalArgumentException) {

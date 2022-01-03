@@ -40,7 +40,6 @@ import org.openmetadata.catalog.jdbi3.IngestionRepository;
 import org.openmetadata.catalog.operations.workflows.ConnectorConfig;
 import org.openmetadata.catalog.operations.workflows.Ingestion;
 import org.openmetadata.catalog.resources.EntityOperationsResourceTest;
-import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.FieldChange;
@@ -63,8 +62,8 @@ public class IngestionResourceTest extends EntityOperationsResourceTest<Ingestio
   }
 
   @BeforeAll
-  public static void setup(TestInfo test) throws IOException, URISyntaxException {
-    EntityResourceTest.setup(test);
+  public void setup(TestInfo test) throws IOException, URISyntaxException {
+    super.setup(test);
     INGESTION_CONFIG =
         new ConnectorConfig()
             .withEnableDataProfiler(true)
@@ -76,6 +75,12 @@ public class IngestionResourceTest extends EntityOperationsResourceTest<Ingestio
   @Override
   public Object createRequest(String name, String description, String displayName, EntityReference owner) {
     return create(name).withDescription(description).withDisplayName(displayName).withOwner(owner);
+  }
+
+  @Override
+  public EntityReference getContainer(Object createRequest) throws URISyntaxException {
+    CreateIngestion createIngestion = (CreateIngestion) createRequest;
+    return createIngestion.getService();
   }
 
   @Override

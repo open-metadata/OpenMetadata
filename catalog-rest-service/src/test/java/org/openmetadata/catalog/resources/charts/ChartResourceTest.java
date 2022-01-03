@@ -57,8 +57,8 @@ public class ChartResourceTest extends EntityResourceTest<Chart> {
   }
 
   @BeforeAll
-  public static void setup(TestInfo test) throws IOException, URISyntaxException {
-    EntityResourceTest.setup(test);
+  public void setup(TestInfo test) throws IOException, URISyntaxException {
+    super.setup(test);
 
     CreateDashboardService createService =
         new CreateDashboardService()
@@ -179,6 +179,12 @@ public class ChartResourceTest extends EntityResourceTest<Chart> {
   @Override
   public Object createRequest(String name, String description, String displayName, EntityReference owner) {
     return create(name).withDescription(description).withDisplayName(displayName).withOwner(owner);
+  }
+
+  @Override
+  public EntityReference getContainer(Object createRequest) throws URISyntaxException {
+    CreateChart createChart = (CreateChart) createRequest;
+    return createChart.getService();
   }
 
   @Override

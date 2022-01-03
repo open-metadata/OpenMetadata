@@ -28,7 +28,7 @@ public final class SecurityUtil {
 
   private SecurityUtil() {}
 
-  public static void checkAdminRole(CatalogAuthorizer authorizer, SecurityContext securityContext) {
+  public static void checkAdminRole(Authorizer authorizer, SecurityContext securityContext) {
     Principal principal = securityContext.getUserPrincipal();
     AuthenticationContext authenticationCtx = SecurityUtil.getAuthenticationContext(principal);
     if (!authorizer.isAdmin(authenticationCtx)) {
@@ -36,7 +36,7 @@ public final class SecurityUtil {
     }
   }
 
-  public static void checkAdminOrBotRole(CatalogAuthorizer authorizer, SecurityContext securityContext) {
+  public static void checkAdminOrBotRole(Authorizer authorizer, SecurityContext securityContext) {
     Principal principal = securityContext.getUserPrincipal();
     AuthenticationContext authenticationCtx = SecurityUtil.getAuthenticationContext(principal);
     if (!authorizer.isAdmin(authenticationCtx) && !authorizer.isBot(authenticationCtx)) {
@@ -45,7 +45,7 @@ public final class SecurityUtil {
   }
 
   public static void checkAdminRoleOrPermissions(
-      CatalogAuthorizer authorizer, SecurityContext securityContext, EntityReference entityReference) {
+      Authorizer authorizer, SecurityContext securityContext, EntityReference entityReference) {
     Principal principal = securityContext.getUserPrincipal();
     AuthenticationContext authenticationCtx = SecurityUtil.getAuthenticationContext(principal);
     if (!authorizer.isAdmin(authenticationCtx)

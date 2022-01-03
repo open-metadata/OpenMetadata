@@ -50,7 +50,7 @@ import org.openmetadata.catalog.api.events.CreateWebhook;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.WebhookRepository;
 import org.openmetadata.catalog.resources.Collection;
-import org.openmetadata.catalog.security.CatalogAuthorizer;
+import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.ChangeEvent;
 import org.openmetadata.catalog.type.EntityHistory;
@@ -69,7 +69,7 @@ import org.openmetadata.catalog.util.ResultList;
 public class WebhookResource {
   public static final String COLLECTION_PATH = "v1/webhook/";
   private final WebhookRepository dao;
-  private final CatalogAuthorizer authorizer;
+  private final Authorizer authorizer;
 
   public static class WebhookList extends ResultList<Webhook> {
 
@@ -83,7 +83,7 @@ public class WebhookResource {
   }
 
   @Inject
-  public WebhookResource(CollectionDAO dao, CatalogAuthorizer authorizer) {
+  public WebhookResource(CollectionDAO dao, Authorizer authorizer) {
     Objects.requireNonNull(dao, "ChangeEventRepository must not be null");
     this.dao = new WebhookRepository(dao);
     this.authorizer = authorizer;
@@ -234,7 +234,7 @@ public class WebhookResource {
       throws IOException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Webhook webhook = getWebhook(securityContext, create);
-    webhook.setStatus(webhook.getEnabled() ? Status.SUCCESS : Status.NOT_STARTED);
+    webhook.setStatus(webhook.getEnabled() ? Status.STARTED : Status.NOT_STARTED);
     webhook = dao.create(uriInfo, webhook);
     dao.addWebhookPublisher(webhook);
     return Response.created(webhook.getHref()).entity(webhook).build();
@@ -259,7 +259,7 @@ public class WebhookResource {
     //    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     //    Table table = getTable(securityContext, create);
     Webhook webhook = getWebhook(securityContext, create);
-    webhook.setStatus(webhook.getEnabled() ? Status.SUCCESS : Status.NOT_STARTED);
+    webhook.setStatus(webhook.getEnabled() ? Status.STARTED : Status.NOT_STARTED);
     PutResponse<Webhook> putResponse = dao.createOrUpdate(uriInfo, webhook);
     dao.updateWebhookPublisher(webhook);
     return putResponse.toResponse();
@@ -282,8 +282,9 @@ public class WebhookResource {
   public Response deleteWebhook(
       @Context UriInfo uriInfo,
       @Parameter(description = "webhook Id", schema = @Schema(type = "string")) @PathParam("id") String id)
-      throws IOException, GeneralSecurityException, ParseException {
+      throws IOException, GeneralSecurityException, ParseException, InterruptedException {
     dao.delete(id);
+    dao.deleteWebhookPublisher(UUID.fromString(id));
     return Response.ok().build();
   }
 
@@ -292,7 +293,7 @@ public class WebhookResource {
         .withDescription(create.getDescription())
         .withName(create.getName())
         .withId(UUID.randomUUID())
-        .withEndPoint(create.getEndPoint())
+        .withEndpoint(create.getEndpoint())
         .withEventFilters(create.getEventFilters())
         .withBatchSize(create.getBatchSize())
         .withTimeout(create.getTimeout())

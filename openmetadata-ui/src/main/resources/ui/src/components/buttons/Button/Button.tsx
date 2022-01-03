@@ -70,7 +70,7 @@ Button.propTypes = {
   children: PropTypes.node,
   className: PropTypes.string,
   disabled: PropTypes.bool,
-  tag: PropTypes.string.isRequired,
+  tag: PropTypes.string,
   size: PropTypes.oneOf(['large', 'regular', 'small', 'x-small', 'custom']),
   theme: PropTypes.oneOf(['default', 'primary']),
   type: PropTypes.oneOf(['button', 'submit', 'reset']),

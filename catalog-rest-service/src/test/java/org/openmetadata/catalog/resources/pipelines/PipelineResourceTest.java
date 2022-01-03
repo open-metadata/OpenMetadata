@@ -65,8 +65,8 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline> {
   }
 
   @BeforeAll
-  public static void setup(TestInfo test) throws IOException, URISyntaxException {
-    EntityResourceTest.setup(test);
+  public void setup(TestInfo test) throws IOException, URISyntaxException {
+    super.setup(test);
     TASKS = new ArrayList<>();
     for (int i = 0; i < 3; i++) {
       Task task =
@@ -82,6 +82,12 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline> {
   @Override
   public Object createRequest(String name, String description, String displayName, EntityReference owner) {
     return create(name).withDescription(description).withDisplayName(displayName).withOwner(owner).withTasks(TASKS);
+  }
+
+  @Override
+  public EntityReference getContainer(Object createRequest) throws URISyntaxException {
+    CreatePipeline createPipeline = (CreatePipeline) createRequest;
+    return createPipeline.getService();
   }
 
   @Override

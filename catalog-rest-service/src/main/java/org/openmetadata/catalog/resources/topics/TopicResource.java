@@ -59,7 +59,7 @@ import org.openmetadata.catalog.entity.data.Topic;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.TopicRepository;
 import org.openmetadata.catalog.resources.Collection;
-import org.openmetadata.catalog.security.CatalogAuthorizer;
+import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
@@ -76,7 +76,7 @@ import org.openmetadata.catalog.util.ResultList;
 public class TopicResource {
   public static final String COLLECTION_PATH = "v1/topics/";
   private final TopicRepository dao;
-  private final CatalogAuthorizer authorizer;
+  private final Authorizer authorizer;
 
   public static ResultList<Topic> addHref(UriInfo uriInfo, ResultList<Topic> topics) {
     Optional.ofNullable(topics.getData()).orElse(Collections.emptyList()).forEach(i -> addHref(uriInfo, i));
@@ -91,7 +91,7 @@ public class TopicResource {
   }
 
   @Inject
-  public TopicResource(CollectionDAO dao, CatalogAuthorizer authorizer) {
+  public TopicResource(CollectionDAO dao, Authorizer authorizer) {
     this.dao = new TopicRepository(dao);
     this.authorizer = authorizer;
   }
@@ -282,7 +282,9 @@ public class TopicResource {
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTopic create)
       throws IOException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
+    System.out.println("XXX topic retention time" + create.getRetentionTime());
     Topic topic = getTopic(securityContext, create);
+    System.out.println("XXX topic retention time" + topic.getRetentionTime());
 
     topic = addHref(uriInfo, dao.create(uriInfo, topic));
     return Response.created(topic.getHref()).entity(topic).build();
@@ -334,7 +336,9 @@ public class TopicResource {
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTopic create)
       throws IOException, ParseException {
 
+    System.out.println("XXX topic retention time" + create.getRetentionTime());
     Topic topic = getTopic(securityContext, create);
+    System.out.println("XXX topic retention time" + topic.getRetentionTime());
     PutResponse<Topic> response = dao.createOrUpdate(uriInfo, topic);
     addHref(uriInfo, response.getEntity());
     return response.toResponse();
@@ -390,8 +394,8 @@ public class TopicResource {
         @ApiResponse(responseCode = "200", description = "OK"),
         @ApiResponse(responseCode = "404", description = "Topic for instance {id} is not found")
       })
-  public Response delete(@Context UriInfo uriInfo, @PathParam("id") String id) {
-    dao.delete(UUID.fromString(id));
+  public Response delete(@Context UriInfo uriInfo, @PathParam("id") String id) throws IOException {
+    dao.delete(UUID.fromString(id), false);
     return Response.ok().build();
   }
 

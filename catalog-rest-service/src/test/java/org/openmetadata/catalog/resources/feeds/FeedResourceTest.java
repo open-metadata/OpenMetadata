@@ -63,8 +63,8 @@ public class FeedResourceTest extends CatalogApplicationTest {
 
   @BeforeAll
   public static void setup(TestInfo test) throws IOException, URISyntaxException {
-    TableResourceTest.setup(test); // Initialize TableResourceTest for using helper methods
     TableResourceTest tableResourceTest = new TableResourceTest();
+    tableResourceTest.setup(test); // Initialize TableResourceTest for using helper methods
     CreateTable createTable = tableResourceTest.create(test);
     TABLE = tableResourceTest.createAndCheckEntity(createTable, adminAuthHeaders());
     COLUMNS = Collections.singletonList(new Column().withName("column1").withDataType(ColumnDataType.BIGINT));

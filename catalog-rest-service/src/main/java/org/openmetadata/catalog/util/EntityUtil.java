@@ -109,7 +109,9 @@ public final class EntityUtil {
   public static final BiPredicate<MlFeature, MlFeature> mlFeatureMatch = MlFeature::equals;
   public static final BiPredicate<MlHyperParameter, MlHyperParameter> mlHyperParameterMatch = MlHyperParameter::equals;
   public static final BiPredicate<FailureDetails, FailureDetails> failureDetailsMatch =
-      (failureDetails1, failureDetails2) -> failureDetails1.getLastFailedAt().equals(failureDetails2.getLastFailedAt());
+      (failureDetails1, failureDetails2) ->
+          Objects.equals(failureDetails2.getLastFailedAt(), failureDetails1.getLastFailedAt())
+              && Objects.equals(failureDetails2.getLastSuccessfulAt(), failureDetails1.getLastSuccessfulAt());
 
   private EntityUtil() {}
 
@@ -193,7 +195,7 @@ public final class EntityUtil {
     if (owner.getType().equalsIgnoreCase("user")) {
       User ownerInstance = userDAO.findEntityById(id);
       owner.setName(ownerInstance.getName());
-      if (Optional.ofNullable(ownerInstance.getDeactivated()).orElse(false)) {
+      if (Optional.ofNullable(ownerInstance.getDeleted()).orElse(false)) {
         throw new IllegalArgumentException(CatalogExceptionMessage.deactivatedUser(id));
       }
     } else if (owner.getType().equalsIgnoreCase("team")) {
@@ -358,7 +360,7 @@ public final class EntityUtil {
       String followerEntity)
       throws IOException {
     User user = userDAO.findEntityById(followerId);
-    if (Optional.ofNullable(user.getDeactivated()).orElse(false)) {
+    if (Optional.ofNullable(user.getDeleted()).orElse(false)) {
       throw new IllegalArgumentException(CatalogExceptionMessage.deactivatedUser(followerId));
     }
     return dao.insert(

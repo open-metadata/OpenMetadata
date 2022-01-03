@@ -44,7 +44,7 @@ import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.LineageRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.resources.teams.UserResource;
-import org.openmetadata.catalog.security.CatalogAuthorizer;
+import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.type.EntityLineage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -59,7 +59,7 @@ public class LineageResource {
   private final LineageRepository dao;
 
   @Inject
-  public LineageResource(CollectionDAO dao, CatalogAuthorizer authorizer) {
+  public LineageResource(CollectionDAO dao, Authorizer authorizer) {
     Objects.requireNonNull(dao, "LineageRepository must not be null");
     this.dao = new LineageRepository(dao);
   }

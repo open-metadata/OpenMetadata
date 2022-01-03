@@ -17,24 +17,19 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.net.URI;
 import java.util.Date;
-import java.util.List;
 import java.util.UUID;
-import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.services.DatabaseService;
 import org.openmetadata.catalog.resources.services.database.DatabaseServiceResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.JdbcInfo;
-import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
-import org.openmetadata.catalog.util.JsonUtils;
 
 public class DatabaseServiceRepository extends EntityRepository<DatabaseService> {
   public static final String COLLECTION_PATH = "v1/services/databaseServices";
-  private final CollectionDAO dao;
 
   public DatabaseServiceRepository(CollectionDAO dao) {
     super(
@@ -44,14 +39,10 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
         dao.dbServiceDAO(),
         dao,
         Fields.EMPTY_FIELDS,
-        Fields.EMPTY_FIELDS);
-    this.dao = dao;
-  }
-
-  @Transaction
-  public void delete(UUID id) {
-    dao.dbServiceDAO().delete(id);
-    dao.relationshipDAO().deleteAll(id.toString());
+        Fields.EMPTY_FIELDS,
+        false,
+        false,
+        false);
   }
 
   @Override
@@ -60,7 +51,9 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
   }
 
   @Override
-  public void restorePatchAttributes(DatabaseService original, DatabaseService updated) {}
+  public void restorePatchAttributes(DatabaseService original, DatabaseService updated) {
+    /* Nothing to do */
+  }
 
   @Override
   public EntityInterface<DatabaseService> getEntityInterface(DatabaseService entity) {
@@ -74,15 +67,14 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
 
   @Override
   public void storeEntity(DatabaseService service, boolean update) throws IOException {
-    if (update) {
-      dao.dbServiceDAO().update(service.getId(), JsonUtils.pojoToJson(service));
-    } else {
-      dao.dbServiceDAO().insert(service);
-    }
+    service.withHref(null);
+    store(service.getId(), service, update);
   }
 
   @Override
-  public void storeRelationships(DatabaseService entity) {}
+  public void storeRelationships(DatabaseService entity) {
+    /* Nothing to do */
+  }
 
   @Override
   public EntityUpdater getUpdater(DatabaseService original, DatabaseService updated, boolean patchOperation) {
@@ -112,18 +104,8 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
     }
 
     @Override
-    public EntityReference getOwner() {
-      return null;
-    }
-
-    @Override
     public String getFullyQualifiedName() {
       return entity.getName();
-    }
-
-    @Override
-    public List<TagLabel> getTags() {
-      return null;
     }
 
     @Override
@@ -144,11 +126,6 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
     @Override
     public URI getHref() {
       return entity.getHref();
-    }
-
-    @Override
-    public List<EntityReference> getFollowers() {
-      throw new UnsupportedOperationException("Database service does not support followers");
     }
 
     @Override
@@ -199,15 +176,14 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
     }
 
     @Override
-    public void setOwner(EntityReference owner) {}
+    public void setDeleted(boolean flag) {
+      entity.setDeleted(flag);
+    }
 
     @Override
     public DatabaseService withHref(URI href) {
       return entity.withHref(href);
     }
-
-    @Override
-    public void setTags(List<TagLabel> tags) {}
   }
 
   public class DatabaseServiceUpdater extends EntityUpdater {

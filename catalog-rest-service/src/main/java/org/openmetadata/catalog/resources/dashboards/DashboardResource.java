@@ -60,7 +60,7 @@ import org.openmetadata.catalog.entity.data.Dashboard;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.DashboardRepository;
 import org.openmetadata.catalog.resources.Collection;
-import org.openmetadata.catalog.security.CatalogAuthorizer;
+import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
@@ -77,7 +77,7 @@ import org.openmetadata.catalog.util.ResultList;
 public class DashboardResource {
   public static final String COLLECTION_PATH = "v1/dashboards/";
   private final DashboardRepository dao;
-  private final CatalogAuthorizer authorizer;
+  private final Authorizer authorizer;
 
   public static ResultList<Dashboard> addHref(UriInfo uriInfo, ResultList<Dashboard> dashboards) {
     Optional.ofNullable(dashboards.getData()).orElse(Collections.emptyList()).forEach(i -> addHref(uriInfo, i));
@@ -93,7 +93,7 @@ public class DashboardResource {
   }
 
   @Inject
-  public DashboardResource(CollectionDAO dao, CatalogAuthorizer authorizer) {
+  public DashboardResource(CollectionDAO dao, Authorizer authorizer) {
     Objects.requireNonNull(dao, "DashboardRepository must not be null");
     this.dao = new DashboardRepository(dao);
     this.authorizer = authorizer;
@@ -395,8 +395,8 @@ public class DashboardResource {
         @ApiResponse(responseCode = "200", description = "OK"),
         @ApiResponse(responseCode = "404", description = "Dashboard for instance {id} is not found")
       })
-  public Response delete(@Context UriInfo uriInfo, @PathParam("id") String id) {
-    dao.delete(UUID.fromString(id));
+  public Response delete(@Context UriInfo uriInfo, @PathParam("id") String id) throws IOException {
+    dao.delete(UUID.fromString(id), false);
     return Response.ok().build();
   }
 

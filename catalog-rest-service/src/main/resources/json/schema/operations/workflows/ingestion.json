@@ -274,6 +274,11 @@
     "changeDescription": {
       "description" : "Change that led to this version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "deleted" : {
+      "description": "When `true` indicates the entity has been soft deleted.",
+      "type" : "boolean",
+      "default": false
     }
   },
   "required": ["name", "service", "connectorConfig", "startDate"],

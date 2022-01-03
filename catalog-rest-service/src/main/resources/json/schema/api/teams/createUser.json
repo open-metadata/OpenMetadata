@@ -45,6 +45,14 @@
         "$ref": "../../type/basic.json#/definitions/uuid"
       },
       "default" : null
+    },
+    "roles" : {
+      "description": "Roles that the user has been assigned",
+      "type": "array",
+      "items" :{
+        "$ref": "../../type/basic.json#/definitions/uuid"
+      },
+      "default" : null
     }
   },
   "required": ["name", "email"],

@@ -40,7 +40,6 @@ from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.source.sql_source import SQLConnectionConfig
-from metadata.utils.helpers import snake_to_camel
 
 logger: logging.Logger = logging.getLogger(__name__)
 
@@ -239,7 +238,7 @@ class SampleEntitySource(Source[Entity]):
                         CreateDashboardServiceEntityRequest(**service)
                     )
                     break
-                except APIError as err:
+                except APIError:
                     continue
 
             logger.info(
@@ -256,7 +255,6 @@ class SampleEntitySource(Source[Entity]):
                 )
                 chart_ids = []
                 for j in range(self.config.no_of_charts):
-                    charts = []
                     chart_id = self.chart_ids()
                     chart_entity = Chart(
                         id=uuid.uuid4(),
@@ -302,7 +300,7 @@ class SampleEntitySource(Source[Entity]):
                         CreateMessagingServiceEntityRequest(**service)
                     )
                     break
-                except APIError as err:
+                except APIError:
                     continue
 
             logger.info(
