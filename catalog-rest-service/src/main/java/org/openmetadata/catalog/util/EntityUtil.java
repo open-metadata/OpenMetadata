@@ -161,8 +161,8 @@ public final class EntityUtil {
     return refs.isEmpty() ? null : refs.get(0);
   }
 
-  public static EntityReference getService(EntityRelationshipDAO dao, UUID entityId, String serviceType) {
-    List<EntityReference> refs = dao.findFromEntity(entityId.toString(), Relationship.CONTAINS.ordinal(), serviceType);
+  public static EntityReference getService(EntityRelationshipDAO dao, String entityType, UUID entityId, String serviceType) {
+    List<EntityReference> refs = dao.findFromEntity(entityId.toString(), entityType, Relationship.CONTAINS.ordinal(), serviceType);
     if (refs.size() > 1) {
       LOG.warn("Possible database issues - multiple services found for entity {}", entityId);
       return refs.get(0);

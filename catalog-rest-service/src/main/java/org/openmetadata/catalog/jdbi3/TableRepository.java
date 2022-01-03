@@ -330,7 +330,7 @@ public class TableRepository extends EntityRepository<Table> {
 
   private EntityReference getService(Table table) throws IOException {
     EntityReference ref =
-        EntityUtil.getService(daoCollection.relationshipDAO(), table.getDatabase().getId(), Entity.DATABASE_SERVICE);
+        EntityUtil.getService(daoCollection.relationshipDAO(), Entity.DATABASE, table.getDatabase().getId(), Entity.DATABASE_SERVICE);
     DatabaseService service = getService(ref.getId(), ref.getType());
     ref.setName(service.getName());
     ref.setDescription(service.getDescription());

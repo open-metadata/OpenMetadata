@@ -160,7 +160,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
 
   private EntityReference getService(Database database) throws IOException {
     EntityReference ref =
-        EntityUtil.getService(daoCollection.relationshipDAO(), database.getId(), Entity.DATABASE_SERVICE);
+        EntityUtil.getService(daoCollection.relationshipDAO(), Entity.DATABASE, database.getId(), Entity.DATABASE_SERVICE);
     if (ref != null) {
       DatabaseService service = getService(ref.getId(), ref.getType());
       ref.setName(service.getName());

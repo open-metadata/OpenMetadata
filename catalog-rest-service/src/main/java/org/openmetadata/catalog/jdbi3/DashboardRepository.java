@@ -96,7 +96,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
 
   private EntityReference getService(Dashboard dashboard) throws IOException {
     EntityReference ref =
-        EntityUtil.getService(daoCollection.relationshipDAO(), dashboard.getId(), Entity.DASHBOARD_SERVICE);
+        EntityUtil.getService(daoCollection.relationshipDAO(), Entity.DASHBOARD, dashboard.getId(), Entity.DASHBOARD_SERVICE);
     if (ref != null) {
       DashboardService service = getService(ref.getId(), ref.getType());
       ref.setName(service.getName());
