@@ -487,7 +487,7 @@ public abstract class EntityRepository<T> {
     EntityInterface<T> entityInterface = getEntityInterface(entity);
     return !supportsFollower || entity == null
         ? null
-        : EntityUtil.getFollowers(entityInterface.getId(), daoCollection.relationshipDAO(), daoCollection.userDAO());
+        : EntityUtil.getFollowers(entityInterface.getId(), entityName, daoCollection.relationshipDAO(), daoCollection.userDAO());
   }
 
   public T withHref(UriInfo uriInfo, T entity) {

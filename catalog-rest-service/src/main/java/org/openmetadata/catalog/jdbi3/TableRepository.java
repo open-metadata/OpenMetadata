@@ -342,7 +342,7 @@ public class TableRepository extends EntityRepository<Table> {
     String serviceId =
         daoCollection
             .relationshipDAO()
-            .findFrom(table.getDatabase().getId().toString(), Relationship.CONTAINS.ordinal(), Entity.DATABASE_SERVICE)
+            .findFrom(table.getDatabase().getId().toString(), Entity.DATABASE, Relationship.CONTAINS.ordinal(), Entity.DATABASE_SERVICE)
             .get(0);
     DatabaseService service = daoCollection.dbServiceDAO().findEntityById(UUID.fromString(serviceId));
     table.setService(new DatabaseServiceEntityInterface(service).getEntityReference());
@@ -436,7 +436,7 @@ public class TableRepository extends EntityRepository<Table> {
   private EntityReference getDatabase(UUID tableId) throws IOException {
     // Find database for the table
     List<String> result =
-        daoCollection.relationshipDAO().findFrom(tableId.toString(), Relationship.CONTAINS.ordinal(), Entity.DATABASE);
+        daoCollection.relationshipDAO().findFrom(tableId.toString(), Entity.TABLE, Relationship.CONTAINS.ordinal(), Entity.DATABASE);
     if (result.size() != 1) {
       throw EntityNotFoundException.byMessage(String.format("Database for table %s Not found", tableId));
     }

@@ -377,9 +377,9 @@ public final class EntityUtil {
   }
 
   public static List<EntityReference> getFollowers(
-      UUID followedEntityId, EntityRelationshipDAO entityRelationshipDAO, UserDAO userDAO) throws IOException {
+      UUID followedEntityId, String entityName, EntityRelationshipDAO entityRelationshipDAO, UserDAO userDAO) throws IOException {
     List<String> followerIds =
-        entityRelationshipDAO.findFrom(followedEntityId.toString(), Relationship.FOLLOWS.ordinal(), Entity.USER);
+        entityRelationshipDAO.findFrom(followedEntityId.toString(), entityName, Relationship.FOLLOWS.ordinal(), Entity.USER);
     List<EntityReference> followers = new ArrayList<>();
     for (String followerId : followerIds) {
       User user = userDAO.findEntityById(UUID.fromString(followerId));

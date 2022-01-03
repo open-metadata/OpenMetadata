@@ -355,20 +355,21 @@ public interface CollectionDAO {
 
     @SqlQuery(
         "SELECT count(*) FROM entity_relationship "
-            + "WHERE fromId = :fromId AND relation = :relation AND (toEntity = :toEntity || :toEntity IS NULL) "
+            + "WHERE fromId = :fromId AND fromEntity = :fromEntity AND relation = :relation "
+            + "AND (toEntity = :toEntity || :toEntity IS NULL) "
             + "AND deleted = false "
             + "ORDER BY fromId")
-    int findToCount(@Bind("fromId") String fromId, @Bind("relation") int relation, @Bind("toEntity") String toEntity);
+    int findToCount(@Bind("fromId") String fromId, @Bind("fromEntity") String fromEntity, @Bind("relation") int relation, @Bind("toEntity") String toEntity);
 
     //
     // Find from operations
     //
     @SqlQuery(
         "SELECT fromId FROM entity_relationship "
-            + "WHERE toId = :toId AND relation = :relation AND fromEntity = :fromEntity AND deleted = false "
+            + "WHERE toId = :toId AND toEntity = :toEntity AND relation = :relation AND fromEntity = :fromEntity AND deleted = false "
             + "ORDER BY fromId")
     List<String> findFrom(
-        @Bind("toId") String toId, @Bind("relation") int relation, @Bind("fromEntity") String fromEntity);
+        @Bind("toId") String toId, @Bind("toEntity") String toEntity, @Bind("relation") int relation, @Bind("fromEntity") String fromEntity);
 
     @SqlQuery(
         "SELECT fromId, fromEntity FROM entity_relationship "
