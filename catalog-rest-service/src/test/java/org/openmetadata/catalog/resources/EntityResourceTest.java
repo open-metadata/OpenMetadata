@@ -780,30 +780,6 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     assertResponse(exception, NOT_FOUND, entityNotFound(entityName, NON_EXISTENT_ENTITY));
   }
 
-  @Test
-  public void delete_put_Entity_200(TestInfo test) throws URISyntaxException, IOException {
-
-    // Create Entity
-    Object request = createRequest(getEntityName(test), "description", "displayName", null);
-    T entity = createAndCheckEntity(request, adminAuthHeaders());
-    EntityInterface<T> entityInterface = getEntityInterface(entity);
-
-    // Delete Entity
-    deleteEntity(entityInterface.getId(), adminAuthHeaders());
-
-    // PUT Entity back
-    List<FieldChange> expectedChange = Arrays.asList(
-            new FieldChange().withName("deleted").withNewValue(false).withOldValue(true)
-    );
-
-    // Validate version and change description
-    T updated = updateEntity(request, OK, adminAuthHeaders());
-    EntityInterface<T> updatedInterface = getEntityInterface(updated);
-    assertEquals(entityInterface.getVersion() + 1.0, updatedInterface.getVersion()); // major version update
-    assertEquals(expectedChange, updatedInterface.getChangeDescription().getFieldsUpdated());
-
-  }
-
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // Other tests
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
