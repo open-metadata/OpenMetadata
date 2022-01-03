@@ -29,11 +29,9 @@ import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
-import org.openmetadata.catalog.util.JsonUtils;
 
 public class MetricsRepository extends EntityRepository<Metrics> {
   private static final Fields METRICS_UPDATE_FIELDS = new Fields(MetricsResource.FIELD_LIST, "owner");
-  private final CollectionDAO dao;
 
   public MetricsRepository(CollectionDAO dao) {
     super(
@@ -43,8 +41,10 @@ public class MetricsRepository extends EntityRepository<Metrics> {
         dao.metricsDAO(),
         dao,
         Fields.EMPTY_FIELDS,
-        METRICS_UPDATE_FIELDS);
-    this.dao = dao;
+        METRICS_UPDATE_FIELDS,
+        true,
+        true,
+        true);
   }
 
   public static String getFQN(Metrics metrics) {
@@ -56,12 +56,14 @@ public class MetricsRepository extends EntityRepository<Metrics> {
     metrics.setService(getService(metrics)); // service is a default field
     metrics.setOwner(fields.contains("owner") ? getOwner(metrics) : null);
     metrics.setUsageSummary(
-        fields.contains("usageSummary") ? EntityUtil.getLatestUsage(dao.usageDAO(), metrics.getId()) : null);
+        fields.contains("usageSummary") ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), metrics.getId()) : null);
     return metrics;
   }
 
   @Override
-  public void restorePatchAttributes(Metrics original, Metrics updated) {}
+  public void restorePatchAttributes(Metrics original, Metrics updated) {
+    /* Nothing to do */
+  }
 
   @Override
   public EntityInterface<Metrics> getEntityInterface(Metrics entity) {
@@ -71,9 +73,9 @@ public class MetricsRepository extends EntityRepository<Metrics> {
   @Override
   public void prepare(Metrics metrics) throws IOException {
     metrics.setFullyQualifiedName(getFQN(metrics));
-    EntityUtil.populateOwner(dao.userDAO(), dao.teamDAO(), metrics.getOwner()); // Validate owner
+    EntityUtil.populateOwner(daoCollection.userDAO(), daoCollection.teamDAO(), metrics.getOwner()); // Validate owner
     metrics.setService(getService(metrics.getService()));
-    metrics.setTags(EntityUtil.addDerivedTags(dao.tagDAO(), metrics.getTags()));
+    metrics.setTags(EntityUtil.addDerivedTags(daoCollection.tagDAO(), metrics.getTags()));
   }
 
   @Override
@@ -86,11 +88,7 @@ public class MetricsRepository extends EntityRepository<Metrics> {
     // Don't store owner, database, href and tags as JSON. Build it on the fly based on relationships
     metrics.withOwner(null).withService(null).withHref(null).withTags(null);
 
-    if (update) {
-      dao.metricsDAO().update(metrics.getId(), JsonUtils.pojoToJson(metrics));
-    } else {
-      dao.metricsDAO().insert(metrics);
-    }
+    store(metrics.getId(), metrics, update);
 
     // Restore the relationships
     metrics.withOwner(owner).withService(service).withTags(tags);
@@ -98,7 +96,8 @@ public class MetricsRepository extends EntityRepository<Metrics> {
 
   @Override
   public void storeRelationships(Metrics metrics) {
-    dao.relationshipDAO()
+    daoCollection
+        .relationshipDAO()
         .insert(
             metrics.getService().getId().toString(),
             metrics.getId().toString(),
@@ -110,36 +109,16 @@ public class MetricsRepository extends EntityRepository<Metrics> {
   }
 
   private EntityReference getService(Metrics metrics) throws IOException { // Get service by metrics ID
-    EntityReference ref = EntityUtil.getService(dao.relationshipDAO(), metrics.getId(), Entity.DASHBOARD_SERVICE);
+    EntityReference ref =
+        EntityUtil.getService(daoCollection.relationshipDAO(), metrics.getId(), Entity.DASHBOARD_SERVICE);
     return getService(Objects.requireNonNull(ref));
   }
 
   private EntityReference getService(EntityReference service) throws IOException { // Get service by service ID
     if (service.getType().equalsIgnoreCase(Entity.DASHBOARD_SERVICE)) {
-      return dao.dbServiceDAO().findEntityReferenceById(service.getId());
+      return daoCollection.dbServiceDAO().findEntityReferenceById(service.getId());
     }
     throw new IllegalArgumentException(CatalogExceptionMessage.invalidServiceEntity(service.getType(), Entity.METRICS));
-  }
-
-  private EntityReference getOwner(Metrics metrics) throws IOException {
-    return metrics == null
-        ? null
-        : EntityUtil.populateOwner(metrics.getId(), dao.relationshipDAO(), dao.userDAO(), dao.teamDAO());
-  }
-
-  public void setOwner(Metrics metrics, EntityReference owner) {
-    EntityUtil.setOwner(dao.relationshipDAO(), metrics.getId(), Entity.METRICS, owner);
-    metrics.setOwner(owner);
-  }
-
-  private void applyTags(Metrics metrics) {
-    // Add chart level tags by adding tag to chart relationship
-    EntityUtil.applyTags(dao.tagDAO(), metrics.getTags(), metrics.getFullyQualifiedName());
-    metrics.setTags(getTags(metrics.getFullyQualifiedName())); // Update tag to handle additional derived tags
-  }
-
-  private List<TagLabel> getTags(String fqn) {
-    return dao.tagDAO().getTags(fqn);
   }
 
   static class MetricsEntityInterface implements EntityInterface<Metrics> {
@@ -200,11 +179,6 @@ public class MetricsRepository extends EntityRepository<Metrics> {
     }
 
     @Override
-    public List<EntityReference> getFollowers() {
-      throw new UnsupportedOperationException("Metrics does not support followers");
-    }
-
-    @Override
     public ChangeDescription getChangeDescription() {
       return entity.getChangeDescription();
     }
@@ -221,11 +195,18 @@ public class MetricsRepository extends EntityRepository<Metrics> {
 
     @Override
     public Metrics getEntity() {
-      return null;
+      return entity;
     }
 
     @Override
-    public void setId(UUID id) {}
+    public EntityReference getContainer() {
+      return entity.getService();
+    }
+
+    @Override
+    public void setId(UUID id) {
+      entity.setId(id);
+    }
 
     @Override
     public void setDescription(String description) {

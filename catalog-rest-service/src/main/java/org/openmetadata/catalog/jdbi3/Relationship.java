@@ -16,14 +16,12 @@ package org.openmetadata.catalog.jdbi3;
 /**
  * This enum captures all the relationships between Catalog entities Note that the relationship from is a Strong entity
  * and to is Weak entity when possible.
+ *
+ * <p>Note: Rules for changing enums since the ordinal position is stored in the database. - Don't remove an enum, since
+ * the database might have stored the enum ordinal number - When adding a new enum, add it as the last enum to preserve
+ * the ordinal positions of the existing enums
  */
 public enum Relationship {
-
-  /**
-   * Rules for changing enums since the ordinal position is stored in the database. - Don't remove an enum, since the
-   * database might have stored the enum ordinal number - When adding a new enum, add it as the last enum to preserve
-   * the ordinal positions of the existing enums
-   */
 
   /**
    * CONTAINS relationship is a stronger relationship than HAS. The entity that contains other entities can't be deleted
@@ -31,9 +29,11 @@ public enum Relationship {
    *
    * <ul>
    *   <li>Database --- contains --> Table
-   *   <li>Organization --- contains --> Team
-   *   <li>Team --- contains --> User
-   *   <li>Service --- contains --> Database
+   *   <li>DatabaseService --- contains --> Database
+   *   <li>MessagingService --- contains --> Topic
+   *   <li>PipelineService --- contains --> Pipeline
+   *   <li>DashboardService --- contains --> Charts
+   *   <li>DashboardService --- contains --> Dashboard
    * </ul>
    */
   CONTAINS("contains"), // 0
@@ -72,9 +72,11 @@ public enum Relationship {
    * can be deleted. During deletion, the HAS relationship is simply deleted. Examples of HAS relationship:
    *
    * <ul>
-   *   <li>{User} --- has ---> {Role}
-   *   <li>{Table} --- has ---> {Location}
-   *   <li>{Database} --- has ---> {Location}
+   *   <li>Team --- has --> User
+   *   <li>User --- has ---> Role
+   *   <li>Table --- has ---> Location
+   *   <li>Database --- has ---> Location
+   *   <li>Dashboard --- has ---> Chart
    * </ul>
    */
   HAS("has"), // 10

@@ -86,6 +86,7 @@ public class UserResource {
 
   public static User addHref(UriInfo uriInfo, User user) {
     Entity.withHref(uriInfo, user.getTeams());
+    Entity.withHref(uriInfo, user.getRoles());
     Entity.withHref(uriInfo, user.getOwns());
     Entity.withHref(uriInfo, user.getFollows());
     return user;
@@ -108,7 +109,7 @@ public class UserResource {
     }
   }
 
-  static final String FIELDS = "profile,teams,follows,owns";
+  static final String FIELDS = "profile,roles,teams,follows,owns";
   public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replaceAll(" ", "").split(","));
 
   @GET
@@ -389,11 +390,9 @@ public class UserResource {
   @DELETE
   @Path("/{id}")
   @Operation(
-      summary = "Deactivate a user",
+      summary = "Delete a user",
       tags = "users",
-      description =
-          "Users can't be deleted but are deactivated. The name and display name is prefixed with "
-              + "the string `deactivated`.",
+      description = "Users can't be deleted but are soft-deleted.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
         @ApiResponse(responseCode = "404", description = "User for instance {id} is not found")
@@ -401,7 +400,7 @@ public class UserResource {
   public Response delete(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("id") String id)
       throws IOException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    dao.delete(UUID.fromString(id));
+    dao.delete(UUID.fromString(id), false);
     return Response.ok().build();
   }
 
@@ -418,6 +417,7 @@ public class UserResource {
         .withTimezone(create.getTimezone())
         .withUpdatedBy(securityContext.getUserPrincipal().getName())
         .withUpdatedAt(new Date())
-        .withTeams(dao.validateTeams(create.getTeams()));
+        .withTeams(dao.validateTeams(create.getTeams()))
+        .withRoles(dao.validateRoles(create.getRoles()));
   }
 }

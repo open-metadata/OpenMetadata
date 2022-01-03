@@ -30,6 +30,7 @@ import static org.openmetadata.catalog.util.TestUtils.validateEntityReference;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -58,7 +59,6 @@ import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
-import org.openmetadata.common.utils.JsonSchemaUtil;
 
 public class TeamResourceTest extends EntityResourceTest<Team> {
   final Profile PROFILE = new Profile().withImages(new ImageList().withImage(URI.create("http://image.com")));
@@ -315,7 +315,7 @@ public class TeamResourceTest extends EntityResourceTest<Team> {
   private Team patchTeam(UUID teamId, String originalJson, Team updated, Map<String, String> authHeaders)
       throws JsonProcessingException, HttpResponseException {
     String updatedJson = JsonUtils.pojoToJson(updated);
-    JsonPatch patch = JsonSchemaUtil.getJsonPatch(originalJson, updatedJson);
+    JsonPatch patch = JsonUtils.getJsonPatch(originalJson, updatedJson);
     return TestUtils.patch(CatalogApplicationTest.getResource("teams/" + teamId), patch, Team.class, authHeaders);
   }
 
@@ -339,6 +339,11 @@ public class TeamResourceTest extends EntityResourceTest<Team> {
   @Override
   public Object createRequest(String name, String description, String displayName, EntityReference owner) {
     return create(name).withDescription(description).withDisplayName(displayName).withProfile(PROFILE);
+  }
+
+  @Override
+  public EntityReference getContainer(Object createRequest) throws URISyntaxException {
+    return null; // No container entity
   }
 
   @Override

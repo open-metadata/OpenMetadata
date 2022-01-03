@@ -22,7 +22,9 @@ public class NoopAuthorizer implements Authorizer {
   private static final Logger LOG = LoggerFactory.getLogger(NoopAuthorizer.class);
 
   @Override
-  public void init(AuthorizerConfiguration config, Jdbi jdbi) {}
+  public void init(AuthorizerConfiguration config, Jdbi jdbi) {
+    /* Nothing to do */
+  }
 
   @Override
   public boolean hasPermissions(AuthenticationContext ctx, EntityReference entityOwnership) {

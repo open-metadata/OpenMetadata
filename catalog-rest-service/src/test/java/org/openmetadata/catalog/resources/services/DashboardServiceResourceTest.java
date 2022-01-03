@@ -267,6 +267,11 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
   }
 
   @Override
+  public EntityReference getContainer(Object createRequest) throws URISyntaxException {
+    return null; // No container entity
+  }
+
+  @Override
   public void validateCreatedEntity(DashboardService service, Object request, Map<String, String> authHeaders) {
     CreateDashboardService createRequest = (CreateDashboardService) request;
     validateCommonEntityFields(

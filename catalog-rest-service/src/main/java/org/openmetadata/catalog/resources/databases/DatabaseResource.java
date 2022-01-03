@@ -380,8 +380,15 @@ public class DatabaseResource {
         @ApiResponse(responseCode = "200", description = "OK"),
         @ApiResponse(responseCode = "404", description = "Database for instance {id} is not found")
       })
-  public Response delete(@Context UriInfo uriInfo, @PathParam("id") String id) throws IOException {
-    dao.delete(UUID.fromString(id));
+  public Response delete(
+      @Context UriInfo uriInfo,
+      @Parameter(description = "Recursively delete this entity and it's children. (Default `false`)")
+          @DefaultValue("false")
+          @QueryParam("recursive")
+          boolean recursive,
+      @PathParam("id") String id)
+      throws IOException {
+    dao.delete(UUID.fromString(id), recursive);
     return Response.ok().build();
   }
 

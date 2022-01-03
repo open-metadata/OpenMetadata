@@ -182,6 +182,12 @@ public class ChartResourceTest extends EntityResourceTest<Chart> {
   }
 
   @Override
+  public EntityReference getContainer(Object createRequest) throws URISyntaxException {
+    CreateChart createChart = (CreateChart) createRequest;
+    return createChart.getService();
+  }
+
+  @Override
   public void validateCreatedEntity(Chart chart, Object request, Map<String, String> authHeaders) {
     CreateChart createRequest = (CreateChart) request;
     validateCommonEntityFields(

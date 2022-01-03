@@ -28,7 +28,7 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
-import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Objects;
@@ -52,11 +52,10 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
-import org.openmetadata.catalog.Entity;
-import org.openmetadata.catalog.api.teams.CreateTeam;
-import org.openmetadata.catalog.entity.teams.Team;
+import org.openmetadata.catalog.api.teams.CreateRole;
+import org.openmetadata.catalog.entity.teams.Role;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
-import org.openmetadata.catalog.jdbi3.TeamRepository;
+import org.openmetadata.catalog.jdbi3.RoleRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
@@ -66,65 +65,53 @@ import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.RestUtil.PatchResponse;
 import org.openmetadata.catalog.util.ResultList;
 
-@Path("/v1/teams")
-@Api(value = "Teams collection", tags = "Teams collection")
+@Path("/v1/roles")
+@Api(value = "Roles collection", tags = "Roles collection")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "teams")
-public class TeamResource {
-  public static final String COLLECTION_PATH = "/v1/teams/";
-  private final TeamRepository dao;
+@Collection(name = "roles")
+public class RoleResource {
+  public static final String COLLECTION_PATH = "/v1/roles/";
+  private final RoleRepository dao;
   private final Authorizer authorizer;
 
-  public static Team addHref(UriInfo uriInfo, Team team) {
-    Entity.withHref(uriInfo, team.getUsers());
-    Entity.withHref(uriInfo, team.getOwns());
-    return team;
-  }
-
   @Inject
-  public TeamResource(CollectionDAO dao, Authorizer authorizer) {
-    Objects.requireNonNull(dao, "TeamRepository must not be null");
-    this.dao = new TeamRepository(dao);
+  public RoleResource(CollectionDAO dao, Authorizer authorizer) {
+    Objects.requireNonNull(dao, "RoleRepository must not be null");
+    this.dao = new RoleRepository(dao);
     this.authorizer = authorizer;
   }
 
-  public static class TeamList extends ResultList<Team> {
+  public static class RoleList extends ResultList<Role> {
     @SuppressWarnings("unused") /* Required for tests */
-    TeamList() {}
+    RoleList() {}
 
-    public TeamList(List<Team> teams, String beforeCursor, String afterCursor, int total)
+    public RoleList(List<Role> roles, String beforeCursor, String afterCursor, int total)
         throws GeneralSecurityException, UnsupportedEncodingException {
-      super(teams, beforeCursor, afterCursor, total);
+      super(roles, beforeCursor, afterCursor, total);
     }
   }
 
-  public static final String FIELDS = "profile,users,owns";
-  public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replaceAll(" ", "").split(","));
+  // No additional fields supported for role entity at the moment.
+  public static final List<String> FIELD_LIST = new ArrayList<>();
 
   @GET
   @Valid
   @Operation(
-      summary = "List teams",
-      tags = "teams",
+      summary = "List roles",
+      tags = "roles",
       description =
-          "Get a list of teams. Use `fields` "
-              + "parameter to get only necessary fields. Use cursor-based pagination to limit the number "
-              + "entries in the list using `limit` and `before` or `after` query params.",
+          "Get a list of roles. Use cursor-based pagination to limit the number of entries in the list using `limit`"
+              + " and `before` or `after` query params.",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "List of teams",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = TeamList.class)))
+            description = "List of roles",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = RoleList.class)))
       })
-  public ResultList<Team> list(
+  public ResultList<Role> list(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(
-              description = "Fields requested in the returned resource",
-              schema = @Schema(type = "string", example = FIELDS))
-          @QueryParam("fields")
-          String fieldsParam,
       @Parameter(description = "Limit the number tables returned. (1 to 1000000, default = 10)")
           @DefaultValue("10")
           @Min(1)
@@ -139,34 +126,33 @@ public class TeamResource {
           String after)
       throws IOException, GeneralSecurityException, ParseException {
     RestUtil.validateCursors(before, after);
-    EntityUtil.Fields fields = new EntityUtil.Fields(FIELD_LIST, fieldsParam);
+    EntityUtil.Fields fields = new EntityUtil.Fields(FIELD_LIST, null);
 
-    ResultList<Team> teams;
+    ResultList<Role> roles;
     if (before != null) { // Reverse paging
-      teams = dao.listBefore(uriInfo, fields, null, limitParam, before); // Ask for one extra entry
+      roles = dao.listBefore(uriInfo, fields, null, limitParam, before); // Ask for one extra entry
     } else { // Forward paging or first page
-      teams = dao.listAfter(uriInfo, fields, null, limitParam, after);
+      roles = dao.listAfter(uriInfo, fields, null, limitParam, after);
     }
-    teams.getData().forEach(team -> addHref(uriInfo, team));
-    return teams;
+    return roles;
   }
 
   @GET
   @Path("/{id}/versions")
   @Operation(
-      summary = "List team versions",
-      tags = "teams",
-      description = "Get a list of all the versions of a team identified by `id`",
+      summary = "List role versions",
+      tags = "roles",
+      description = "Get a list of all the versions of a role identified by `id`",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "List of team versions",
+            description = "List of role versions",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = EntityHistory.class)))
       })
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "team Id", schema = @Schema(type = "string")) @PathParam("id") String id)
+      @Parameter(description = "role Id", schema = @Schema(type = "string")) @PathParam("id") String id)
       throws IOException, ParseException {
     return dao.listVersions(id);
   }
@@ -175,79 +161,64 @@ public class TeamResource {
   @Valid
   @Path("/{id}")
   @Operation(
-      summary = "Get a team",
-      tags = "teams",
-      description = "Get a team by `id`.",
+      summary = "Get a role",
+      tags = "roles",
+      description = "Get a role by `id`.",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "The team",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Team.class))),
-        @ApiResponse(responseCode = "404", description = "Team for instance {id} is not found")
+            description = "The role",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Role.class))),
+        @ApiResponse(responseCode = "404", description = "Role for instance {id} is not found")
       })
-  public Team get(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @PathParam("id") String id,
-      @Parameter(
-              description = "Fields requested in the returned resource",
-              schema = @Schema(type = "string", example = FIELDS))
-          @QueryParam("fields")
-          String fieldsParam)
+  public Role get(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("id") String id)
       throws IOException, ParseException {
-    EntityUtil.Fields fields = new EntityUtil.Fields(FIELD_LIST, fieldsParam);
-    return addHref(uriInfo, dao.get(uriInfo, id, fields));
+    EntityUtil.Fields fields = new EntityUtil.Fields(FIELD_LIST, null);
+    return dao.get(uriInfo, id, fields);
   }
 
   @GET
   @Valid
   @Path("/name/{name}")
   @Operation(
-      summary = "Get a team by name",
-      tags = "teams",
-      description = "Get a team by `name`.",
+      summary = "Get a role by name",
+      tags = "roles",
+      description = "Get a role by `name`.",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "The team",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Team.class))),
-        @ApiResponse(responseCode = "404", description = "Team for instance {name} is not found")
+            description = "The role",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Role.class))),
+        @ApiResponse(responseCode = "404", description = "Role for instance {name} is not found")
       })
-  public Team getByName(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @PathParam("name") String name,
-      @Parameter(
-              description = "Fields requested in the returned resource",
-              schema = @Schema(type = "string", example = FIELDS))
-          @QueryParam("fields")
-          String fieldsParam)
+  public Role getByName(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("name") String name)
       throws IOException, ParseException {
-    EntityUtil.Fields fields = new EntityUtil.Fields(FIELD_LIST, fieldsParam);
-    return addHref(uriInfo, dao.getByName(uriInfo, name, fields));
+    EntityUtil.Fields fields = new EntityUtil.Fields(FIELD_LIST, null);
+    return dao.getByName(uriInfo, name, fields);
   }
 
   @GET
   @Path("/{id}/versions/{version}")
   @Operation(
-      summary = "Get a version of the team",
-      tags = "teams",
-      description = "Get a version of the team by given `id`",
+      summary = "Get a version of the role",
+      tags = "roles",
+      description = "Get a version of the role by given `id`",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "team",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Team.class))),
+            description = "role",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Role.class))),
         @ApiResponse(
             responseCode = "404",
-            description = "Team for instance {id} and version {version} is " + "not found")
+            description = "Role for instance {id} and version {version} is " + "not found")
       })
-  public Team getVersion(
+  public Role getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Team Id", schema = @Schema(type = "string")) @PathParam("id") String id,
+      @Parameter(description = "Role Id", schema = @Schema(type = "string")) @PathParam("id") String id,
       @Parameter(
-              description = "Team version number in the form `major`.`minor`",
+              description = "Role version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version)
@@ -257,43 +228,43 @@ public class TeamResource {
 
   @POST
   @Operation(
-      summary = "Create a team",
-      tags = "teams",
-      description = "Create a new team.",
+      summary = "Create a role",
+      tags = "roles",
+      description = "Create a new role.",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "The team",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = CreateTeam.class))),
+            description = "The role",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = CreateRole.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
-  public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTeam ct)
+  public Response create(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateRole createRole)
       throws IOException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    Team team = getTeam(ct, securityContext);
-    addHref(uriInfo, dao.create(uriInfo, team));
-    return Response.created(team.getHref()).entity(team).build();
+    Role role = getRole(createRole, securityContext);
+    role = dao.create(uriInfo, role);
+    return Response.created(role.getHref()).entity(role).build();
   }
 
   @PUT
   @Operation(
-      summary = "Create or Update a team",
-      tags = "teams",
-      description = "Create or Update a team.",
+      summary = "Create or Update a role",
+      tags = "roles",
+      description = "Create or Update a role.",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "The team ",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = CreateTeam.class))),
+            description = "The role ",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = CreateRole.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
-  public Response createOrUpdateTeam(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTeam ct)
+  public Response createOrUpdateRole(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateRole createRole)
       throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    Team team = getTeam(ct, securityContext);
-    RestUtil.PutResponse<Team> response = dao.createOrUpdate(uriInfo, team);
-    addHref(uriInfo, response.getEntity());
+    Role role = getRole(createRole, securityContext);
+    RestUtil.PutResponse<Role> response = dao.createOrUpdate(uriInfo, role);
     return response.toResponse();
   }
 
@@ -301,9 +272,9 @@ public class TeamResource {
   @Path("/{id}")
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
   @Operation(
-      summary = "Update a team",
-      tags = "teams",
-      description = "Update an existing team with JsonPatch.",
+      summary = "Update a role",
+      tags = "roles",
+      description = "Update an existing role with JsonPatch.",
       externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
   public Response patch(
       @Context UriInfo uriInfo,
@@ -321,21 +292,20 @@ public class TeamResource {
       throws IOException, ParseException {
 
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    PatchResponse<Team> response =
+    PatchResponse<Role> response =
         dao.patch(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
-    addHref(uriInfo, response.getEntity());
     return response.toResponse();
   }
 
   @DELETE
   @Path("/{id}")
   @Operation(
-      summary = "Delete a team",
-      tags = "teams",
-      description = "Delete a team by given `id`.",
+      summary = "Delete a role",
+      tags = "roles",
+      description = "Delete a role by given `id`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
-        @ApiResponse(responseCode = "404", description = "Team for instance {id} is not found")
+        @ApiResponse(responseCode = "404", description = "Role for instance {id} is not found")
       })
   public Response delete(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("id") String id)
       throws IOException {
@@ -344,15 +314,13 @@ public class TeamResource {
     return Response.ok().build();
   }
 
-  private Team getTeam(CreateTeam ct, SecurityContext securityContext) {
-    return new Team()
+  private Role getRole(CreateRole ct, SecurityContext securityContext) {
+    return new Role()
         .withId(UUID.randomUUID())
         .withName(ct.getName())
         .withDescription(ct.getDescription())
         .withDisplayName(ct.getDisplayName())
-        .withProfile(ct.getProfile())
         .withUpdatedBy(securityContext.getUserPrincipal().getName())
-        .withUpdatedAt(new Date())
-        .withUsers(dao.getUsers(ct.getUsers()));
+        .withUpdatedAt(new Date());
   }
 }

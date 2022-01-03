@@ -89,6 +89,10 @@
       "description": "When `true` indicates the entity has been soft deleted.",
       "type": "boolean",
       "default" : false
+    },
+    "roles" : {
+      "description": "Roles that the user has been assigned.",
+      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
     }
   },
   "additionalProperties": false,

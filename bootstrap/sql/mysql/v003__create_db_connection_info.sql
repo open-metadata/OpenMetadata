@@ -106,6 +106,10 @@ ADD INDEX (deleted);
 UPDATE entity_relationship
 SET relation = 10 WHERE fromEntity = 'team' AND toEntity = 'user' AND relation = 0;
 
+-- Change "dashboard -- contains --> chart" relationship to "dashboard -- has --> chart" relationship
+UPDATE entity_relationship
+SET relation = 10 WHERE fromEntity = 'dashboard' AND toEntity = 'chart' AND relation = 0;
+
 -- Remove user.deactivated field and use deleted instead
 UPDATE user_entity
 SET json = JSON_REMOVE(user_entity.json, '$.deactivated');

@@ -44,6 +44,7 @@ import org.openmetadata.catalog.entity.services.DatabaseService;
 import org.openmetadata.catalog.entity.services.MessagingService;
 import org.openmetadata.catalog.entity.services.PipelineService;
 import org.openmetadata.catalog.entity.services.StorageService;
+import org.openmetadata.catalog.entity.teams.Role;
 import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.jdbi3.BotsRepository.BotsEntityInterface;
@@ -62,6 +63,7 @@ import org.openmetadata.catalog.jdbi3.PipelineRepository.PipelineEntityInterface
 import org.openmetadata.catalog.jdbi3.PipelineServiceRepository.PipelineServiceEntityInterface;
 import org.openmetadata.catalog.jdbi3.PolicyRepository.PolicyEntityInterface;
 import org.openmetadata.catalog.jdbi3.ReportRepository.ReportEntityInterface;
+import org.openmetadata.catalog.jdbi3.RoleRepository.RoleEntityInterface;
 import org.openmetadata.catalog.jdbi3.StorageServiceRepository.StorageServiceEntityInterface;
 import org.openmetadata.catalog.jdbi3.TableRepository.TableEntityInterface;
 import org.openmetadata.catalog.jdbi3.TeamRepository.TeamEntityInterface;
@@ -88,6 +90,9 @@ public interface CollectionDAO {
 
   @CreateSqlObject
   EntityExtensionDAO entityExtensionDAO();
+
+  @CreateSqlObject
+  RoleDAO roleDAO();
 
   @CreateSqlObject
   UserDAO userDAO();
@@ -891,6 +896,28 @@ public interface CollectionDAO {
             .withTagFQN(r.getString("tagFQN"))
             .withDescription(r.getString("description"));
       }
+    }
+  }
+
+  interface RoleDAO extends EntityDAO<Role> {
+    @Override
+    default String getTableName() {
+      return "role_entity";
+    }
+
+    @Override
+    default Class<Role> getEntityClass() {
+      return Role.class;
+    }
+
+    @Override
+    default String getNameColumn() {
+      return "name";
+    }
+
+    @Override
+    default EntityReference getEntityReference(Role entity) {
+      return new RoleEntityInterface(entity).getEntityReference();
     }
   }
 

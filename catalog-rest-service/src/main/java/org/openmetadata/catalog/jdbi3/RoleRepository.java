@@ -13,68 +13,80 @@
 
 package org.openmetadata.catalog.jdbi3;
 
-import static org.openmetadata.catalog.util.EntityUtil.Fields;
-
 import java.io.IOException;
 import java.net.URI;
 import java.util.Date;
 import java.util.UUID;
 import org.openmetadata.catalog.Entity;
-import org.openmetadata.catalog.entity.services.StorageService;
-import org.openmetadata.catalog.resources.services.storage.StorageServiceResource;
+import org.openmetadata.catalog.entity.teams.Role;
+import org.openmetadata.catalog.exception.CatalogExceptionMessage;
+import org.openmetadata.catalog.resources.teams.RoleResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.util.EntityInterface;
+import org.openmetadata.catalog.util.EntityUtil.Fields;
 
-public class StorageServiceRepository extends EntityRepository<StorageService> {
-  public StorageServiceRepository(CollectionDAO dao) {
+public class RoleRepository extends EntityRepository<Role> {
+  static final Fields ROLE_UPDATE_FIELDS = new Fields(RoleResource.FIELD_LIST, null);
+  static final Fields ROLE_PATCH_FIELDS = new Fields(RoleResource.FIELD_LIST, null);
+
+  public RoleRepository(CollectionDAO dao) {
     super(
-        StorageServiceResource.COLLECTION_PATH,
-        Entity.STORAGE_SERVICE,
-        StorageService.class,
-        dao.storageServiceDAO(),
+        RoleResource.COLLECTION_PATH,
+        Entity.ROLE,
+        Role.class,
+        dao.roleDAO(),
         dao,
-        Fields.EMPTY_FIELDS,
-        Fields.EMPTY_FIELDS,
+        ROLE_PATCH_FIELDS,
+        ROLE_UPDATE_FIELDS,
         false,
         false,
         false);
   }
 
   @Override
-  public StorageService setFields(StorageService entity, Fields fields) {
-    return entity;
+  public Role setFields(Role role, Fields fields) throws IOException {
+    // Nothing to set.
+    return role;
   }
 
   @Override
-  public void restorePatchAttributes(StorageService original, StorageService updated) {
+  public void restorePatchAttributes(Role original, Role updated) {
+    // Patch can't make changes to following fields. Ignore the changes
+    updated.withName(original.getName()).withId(original.getId());
+  }
+
+  @Override
+  public EntityInterface<Role> getEntityInterface(Role entity) {
+    return new RoleEntityInterface(entity);
+  }
+
+  @Override
+  public void prepare(Role role) throws IOException {
     /* Nothing to do */
   }
 
   @Override
-  public EntityInterface<StorageService> getEntityInterface(StorageService entity) {
-    return new StorageServiceRepository.StorageServiceEntityInterface(entity);
+  public void storeEntity(Role role, boolean update) throws IOException {
+    // Don't store href as JSON. Build it on the fly based on relationships
+    role.withHref(null);
+    store(role.getId(), role, update);
   }
 
   @Override
-  public void prepare(StorageService entity) {
+  public void storeRelationships(Role role) {
     /* Nothing to do */
   }
 
   @Override
-  public void storeEntity(StorageService service, boolean update) throws IOException {
-    store(service.getId(), service, update);
+  public EntityUpdater getUpdater(Role original, Role updated, boolean patchOperation) {
+    return new RoleUpdater(original, updated, patchOperation);
   }
 
-  @Override
-  public void storeRelationships(StorageService entity) {
-    /* Nothing to do */
-  }
+  public static class RoleEntityInterface implements EntityInterface<Role> {
+    private final Role entity;
 
-  public static class StorageServiceEntityInterface implements EntityInterface<StorageService> {
-    private final StorageService entity;
-
-    public StorageServiceEntityInterface(StorageService entity) {
+    public RoleEntityInterface(Role entity) {
       this.entity = entity;
     }
 
@@ -119,22 +131,18 @@ public class StorageServiceRepository extends EntityRepository<StorageService> {
     }
 
     @Override
-    public ChangeDescription getChangeDescription() {
-      return entity.getChangeDescription();
-    }
-
-    @Override
     public EntityReference getEntityReference() {
       return new EntityReference()
           .withId(getId())
           .withName(getFullyQualifiedName())
           .withDescription(getDescription())
           .withDisplayName(getDisplayName())
-          .withType(Entity.STORAGE_SERVICE);
+          .withType(Entity.ROLE)
+          .withHref(getHref());
     }
 
     @Override
-    public StorageService getEntity() {
+    public Role getEntity() {
       return entity;
     }
 
@@ -171,8 +179,28 @@ public class StorageServiceRepository extends EntityRepository<StorageService> {
     }
 
     @Override
-    public StorageService withHref(URI href) {
+    public Role withHref(URI href) {
       return entity.withHref(href);
+    }
+
+    @Override
+    public ChangeDescription getChangeDescription() {
+      return entity.getChangeDescription();
+    }
+  }
+
+  /** Handles entity updated from PUT and POST operation. */
+  public class RoleUpdater extends EntityUpdater {
+    public RoleUpdater(Role original, Role updated, boolean patchOperation) {
+      super(original, updated, patchOperation);
+    }
+
+    @Override
+    public void entitySpecificUpdate() throws IOException {
+      // Update operation cannot undelete a role.
+      if (updated.getEntity().getDeleted() != original.getEntity().getDeleted()) {
+        throw new IllegalArgumentException(CatalogExceptionMessage.readOnlyAttribute("Role", "deleted"));
+      }
     }
   }
 }

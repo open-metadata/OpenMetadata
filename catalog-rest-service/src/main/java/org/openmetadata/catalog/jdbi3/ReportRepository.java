@@ -30,7 +30,6 @@ import org.openmetadata.catalog.util.EntityUtil.Fields;
 
 public class ReportRepository extends EntityRepository<Report> {
   private static final Fields REPORT_UPDATE_FIELDS = new Fields(ReportResource.FIELD_LIST, "owner");
-  private final CollectionDAO dao;
 
   public ReportRepository(CollectionDAO dao) {
     super(
@@ -40,8 +39,10 @@ public class ReportRepository extends EntityRepository<Report> {
         dao.reportDAO(),
         dao,
         Fields.EMPTY_FIELDS,
-        REPORT_UPDATE_FIELDS);
-    this.dao = dao;
+        REPORT_UPDATE_FIELDS,
+        true,
+        true,
+        true);
   }
 
   @Override
@@ -49,7 +50,7 @@ public class ReportRepository extends EntityRepository<Report> {
     report.setService(getService(report)); // service is a default field
     report.setOwner(fields.contains("owner") ? getOwner(report) : null);
     report.setUsageSummary(
-        fields.contains("usageSummary") ? EntityUtil.getLatestUsage(dao.usageDAO(), report.getId()) : null);
+        fields.contains("usageSummary") ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), report.getId()) : null);
     return report;
   }
 
@@ -65,13 +66,13 @@ public class ReportRepository extends EntityRepository<Report> {
   public void prepare(Report report) throws IOException {
     setService(report, report.getService());
     setOwner(report, report.getOwner());
-    EntityUtil.populateOwner(dao.userDAO(), dao.teamDAO(), report.getOwner()); // Validate owner
+    EntityUtil.populateOwner(daoCollection.userDAO(), daoCollection.teamDAO(), report.getOwner()); // Validate owner
   }
 
   @Override
   public void storeEntity(Report report, boolean update) throws IOException {
-    // TODO add right checks
-    dao.reportDAO().insert(report);
+    report.setHref(null);
+    store(report.getId(), report, update);
   }
 
   @Override
@@ -80,7 +81,7 @@ public class ReportRepository extends EntityRepository<Report> {
   }
 
   private EntityReference getService(Report report) {
-    return report == null ? null : getService(EntityUtil.getService(dao.relationshipDAO(), report.getId()));
+    return report == null ? null : getService(EntityUtil.getService(daoCollection.relationshipDAO(), report.getId()));
   }
 
   private EntityReference getService(EntityReference service) {
@@ -91,7 +92,8 @@ public class ReportRepository extends EntityRepository<Report> {
   public void setService(Report report, EntityReference service) {
     if (service != null && report != null) {
       getService(service); // Populate service details
-      dao.relationshipDAO()
+      daoCollection
+          .relationshipDAO()
           .insert(
               service.getId().toString(),
               report.getId().toString(),
@@ -100,17 +102,6 @@ public class ReportRepository extends EntityRepository<Report> {
               Relationship.CONTAINS.ordinal());
       report.setService(service);
     }
-  }
-
-  private EntityReference getOwner(Report report) throws IOException {
-    return report == null
-        ? null
-        : EntityUtil.populateOwner(report.getId(), dao.relationshipDAO(), dao.userDAO(), dao.teamDAO());
-  }
-
-  public void setOwner(Report report, EntityReference owner) {
-    EntityUtil.setOwner(dao.relationshipDAO(), report.getId(), Entity.REPORT, owner);
-    report.setOwner(owner);
   }
 
   public static class ReportEntityInterface implements EntityInterface<Report> {
@@ -171,11 +162,6 @@ public class ReportRepository extends EntityRepository<Report> {
     }
 
     @Override
-    public List<EntityReference> getFollowers() {
-      throw new UnsupportedOperationException("Report does not support followers");
-    }
-
-    @Override
     public ChangeDescription getChangeDescription() {
       return entity.getChangeDescription();
     }
@@ -193,6 +179,11 @@ public class ReportRepository extends EntityRepository<Report> {
     @Override
     public Report getEntity() {
       return entity;
+    }
+
+    @Override
+    public EntityReference getContainer() {
+      return entity.getService();
     }
 
     @Override

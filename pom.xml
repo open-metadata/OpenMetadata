@@ -79,8 +79,18 @@
     <log4j.version>2.17.0</log4j.version>
     <org.junit.jupiter.version>5.8.1</org.junit.jupiter.version>
     <dropwizard-health.version>1.7.1</dropwizard-health.version>
+
+    <!--   sonar   -Dsonar.login=XXX  -->
+    <sonar.projectKey>open-metadata_OpenMetadata</sonar.projectKey>
+    <sonar.moduleKey>${project.artifactId}</sonar.moduleKey>
     <sonar.organization>open-metadata</sonar.organization>
     <sonar.host.url>https://sonarcloud.io</sonar.host.url>
+    <sonar.working.directory>target/sonar</sonar.working.directory>
+    <maven.sonar-plugin.version>3.7.0.1746</maven.sonar-plugin.version>
+    <sonar.language>java</sonar.language>
+    <sonar.skip>false</sonar.skip>
+    <sonar.dynamicAnalysis>reuseReports</sonar.dynamicAnalysis>
+
   </properties>
   <dependencyManagement>
     <dependencies>
@@ -426,14 +436,61 @@
   </repositories>
 
   <profiles>
+
+    <profile>	<!-- run SCA -->
+      <id>static-code-analysis</id>
+      <activation>
+        <activeByDefault>true</activeByDefault>
+      </activation>
+      <build>
+        <plugins>
+
+          <plugin>
+            <groupId>org.jacoco</groupId>
+            <artifactId>jacoco-maven-plugin</artifactId>
+            <executions>
+              <execution>
+                <id>prepare-agent</id>
+                <goals>
+                  <goal>prepare-agent</goal>
+                </goals>
+              </execution>
+              <execution>
+                <id>report</id>
+                <phase>verify</phase>
+                <goals>
+                  <goal>report</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
+
+          <plugin>
+            <groupId>org.sonarsource.scanner.maven</groupId>
+            <artifactId>sonar-maven-plugin</artifactId>
+            <executions>
+              <execution>
+                <id>sonar-verify-execution</id>
+                <phase>verify</phase>
+                <goals>
+                  <goal>sonar</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+
   </profiles>
+
   <reporting>
     <plugins>
-        <plugin>
-            <groupId>org.apache.maven.plugins</groupId>
-            <artifactId>maven-jxr-plugin</artifactId>
-            <version>3.1.1</version>
-        </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-jxr-plugin</artifactId>
+        <version>3.1.1</version>
+      </plugin>
     </plugins>
 </reporting>
   <build>
@@ -542,6 +599,11 @@
           <artifactId>jacoco-maven-plugin</artifactId>
           <version>${jacoco-plugin.version}</version>
         </plugin>
+        <plugin>
+          <groupId>org.sonarsource.scanner.maven</groupId>
+          <artifactId>sonar-maven-plugin</artifactId>
+          <version>${maven.sonar-plugin.version}</version>
+        </plugin>
       </plugins>
     </pluginManagement>
 
@@ -553,25 +615,6 @@
           <autoVersionSubmodules>true</autoVersionSubmodules>
           <tagNameFormat>v@{project.version}</tagNameFormat>
         </configuration>
-      </plugin>
-      <plugin>
-        <groupId>org.jacoco</groupId>
-        <artifactId>jacoco-maven-plugin</artifactId>
-        <executions>
-          <execution>
-            <id>default-prepare-agent</id>
-            <goals>
-              <goal>prepare-agent</goal>
-            </goals>
-          </execution>
-          <execution>
-            <id>report</id>
-            <phase>test</phase>
-            <goals>
-              <goal>report</goal>
-            </goals>
-          </execution>
-        </executions>
       </plugin>
       <plugin>
         <groupId>org.codehaus.mojo</groupId>

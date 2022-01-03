@@ -17,7 +17,6 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.net.URI;
 import java.util.Date;
-import java.util.List;
 import java.util.UUID;
 import javax.ws.rs.core.UriInfo;
 import org.openmetadata.catalog.Entity;
@@ -26,15 +25,12 @@ import org.openmetadata.catalog.resources.services.dashboard.DashboardServiceRes
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Schedule;
-import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
 
 public class DashboardServiceRepository extends EntityRepository<DashboardService> {
-  private final CollectionDAO dao;
-
   public DashboardServiceRepository(CollectionDAO dao) {
     super(
         DashboardServiceResource.COLLECTION_PATH,
@@ -43,8 +39,10 @@ public class DashboardServiceRepository extends EntityRepository<DashboardServic
         dao.dashboardServiceDAO(),
         dao,
         Fields.EMPTY_FIELDS,
-        Fields.EMPTY_FIELDS);
-    this.dao = dao;
+        Fields.EMPTY_FIELDS,
+        false,
+        false,
+        false);
   }
 
   public DashboardService update(
@@ -57,7 +55,7 @@ public class DashboardServiceRepository extends EntityRepository<DashboardServic
       Schedule ingestionSchedule)
       throws IOException {
     EntityUtil.validateIngestionSchedule(ingestionSchedule);
-    DashboardService dashboardService = dao.dashboardServiceDAO().findEntityById(id);
+    DashboardService dashboardService = daoCollection.dashboardServiceDAO().findEntityById(id);
     // Update fields
     dashboardService
         .withDescription(description)
@@ -65,7 +63,7 @@ public class DashboardServiceRepository extends EntityRepository<DashboardServic
         .withUsername(username)
         .withPassword(password)
         .withIngestionSchedule(ingestionSchedule);
-    dao.dashboardServiceDAO().update(id, JsonUtils.pojoToJson(dashboardService));
+    daoCollection.dashboardServiceDAO().update(id, JsonUtils.pojoToJson(dashboardService));
     return withHref(uriInfo, dashboardService);
   }
 
@@ -90,9 +88,9 @@ public class DashboardServiceRepository extends EntityRepository<DashboardServic
   @Override
   public void storeEntity(DashboardService service, boolean update) throws IOException {
     if (update) {
-      dao.dashboardServiceDAO().update(service.getId(), JsonUtils.pojoToJson(service));
+      daoCollection.dashboardServiceDAO().update(service.getId(), JsonUtils.pojoToJson(service));
     } else {
-      dao.dashboardServiceDAO().insert(service);
+      daoCollection.dashboardServiceDAO().insert(service);
     }
   }
 
@@ -127,18 +125,8 @@ public class DashboardServiceRepository extends EntityRepository<DashboardServic
     }
 
     @Override
-    public EntityReference getOwner() {
-      return null;
-    }
-
-    @Override
     public String getFullyQualifiedName() {
       return entity.getName();
-    }
-
-    @Override
-    public List<TagLabel> getTags() {
-      return null;
     }
 
     @Override
@@ -159,11 +147,6 @@ public class DashboardServiceRepository extends EntityRepository<DashboardServic
     @Override
     public URI getHref() {
       return entity.getHref();
-    }
-
-    @Override
-    public List<EntityReference> getFollowers() {
-      throw new UnsupportedOperationException("Dashboard service does not support followers");
     }
 
     @Override
@@ -214,9 +197,6 @@ public class DashboardServiceRepository extends EntityRepository<DashboardServic
     }
 
     @Override
-    public void setOwner(EntityReference owner) {}
-
-    @Override
     public void setDeleted(boolean flag) {
       entity.setDeleted(flag);
     }
@@ -225,9 +205,6 @@ public class DashboardServiceRepository extends EntityRepository<DashboardServic
     public DashboardService withHref(URI href) {
       return entity.withHref(href);
     }
-
-    @Override
-    public void setTags(List<TagLabel> tags) {}
   }
 
   public class DashboardServiceUpdater extends EntityUpdater {

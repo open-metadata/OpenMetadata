@@ -25,7 +25,6 @@ import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Topic;
 import org.openmetadata.catalog.entity.services.MessagingService;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
-import org.openmetadata.catalog.jdbi3.EntityRepository.EntityUpdater;
 import org.openmetadata.catalog.jdbi3.MessagingServiceRepository.MessagingServiceEntityInterface;
 import org.openmetadata.catalog.resources.topics.TopicResource;
 import org.openmetadata.catalog.type.ChangeDescription;
@@ -35,12 +34,10 @@ import org.openmetadata.catalog.type.topic.CleanupPolicy;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
-import org.openmetadata.catalog.util.JsonUtils;
 
 public class TopicRepository extends EntityRepository<Topic> {
   private static final Fields TOPIC_UPDATE_FIELDS = new Fields(TopicResource.FIELD_LIST, "owner,tags");
   private static final Fields TOPIC_PATCH_FIELDS = new Fields(TopicResource.FIELD_LIST, "owner,tags");
-  private final CollectionDAO dao;
 
   public static String getFQN(Topic topic) {
     return (topic.getService().getName() + "." + topic.getName());
@@ -54,13 +51,15 @@ public class TopicRepository extends EntityRepository<Topic> {
         dao.topicDAO(),
         dao,
         TOPIC_PATCH_FIELDS,
-        TOPIC_UPDATE_FIELDS);
-    this.dao = dao;
+        TOPIC_UPDATE_FIELDS,
+        true,
+        true,
+        true);
   }
 
   @Transaction
   public EntityReference getOwnerReference(Topic topic) throws IOException {
-    return EntityUtil.populateOwner(dao.userDAO(), dao.teamDAO(), topic.getOwner());
+    return EntityUtil.populateOwner(daoCollection.userDAO(), daoCollection.teamDAO(), topic.getOwner());
   }
 
   @Override
@@ -69,8 +68,8 @@ public class TopicRepository extends EntityRepository<Topic> {
     topic.setService(new MessagingServiceEntityInterface(messagingService).getEntityReference());
     topic.setServiceType(messagingService.getServiceType());
     topic.setFullyQualifiedName(getFQN(topic));
-    EntityUtil.populateOwner(dao.userDAO(), dao.teamDAO(), topic.getOwner()); // Validate owner
-    topic.setTags(EntityUtil.addDerivedTags(dao.tagDAO(), topic.getTags()));
+    EntityUtil.populateOwner(daoCollection.userDAO(), daoCollection.teamDAO(), topic.getOwner()); // Validate owner
+    topic.setTags(EntityUtil.addDerivedTags(daoCollection.tagDAO(), topic.getTags()));
   }
 
   @Override
@@ -83,11 +82,7 @@ public class TopicRepository extends EntityRepository<Topic> {
     // Don't store owner, database, href and tags as JSON. Build it on the fly based on relationships
     topic.withOwner(null).withService(null).withHref(null).withTags(null);
 
-    if (update) {
-      dao.topicDAO().update(topic.getId(), JsonUtils.pojoToJson(topic));
-    } else {
-      dao.topicDAO().insert(topic);
-    }
+    store(topic.getId(), topic, update);
 
     // Restore the relationships
     topic.withOwner(owner).withService(service).withTags(tags);
@@ -100,22 +95,6 @@ public class TopicRepository extends EntityRepository<Topic> {
     applyTags(topic);
   }
 
-  private void applyTags(Topic topic) {
-    // Add topic level tags by adding tag to topic relationship
-    EntityUtil.applyTags(dao.tagDAO(), topic.getTags(), topic.getFullyQualifiedName());
-    topic.setTags(getTags(topic.getFullyQualifiedName())); // Update tag to handle additional derived tags
-  }
-
-  public EntityReference getOwner(Topic topic) throws IOException {
-    return topic != null
-        ? EntityUtil.populateOwner(topic.getId(), dao.relationshipDAO(), dao.userDAO(), dao.teamDAO())
-        : null;
-  }
-
-  private void setOwner(Topic topic, EntityReference owner) {
-    EntityUtil.setOwner(dao.relationshipDAO(), topic.getId(), Entity.TOPIC, owner);
-  }
-
   @Override
   public Topic setFields(Topic topic, Fields fields) throws IOException {
     topic.setService(getService(topic));
@@ -126,7 +105,9 @@ public class TopicRepository extends EntityRepository<Topic> {
   }
 
   @Override
-  public void restorePatchAttributes(Topic original, Topic updated) {}
+  public void restorePatchAttributes(Topic original, Topic updated) {
+    /* Nothing to do */
+  }
 
   @Override
   public EntityRepository<Topic>.EntityUpdater getUpdater(Topic original, Topic updated, boolean patchOperation) {
@@ -138,33 +119,26 @@ public class TopicRepository extends EntityRepository<Topic> {
     return new TopicEntityInterface(entity);
   }
 
-  private List<EntityReference> getFollowers(Topic topic) throws IOException {
-    return topic == null ? null : EntityUtil.getFollowers(topic.getId(), dao.relationshipDAO(), dao.userDAO());
-  }
-
-  private List<TagLabel> getTags(String fqn) {
-    return dao.tagDAO().getTags(fqn);
-  }
-
   private EntityReference getService(Topic topic) throws IOException {
     if (topic == null) {
       return null;
     }
     // Find service by topic Id
-    EntityReference service = EntityUtil.getService(dao.relationshipDAO(), topic.getId());
+    EntityReference service = EntityUtil.getService(daoCollection.relationshipDAO(), topic.getId());
     return new MessagingServiceEntityInterface(getService(service.getId(), service.getType())).getEntityReference();
   }
 
   private MessagingService getService(UUID serviceId, String entityType) throws IOException {
     if (entityType.equalsIgnoreCase(Entity.MESSAGING_SERVICE)) {
-      return dao.messagingServiceDAO().findEntityById(serviceId);
+      return daoCollection.messagingServiceDAO().findEntityById(serviceId);
     }
     throw new IllegalArgumentException(CatalogExceptionMessage.invalidServiceEntity(entityType, Entity.TOPIC));
   }
 
   public void setService(Topic topic, EntityReference service) {
     if (service != null && topic != null) {
-      dao.relationshipDAO()
+      daoCollection
+          .relationshipDAO()
           .insert(
               service.getId().toString(),
               topic.getId().toString(),
@@ -250,6 +224,11 @@ public class TopicRepository extends EntityRepository<Topic> {
     @Override
     public Topic getEntity() {
       return entity;
+    }
+
+    @Override
+    public EntityReference getContainer() {
+      return entity.getService();
     }
 
     @Override

@@ -303,6 +303,12 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard> {
   }
 
   @Override
+  public EntityReference getContainer(Object createRequest) throws URISyntaxException {
+    CreateDashboard createDashboard = (CreateDashboard) createRequest;
+    return createDashboard.getService();
+  }
+
+  @Override
   public void validateCreatedEntity(Dashboard dashboard, Object request, Map<String, String> authHeaders)
       throws HttpResponseException {
     CreateDashboard createRequest = (CreateDashboard) request;
