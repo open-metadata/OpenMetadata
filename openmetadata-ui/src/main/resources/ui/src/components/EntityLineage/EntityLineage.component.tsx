@@ -568,7 +568,6 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
         (entityLineage?.upstreamEdges ?? []).length > 0 ? (
           <ReactFlowProvider>
             <ReactFlow
-              panOnScroll
               elements={elements as Elements}
               nodeTypes={{
                 output: CustomNode,
@@ -576,6 +575,11 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
                 default: CustomNode,
               }}
               nodesConnectable={false}
+              nodesDraggable={!isEditMode}
+              panOnScroll={!isEditMode}
+              paneMoveable={!isEditMode}
+              zoomOnPinch={!isEditMode}
+              zoomOnScroll={!isEditMode}
               onConnect={onConnect}
               onElementClick={(_e, el) => onElementClick(el)}
               onElementsRemove={onElementsRemove}

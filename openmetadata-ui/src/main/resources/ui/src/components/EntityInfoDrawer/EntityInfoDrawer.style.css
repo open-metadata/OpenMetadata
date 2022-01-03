@@ -28,6 +28,10 @@
   transition: transform 0.3s ease-out;
 }
 
+.side-drawer.add-lineage {
+  width: 50vw;
+}
+
 .side-drawer.open {
   transform: translateX(0);
   display: block;

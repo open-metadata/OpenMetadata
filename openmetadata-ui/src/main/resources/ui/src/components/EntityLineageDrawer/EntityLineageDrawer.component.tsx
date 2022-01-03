@@ -1,3 +1,16 @@
+/*
+ *  Copyright 2021 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
 import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
 import { debounce, isEmpty } from 'lodash';
@@ -56,7 +69,9 @@ const getEntityCard = (
 ) => {
   return (
     <div
-      className={classNames('tw-p-1')}
+      className={classNames(
+        'tw-p-1 tw-flex tw-flex-col hover:tw-bg-body-main tw-cursor-pointer'
+      )}
       onClick={() => {
         entitySelectHandler(data.id);
         suggestionHandler(false);
@@ -77,10 +92,14 @@ const getEntityCard = (
               'tw-text-grey-body': data.id !== selectedEntity,
             })}
             data-testid="table-link">
+            {data.database ? <span>{`${data.database}/`}</span> : null}
             {stringToHTML(data.name)}
           </button>
         </h6>
       </div>
+      <p className="tw-ml-7 tw-mt-1 description-text suggestions">
+        {data.description}
+      </p>
     </div>
   );
 };
@@ -97,7 +116,6 @@ const EntityLineageDrawer = ({
   show,
   onCancel,
   selectedNode,
-  editModeHandler,
 }: LineageDrawerProps) => {
   const [edgeType, setEdgeType] = useState<string>('');
   const [entityType, setEntityType] = useState<string>('');
@@ -259,7 +277,6 @@ const EntityLineageDrawer = ({
         .then(() => {
           setIsAddingLineage({ state: 'success', loading: false });
           setTimeout(() => {
-            editModeHandler(false);
             onCancel(false);
             setEntityType('');
             setEdgeType('');
@@ -279,7 +296,7 @@ const EntityLineageDrawer = ({
   }, [data]);
 
   return (
-    <div className={classNames('side-drawer', { open: show })}>
+    <div className={classNames('side-drawer add-lineage', { open: show })}>
       <header className="tw-flex tw-justify-between">
         <p className="tw-flex">
           <span>{`Add lineage to "${getEntityName(selectedNode.name)}"`}</span>
@@ -307,39 +324,41 @@ const EntityLineageDrawer = ({
         </div>
       </header>
       <hr className="tw-mt-3 tw-border-primary-hover-lite" />
-      <div className="tw-mt-3">
-        <select
-          className={classNames('tw-form-inputs tw-px-3 tw-py-1')}
-          data-testid="select-node-type"
-          id="selectNode"
-          name="edgeType"
-          value={edgeType}
-          onChange={handleValidation}>
-          <option value="">Select Edge Type</option>
-          {nodeTypeArr.map((node, index) => (
-            <option key={index} value={node.value}>
-              {node.name}
-            </option>
-          ))}
-        </select>
-        {showErrorMsg.edgeType && errorMsg('EntityType is required')}
-      </div>
-      <div className="tw-mt-3">
-        <select
-          className={classNames('tw-form-inputs tw-px-3 tw-py-1')}
-          data-testid="select-entity-type"
-          id="selectEntity"
-          name="entityType"
-          value={entityType}
-          onChange={handleValidation}>
-          <option value="">Select Entity Type</option>
-          {entityTypeArr.map((entity, index) => (
-            <option key={index} value={entity.value}>
-              {entity.name}
-            </option>
-          ))}
-        </select>
-        {showErrorMsg.entityType && errorMsg('EntityType is required')}
+      <div className="tw-flex tw-gap-x-2">
+        <div className="tw-mt-3 tw-flex-1">
+          <select
+            className={classNames('tw-form-inputs tw-px-3 tw-py-1')}
+            data-testid="select-node-type"
+            id="selectNode"
+            name="edgeType"
+            value={edgeType}
+            onChange={handleValidation}>
+            <option value="">Select Edge Type</option>
+            {nodeTypeArr.map((node, index) => (
+              <option key={index} value={node.value}>
+                {node.name}
+              </option>
+            ))}
+          </select>
+          {showErrorMsg.edgeType && errorMsg('EntityType is required')}
+        </div>
+        <div className="tw-mt-3 tw-flex-1">
+          <select
+            className={classNames('tw-form-inputs tw-px-3 tw-py-1')}
+            data-testid="select-entity-type"
+            id="selectEntity"
+            name="entityType"
+            value={entityType}
+            onChange={handleValidation}>
+            <option value="">Select Entity Type</option>
+            {entityTypeArr.map((entity, index) => (
+              <option key={index} value={entity.value}>
+                {entity.name}
+              </option>
+            ))}
+          </select>
+          {showErrorMsg.entityType && errorMsg('EntityType is required')}
+        </div>
       </div>
       {entityType && (
         <div className="tw-mt-3 tw-relative">
@@ -384,6 +403,7 @@ const EntityLineageDrawer = ({
                                 entitySelectHandler,
                                 suggestionHandler
                               )}
+                              {i < 4 ? <hr /> : null}
                             </Fragment>
                           ))}
                       </div>
@@ -398,8 +418,8 @@ const EntityLineageDrawer = ({
 
       {!isEmpty(selectedEntity) ? (
         <Fragment>
-          <div className="tw-mt-3">
-            <div className="tw-bg-white tw-p-2">
+          <div className="tw-mt-3 tw-bg-white tw-p-3 tw-border tw-border-main tw-rounded-md">
+            <div className="tw-p-2 tw-flex tw-flex-col">
               <div className="tw-flex">
                 <img
                   alt=""
@@ -413,10 +433,16 @@ const EntityLineageDrawer = ({
                   <button
                     className={classNames('tw-font-medium tw-text-grey-body')}
                     data-testid="table-link">
+                    {selectedEntity.database ? (
+                      <span>{`${selectedEntity.database}/`}</span>
+                    ) : null}
                     {stringToHTML(selectedEntity.name)}
                   </button>
                 </h6>
               </div>
+              <p className="tw-ml-7 tw-mt-1 description-text">
+                {selectedEntity.description}
+              </p>
             </div>
           </div>
 
