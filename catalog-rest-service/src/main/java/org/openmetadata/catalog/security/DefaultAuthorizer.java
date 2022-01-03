@@ -176,7 +176,7 @@ public class DefaultAuthorizer implements Authorizer {
       LOG.debug("Added admin user entry: {}", addedUser);
     } catch (DuplicateEntityException | IOException exception) {
       // In HA set up the other server may have already added the user.
-      LOG.debug("Caught exception: " + ExceptionUtils.getStackTrace(exception));
+      LOG.debug("Caught exception: {}", ExceptionUtils.getStackTrace(exception));
       LOG.debug("Admin user entry: {} already exists.", user);
     }
   }
@@ -196,7 +196,7 @@ public class DefaultAuthorizer implements Authorizer {
       LOG.debug("Added bot user entry: {}", addedUser);
     } catch (DuplicateEntityException | IOException exception) {
       // In HA se tup the other server may have already added the user.
-      LOG.debug("Caught exception: " + ExceptionUtils.getStackTrace(exception));
+      LOG.debug("Caught exception: {}", ExceptionUtils.getStackTrace(exception));
       LOG.debug("Bot user entry: {} already exists.", user);
     }
   }

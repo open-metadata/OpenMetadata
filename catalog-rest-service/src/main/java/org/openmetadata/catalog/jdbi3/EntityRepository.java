@@ -382,7 +382,7 @@ public abstract class EntityRepository<T> {
       }
       // Soft delete all the contained entities
       for (EntityReference entityReference : contains) {
-        LOG.info("Recursively deleting " + entityReference.getType() + " " + entityReference.getId());
+        LOG.info("Recursively deleting {} {}",entityReference.getType(),entityReference.getId());
         Entity.deleteEntity(entityReference.getType(), entityReference.getId(), recursive);
       }
     }
