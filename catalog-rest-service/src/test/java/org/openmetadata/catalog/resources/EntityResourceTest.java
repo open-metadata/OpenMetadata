@@ -46,6 +46,7 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
@@ -791,14 +792,15 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     deleteEntity(entityInterface.getId(), adminAuthHeaders());
 
     // PUT Entity back
-    ChangeDescription change = getChangeDescription(entityInterface.getVersion());
-    change.getFieldsUpdated().add(new FieldChange().withName("deleted").withNewValue(false).withOldValue(true));
+    List<FieldChange> expectedChange = Arrays.asList(
+            new FieldChange().withName("deleted").withNewValue(false).withOldValue(true)
+    );
 
     // Validate version and change description
     T updated = updateEntity(request, OK, adminAuthHeaders());
     EntityInterface<T> updatedInterface = getEntityInterface(updated);
-    assertEquals(updatedInterface.getVersion(), entityInterface.getVersion() + 1.0); // major version update
-    assertEquals(updatedInterface.getChangeDescription().getFieldsUpdated(), change.getFieldsUpdated());
+    assertEquals(entityInterface.getVersion() + 1.0, updatedInterface.getVersion()); // major version update
+    assertEquals(expectedChange, updatedInterface.getChangeDescription().getFieldsUpdated());
 
   }
 
