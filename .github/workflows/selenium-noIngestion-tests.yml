@@ -47,6 +47,7 @@ jobs:
 
     - name: Start Server
       run: cd docker/local-metadata && docker-compose up -d openmetadata-server mysql elasticsearch
+      timeout-minutes: 20
 
     - name: Sleep for 30 seconds
       run: sleep 30s
