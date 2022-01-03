@@ -43,11 +43,14 @@ from metadata.generated.schema.entity.services.databaseService import (
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.common import (
     ConfigModel,
+    Entity,
     IncludeFilterPattern,
     WorkflowContext,
 )
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
+from metadata.ingestion.models.table_metadata import DeleteTable
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.utils.column_helpers import check_column_complex_type, get_column_type
 from metadata.utils.helpers import get_database_service_or_create
@@ -263,9 +266,11 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
             logger.error(f"Failed to generate sample data for {table} - {err}")
         return None
 
-    def next_record(self) -> Iterable[OMetaDatabaseAndTable]:
+    def next_record(self) -> Iterable[Entity]:
         inspector = inspect(self.engine)
         for schema in inspector.get_schema_names():
+            # clear any previous source database state
+            self.database_source_state.clear()
             if not self.sql_config.schema_filter_pattern.included(schema):
                 self.status.filter(schema, "Schema pattern not allowed")
                 continue
@@ -274,6 +279,8 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                 yield from self.fetch_tables(inspector, schema)
             if self.config.include_views:
                 yield from self.fetch_views(inspector, schema)
+            if self.config.mark_deleted_tables_as_deleted:
+                yield from self.delete_tables(schema_fqdn)
 
     def fetch_tables(
         self, inspector: Inspector, schema: str
@@ -391,6 +398,12 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                 logger.error(err)
                 self.status.warnings.append(f"{self.config.service_name}.{view_name}")
                 continue
+
+    def delete_tables(self, schema_fqdn: str) -> DeleteTable:
+        database_state = self._build_database_state(schema_fqdn)
+        for table_ref in database_state:
+            if table_ref.name not in self.database_source_state:
+                yield DeleteTable(table=table_ref)
 
     def _parse_data_model(self):
         """
