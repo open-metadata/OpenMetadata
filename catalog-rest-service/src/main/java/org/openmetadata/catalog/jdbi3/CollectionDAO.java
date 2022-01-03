@@ -412,8 +412,9 @@ public interface CollectionDAO {
     void deleteTo(@Bind("toId") String toId, @Bind("toEntity") String toEntity, @Bind("relation") int relation,
                   @Bind("fromEntity") String fromEntity);
 
-    @SqlUpdate("DELETE from entity_relationship " + "WHERE toId = :id OR fromId = :id")
-    void deleteAll(@Bind("id") String id);
+    @SqlUpdate("DELETE from entity_relationship WHERE (toId = :id AND toEntity = :entity) OR "
+            + "(fromId = :id AND toEntity = :entity)")
+    void deleteAll(@Bind("id") String id, @Bind("entity") String entity);
 
     @SqlUpdate("UPDATE entity_relationship SET deleted = true WHERE toId = :id OR fromId = :id")
     void softDeleteAll(@Bind("id") String id);

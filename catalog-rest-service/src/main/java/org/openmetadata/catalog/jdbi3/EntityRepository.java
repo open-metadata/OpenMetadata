@@ -397,7 +397,7 @@ public abstract class EntityRepository<T> {
     }
     // Hard delete
     dao.delete(id);
-    daoCollection.relationshipDAO().deleteAll(id.toString());
+    daoCollection.relationshipDAO().deleteAll(id.toString(), entityName);
   }
 
   @Transaction
