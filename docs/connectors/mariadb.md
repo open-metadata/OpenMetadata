@@ -104,6 +104,7 @@ Copy and paste the configuration template below into the `mariadb.json` file you
 Note: The `source.config` field in the configuration JSON will include the majority of the settings for your connector. In the steps below we describe how to customize the key-value pairs in the `source.config` field to meet your needs.
 {% endhint %}
 
+{% code title="mariadb.json" %}
 ```javascript
 {
   "source": {
@@ -135,6 +136,7 @@ Note: The `source.config` field in the configuration JSON will include the major
   }
 }
 ```
+{% endcode %}
 
 ### **4. Configure service settings**
 
