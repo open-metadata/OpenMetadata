@@ -409,7 +409,8 @@ public abstract class EntityRepository<T> {
     User user = daoCollection.userDAO().findEntityById(userId);
 
     // Remove follower
-    daoCollection.relationshipDAO().delete(userId.toString(), entityId.toString(), Relationship.FOLLOWS.ordinal());
+    daoCollection.relationshipDAO().delete(userId.toString(), Entity.USER, entityId.toString(), entityName,
+            Relationship.FOLLOWS.ordinal());
 
     ChangeDescription change = new ChangeDescription().withPreviousVersion(entityInterface.getVersion());
     change

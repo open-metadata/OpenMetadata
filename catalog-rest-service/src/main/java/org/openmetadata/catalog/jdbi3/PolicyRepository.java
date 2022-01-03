@@ -340,7 +340,9 @@ public class PolicyRepository extends EntityRepository<Policy> {
             .relationshipDAO()
             .delete(
                 origPolicy.getId().toString(),
+                Entity.POLICY,
                 origPolicy.getLocation().getId().toString(),
+                Entity.LOCATION,
                 Relationship.APPLIED_TO.ordinal());
       }
       // insert updated Policy --> Location relationship.

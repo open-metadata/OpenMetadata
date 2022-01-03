@@ -223,10 +223,10 @@ public final class EntityUtil {
   }
 
   /** Unassign owner relationship for a given entity */
-  public static void unassignOwner(EntityRelationshipDAO dao, EntityReference owner, String ownedEntityId) {
+  public static void unassignOwner(EntityRelationshipDAO dao, EntityReference owner, String ownedEntityId, String ownedEntityType) {
     if (owner != null && owner.getId() != null) {
       LOG.info("Removing owner {}:{} for entity {}", owner.getType(), owner.getId(), ownedEntityId);
-      dao.delete(owner.getId().toString(), ownedEntityId, Relationship.OWNS.ordinal());
+      dao.delete(owner.getId().toString(), owner.getType(), ownedEntityId, ownedEntityType, Relationship.OWNS.ordinal());
     }
   }
 
@@ -238,7 +238,7 @@ public final class EntityUtil {
       String ownedEntityType) {
     // TODO inefficient use replace instead of delete and add?
     // TODO check for orig and new owners being the same
-    unassignOwner(dao, originalOwner, ownedEntityId.toString());
+    unassignOwner(dao, originalOwner, ownedEntityId.toString(), ownedEntityType);
     setOwner(dao, ownedEntityId, ownedEntityType, newOwner);
   }
 
@@ -370,10 +370,6 @@ public final class EntityUtil {
             followedEntityType,
             Relationship.FOLLOWS.ordinal())
         > 0;
-  }
-
-  public static void removeFollower(EntityRelationshipDAO dao, UUID followedEntityId, UUID followerId) {
-    dao.delete(followerId.toString(), followedEntityId.toString(), Relationship.FOLLOWS.ordinal());
   }
 
   public static List<EntityReference> getFollowers(
