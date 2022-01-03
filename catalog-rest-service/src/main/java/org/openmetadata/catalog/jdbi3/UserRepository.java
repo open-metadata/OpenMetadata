@@ -114,12 +114,12 @@ public class UserRepository extends EntityRepository<User> {
   private List<EntityReference> getOwns(User user) throws IOException {
     // Compile entities owned by the user
     List<EntityReference> ownedEntities =
-        daoCollection.relationshipDAO().findTo(user.getId().toString(), OWNS.ordinal());
+        daoCollection.relationshipDAO().findTo(user.getId().toString(), Entity.USER, OWNS.ordinal());
 
     // Compile entities owned by the team the user belongs to
     List<EntityReference> teams = user.getTeams() == null ? getTeams(user) : user.getTeams();
     for (EntityReference team : teams) {
-      ownedEntities.addAll(daoCollection.relationshipDAO().findTo(team.getId().toString(), OWNS.ordinal()));
+      ownedEntities.addAll(daoCollection.relationshipDAO().findTo(team.getId().toString(), Entity.TEAM, OWNS.ordinal()));
     }
     // Populate details in entity reference
     return EntityUtil.populateEntityReferences(ownedEntities);
@@ -127,7 +127,7 @@ public class UserRepository extends EntityRepository<User> {
 
   private List<EntityReference> getFollows(User user) throws IOException {
     return EntityUtil.populateEntityReferences(
-        daoCollection.relationshipDAO().findTo(user.getId().toString(), FOLLOWS.ordinal()));
+        daoCollection.relationshipDAO().findTo(user.getId().toString(), Entity.USER, FOLLOWS.ordinal()));
   }
 
   public List<EntityReference> validateRoles(List<UUID> roleIds) throws IOException {

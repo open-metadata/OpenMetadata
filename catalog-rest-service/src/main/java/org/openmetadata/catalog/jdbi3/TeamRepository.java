@@ -139,7 +139,7 @@ public class TeamRepository extends EntityRepository<Team> {
 
   private List<EntityReference> getOwns(String teamId) throws IOException {
     // Compile entities owned by the team
-    return EntityUtil.populateEntityReferences(daoCollection.relationshipDAO().findTo(teamId, OWNS.ordinal()));
+    return EntityUtil.populateEntityReferences(daoCollection.relationshipDAO().findTo(teamId, Entity.TEAM, OWNS.ordinal()));
   }
 
   public static class TeamEntityInterface implements EntityInterface<Team> {

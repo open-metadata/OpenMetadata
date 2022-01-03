@@ -74,7 +74,7 @@ public class LineageRepository {
             .withUpstreamEdges(new ArrayList<>())
             .withDownstreamEdges(new ArrayList<>());
     addUpstreamLineage(primary.getId(), lineage, upstreamDepth);
-    addDownstreamLineage(primary.getId(), lineage, downstreamDepth);
+    addDownstreamLineage(primary.getId(), primary.getType(), lineage, downstreamDepth);
 
     // Remove duplicate nodes
     lineage.withNodes(lineage.getNodes().stream().distinct().collect(Collectors.toList()));
@@ -104,19 +104,19 @@ public class LineageRepository {
     }
   }
 
-  private void addDownstreamLineage(UUID id, EntityLineage lineage, int downstreamDepth) {
+  private void addDownstreamLineage(UUID id, String entityType, EntityLineage lineage, int downstreamDepth) {
     if (downstreamDepth == 0) {
       return;
     }
     // from other ids ---> to this id
     List<EntityReference> downStreamEntities =
-        dao.relationshipDAO().findTo(id.toString(), Relationship.UPSTREAM.ordinal());
+        dao.relationshipDAO().findTo(id.toString(), entityType, Relationship.UPSTREAM.ordinal());
     lineage.getNodes().addAll(downStreamEntities);
 
     downstreamDepth--;
     for (EntityReference entity : downStreamEntities) {
       lineage.getDownstreamEdges().add(new Edge().withToEntity(entity.getId()).withFromEntity(id));
-      addDownstreamLineage(entity.getId(), lineage, downstreamDepth);
+      addDownstreamLineage(entity.getId(), entity.getType(), lineage, downstreamDepth);
     }
   }
 }

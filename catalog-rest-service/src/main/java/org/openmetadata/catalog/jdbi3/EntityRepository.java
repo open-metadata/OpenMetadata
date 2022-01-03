@@ -374,7 +374,7 @@ public abstract class EntityRepository<T> {
   public final void delete(UUID id, boolean recursive) throws IOException {
     // If an entity being deleted contains other children entities, it can't be deleted
     List<EntityReference> contains =
-        daoCollection.relationshipDAO().findTo(id.toString(), Relationship.CONTAINS.ordinal());
+        daoCollection.relationshipDAO().findTo(id.toString(), entityName,Relationship.CONTAINS.ordinal());
 
     if (contains.size() > 0) {
       if (!recursive) {
