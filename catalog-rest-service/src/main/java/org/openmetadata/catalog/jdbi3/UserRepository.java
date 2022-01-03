@@ -337,7 +337,7 @@ public class UserRepository extends EntityRepository<User> {
 
     private void updateTeams(User origUser, User updatedUser) throws JsonProcessingException {
       // Remove teams from original and add teams from updated
-      daoCollection.relationshipDAO().deleteTo(origUser.getId().toString(), HAS.ordinal(), Entity.TEAM);
+      daoCollection.relationshipDAO().deleteTo(origUser.getId().toString(), Entity.USER, HAS.ordinal(), Entity.TEAM);
       assignTeams(updatedUser, updatedUser.getTeams());
 
       List<EntityReference> origTeams = Optional.ofNullable(origUser.getTeams()).orElse(Collections.emptyList());
