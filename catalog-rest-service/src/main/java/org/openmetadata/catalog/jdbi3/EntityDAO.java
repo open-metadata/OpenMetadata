@@ -53,7 +53,8 @@ public interface EntityDAO<T> {
   String findByName(@Define("table") String table, @Define("nameColumn") String nameColumn, @Bind("name") String name);
 
   @SqlQuery("SELECT json FROM <table> WHERE <nameColumn> = :name")
-  String findByNameDeletedOrExists(@Define("table") String table, @Define("nameColumn") String nameColumn, @Bind("name") String name);
+  String findByNameDeletedOrExists(
+      @Define("table") String table, @Define("nameColumn") String nameColumn, @Bind("name") String name);
 
   @SqlQuery(
       "SELECT count(*) FROM <table> WHERE "
