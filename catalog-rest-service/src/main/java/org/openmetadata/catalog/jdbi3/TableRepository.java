@@ -206,7 +206,9 @@ public class TableRepository extends EntityRepository<Table> {
     Table table = daoCollection.tableDAO().findEntityById(tableId);
     EntityReference location = daoCollection.locationDAO().findEntityReferenceById(locationId);
     // A table has only one location.
-    daoCollection.relationshipDAO().deleteFrom(tableId.toString(), Entity.TABLE, Relationship.HAS.ordinal(), Entity.LOCATION);
+    daoCollection
+        .relationshipDAO()
+        .deleteFrom(tableId.toString(), Entity.TABLE, Relationship.HAS.ordinal(), Entity.LOCATION);
     daoCollection
         .relationshipDAO()
         .insert(tableId.toString(), locationId.toString(), Entity.TABLE, Entity.LOCATION, Relationship.HAS.ordinal());
@@ -330,7 +332,8 @@ public class TableRepository extends EntityRepository<Table> {
 
   private EntityReference getService(Table table) throws IOException {
     EntityReference ref =
-        EntityUtil.getService(daoCollection.relationshipDAO(), Entity.DATABASE, table.getDatabase().getId(), Entity.DATABASE_SERVICE);
+        EntityUtil.getService(
+            daoCollection.relationshipDAO(), Entity.DATABASE, table.getDatabase().getId(), Entity.DATABASE_SERVICE);
     DatabaseService service = getService(ref.getId(), ref.getType());
     ref.setName(service.getName());
     ref.setDescription(service.getDescription());
@@ -342,7 +345,11 @@ public class TableRepository extends EntityRepository<Table> {
     String serviceId =
         daoCollection
             .relationshipDAO()
-            .findFrom(table.getDatabase().getId().toString(), Entity.DATABASE, Relationship.CONTAINS.ordinal(), Entity.DATABASE_SERVICE)
+            .findFrom(
+                table.getDatabase().getId().toString(),
+                Entity.DATABASE,
+                Relationship.CONTAINS.ordinal(),
+                Entity.DATABASE_SERVICE)
             .get(0);
     DatabaseService service = daoCollection.dbServiceDAO().findEntityById(UUID.fromString(serviceId));
     table.setService(new DatabaseServiceEntityInterface(service).getEntityReference());
@@ -436,7 +443,9 @@ public class TableRepository extends EntityRepository<Table> {
   private EntityReference getDatabase(UUID tableId) throws IOException {
     // Find database for the table
     List<String> result =
-        daoCollection.relationshipDAO().findFrom(tableId.toString(), Entity.TABLE, Relationship.CONTAINS.ordinal(), Entity.DATABASE);
+        daoCollection
+            .relationshipDAO()
+            .findFrom(tableId.toString(), Entity.TABLE, Relationship.CONTAINS.ordinal(), Entity.DATABASE);
     if (result.size() != 1) {
       throw EntityNotFoundException.byMessage(String.format("Database for table %s Not found", tableId));
     }
@@ -446,7 +455,9 @@ public class TableRepository extends EntityRepository<Table> {
   private EntityReference getLocation(UUID tableId) throws IOException {
     // Find the location of the table
     List<String> result =
-        daoCollection.relationshipDAO().findTo(tableId.toString(), Entity.TABLE, Relationship.HAS.ordinal(), Entity.LOCATION);
+        daoCollection
+            .relationshipDAO()
+            .findTo(tableId.toString(), Entity.TABLE, Relationship.HAS.ordinal(), Entity.LOCATION);
     if (result.size() == 1) {
       return daoCollection.locationDAO().findEntityReferenceById(UUID.fromString(result.get(0)));
     } else {
