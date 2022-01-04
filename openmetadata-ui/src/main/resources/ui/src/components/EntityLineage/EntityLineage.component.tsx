@@ -21,6 +21,8 @@ import ReactFlow, {
   Edge,
   Elements,
   FlowElement,
+  isNode,
+  Position,
   ReactFlowProvider,
   removeElements,
 } from 'react-flow-renderer';
@@ -44,6 +46,46 @@ import { getEntityIcon } from '../../utils/TableUtils';
 import EntityInfoDrawer from '../EntityInfoDrawer/EntityInfoDrawer.component';
 import CustomNode from './CustomNode.component';
 import { EntityLineageProp, SelectedNode } from './EntityLineage.interface';
+import dagre from 'dagre';
+import { nodeHeight, nodeWidth } from '../../constants/constants';
+
+const dagreGraph = new dagre.graphlib.Graph();
+dagreGraph.setDefaultEdgeLabel(() => ({}));
+
+const getLayoutedElements = (elements: Elements, direction = 'LR') => {
+  const isHorizontal = direction === 'LR';
+  dagreGraph.setGraph({ rankdir: direction });
+
+  elements.forEach((el) => {
+    if (isNode(el)) {
+      dagreGraph.setNode(el.id, {
+        width: el?.__rf?.width ?? nodeWidth,
+        height: el?.__rf?.height ?? nodeHeight,
+      });
+    } else {
+      dagreGraph.setEdge(el.source, el.target);
+    }
+  });
+
+  dagre.layout(dagreGraph);
+
+  return elements.map((el) => {
+    if (isNode(el)) {
+      const nodeWithPosition = dagreGraph.node(el.id);
+      el.targetPosition = isHorizontal ? Position.Left : Position.Top;
+      el.sourcePosition = isHorizontal ? Position.Right : Position.Bottom;
+      el.position = {
+        x:
+          nodeWithPosition.x -
+          (el?.__rf?.width ?? nodeWidth) / 2 +
+          Math.random() / 1000,
+        y: nodeWithPosition.y - (el?.__rf?.height ?? nodeHeight) / 2,
+      };
+    }
+
+    return el;
+  });
+};
 
 const Entitylineage: FunctionComponent<EntityLineageProp> = ({
   entityLineage,
@@ -107,7 +149,9 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
     ) as Elements;
   };
 
-  const [elements, setElements] = useState<Elements>(setElementsHandle());
+  const [elements, setElements] = useState<Elements>(
+    getLayoutedElements(setElementsHandle())
+  );
   const closeDrawer = (value: boolean) => {
     setIsDrawerOpen(value);
 
@@ -152,7 +196,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
   };
 
   const onNodeExpand = (tableColumns?: Column[]) => {
-    const elements = setElementsHandle();
+    const elements = getLayoutedElements(setElementsHandle());
     setElements(
       elements.map((preEl) => {
         if (preEl.id.includes(expandNode?.id as string)) {
@@ -189,7 +233,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
   };
 
   useEffect(() => {
-    setElements(setElementsHandle());
+    setElements(getLayoutedElements(setElementsHandle()));
     setExpandNode(undefined);
     setTableColumns([]);
   }, [entityLineage, isNodeLoading]);

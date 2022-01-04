@@ -24,6 +24,7 @@
     "cookie-storage": "^6.1.0",
     "core-js": "^3.10.1",
     "cronstrue": "^1.122.0",
+    "dagre": "^0.8.5",
     "diff": "^5.0.0",
     "draft-js": "^0.11.7",
     "fast-json-patch": "^3.0.0-1",
