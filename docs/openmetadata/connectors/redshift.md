@@ -62,7 +62,7 @@ In a later step, you will install the Python module for this connector and its d
 
 #### 1.1 Create a directory for openmetadata
 
-Throughout the docs, we use a consistent directory structure, OpenMetadata server, and connector installation. If you have not already done so by following another guide, please create an openmetadata directory now and change into that directory in your command line environment.
+Throughout the docs, we use a consistent directory structure for OpenMetadata services and connector installation. If you have not already done so by following another guide, please create an openmetadata directory now and change into that directory in your command line environment.
 
 ```
 mkdir openmetadata; cd openmetadata

@@ -54,7 +54,7 @@ In a later step, you will install the Python module for this connector and its d
 
 #### **1.1 Create a directory for openmetadata**
 
-Throughout the docs, we use a consistent directory structure, OpenMetadata server, and connector installation. If you have not already done so by following another guide, please create an openmetadata directory now and change into that directory in your command line environment.
+Throughout the docs, we use a consistent directory structure for OpenMetadata services and connector installation. If you have not already done so by following another guide, please create an openmetadata directory now and change into that directory in your command line environment.
 
 ```
 mkdir openmetadata; cd openmetadata
@@ -324,7 +324,9 @@ Use `source.config.table_filter_pattern.includes` to include all tables with nam
 
 See the documentation for the[ Python re module](https://docs.python.org/3/library/re.html) for information on how to construct regular expressions.
 
+{% hint style="info" %}
 You may use either `excludes` or `includes` but not both in `table_filter_pattern`.
+{% endhint %}
 
 #### **schema\_filter\_pattern (optional)**
 
