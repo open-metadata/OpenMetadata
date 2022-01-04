@@ -630,7 +630,7 @@ class DashboardESIndex extends ElasticSearchIndex {
 @Value
 @JsonInclude(JsonInclude.Include.NON_NULL)
 class PipelineESIndex extends ElasticSearchIndex {
-  @JsonProperty("pipeine_id")
+  @JsonProperty("pipeline_id")
   String pipelineId;
 
   @JsonProperty("task_names")
