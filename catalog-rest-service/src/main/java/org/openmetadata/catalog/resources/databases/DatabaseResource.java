@@ -120,7 +120,7 @@ public class DatabaseResource {
   }
 
   static final String FIELDS = "owner,tables,usageSummary,location";
-  public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replaceAll(" ", "").split(","));
+  public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replaceAll("\\s", "").split(","));
 
   @GET
   @Operation(

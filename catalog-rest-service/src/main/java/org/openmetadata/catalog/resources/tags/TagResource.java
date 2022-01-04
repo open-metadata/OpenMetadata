@@ -122,7 +122,7 @@ public class TagResource {
   }
 
   static final String FIELDS = "usageCount";
-  protected static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replaceAll(" ", "").split(","));
+  protected static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replaceAll("\\s", "").split(","));
 
   @GET
   @Operation(

@@ -100,7 +100,7 @@ public class TeamResource {
   }
 
   protected static final String FIELDS = "profile,users,owns";
-  public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replaceAll(" ", "").split(","));
+  public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replaceAll("\\s", "").split(","));
 
   @GET
   @Valid
