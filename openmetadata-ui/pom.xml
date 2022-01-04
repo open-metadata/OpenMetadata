@@ -14,7 +14,7 @@
   <properties>
     <dropwizard.swagger.version>2.0.12-1</dropwizard.swagger.version>
     <testng.version>7.4.0</testng.version>
-    <selenium.version>4.0.0</selenium.version>
+    <selenium.version>4.1.1</selenium.version>
   </properties>
 
   <dependencies>
