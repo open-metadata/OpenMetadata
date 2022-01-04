@@ -108,8 +108,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
       loadNodeHandler,
       lineageLeafNodes,
       isNodeLoading,
-      getNodeLable,
-      isEditMode
+      getNodeLable
     ) as Elements;
   };
 

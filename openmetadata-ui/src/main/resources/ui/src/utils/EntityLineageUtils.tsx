@@ -94,8 +94,7 @@ export const getLineageData = (
   loadNodeHandler: (node: EntityReference, pos: LineagePos) => void,
   lineageLeafNodes: LeafNodes,
   isNodeLoading: LoadingNodeState,
-  getNodeLable: (node: EntityReference) => React.ReactNode,
-  isEditMode: boolean
+  getNodeLable: (node: EntityReference) => React.ReactNode
 ) => {
   const [x, y] = [0, 0];
   const nodes = entityLineage['nodes'];
@@ -300,9 +299,7 @@ export const getLineageData = (
                       lineageLeafNodes,
                       node?.id as string,
                       'from'
-                    ) &&
-                    !up.id.includes(isNodeLoading.id as string) &&
-                    !isEditMode ? (
+                    ) && !up.id.includes(isNodeLoading.id as string) ? (
                       <i className="fas fa-chevron-left tw-text-primary tw-mr-2" />
                     ) : null}
                     {isNodeLoading.state &&
@@ -342,8 +339,7 @@ export const getLineageData = (
                       }
                     }}>
                     {!isLeafNode(lineageLeafNodes, node?.id as string, 'to') &&
-                    !down.id.includes(isNodeLoading.id as string) &&
-                    !isEditMode ? (
+                    !down.id.includes(isNodeLoading.id as string) ? (
                       <i className="fas fa-chevron-right tw-text-primary tw-ml-2" />
                     ) : null}
                     {isNodeLoading.state &&
