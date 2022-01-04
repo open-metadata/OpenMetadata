@@ -110,7 +110,7 @@ public class MetricsRepository extends EntityRepository<Metrics> {
 
   private EntityReference getService(Metrics metrics) throws IOException { // Get service by metrics ID
     EntityReference ref =
-        EntityUtil.getService(daoCollection.relationshipDAO(), metrics.getId(), Entity.DASHBOARD_SERVICE);
+        EntityUtil.getService(daoCollection.relationshipDAO(), Entity.METRICS, metrics.getId(), Entity.DASHBOARD_SERVICE);
     return getService(Objects.requireNonNull(ref));
   }
 

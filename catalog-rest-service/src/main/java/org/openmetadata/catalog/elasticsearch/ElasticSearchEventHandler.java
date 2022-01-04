@@ -78,7 +78,7 @@ public class ElasticSearchEventHandler implements EventHandler {
 
   public Void process(ContainerRequestContext requestContext, ContainerResponseContext responseContext) {
     try {
-      LOG.info("request Context " + requestContext.toString());
+      LOG.info("request Context {}", requestContext.toString());
       if (responseContext.getEntity() != null) {
         Object entity = responseContext.getEntity();
         UpdateRequest updateRequest = null;
