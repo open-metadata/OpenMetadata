@@ -12,7 +12,7 @@
     "directory": "openmetadata-ui/src/main/resources/ui"
   },
   "dependencies": {
-    "@deuex-solutions/react-tutorial": "1.0.0",
+    "@deuex-solutions/react-tour": "^1.0.0",
     "@deuex-solutions/redoc": "2.0.0-rc.31",
     "autoprefixer": "^9.8.6",
     "axios": "^0.21.1",

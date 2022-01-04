@@ -11,10 +11,11 @@
  *  limitations under the License.
  */
 
+import classNames from 'classnames';
 import { isEqual, isNil, isUndefined } from 'lodash';
 import { ColumnJoins, EntityTags, ExtraInfo } from 'Models';
 import React, { useEffect, useState } from 'react';
-import { getTeamDetailsPath } from '../../constants/constants';
+import { getTeamDetailsPath, ROUTES } from '../../constants/constants';
 import { CSMode } from '../../enums/codemirror.enum';
 import {
   JoinedWith,
@@ -374,7 +375,9 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
 
           <div className="tw-bg-white tw-flex-grow tw-mx-1">
             {activeTab === 1 && (
-              <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-w-full tw-mt-4 ">
+              <div
+                className="tw-grid tw-grid-cols-4 tw-gap-4 tw-w-full tw-mt-4 "
+                id="schemaDetails">
                 <div className="tw-col-span-3">
                   <Description
                     description={description}
@@ -422,7 +425,13 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
               </div>
             )}
             {activeTab === 3 && (
-              <div className="tw-h-full">
+              <div
+                className={classNames(
+                  location.pathname.includes(ROUTES.TOUR)
+                    ? 'tw-h-70vh'
+                    : 'tw-h-full'
+                )}
+                id="lineageDetails">
                 <Entitylineage
                   entityLineage={entityLineage}
                   isNodeLoading={isNodeLoading}

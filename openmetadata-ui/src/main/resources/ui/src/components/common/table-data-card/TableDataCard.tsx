@@ -100,12 +100,6 @@ const TableDataCard: FunctionComponent<Props> = ({
     return [...new Set(assetTags)];
   };
 
-  const handleCardClick = () => {
-    if (location.pathname.includes(ROUTES.TOUR)) {
-      AppState.currentTourPage = CurrentTourPageType.DATASET_PAGE;
-    }
-  };
-
   const handleLinkClick = () => {
     if (location.pathname.includes(ROUTES.TOUR)) {
       AppState.currentTourPage = CurrentTourPageType.DATASET_PAGE;
@@ -118,8 +112,7 @@ const TableDataCard: FunctionComponent<Props> = ({
     <div
       className="tw-bg-white tw-p-3 tw-border tw-border-main tw-rounded-md"
       data-testid="table-data-card"
-      id={id}
-      onClickCapture={handleCardClick}>
+      id={id}>
       <div>
         <div className="tw-flex">
           {/* {getEntityIcon(indexType)} */}
@@ -132,6 +125,7 @@ const TableDataCard: FunctionComponent<Props> = ({
             <button
               className="tw-text-grey-body tw-font-medium"
               data-testid="table-link"
+              id={`${id}Title`}
               onClick={handleLinkClick}>
               {stringToHTML(name)}
             </button>
