@@ -181,7 +181,7 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
               @Override
               public void stop() {
                 long startTime = System.currentTimeMillis();
-                LOG.info("Took " + (System.currentTimeMillis() - startTime) + " ms to close all the services");
+                LOG.info("Took {} ms to close all the services", (System.currentTimeMillis() - startTime));
               }
             });
     environment.jersey().register(new SearchResource(config.getElasticSearchConfiguration()));

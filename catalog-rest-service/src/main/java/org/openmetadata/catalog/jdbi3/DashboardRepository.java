@@ -96,7 +96,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
 
   private EntityReference getService(Dashboard dashboard) throws IOException {
     EntityReference ref =
-        EntityUtil.getService(daoCollection.relationshipDAO(), dashboard.getId(), Entity.DASHBOARD_SERVICE);
+        EntityUtil.getService(daoCollection.relationshipDAO(), Entity.DASHBOARD, dashboard.getId(), Entity.DASHBOARD_SERVICE);
     if (ref != null) {
       DashboardService service = getService(ref.getId(), ref.getType());
       ref.setName(service.getName());
@@ -189,7 +189,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     }
     String dashboardId = dashboard.getId().toString();
     List<String> chartIds =
-        daoCollection.relationshipDAO().findTo(dashboardId, Relationship.HAS.ordinal(), Entity.CHART);
+        daoCollection.relationshipDAO().findTo(dashboardId, Entity.DASHBOARD, Relationship.HAS.ordinal(), Entity.CHART);
     List<EntityReference> charts = new ArrayList<>();
     for (String chartId : chartIds) {
       charts.add(daoCollection.chartDAO().findEntityReferenceById(UUID.fromString(chartId)));
@@ -219,7 +219,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     String dashboardId = updated.getId().toString();
 
     // Remove all charts associated with this dashboard
-    daoCollection.relationshipDAO().deleteFrom(dashboardId, Relationship.HAS.ordinal(), Entity.CHART);
+    daoCollection.relationshipDAO().deleteFrom(dashboardId, Entity.DASHBOARD, Relationship.HAS.ordinal(), Entity.CHART);
 
     // Add relationship from dashboard to chart
     if (updated.getCharts() != null) {
@@ -385,7 +385,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
       String dashboardId = updated.getId().toString();
 
       // Remove all charts associated with this dashboard
-      daoCollection.relationshipDAO().deleteFrom(dashboardId, Relationship.HAS.ordinal(), Entity.CHART);
+      daoCollection.relationshipDAO().deleteFrom(dashboardId, Entity.DASHBOARD, Relationship.HAS.ordinal(), Entity.CHART);
 
       // Add relationship from dashboard to chart
       List<EntityReference> updatedCharts =

@@ -48,7 +48,7 @@ public class MyDataPageTest {
 
   @Test
   @Order(2)
-  public void checkOverview() throws Exception {
+  public void checkOverview() {
     checkWhatsNew();
     String tablesCount = webDriver.findElement(By.xpath("//div[@data-testid='tables-summary']//span[@data-testid='filter-count']")).getAttribute("innerHTML");
     Assert.assertEquals(tablesCount, "0");
@@ -138,4 +138,3 @@ public class MyDataPageTest {
     webDriver.switchTo().window(tabs.get(0)).close();
   }
 }
-

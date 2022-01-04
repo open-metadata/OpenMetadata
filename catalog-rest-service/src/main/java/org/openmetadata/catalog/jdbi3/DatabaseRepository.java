@@ -60,7 +60,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
 
   @Transaction
   public void deleteLocation(String databaseId) {
-    daoCollection.relationshipDAO().deleteFrom(databaseId, Relationship.HAS.ordinal(), Entity.LOCATION);
+    daoCollection.relationshipDAO().deleteFrom(databaseId, Entity.DATABASE, Relationship.HAS.ordinal(), Entity.LOCATION);
   }
 
   @Override
@@ -110,7 +110,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
     }
     String databaseId = database.getId().toString();
     List<String> tableIds =
-        daoCollection.relationshipDAO().findTo(databaseId, Relationship.CONTAINS.ordinal(), Entity.TABLE);
+        daoCollection.relationshipDAO().findTo(databaseId, Entity.DATABASE, Relationship.CONTAINS.ordinal(), Entity.TABLE);
     List<EntityReference> tables = new ArrayList<>();
     for (String tableId : tableIds) {
       tables.add(daoCollection.tableDAO().findEntityReferenceById(UUID.fromString(tableId)));
@@ -149,7 +149,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
     }
     String databaseId = database.getId().toString();
     List<String> result =
-        daoCollection.relationshipDAO().findTo(databaseId, Relationship.HAS.ordinal(), Entity.LOCATION);
+        daoCollection.relationshipDAO().findTo(databaseId, Entity.DATABASE, Relationship.HAS.ordinal(), Entity.LOCATION);
     if (result.size() == 1) {
       String locationId = result.get(0);
       return daoCollection.locationDAO().findEntityReferenceById(UUID.fromString(locationId));
@@ -160,7 +160,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
 
   private EntityReference getService(Database database) throws IOException {
     EntityReference ref =
-        EntityUtil.getService(daoCollection.relationshipDAO(), database.getId(), Entity.DATABASE_SERVICE);
+        EntityUtil.getService(daoCollection.relationshipDAO(), Entity.DATABASE, database.getId(), Entity.DATABASE_SERVICE);
     if (ref != null) {
       DatabaseService service = getService(ref.getId(), ref.getType());
       ref.setName(service.getName());
@@ -187,7 +187,8 @@ public class DatabaseRepository extends EntityRepository<Database> {
     daoCollection.databaseDAO().findEntityById(databaseId);
     daoCollection.locationDAO().findEntityById(locationId);
     // A database has only one location.
-    daoCollection.relationshipDAO().deleteFrom(databaseId.toString(), Relationship.HAS.ordinal(), Entity.LOCATION);
+    daoCollection.relationshipDAO().deleteFrom(databaseId.toString(), Entity.DATABASE, Relationship.HAS.ordinal(),
+            Entity.LOCATION);
     daoCollection
         .relationshipDAO()
         .insert(
