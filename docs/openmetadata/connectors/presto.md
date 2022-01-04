@@ -140,7 +140,7 @@ In this step we will configure the Presto service settings required for this con
 Edit the value for `source.config.host_port` in `presto.json` for your Presto deployment. Use the `host:port` format illustrated in the example below.
 
 ```javascript
-"host_port": "hostname.domain.com:5439"
+"host_port": "hostname.domain.com:8080"
 ```
 
 Please ensure that your Presto deployment is reachable from the host you are using to run metadata ingestion.
