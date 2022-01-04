@@ -620,7 +620,7 @@ public class TableRepository extends EntityRepository<Table> {
             .listFromByPrefix(
                 table.getFullyQualifiedName(), "table.columns.column", "table.columns.column", JOINED_WITH.ordinal()));
 
-    if (list.size() == 0) { // No join information found. Return empty list
+    if (list.isEmpty()) { // No join information found. Return empty list
       return tableJoins;
     }
 

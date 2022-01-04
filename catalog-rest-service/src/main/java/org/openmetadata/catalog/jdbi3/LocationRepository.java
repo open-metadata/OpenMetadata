@@ -102,7 +102,8 @@ public class LocationRepository extends EntityRepository<Location> {
             .listPrefixesCount(
                 daoCollection.locationDAO().getTableName(), daoCollection.locationDAO().getNameColumn(), fqn, service);
 
-    String beforeCursor = null, afterCursor;
+    String beforeCursor = null;
+    String afterCursor;
     if (entities.size() > limitParam) { // If extra result exists, then previous page exists - return before cursor
       entities.remove(0);
       beforeCursor = getFullyQualifiedName(entities.get(0));
@@ -137,7 +138,8 @@ public class LocationRepository extends EntityRepository<Location> {
             .listPrefixesCount(
                 daoCollection.locationDAO().getTableName(), daoCollection.locationDAO().getNameColumn(), fqn, service);
 
-    String beforeCursor, afterCursor = null;
+    String beforeCursor;
+    String afterCursor = null;
     beforeCursor = after == null ? null : getFullyQualifiedName(entities.get(0));
     if (entities.size() > limitParam) { // If extra result exists, then next page exists - return after cursor
       entities.remove(limitParam);

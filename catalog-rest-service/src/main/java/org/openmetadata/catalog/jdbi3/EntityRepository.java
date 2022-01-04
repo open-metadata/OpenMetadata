@@ -221,7 +221,8 @@ public abstract class EntityRepository<T> {
     }
     int total = dao.listCount(fqnPrefix);
 
-    String beforeCursor, afterCursor = null;
+    String beforeCursor;
+    String afterCursor = null;
     beforeCursor = after == null ? null : getFullyQualifiedName(entities.get(0));
     if (entities.size() > limitParam) { // If extra result exists, then next page exists - return after cursor
       entities.remove(limitParam);
@@ -243,7 +244,8 @@ public abstract class EntityRepository<T> {
     }
     int total = dao.listCount(fqnPrefix);
 
-    String beforeCursor = null, afterCursor;
+    String beforeCursor = null;
+    String afterCursor;
     if (entities.size() > limitParam) { // If extra result exists, then previous page exists - return before cursor
       entities.remove(0);
       beforeCursor = getFullyQualifiedName(entities.get(0));
@@ -341,7 +343,7 @@ public abstract class EntityRepository<T> {
 
     // Validate follower
     User user = daoCollection.userDAO().findEntityById(userId);
-    if (user.getDeleted()) {
+    if (Boolean.TRUE.equals(user.getDeleted())) {
       throw new IllegalArgumentException(CatalogExceptionMessage.deactivatedUser(userId));
     }
 
@@ -376,7 +378,7 @@ public abstract class EntityRepository<T> {
     List<EntityReference> contains =
         daoCollection.relationshipDAO().findTo(id.toString(), entityName, Relationship.CONTAINS.ordinal());
 
-    if (contains.size() > 0) {
+    if (!contains.isEmpty()) {
       if (!recursive) {
         throw new IllegalArgumentException(entityName + " is not empty");
       }
