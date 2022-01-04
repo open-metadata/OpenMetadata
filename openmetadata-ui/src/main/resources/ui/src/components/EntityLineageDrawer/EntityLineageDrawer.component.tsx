@@ -28,6 +28,7 @@ import {
   LineageDrawerProps,
 } from '../EntityLineage/EntityLineage.interface';
 import Loader from '../Loader/Loader';
+import { entityTypeArr, nodeTypeArr } from './EntityLineageDrawer.constant';
 
 type ValidationType = {
   edgeType: boolean;
@@ -39,26 +40,6 @@ const getEntityName = (name = '') => {
 
   return nameArr[nameArr.length - 1];
 };
-
-const nodeTypeArr = [
-  { name: 'upstream', value: 'upstream' },
-  { name: 'downstream', value: 'downstream' },
-];
-
-const entityTypeArr = [
-  {
-    name: 'Table',
-    value: 'table',
-  },
-  {
-    name: 'Pipeline',
-    value: 'pipeline',
-  },
-  {
-    name: 'Dashboard',
-    value: 'dashboard',
-  },
-];
 
 const getEntityCard = (
   _entityType: string,
@@ -274,7 +255,9 @@ const EntityLineageDrawer = ({
           break;
       }
       addLineage(data)
-        .then(() => {
+        .then((res: AxiosResponse) => {
+          // eslint-disable-next-line
+          console.log(res);
           setIsAddingLineage({ state: 'success', loading: false });
           setTimeout(() => {
             onCancel(false);
@@ -420,25 +403,46 @@ const EntityLineageDrawer = ({
         <Fragment>
           <div className="tw-mt-3 tw-bg-white tw-p-3 tw-border tw-border-main tw-rounded-md">
             <div className="tw-p-2 tw-flex tw-flex-col">
-              <div className="tw-flex">
-                <img
-                  alt=""
-                  className="tw-inline tw-h-5 tw-w-5"
-                  src={serviceTypeLogo(selectedEntity.serviceType || '')}
-                />
-                <h6
-                  className={classNames(
-                    'tw-flex tw-items-center tw-m-0 tw-heading tw-pl-2'
-                  )}>
-                  <button
-                    className={classNames('tw-font-medium tw-text-grey-body')}
-                    data-testid="table-link">
-                    {selectedEntity.database ? (
-                      <span>{`${selectedEntity.database}/`}</span>
-                    ) : null}
-                    {stringToHTML(selectedEntity.name)}
-                  </button>
-                </h6>
+              <div className="tw-flex tw-justify-between">
+                <div className="tw-flex">
+                  <img
+                    alt=""
+                    className="tw-inline tw-h-5 tw-w-5"
+                    src={serviceTypeLogo(selectedEntity.serviceType || '')}
+                  />
+                  <h6
+                    className={classNames(
+                      'tw-flex tw-items-center tw-m-0 tw-heading tw-pl-2'
+                    )}>
+                    <button
+                      className={classNames('tw-font-medium tw-text-grey-body')}
+                      data-testid="table-link">
+                      {selectedEntity.database ? (
+                        <span>{`${selectedEntity.database}/`}</span>
+                      ) : null}
+                      {stringToHTML(selectedEntity.name)}
+                    </button>
+                  </h6>
+                </div>
+                <div className="tw-flex">
+                  <svg
+                    className="tw-w-5 tw-h-5 tw-ml-1 tw-cursor-pointer"
+                    data-testid="closeDrawer"
+                    fill="none"
+                    stroke="#6B7280"
+                    viewBox="0 0 24 24"
+                    xmlns="http://www.w3.org/2000/svg"
+                    onClick={() => {
+                      setSelectedEntity({} as FormatedTableData);
+                    }}>
+                    <path
+                      d="M6 18L18 6M6 6l12 12"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                    />
+                  </svg>
+                </div>
               </div>
               <p className="tw-ml-7 tw-mt-1 description-text">
                 {selectedEntity.description}
