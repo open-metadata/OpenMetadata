@@ -15,6 +15,7 @@ package org.openmetadata.catalog.selenium.pages.myData;
 
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.logging.Logger;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.MethodOrderer;
@@ -24,7 +25,9 @@ import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.catalog.selenium.events.Events;
 import org.openmetadata.catalog.selenium.properties.Property;
 import org.openqa.selenium.By;
+import org.openqa.selenium.TimeoutException;
 import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.interactions.Actions;
@@ -34,6 +37,8 @@ import org.openqa.selenium.support.ui.WebDriverWait;
 @Order(1)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class MyDataPageTest {
+
+  private static final Logger LOG = Logger.getLogger(MyDataPageTest.class.getName());
 
   static WebDriver webDriver;
   static String url = Property.getInstance().getURL();
@@ -207,6 +212,26 @@ public class MyDataPageTest {
 
   @Test
   @Order(9)
+  public void checkRecentSearchWithSpaces() throws Exception {
+    checkWhatsNew();
+    Events.sendKeys(webDriver, By.cssSelector("[id='searchBox']"), " "); // Search bar/Empty Space " "
+    Events.sendEnter(webDriver, By.cssSelector("[id='searchBox']"));
+    Events.click(webDriver, By.cssSelector("[data-testid='table-link']"));
+    Events.click(webDriver, By.cssSelector("[data-testid='image']"));
+    Thread.sleep(2000);
+    try {
+      WebElement spaceSearch = wait.until(ExpectedConditions.presenceOfElementLocated(
+          By.cssSelector("[data-testid='Recently-Search- ']")));
+      if (spaceSearch.isDisplayed()) {
+        throw new Exception("Spaces are captured in Recent Search");
+      }
+    } catch (TimeoutException exception) {
+      LOG.info("Success");
+    }
+  }
+
+  @Test
+  @Order(10)
   public void checkLogout() {
     checkWhatsNew();
     Events.click(webDriver, By.cssSelector("[data-testid='dropdown-profile']"));
