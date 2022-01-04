@@ -17,7 +17,7 @@ import re
 import traceback
 import uuid
 from abc import abstractmethod
-from dataclasses import dataclass, field, replace
+from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Dict, Iterable, List, Optional, Tuple
 from urllib.parse import quote_plus
@@ -75,12 +75,12 @@ class SQLSourceStatus(SourceStatus):
 
 
 def build_sql_source_connection_url(
-    host_port: str,
-    scheme: str,
-    username: Optional[str] = None,
-    password: Optional[SecretStr] = None,
-    database: Optional[str] = None,
-    options: Optional[dict] = None,
+        host_port: str,
+        scheme: str,
+        username: Optional[str] = None,
+        password: Optional[SecretStr] = None,
+        database: Optional[str] = None,
+        options: Optional[dict] = None,
 ) -> str:
     """
     Helper function to prepare the db URL
@@ -173,10 +173,10 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
     """
 
     def __init__(
-        self,
-        config: SQLConnectionConfig,
-        metadata_config: MetadataServerConfig,
-        ctx: WorkflowContext,
+            self,
+            config: SQLConnectionConfig,
+            metadata_config: MetadataServerConfig,
+            ctx: WorkflowContext,
     ):
         super().__init__(ctx)
         self.config = config
@@ -232,7 +232,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
 
     @classmethod
     def create(
-        cls, config_dict: dict, metadata_config_dict: dict, ctx: WorkflowContext
+            cls, config_dict: dict, metadata_config_dict: dict, ctx: WorkflowContext
     ):
         pass
 
@@ -276,7 +276,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                 yield from self.fetch_views(inspector, schema)
 
     def fetch_tables(
-        self, inspector: Inspector, schema: str
+            self, inspector: Inspector, schema: str
     ) -> Iterable[OMetaDatabaseAndTable]:
         """
         Scrape an SQL schema and prepare Database and Table
@@ -330,6 +330,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                     "{}.{}".format(self.config.get_service_name(), table_name)
                 )
             except Exception as err:
+                traceback.print_exc()
                 logger.error(err)
                 self.status.failures.append(
                     "{}.{}".format(self.config.service_name, table_name)
@@ -337,7 +338,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                 continue
 
     def fetch_views(
-        self, inspector: Inspector, schema: str
+            self, inspector: Inspector, schema: str
     ) -> Iterable[OMetaDatabaseAndTable]:
         """
         Get all views in the SQL schema and prepare
@@ -375,7 +376,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                     name=view_name.replace(".", "_DOT_"),
                     tableType="View",
                     description=_get_table_description(schema, view_name, inspector)
-                    or "",
+                                or "",
                     # This will be generated in the backend!! #1673
                     fullyQualifiedName=view_name,
                     columns=self._get_columns(schema, view_name, inspector),
@@ -462,7 +463,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         return None
 
     def _parse_data_model_columns(
-        self, model_name: str, mnode: Dict, cnode: Dict
+            self, model_name: str, mnode: Dict, cnode: Dict
     ) -> [Column]:
         columns = []
         ccolumns = cnode.get("columns")
@@ -498,7 +499,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
 
     @staticmethod
     def _get_column_constraints(
-        column, pk_columns, unique_columns
+            column, pk_columns, unique_columns
     ) -> Optional[Constraint]:
         """
         Prepare column constraints for the Table Entity
@@ -518,7 +519,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         return constraint
 
     def _get_columns(
-        self, schema: str, table: str, inspector: Inspector
+            self, schema: str, table: str, inspector: Inspector
     ) -> Optional[List[Column]]:
         """
         Get columns types and constraints information
@@ -560,9 +561,12 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                     col_data_length = None
                     arr_data_type = None
                     if (
-                        "raw_data_type" in column
-                        and column["raw_data_type"] is not None
+                            "raw_data_type" in column
+                            and column["raw_data_type"] is not None
                     ):
+                        column["raw_data_type"] = self.parse_raw_data_type(
+                            column["raw_data_type"]
+                        )
                         (
                             col_type,
                             data_type_display,
@@ -579,7 +583,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                             self.status, dataset_name, column["type"]
                         )
                         if col_type == "ARRAY" and re.match(
-                            r"(?:\w*)(?:\()(\w*)(?:.*)", str(column["type"])
+                                r"(?:\w*)(?:\()(\w*)(?:.*)", str(column["type"])
                         ):
                             arr_data_type = re.match(
                                 r"(?:\w*)(?:[(]*)(\w*)(?:.*)", str(column["type"])
@@ -589,9 +593,9 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                         arr_data_type = "STRUCT"
                         data_type_display = (
                             repr(column["type"])
-                            .replace("(", "<")
-                            .replace(")", ">")
-                            .lower()
+                                .replace("(", "<")
+                                .replace(")", ">")
+                                .lower()
                         )
                     col_constraint = self._get_column_constraints(
                         column, pk_columns, unique_columns
@@ -656,6 +660,9 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         )
         logger.debug(f"Finished profiling {dataset_name}")
         return profile
+
+    def parse_raw_data_type(self, raw_data_type):
+        return raw_data_type
 
     def close(self):
         if self.connection is not None:
