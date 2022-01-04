@@ -66,6 +66,7 @@ class QueryParserProcessor(Processor):
                 database=record.database,
                 sql=record.sql,
                 date=start_date.strftime("%Y-%m-%d"),
+                service_name=record.service_name,
             )
         except Exception as err:
             logger.debug(record.sql)
