@@ -114,12 +114,12 @@ public class UserRepository extends EntityRepository<User> {
   private List<EntityReference> getOwns(User user) throws IOException {
     // Compile entities owned by the user
     List<EntityReference> ownedEntities =
-        daoCollection.relationshipDAO().findTo(user.getId().toString(), OWNS.ordinal());
+        daoCollection.relationshipDAO().findTo(user.getId().toString(), Entity.USER, OWNS.ordinal());
 
     // Compile entities owned by the team the user belongs to
     List<EntityReference> teams = user.getTeams() == null ? getTeams(user) : user.getTeams();
     for (EntityReference team : teams) {
-      ownedEntities.addAll(daoCollection.relationshipDAO().findTo(team.getId().toString(), OWNS.ordinal()));
+      ownedEntities.addAll(daoCollection.relationshipDAO().findTo(team.getId().toString(), Entity.TEAM, OWNS.ordinal()));
     }
     // Populate details in entity reference
     return EntityUtil.populateEntityReferences(ownedEntities);
@@ -127,7 +127,7 @@ public class UserRepository extends EntityRepository<User> {
 
   private List<EntityReference> getFollows(User user) throws IOException {
     return EntityUtil.populateEntityReferences(
-        daoCollection.relationshipDAO().findTo(user.getId().toString(), FOLLOWS.ordinal()));
+        daoCollection.relationshipDAO().findTo(user.getId().toString(), Entity.USER, FOLLOWS.ordinal()));
   }
 
   public List<EntityReference> validateRoles(List<UUID> roleIds) throws IOException {
@@ -154,7 +154,7 @@ public class UserRepository extends EntityRepository<User> {
 
   /* Add all the roles that user has been assigned, to User entity */
   private List<EntityReference> getRoles(User user) throws IOException {
-    List<String> roleIds = daoCollection.relationshipDAO().findTo(user.getId().toString(), HAS.ordinal(), Entity.ROLE);
+    List<String> roleIds = daoCollection.relationshipDAO().findTo(user.getId().toString(), Entity.USER, HAS.ordinal(), Entity.ROLE);
     List<EntityReference> roles = new ArrayList<>(roleIds.size());
     for (String roleId : roleIds) {
       roles.add(daoCollection.roleDAO().findEntityReferenceById(UUID.fromString(roleId)));
@@ -165,7 +165,7 @@ public class UserRepository extends EntityRepository<User> {
   /* Add all the teams that user belongs to User entity */
   private List<EntityReference> getTeams(User user) throws IOException {
     List<String> teamIds =
-        daoCollection.relationshipDAO().findFrom(user.getId().toString(), HAS.ordinal(), Entity.TEAM);
+        daoCollection.relationshipDAO().findFrom(user.getId().toString(), Entity.USER, HAS.ordinal(), Entity.TEAM);
     List<EntityReference> teams = new ArrayList<>();
     for (String teamId : teamIds) {
       teams.add(daoCollection.teamDAO().findEntityReferenceById(UUID.fromString(teamId)));
@@ -321,7 +321,7 @@ public class UserRepository extends EntityRepository<User> {
 
     private void updateRoles(User origUser, User updatedUser) throws JsonProcessingException {
       // Remove roles from original and add roles from updated
-      daoCollection.relationshipDAO().deleteFrom(origUser.getId().toString(), HAS.ordinal(), Entity.ROLE);
+      daoCollection.relationshipDAO().deleteFrom(origUser.getId().toString(), Entity.USER, HAS.ordinal(), Entity.ROLE);
       assignRoles(updatedUser, updatedUser.getRoles());
 
       List<EntityReference> origRoles = Optional.ofNullable(origUser.getRoles()).orElse(Collections.emptyList());
@@ -337,7 +337,7 @@ public class UserRepository extends EntityRepository<User> {
 
     private void updateTeams(User origUser, User updatedUser) throws JsonProcessingException {
       // Remove teams from original and add teams from updated
-      daoCollection.relationshipDAO().deleteTo(origUser.getId().toString(), HAS.ordinal(), Entity.TEAM);
+      daoCollection.relationshipDAO().deleteTo(origUser.getId().toString(), Entity.USER, HAS.ordinal(), Entity.TEAM);
       assignTeams(updatedUser, updatedUser.getTeams());
 
       List<EntityReference> origTeams = Optional.ofNullable(origUser.getTeams()).orElse(Collections.emptyList());

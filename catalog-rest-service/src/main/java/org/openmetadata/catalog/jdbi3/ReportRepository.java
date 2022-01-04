@@ -81,7 +81,7 @@ public class ReportRepository extends EntityRepository<Report> {
   }
 
   private EntityReference getService(Report report) {
-    return report == null ? null : getService(EntityUtil.getService(daoCollection.relationshipDAO(), report.getId()));
+    return report == null ? null : getService(EntityUtil.getService(daoCollection.relationshipDAO(), Entity.REPORT, report.getId()));
   }
 
   private EntityReference getService(EntityReference service) {
