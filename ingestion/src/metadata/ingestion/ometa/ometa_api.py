@@ -382,8 +382,7 @@ class OpenMetadata(OMetaMlModelMixin, OMetaTableMixin, OMetaVersionMixin, Generi
         fields_str = "?fields=" + ",".join(fields) if fields else ""
         try:
             resp = self.client.get(f"{self.get_suffix(entity)}/{path}{fields_str}")
-            return resp
-            # return entity(**resp)
+            return entity(**resp)
         except APIError as err:
             logger.error(
                 f"Creating new {entity.__class__.__name__} for {path}. Error {err.status_code}"
