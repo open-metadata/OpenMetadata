@@ -12,8 +12,7 @@
 import json
 import logging
 import uuid
-from collections import Iterable
-from typing import Optional
+from typing import Optional, Iterable
 
 from metadata.generated.schema.entity.policies.policy import Policy
 from metadata.ingestion.api.common import Entity, ConfigModel, WorkflowContext
