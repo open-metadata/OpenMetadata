@@ -22,7 +22,7 @@ const stepsData = [
   },
   {
     step: 2,
-    title: 'Claim Ownerships',
+    title: 'Claim Ownership',
     description:
       'Data works well when it is owned. Take a look at the data assets that you own and claim ownership.',
   },
@@ -40,11 +40,11 @@ const Onboarding: FC = () => {
       className="tw-mt-10 tw-text-base tw-font-medium"
       data-testid="onboarding">
       <div className="tw-text-center tw-text-xl tw-font-semibold tw-mb-1">
-        Welcome to OpenMetadata.
+        Welcome to OpenMetadata!
       </div>
       <div className="tw-mb-5">
         <div className="tw-mb-3 tw-text-center">
-          A central place to discover and collaborate on all your data.
+          A central place to discover and collaborate on all your data
         </div>
         <div className="tw-grid tw-grid-cols-3 tw-gap-3 tw-mt-5">
           {stepsData.map((data) => (
