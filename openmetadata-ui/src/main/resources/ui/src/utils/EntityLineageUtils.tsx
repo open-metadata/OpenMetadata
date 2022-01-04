@@ -39,6 +39,7 @@ import {
 import { EntityReference } from '../generated/type/entityReference';
 import { isLeafNode } from './EntityUtils';
 import dagre from 'dagre';
+import { EntityLineageDirection } from '../enums/entity.enum';
 
 export const onLoad = (reactFlowInstance: OnLoadParams) => {
   reactFlowInstance.fitView();
@@ -373,8 +374,11 @@ export const getNoLineageDataPlaceholder = () => {
 const dagreGraph = new dagre.graphlib.Graph();
 dagreGraph.setDefaultEdgeLabel(() => ({}));
 
-export const getLayoutedElements = (elements: Elements, direction = 'LR') => {
-  const isHorizontal = direction === 'LR';
+export const getLayoutedElements = (
+  elements: Elements,
+  direction = EntityLineageDirection.LEFT_RIGHT
+) => {
+  const isHorizontal = direction === EntityLineageDirection.LEFT_RIGHT;
   dagreGraph.setGraph({ rankdir: direction });
 
   elements.forEach((el) => {
