@@ -431,7 +431,7 @@ public class IngestionResource {
   }
 
   private void deploy(Ingestion ingestion) {
-    if (ingestion.getForceDeploy()) {
+    if (Boolean.TRUE.equals(ingestion.getForceDeploy())) {
       airflowRESTClient.deploy(ingestion, config);
     }
   }

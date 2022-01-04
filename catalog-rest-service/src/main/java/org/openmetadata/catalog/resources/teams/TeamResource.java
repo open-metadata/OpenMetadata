@@ -99,7 +99,7 @@ public class TeamResource {
     }
   }
 
-  public static final String FIELDS = "profile,users,owns";
+  protected static final String FIELDS = "profile,users,owns";
   public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replaceAll(" ", "").split(","));
 
   @GET

@@ -235,7 +235,7 @@ public class TagRepository {
       Tag childTag = setFields(JsonUtils.readValue(json, Tag.class), fields);
       tagList.add(populateChildrenTags(childTag, fields));
     }
-    return tag.withChildren(tagList.size() > 0 ? tagList : null);
+    return tag.withChildren(!tagList.isEmpty() ? tagList : null);
   }
 
   private TagCategory setFields(TagCategory category, Fields fields) {

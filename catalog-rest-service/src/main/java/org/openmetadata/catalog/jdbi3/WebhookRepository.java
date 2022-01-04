@@ -114,7 +114,7 @@ public class WebhookRepository extends EntityRepository<Webhook> {
   }
 
   public void addWebhookPublisher(Webhook webhook) {
-    if (!webhook.getEnabled()) { // Only add webhook that is enabled for publishing events
+    if (Boolean.FALSE.equals(webhook.getEnabled())) { // Only add webhook that is enabled for publishing events
       webhook.setStatus(Status.NOT_STARTED);
       return;
     }
@@ -126,7 +126,7 @@ public class WebhookRepository extends EntityRepository<Webhook> {
   }
 
   public void updateWebhookPublisher(Webhook webhook) throws InterruptedException {
-    if (webhook.getEnabled()) { // Only add webhook that is enabled for publishing
+    if (Boolean.TRUE.equals(webhook.getEnabled())) { // Only add webhook that is enabled for publishing
       // If there was a previous webhook either in disabled state or stopped due
       // to errors, update it and restart publishing
       WebhookPublisher previousPublisher = getPublisher(webhook.getId());
@@ -396,12 +396,7 @@ public class WebhookRepository extends EntityRepository<Webhook> {
 
     private void initFilter() {
       filter.clear();
-      webhook
-          .getEventFilters()
-          .forEach(
-              f -> { // Set up filters
-                filter.put(f.getEventType(), f.getEntities());
-              });
+      webhook.getEventFilters().forEach(f -> filter.put(f.getEventType(), f.getEntities()));
     }
 
     private void setErrorStatus(Long attemptTime, Integer statusCode, String reason) throws IOException {
@@ -491,7 +486,7 @@ public class WebhookRepository extends EntityRepository<Webhook> {
           updatedWebhook
               .withStatus(publisher.getWebhook().getStatus())
               .withFailureDetails(publisher.getWebhook().getFailureDetails());
-          if (updatedWebhook.getEnabled() == false) {
+          if (Boolean.FALSE.equals(updatedWebhook.getEnabled())) {
             updatedWebhook.setStatus(Status.NOT_STARTED);
           }
         }
