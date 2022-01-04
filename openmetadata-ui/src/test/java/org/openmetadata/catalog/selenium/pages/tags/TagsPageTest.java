@@ -205,13 +205,7 @@ public class TagsPageTest {
     Events.click(webDriver, By.cssSelector("[data-testid='tables']")); // Tables
     Events.click(
         webDriver,
-        By.cssSelector(
-            "[data-testid='checkbox']"
-                + "[id='"
-                + tagCategoryDisplayName
-                + "."
-                + tagDisplayName
-                + "']"));
+        By.cssSelector("[data-testid='checkbox'][id='" + tagCategoryDisplayName + "." + tagDisplayName + "']"));
     Events.click(webDriver, By.xpath("//button[@data-testid='table-link']"));
   }
 

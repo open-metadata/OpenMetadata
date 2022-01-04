@@ -32,20 +32,20 @@ jobs:
         distribution: 'adopt'
     - name: Start Server and Ingest Sample Data
       run: ./docker/run_local_docker.sh
+      timeout-minutes: 20
     - name: Set up Python 3.9
       uses: actions/setup-python@v2
       with:
         python-version: 3.9
-    - name: Install Ubuntu related dependencies
+    - name: Install Ubuntu dependencies
       run: |
         sudo apt-get install -y libsasl2-dev unixodbc-dev python3-venv
-    - name: Install Python & Openmetadata related dependencies
+    - name: Install open-metadata dependencies
       run: |
         python3 -m venv env
         source env/bin/activate
-        make install install_test
-        pip install pytest pytest-cov
-    - name: Run Integration Tests
+        make install_test install_dev generate install
+    - name: Run Python Integration Tests
       run: |
         source env/bin/activate
         make run_ometa_integration_tests
