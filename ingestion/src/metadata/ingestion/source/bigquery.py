@@ -23,8 +23,9 @@ from sqlalchemy_bigquery._types import (
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.source.sql_source import SQLConnectionConfig, SQLSource
 
-_types._type_map['GEOGRAPHY'] = sqlalchemy.types.BINARY
+_types._type_map["GEOGRAPHY"] = sqlalchemy.types.BINARY
 GEOGRAPHY = _types._type_map["GEOGRAPHY"]
+
 
 def get_columns(bq_schema):
     fields = _get_transitive_schema_fields(bq_schema)
