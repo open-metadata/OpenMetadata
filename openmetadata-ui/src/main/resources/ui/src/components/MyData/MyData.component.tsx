@@ -203,7 +203,10 @@ const MyData: React.FC<MyDataProps> = ({
   }, []);
 
   return (
-    <PageLayout leftPanel={getLeftPanel()} rightPanel={getRightPanel()}>
+    <PageLayout
+      centerAligned
+      leftPanel={getLeftPanel()}
+      rightPanel={getRightPanel()}>
       {error ? (
         <ErrorPlaceHolderES errorMessage={error} type="error" />
       ) : (
@@ -214,7 +217,7 @@ const MyData: React.FC<MyDataProps> = ({
           {getFeedsData().feeds.length > 0 ? (
             <FeedCards {...getFeedsData()} />
           ) : (
-            <Onboarding showLogo={false} />
+            <Onboarding />
           )}
         </Fragment>
       )}

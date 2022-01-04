@@ -18,17 +18,20 @@ interface PageLayoutProp {
   leftPanel?: ReactNode;
   rightPanel?: ReactNode;
   children: ReactNode;
+  centerAligned?: boolean;
 }
 
 const PageLayout: FC<PageLayoutProp> = ({
   leftPanel,
   children,
   rightPanel,
+  centerAligned = false,
 }: PageLayoutProp) => {
   return (
     <div
       className={classNames(
         'page-layout-container tw-gap-x-3 tw-px-12 tw-overflow-y-auto',
+        { 'tw-max-w-screen-xxl tw-mx-auto': centerAligned },
         {
           'page-layout-container-left-center-right':
             leftPanel && children && rightPanel,
