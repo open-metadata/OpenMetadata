@@ -77,7 +77,9 @@ class EntityList(Generic[T], BaseModel):
     after: str = None
 
 
-class OpenMetadata(OMetaMlModelMixin, OMetaTableMixin, OMetaVersionMixin, Generic[T, C]):
+class OpenMetadata(
+    OMetaMlModelMixin, OMetaTableMixin, OMetaVersionMixin, Generic[T, C]
+):
     """
     Generic interface to the OpenMetadata API
 

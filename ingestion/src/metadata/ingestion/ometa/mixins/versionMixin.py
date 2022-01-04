@@ -5,15 +5,14 @@ To be used by OpenMetadata
 """
 
 import logging
-from typing import TypeVar, Generic, Union, Optional, Type, List
+from typing import Generic, List, Optional, Type, TypeVar, Union
 
 from pydantic import BaseModel
 from requests.models import Response
 
 from metadata.generated.schema.type import basic
-from metadata.ingestion.ometa.client import REST, APIError
 from metadata.generated.schema.type.entityHistory import EntityVersionHistory
-
+from metadata.ingestion.ometa.client import REST, APIError
 
 T = TypeVar("T", bound=BaseModel)
 logger = logging.getLogger(__name__)
@@ -46,13 +45,12 @@ class OMetaVersionMixin(Generic[T]):
 
         return version
 
-
     def get_entity_version(
         self,
         entity: Type[T],
         entity_id: Union[str, basic.Uuid],
         version: Union[str, float],
-        fields: Optional[List[str]] = None
+        fields: Optional[List[str]] = None,
     ) -> Optional[T]:
         """
         Get an entity at a specific version
@@ -74,7 +72,6 @@ class OMetaVersionMixin(Generic[T]):
         path = f"{entity_id}/versions/{version}"
 
         return self._get(entity=entity, path=path, fields=fields)
-
 
     def get_list_entity_versions(
         self,
