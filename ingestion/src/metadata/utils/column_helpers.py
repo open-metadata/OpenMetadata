@@ -6,13 +6,6 @@ from sqlalchemy.sql import sqltypes as types
 from metadata.ingestion.api.source import SourceStatus
 
 
-def register_custom_type(tp: Type[types.TypeEngine], output: str = None) -> None:
-    if output:
-        _column_type_mapping[tp] = output
-    else:
-        _known_unknown_column_types.add(tp)
-
-
 def register_custom_str_type(tp: str, output: str) -> None:
     _column_string_mapping[tp] = output
 

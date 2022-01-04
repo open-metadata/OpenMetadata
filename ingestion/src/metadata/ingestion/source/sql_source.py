@@ -17,15 +17,10 @@ import re
 import traceback
 import uuid
 from abc import abstractmethod
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime
 from typing import Dict, Iterable, List, Optional, Tuple
 from urllib.parse import quote_plus
-
-from pydantic import SecretStr
-from sqlalchemy import create_engine
-from sqlalchemy.engine.reflection import Inspector
-from sqlalchemy.inspection import inspect
 
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import (
@@ -51,6 +46,10 @@ from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.utils.column_helpers import check_column_complex_type, get_column_type
 from metadata.utils.helpers import get_database_service_or_create
+from pydantic import SecretStr
+from sqlalchemy import create_engine
+from sqlalchemy.engine.reflection import Inspector
+from sqlalchemy.inspection import inspect
 
 logger: logging.Logger = logging.getLogger(__name__)
 
@@ -265,7 +264,8 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
 
     def next_record(self) -> Iterable[OMetaDatabaseAndTable]:
         inspector = inspect(self.engine)
-        for schema in inspector.get_schema_names():
+        schema_names = inspector.get_schema_names()
+        for schema in schema_names:
             if not self.sql_config.schema_filter_pattern.included(schema):
                 self.status.filter(schema, "Schema pattern not allowed")
                 continue
@@ -282,7 +282,8 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         Scrape an SQL schema and prepare Database and Table
         OpenMetadata Entities
         """
-        for table_name in inspector.get_table_names(schema):
+        tables = inspector.get_table_names(schema)
+        for table_name in tables:
             try:
                 schema, table_name = self.standardize_schema_table_names(
                     schema, table_name
@@ -293,8 +294,6 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                         "Table pattern not allowed",
                     )
                     continue
-                self.status.scanned(f"{self.config.get_service_name()}.{table_name}")
-
                 description = _get_table_description(schema, table_name, inspector)
                 fqn = f"{self.config.service_name}.{self.config.database}.{schema}.{table_name}"
                 table_columns = self._get_columns(schema, table_name, inspector)
@@ -327,10 +326,14 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                     table=table_entity, database=self._get_database(schema)
                 )
                 yield table_and_db
-            # Catch any errors during the ingestion and continue
-            except Exception as err:  # pylint: disable=broad-except
+                self.status.scanned(
+                    "{}.{}".format(self.config.get_service_name(), table_name)
+                )
+            except Exception as err:
                 logger.error(err)
-                self.status.warnings.append(f"{self.config.service_name}.{table_name}")
+                self.status.failures.append(
+                    "{}.{}".format(self.config.service_name, table_name)
+                )
                 continue
 
     def fetch_views(
@@ -489,7 +492,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
 
     def _get_database(self, schema: str) -> Database:
         return Database(
-            name=schema,
+            name=schema.replace(".", "_DOT_"),
             service=EntityReference(id=self.service.id, type=self.config.service_type),
         )
 
@@ -543,48 +546,58 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
 
         dataset_name = f"{schema}.{table}"
         table_columns = []
+        columns = inspector.get_columns(table, schema)
         try:
-            for row_order, column in enumerate(inspector.get_columns(table, schema)):
-                if "." in column["name"]:
-                    logger.info(f"Found '.' in {column['name']}")
-                    column["name"] = column["name"].replace(".", "_DOT_")
-                children = None
-                data_type_display = None
-                col_data_length = None
-                arr_data_type = None
-                if "raw_data_type" in column and column["raw_data_type"] is not None:
-                    (
-                        col_type,
-                        data_type_display,
-                        arr_data_type,
-                        children,
-                    ) = check_column_complex_type(
-                        self.status,
-                        dataset_name,
-                        column["raw_data_type"],
-                        column["name"],
-                    )
-                else:
-                    col_type = get_column_type(
-                        self.status, dataset_name, column["type"]
-                    )
-                    if col_type == "ARRAY" and re.match(
-                        r"(?:\w*)(?:\()(\w*)(?:.*)", str(column["type"])
-                    ):
-                        arr_data_type = re.match(
-                            r"(?:\w*)(?:[(]*)(\w*)(?:.*)", str(column["type"])
-                        ).groups()
-                        data_type_display = column["type"]
-
-                col_constraint = self._get_column_constraints(
-                    column, pk_columns, unique_columns
-                )
-
-                if col_type.upper() in {"CHAR", "VARCHAR", "BINARY", "VARBINARY"}:
-                    col_data_length = column["type"].length
-                if col_data_length is None:
-                    col_data_length = 1
+            for row_order, column in enumerate(columns):
                 try:
+                    if "." in column["name"]:
+                        logger.info(
+                            f"Found '.' in {column['name']}, changing '.' to '_DOT_'"
+                        )
+                        column["name"] = column["name"].replace(".", "_DOT_")
+                    children = None
+                    data_type_display = None
+                    col_data_length = None
+                    arr_data_type = None
+                    if (
+                        "raw_data_type" in column
+                        and column["raw_data_type"] is not None
+                    ):
+                        (
+                            col_type,
+                            data_type_display,
+                            arr_data_type,
+                            children,
+                        ) = check_column_complex_type(
+                            self.status,
+                            dataset_name,
+                            column["raw_data_type"],
+                            column["name"],
+                        )
+                    else:
+                        col_type = get_column_type(
+                            self.status, dataset_name, column["type"]
+                        )
+                        if col_type == "ARRAY" and re.match(
+                            r"(?:\w*)(?:\()(\w*)(?:.*)", str(column["type"])
+                        ):
+                            arr_data_type = re.match(
+                                r"(?:\w*)(?:[(]*)(\w*)(?:.*)", str(column["type"])
+                            ).groups()
+                            data_type_display = column["type"]
+                    if repr(column["type"]).upper().startswith("ARRAY("):
+                        arr_data_type = "STRUCT"
+                        data_type_display = (
+                            repr(column["type"])
+                            .replace("(", "<")
+                            .replace(")", ">")
+                            .lower()
+                        )
+                    col_constraint = self._get_column_constraints(
+                        column, pk_columns, unique_columns
+                    )
+                    if col_type.upper() in {"CHAR", "VARCHAR", "BINARY", "VARBINARY"}:
+                        col_data_length = column["type"].length
                     if col_type == "NULL":
                         col_type = "VARCHAR"
                         data_type_display = "varchar"
@@ -595,23 +608,24 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                         name=column["name"],
                         description=column.get("comment", None),
                         dataType=col_type,
-                        dataTypeDisplay=f"{col_type}({col_data_length})"
+                        dataTypeDisplay="{}({})".format(
+                            col_type, 1 if col_data_length is None else col_data_length
+                        )
                         if data_type_display is None
                         else f"{data_type_display}",
-                        dataLength=col_data_length,
+                        dataLength=1 if col_data_length is None else col_data_length,
                         constraint=col_constraint,
-                        ordinalPosition=row_order + 1,  # enumerate starts at 0
-                        children=children,
+                        ordinalPosition=row_order,
+                        children=children if children is not None else None,
                         arrayDataType=arr_data_type,
                     )
-                except Exception as err:  # pylint: disable=broad-except
-                    logger.error(traceback.format_exc())
+                except Exception as err:
                     logger.error(traceback.print_exc())
                     logger.error(f"{err} : {column}")
                     continue
                 table_columns.append(om_column)
             return table_columns
-        except Exception as err:  # pylint: disable=broad-except
+        except Exception as err:
             logger.error(f"{repr(err)}: {table} {err}")
             return None
 
