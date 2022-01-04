@@ -374,7 +374,7 @@ public abstract class EntityRepository<T> {
   public final void delete(UUID id, boolean recursive) throws IOException {
     // If an entity being deleted contains other children entities, it can't be deleted
     List<EntityReference> contains =
-        daoCollection.relationshipDAO().findTo(id.toString(), entityName,Relationship.CONTAINS.ordinal());
+        daoCollection.relationshipDAO().findTo(id.toString(), entityName, Relationship.CONTAINS.ordinal());
 
     if (contains.size() > 0) {
       if (!recursive) {
@@ -382,7 +382,7 @@ public abstract class EntityRepository<T> {
       }
       // Soft delete all the contained entities
       for (EntityReference entityReference : contains) {
-        LOG.info("Recursively deleting {} {}",entityReference.getType(),entityReference.getId());
+        LOG.info("Recursively deleting {} {}", entityReference.getType(), entityReference.getId());
         Entity.deleteEntity(entityReference.getType(), entityReference.getId(), recursive);
       }
     }
@@ -409,8 +409,9 @@ public abstract class EntityRepository<T> {
     User user = daoCollection.userDAO().findEntityById(userId);
 
     // Remove follower
-    daoCollection.relationshipDAO().delete(userId.toString(), Entity.USER, entityId.toString(), entityName,
-            Relationship.FOLLOWS.ordinal());
+    daoCollection
+        .relationshipDAO()
+        .delete(userId.toString(), Entity.USER, entityId.toString(), entityName, Relationship.FOLLOWS.ordinal());
 
     ChangeDescription change = new ChangeDescription().withPreviousVersion(entityInterface.getVersion());
     change
@@ -458,7 +459,11 @@ public abstract class EntityRepository<T> {
     EntityInterface entityInterface = getEntityInterface(entity);
     return supportsOwner && entity != null
         ? EntityUtil.populateOwner(
-            entityInterface.getId(), entityName, daoCollection.relationshipDAO(), daoCollection.userDAO(), daoCollection.teamDAO())
+            entityInterface.getId(),
+            entityName,
+            daoCollection.relationshipDAO(),
+            daoCollection.userDAO(),
+            daoCollection.teamDAO())
         : null;
   }
 
@@ -488,7 +493,8 @@ public abstract class EntityRepository<T> {
     EntityInterface<T> entityInterface = getEntityInterface(entity);
     return !supportsFollower || entity == null
         ? null
-        : EntityUtil.getFollowers(entityInterface.getId(), entityName, daoCollection.relationshipDAO(), daoCollection.userDAO());
+        : EntityUtil.getFollowers(
+            entityInterface.getId(), entityName, daoCollection.relationshipDAO(), daoCollection.userDAO());
   }
 
   public T withHref(UriInfo uriInfo, T entity) {

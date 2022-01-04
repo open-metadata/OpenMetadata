@@ -119,7 +119,8 @@ public class UserRepository extends EntityRepository<User> {
     // Compile entities owned by the team the user belongs to
     List<EntityReference> teams = user.getTeams() == null ? getTeams(user) : user.getTeams();
     for (EntityReference team : teams) {
-      ownedEntities.addAll(daoCollection.relationshipDAO().findTo(team.getId().toString(), Entity.TEAM, OWNS.ordinal()));
+      ownedEntities.addAll(
+          daoCollection.relationshipDAO().findTo(team.getId().toString(), Entity.TEAM, OWNS.ordinal()));
     }
     // Populate details in entity reference
     return EntityUtil.populateEntityReferences(ownedEntities);
@@ -154,7 +155,8 @@ public class UserRepository extends EntityRepository<User> {
 
   /* Add all the roles that user has been assigned, to User entity */
   private List<EntityReference> getRoles(User user) throws IOException {
-    List<String> roleIds = daoCollection.relationshipDAO().findTo(user.getId().toString(), Entity.USER, HAS.ordinal(), Entity.ROLE);
+    List<String> roleIds =
+        daoCollection.relationshipDAO().findTo(user.getId().toString(), Entity.USER, HAS.ordinal(), Entity.ROLE);
     List<EntityReference> roles = new ArrayList<>(roleIds.size());
     for (String roleId : roleIds) {
       roles.add(daoCollection.roleDAO().findEntityReferenceById(UUID.fromString(roleId)));
