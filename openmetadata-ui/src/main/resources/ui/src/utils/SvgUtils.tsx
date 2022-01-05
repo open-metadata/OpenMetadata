@@ -101,6 +101,8 @@ import IconVersionBlack from '../assets/svg/version-black.svg';
 import IconVersionWhite from '../assets/svg/version-white.svg';
 import IconVersion from '../assets/svg/version.svg';
 import IconWarning from '../assets/svg/warning.svg';
+import IconSampleDataColor from '../assets/svg/sample-data-colored.svg';
+import IconSampleData from '../assets/svg/sample-data.svg';
 
 type Props = {
   alt: string;
@@ -199,6 +201,8 @@ export const Icons = {
   PROFILERCOLOR: 'icon-profilercolor',
   MANAGECOLOR: 'icon-managecolor',
   SEARCHV1COLOR: 'icon-searchv1color',
+  SAMPLE_DATA: 'sample-data',
+  SAMPLE_DATA_COLOR: 'sample-data-color',
 };
 
 const SVGIcons: FunctionComponent<Props> = ({
@@ -567,6 +571,14 @@ const SVGIcons: FunctionComponent<Props> = ({
       break;
     case Icons.SEARCHV1COLOR:
       IconComponent = IconSearchV1Color;
+
+      break;
+    case Icons.SAMPLE_DATA:
+      IconComponent = IconSampleData;
+
+      break;
+    case Icons.SAMPLE_DATA_COLOR:
+      IconComponent = IconSampleDataColor;
 
       break;
 
