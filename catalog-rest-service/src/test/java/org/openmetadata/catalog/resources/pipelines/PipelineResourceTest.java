@@ -21,6 +21,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.openmetadata.catalog.security.SecurityUtil.authHeaders;
+import static org.openmetadata.catalog.util.TestUtils.UpdateType.MAJOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
 import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
@@ -30,12 +31,14 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import javax.ws.rs.client.WebTarget;
+import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 import org.apache.http.client.HttpResponseException;
 import org.joda.time.DateTime;
@@ -43,7 +46,9 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.catalog.Entity;
+import org.openmetadata.catalog.api.data.CreateChart;
 import org.openmetadata.catalog.api.data.CreatePipeline;
+import org.openmetadata.catalog.entity.data.Chart;
 import org.openmetadata.catalog.entity.data.Pipeline;
 import org.openmetadata.catalog.jdbi3.PipelineRepository.PipelineEntityInterface;
 import org.openmetadata.catalog.resources.EntityResourceTest;
@@ -295,6 +300,27 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline> {
   @Test
   public void delete_nonEmptyPipeline_4xx() {
     // TODO
+  }
+
+  @Test
+  public void delete_put_Pipeline_200(TestInfo test) throws IOException {
+    CreatePipeline request = create(test).withDescription("");
+    Pipeline pipeline = createEntity(request, adminAuthHeaders());
+
+    // Delete
+    deleteEntity(pipeline.getId(), adminAuthHeaders());
+
+    ChangeDescription change = getChangeDescription(pipeline.getVersion());
+    change.setFieldsUpdated(
+            Arrays.asList(
+                    new FieldChange().withName("deleted").withNewValue(false).withOldValue(true),
+                    new FieldChange().withName("description").withNewValue("updatedDescription").withOldValue("")
+            )
+    );
+
+    // PUT with updated description
+    updateAndCheckEntity(
+            request.withDescription("updatedDescription"), Response.Status.OK, adminAuthHeaders(), MINOR_UPDATE, change);
   }
 
   public static Pipeline updatePipeline(CreatePipeline create, Status status, Map<String, String> authHeaders)

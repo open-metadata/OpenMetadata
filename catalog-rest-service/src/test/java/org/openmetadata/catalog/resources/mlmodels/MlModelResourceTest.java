@@ -400,7 +400,7 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
 
     // PUT with updated description and expect a MAJOR_UPDATE with updated description
     updateAndCheckEntity(
-            request.withDescription("updatedDescription"), Status.OK, adminAuthHeaders(), MAJOR_UPDATE, change);
+            request.withDescription("updatedDescription"), Status.OK, adminAuthHeaders(), MINOR_UPDATE, change);
   }
 
   /** Validate returned fields GET .../models/{id}?fields="..." or GET .../models/name/{fqn}?fields="..." */

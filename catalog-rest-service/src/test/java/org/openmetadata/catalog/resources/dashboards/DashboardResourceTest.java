@@ -23,6 +23,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.invalidServiceEntity;
 import static org.openmetadata.catalog.security.SecurityUtil.authHeaders;
+import static org.openmetadata.catalog.util.TestUtils.UpdateType.MAJOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
 import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
@@ -32,6 +33,7 @@ import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -63,6 +65,8 @@ import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.TestUtils;
+
+import javax.ws.rs.core.Response;
 
 public class DashboardResourceTest extends EntityResourceTest<Dashboard> {
   public static EntityReference SUPERSET_REFERENCE;
@@ -233,6 +237,27 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard> {
   @Test
   public void delete_nonEmptyDashboard_4xx() {
     // TODO
+  }
+
+  @Test
+  public void delete_put_Dashboard_200(TestInfo test) throws IOException {
+    CreateDashboard request = create(test).withDescription("");
+    Dashboard dashboard = createEntity(request, adminAuthHeaders());
+
+    // Delete
+    deleteEntity(dashboard.getId(), adminAuthHeaders());
+
+    ChangeDescription change = getChangeDescription(dashboard.getVersion());
+    change.setFieldsUpdated(
+            Arrays.asList(
+                    new FieldChange().withName("deleted").withNewValue(false).withOldValue(true),
+                    new FieldChange().withName("description").withNewValue("updatedDescription").withOldValue("")
+            )
+    );
+
+    // PUT with updated description
+    updateAndCheckEntity(
+            request.withDescription("updatedDescription"), Response.Status.OK, adminAuthHeaders(), MINOR_UPDATE, change);
   }
 
   public Dashboard createDashboard(CreateDashboard create, Map<String, String> authHeaders)
