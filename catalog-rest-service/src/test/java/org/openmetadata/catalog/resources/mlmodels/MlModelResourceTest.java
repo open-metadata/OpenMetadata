@@ -157,7 +157,7 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
   }
 
   @Test
-  public void post_validMlModels_as_admin_200_OK(TestInfo test) throws IOException {
+  void post_validMlModels_as_admin_200_OK(TestInfo test) throws IOException {
     // Create valid model
     CreateMlModel create = create(test);
     createAndCheckEntity(create, adminAuthHeaders());
@@ -167,41 +167,41 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
   }
 
   @Test
-  public void post_MlModelWithUserOwner_200_ok(TestInfo test) throws IOException {
+  void post_MlModelWithUserOwner_200_ok(TestInfo test) throws IOException {
     createAndCheckEntity(create(test).withOwner(USER_OWNER1), adminAuthHeaders());
   }
 
   @Test
-  public void post_MlModelWithTeamOwner_200_ok(TestInfo test) throws IOException {
+  void post_MlModelWithTeamOwner_200_ok(TestInfo test) throws IOException {
     createAndCheckEntity(create(test).withOwner(TEAM_OWNER1).withDisplayName("Model1"), adminAuthHeaders());
   }
 
   @Test
-  public void post_MlModelWithoutFeatures_200_ok(TestInfo test) throws IOException {
+  void post_MlModelWithoutFeatures_200_ok(TestInfo test) throws IOException {
     CreateMlModel create = new CreateMlModel().withName(getEntityName(test, 0)).withAlgorithm(ALGORITHM);
     createAndCheckEntity(create, adminAuthHeaders());
   }
 
   @Test
-  public void post_MlModelWithDashboard_200_ok(TestInfo test) throws IOException {
+  void post_MlModelWithDashboard_200_ok(TestInfo test) throws IOException {
     CreateMlModel create = create(test).withDashboard(DASHBOARD_REFERENCE);
     createAndCheckEntity(create, adminAuthHeaders());
   }
 
   @Test
-  public void post_MlModelWitMlStore_200_ok(TestInfo test) throws IOException {
+  void post_MlModelWitMlStore_200_ok(TestInfo test) throws IOException {
     CreateMlModel create = create(test).withMlStore(ML_STORE);
     createAndCheckEntity(create, adminAuthHeaders());
   }
 
   @Test
-  public void post_MlModelWitServer_200_ok(TestInfo test) throws IOException {
+  void post_MlModelWitServer_200_ok(TestInfo test) throws IOException {
     CreateMlModel create = create(test).withServer(SERVER);
     createAndCheckEntity(create, adminAuthHeaders());
   }
 
   @Test
-  public void post_MlModel_as_non_admin_401(TestInfo test) {
+  void post_MlModel_as_non_admin_401(TestInfo test) {
     CreateMlModel create = create(test);
     assertResponse(
         () -> createMlModel(create, authHeaders("test@open-metadata.org")),
@@ -210,7 +210,7 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
   }
 
   @Test
-  public void put_MlModelUpdateWithNoChange_200(TestInfo test) throws IOException {
+  void put_MlModelUpdateWithNoChange_200(TestInfo test) throws IOException {
     // Create a Model with POST
     CreateMlModel request = create(test).withOwner(USER_OWNER1);
     MlModel model = createAndCheckEntity(request, adminAuthHeaders());
@@ -221,7 +221,7 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
   }
 
   @Test
-  public void put_MlModelUpdateAlgorithm_200(TestInfo test) throws IOException {
+  void put_MlModelUpdateAlgorithm_200(TestInfo test) throws IOException {
     CreateMlModel request = create(test);
     MlModel model = createAndCheckEntity(request, adminAuthHeaders());
     ChangeDescription change = getChangeDescription(model.getVersion());
@@ -233,7 +233,7 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
   }
 
   @Test
-  public void put_MlModelAddDashboard_200(TestInfo test) throws IOException {
+  void put_MlModelAddDashboard_200(TestInfo test) throws IOException {
     CreateMlModel request = create(test);
     MlModel model = createAndCheckEntity(request, adminAuthHeaders());
     ChangeDescription change = getChangeDescription(model.getVersion());
@@ -244,7 +244,7 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
   }
 
   @Test
-  public void put_MlModelAddInvalidDashboard_200(TestInfo test) {
+  void put_MlModelAddInvalidDashboard_200(TestInfo test) {
     CreateMlModel request = create(test);
     // Create a made up dashboard reference by picking up a random UUID
     EntityReference dashboard = new EntityReference().withId(USER1.getId()).withType("dashboard");
@@ -256,7 +256,7 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
   }
 
   @Test
-  public void put_MlModelAddServer_200(TestInfo test) throws IOException {
+  void put_MlModelAddServer_200(TestInfo test) throws IOException {
     CreateMlModel request = create(test);
     MlModel model = createAndCheckEntity(request, adminAuthHeaders());
     ChangeDescription change = getChangeDescription(model.getVersion());
@@ -266,7 +266,7 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
   }
 
   @Test
-  public void put_MlModelUpdateServer_200(TestInfo test) throws IOException {
+  void put_MlModelUpdateServer_200(TestInfo test) throws IOException {
     CreateMlModel request = create(test).withServer(SERVER);
     MlModel model = createAndCheckEntity(request, adminAuthHeaders());
     ChangeDescription change = getChangeDescription(model.getVersion());
@@ -278,7 +278,7 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
   }
 
   @Test
-  public void put_MlModelAddMlStore_200(TestInfo test) throws IOException {
+  void put_MlModelAddMlStore_200(TestInfo test) throws IOException {
     CreateMlModel request = create(test);
     MlModel model = createAndCheckEntity(request, adminAuthHeaders());
     ChangeDescription change = getChangeDescription(model.getVersion());
@@ -288,7 +288,7 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
   }
 
   @Test
-  public void put_MlModelAddMlFeatures_200(TestInfo test) throws IOException {
+  void put_MlModelAddMlFeatures_200(TestInfo test) throws IOException {
     CreateMlModel request = new CreateMlModel().withName(getEntityName(test)).withAlgorithm(ALGORITHM);
     MlModel model = createAndCheckEntity(request, adminAuthHeaders());
     ChangeDescription change = getChangeDescription(model.getVersion());
@@ -298,7 +298,7 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
   }
 
   @Test
-  public void put_MlModelUpdateMlFeatures_200(TestInfo test) throws IOException {
+  void put_MlModelUpdateMlFeatures_200(TestInfo test) throws IOException {
     CreateMlModel request = create(test);
     MlModel model = createAndCheckEntity(request, adminAuthHeaders());
 
@@ -316,7 +316,7 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
   }
 
   @Test
-  public void put_MlModelWithDataSource_200(TestInfo test) throws IOException {
+  void put_MlModelWithDataSource_200(TestInfo test) throws IOException {
     CreateMlModel request = create(test);
     MlModel model = createAndCheckEntity(request, adminAuthHeaders());
 
@@ -340,7 +340,7 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
   }
 
   @Test
-  public void put_MlModelWithInvalidDataSource_400(TestInfo test) throws IOException {
+  void put_MlModelWithInvalidDataSource_400(TestInfo test) throws IOException {
     CreateMlModel request = create(test);
 
     // Create a made up table reference by picking up a random UUID
@@ -365,7 +365,7 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
   }
 
   @Test
-  public void put_MlModelAddMlHyperParams_200(TestInfo test) throws IOException {
+  void put_MlModelAddMlHyperParams_200(TestInfo test) throws IOException {
     CreateMlModel request = new CreateMlModel().withName(getEntityName(test)).withAlgorithm(ALGORITHM);
     MlModel model = createAndCheckEntity(request, adminAuthHeaders());
     ChangeDescription change = getChangeDescription(model.getVersion());
@@ -376,7 +376,7 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
   }
 
   @Test
-  public void delete_MlModel_200_ok(TestInfo test) throws HttpResponseException {
+  void delete_MlModel_200_ok(TestInfo test) throws HttpResponseException {
     MlModel model = createMlModel(create(test), adminAuthHeaders());
     deleteEntity(model.getId(), adminAuthHeaders());
   }

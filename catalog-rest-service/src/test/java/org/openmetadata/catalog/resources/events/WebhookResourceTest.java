@@ -66,7 +66,7 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook> {
   }
 
   @Test
-  public void post_webhookEnabledStateChange(TestInfo test)
+  void post_webhookEnabledStateChange(TestInfo test)
       throws URISyntaxException, IOException, InterruptedException {
     //
     // Create webhook in disabled state. It will not start webhook publisher
@@ -140,7 +140,7 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook> {
   }
 
   @Test
-  public void put_updateEndpointURL(TestInfo test) throws URISyntaxException, IOException, InterruptedException {
+  void put_updateEndpointURL(TestInfo test) throws URISyntaxException, IOException, InterruptedException {
     CreateWebhook create =
         createRequest("counter", "", "", null).withEnabled(true).withEndpoint(URI.create("http://invalidUnknowHost"));
     Webhook webhook = createAndCheckEntity(create, adminAuthHeaders());
@@ -295,7 +295,7 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook> {
   }
 
   @Test
-  public void testDifferentTypesOfWebhooks() throws IOException, InterruptedException, URISyntaxException {
+  void testDifferentTypesOfWebhooks() throws IOException, InterruptedException, URISyntaxException {
     String baseUri = "http://localhost:" + APP.getLocalPort() + "/api/v1/test/webhook";
 
     // Create multiple webhooks each with different type of response to callback

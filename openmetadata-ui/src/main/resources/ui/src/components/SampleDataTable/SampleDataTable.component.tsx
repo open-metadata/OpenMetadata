@@ -13,7 +13,13 @@
 
 import classNames from 'classnames';
 import { lowerCase } from 'lodash';
-import React, { FunctionComponent } from 'react';
+import React, {
+  FunctionComponent,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react';
 import { TableData } from '../../generated/entity/data/table';
 import { isEven } from '../../utils/CommonUtils';
 
@@ -27,59 +33,108 @@ type Props = {
 };
 
 const SampleDataTable: FunctionComponent<Props> = ({ sampleData }: Props) => {
+  const tableRef = useRef<HTMLDivElement>(null);
+  const [scrollOffset, setScrollOffSet] = useState<number>(0);
+  const [containerWidth, setContainerWidth] = useState<number>(0);
+  const [scrollHandle, setScrollHandle] = useState<{
+    left: boolean;
+    right: boolean;
+  }>({ left: true, right: true });
+
+  const scrollHandler = (scrollOffset: number) => {
+    if (tableRef.current) {
+      tableRef.current.scrollLeft += scrollOffset;
+      setScrollOffSet(tableRef.current.scrollLeft);
+    }
+  };
+
+  useLayoutEffect(() => {
+    setContainerWidth(
+      (tableRef.current?.scrollWidth ?? 0) -
+        (tableRef.current?.clientWidth ?? 0)
+    );
+  }, []);
+
+  useEffect(() => {
+    const rFlag = scrollOffset !== containerWidth;
+    const lFlag = scrollOffset > 0;
+    setScrollHandle((pre) => ({ ...pre, right: rFlag, left: lFlag }));
+  }, [scrollOffset, containerWidth]);
+
   return (
-    <div className="tw-table-responsive">
-      {sampleData?.rows?.length && sampleData?.columns?.length ? (
-        <table
-          className="tw-min-w-max tw-w-full tw-table-auto"
-          data-testid="sample-data-table">
-          <thead>
-            <tr className="tableHead-row">
-              {sampleData.columns.map((column) => {
+    <div
+      className="tw-relative tw-flex tw-justify-between"
+      onScrollCapture={() => {
+        setScrollOffSet(tableRef.current?.scrollLeft ?? 0);
+      }}>
+      {scrollHandle.left ? (
+        <button
+          className="tw-border tw-border-main tw-fixed tw-left-7 tw-top-2/3 tw-rounded-full tw-shadow-md tw-z-50 tw-bg-body-main tw-w-8 tw-h-8"
+          onClick={() => scrollHandler(-50)}>
+          <i className="fas fa-chevron-left tw-text-grey-muted" />
+        </button>
+      ) : null}
+      {scrollHandle.right ? (
+        <button
+          className="tw-border tw-border-main tw-fixed tw-right-7 tw-top-2/3 tw-rounded-full tw-shadow-md tw-z-50 tw-bg-body-main tw-w-8 tw-h-8"
+          onClick={() => scrollHandler(50)}>
+          <i className="fas fa-chevron-right tw-text-grey-muted" />
+        </button>
+      ) : null}
+
+      <div className="tw-table-responsive" ref={tableRef}>
+        {sampleData?.rows?.length && sampleData?.columns?.length ? (
+          <table
+            className="tw-min-w-max tw-w-full tw-table-auto"
+            data-testid="sample-data-table">
+            <thead>
+              <tr className="tableHead-row">
+                {sampleData.columns.map((column) => {
+                  return (
+                    <th
+                      className="tableHead-cell"
+                      data-testid="column-name"
+                      key={column.name}>
+                      {column.name}
+                      <span className="tw-py-0.5 tw-px-1 tw-ml-1 tw-rounded tw-text-grey-muted">
+                        ({lowerCase(column.dataType)})
+                      </span>
+                    </th>
+                  );
+                })}
+              </tr>
+            </thead>
+            <tbody className="tw-text-gray-600 tw-text-sm">
+              {sampleData?.rows?.map((row, rowIndex) => {
                 return (
-                  <th
-                    className="tableHead-cell"
-                    data-testid="column-name"
-                    key={column.name}>
-                    {column.name}
-                    <span className="tw-py-0.5 tw-px-1 tw-ml-1 tw-rounded tw-text-grey-muted">
-                      ({lowerCase(column.dataType)})
-                    </span>
-                  </th>
+                  <tr
+                    className={classNames(
+                      'tableBody-row',
+                      !isEven(rowIndex + 1) ? 'odd-row' : null
+                    )}
+                    data-testid="row"
+                    key={rowIndex}>
+                    {row.map((data, index) => {
+                      return (
+                        <td
+                          className="tableBody-cell"
+                          data-testid="cell"
+                          key={index}>
+                          {data ? data.toString() : '--'}
+                        </td>
+                      );
+                    })}
+                  </tr>
                 );
               })}
-            </tr>
-          </thead>
-          <tbody className="tw-text-gray-600 tw-text-sm">
-            {sampleData?.rows?.map((row, rowIndex) => {
-              return (
-                <tr
-                  className={classNames(
-                    'tableBody-row',
-                    !isEven(rowIndex + 1) ? 'odd-row' : null
-                  )}
-                  data-testid="row"
-                  key={rowIndex}>
-                  {row.map((data, index) => {
-                    return (
-                      <td
-                        className="tableBody-cell"
-                        data-testid="cell"
-                        key={index}>
-                        {data ? data.toString() : '--'}
-                      </td>
-                    );
-                  })}
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      ) : (
-        <div className="tw-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8">
-          No sample data available
-        </div>
-      )}
+            </tbody>
+          </table>
+        ) : (
+          <div className="tw-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8">
+            No sample data available
+          </div>
+        )}
+      </div>
     </div>
   );
 };

@@ -68,7 +68,7 @@ public class TeamResourceTest extends EntityResourceTest<Team> {
   }
 
   @Test
-  public void post_validTeams_as_admin_200_OK(TestInfo test) throws IOException {
+  void post_validTeams_as_admin_200_OK(TestInfo test) throws IOException {
     // Create team with different optional fields
     CreateTeam create = create(test, 1);
     createAndCheckEntity(create, adminAuthHeaders());
@@ -87,7 +87,7 @@ public class TeamResourceTest extends EntityResourceTest<Team> {
   }
 
   @Test
-  public void post_validTeams_as_non_admin_401(TestInfo test) {
+  void post_validTeams_as_non_admin_401(TestInfo test) {
     // Create team with different optional fields
     Map<String, String> authHeaders = authHeaders("test@open-metadata.org");
     CreateTeam create = create(test, 1);
@@ -97,7 +97,7 @@ public class TeamResourceTest extends EntityResourceTest<Team> {
   }
 
   @Test
-  public void post_teamWithUsers_200_OK(TestInfo test) throws IOException {
+  void post_teamWithUsers_200_OK(TestInfo test) throws IOException {
     // Add team to user relationships while creating a team
     UserResourceTest userResourceTest = new UserResourceTest();
     User user1 = createUser(userResourceTest.create(test, 1), authHeaders("test@open-metadata.org"));
@@ -119,7 +119,7 @@ public class TeamResourceTest extends EntityResourceTest<Team> {
   }
 
   @Test
-  public void get_teamWithInvalidFields_400_BadRequest(TestInfo test) throws HttpResponseException {
+  void get_teamWithInvalidFields_400_BadRequest(TestInfo test) throws HttpResponseException {
     CreateTeam create = create(test);
     Team team = createTeam(create, adminAuthHeaders());
 
@@ -138,7 +138,7 @@ public class TeamResourceTest extends EntityResourceTest<Team> {
    * @see EntityResourceTest#put_addDeleteFollower_200 for tests related getting team with entities owned by the team
    */
   @Test
-  public void delete_validTeam_200_OK(TestInfo test) throws IOException {
+  void delete_validTeam_200_OK(TestInfo test) throws IOException {
     UserResourceTest userResourceTest = new UserResourceTest();
     User user1 = createUser(userResourceTest.create(test, 1), adminAuthHeaders());
     List<UUID> users = Collections.singletonList(user1.getId());
@@ -154,7 +154,7 @@ public class TeamResourceTest extends EntityResourceTest<Team> {
   }
 
   @Test
-  public void delete_validTeam_as_non_admin_401(TestInfo test) throws IOException {
+  void delete_validTeam_as_non_admin_401(TestInfo test) throws IOException {
     UserResourceTest userResourceTest = new UserResourceTest();
     User user1 = createUser(userResourceTest.create(test, 1), authHeaders("test@open-metadata.org"));
     List<UUID> users = Collections.singletonList(user1.getId());
@@ -167,7 +167,7 @@ public class TeamResourceTest extends EntityResourceTest<Team> {
   }
 
   @Test
-  public void patch_teamDeletedDisallowed_400(TestInfo test) throws HttpResponseException, JsonProcessingException {
+  void patch_teamDeletedDisallowed_400(TestInfo test) throws HttpResponseException, JsonProcessingException {
     // Ensure team deleted attribute can't be changed using patch
     Team team = createTeam(create(test), adminAuthHeaders());
     String teamJson = JsonUtils.pojoToJson(team);
@@ -229,7 +229,7 @@ public class TeamResourceTest extends EntityResourceTest<Team> {
   //  }
 
   @Test
-  public void patch_teamAttributes_as_non_admin_403(TestInfo test)
+  void patch_teamAttributes_as_non_admin_403(TestInfo test)
       throws HttpResponseException, JsonProcessingException {
     // Create table without any attributes
     Team team = createTeam(create(test), adminAuthHeaders());
