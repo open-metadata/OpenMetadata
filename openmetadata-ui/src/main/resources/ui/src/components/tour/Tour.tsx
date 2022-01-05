@@ -136,7 +136,7 @@ const getSteps = (value: string) => {
       actionType: 'click',
       content: () => (
         <p>
-          Click on the <strong>&quot;profiler&quot;</strong> tab.
+          Click on the <strong>&quot;Profiler&quot;</strong> tab.
         </p>
       ),
       position: [20, 240],
