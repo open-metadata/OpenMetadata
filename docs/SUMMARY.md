@@ -19,7 +19,7 @@
   * [MariaDB](connectors/mariadb.md)
   * [Metabase](openmetadata/connectors/metabase.md)
   * [MlFlow](connectors/mlflow.md)
-  * [MsSQL](openmetadata/connectors/mssql.md)
+  * [MSSQL](openmetadata/connectors/mssql.md)
   * [MySQL](openmetadata/connectors/mysql.md)
   * [Oracle](openmetadata/connectors/oracle.md)
   * [Postgres](openmetadata/connectors/postgres.md)
