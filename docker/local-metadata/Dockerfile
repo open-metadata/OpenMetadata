@@ -9,15 +9,17 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-FROM openjdk:11
+FROM alpine:3.15
 
 EXPOSE 8585
 
-RUN apt-get update -y && \
-    apt-get install --no-install-recommends wget -y && \
-    rm -rf /var/lib/apt/lists/*
-COPY docker/metadata/openmetadata-start.sh /
-COPY docker/metadata/openmetadata.yaml /
+RUN  apk update \
+  && apk upgrade \
+  && apk add --update wget curl bash openjdk11 \
+  && rm -rf /var/cache/apk/*
+COPY docker/metadata/openmetadata-start.sh docker/metadata/openmetadata.yaml ./
 COPY openmetadata-dist/target/openmetadata-*.tar.gz /
-RUN chmod 777 openmetadata-start.sh && tar zxvf openmetadata-*.tar.gz
+RUN tar zxvf openmetadata-*.tar.gz && \
+    rm openmetadata-*.tar.gz
+RUN chmod 777 openmetadata-start.sh
 CMD ["./openmetadata-start.sh"]
