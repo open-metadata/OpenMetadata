@@ -13,6 +13,8 @@
 
 import classNames from 'classnames';
 import React, { FC, ReactNode } from 'react';
+import { useLocation } from 'react-router-dom';
+import { isPageCentered } from '../../utils/RouterUtils';
 
 interface PageLayoutProp {
   leftPanel?: ReactNode;
@@ -25,13 +27,14 @@ const PageLayout: FC<PageLayoutProp> = ({
   leftPanel,
   children,
   rightPanel,
-  centerAligned = false,
 }: PageLayoutProp) => {
+  const location = useLocation();
+
   return (
     <div
       className={classNames(
-        'page-layout-container tw-gap-x-3 tw-px-12 tw-overflow-y-auto',
-        { 'tw-max-w-screen-xxl tw-mx-auto': centerAligned },
+        'page-layout-container tw-gap-x-3 tw-px-6 tw-overflow-y-auto',
+        { 'centered-layout': isPageCentered(location.pathname) },
         {
           'page-layout-container-left-center-right':
             leftPanel && children && rightPanel,
@@ -47,9 +50,7 @@ const PageLayout: FC<PageLayoutProp> = ({
         }
       )}>
       {leftPanel && (
-        <div
-          className="tw-overflow-y-auto tw-pl-2 tw-pr-4 tw-py-1"
-          id="left-panel">
+        <div className="tw-overflow-y-auto tw-pr-4 tw-py-1" id="left-panel">
           {leftPanel}
         </div>
       )}

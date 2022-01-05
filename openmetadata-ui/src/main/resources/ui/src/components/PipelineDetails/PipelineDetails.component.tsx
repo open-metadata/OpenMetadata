@@ -295,7 +295,7 @@ const PipelineDetails = ({
               tabs={tabs}
             />
 
-            <div className="tw-bg-white tw-flex-grow tw-mx-1">
+            <div className="tw-bg-white tw-flex-grow tw--mx-4 tw-px-5">
               {activeTab === 1 && (
                 <>
                   <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-w-full tw-mt-4">

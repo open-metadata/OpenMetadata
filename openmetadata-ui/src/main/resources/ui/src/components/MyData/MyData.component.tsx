@@ -203,10 +203,7 @@ const MyData: React.FC<MyDataProps> = ({
   }, []);
 
   return (
-    <PageLayout
-      centerAligned
-      leftPanel={getLeftPanel()}
-      rightPanel={getRightPanel()}>
+    <PageLayout leftPanel={getLeftPanel()} rightPanel={getRightPanel()}>
       {error ? (
         <ErrorPlaceHolderES errorMessage={error} type="error" />
       ) : (

@@ -11,7 +11,11 @@
  *  limitations under the License.
  */
 
-import { IN_PAGE_SEARCH_ROUTES, ROUTES } from '../constants/constants';
+import {
+  CENTER_ALIGNED_ROUTES,
+  IN_PAGE_SEARCH_ROUTES,
+  ROUTES,
+} from '../constants/constants';
 
 export const isDashboard = (pathname: string): boolean => {
   return pathname === ROUTES.FEEDS;
@@ -34,4 +38,13 @@ export const inPageSearchOptions = (pathname: string): Array<string> => {
   }
 
   return strOptions;
+};
+
+export const isPageCentered = (pathname: string): boolean => {
+  return (
+    CENTER_ALIGNED_ROUTES['absolute'].includes(pathname) ||
+    Boolean(
+      CENTER_ALIGNED_ROUTES['partial'].find((route) => pathname.includes(route))
+    )
+  );
 };

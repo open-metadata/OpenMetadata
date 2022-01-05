@@ -275,7 +275,7 @@ const TopicVersion: FC<TopicVersionProp> = ({
             />
             <div className="tw-mt-1 tw-flex tw-flex-col tw-flex-grow ">
               <TabsPane activeTab={1} className="tw-flex-initial" tabs={tabs} />
-              <div className="tw-bg-white tw-flex-grow tw-mx-1">
+              <div className="tw-bg-white tw-flex-grow tw--mx-4 tw-px-5">
                 <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-w-full tw-mt-4 ">
                   <div className="tw-col-span-full">
                     <Description
