@@ -86,7 +86,7 @@ public class UserResourceTest extends EntityResourceTest<User> {
   }
 
   @Test
-  public void post_userWithoutEmail_400_badRequest(TestInfo test) {
+  void post_userWithoutEmail_400_badRequest(TestInfo test) {
     // Create user with mandatory email field null
     CreateUser create = create(test).withEmail(null);
     HttpResponseException exception =
@@ -115,7 +115,7 @@ public class UserResourceTest extends EntityResourceTest<User> {
   }
 
   @Test
-  public void post_validUser_200_ok(TestInfo test) throws IOException {
+  void post_validUser_200_ok(TestInfo test) throws IOException {
     // Create user with different optional fields
     CreateUser create = create(test, 1);
     createAndCheckEntity(create, adminAuthHeaders());
@@ -134,7 +134,7 @@ public class UserResourceTest extends EntityResourceTest<User> {
   }
 
   @Test
-  public void put_validUser_200_ok(TestInfo test) throws IOException {
+  void put_validUser_200_ok(TestInfo test) throws IOException {
     // Create user with different optional fields
     CreateUser create = create(test, 1);
     User user = updateAndCheckEntity(create, CREATED, adminAuthHeaders(), UpdateType.CREATED, null);
@@ -155,7 +155,7 @@ public class UserResourceTest extends EntityResourceTest<User> {
   }
 
   @Test
-  public void post_validAdminUser_Non_Admin_401(TestInfo test) {
+  void post_validAdminUser_Non_Admin_401(TestInfo test) {
     CreateUser create =
         create(test, 6).withName("test").withDisplayName("displayName").withEmail("test@email.com").withIsAdmin(true);
 
@@ -166,14 +166,14 @@ public class UserResourceTest extends EntityResourceTest<User> {
   }
 
   @Test
-  public void post_validAdminUser_200_ok(TestInfo test) throws IOException {
+  void post_validAdminUser_200_ok(TestInfo test) throws IOException {
     CreateUser create =
         create(test, 6).withName("test1").withDisplayName("displayName").withEmail("test1@email.com").withIsAdmin(true);
     createAndCheckEntity(create, adminAuthHeaders());
   }
 
   @Test
-  public void post_validUserWithTeams_200_ok(TestInfo test) throws IOException {
+  void post_validUserWithTeams_200_ok(TestInfo test) throws IOException {
     // Create user with different optional fields
     TeamResourceTest teamResourceTest = new TeamResourceTest();
     Team team1 = createTeam(teamResourceTest.create(test, 1), adminAuthHeaders());
@@ -190,7 +190,7 @@ public class UserResourceTest extends EntityResourceTest<User> {
   }
 
   @Test
-  public void post_validUserWithRoles_200_ok(TestInfo test) throws IOException {
+  void post_validUserWithRoles_200_ok(TestInfo test) throws IOException {
     // Create user with different optional fields
     RoleResourceTest roleResourceTest = new RoleResourceTest();
     Role role1 = createRole(roleResourceTest.create(test, 1), adminAuthHeaders());
@@ -207,7 +207,7 @@ public class UserResourceTest extends EntityResourceTest<User> {
   }
 
   @Test
-  public void get_listUsersWithTeams_200_ok(TestInfo test) throws IOException {
+  void get_listUsersWithTeams_200_ok(TestInfo test) throws IOException {
     TeamResourceTest teamResourceTest = new TeamResourceTest();
     Team team1 = createTeam(teamResourceTest.create(test, 1), adminAuthHeaders());
     Team team2 = createTeam(teamResourceTest.create(test, 2), adminAuthHeaders());
@@ -256,7 +256,7 @@ public class UserResourceTest extends EntityResourceTest<User> {
   }
 
   @Test
-  public void get_userWithInvalidFields_400_BadRequest(TestInfo test) throws HttpResponseException {
+  void get_userWithInvalidFields_400_BadRequest(TestInfo test) throws HttpResponseException {
     User user = createUser(create(test), adminAuthHeaders());
 
     // Empty query field .../users?fields=
@@ -276,7 +276,7 @@ public class UserResourceTest extends EntityResourceTest<User> {
    * @see TableResourceTest also tests GET user returns owns list
    */
   @Test
-  public void patch_userNameChange_as_another_user_401(TestInfo test)
+  void patch_userNameChange_as_another_user_401(TestInfo test)
       throws HttpResponseException, JsonProcessingException {
     // Ensure username can't be changed using patch
     User user =
@@ -291,7 +291,7 @@ public class UserResourceTest extends EntityResourceTest<User> {
   }
 
   @Test
-  public void patch_makeAdmin_as_another_user_401(TestInfo test) throws HttpResponseException, JsonProcessingException {
+  void patch_makeAdmin_as_another_user_401(TestInfo test) throws HttpResponseException, JsonProcessingException {
     // Ensure username can't be changed using patch
     User user =
         createUser(
@@ -305,7 +305,7 @@ public class UserResourceTest extends EntityResourceTest<User> {
   }
 
   @Test
-  public void patch_userNameChange_as_same_user_200_ok(TestInfo test)
+  void patch_userNameChange_as_same_user_200_ok(TestInfo test)
       throws HttpResponseException, JsonProcessingException {
     // Ensure username can't be changed using patch
     User user =
@@ -320,7 +320,7 @@ public class UserResourceTest extends EntityResourceTest<User> {
   }
 
   @Test
-  public void patch_userDeletedDisallowed_400(TestInfo test) throws HttpResponseException, JsonProcessingException {
+  void patch_userDeletedDisallowed_400(TestInfo test) throws HttpResponseException, JsonProcessingException {
     // Ensure user deleted attributed can't be changed using patch
     User user = createUser(create(test), adminAuthHeaders());
     String userJson = JsonUtils.pojoToJson(user);
@@ -331,7 +331,7 @@ public class UserResourceTest extends EntityResourceTest<User> {
   }
 
   @Test
-  public void patch_userAttributes_as_admin_200_ok(TestInfo test) throws IOException {
+  void patch_userAttributes_as_admin_200_ok(TestInfo test) throws IOException {
     // Create user without any attributes - ***Note*** isAdmin by default is false.
     User user = createUser(create(test), adminAuthHeaders());
     assertListNull(user.getDisplayName(), user.getIsBot(), user.getProfile(), user.getTimezone());
@@ -444,7 +444,7 @@ public class UserResourceTest extends EntityResourceTest<User> {
   }
 
   @Test
-  public void delete_validUser_as_non_admin_401(TestInfo test) throws HttpResponseException {
+  void delete_validUser_as_non_admin_401(TestInfo test) throws HttpResponseException {
     CreateUser create = create(test).withName("test3").withEmail("test3@email.com");
     User user = createUser(create, authHeaders("test3"));
 
@@ -454,7 +454,7 @@ public class UserResourceTest extends EntityResourceTest<User> {
   }
 
   @Test
-  public void delete_validUser_as_admin_200(TestInfo test) throws IOException {
+  void delete_validUser_as_admin_200(TestInfo test) throws IOException {
     TeamResourceTest teamResourceTest = new TeamResourceTest();
     Team team = createTeam(teamResourceTest.create(test), adminAuthHeaders());
     List<UUID> teamIds = Collections.singletonList(team.getId());

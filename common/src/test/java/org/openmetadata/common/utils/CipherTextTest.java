@@ -21,7 +21,7 @@ import org.junit.jupiter.api.Test;
 
 public class CipherTextTest {
   @Test
-  public void encryptDescryptTest() throws GeneralSecurityException, UnsupportedEncodingException {
+  void encryptDescryptTest() throws GeneralSecurityException, UnsupportedEncodingException {
     CipherText cipherText = CipherText.instance();
     String[] strings = {"test1", "test2", "service.dwh.fact_trip", "random text", "user@domain.com"};
     for (String str : strings) {

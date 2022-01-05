@@ -61,7 +61,7 @@ public class TagResourceTest extends CatalogApplicationTest {
 
   @Test
   @Order(0)
-  public void list_categories_200() throws IOException {
+  void list_categories_200() throws IOException {
     // GET .../tags to list all tag categories
     CategoryList list = listCategories();
 
@@ -77,7 +77,7 @@ public class TagResourceTest extends CatalogApplicationTest {
   }
 
   @Test
-  public void get_category_200() throws HttpResponseException {
+  void get_category_200() throws HttpResponseException {
     // GET .../tags/{category} to get a category
     TagCategory category = getCategory("User", authHeaders("test@open-metadata.org"));
     assertEquals("User", category.getName());
@@ -85,7 +85,7 @@ public class TagResourceTest extends CatalogApplicationTest {
   }
 
   @Test
-  public void get_nonExistentCategory_404() {
+  void get_nonExistentCategory_404() {
     // GET .../tags/{nonExistentCategory} returns 404
     String nonExistent = "nonExistent";
     HttpResponseException exception =
@@ -94,7 +94,7 @@ public class TagResourceTest extends CatalogApplicationTest {
   }
 
   @Test
-  public void get_validTag_200() throws HttpResponseException {
+  void get_validTag_200() throws HttpResponseException {
     // GET .../tags/{category}/{tag} returns requested tag
     Tag tag = getTag("User.Address", adminAuthHeaders());
     String parentURI = BASE_URL + "/User";
@@ -102,7 +102,7 @@ public class TagResourceTest extends CatalogApplicationTest {
   }
 
   @Test
-  public void get_nonExistentTag_404() {
+  void get_nonExistentTag_404() {
     // GET .../tags/{category}/{nonExistent} returns 404 Not found
     String tagFQN = "User.NonExistent";
     HttpResponseException exception =
@@ -111,7 +111,7 @@ public class TagResourceTest extends CatalogApplicationTest {
   }
 
   @Test
-  public void post_alreadyExistingTagCategory_4xx() {
+  void post_alreadyExistingTagCategory_4xx() {
     // POST .../tags/{allReadyExistingCategory} returns 4xx
     CreateTagCategory create =
         new CreateTagCategory()
@@ -124,7 +124,7 @@ public class TagResourceTest extends CatalogApplicationTest {
   }
 
   @Test
-  public void post_validTagCategory_as_admin_201(TestInfo test) throws HttpResponseException {
+  void post_validTagCategory_as_admin_201(TestInfo test) throws HttpResponseException {
     // POST .../tags/{newCategory} returns 201
     String categoryName = test.getDisplayName().substring(0, 10); // Form a unique category name based on the test name
     CreateTagCategory create =
@@ -137,7 +137,7 @@ public class TagResourceTest extends CatalogApplicationTest {
   }
 
   @Test
-  public void post_InvalidTagCategory_4xx(TestInfo test) {
+  void post_InvalidTagCategory_4xx(TestInfo test) {
     // POST .../tags/{newCategory} returns 201
     String categoryName = test.getDisplayName().substring(0, 10); // Form a unique category name based on the test name
 
@@ -164,7 +164,7 @@ public class TagResourceTest extends CatalogApplicationTest {
 
   @Order(1)
   @Test
-  public void post_validTags_200() throws HttpResponseException, JsonProcessingException {
+  void post_validTags_200() throws HttpResponseException, JsonProcessingException {
     // POST .../tags/{category}/{primaryTag} to create primary tag
     TagCategory category = getCategory("User", authHeaders("test@open-meatadata.org"));
     CreateTag create = new CreateTag().withName("PrimaryTag").withDescription("description");
@@ -180,7 +180,7 @@ public class TagResourceTest extends CatalogApplicationTest {
   }
 
   @Test
-  public void post_invalidTags_400() {
+  void post_invalidTags_400() {
     // Missing description in POST primary tag
     CreateTag create = new CreateTag().withName("noDescription").withDescription(null);
     HttpResponseException exception =
@@ -206,7 +206,7 @@ public class TagResourceTest extends CatalogApplicationTest {
   }
 
   @Test
-  public void post_newTagsOnNonExistentParents_404() {
+  void post_newTagsOnNonExistentParents_404() {
     // POST .../tags/{nonExistent}/{primaryTag} where category does not exist
     String nonExistent = "nonExistent";
     CreateTag create = new CreateTag().withName("primary").withDescription("description");
@@ -222,7 +222,7 @@ public class TagResourceTest extends CatalogApplicationTest {
   }
 
   @Test
-  public void put_tagCategory_200(TestInfo test) throws HttpResponseException {
+  void put_tagCategory_200(TestInfo test) throws HttpResponseException {
     // PUT .../tags/{user} update the user tags
     String newCategoryName = test.getDisplayName().substring(0, 10);
     CreateTagCategory create =
@@ -238,7 +238,7 @@ public class TagResourceTest extends CatalogApplicationTest {
   }
 
   @Test
-  public void put_tagCategoryInvalidRequest_400(TestInfo test) {
+  void put_tagCategoryInvalidRequest_400(TestInfo test) {
     // Primary tag with missing description
     String newCategoryName = test.getDisplayName().substring(0, 10);
     CreateTagCategory create =
@@ -257,7 +257,7 @@ public class TagResourceTest extends CatalogApplicationTest {
   }
 
   @Test
-  public void put_primaryTag_200() throws HttpResponseException, JsonProcessingException {
+  void put_primaryTag_200() throws HttpResponseException, JsonProcessingException {
     // PUT .../tags/{user}/{address} update the tag
     CreateTag create = new CreateTag().withName("AddressUpdated").withDescription("updatedDescription");
     updatePrimaryTag("User", "Address", create, adminAuthHeaders());
@@ -268,7 +268,7 @@ public class TagResourceTest extends CatalogApplicationTest {
   }
 
   @Test
-  public void put_secondaryTag_200() throws HttpResponseException, JsonProcessingException {
+  void put_secondaryTag_200() throws HttpResponseException, JsonProcessingException {
     // PUT .../tags/{user}/{primaryTag}/{secondaryTag} update the tag
     CreateTag create = new CreateTag().withName("SecondaryTag1").withDescription("description");
     updateSecondaryTag("User", "PrimaryTag", "SecondaryTag", create, adminAuthHeaders());
@@ -279,7 +279,7 @@ public class TagResourceTest extends CatalogApplicationTest {
   }
 
   @Test
-  public void put_tagInvalidRequest_404() {
+  void put_tagInvalidRequest_404() {
     // Primary tag with missing description
     CreateTag create = new CreateTag().withName("AddressUpdated").withDescription(null);
     HttpResponseException exception =
