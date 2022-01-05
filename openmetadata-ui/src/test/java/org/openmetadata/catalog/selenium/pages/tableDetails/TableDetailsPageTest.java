@@ -266,6 +266,12 @@ public class TableDetailsPageTest {
     Events.click(webDriver, By.cssSelector("[data-testid='edit-description']")); // edit description
     Thread.sleep(1000);
     webDriver.findElement(By.xpath("//*[text()[contains(.,'" + editDescription + "')]] "));
+    Events.sendKeys(webDriver, By.xpath(enterDescription), updateDescription);
+    Events.click(webDriver, By.cssSelector("[data-testid='save']"));
+    webDriver.navigate().refresh();
+    Events.click(webDriver, By.cssSelector("[data-testid='edit-description']"));
+    Thread.sleep(1000);
+    webDriver.findElement(By.xpath("//*[text()[contains(.,'" + editDescription + updateDescription + "')]] "));
     Events.click(webDriver, By.cssSelector("[data-testid='cancel']"));
     Events.click(webDriver, By.xpath("(//tr[@data-testid='column']//td[1]/a)[1]")); // database
     Events.click(webDriver, By.cssSelector("[data-testid='edit-description']")); // edit description

@@ -22,6 +22,7 @@ import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.catalog.selenium.events.Events;
 import org.openmetadata.catalog.selenium.properties.Property;
 import org.openqa.selenium.By;
+import org.openqa.selenium.Keys;
 import org.openqa.selenium.TimeoutException;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
@@ -129,6 +130,29 @@ public class PaginationAndFilterTest {
     Events.click(webDriver, By.cssSelector("[data-testid='appbar-item'][id='explore']")); // Explore
     Events.click(webDriver, By.cssSelector("[data-testid='checkbox'][id='BigQuery']")); // Tables
   }
+
+  @Test
+  @Order(5)
+  public void filterDisappearsAfterSearchCheck() throws Exception {
+    Events.click(webDriver, By.cssSelector("[data-testid='closeWhatsNew']")); // Close What's new
+    Thread.sleep(waitTime);
+    Events.click(webDriver, By.cssSelector("[data-testid='appbar-item'][id='explore']")); // Explore
+    Events.click(webDriver, By.cssSelector("[data-testid='checkbox'][id='BigQuery']"));
+    Events.sendKeys(webDriver, By.cssSelector("[data-testid='searchBox']"), "dim");
+    Events.sendEnter(webDriver, By.cssSelector("[data-testid='searchBox']"));
+    Thread.sleep(2000);
+    WebElement clearSearchBox = webDriver.findElement(By.cssSelector("[data-testid='searchBox']"));
+    clearSearchBox.sendKeys(Keys.CONTROL + "a");
+    clearSearchBox.sendKeys(Keys.DELETE);
+    Events.sendEnter(webDriver, By.cssSelector("[data-testid='searchBox']"));
+    try {
+      Events.click(webDriver, By.cssSelector("[data-testid='checkbox'][id='Glue']"));
+      Events.click(webDriver, By.cssSelector("[data-testid='checkbox'][id='default']"));
+    } catch (TimeoutException exception) {
+      throw new Exception("filters are missing");
+    }
+  }
+
 
   @AfterEach
   public void closeTabs() {
