@@ -161,8 +161,10 @@ public final class EntityUtil {
     return refs.isEmpty() ? null : refs.get(0);
   }
 
-  public static EntityReference getService(EntityRelationshipDAO dao, String entityType, UUID entityId, String serviceType) {
-    List<EntityReference> refs = dao.findFromEntity(entityId.toString(), entityType, Relationship.CONTAINS.ordinal(), serviceType);
+  public static EntityReference getService(
+      EntityRelationshipDAO dao, String entityType, UUID entityId, String serviceType) {
+    List<EntityReference> refs =
+        dao.findFromEntity(entityId.toString(), entityType, Relationship.CONTAINS.ordinal(), serviceType);
     if (refs.size() > 1) {
       LOG.warn("Possible database issues - multiple services found for entity {}", entityId);
       return refs.get(0);
@@ -178,7 +180,8 @@ public final class EntityUtil {
 
   // Get owner for a given entity
   public static EntityReference populateOwner(
-      UUID id, String entityType, EntityRelationshipDAO entityRelationshipDAO, UserDAO userDAO, TeamDAO teamDAO) throws IOException {
+      UUID id, String entityType, EntityRelationshipDAO entityRelationshipDAO, UserDAO userDAO, TeamDAO teamDAO)
+      throws IOException {
     List<EntityReference> ids = entityRelationshipDAO.findFrom(id.toString(), entityType, Relationship.OWNS.ordinal());
     if (ids.size() > 1) {
       LOG.warn("Possible database issues - multiple owners {} found for entity {}", ids, id);
@@ -223,10 +226,12 @@ public final class EntityUtil {
   }
 
   /** Unassign owner relationship for a given entity */
-  public static void unassignOwner(EntityRelationshipDAO dao, EntityReference owner, String ownedEntityId, String ownedEntityType) {
+  public static void unassignOwner(
+      EntityRelationshipDAO dao, EntityReference owner, String ownedEntityId, String ownedEntityType) {
     if (owner != null && owner.getId() != null) {
       LOG.info("Removing owner {}:{} for entity {}", owner.getType(), owner.getId(), ownedEntityId);
-      dao.delete(owner.getId().toString(), owner.getType(), ownedEntityId, ownedEntityType, Relationship.OWNS.ordinal());
+      dao.delete(
+          owner.getId().toString(), owner.getType(), ownedEntityId, ownedEntityType, Relationship.OWNS.ordinal());
     }
   }
 
@@ -373,9 +378,11 @@ public final class EntityUtil {
   }
 
   public static List<EntityReference> getFollowers(
-      UUID followedEntityId, String entityName, EntityRelationshipDAO entityRelationshipDAO, UserDAO userDAO) throws IOException {
+      UUID followedEntityId, String entityName, EntityRelationshipDAO entityRelationshipDAO, UserDAO userDAO)
+      throws IOException {
     List<String> followerIds =
-        entityRelationshipDAO.findFrom(followedEntityId.toString(), entityName, Relationship.FOLLOWS.ordinal(), Entity.USER);
+        entityRelationshipDAO.findFrom(
+            followedEntityId.toString(), entityName, Relationship.FOLLOWS.ordinal(), Entity.USER);
     List<EntityReference> followers = new ArrayList<>();
     for (String followerId : followerIds) {
       User user = userDAO.findEntityById(UUID.fromString(followerId));
