@@ -19,11 +19,13 @@ import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.openmetadata.catalog.security.SecurityUtil.authHeaders;
+import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
 import static org.openmetadata.catalog.util.TestUtils.getPrincipal;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.Map;
 import org.apache.http.client.HttpResponseException;
@@ -44,6 +46,8 @@ import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
 import org.openmetadata.catalog.util.TestUtils.UpdateType;
+
+import javax.ws.rs.core.Response;
 
 public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseService> {
   public DatabaseServiceResourceTest() {
@@ -197,6 +201,27 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
     Map<String, String> authHeaders = adminAuthHeaders();
     DatabaseService databaseService = createEntity(create(test), authHeaders);
     deleteEntity(databaseService.getId(), authHeaders);
+  }
+
+  @Test
+  public void delete_put_DatabaseService_200(TestInfo test) throws IOException {
+    CreateDatabaseService request = create(test).withDescription("");
+    DatabaseService databaseService = createEntity(request, adminAuthHeaders());
+
+    // Delete
+    deleteEntity(databaseService.getId(), adminAuthHeaders());
+
+    ChangeDescription change = getChangeDescription(databaseService.getVersion());
+    change.setFieldsUpdated(
+            Arrays.asList(
+                    new FieldChange().withName("deleted").withNewValue(false).withOldValue(true),
+                    new FieldChange().withName("description").withNewValue("updatedDescription").withOldValue("")
+            )
+    );
+
+    // PUT with updated description
+    updateAndCheckEntity(
+            request.withDescription("updatedDescription"), Response.Status.OK, adminAuthHeaders(), MINOR_UPDATE, change);
   }
 
   @Test
