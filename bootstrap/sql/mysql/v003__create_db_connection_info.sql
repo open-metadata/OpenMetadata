@@ -98,6 +98,10 @@ ALTER TABLE team_entity
 ADD COLUMN deleted BOOLEAN GENERATED ALWAYS AS (JSON_EXTRACT(json, '$.deleted')),
 ADD INDEX (deleted);
 
+ALTER TABLE role_entity
+ADD COLUMN deleted BOOLEAN GENERATED ALWAYS AS (JSON_EXTRACT(json, '$.deleted')),
+ADD INDEX (deleted);
+
 ALTER TABLE entity_relationship
 ADD COLUMN deleted BOOLEAN NOT NULL DEFAULT 0,
 ADD INDEX (deleted);
@@ -118,3 +122,4 @@ ALTER TABLE user_entity
 DROP COLUMN deactivated,
 ADD COLUMN deleted BOOLEAN GENERATED ALWAYS AS (JSON_EXTRACT(json, '$.deleted')),
 ADD INDEX (deleted);
+
