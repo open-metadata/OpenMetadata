@@ -128,7 +128,7 @@ public class IngestionResource {
   }
 
   static final String FIELDS = "owner,tags,status,scheduleInterval";
-  public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replaceAll("\\s", "").split(","));
+  public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replace(" ", "").split(","));
 
   @GET
   @Valid

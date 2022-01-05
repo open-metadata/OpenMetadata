@@ -168,7 +168,7 @@ public final class Entity {
       if (entitiesParam == null) {
         return null;
       }
-      entitiesParam = entitiesParam.replaceAll("\\s", "");
+      entitiesParam = entitiesParam.replace(" ", "");
       if (entitiesParam.equals("*")) {
         return List.of("*");
       }
