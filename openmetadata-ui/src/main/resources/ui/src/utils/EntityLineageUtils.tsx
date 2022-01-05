@@ -21,17 +21,25 @@ import {
   FlowElement,
   ArrowHeadType,
   Node,
+  isNode,
 } from 'react-flow-renderer';
 import { Link } from 'react-router-dom';
 import { SelectedNode } from '../components/EntityLineage/EntityLineage.interface';
 import Loader from '../components/Loader/Loader';
-import { positionX, positionY } from '../constants/constants';
+import {
+  nodeHeight,
+  nodeWidth,
+  positionX,
+  positionY,
+} from '../constants/constants';
 import {
   EntityLineage,
   Edge as LineageEdge,
 } from '../generated/type/entityLineage';
 import { EntityReference } from '../generated/type/entityReference';
 import { isLeafNode } from './EntityUtils';
+import dagre from 'dagre';
+import { EntityLineageDirection } from '../enums/entity.enum';
 
 export const onLoad = (reactFlowInstance: OnLoadParams) => {
   reactFlowInstance.fitView();
@@ -361,4 +369,45 @@ export const getNoLineageDataPlaceholder = () => {
       </Link>
     </div>
   );
+};
+
+const dagreGraph = new dagre.graphlib.Graph();
+dagreGraph.setDefaultEdgeLabel(() => ({}));
+
+export const getLayoutedElements = (
+  elements: Elements,
+  direction = EntityLineageDirection.LEFT_RIGHT
+) => {
+  const isHorizontal = direction === EntityLineageDirection.LEFT_RIGHT;
+  dagreGraph.setGraph({ rankdir: direction });
+
+  elements.forEach((el) => {
+    if (isNode(el)) {
+      dagreGraph.setNode(el.id, {
+        width: el?.__rf?.width ?? nodeWidth,
+        height: el?.__rf?.height ?? nodeHeight,
+      });
+    } else {
+      dagreGraph.setEdge(el.source, el.target);
+    }
+  });
+
+  dagre.layout(dagreGraph);
+
+  return elements.map((el) => {
+    if (isNode(el)) {
+      const nodeWithPosition = dagreGraph.node(el.id);
+      el.targetPosition = isHorizontal ? Position.Left : Position.Top;
+      el.sourcePosition = isHorizontal ? Position.Right : Position.Bottom;
+      el.position = {
+        x:
+          nodeWithPosition.x -
+          (el?.__rf?.width ?? nodeWidth) / 2 +
+          Math.random() / 1000,
+        y: nodeWithPosition.y - (el?.__rf?.height ?? nodeHeight) / 2,
+      };
+    }
+
+    return el;
+  });
 };
