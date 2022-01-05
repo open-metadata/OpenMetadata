@@ -20,6 +20,6 @@ RUN  apk update \
 COPY docker/metadata/openmetadata-start.sh docker/metadata/openmetadata.yaml /
 COPY openmetadata-dist/target/openmetadata-*.tar.gz /
 RUN tar zxvf openmetadata-*.tar.gz && \
-    rm -rf openmetadata-*.tar.gz
+    rm openmetadata-*.tar.gz
 RUN chmod 777 openmetadata-start.sh
 CMD ["./openmetadata-start.sh"]
