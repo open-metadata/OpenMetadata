@@ -110,7 +110,7 @@ public class PolicyResource {
   }
 
   static final String FIELDS = "displayName,description,owner,policyUrl,enabled,rules,location";
-  public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replaceAll(" ", "").split(","));
+  public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replaceAll("\\s", "").split(","));
 
   @GET
   @Valid

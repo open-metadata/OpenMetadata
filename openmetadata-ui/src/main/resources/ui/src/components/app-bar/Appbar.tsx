@@ -19,6 +19,7 @@ import { observer } from 'mobx-react';
 import { Match } from 'Models';
 import React, { useEffect, useState } from 'react';
 import {
+  Link,
   NavLink,
   useHistory,
   useLocation,
@@ -28,14 +29,13 @@ import appState from '../../AppState';
 import { getVersion } from '../../axiosAPIs/miscAPI';
 import {
   getExplorePathWithSearch,
-  // navLinkDevelop,
   navLinkSettings,
   ROUTES,
+  TOUR_SEARCH_TERM,
 } from '../../constants/constants';
 import { urlGitbookDocs, urlJoinSlack } from '../../constants/url.const';
 import { CurrentTourPageType } from '../../enums/tour.enum';
 import { useAuth } from '../../hooks/authHooks';
-import { useTour } from '../../hooks/useTour';
 import { userSignOut } from '../../utils/AuthUtils';
 import { addToRecentSearched } from '../../utils/CommonUtils';
 import {
@@ -57,7 +57,6 @@ const cookieStorage = new CookieStorage();
 const Appbar: React.FC = (): JSX.Element => {
   const location = useLocation();
   const history = useHistory();
-  const { handleIsTourOpen } = useTour();
   const { isAuthenticatedRoute, isSignedIn, isFirstTimeUser, isAuthDisabled } =
     useAuth(location.pathname);
   const match: Match | null = useRouteMatch({
@@ -141,20 +140,6 @@ const Appbar: React.FC = (): JSX.Element => {
           width="12"
         />
       ),
-    },
-    {
-      name: `Tour`,
-      to: ROUTES.TOUR,
-      disabled: false,
-      icon: (
-        <SVGIcons
-          alt="tour icon"
-          className="tw-align-middle tw-mr-0.5"
-          icon={Icons.TOUR}
-          width="12"
-        />
-      ),
-      method: () => handleIsTourOpen(true),
     },
   ];
 
@@ -259,8 +244,11 @@ const Appbar: React.FC = (): JSX.Element => {
                     setIsOpen(false);
                     // below code is for tour feature
                     if (location.pathname.includes(ROUTES.TOUR)) {
-                      appState.currentTourPage =
-                        CurrentTourPageType.EXPLORE_PAGE;
+                      if (searchValue === TOUR_SEARCH_TERM) {
+                        appState.currentTourPage =
+                          CurrentTourPageType.EXPLORE_PAGE;
+                        setSearchValue('');
+                      }
 
                       return;
                     }
@@ -280,7 +268,8 @@ const Appbar: React.FC = (): JSX.Element => {
                   }
                 }}
               />
-              {searchValue &&
+              {!location.pathname.includes(ROUTES.TOUR) &&
+                searchValue &&
                 (isInPageSearchAllowed(location.pathname) ? (
                   <SearchOptions
                     isOpen={isOpen}
@@ -310,6 +299,18 @@ const Appbar: React.FC = (): JSX.Element => {
                   icon={Icons.WHATS_NEW}
                   width="20"
                 />
+              </button>
+              <button
+                className="tw-nav focus:tw-no-underline hover:tw-underline"
+                data-testid="tour">
+                <Link to={ROUTES.TOUR}>
+                  <SVGIcons
+                    alt="tour icon"
+                    className="tw-align-middle tw-mr-0.5"
+                    icon={Icons.TOUR}
+                    width="20"
+                  />
+                </Link>
               </button>
               <div>
                 <DropDown

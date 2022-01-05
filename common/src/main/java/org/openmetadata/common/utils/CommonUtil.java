@@ -28,6 +28,7 @@ import java.util.Enumeration;
 import java.util.List;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 import org.slf4j.Logger;
@@ -71,16 +72,18 @@ public final class CommonUtil {
 
   public static Collection<String> getResourcesFromDirectory(File file, Pattern pattern) throws IOException {
     final Path root = Path.of(file.getPath());
-    return Files.walk(Paths.get(file.getPath()))
-        .filter(Files::isRegularFile)
-        .filter(path -> pattern.matcher(path.toString()).matches())
-        .map(
-            path -> {
-              String relativePath = root.relativize(path).toString();
-              LOG.info("Adding directory file {}", relativePath);
-              return relativePath;
-            })
-        .collect(Collectors.toSet());
+    try (Stream<Path> paths = Files.walk(Paths.get(file.getPath()))) {
+      return paths
+          .filter(Files::isRegularFile)
+          .filter(path -> pattern.matcher(path.toString()).matches())
+          .map(
+              path -> {
+                String relativePath = root.relativize(path).toString();
+                LOG.info("Adding directory file {}", relativePath);
+                return relativePath;
+              })
+          .collect(Collectors.toSet());
+    }
   }
 
   /** Get date after {@code days} from the given date or before i{@code days} when it is negative */

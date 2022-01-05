@@ -100,7 +100,11 @@ public class LineageRepository {
     upstreamDepth--;
     for (EntityReference upstreamEntity : upstreamEntities) {
       lineage.getUpstreamEdges().add(new Edge().withFromEntity(upstreamEntity.getId()).withToEntity(id));
-      addUpstreamLineage(upstreamEntity.getId(), upstreamEntity.getType(), lineage, upstreamDepth); // Recursively add upstream nodes and edges
+      addUpstreamLineage(
+          upstreamEntity.getId(),
+          upstreamEntity.getType(),
+          lineage,
+          upstreamDepth); // Recursively add upstream nodes and edges
     }
   }
 

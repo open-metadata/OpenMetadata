@@ -167,9 +167,6 @@ public class DashboardDetailsPageTest {
     Events.sendKeys(webDriver, By.cssSelector("[data-testid='searchBox']"), dashboardName);
     Events.click(webDriver, By.cssSelector("[data-testid='data-name']"));
     Thread.sleep(waitTime);
-    //        actions.moveToElement(webDriver.findElement(
-    //
-    // By.xpath("//table[@data-testid='schema-table']//div[@data-testid='tag-conatiner']//span"))).perform();
     Events.click(
         webDriver,
         By.xpath("//table[@data-testid='schema-table']//div[@data-testid='tag-conatiner']//span"));

@@ -123,7 +123,7 @@ public class ElasticSearchIndexDefinition {
         CreateIndexRequest request = new CreateIndexRequest(elasticSearchIndexType.indexName);
         request.mapping(elasticSearchIndexMapping, XContentType.JSON);
         CreateIndexResponse createIndexResponse = client.indices().create(request, RequestOptions.DEFAULT);
-        LOG.info("{} Created {}", elasticSearchIndexType.indexName,createIndexResponse.isAcknowledged());
+        LOG.info("{} Created {}", elasticSearchIndexType.indexName, createIndexResponse.isAcknowledged());
       }
       setIndexStatus(elasticSearchIndexType, ElasticSearchIndexStatus.CREATED);
     } catch (Exception e) {
@@ -144,12 +144,12 @@ public class ElasticSearchIndexDefinition {
         PutMappingRequest request = new PutMappingRequest(elasticSearchIndexType.indexName);
         request.source(elasticSearchIndexMapping, XContentType.JSON);
         AcknowledgedResponse putMappingResponse = client.indices().putMapping(request, RequestOptions.DEFAULT);
-        LOG.info("{} Updated {}", elasticSearchIndexType.indexName,putMappingResponse.isAcknowledged());
+        LOG.info("{} Updated {}", elasticSearchIndexType.indexName, putMappingResponse.isAcknowledged());
       } else {
         CreateIndexRequest request = new CreateIndexRequest(elasticSearchIndexType.indexName);
         request.mapping(elasticSearchIndexMapping, XContentType.JSON);
         CreateIndexResponse createIndexResponse = client.indices().create(request, RequestOptions.DEFAULT);
-        LOG.info("{} Created {}", elasticSearchIndexType.indexName,createIndexResponse.isAcknowledged());
+        LOG.info("{} Created {}", elasticSearchIndexType.indexName, createIndexResponse.isAcknowledged());
       }
       setIndexStatus(elasticSearchIndexType, ElasticSearchIndexStatus.CREATED);
     } catch (Exception e) {
@@ -164,7 +164,7 @@ public class ElasticSearchIndexDefinition {
     try {
       DeleteIndexRequest request = new DeleteIndexRequest(elasticSearchIndexType.indexName);
       AcknowledgedResponse deleteIndexResponse = client.indices().delete(request, RequestOptions.DEFAULT);
-      LOG.info("{} Deleted {}", elasticSearchIndexType.indexName,deleteIndexResponse.isAcknowledged());
+      LOG.info("{} Deleted {}", elasticSearchIndexType.indexName, deleteIndexResponse.isAcknowledged());
     } catch (IOException e) {
       LOG.error("Failed to delete Elastic Search indexes due to", e);
       return false;
