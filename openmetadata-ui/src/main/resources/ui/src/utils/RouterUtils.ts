@@ -42,6 +42,7 @@ export const inPageSearchOptions = (pathname: string): Array<string> => {
 
 export const isPageCentered = (pathname: string): boolean => {
   return (
+    true ||
     CENTER_ALIGNED_ROUTES['absolute'].includes(pathname) ||
     Boolean(
       CENTER_ALIGNED_ROUTES['partial'].find((route) => pathname.includes(route))

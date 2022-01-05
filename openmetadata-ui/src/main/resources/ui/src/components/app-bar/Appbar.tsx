@@ -45,6 +45,7 @@ import {
 } from '../../utils/RouterUtils';
 import { activeLink, normalLink } from '../../utils/styleconstant';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
+import PopOver from '../common/popover/PopOver';
 import DropDown from '../dropdown/DropDown';
 import { WhatsNewModal } from '../Modals/WhatsNewModal';
 import { COOKIE_VERSION } from '../Modals/WhatsNewModal/whatsNewData';
@@ -293,35 +294,51 @@ const Appbar: React.FC = (): JSX.Element => {
                 className="tw-nav focus:tw-no-underline hover:tw-underline"
                 data-testid="whatsnew-modal"
                 onClick={openModal}>
-                <SVGIcons
-                  alt="Doc icon"
-                  className="tw-align-middle tw-mr-1"
-                  icon={Icons.WHATS_NEW}
-                  width="20"
-                />
+                <PopOver
+                  position="bottom"
+                  title="What's new?"
+                  trigger="mouseenter">
+                  <SVGIcons
+                    alt="Doc icon"
+                    className="tw-align-middle tw-mr-1"
+                    icon={Icons.WHATS_NEW}
+                    width="20"
+                  />
+                </PopOver>
               </button>
+
               <button
                 className="tw-nav focus:tw-no-underline hover:tw-underline"
                 data-testid="tour">
-                <Link to={ROUTES.TOUR}>
-                  <SVGIcons
-                    alt="tour icon"
-                    className="tw-align-middle tw-mr-0.5"
-                    icon={Icons.TOUR}
-                    width="20"
-                  />
-                </Link>
+                <PopOver
+                  position="bottom"
+                  title="Take a tour"
+                  trigger="mouseenter">
+                  <Link to={ROUTES.TOUR}>
+                    <SVGIcons
+                      alt="tour icon"
+                      className="tw-align-middle tw-mr-0.5"
+                      icon={Icons.TOUR}
+                      width="20"
+                    />
+                  </Link>
+                </PopOver>
               </button>
               <div>
                 <DropDown
                   dropDownList={supportLinks}
                   icon={
-                    <SVGIcons
-                      alt="Doc icon"
-                      className="tw-align-middle tw-mt-0.5 tw-mr-1"
-                      icon={Icons.HELP_CIRCLE}
-                      width="20"
-                    />
+                    <PopOver
+                      position="bottom"
+                      title="Help"
+                      trigger="mouseenter">
+                      <SVGIcons
+                        alt="Doc icon"
+                        className="tw-align-middle tw-mt-0.5 tw-mr-1"
+                        icon={Icons.HELP_CIRCLE}
+                        width="20"
+                      />
+                    </PopOver>
                   }
                   isDropDownIconVisible={false}
                   isLableVisible={false}
@@ -349,23 +366,28 @@ const Appbar: React.FC = (): JSX.Element => {
                 ]}
                 icon={
                   <>
-                    {appState?.userDetails?.profile?.images?.image512 ? (
-                      <div className="profile-image tw-mr-1">
-                        <img
-                          alt="user"
-                          src={appState.userDetails.profile.images.image512}
+                    <PopOver
+                      position="bottom"
+                      title="Profile"
+                      trigger="mouseenter">
+                      {appState?.userDetails?.profile?.images?.image512 ? (
+                        <div className="profile-image tw--mr-2">
+                          <img
+                            alt="user"
+                            src={appState.userDetails.profile.images.image512}
+                          />
+                        </div>
+                      ) : (
+                        <IconDefaultUserProfile
+                          className="tw--mr-2"
+                          style={{
+                            height: '22px',
+                            width: '22px',
+                            borderRadius: '50%',
+                          }}
                         />
-                      </div>
-                    ) : (
-                      <IconDefaultUserProfile
-                        className="tw-mr-1"
-                        style={{
-                          height: '22px',
-                          width: '22px',
-                          borderRadius: '50%',
-                        }}
-                      />
-                    )}
+                      )}
+                    </PopOver>
                   </>
                 }
                 isDropDownIconVisible={false}

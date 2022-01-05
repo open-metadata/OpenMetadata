@@ -31,7 +31,7 @@ const PageContainer = ({ children, leftPanelContent, className }) => {
       )}
       data-testid="container">
       <div
-        className={classnames({
+        className={classnames('page-layout', {
           'centered-layout': isPageCentered(location.pathname),
         })}>
         {leftPanelContent && (

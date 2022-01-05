@@ -157,7 +157,7 @@ export const IN_PAGE_SEARCH_ROUTES: Record<string, Array<string>> = {
 
 export const CENTER_ALIGNED_ROUTES: Record<string, Array<string>> = {
   absolute: [ROUTES.MY_DATA],
-  partial: [`${ROUTES.EXPLORE}/`, '/dataset/'],
+  partial: [`${ROUTES.EXPLORE}/`, '/dataset/', '/table/'],
 };
 
 export const getDatasetDetailsPath = (

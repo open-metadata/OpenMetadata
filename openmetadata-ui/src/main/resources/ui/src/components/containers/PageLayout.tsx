@@ -54,7 +54,17 @@ const PageLayout: FC<PageLayoutProp> = ({
           {leftPanel}
         </div>
       )}
-      <div className="tw-overflow-y-auto tw-py-1 tw-pl-2 tw-pr-4" id="center">
+      <div
+        className={classNames(
+          'tw-overflow-y-auto tw-py-1',
+          {
+            'tw-pl-2': leftPanel,
+          },
+          {
+            'tw-pr-4': rightPanel,
+          }
+        )}
+        id="center">
         {children}
       </div>
       {rightPanel && (
