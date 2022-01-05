@@ -39,6 +39,9 @@ import PageContainer from '../containers/PageContainer';
 import Entitylineage from '../EntityLineage/EntityLineage.component';
 import FrequentlyJoinedTables from '../FrequentlyJoinedTables/FrequentlyJoinedTables.component';
 import ManageTab from '../ManageTab/ManageTab.component';
+import SampleDataTable, {
+  SampleColumns,
+} from '../SampleDataTable/SampleDataTable.component';
 import SchemaEditor from '../schema-editor/SchemaEditor';
 import SchemaTab from '../SchemaTab/SchemaTab.component';
 import TableProfiler from '../TableProfiler/TableProfiler.component';
@@ -164,6 +167,17 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
       position: 4,
     },
     {
+      name: 'Sample Data',
+      icon: {
+        alt: 'sample_data',
+        name: 'sample-data',
+        title: 'Sample Data',
+        selectedName: 'sample-data-color',
+      },
+      isProtected: false,
+      position: 5,
+    },
+    {
       name: 'Manage',
       icon: {
         alt: 'manage',
@@ -173,7 +187,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
       },
       isProtected: true,
       protectedState: !owner || hasEditAccess(),
-      position: 5,
+      position: 6,
     },
   ];
 
@@ -330,6 +344,29 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
     }
   };
 
+  const getSampleDataWithType = () => {
+    const updatedColumns = sampleData?.columns?.map((column) => {
+      const matchedColumn = columns.find((col) => col.name === column);
+
+      if (matchedColumn) {
+        return {
+          name: matchedColumn.name,
+          dataType: matchedColumn.dataType,
+        };
+      } else {
+        return {
+          name: column,
+          dataType: '',
+        };
+      }
+    });
+
+    return {
+      columns: updatedColumns as SampleColumns[] | undefined,
+      rows: sampleData?.rows,
+    };
+  };
+
   useEffect(() => {
     if (isAuthDisabled && users.length && followers.length) {
       setFollowersData(followers);
@@ -441,6 +478,11 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
               </div>
             )}
             {activeTab === 5 && (
+              <div className="tw-mt-4">
+                <SampleDataTable sampleData={getSampleDataWithType()} />
+              </div>
+            )}
+            {activeTab === 6 && (
               <div className="tw-mt-4">
                 <ManageTab
                   currentTier={tier?.tagFQN}
