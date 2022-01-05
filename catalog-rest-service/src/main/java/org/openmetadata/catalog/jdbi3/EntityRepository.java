@@ -519,7 +519,7 @@ public abstract class EntityRepository<T> {
     // If original is deleted, we need to recover the relationships before setting the fields
     // or we won't find the related services
     EntityInterface<T> originalRef = getEntityInterface(original);
-    if (originalRef.isDeleted()) {
+    if (Boolean.TRUE.equals(originalRef.isDeleted())) {
       daoCollection.relationshipDAO().recoverSoftDeleteAll(originalRef.getId().toString());
     }
   }
@@ -575,7 +575,7 @@ public abstract class EntityRepository<T> {
     }
 
     private void updateDeleted() throws JsonProcessingException {
-      if (original.isDeleted()) {
+      if (Boolean.TRUE.equals(original.isDeleted())) {
         updated.setDeleted(false);
         recordChange("deleted", true, false);
       }

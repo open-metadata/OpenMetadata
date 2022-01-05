@@ -39,7 +39,6 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response;
-
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.BeforeAll;
@@ -317,7 +316,7 @@ public class PolicyResourceTest extends EntityResourceTest<Policy> {
   }
 
   @Test
-  public void delete_put_Policy_200(TestInfo test) throws IOException {
+  void delete_put_Policy_200(TestInfo test) throws IOException {
     CreatePolicy request = create(test).withDescription("");
     Policy policy = createEntity(request, adminAuthHeaders());
 
@@ -326,15 +325,13 @@ public class PolicyResourceTest extends EntityResourceTest<Policy> {
 
     ChangeDescription change = getChangeDescription(policy.getVersion());
     change.setFieldsUpdated(
-            Arrays.asList(
-                    new FieldChange().withName("deleted").withNewValue(false).withOldValue(true),
-                    new FieldChange().withName("description").withNewValue("updatedDescription").withOldValue("")
-            )
-    );
+        Arrays.asList(
+            new FieldChange().withName("deleted").withNewValue(false).withOldValue(true),
+            new FieldChange().withName("description").withNewValue("updatedDescription").withOldValue("")));
 
     // PUT with updated description
     updateAndCheckEntity(
-            request.withDescription("updatedDescription"), Response.Status.OK, adminAuthHeaders(), MINOR_UPDATE, change);
+        request.withDescription("updatedDescription"), Response.Status.OK, adminAuthHeaders(), MINOR_UPDATE, change);
   }
 
   @Test

@@ -38,6 +38,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import javax.ws.rs.core.Response;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -64,8 +65,6 @@ import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.TestUtils;
-
-import javax.ws.rs.core.Response;
 
 public class DashboardResourceTest extends EntityResourceTest<Dashboard> {
   public static EntityReference SUPERSET_REFERENCE;
@@ -239,7 +238,7 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard> {
   }
 
   @Test
-  public void delete_put_Dashboard_200(TestInfo test) throws IOException {
+  void delete_put_Dashboard_200(TestInfo test) throws IOException {
     CreateDashboard request = create(test).withDescription("");
     Dashboard dashboard = createEntity(request, adminAuthHeaders());
 
@@ -248,15 +247,13 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard> {
 
     ChangeDescription change = getChangeDescription(dashboard.getVersion());
     change.setFieldsUpdated(
-            Arrays.asList(
-                    new FieldChange().withName("deleted").withNewValue(false).withOldValue(true),
-                    new FieldChange().withName("description").withNewValue("updatedDescription").withOldValue("")
-            )
-    );
+        Arrays.asList(
+            new FieldChange().withName("deleted").withNewValue(false).withOldValue(true),
+            new FieldChange().withName("description").withNewValue("updatedDescription").withOldValue("")));
 
     // PUT with updated description
     updateAndCheckEntity(
-            request.withDescription("updatedDescription"), Response.Status.OK, adminAuthHeaders(), MINOR_UPDATE, change);
+        request.withDescription("updatedDescription"), Response.Status.OK, adminAuthHeaders(), MINOR_UPDATE, change);
   }
 
   public Dashboard createDashboard(CreateDashboard create, Map<String, String> authHeaders)

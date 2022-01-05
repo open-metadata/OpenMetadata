@@ -193,7 +193,7 @@ public class LocationResourceTest extends EntityResourceTest<Location> {
   }
 
   @Test
-  public void delete_put_Location_200(TestInfo test) throws IOException {
+  void delete_put_Location_200(TestInfo test) throws IOException {
     CreateLocation request = create(test).withDescription("");
     Location location = createEntity(request, adminAuthHeaders());
 
@@ -202,15 +202,13 @@ public class LocationResourceTest extends EntityResourceTest<Location> {
 
     ChangeDescription change = getChangeDescription(location.getVersion());
     change.setFieldsUpdated(
-            Arrays.asList(
-                    new FieldChange().withName("deleted").withNewValue(false).withOldValue(true),
-                    new FieldChange().withName("description").withNewValue("updatedDescription").withOldValue("")
-            )
-    );
+        Arrays.asList(
+            new FieldChange().withName("deleted").withNewValue(false).withOldValue(true),
+            new FieldChange().withName("description").withNewValue("updatedDescription").withOldValue("")));
 
     // PUT with updated description
     updateAndCheckEntity(
-            request.withDescription("updatedDescription"), Response.Status.OK, adminAuthHeaders(), MINOR_UPDATE, change);
+        request.withDescription("updatedDescription"), Response.Status.OK, adminAuthHeaders(), MINOR_UPDATE, change);
   }
 
   @Test

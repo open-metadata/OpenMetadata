@@ -30,6 +30,7 @@ import java.net.URISyntaxException;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.Map;
+import javax.ws.rs.core.Response;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -49,8 +50,6 @@ import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
 import org.openmetadata.catalog.util.TestUtils.UpdateType;
-
-import javax.ws.rs.core.Response;
 
 public class PipelineServiceResourceTest extends EntityResourceTest<PipelineService> {
 
@@ -234,24 +233,22 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
   }
 
   @Test
-  public void delete_put_PipelineService_200(TestInfo test) throws IOException {
-      CreatePipelineService request = create(test).withDescription("");
-      PipelineService pipelineService = createEntity(request, adminAuthHeaders());
+  void delete_put_PipelineService_200(TestInfo test) throws IOException {
+    CreatePipelineService request = create(test).withDescription("");
+    PipelineService pipelineService = createEntity(request, adminAuthHeaders());
 
-      // Delete
-      deleteEntity(pipelineService.getId(), adminAuthHeaders());
+    // Delete
+    deleteEntity(pipelineService.getId(), adminAuthHeaders());
 
-      ChangeDescription change = getChangeDescription(pipelineService.getVersion());
-      change.setFieldsUpdated(
-              Arrays.asList(
-                      new FieldChange().withName("deleted").withNewValue(false).withOldValue(true),
-                      new FieldChange().withName("description").withNewValue("updatedDescription").withOldValue("")
-              )
-      );
+    ChangeDescription change = getChangeDescription(pipelineService.getVersion());
+    change.setFieldsUpdated(
+        Arrays.asList(
+            new FieldChange().withName("deleted").withNewValue(false).withOldValue(true),
+            new FieldChange().withName("description").withNewValue("updatedDescription").withOldValue("")));
 
-      // PUT with updated description
-      updateAndCheckEntity(
-              request.withDescription("updatedDescription"), Response.Status.OK, adminAuthHeaders(), MINOR_UPDATE, change);
+    // PUT with updated description
+    updateAndCheckEntity(
+        request.withDescription("updatedDescription"), Response.Status.OK, adminAuthHeaders(), MINOR_UPDATE, change);
   }
 
   @Test

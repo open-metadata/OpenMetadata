@@ -1025,7 +1025,7 @@ public class TableResourceTest extends EntityResourceTest<Table> {
   }
 
   @Test
-  public void delete_put_Table_200(TestInfo test) throws IOException {
+  void delete_put_Table_200(TestInfo test) throws IOException {
     CreateTable request = create(test).withDatabase(DATABASE.getId()).withDescription("");
     Table table = createEntity(request, adminAuthHeaders());
 
@@ -1034,15 +1034,13 @@ public class TableResourceTest extends EntityResourceTest<Table> {
 
     ChangeDescription change = getChangeDescription(table.getVersion());
     change.setFieldsUpdated(
-            Arrays.asList(
-                    new FieldChange().withName("deleted").withNewValue(false).withOldValue(true),
-                    new FieldChange().withName("description").withNewValue("updatedDescription").withOldValue("")
-            )
-    );
+        Arrays.asList(
+            new FieldChange().withName("deleted").withNewValue(false).withOldValue(true),
+            new FieldChange().withName("description").withNewValue("updatedDescription").withOldValue("")));
 
     // PUT with updated description
     updateAndCheckEntity(
-            request.withDescription("updatedDescription"), Response.Status.OK, adminAuthHeaders(), MINOR_UPDATE, change);
+        request.withDescription("updatedDescription"), Response.Status.OK, adminAuthHeaders(), MINOR_UPDATE, change);
   }
 
   @Test

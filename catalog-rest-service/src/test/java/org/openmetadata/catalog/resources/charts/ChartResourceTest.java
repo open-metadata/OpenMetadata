@@ -29,6 +29,7 @@ import java.net.URISyntaxException;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+import javax.ws.rs.core.Response;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -51,8 +52,6 @@ import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.TestUtils;
-
-import javax.ws.rs.core.Response;
 
 public class ChartResourceTest extends EntityResourceTest<Chart> {
   public static EntityReference SUPERSET_REFERENCE;
@@ -159,7 +158,7 @@ public class ChartResourceTest extends EntityResourceTest<Chart> {
   }
 
   @Test
-  public void delete_put_Chart_200(TestInfo test) throws IOException {
+  void delete_put_Chart_200(TestInfo test) throws IOException {
     CreateChart request = create(test).withDescription("");
     Chart chart = createEntity(request, adminAuthHeaders());
 
@@ -168,15 +167,13 @@ public class ChartResourceTest extends EntityResourceTest<Chart> {
 
     ChangeDescription change = getChangeDescription(chart.getVersion());
     change.setFieldsUpdated(
-            Arrays.asList(
-                    new FieldChange().withName("deleted").withNewValue(false).withOldValue(true),
-                    new FieldChange().withName("description").withNewValue("updatedDescription").withOldValue("")
-            )
-    );
+        Arrays.asList(
+            new FieldChange().withName("deleted").withNewValue(false).withOldValue(true),
+            new FieldChange().withName("description").withNewValue("updatedDescription").withOldValue("")));
 
     // PUT with updated description
     updateAndCheckEntity(
-            request.withDescription("updatedDescription"), Response.Status.OK, adminAuthHeaders(), MINOR_UPDATE, change);
+        request.withDescription("updatedDescription"), Response.Status.OK, adminAuthHeaders(), MINOR_UPDATE, change);
   }
 
   /** Validate returned fields GET .../charts/{id}?fields="..." or GET .../charts/name/{fqn}?fields="..." */

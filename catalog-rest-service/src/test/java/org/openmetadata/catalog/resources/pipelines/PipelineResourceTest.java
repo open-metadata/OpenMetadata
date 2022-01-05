@@ -300,7 +300,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline> {
   }
 
   @Test
-  public void delete_put_Pipeline_200(TestInfo test) throws IOException {
+  void delete_put_Pipeline_200(TestInfo test) throws IOException {
     CreatePipeline request = create(test).withService(AIRFLOW_REFERENCE).withDescription("");
     Pipeline pipeline = createEntity(request, adminAuthHeaders());
 
@@ -309,15 +309,13 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline> {
 
     ChangeDescription change = getChangeDescription(pipeline.getVersion());
     change.setFieldsUpdated(
-            Arrays.asList(
-                    new FieldChange().withName("deleted").withNewValue(false).withOldValue(true),
-                    new FieldChange().withName("description").withNewValue("updatedDescription").withOldValue("")
-            )
-    );
+        Arrays.asList(
+            new FieldChange().withName("deleted").withNewValue(false).withOldValue(true),
+            new FieldChange().withName("description").withNewValue("updatedDescription").withOldValue("")));
 
     // PUT with updated description
     updateAndCheckEntity(
-            request.withDescription("updatedDescription"), Response.Status.OK, adminAuthHeaders(), MINOR_UPDATE, change);
+        request.withDescription("updatedDescription"), Response.Status.OK, adminAuthHeaders(), MINOR_UPDATE, change);
   }
 
   public static Pipeline updatePipeline(CreatePipeline create, Status status, Map<String, String> authHeaders)

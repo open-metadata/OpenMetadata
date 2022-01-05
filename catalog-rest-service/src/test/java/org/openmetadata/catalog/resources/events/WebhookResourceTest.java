@@ -66,8 +66,7 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook> {
   }
 
   @Test
-  void post_webhookEnabledStateChange(TestInfo test)
-      throws URISyntaxException, IOException, InterruptedException {
+  void post_webhookEnabledStateChange(TestInfo test) throws URISyntaxException, IOException, InterruptedException {
     //
     // Create webhook in disabled state. It will not start webhook publisher
     //
