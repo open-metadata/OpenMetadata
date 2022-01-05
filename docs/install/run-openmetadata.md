@@ -18,14 +18,6 @@ To check what version of Python you have, please use the following command.
 python3 --version
 ```
 
-### pip (version 19.2.3 or greater)
-
-The version of pip (pip3) that ships with Python 3.8.x is 19.2.3. You will need this version or later to install OpenMetadata. You can check what version of pip you have by running the following command.
-
-```
-pip3 --version
-```
-
 ### Docker (version 20.10.0 or greater)
 
 [Docker](https://docs.docker.com/get-started/overview/) is an open platform for developing, shipping, and running applications that enables you to separate your applications from your infrastructure so you can deliver software quickly using OS-level virtualization to deliver software in packages called containers.
@@ -70,19 +62,19 @@ python3 -m venv env
 source env/bin/activate
 ```
 
-### 3.1 Upgrade pip and setuptools
+### 4. Upgrade pip and setuptools
 
 ```
 pip3 install --upgrade pip setuptools
 ```
 
-### 4. Install the OpenMetadata Python module using pip
+### 5. Install the OpenMetadata Python module using pip
 
 ```
 pip3 install --upgrade 'openmetadata-ingestion[docker]'
 ```
 
-### 5. Ensure the module is installed and ready for use
+### 6. Ensure the module is installed and ready for use
 
 ```
 metadata docker --help
@@ -108,7 +100,7 @@ Options:
   --help           Show this message and exit.
 ```
 
-### 6. Start the OpenMetadata Docker containers
+### 7. Start the OpenMetadata Docker containers
 
 ```
 metadata docker --start
@@ -144,7 +136,7 @@ After starting the containers, `metadata` will launch Airflow tasks to ingest sa
 * `metadata docker --clean` will clean/prune the containers, volumes, and networks.
 {% endhint %}
 
-### 7. Wait for metadata ingestion to finish
+### 8. Wait for metadata ingestion to finish
 
 Once metadata ingestion has finished and the OpenMetadata UI is ready for use, you will see output similar to the following.
 
@@ -161,7 +153,7 @@ To checkout Ingestion via Airflow, go to http://localhost:8080
 Need support? Get in touch on Slack: https://slack.open-metadata.org/
 ```
 
-### 8. Log in to Airflow
+### 9. Log in to Airflow
 
 Once metadata ingestion has finished and you see the message that OpenMetadata is up and running, visit the following url in your web browser.
 
@@ -177,7 +169,7 @@ Password: `admin`
 
 ![](../.gitbook/assets/airflow-login.png)
 
-### 9. Begin using OpenMetadata
+### 10. Begin using OpenMetadata
 
 Finally, visit the following url to begin exploring OpenMetadata.
 
