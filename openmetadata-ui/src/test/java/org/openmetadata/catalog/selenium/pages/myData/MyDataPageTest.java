@@ -63,11 +63,8 @@ public class MyDataPageTest {
   @Test
   @Order(1)
   public void checkWhatsNew() {
-    Events.click(
-        webDriver,
-        By.xpath("//ul[@class='slick-dots testid-dots-button']//li[2]")); // What's new page 2
-    Events.click(
-        webDriver, By.cssSelector("[data-testid='WhatsNewModalChangeLogs']")); // Change Logs
+    Events.click(webDriver, By.xpath("//ul[@class='slick-dots testid-dots-button']//li[2]")); // What's new page 2
+    Events.click(webDriver, By.cssSelector("[data-testid='WhatsNewModalChangeLogs']")); // Change Logs
     Events.click(webDriver, By.cssSelector("[data-testid='closeWhatsNew']")); // Close What's new
   }
 
@@ -111,35 +108,25 @@ public class MyDataPageTest {
     ArrayList<String> tabs = new ArrayList<>(webDriver.getWindowHandles());
     Events.click(webDriver, By.cssSelector("[data-testid='appbar-item'][id='explore']")); // Explore
     webDriver.navigate().back();
-    Events.click(
-        webDriver,
-        By.cssSelector("[data-testid='menu-button'][id='menu-button-Settings']")); // Setting
+    Events.click(webDriver, By.cssSelector("[data-testid='menu-button'][id='menu-button-Settings']")); // Setting
     Events.click(webDriver, By.cssSelector("[data-testid='menu-item-Teams']")); // Setting/Teams
     webDriver.navigate().back();
-    Events.click(
-        webDriver,
-        By.cssSelector("[data-testid='menu-button'][id='menu-button-Settings']")); // Setting
+    Events.click(webDriver, By.cssSelector("[data-testid='menu-button'][id='menu-button-Settings']")); // Setting
     Events.click(webDriver, By.cssSelector("[data-testid='menu-item-Tags']")); // Setting/Tags
     webDriver.navigate().back();
-    Events.click(
-        webDriver,
-        By.cssSelector("[data-testid='menu-button'][id='menu-button-Settings']")); // Setting
-    Events.click(
-        webDriver, By.cssSelector("[data-testid='menu-item-Services']")); // Setting/Services
+    Events.click(webDriver, By.cssSelector("[data-testid='menu-button'][id='menu-button-Settings']")); // Setting
+    Events.click(webDriver, By.cssSelector("[data-testid='menu-item-Services']")); // Setting/Services
     Events.click(webDriver, By.cssSelector("[data-testid='whatsnew-modal']")); // What's New
     checkWhatsNew();
-    Events.click(
-        webDriver, By.cssSelector("[data-testid='menu-button'][id='menu-button-Need Help']"));
+    Events.click(webDriver, By.cssSelector("[data-testid='menu-button'][id='menu-button-Need Help']"));
     Events.click(webDriver, By.cssSelector("[data-testid='menu-item-Docs']"));
     webDriver.switchTo().window(tabs.get(0));
 
-    Events.click(
-        webDriver, By.cssSelector("[data-testid='menu-button'][id='menu-button-Need Help']"));
+    Events.click(webDriver, By.cssSelector("[data-testid='menu-button'][id='menu-button-Need Help']"));
     Events.click(webDriver, By.cssSelector("[data-testid='menu-item-API']"));
     webDriver.navigate().back();
 
-    Events.click(
-        webDriver, By.cssSelector("[data-testid='menu-button'][id='menu-button-Need Help']"));
+    Events.click(webDriver, By.cssSelector("[data-testid='menu-button'][id='menu-button-Need Help']"));
     Events.click(webDriver, By.cssSelector("[data-testid='menu-item-Slack']"));
     webDriver.switchTo().window(tabs.get(0));
   }
@@ -150,9 +137,7 @@ public class MyDataPageTest {
     checkWhatsNew();
     Events.click(webDriver, By.cssSelector("[data-testid='tables']")); // Tables
     Events.sendKeys(webDriver, By.cssSelector("[data-testid='searchBox']"), table);
-    Events.click(
-        webDriver,
-        By.cssSelector("[data-testid='data-name'][id='bigquery_gcpshopifydim_product_variant']"));
+    Events.click(webDriver, By.cssSelector("[data-testid='data-name'][id='bigquery_gcpshopifydim_product_variant']"));
     Events.click(webDriver, By.xpath("(//button[@data-testid='tab'])[4]")); // Manage
     Events.click(webDriver, By.cssSelector("[data-testid='owner-dropdown']")); // Owner
     Events.click(webDriver, By.xpath("//div[@data-testid='dropdown-list']//div[2]//button[2]"));
@@ -172,14 +157,11 @@ public class MyDataPageTest {
     checkWhatsNew();
     Events.click(webDriver, By.cssSelector("[data-testid='tables']")); // Tables
     Events.sendKeys(webDriver, By.cssSelector("[data-testid='searchBox']"), table);
-    Events.click(
-        webDriver,
-        By.cssSelector("[data-testid='data-name'][id='bigquery_gcpshopifydim_product_variant']"));
+    Events.click(webDriver, By.cssSelector("[data-testid='data-name'][id='bigquery_gcpshopifydim_product_variant']"));
     Events.click(webDriver, By.cssSelector("[data-testid='follow-button']"));
     Events.click(webDriver, By.cssSelector("[data-testid='image']"));
     webDriver.navigate().refresh();
-    Events.click(
-        webDriver, By.xpath("//div[@data-testid='Following data-" + table + "']/div/a/button"));
+    Events.click(webDriver, By.xpath("//div[@data-testid='Following data-" + table + "']/div/a/button"));
     webDriver.navigate().back();
     Events.click(webDriver, By.cssSelector("[data-testid='following-data']")); // Following
     Events.click(webDriver, By.xpath("//button[@data-testid='table-link']"));
@@ -191,9 +173,7 @@ public class MyDataPageTest {
     checkWhatsNew();
     Events.click(webDriver, By.cssSelector("[data-testid='tables']")); // Tables
     Events.sendKeys(webDriver, By.cssSelector("[data-testid='searchBox']"), "fact_line_item");
-    Events.click(
-        webDriver,
-        By.cssSelector("[data-testid='data-name'][id='bigquery_gcpshopifyfact_line_item']"));
+    Events.click(webDriver, By.cssSelector("[data-testid='data-name'][id='bigquery_gcpshopifyfact_line_item']"));
     Events.click(webDriver, By.cssSelector("[data-testid='image']"));
     webDriver.navigate().refresh();
     Events.click(webDriver, By.cssSelector("[data-testid='Recently Viewed-fact_line_item']"));
