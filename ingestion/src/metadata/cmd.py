@@ -124,6 +124,7 @@ def report(config: str) -> None:
             "forget to activate a virtual environment?"
         ) from exc
 
+
 @metadata.command()
 @click.option("--start", help="Start release Docker containers", is_flag=True)
 @click.option(
@@ -149,5 +150,6 @@ def docker(start, stop, pause, resume, file_path) -> None:
     Run Local Docker - metadata docker --start -f path/to/docker-compose.yml
     """
     run_docker(start, stop, pause, resume, file_path)
+
 
 metadata.add_command(check)
