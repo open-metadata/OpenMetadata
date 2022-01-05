@@ -1,0 +1,63 @@
+#  Copyright 2021 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+name: java-checkstyle
+
+on:
+  pull_request_target:
+    branches: [ main ]
+    paths:
+      - "catalog-rest-service/**"
+      - "common/**"
+      - "openmetadata-ui/**"
+
+jobs:
+  check:
+    runs-on: ${{matrix.os}}
+
+    strategy:
+      matrix:
+        os:
+          - ubuntu-latest
+        node-version:
+          - 12.x
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Set up JDK 11
+        uses: actions/setup-java@v1
+        with:
+          java-version: 11
+
+      - name: Run checkstyle
+        run: mvn googleformatter:format@reformat-sources
+
+      - name: Save checkstyle outcome
+        id: git
+        continue-on-error: true
+        run: |
+          git diff-files --quiet
+
+      - name: Create a comment in the PR with the instructions
+        if: steps.git.outcome != 'success'
+        uses: peter-evans/create-or-update-comment@v1
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+            The Java checkstyle failed. Please run `mvn googleformatter:format@reformat-sources` in the root
+            of your repository and commit the changes to this PR.
+
+      - name: Java checkstyle failed, check the comment in the PR
+        if: steps.git.outcome != 'success'
+        run: |
+          exit 1
