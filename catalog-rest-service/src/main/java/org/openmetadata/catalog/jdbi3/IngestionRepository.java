@@ -125,7 +125,7 @@ public class IngestionRepository extends EntityRepository<Ingestion> {
   }
 
   private EntityReference getService(Ingestion ingestion) throws IOException {
-    EntityReference ref = EntityUtil.getService(daoCollection.relationshipDAO(), ingestion.getId());
+    EntityReference ref = EntityUtil.getService(daoCollection.relationshipDAO(), Entity.INGESTION, ingestion.getId());
     return getService(Objects.requireNonNull(ref));
   }
 

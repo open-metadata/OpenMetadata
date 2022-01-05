@@ -70,8 +70,7 @@ public class AirflowConfiguration {
   }
 
   public String getSecretKey() {
-    String secretKey = "";
-    return secretKey;
+    return "";
   }
 
   @Override

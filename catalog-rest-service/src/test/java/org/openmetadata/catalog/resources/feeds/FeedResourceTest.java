@@ -81,7 +81,7 @@ public class FeedResourceTest extends CatalogApplicationTest {
   }
 
   @Test
-  public void post_feedWithoutAbout_4xx() {
+  void post_feedWithoutAbout_4xx() {
     // Create thread without addressed to entity in the request
     CreateThread create = create().withFrom(USER.getId()).withAbout(null);
     HttpResponseException exception =
@@ -90,7 +90,7 @@ public class FeedResourceTest extends CatalogApplicationTest {
   }
 
   @Test
-  public void post_feedWithInvalidAbout_4xx() {
+  void post_feedWithInvalidAbout_4xx() {
     // Create thread without addressed to entity in the request
     CreateThread create = create().withFrom(USER.getId()).withAbout("<>"); // Invalid EntityLink
     Map<String, String> authHeaders = authHeaders(USER.getEmail());
@@ -112,7 +112,7 @@ public class FeedResourceTest extends CatalogApplicationTest {
   }
 
   @Test
-  public void post_feedWithoutMessage_4xx() {
+  void post_feedWithoutMessage_4xx() {
     // Create thread without message field in the request
     CreateThread create = create().withFrom(USER.getId()).withMessage(null);
     HttpResponseException exception =
@@ -121,7 +121,7 @@ public class FeedResourceTest extends CatalogApplicationTest {
   }
 
   @Test
-  public void post_feedWithoutFrom_4xx() {
+  void post_feedWithoutFrom_4xx() {
     // Create thread without from field in the request
     CreateThread create = create().withFrom(null);
     HttpResponseException exception =
@@ -130,7 +130,7 @@ public class FeedResourceTest extends CatalogApplicationTest {
   }
 
   @Test
-  public void post_feedWithNonExistentFrom_404() {
+  void post_feedWithNonExistentFrom_404() {
     // Create thread with non-existent from
     CreateThread create = create().withFrom(TestUtils.NON_EXISTENT_ENTITY);
     HttpResponseException exception =
@@ -139,7 +139,7 @@ public class FeedResourceTest extends CatalogApplicationTest {
   }
 
   @Test
-  public void post_feedWithNonExistentAbout_404() {
+  void post_feedWithNonExistentAbout_404() {
     // Create thread with non-existent addressed To entity
     CreateThread create = create().withAbout("<#E/table/invalidTableName>");
     HttpResponseException exception =
@@ -148,7 +148,7 @@ public class FeedResourceTest extends CatalogApplicationTest {
   }
 
   @Test
-  public void post_validThreadAndList_200(TestInfo test) throws HttpResponseException {
+  void post_validThreadAndList_200(TestInfo test) throws HttpResponseException {
     int totalThreadCount = listThreads(null, adminAuthHeaders()).getData().size();
     int userThreadCount = listThreads(USER_LINK, adminAuthHeaders()).getData().size();
     int teamThreadCount = listThreads(TEAM_LINK, adminAuthHeaders()).getData().size();
@@ -173,7 +173,7 @@ public class FeedResourceTest extends CatalogApplicationTest {
   }
 
   @Test
-  public void post_addPostWithoutMessage_4xx() {
+  void post_addPostWithoutMessage_4xx() {
     // Add post to a thread without message field
     Post post = createPost().withMessage(null);
     HttpResponseException exception =
@@ -182,7 +182,7 @@ public class FeedResourceTest extends CatalogApplicationTest {
   }
 
   @Test
-  public void post_addPostWithoutFrom_4xx() {
+  void post_addPostWithoutFrom_4xx() {
     // Add post to a thread without from field
     Post post = createPost().withFrom(null);
     HttpResponseException exception =
@@ -191,7 +191,7 @@ public class FeedResourceTest extends CatalogApplicationTest {
   }
 
   @Test
-  public void post_addPostWithNonExistentFrom_404() {
+  void post_addPostWithNonExistentFrom_404() {
     // Add post to a thread with non-existent from user
     Post post = createPost().withFrom(TestUtils.NON_EXISTENT_ENTITY);
     HttpResponseException exception =
@@ -200,7 +200,7 @@ public class FeedResourceTest extends CatalogApplicationTest {
   }
 
   @Test
-  public void post_validAddPost_200() throws HttpResponseException {
+  void post_validAddPost_200() throws HttpResponseException {
     Map<String, String> authHeaders = authHeaders(USER.getEmail());
     Thread thread = createAndCheck(create(), authHeaders);
     // Add 10 posts and validate

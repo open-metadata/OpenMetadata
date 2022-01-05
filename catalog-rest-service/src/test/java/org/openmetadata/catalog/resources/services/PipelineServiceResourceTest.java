@@ -73,7 +73,7 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
   }
 
   @Test
-  public void post_withoutRequiredFields_400_badRequest(TestInfo test) {
+  void post_withoutRequiredFields_400_badRequest(TestInfo test) {
     // Create pipeline with mandatory serviceType field empty
     HttpResponseException exception =
         assertThrows(
@@ -88,7 +88,7 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
   }
 
   @Test
-  public void post_validService_as_admin_200_ok(TestInfo test) throws IOException {
+  void post_validService_as_admin_200_ok(TestInfo test) throws IOException {
     // Create pipeline service with different optional fields
     Map<String, String> authHeaders = adminAuthHeaders();
     createAndCheckEntity(create(test, 1).withDescription(null), authHeaders);
@@ -97,7 +97,7 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
   }
 
   @Test
-  public void post_validService_as_non_admin_401(TestInfo test) {
+  void post_validService_as_non_admin_401(TestInfo test) {
     // Create pipeline service with different optional fields
     Map<String, String> authHeaders = authHeaders("test@open-metadata.org");
 
@@ -109,7 +109,7 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
   }
 
   @Test
-  public void post_invalidIngestionSchedule_4xx(TestInfo test) {
+  void post_invalidIngestionSchedule_4xx(TestInfo test) {
     // No jdbc connection set
     CreatePipelineService create = create(test);
     Schedule schedule = create.getIngestionSchedule();
@@ -144,7 +144,7 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
   }
 
   @Test
-  public void post_validIngestionSchedules_as_admin_200(TestInfo test) throws IOException {
+  void post_validIngestionSchedules_as_admin_200(TestInfo test) throws IOException {
     Schedule schedule = new Schedule().withStartDate(new Date());
     schedule.withRepeatFrequency("PT60M"); // Repeat every 60M should be valid
     createAndCheckEntity(create(test, 1).withIngestionSchedule(schedule), adminAuthHeaders());
@@ -157,7 +157,7 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
   }
 
   @Test
-  public void post_ingestionScheduleIsTooShort_4xx(TestInfo test) {
+  void post_ingestionScheduleIsTooShort_4xx(TestInfo test) {
     // No jdbc connection set
     CreatePipelineService create = create(test);
     Schedule schedule = create.getIngestionSchedule();
@@ -174,7 +174,7 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
   }
 
   @Test
-  public void put_updateService_as_admin_2xx(TestInfo test) throws IOException, URISyntaxException {
+  void put_updateService_as_admin_2xx(TestInfo test) throws IOException, URISyntaxException {
     PipelineService service =
         createAndCheckEntity(
             create(test).withDescription(null).withIngestionSchedule(null).withPipelineUrl(PIPELINE_SERVICE_URL),
@@ -208,7 +208,7 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
   }
 
   @Test
-  public void put_update_as_non_admin_401(TestInfo test) throws IOException {
+  void put_update_as_non_admin_401(TestInfo test) throws IOException {
     Map<String, String> authHeaders = adminAuthHeaders();
     createAndCheckEntity(create(test).withDescription(null).withIngestionSchedule(null), authHeaders);
 
@@ -223,14 +223,14 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
   }
 
   @Test
-  public void delete_ExistentPipelineService_as_admin_200(TestInfo test) throws HttpResponseException {
+  void delete_ExistentPipelineService_as_admin_200(TestInfo test) throws HttpResponseException {
     Map<String, String> authHeaders = adminAuthHeaders();
     PipelineService pipelineService = createEntity(create(test), authHeaders);
     deleteEntity(pipelineService.getId(), authHeaders);
   }
 
   @Test
-  public void delete_as_user_401(TestInfo test) throws HttpResponseException {
+  void delete_as_user_401(TestInfo test) throws HttpResponseException {
     Map<String, String> authHeaders = adminAuthHeaders();
     PipelineService pipelineService = createEntity(create(test), authHeaders);
     HttpResponseException exception =
@@ -241,7 +241,7 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
   }
 
   @Test
-  public void delete_notExistentPipelineService() {
+  void delete_notExistentPipelineService() {
     HttpResponseException exception =
         assertThrows(HttpResponseException.class, () -> getEntity(TestUtils.NON_EXISTENT_ENTITY, adminAuthHeaders()));
     TestUtils.assertResponse(

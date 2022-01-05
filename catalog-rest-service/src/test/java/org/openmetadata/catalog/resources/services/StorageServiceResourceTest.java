@@ -56,7 +56,7 @@ public class StorageServiceResourceTest extends EntityResourceTest<StorageServic
   }
 
   @Test
-  public void post_validService_as_admin_200_ok(TestInfo test) throws IOException {
+  void post_validService_as_admin_200_ok(TestInfo test) throws IOException {
     // Create storage service with different optional fields
     Map<String, String> authHeaders = adminAuthHeaders();
     createAndCheckEntity(create(test, 1).withDescription(null), authHeaders);
@@ -64,7 +64,7 @@ public class StorageServiceResourceTest extends EntityResourceTest<StorageServic
   }
 
   @Test
-  public void post_validService_as_non_admin_401(TestInfo test) {
+  void post_validService_as_non_admin_401(TestInfo test) {
     // Create storage service with different optional fields
     Map<String, String> authHeaders = authHeaders("test@open-metadata.org");
 
@@ -76,14 +76,14 @@ public class StorageServiceResourceTest extends EntityResourceTest<StorageServic
   }
 
   @Test
-  public void put_updateStorageService_as_admin_2xx(TestInfo test) throws IOException {
+  void put_updateStorageService_as_admin_2xx(TestInfo test) throws IOException {
     createAndCheckEntity(create(test).withDescription(null), adminAuthHeaders());
 
     // TODO add more tests for different fields
   }
 
   @Test
-  public void put_update_as_non_admin_401(TestInfo test) throws IOException {
+  void put_update_as_non_admin_401(TestInfo test) throws IOException {
     Map<String, String> authHeaders = adminAuthHeaders();
     createAndCheckEntity(create(test).withDescription(null), authHeaders);
 
@@ -98,14 +98,14 @@ public class StorageServiceResourceTest extends EntityResourceTest<StorageServic
   }
 
   @Test
-  public void delete_ExistentService_as_admin_200(TestInfo test) throws HttpResponseException {
+  void delete_ExistentService_as_admin_200(TestInfo test) throws HttpResponseException {
     Map<String, String> authHeaders = adminAuthHeaders();
     StorageService storageService = createEntity(create(test), authHeaders);
     deleteEntity(storageService.getId(), authHeaders);
   }
 
   @Test
-  public void delete_as_user_401(TestInfo test) throws HttpResponseException {
+  void delete_as_user_401(TestInfo test) throws HttpResponseException {
     Map<String, String> authHeaders = adminAuthHeaders();
     StorageService storageService = createEntity(create(test), authHeaders);
     HttpResponseException exception =
@@ -116,7 +116,7 @@ public class StorageServiceResourceTest extends EntityResourceTest<StorageServic
   }
 
   @Test
-  public void delete_notExistentStorageService() {
+  void delete_notExistentStorageService() {
     HttpResponseException exception =
         assertThrows(HttpResponseException.class, () -> getEntity(TestUtils.NON_EXISTENT_ENTITY, adminAuthHeaders()));
     TestUtils.assertResponse(

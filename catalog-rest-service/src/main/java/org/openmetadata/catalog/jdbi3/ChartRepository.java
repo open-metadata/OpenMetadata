@@ -120,7 +120,7 @@ public class ChartRepository extends EntityRepository<Chart> {
 
   private EntityReference getService(Chart chart) throws IOException {
     EntityReference ref =
-        EntityUtil.getService(daoCollection.relationshipDAO(), chart.getId(), Entity.DASHBOARD_SERVICE);
+        EntityUtil.getService(daoCollection.relationshipDAO(), Entity.CHART, chart.getId(), Entity.DASHBOARD_SERVICE);
     if (ref != null) {
       DashboardService service = getService(ref.getId(), ref.getType());
       ref.setName(service.getName());

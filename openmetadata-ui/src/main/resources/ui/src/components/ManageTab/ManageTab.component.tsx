@@ -205,7 +205,10 @@ const ManageTab: FunctionComponent<Props> = ({
   }, [currentTier, currentUser]);
 
   return (
-    <div className="tw-max-w-3xl tw-mx-auto" data-testid="manage-tab">
+    <div
+      className="tw-max-w-3xl tw-mx-auto"
+      data-testid="manage-tab"
+      id="manageTabDetails">
       <div className="tw-mt-2 tw-mb-4 tw-pb-4 tw-border-b tw-border-separator">
         <span className="tw-mr-2">Owner:</span>
         <span className="tw-relative">

@@ -53,7 +53,7 @@ public class RoleResourceTest extends EntityResourceTest<Role> {
   }
 
   @Test
-  public void post_validRoles_as_admin_200_OK(TestInfo test) throws IOException {
+  void post_validRoles_as_admin_200_OK(TestInfo test) throws IOException {
     // Create role with different optional fields
     CreateRole create = create(test, 1);
     createAndCheckEntity(create, adminAuthHeaders());
@@ -69,7 +69,7 @@ public class RoleResourceTest extends EntityResourceTest<Role> {
   }
 
   @Test
-  public void post_validRoles_as_non_admin_401(TestInfo test) {
+  void post_validRoles_as_non_admin_401(TestInfo test) {
     // Create role with different optional fields
     Map<String, String> authHeaders = authHeaders("test@open-metadata.org");
     CreateRole create = create(test, 1);
@@ -82,14 +82,14 @@ public class RoleResourceTest extends EntityResourceTest<Role> {
    * @see EntityResourceTest#put_addDeleteFollower_200 for tests related getting role with entities owned by the role
    */
   @Test
-  public void delete_validRole_200_OK(TestInfo test) throws IOException {
+  void delete_validRole_200_OK(TestInfo test) throws IOException {
     CreateRole create = create(test);
     Role role = createAndCheckEntity(create, adminAuthHeaders());
     deleteEntity(role.getId(), adminAuthHeaders());
   }
 
   @Test
-  public void delete_validRole_as_non_admin_401(TestInfo test) throws IOException {
+  void delete_validRole_as_non_admin_401(TestInfo test) throws IOException {
     CreateRole create = create(test);
     Role role = createAndCheckEntity(create, adminAuthHeaders());
     HttpResponseException exception =
@@ -99,7 +99,7 @@ public class RoleResourceTest extends EntityResourceTest<Role> {
   }
 
   @Test
-  public void patch_roleDeletedDisallowed_400(TestInfo test) throws HttpResponseException, JsonProcessingException {
+  void patch_roleDeletedDisallowed_400(TestInfo test) throws HttpResponseException, JsonProcessingException {
     // Ensure role deleted attribute can't be changed using patch
     Role role = createRole(create(test), adminAuthHeaders());
     String roleJson = JsonUtils.pojoToJson(role);
@@ -110,7 +110,7 @@ public class RoleResourceTest extends EntityResourceTest<Role> {
   }
 
   @Test
-  public void patch_roleAttributes_as_non_admin_403(TestInfo test)
+  void patch_roleAttributes_as_non_admin_403(TestInfo test)
       throws HttpResponseException, JsonProcessingException {
     // Create table without any attributes
     Role role = createRole(create(test), adminAuthHeaders());
