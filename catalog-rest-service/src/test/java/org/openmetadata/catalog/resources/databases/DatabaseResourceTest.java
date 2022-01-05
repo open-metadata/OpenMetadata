@@ -57,7 +57,7 @@ public class DatabaseResourceTest extends EntityResourceTest<Database> {
   }
 
   @Test
-  public void post_validDatabases_as_admin_200_OK(TestInfo test) throws IOException {
+  void post_validDatabases_as_admin_200_OK(TestInfo test) throws IOException {
     // Create team with different optional fields
     CreateDatabase create = create(test);
     createAndCheckEntity(create, adminAuthHeaders());
@@ -67,7 +67,7 @@ public class DatabaseResourceTest extends EntityResourceTest<Database> {
   }
 
   @Test
-  public void post_databaseFQN_as_admin_200_OK(TestInfo test) throws IOException {
+  void post_databaseFQN_as_admin_200_OK(TestInfo test) throws IOException {
     // Create team with different optional fields
     CreateDatabase create = create(test);
     create.setService(new EntityReference().withId(SNOWFLAKE_REFERENCE.getId()).withType("databaseService"));
@@ -77,17 +77,17 @@ public class DatabaseResourceTest extends EntityResourceTest<Database> {
   }
 
   @Test
-  public void post_databaseWithUserOwner_200_ok(TestInfo test) throws IOException {
+  void post_databaseWithUserOwner_200_ok(TestInfo test) throws IOException {
     createAndCheckEntity(create(test).withOwner(USER_OWNER1), adminAuthHeaders());
   }
 
   @Test
-  public void post_databaseWithTeamOwner_200_ok(TestInfo test) throws IOException {
+  void post_databaseWithTeamOwner_200_ok(TestInfo test) throws IOException {
     createAndCheckEntity(create(test).withOwner(TEAM_OWNER1), adminAuthHeaders());
   }
 
   @Test
-  public void post_database_as_non_admin_401(TestInfo test) {
+  void post_database_as_non_admin_401(TestInfo test) {
     CreateDatabase create = create(test);
     HttpResponseException exception =
         assertThrows(HttpResponseException.class, () -> createDatabase(create, authHeaders("test@open-metadata.org")));
@@ -95,7 +95,7 @@ public class DatabaseResourceTest extends EntityResourceTest<Database> {
   }
 
   @Test
-  public void post_databaseWithoutRequiredService_4xx(TestInfo test) {
+  void post_databaseWithoutRequiredService_4xx(TestInfo test) {
     CreateDatabase create = create(test).withService(null);
     HttpResponseException exception =
         assertThrows(HttpResponseException.class, () -> createDatabase(create, adminAuthHeaders()));
@@ -103,7 +103,7 @@ public class DatabaseResourceTest extends EntityResourceTest<Database> {
   }
 
   @Test
-  public void post_databaseWithDifferentService_200_ok(TestInfo test) throws IOException {
+  void post_databaseWithDifferentService_200_ok(TestInfo test) throws IOException {
     EntityReference[] differentServices = {
       MYSQL_REFERENCE, REDSHIFT_REFERENCE, BIGQUERY_REFERENCE, SNOWFLAKE_REFERENCE
     };
@@ -127,13 +127,13 @@ public class DatabaseResourceTest extends EntityResourceTest<Database> {
   }
 
   @Test
-  public void delete_emptyDatabase_200_ok(TestInfo test) throws HttpResponseException {
+  void delete_emptyDatabase_200_ok(TestInfo test) throws HttpResponseException {
     Database database = createDatabase(create(test), adminAuthHeaders());
     deleteEntity(database.getId(), adminAuthHeaders());
   }
 
   @Test
-  public void delete_nonEmptyDatabase_4xx() {
+  void delete_nonEmptyDatabase_4xx() {
     // TODO
   }
 

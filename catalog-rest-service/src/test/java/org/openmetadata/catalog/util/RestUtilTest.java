@@ -25,7 +25,7 @@ import org.openmetadata.catalog.entity.teams.User;
 
 public class RestUtilTest {
   @Test
-  public void testFields() {
+  void testFields() {
     // Anonymous class with JsonProperties to extract
     Object entity =
         new Object() {

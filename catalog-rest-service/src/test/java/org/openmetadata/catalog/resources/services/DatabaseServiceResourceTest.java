@@ -60,7 +60,7 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
   }
 
   @Test
-  public void post_validDatabaseService_as_admin_200_ok(TestInfo test) throws IOException {
+  void post_validDatabaseService_as_admin_200_ok(TestInfo test) throws IOException {
     // Create database service with different optional fields
     Map<String, String> authHeaders = adminAuthHeaders();
     createAndCheckEntity(create(test, 1).withDescription(null), authHeaders);
@@ -69,7 +69,7 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
   }
 
   @Test
-  public void post_validDatabaseService_as_non_admin_401(TestInfo test) {
+  void post_validDatabaseService_as_non_admin_401(TestInfo test) {
     // Create database service with different optional fields
     Map<String, String> authHeaders = authHeaders("test@open-metadata.org");
 
@@ -81,7 +81,7 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
   }
 
   @Test
-  public void post_invalidDatabaseServiceNoJdbc_4xx(TestInfo test) {
+  void post_invalidDatabaseServiceNoJdbc_4xx(TestInfo test) {
     // No jdbc connection set
     CreateDatabaseService create = create(test).withJdbc(null);
     HttpResponseException exception =
@@ -90,7 +90,7 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
   }
 
   @Test
-  public void post_invalidIngestionSchedule_4xx(TestInfo test) {
+  void post_invalidIngestionSchedule_4xx(TestInfo test) {
     // No jdbc connection set
     CreateDatabaseService create = create(test);
     Schedule schedule = create.getIngestionSchedule();
@@ -125,7 +125,7 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
   }
 
   @Test
-  public void post_validIngestionSchedules_as_admin_200(TestInfo test) throws IOException {
+  void post_validIngestionSchedules_as_admin_200(TestInfo test) throws IOException {
     Schedule schedule = new Schedule().withStartDate(new Date());
     schedule.withRepeatFrequency("PT60M"); // Repeat every 60M should be valid
     createAndCheckEntity(create(test, 1).withIngestionSchedule(schedule), adminAuthHeaders());
@@ -138,7 +138,7 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
   }
 
   @Test
-  public void post_ingestionScheduleIsTooShort_4xx(TestInfo test) {
+  void post_ingestionScheduleIsTooShort_4xx(TestInfo test) {
     // No jdbc connection set
     CreateDatabaseService create = create(test);
     Schedule schedule = create.getIngestionSchedule();
@@ -155,7 +155,7 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
   }
 
   @Test
-  public void put_updateDatabaseService_as_admin_2xx(TestInfo test) throws IOException {
+  void put_updateDatabaseService_as_admin_2xx(TestInfo test) throws IOException {
     DatabaseService service =
         createAndCheckEntity(create(test).withDescription(null).withIngestionSchedule(null), adminAuthHeaders());
 
@@ -178,7 +178,7 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
   }
 
   @Test
-  public void put_update_as_non_admin_401(TestInfo test) throws IOException {
+  void put_update_as_non_admin_401(TestInfo test) throws IOException {
     Map<String, String> authHeaders = adminAuthHeaders();
     createAndCheckEntity(create(test).withDescription(null).withIngestionSchedule(null), authHeaders);
 
@@ -193,14 +193,14 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
   }
 
   @Test
-  public void delete_ExistentDatabaseService_as_admin_200(TestInfo test) throws HttpResponseException {
+  void delete_ExistentDatabaseService_as_admin_200(TestInfo test) throws HttpResponseException {
     Map<String, String> authHeaders = adminAuthHeaders();
     DatabaseService databaseService = createEntity(create(test), authHeaders);
     deleteEntity(databaseService.getId(), authHeaders);
   }
 
   @Test
-  public void delete_as_user_401(TestInfo test) throws HttpResponseException {
+  void delete_as_user_401(TestInfo test) throws HttpResponseException {
     Map<String, String> authHeaders = adminAuthHeaders();
     DatabaseService databaseService = createEntity(create(test), authHeaders);
     HttpResponseException exception =

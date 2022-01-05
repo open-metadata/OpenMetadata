@@ -314,7 +314,7 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
   // Common entity tests for GET operations
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   @Test
-  public void get_entityListWithPagination_200(TestInfo test) throws HttpResponseException, URISyntaxException {
+  void get_entityListWithPagination_200(TestInfo test) throws HttpResponseException, URISyntaxException {
     // Create a number of entities between 5 and 20 inclusive
     Random rand = new Random();
     int maxEntities = rand.nextInt(16) + 5;
@@ -399,7 +399,7 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
   }
 
   @Test
-  public void get_entityListWithInvalidLimit_4xx() {
+  void get_entityListWithInvalidLimit_4xx() {
     // Limit must be >= 1 and <= 1000,000
     HttpResponseException exception =
         assertThrows(HttpResponseException.class, () -> listEntities(null, -1, null, null, adminAuthHeaders()));
@@ -414,7 +414,7 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
   }
 
   @Test
-  public void get_entityListWithInvalidPaginationCursors_4xx() {
+  void get_entityListWithInvalidPaginationCursors_4xx() {
     // Passing both before and after cursors is invalid
     HttpResponseException exception =
         assertThrows(HttpResponseException.class, () -> listEntities(null, 1, "", "", adminAuthHeaders()));
@@ -422,7 +422,7 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
   }
 
   @Test
-  public void get_entityWithDifferentFields_200_OK(TestInfo test) throws IOException, URISyntaxException {
+  void get_entityWithDifferentFields_200_OK(TestInfo test) throws IOException, URISyntaxException {
     Object create = createRequest(getEntityName(test), "description", "displayName", USER_OWNER1);
     T entity = createAndCheckEntity(create, adminAuthHeaders());
     validateGetWithDifferentFields(entity, false);
@@ -433,7 +433,7 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
   // Common entity tests for POST operations
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   @Test
-  public void post_entityCreateWithInvalidName_400() throws URISyntaxException {
+  void post_entityCreateWithInvalidName_400() throws URISyntaxException {
     // Create an entity with mandatory name field null
     final Object request = createRequest(null, "description", "displayName", null);
     HttpResponseException exception =
@@ -452,7 +452,7 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
   }
 
   @Test
-  public void post_chartWithInvalidOwnerType_4xx(TestInfo test) throws URISyntaxException {
+  void post_chartWithInvalidOwnerType_4xx(TestInfo test) throws URISyntaxException {
     if (!supportsOwner) {
       return;
     }
@@ -464,7 +464,7 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
   }
 
   @Test
-  public void post_entityWithNonExistentOwner_4xx(TestInfo test) throws URISyntaxException {
+  void post_entityWithNonExistentOwner_4xx(TestInfo test) throws URISyntaxException {
     if (!supportsOwner) {
       return;
     }
@@ -476,7 +476,7 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
   }
 
   @Test
-  public void post_entityAlreadyExists_409_conflict(TestInfo test) throws HttpResponseException, URISyntaxException {
+  void post_entityAlreadyExists_409_conflict(TestInfo test) throws HttpResponseException, URISyntaxException {
     Object create = createRequest(getEntityName(test), "", "", null);
     // Create first time using POST
     createEntity(create, adminAuthHeaders());
@@ -488,14 +488,14 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
   // Common entity tests for PUT operations
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   @Test
-  public void put_entityCreate_200(TestInfo test) throws IOException, URISyntaxException {
+  void put_entityCreate_200(TestInfo test) throws IOException, URISyntaxException {
     // Create a new entity with PUT
     Object request = createRequest(getEntityName(test), "description", "displayName", null);
     updateAndCheckEntity(request, CREATED, adminAuthHeaders(), UpdateType.CREATED, null);
   }
 
   @Test
-  public void put_entityUpdateWithNoChange_200(TestInfo test) throws IOException, URISyntaxException {
+  void put_entityUpdateWithNoChange_200(TestInfo test) throws IOException, URISyntaxException {
     // Create a chart with POST
     Object request = createRequest(getEntityName(test), "description", "display", USER_OWNER1);
     T entity = createAndCheckEntity(request, adminAuthHeaders());
@@ -508,7 +508,7 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
   }
 
   @Test
-  public void put_entityCreate_as_owner_200(TestInfo test) throws IOException, URISyntaxException {
+  void put_entityCreate_as_owner_200(TestInfo test) throws IOException, URISyntaxException {
     if (!supportsOwner) {
       return; // Entity doesn't support ownership
     }
@@ -526,7 +526,7 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
   }
 
   @Test
-  public void put_entityUpdateOwner_200(TestInfo test) throws IOException, URISyntaxException {
+  void put_entityUpdateOwner_200(TestInfo test) throws IOException, URISyntaxException {
     if (!supportsOwner) {
       return; // Entity doesn't support ownership
     }
@@ -569,7 +569,7 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
   }
 
   @Test
-  public void put_entityNullDescriptionUpdate_200(TestInfo test) throws IOException, URISyntaxException {
+  void put_entityNullDescriptionUpdate_200(TestInfo test) throws IOException, URISyntaxException {
     // Create entity with null description
     Object request = createRequest(getEntityName(test), null, "displayName", null);
     T entity = createAndCheckEntity(request, adminAuthHeaders());
@@ -584,7 +584,7 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
   }
 
   @Test
-  public void put_entityEmptyDescriptionUpdate_200(TestInfo test) throws IOException, URISyntaxException {
+  void put_entityEmptyDescriptionUpdate_200(TestInfo test) throws IOException, URISyntaxException {
     // Create entity with empty description
     Object request = createRequest(getEntityName(test), "", "displayName", null);
     T entity = createAndCheckEntity(request, adminAuthHeaders());
@@ -600,7 +600,7 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
   }
 
   @Test
-  public void put_entityNonEmptyDescriptionUpdate_200(TestInfo test) throws IOException, URISyntaxException {
+  void put_entityNonEmptyDescriptionUpdate_200(TestInfo test) throws IOException, URISyntaxException {
     // Create entity with non-empty description
     Object request = createRequest(getEntityName(test), "description", "displayName", null);
     T entity = createAndCheckEntity(request, adminAuthHeaders());
@@ -616,7 +616,7 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
   }
 
   @Test
-  public void put_addDeleteFollower_200(TestInfo test) throws IOException, URISyntaxException {
+  void put_addDeleteFollower_200(TestInfo test) throws IOException, URISyntaxException {
     if (!supportsFollowers) {
       return; // Entity does not support following
     }
@@ -643,7 +643,7 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
   }
 
   @Test
-  public void put_addDeleteInvalidFollower_200(TestInfo test) throws IOException, URISyntaxException {
+  void put_addDeleteInvalidFollower_200(TestInfo test) throws IOException, URISyntaxException {
     if (!supportsFollowers) {
       return; // Entity does not support following
     }
@@ -670,7 +670,7 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
   // Common entity tests for PATCH operations
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   @Test
-  public void patch_entityAttributes_200_ok(TestInfo test) throws IOException, URISyntaxException {
+  void patch_entityAttributes_200_ok(TestInfo test) throws IOException, URISyntaxException {
     if (!supportsPatch) {
       return;
     }
@@ -772,7 +772,7 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
   // Common entity tests for DELETE operations
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   @Test
-  public void delete_nonExistentEntity_404() {
+  void delete_nonExistentEntity_404() {
     HttpResponseException exception =
         assertThrows(HttpResponseException.class, () -> deleteEntity(NON_EXISTENT_ENTITY, adminAuthHeaders()));
     assertResponse(exception, NOT_FOUND, entityNotFound(entityName, NON_EXISTENT_ENTITY));
@@ -782,7 +782,7 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
   // Other tests
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   @Test
-  public void testInvalidEntityList() {
+  void testInvalidEntityList() {
     // Invalid entityCreated list
     HttpResponseException exception =
         assertThrows(
