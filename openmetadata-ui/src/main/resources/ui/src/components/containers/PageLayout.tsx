@@ -18,7 +18,6 @@ interface PageLayoutProp {
   leftPanel?: ReactNode;
   rightPanel?: ReactNode;
   children: ReactNode;
-  centerAligned?: boolean;
 }
 
 const PageLayout: FC<PageLayoutProp> = ({

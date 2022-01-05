@@ -79,7 +79,7 @@ public class MyDataPageTest {
   @Order(3)
   public void checkRecentViews() throws Exception {
     checkWhatsNew();
-    WebElement recentViews = webDriver.findElement(By.xpath("//*[text()[contains(.,'" + "No recently viewed data!" + "')]] "));
+    WebElement recentViews = webDriver.findElement(By.xpath("//*[text()[contains(.,'" + "No recently viewed data." + "')]] "));
     if (!recentViews.isDisplayed()) {
       throw new Exception("There shouldn't be any viewed data");
     }
@@ -89,7 +89,7 @@ public class MyDataPageTest {
   @Order(4)
   public void checkRecentSearch() throws Exception {
     checkWhatsNew();
-    WebElement recentSearch = webDriver.findElement(By.xpath("//*[text()[contains(.,'" + "No searched terms!" + "')]] "));
+    WebElement recentSearch = webDriver.findElement(By.xpath("//*[text()[contains(.,'" + "No searched terms." + "')]] "));
     if (!recentSearch.isDisplayed()) {
       throw new Exception("There shouldn't be any searched terms");
     }
@@ -99,7 +99,7 @@ public class MyDataPageTest {
   @Order(5)
   public void checkMyDataTab() throws Exception {
     checkWhatsNew();
-    WebElement myDataResults = webDriver.findElement(By.xpath("//*[text()[contains(.,'" + "You have not owned anything yet!" + "')]] "));
+    WebElement myDataResults = webDriver.findElement(By.xpath("//*[text()[contains(.,'" + "You have not owned anything yet." + "')]] "));
     if (!myDataResults.isDisplayed()) {
       throw new Exception("There shouldn't be any owned data");
     }
@@ -109,7 +109,7 @@ public class MyDataPageTest {
   @Order(6)
   public void checkFollowingTab() throws Exception {
     checkWhatsNew();
-    WebElement followResults = webDriver.findElement(By.xpath("//*[text()[contains(.,'" + "You have not followed anything yet!" + "')]] "));
+    WebElement followResults = webDriver.findElement(By.xpath("//*[text()[contains(.,'" + "You have not followed anything yet." + "')]] "));
     if (!followResults.isDisplayed()) {
       throw new Exception("There shouldn't be any followed data");
     }
