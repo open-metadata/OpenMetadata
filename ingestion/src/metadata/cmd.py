@@ -171,6 +171,11 @@ def docker(start, stop, pause, resume, file_path) -> None:
         from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 
         docker = DockerClient(compose_project_name="openmetadata", compose_files=[])
+
+        logger.info("Checking if docker compose is installed....")
+        if not docker.compose.is_installed():
+            raise Exception("Docker Compose CLI is not installed on the system.")
+
         docker_info = docker.info()
 
         logger.info("Checking if docker service is running....")
