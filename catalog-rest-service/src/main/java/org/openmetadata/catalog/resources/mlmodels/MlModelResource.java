@@ -106,7 +106,7 @@ public class MlModelResource {
 
   static final String FIELDS =
       "owner,dashboard,algorithm,mlFeatures,mlHyperParameters,mlStore,server," + "followers,tags,usageSummary";
-  public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replaceAll(" ", "").split(","));
+  public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replaceAll("\\s", "").split(","));
 
   @GET
   @Valid

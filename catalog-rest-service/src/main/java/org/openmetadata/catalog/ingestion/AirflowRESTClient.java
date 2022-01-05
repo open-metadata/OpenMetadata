@@ -36,7 +36,7 @@ public class AirflowRESTClient {
   private final String username;
   private final String password;
   private final HttpClient client;
-  private final String authHeader = "Bearer %s";
+  private static final String authHeader = "Bearer %s";
 
   public AirflowRESTClient(CatalogApplicationConfig config) {
     AirflowConfiguration airflowConfig = config.getAirflowConfiguration();

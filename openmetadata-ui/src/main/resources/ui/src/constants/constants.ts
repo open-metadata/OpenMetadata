@@ -286,3 +286,7 @@ export const TITLE_FOR_NON_OWNER_ACTION =
 
 export const TITLE_FOR_NON_ADMIN_ACTION =
   'Only Admin is allowed for the action';
+
+// Entity Lineage Constant
+export const positionX = 150;
+export const positionY = 60;

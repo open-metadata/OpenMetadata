@@ -47,7 +47,7 @@ import org.slf4j.LoggerFactory;
  */
 public final class CollectionRegistry {
   private static final Logger LOG = LoggerFactory.getLogger(CollectionRegistry.class);
-  private static CollectionRegistry INSTANCE = null;
+  private static CollectionRegistry instance = null;
 
   /** Map of collection endpoint path to collection details */
   private final Map<String, CollectionDetails> collectionMap = new HashMap<>();
@@ -58,11 +58,11 @@ public final class CollectionRegistry {
   private CollectionRegistry() {}
 
   public static CollectionRegistry getInstance() {
-    if (INSTANCE == null) {
-      INSTANCE = new CollectionRegistry();
-      INSTANCE.initialize();
+    if (instance == null) {
+      instance = new CollectionRegistry();
+      instance.initialize();
     }
-    return INSTANCE;
+    return instance;
   }
 
   private void initialize() {
@@ -144,7 +144,9 @@ public final class CollectionRegistry {
 
   /** Get collection details based on annotations in Resource classes */
   private static CollectionDetails getCollection(Class<?> cl) {
-    String href, doc, name;
+    String href;
+    String doc;
+    String name;
     href = null;
     doc = null;
     name = null;

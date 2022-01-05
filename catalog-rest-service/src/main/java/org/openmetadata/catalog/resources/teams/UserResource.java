@@ -110,7 +110,7 @@ public class UserResource {
   }
 
   static final String FIELDS = "profile,roles,teams,follows,owns";
-  public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replaceAll(" ", "").split(","));
+  public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replaceAll("\\s", "").split(","));
 
   @GET
   @Valid
