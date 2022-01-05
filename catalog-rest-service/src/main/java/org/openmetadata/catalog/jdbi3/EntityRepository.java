@@ -305,6 +305,14 @@ public abstract class EntityRepository<T> {
     if (original == null) {
       return new PutResponse<>(Status.CREATED, withHref(uriInfo, createNewEntity(updated)), RestUtil.ENTITY_CREATED);
     }
+
+    // If original is deleted, we need to recover the relationships before setting the fields
+    // or we won't find the related services
+    EntityInterface<T> orifinalRef = getEntityInterface(original);
+    if (orifinalRef.isDeleted()) {
+      daoCollection.relationshipDAO().recoverSoftDeleteAll(orifinalRef.getId().toString());
+    }
+
     // Get all the fields in the original entity that can be updated during PUT operation
     setFields(original, putFields);
 
@@ -565,7 +573,6 @@ public abstract class EntityRepository<T> {
     private void updateDeleted() throws JsonProcessingException {
       if (original.isDeleted()) {
         updated.setDeleted(false);
-        daoCollection.relationshipDAO().recoverSoftDeleteAll(updated.getId().toString());
         recordChange("deleted", true, false);
       }
     }
