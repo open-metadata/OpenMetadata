@@ -11,17 +11,18 @@
  *  limitations under the License.
  */
 
+import dagre from 'dagre';
 import { LeafNodes, LineagePos, LoadingNodeState } from 'Models';
 import React, { MouseEvent as ReactMouseEvent } from 'react';
 import {
-  OnLoadParams,
+  ArrowHeadType,
   Edge,
   Elements,
-  Position,
   FlowElement,
-  ArrowHeadType,
-  Node,
   isNode,
+  Node,
+  OnLoadParams,
+  Position,
 } from 'react-flow-renderer';
 import { Link } from 'react-router-dom';
 import { SelectedNode } from '../components/EntityLineage/EntityLineage.interface';
@@ -32,14 +33,13 @@ import {
   positionX,
   positionY,
 } from '../constants/constants';
+import { EntityLineageDirection } from '../enums/entity.enum';
 import {
-  EntityLineage,
   Edge as LineageEdge,
+  EntityLineage,
 } from '../generated/type/entityLineage';
 import { EntityReference } from '../generated/type/entityReference';
 import { isLeafNode } from './EntityUtils';
-import dagre from 'dagre';
-import { EntityLineageDirection } from '../enums/entity.enum';
 
 export const onLoad = (reactFlowInstance: OnLoadParams) => {
   reactFlowInstance.fitView();

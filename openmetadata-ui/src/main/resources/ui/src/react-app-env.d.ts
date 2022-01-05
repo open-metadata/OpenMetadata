@@ -26,5 +26,5 @@ declare module 'slick-carousel';
 declare module 'react-table';
 declare module 'recharts';
 declare module 'diff';
-declare module '@deuex-solutions/react-tutorial';
+declare module '@deuex-solutions/react-tour';
 declare module 'dagre';
