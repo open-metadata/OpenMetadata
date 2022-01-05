@@ -21,7 +21,6 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.openmetadata.catalog.security.SecurityUtil.authHeaders;
-import static org.openmetadata.catalog.util.TestUtils.UpdateType.MAJOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
 import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
@@ -46,9 +45,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.catalog.Entity;
-import org.openmetadata.catalog.api.data.CreateChart;
 import org.openmetadata.catalog.api.data.CreatePipeline;
-import org.openmetadata.catalog.entity.data.Chart;
 import org.openmetadata.catalog.entity.data.Pipeline;
 import org.openmetadata.catalog.jdbi3.PipelineRepository.PipelineEntityInterface;
 import org.openmetadata.catalog.resources.EntityResourceTest;
@@ -304,7 +301,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline> {
 
   @Test
   public void delete_put_Pipeline_200(TestInfo test) throws IOException {
-    CreatePipeline request = create(test).withDescription("");
+    CreatePipeline request = create(test).withService(AIRFLOW_REFERENCE).withDescription("");
     Pipeline pipeline = createEntity(request, adminAuthHeaders());
 
     // Delete
