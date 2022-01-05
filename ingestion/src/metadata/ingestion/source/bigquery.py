@@ -15,7 +15,6 @@ import json, tempfile, logging
 
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.source.sql_source import SQLConnectionConfig, SQLSource
-from metadata.ingestion.api.common import ConfigModel
 
 
 class BigQueryConfig(SQLConnectionConfig, SQLSource):
@@ -24,15 +23,14 @@ class BigQueryConfig(SQLConnectionConfig, SQLSource):
     duration: int = 1
     service_type = "BigQuery"
     credentials: Optional[dict]
-    credentials_path: Optional[str] = None
 
     def __init__(self, **data: Any):
         super().__init__(**data)
 
         if self.credentials:
-            self.credentials_path = create_credential_temp_file(self.credentials)
-           
-            os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = self.credentials_path
+            os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = create_credential_temp_file(
+                self.credentials
+            )
 
     def get_connection_url(self):
         if self.project_id:
@@ -43,7 +41,7 @@ class BigQueryConfig(SQLConnectionConfig, SQLSource):
 class BigquerySource(SQLSource):
     def __init__(self, config, metadata_config, ctx):
         super().__init__(config, metadata_config, ctx)
-              
+
     @classmethod
     def create(cls, config_dict, metadata_config_dict, ctx):
         config: SQLConnectionConfig = BigQueryConfig.parse_obj(config_dict)
