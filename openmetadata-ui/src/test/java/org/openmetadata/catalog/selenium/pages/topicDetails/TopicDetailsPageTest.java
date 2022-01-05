@@ -38,8 +38,7 @@ public class TopicDetailsPageTest {
   static WebDriver webDriver;
   static String url = Property.getInstance().getURL();
   static Faker faker = new Faker();
-  static String enterDescription =
-      "//div[@data-testid='enterDescription']/div/div[2]/div/div/div/div/div/div";
+  static String enterDescription = "//div[@data-testid='enterDescription']/div/div[2]/div/div/div/div/div/div";
   static Actions actions;
   static WebDriverWait wait;
   Integer waitTime = Property.getInstance().getSleepTime();
@@ -177,12 +176,9 @@ public class TopicDetailsPageTest {
     Events.click(webDriver, By.cssSelector("[data-testid='sortBy']")); // Sort By
     Events.click(webDriver, By.cssSelector("[data-testid='list-item']")); // Last Updated
     Events.click(webDriver, By.xpath("(//button[@data-testid='table-link'])[last()]"));
-    wait.until(
-        ExpectedConditions.elementToBeClickable(By.cssSelector("[data-testid='breadcrumb-link']")));
+    wait.until(ExpectedConditions.elementToBeClickable(By.cssSelector("[data-testid='breadcrumb-link']")));
     Events.click(webDriver, By.cssSelector("[data-testid='breadcrumb-link']"));
-    wait.until(
-        ExpectedConditions.elementToBeClickable(
-            By.cssSelector("[data-testid='edit-description']")));
+    wait.until(ExpectedConditions.elementToBeClickable(By.cssSelector("[data-testid='edit-description']")));
     Events.click(webDriver, By.cssSelector("[data-testid='edit-description']")); // edit description
     Events.sendKeys(webDriver, By.xpath(enterDescription), editDescription);
     Events.click(webDriver, By.cssSelector("[data-testid='save']"));
@@ -198,10 +194,8 @@ public class TopicDetailsPageTest {
     webDriver.findElement(By.xpath("//*[text()[contains(.,'" + editDescription + updateDescription + "')]] "));
     Events.click(webDriver, By.cssSelector("[data-testid='cancel']"));
     for (int i = 1; i <= 3; i++) { // check topics in service
-      Events.click(
-          webDriver, By.xpath("(//tr[@data-testid='column']//td[1]/a)" + "[" + i + "]")); // topics
-      Events.click(
-          webDriver, By.cssSelector("[data-testid='edit-description']")); // edit description
+      Events.click(webDriver, By.xpath("(//tr[@data-testid='column']//td[1]/a)" + "[" + i + "]")); // topics
+      Events.click(webDriver, By.cssSelector("[data-testid='edit-description']")); // edit description
       Events.sendKeys(webDriver, By.xpath(enterDescription), editDescription);
       Events.click(webDriver, By.cssSelector("[data-testid='save']"));
       webDriver.navigate().refresh();
@@ -213,7 +207,7 @@ public class TopicDetailsPageTest {
       webDriver.navigate().refresh();
       Events.click(webDriver, By.cssSelector("[data-testid='edit-description']"));
       Thread.sleep(1000);
-      webDriver.findElement(By.xpath("//*[text()[contains(.,'" + editDescription + updateDescription +"')]] "));
+      webDriver.findElement(By.xpath("//*[text()[contains(.,'" + editDescription + updateDescription + "')]] "));
       Events.click(webDriver, By.cssSelector("[data-testid='cancel']"));
       Thread.sleep(waitTime);
       webDriver.navigate().back();

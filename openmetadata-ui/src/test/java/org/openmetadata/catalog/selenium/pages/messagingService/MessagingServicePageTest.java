@@ -14,7 +14,15 @@
 package org.openmetadata.catalog.selenium.pages.messagingService;
 
 import com.github.javafaker.Faker;
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.catalog.selenium.events.Events;
 import org.openmetadata.catalog.selenium.properties.Property;
 import org.openqa.selenium.By;
@@ -24,15 +32,6 @@ import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.interactions.Actions;
 import org.openqa.selenium.support.ui.WebDriverWait;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.Order;
-import org.junit.jupiter.api.TestMethodOrder;
-import org.junit.jupiter.api.MethodOrderer;
-
-import java.time.Duration;
-import java.util.ArrayList;
-import java.util.List;
 
 @Order(11)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
@@ -102,7 +101,7 @@ public class MessagingServicePageTest {
   public void editMessagingService() throws InterruptedException {
     openMessagingServicePage();
     Thread.sleep(2000);
-    Events.click(webDriver, By.cssSelector("[data-testid='edit-service-"+ serviceName + "']"));
+    Events.click(webDriver, By.cssSelector("[data-testid='edit-service-" + serviceName + "']"));
     Events.click(webDriver, By.xpath(enterDescription));
     Events.sendEnter(webDriver, By.xpath(enterDescription));
     Events.sendKeys(webDriver, By.xpath(enterDescription), faker.address().toString());
@@ -136,10 +135,9 @@ public class MessagingServicePageTest {
   public void deleteMessagingService() throws InterruptedException {
     openMessagingServicePage();
     Thread.sleep(2000);
-    Events.click(webDriver, By.cssSelector("[data-testid='delete-service-"+ serviceName + "']"));
+    Events.click(webDriver, By.cssSelector("[data-testid='delete-service-" + serviceName + "']"));
     Events.click(webDriver, By.cssSelector("[data-testid='save-button']"));
   }
-
 
   @AfterEach
   public void closeTabs() {
