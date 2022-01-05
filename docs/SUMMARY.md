@@ -96,6 +96,7 @@
 * [Run OpenMetadata](install/run-openmetadata.md)
 * [Run in Production](install/run-in-production.md)
 * [Run in Kubernetes](install/run-in-kubernetes.md)
+* [Upgrade OpenMetadata](install/upgrade-openmetadata.md)
 * [Server Configuration](install/configuration.md)
 * [Connector Configuration](install/connector-configuration.md)
 * [Enable Security](install/enable-security/README.md)
