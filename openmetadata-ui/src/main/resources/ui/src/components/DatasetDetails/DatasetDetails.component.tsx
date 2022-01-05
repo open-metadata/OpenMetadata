@@ -487,12 +487,12 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
               </div>
             )}
             {activeTab === 5 && (
-              <div className="tw-mt-4">
+              <div>
                 <SampleDataTable sampleData={getSampleDataWithType()} />
               </div>
             )}
             {activeTab === 6 && (
-              <div className="tw-mt-4">
+              <div>
                 <ManageTab
                   currentTier={tier?.tagFQN}
                   currentUser={owner?.id}
