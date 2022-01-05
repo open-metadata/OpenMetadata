@@ -16,7 +16,6 @@ import PropTypes from 'prop-types';
 import React from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/authHooks';
-import { isPageCentered } from '../../utils/RouterUtils';
 
 const PageContainer = ({ children, leftPanelContent, className }) => {
   const location = useLocation();
@@ -30,10 +29,7 @@ const PageContainer = ({ children, leftPanelContent, className }) => {
         !isAuthenticatedRoute ? 'full-page' : null
       )}
       data-testid="container">
-      <div
-        className={classnames('page-layout', {
-          'centered-layout': isPageCentered(location.pathname),
-        })}>
+      <div className="page-layout centered-layout">
         {leftPanelContent && (
           <div className="side-panel">{leftPanelContent}</div>
         )}

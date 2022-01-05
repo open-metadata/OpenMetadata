@@ -12,7 +12,6 @@
  */
 
 import { AxiosResponse } from 'axios';
-import classNames from 'classnames';
 import { CookieStorage } from 'cookie-storage';
 import { isEmpty } from 'lodash';
 import { observer } from 'mobx-react';
@@ -41,7 +40,6 @@ import { addToRecentSearched } from '../../utils/CommonUtils';
 import {
   inPageSearchOptions,
   isInPageSearchAllowed,
-  isPageCentered,
 } from '../../utils/RouterUtils';
 import { activeLink, normalLink } from '../../utils/styleconstant';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
@@ -187,11 +185,7 @@ const Appbar: React.FC = (): JSX.Element => {
     <>
       {isAuthenticatedRoute && isSignedIn ? (
         <div className="tw-h-16 tw-py-3 tw-border-b-2 tw-border-separator">
-          <div
-            className={classNames(
-              'tw-flex tw-items-center tw-flex-row tw-justify-between tw-flex-nowrap tw-px-6',
-              { 'centered-layout': isPageCentered(location.pathname) }
-            )}>
+          <div className="tw-flex tw-items-center tw-flex-row tw-justify-between tw-flex-nowrap tw-px-6 centered-layout">
             <div className="tw-flex tw-items-center tw-flex-row tw-justify-between tw-flex-nowrap">
               <NavLink id="openmetadata_logo" to="/">
                 <SVGIcons

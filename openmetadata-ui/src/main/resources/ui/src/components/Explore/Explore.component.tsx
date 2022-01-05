@@ -56,7 +56,6 @@ import { getAggregationList } from '../../utils/AggregationUtils';
 import { formatDataResponse } from '../../utils/APIUtils';
 import { getCountBadge } from '../../utils/CommonUtils';
 import { getFilterString } from '../../utils/FilterUtils';
-import { isPageCentered } from '../../utils/RouterUtils';
 import { dropdownIcon as DropDownIcon } from '../../utils/svgconstant';
 import SVGIcons from '../../utils/SvgUtils';
 import PageLayout from '../containers/PageLayout';
@@ -386,10 +385,7 @@ const Explore: React.FC<ExploreProps> = ({
   };
   const getTabs = () => {
     return (
-      <div
-        className={classNames('tw-mb-5 tw-px-6', {
-          'centered-layout': isPageCentered(location.pathname),
-        })}>
+      <div className="tw-mb-5 tw-px-6 centered-layout">
         <nav
           className={classNames(
             'tw-flex tw-flex-row tw-justify-between tw-gh-tabs-container'
@@ -407,7 +403,7 @@ const Explore: React.FC<ExploreProps> = ({
                 Clear All
               </Button>
             </div>
-            <div className="">
+            <div>
               {tabsInfo.map((tabDetail, index) => (
                 <button
                   className={`tw-pb-2 tw-pr-6 tw-gh-tabs ${getActiveTabClass(
