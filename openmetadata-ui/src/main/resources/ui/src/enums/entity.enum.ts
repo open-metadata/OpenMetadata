@@ -24,3 +24,8 @@ export enum ChangeType {
   UPDATED = 'Updated',
   REMOVED = 'Removed',
 }
+
+export enum EntityLineageDirection {
+  TOP_BOTTOM = 'TB',
+  LEFT_RIGHT = 'LR',
+}

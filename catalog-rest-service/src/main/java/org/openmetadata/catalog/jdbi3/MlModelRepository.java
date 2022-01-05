@@ -203,7 +203,9 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   private EntityReference getDashboard(MlModel mlModel) throws IOException {
     if (mlModel != null) {
       List<EntityReference> ids =
-          daoCollection.relationshipDAO().findTo(mlModel.getId().toString(), Entity.MLMODEL, Relationship.USES.ordinal());
+          daoCollection
+              .relationshipDAO()
+              .findTo(mlModel.getId().toString(), Entity.MLMODEL, Relationship.USES.ordinal());
       if (ids.size() > 1) {
         LOG.warn("Possible database issues - multiple dashboards {} found for model {}", ids, mlModel.getId());
       }

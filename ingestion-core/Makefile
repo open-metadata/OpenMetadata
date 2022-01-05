@@ -9,6 +9,9 @@ clean:
 	rm -rf build
 	rm -rf dist
 
+bump-version-dev:
+	python -m incremental.update metadata --dev
+
 publish: clean generate
 	python setup.py install sdist bdist_wheel
 	twine check dist/*

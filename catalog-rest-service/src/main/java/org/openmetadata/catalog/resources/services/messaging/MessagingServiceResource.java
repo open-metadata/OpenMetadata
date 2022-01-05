@@ -140,8 +140,7 @@ public class MessagingServiceResource {
   public MessagingService get(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("id") String id)
       throws IOException, ParseException {
-    MessagingService service = dao.get(uriInfo, id, null);
-    return service;
+    return dao.get(uriInfo, id, null);
   }
 
   @GET

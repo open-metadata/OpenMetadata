@@ -168,10 +168,9 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
   @BeforeAll
   public void setup(TestInfo test) throws URISyntaxException, IOException {
     webhookCallbackResource.clearEvents();
-    webhookCallbackResource.clearEntityCallbackCount();
     WebhookResourceTest webhookResourceTest = new WebhookResourceTest();
     webhookResourceTest.startWebhookSubscription();
-    new WebhookResourceTest().startWebhookEntitySubscriptions(entityName);
+    webhookResourceTest.startWebhookEntitySubscriptions(entityName);
 
     UserResourceTest userResourceTest = new UserResourceTest();
     USER1 = UserResourceTest.createUser(userResourceTest.create(test), authHeaders("test@open-metadata.org"));
@@ -1147,8 +1146,6 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
       throws IOException {
     expectedList.sort(EntityUtil.compareFieldChange);
     actualList.sort(EntityUtil.compareFieldChange);
-    System.out.println("XXX " + expectedList);
-    System.out.println("XXX " + actualList);
     assertEquals(expectedList.size(), actualList.size());
 
     for (int i = 0; i < expectedList.size(); i++) {

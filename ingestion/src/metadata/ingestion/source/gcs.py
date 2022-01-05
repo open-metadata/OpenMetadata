@@ -11,8 +11,7 @@
 
 import logging
 import uuid
-from collections import Iterable
-from typing import List, Union, Optional
+from typing import List, Union, Optional, Iterable
 
 from google.cloud import storage
 

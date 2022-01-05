@@ -22,7 +22,6 @@ def get_long_description():
 
 setup(
     name="openmetadata-ingestion-core",
-    version="0.6.0.dev0",
     url="https://open-metadata.org/",
     author="OpenMetadata Committers",
     license="Apache License 2.0",
@@ -32,6 +31,9 @@ setup(
     python_requires=">=3.8",
     package_dir={"": "src"},
     zip_safe=False,
+    use_incremental=True,
+    setup_requires=['incremental'],
+    install_requires=['incremental'],
     project_urls={
         "Documentation": "https://docs.open-metadata.org/",
         "Source": "https://github.com/open-metadata/OpenMetadata",
