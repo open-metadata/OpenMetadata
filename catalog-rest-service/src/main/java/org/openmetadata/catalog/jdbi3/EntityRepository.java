@@ -555,7 +555,6 @@ public abstract class EntityRepository<T> {
 
     private void updateDeleted() throws JsonProcessingException {
       if (original.isDeleted()) {
-        majorVersionChange = true;
         updated.setDeleted(false);
         daoCollection.relationshipDAO().recoverSoftDeleteAll(updated.getId().toString());
         recordChange("deleted", true, false);
