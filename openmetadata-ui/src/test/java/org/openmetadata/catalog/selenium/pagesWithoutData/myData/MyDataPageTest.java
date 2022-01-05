@@ -1,5 +1,7 @@
 package org.openmetadata.catalog.selenium.pagesWithoutData.myData;
 
+import java.time.Duration;
+import java.util.ArrayList;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Order;
@@ -14,9 +16,6 @@ import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.interactions.Actions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.testng.Assert;
-
-import java.time.Duration;
-import java.util.ArrayList;
 
 public class MyDataPageTest {
 
@@ -50,28 +49,52 @@ public class MyDataPageTest {
   @Order(2)
   public void checkOverview() {
     checkWhatsNew();
-    String tablesCount = webDriver.findElement(By.xpath("//div[@data-testid='tables-summary']//span[@data-testid='filter-count']")).getAttribute("innerHTML");
+    String tablesCount =
+        webDriver
+            .findElement(By.xpath("//div[@data-testid='tables-summary']//span[@data-testid='filter-count']"))
+            .getAttribute("innerHTML");
     Assert.assertEquals(tablesCount, "0");
 
-    String topicsCount = webDriver.findElement(By.xpath("//div[@data-testid='topics-summary']//span[@data-testid='filter-count']")).getAttribute("innerHTML");
+    String topicsCount =
+        webDriver
+            .findElement(By.xpath("//div[@data-testid='topics-summary']//span[@data-testid='filter-count']"))
+            .getAttribute("innerHTML");
     Assert.assertEquals(topicsCount, "0");
 
-    String dashboardsCount = webDriver.findElement(By.xpath("//div[@data-testid='dashboards-summary']//span[@data-testid='filter-count']")).getAttribute("innerHTML");
+    String dashboardsCount =
+        webDriver
+            .findElement(By.xpath("//div[@data-testid='dashboards-summary']//span[@data-testid='filter-count']"))
+            .getAttribute("innerHTML");
     Assert.assertEquals(dashboardsCount, "0");
 
-    String pipelinesCount = webDriver.findElement(By.xpath("//div[@data-testid='pipelines-summary']//span[@data-testid='filter-count']")).getAttribute("innerHTML");
+    String pipelinesCount =
+        webDriver
+            .findElement(By.xpath("//div[@data-testid='pipelines-summary']//span[@data-testid='filter-count']"))
+            .getAttribute("innerHTML");
     Assert.assertEquals(pipelinesCount, "0");
 
-    String servicesCount = webDriver.findElement(By.xpath("//div[@data-testid='service-summary']//span[@data-testid='filter-count']")).getAttribute("innerHTML");
+    String servicesCount =
+        webDriver
+            .findElement(By.xpath("//div[@data-testid='service-summary']//span[@data-testid='filter-count']"))
+            .getAttribute("innerHTML");
     Assert.assertEquals(servicesCount, "0");
 
-    String ingestionCount = webDriver.findElement(By.xpath("//div[@data-testid='ingestion-summary']//span[@data-testid='filter-count']")).getAttribute("innerHTML");
+    String ingestionCount =
+        webDriver
+            .findElement(By.xpath("//div[@data-testid='ingestion-summary']//span[@data-testid='filter-count']"))
+            .getAttribute("innerHTML");
     Assert.assertEquals(ingestionCount, "0");
 
-    String usersCount = webDriver.findElement(By.xpath("//div[@data-testid='user-summary']//span[@data-testid='filter-count']")).getAttribute("innerHTML");
+    String usersCount =
+        webDriver
+            .findElement(By.xpath("//div[@data-testid='user-summary']//span[@data-testid='filter-count']"))
+            .getAttribute("innerHTML");
     Assert.assertEquals(usersCount, "0");
 
-    String teamsCount = webDriver.findElement(By.xpath("//div[@data-testid='terms-summary']//span[@data-testid='filter-count']")).getAttribute("innerHTML");
+    String teamsCount =
+        webDriver
+            .findElement(By.xpath("//div[@data-testid='terms-summary']//span[@data-testid='filter-count']"))
+            .getAttribute("innerHTML");
     Assert.assertEquals(teamsCount, "0");
   }
 
@@ -79,7 +102,8 @@ public class MyDataPageTest {
   @Order(3)
   public void checkRecentViews() throws Exception {
     checkWhatsNew();
-    WebElement recentViews = webDriver.findElement(By.xpath("//*[text()[contains(.,'" + "No recently viewed data!" + "')]] "));
+    WebElement recentViews =
+        webDriver.findElement(By.xpath("//*[text()[contains(.,'" + "No recently viewed data!" + "')]] "));
     if (!recentViews.isDisplayed()) {
       throw new Exception("There shouldn't be any viewed data");
     }
@@ -89,7 +113,8 @@ public class MyDataPageTest {
   @Order(4)
   public void checkRecentSearch() throws Exception {
     checkWhatsNew();
-    WebElement recentSearch = webDriver.findElement(By.xpath("//*[text()[contains(.,'" + "No searched terms!" + "')]] "));
+    WebElement recentSearch =
+        webDriver.findElement(By.xpath("//*[text()[contains(.,'" + "No searched terms!" + "')]] "));
     if (!recentSearch.isDisplayed()) {
       throw new Exception("There shouldn't be any searched terms");
     }
@@ -99,7 +124,8 @@ public class MyDataPageTest {
   @Order(5)
   public void checkMyDataTab() throws Exception {
     checkWhatsNew();
-    WebElement myDataResults = webDriver.findElement(By.xpath("//*[text()[contains(.,'" + "You have not owned anything yet!" + "')]] "));
+    WebElement myDataResults =
+        webDriver.findElement(By.xpath("//*[text()[contains(.,'" + "You have not owned anything yet!" + "')]] "));
     if (!myDataResults.isDisplayed()) {
       throw new Exception("There shouldn't be any owned data");
     }
@@ -109,7 +135,8 @@ public class MyDataPageTest {
   @Order(6)
   public void checkFollowingTab() throws Exception {
     checkWhatsNew();
-    WebElement followResults = webDriver.findElement(By.xpath("//*[text()[contains(.,'" + "You have not followed anything yet!" + "')]] "));
+    WebElement followResults =
+        webDriver.findElement(By.xpath("//*[text()[contains(.,'" + "You have not followed anything yet!" + "')]] "));
     if (!followResults.isDisplayed()) {
       throw new Exception("There shouldn't be any followed data");
     }
@@ -121,7 +148,8 @@ public class MyDataPageTest {
     checkWhatsNew();
     Events.sendEnter(webDriver, By.cssSelector("[id='searchBox']"));
     Thread.sleep(2000);
-    String searchedEntity = webDriver.findElement(By.cssSelector("[data-testid='no-search-results']")).getAttribute("innerHTML");
+    String searchedEntity =
+        webDriver.findElement(By.cssSelector("[data-testid='no-search-results']")).getAttribute("innerHTML");
     Assert.assertEquals(searchedEntity, "No matching data assets found");
   }
 
