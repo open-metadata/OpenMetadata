@@ -27,3 +27,4 @@ declare module 'react-table';
 declare module 'recharts';
 declare module 'diff';
 declare module '@deuex-solutions/react-tutorial';
+declare module 'dagre';

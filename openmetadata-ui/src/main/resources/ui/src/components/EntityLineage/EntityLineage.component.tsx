@@ -34,6 +34,7 @@ import useToastContext from '../../hooks/useToastContext';
 import {
   dragHandle,
   getDataLabel,
+  getLayoutedElements,
   getLineageData,
   getNoLineageDataPlaceholder,
   onLoad,
@@ -112,7 +113,9 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
     ) as Elements;
   };
 
-  const [elements, setElements] = useState<Elements>(setElementsHandle());
+  const [elements, setElements] = useState<Elements>(
+    getLayoutedElements(setElementsHandle())
+  );
   const closeDrawer = (value: boolean) => {
     setIsDrawerOpen(value);
     setElements((prevElements) => {
@@ -158,7 +161,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
   };
 
   const onNodeExpand = (tableColumns?: Column[]) => {
-    const elements = setElementsHandle();
+    const elements = getLayoutedElements(setElementsHandle());
     setElements(
       elements.map((preEl) => {
         if (preEl.id.includes(expandNode?.id as string)) {
@@ -195,7 +198,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
   };
 
   useEffect(() => {
-    setElements(setElementsHandle());
+    setElements(getLayoutedElements(setElementsHandle()));
     setExpandNode(undefined);
     setTableColumns([]);
   }, [entityLineage, isNodeLoading, isEditMode]);

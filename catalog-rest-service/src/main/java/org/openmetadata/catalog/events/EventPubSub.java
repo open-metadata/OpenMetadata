@@ -33,28 +33,28 @@ public class EventPubSub {
   private static Disruptor<ChangeEventHolder> disruptor;
   private static ExecutorService executor;
   private static RingBuffer<ChangeEventHolder> ringBuffer;
-  private static boolean STARTED = false;
+  private static boolean started = false;
 
   public static void start() {
-    if (!STARTED) {
+    if (!started) {
       disruptor = new Disruptor<>(ChangeEventHolder::new, 1024, DaemonThreadFactory.INSTANCE);
       disruptor.setDefaultExceptionHandler(new DefaultExceptionHandler());
       executor = Executors.newCachedThreadPool(DaemonThreadFactory.INSTANCE);
       ringBuffer = disruptor.start();
       LOG.info("Disruptor started");
-      STARTED = true;
+      started = true;
     }
   }
 
   public static void shutdown() throws InterruptedException {
-    if (STARTED) {
+    if (started) {
       disruptor.shutdown();
       disruptor.halt();
       executor.shutdownNow();
       executor.awaitTermination(10, TimeUnit.SECONDS);
       disruptor = null;
       ringBuffer = null;
-      STARTED = false;
+      started = false;
       LOG.info("Disruptor stopped");
     }
   }

@@ -26,8 +26,7 @@
   "bulk_sink": {
     "type": "metadata-usage",
     "config": {
-      "filename": "/tmp/snowflake_usage",
-      "service_name": "snowflake"
+      "filename": "/tmp/snowflake_usage"
     }
   },
   "metadata_server": {
