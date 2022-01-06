@@ -111,9 +111,9 @@ Note: The `source.config` field in the configuration JSON will include the major
     "type": "athena",
     "config": {
       "host_port":"host_port",
-      "username": "openmetadata_user",
-      "password": "openmetadata_password",
-      "database": "openmetadata_db",
+      "username": "username",
+      "password": "strong_password",
+      "database": "athena_db",
       "service_name": "athena",
       "service_type": "Athena"
       "data_profiler_enabled": "false",

@@ -110,9 +110,9 @@ Note: The `source.config` field in the configuration JSON will include the major
   "source": {
     "type": "mariadb",
     "config": {
-      "username": "openmetadata_user",
-      "password": "openmetadata_password",
-      "database": "openmetadata_db",
+      "username": "username",
+      "password": "strong_password",
+      "database": "mariadb_db",
       "service_name": "mariadb",
       "data_profiler_enabled": "false",
       "table_filter_pattern": {
