@@ -1,7 +1,11 @@
 name: Format
 
-on: [push, pull_request]
-
+on: 
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'catalog-rest-service/src/main/java/**'
 jobs:
 
   formatting:
