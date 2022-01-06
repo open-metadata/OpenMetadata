@@ -39,10 +39,10 @@ generate:
 	datamodel-codegen  --input catalog-rest-service/src/main/resources/json  --input-file-type jsonschema --output ingestion/src/metadata/generated
 
 run_ometa_integration_tests:
-	coverage run -m pytest -c ingestion/setup.cfg --junitxml=ingestion/junit/integration-test-results.xml --override-ini=testpaths="ingestion/tests/integration/ometa ingestion/tests/integration/stage"
+	coverage run -m pytest -c ingestion/setup.cfg --doctest-modules --junitxml=ingestion/junit/test-results-integration.xml --override-ini=testpaths="ingestion/tests/integration/ometa ingestion/tests/integration/stage"
 
 unit_ingestion:
-	coverage run -m pytest -c ingestion/setup.cfg -s --doctest-modules --junitxml=ingestion/junit/test-results.xml ingestion/tests/unit
+	coverage run -m pytest -c ingestion/setup.cfg -s --doctest-modules --junitxml=ingestion/junit/test-results-unit.xml --override-ini=testpaths="ingestion/tests/unit"
 
 coverage:
 	coverage erase
@@ -53,9 +53,9 @@ coverage:
 sonar_ingestion:
 	docker run \
 		--rm \
-		-e SONAR_HOST_URL="http://localhost:9000" \
-		#-e SONAR_LOGIN=$(token) \
-		-e SONAR_LOGIN=a547ce2146c73ac5d1751c843242e4224e990d76 \
+		--network=host \
+		-e SONAR_HOST_URL="http://localhost:9000/" \
+		-e SONAR_LOGIN=$(token) \
 		-v ${PWD}:/usr/src \
 		sonarsource/sonar-scanner-cli \
 		-Dproject.settings=ingestion/sonar-project.properties
