@@ -54,12 +54,12 @@ import org.openmetadata.catalog.security.AuthorizerConfiguration;
 import org.openmetadata.catalog.security.NoopAuthorizer;
 import org.openmetadata.catalog.security.NoopFilter;
 import org.openmetadata.catalog.security.auth.CatalogSecurityContextRequestFilter;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
 
 /** Main catalog application */
 public class CatalogApplication extends Application<CatalogApplicationConfig> {
-  public static final Logger LOG = LoggerFactory.getLogger(CatalogApplication.class);
   private Injector injector;
   private Authorizer authorizer;
 

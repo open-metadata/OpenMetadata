@@ -52,11 +52,11 @@ import org.openmetadata.catalog.type.Webhook;
 import org.openmetadata.catalog.type.Webhook.Status;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
 
 public class WebhookRepository extends EntityRepository<Webhook> {
-  public static final Logger LOG = LoggerFactory.getLogger(WebhookRepository.class);
   private static final ConcurrentHashMap<UUID, WebhookPublisher> webhookPublisherMap = new ConcurrentHashMap<>();
 
   public WebhookRepository(CollectionDAO dao) {
