@@ -248,9 +248,7 @@ const Appbar: React.FC = (): JSX.Element => {
                       return;
                     }
 
-                    if (target.value) {
-                      addToRecentSearched(target.value);
-                    }
+                    addToRecentSearched(target.value);
                     history.push(
                       getExplorePathWithSearch(
                         target.value,

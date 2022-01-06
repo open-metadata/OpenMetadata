@@ -194,32 +194,33 @@ export const setRecentlySearchedData = (
 };
 
 export const addToRecentSearched = (searchTerm: string): void => {
-  const searchData = { term: searchTerm, timestamp: Date.now() };
-  const recentlySearch: RecentlySearched = reactLocalStorage.getObject(
-    LOCALSTORAGE_RECENTLY_SEARCHED
-  ) as RecentlySearched;
-  let arrSearchedData: RecentlySearched['data'] = [];
-  if (recentlySearch?.data) {
-    const arrData = recentlySearch.data
-      // search term is case-insensetive so we should also take care of it.
-      // TODO : after discussion make this check for case-insensetive
-      .filter((item) => item.term !== searchData.term)
-      .sort(
-        arraySorterByKey('timestamp', true) as (
-          a: RecentlySearchedData,
-          b: RecentlySearchedData
-        ) => number
-      );
-    arrData.unshift(searchData);
+  if (searchTerm.trim()) {
+    const searchData = { term: searchTerm, timestamp: Date.now() };
+    const recentlySearch: RecentlySearched = reactLocalStorage.getObject(
+      LOCALSTORAGE_RECENTLY_SEARCHED
+    ) as RecentlySearched;
+    let arrSearchedData: RecentlySearched['data'] = [];
+    if (recentlySearch?.data) {
+      const arrData = recentlySearch.data
+        // search term is not case-insensetive.
+        .filter((item) => item.term !== searchData.term)
+        .sort(
+          arraySorterByKey('timestamp', true) as (
+            a: RecentlySearchedData,
+            b: RecentlySearchedData
+          ) => number
+        );
+      arrData.unshift(searchData);
 
-    if (arrData.length > 5) {
-      arrData.pop();
+      if (arrData.length > 5) {
+        arrData.pop();
+      }
+      arrSearchedData = arrData;
+    } else {
+      arrSearchedData = [searchData];
     }
-    arrSearchedData = arrData;
-  } else {
-    arrSearchedData = [searchData];
+    setRecentlySearchedData(arrSearchedData);
   }
-  setRecentlySearchedData(arrSearchedData);
 };
 
 export const addToRecentViewed = (eData: RecentlyViewedData): void => {
