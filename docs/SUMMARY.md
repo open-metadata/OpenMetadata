@@ -10,7 +10,6 @@
   * [Athena](openmetadata/connectors/athena.md)
   * [BigQuery](openmetadata/connectors/bigquery.md)
   * [BigQuery Usage](openmetadata/connectors/bigquery-usage.md)
-  * [DBT](connectors/dbt.md)
   * [Elasticsearch](openmetadata/connectors/elastic-search.md)
   * [Glue Catalog](connectors/glue-catalog.md)
   * [Hive](openmetadata/connectors/hive.md)
