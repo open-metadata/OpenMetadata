@@ -62,7 +62,7 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
   }
 
   @Test
-  public void post_withoutRequiredFields_400_badRequest(TestInfo test) {
+  void post_withoutRequiredFields_400_badRequest(TestInfo test) {
     // Create dashboard with mandatory serviceType field empty
     HttpResponseException exception =
         assertThrows(
@@ -77,7 +77,7 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
   }
 
   @Test
-  public void post_validService_as_admin_200_ok(TestInfo test) throws IOException, URISyntaxException {
+  void post_validService_as_admin_200_ok(TestInfo test) throws IOException, URISyntaxException {
     // Create dashboard service with different optional fields
     Map<String, String> authHeaders = adminAuthHeaders();
     createAndCheckEntity(create(test, 1).withDescription(null), authHeaders);
@@ -86,7 +86,7 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
   }
 
   @Test
-  public void post_validService_as_non_admin_401(TestInfo test) {
+  void post_validService_as_non_admin_401(TestInfo test) {
     // Create dashboard service with different optional fields
     Map<String, String> authHeaders = authHeaders("test@open-metadata.org");
 
@@ -98,7 +98,7 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
   }
 
   @Test
-  public void post_invalidIngestionSchedule_4xx(TestInfo test) throws URISyntaxException {
+  void post_invalidIngestionSchedule_4xx(TestInfo test) throws URISyntaxException {
     // No jdbc connection set
     CreateDashboardService create = create(test);
     Schedule schedule = create.getIngestionSchedule();
@@ -133,7 +133,7 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
   }
 
   @Test
-  public void post_validIngestionSchedules_as_admin_200(TestInfo test) throws IOException, URISyntaxException {
+  void post_validIngestionSchedules_as_admin_200(TestInfo test) throws IOException, URISyntaxException {
     Schedule schedule = new Schedule().withStartDate(new Date());
     schedule.withRepeatFrequency("PT60M"); // Repeat every 60M should be valid
     createAndCheckEntity(create(test, 1).withIngestionSchedule(schedule), adminAuthHeaders());
@@ -146,7 +146,7 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
   }
 
   @Test
-  public void post_ingestionScheduleIsTooShort_4xx(TestInfo test) throws URISyntaxException {
+  void post_ingestionScheduleIsTooShort_4xx(TestInfo test) throws URISyntaxException {
     // No jdbc connection set
     CreateDashboardService create = create(test);
     Schedule schedule = create.getIngestionSchedule();
@@ -163,7 +163,7 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
   }
 
   @Test
-  public void put_updateService_as_admin_2xx(TestInfo test) throws IOException, URISyntaxException {
+  void put_updateService_as_admin_2xx(TestInfo test) throws IOException, URISyntaxException {
     DashboardService service =
         createAndCheckEntity(create(test).withDescription(null).withIngestionSchedule(null), adminAuthHeaders());
 
@@ -201,7 +201,7 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
   }
 
   @Test
-  public void put_update_as_non_admin_401(TestInfo test) throws IOException, URISyntaxException {
+  void put_update_as_non_admin_401(TestInfo test) throws IOException, URISyntaxException {
     Map<String, String> authHeaders = adminAuthHeaders();
     createAndCheckEntity(create(test).withDescription(null).withIngestionSchedule(null), authHeaders);
 
@@ -216,7 +216,7 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
   }
 
   @Test
-  public void delete_ExistentDashboardService_as_admin_200(TestInfo test)
+  void delete_ExistentDashboardService_as_admin_200(TestInfo test)
       throws HttpResponseException, URISyntaxException {
     Map<String, String> authHeaders = adminAuthHeaders();
     DashboardService dashboardService = createEntity(create(test), authHeaders);
@@ -224,7 +224,7 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
   }
 
   @Test
-  public void delete_as_user_401(TestInfo test) throws HttpResponseException, URISyntaxException {
+  void delete_as_user_401(TestInfo test) throws HttpResponseException, URISyntaxException {
     Map<String, String> authHeaders = adminAuthHeaders();
     DashboardService dashboardService = createEntity(create(test), authHeaders);
     HttpResponseException exception =
@@ -235,7 +235,7 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
   }
 
   @Test
-  public void delete_notExistentDashboardService() {
+  void delete_notExistentDashboardService() {
     HttpResponseException exception =
         assertThrows(HttpResponseException.class, () -> getEntity(TestUtils.NON_EXISTENT_ENTITY, adminAuthHeaders()));
     TestUtils.assertResponse(

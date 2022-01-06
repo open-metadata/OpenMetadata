@@ -11,10 +11,11 @@
  *  limitations under the License.
  */
 
+import classNames from 'classnames';
 import { isEqual, isNil, isUndefined } from 'lodash';
 import { ColumnJoins, EntityTags, ExtraInfo } from 'Models';
 import React, { useEffect, useState } from 'react';
-import { getTeamDetailsPath } from '../../constants/constants';
+import { getTeamDetailsPath, ROUTES } from '../../constants/constants';
 import { CSMode } from '../../enums/codemirror.enum';
 import {
   JoinedWith,
@@ -39,6 +40,9 @@ import PageContainer from '../containers/PageContainer';
 import Entitylineage from '../EntityLineage/EntityLineage.component';
 import FrequentlyJoinedTables from '../FrequentlyJoinedTables/FrequentlyJoinedTables.component';
 import ManageTab from '../ManageTab/ManageTab.component';
+import SampleDataTable, {
+  SampleColumns,
+} from '../SampleDataTable/SampleDataTable.component';
 import SchemaEditor from '../schema-editor/SchemaEditor';
 import SchemaTab from '../SchemaTab/SchemaTab.component';
 import TableProfiler from '../TableProfiler/TableProfiler.component';
@@ -164,6 +168,17 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
       position: 4,
     },
     {
+      name: 'Sample Data',
+      icon: {
+        alt: 'sample_data',
+        name: 'sample-data',
+        title: 'Sample Data',
+        selectedName: 'sample-data-color',
+      },
+      isProtected: false,
+      position: 5,
+    },
+    {
       name: 'Manage',
       icon: {
         alt: 'manage',
@@ -173,7 +188,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
       },
       isProtected: true,
       protectedState: !owner || hasEditAccess(),
-      position: 5,
+      position: 6,
     },
   ];
 
@@ -330,6 +345,29 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
     }
   };
 
+  const getSampleDataWithType = () => {
+    const updatedColumns = sampleData?.columns?.map((column) => {
+      const matchedColumn = columns.find((col) => col.name === column);
+
+      if (matchedColumn) {
+        return {
+          name: matchedColumn.name,
+          dataType: matchedColumn.dataType,
+        };
+      } else {
+        return {
+          name: column,
+          dataType: '',
+        };
+      }
+    });
+
+    return {
+      columns: updatedColumns as SampleColumns[] | undefined,
+      rows: sampleData?.rows,
+    };
+  };
+
   useEffect(() => {
     if (isAuthDisabled && users.length && followers.length) {
       setFollowersData(followers);
@@ -349,7 +387,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
 
   return (
     <PageContainer>
-      <div className="tw-px-4 tw-w-full tw-h-full tw-flex tw-flex-col">
+      <div className="tw-px-6 tw-w-full tw-h-full tw-flex tw-flex-col">
         <EntityPageInfo
           entityName={entityName}
           extraInfo={extraInfo}
@@ -372,9 +410,11 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
             tabs={tabs}
           />
 
-          <div className="tw-bg-white tw-flex-grow tw-mx-1">
+          <div className="tw-bg-white tw-flex-grow tw--mx-6 tw-px-7 tw-py-4">
             {activeTab === 1 && (
-              <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-w-full tw-mt-4 ">
+              <div
+                className="tw-grid tw-grid-cols-4 tw-gap-4 tw-w-full"
+                id="schemaDetails">
                 <div className="tw-col-span-3">
                   <Description
                     description={description}
@@ -411,7 +451,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
               </div>
             )}
             {activeTab === 2 && (
-              <div className="tw-mt-4">
+              <div>
                 <TableProfiler
                   columns={columns.map((col) => ({
                     constraint: col.constraint as string,
@@ -422,7 +462,13 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
               </div>
             )}
             {activeTab === 3 && (
-              <div className="tw-h-full">
+              <div
+                className={classNames(
+                  location.pathname.includes(ROUTES.TOUR)
+                    ? 'tw-h-70vh'
+                    : 'tw-h-full'
+                )}
+                id="lineageDetails">
                 <Entitylineage
                   entityLineage={entityLineage}
                   isNodeLoading={isNodeLoading}
@@ -432,7 +478,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
               </div>
             )}
             {activeTab === 4 && Boolean(dataModel?.sql) && (
-              <div className="tw-my-4 tw-border tw-border-main tw-rounded-md tw-py-4 tw-h-full cm-h-full">
+              <div className="tw-border tw-border-main tw-rounded-md tw-py-4 tw-h-full cm-h-full">
                 <SchemaEditor
                   className="tw-h-full"
                   mode={{ name: CSMode.SQL }}
@@ -441,7 +487,12 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
               </div>
             )}
             {activeTab === 5 && (
-              <div className="tw-mt-4">
+              <div>
+                <SampleDataTable sampleData={getSampleDataWithType()} />
+              </div>
+            )}
+            {activeTab === 6 && (
+              <div>
                 <ManageTab
                   currentTier={tier?.tagFQN}
                   currentUser={owner?.id}

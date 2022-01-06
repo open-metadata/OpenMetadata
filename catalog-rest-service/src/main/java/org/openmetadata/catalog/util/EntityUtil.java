@@ -400,7 +400,7 @@ public final class EntityUtil {
         fieldList = Collections.emptyList();
         return;
       }
-      fieldList = Arrays.asList(fieldsParam.replaceAll("\\s", "").split(","));
+      fieldList = Arrays.asList(fieldsParam.replace(" ", "").split(","));
       for (String field : fieldList) {
         if (!validFields.contains(field)) {
           throw new IllegalArgumentException(CatalogExceptionMessage.invalidField(field));

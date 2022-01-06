@@ -62,7 +62,7 @@ public class LineageResourceTest extends CatalogApplicationTest {
   }
 
   @Test
-  public void put_addLineageForInvalidEntities() throws HttpResponseException {
+  void put_addLineageForInvalidEntities() throws HttpResponseException {
     // Add lineage table4-->table5
     addEdge(TABLES.get(4), TABLES.get(5));
 

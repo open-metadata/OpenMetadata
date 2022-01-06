@@ -64,7 +64,10 @@ const TableProfiler = ({ tableProfiles, columns }: Props) => {
   return (
     <>
       {tableProfiles?.length ? (
-        <table className="tw-w-full" data-testid="schema-table">
+        <table
+          className="tw-w-full"
+          data-testid="schema-table"
+          id="profilerDetails">
           <thead>
             <tr className="tableHead-row">
               <th className="tableHead-cell">Column Name</th>

@@ -62,7 +62,7 @@ public class PolicyEvaluatorTest {
   }
 
   @Test
-  public void dataConsumer_cannot_update_owner() {
+  void dataConsumer_cannot_update_owner() {
     User dataConsumer = createUser(ImmutableList.of(DATA_CONSUMER));
     Table table = createTable();
     boolean hasPermission = policyEvaluator.hasPermission(dataConsumer, table, MetadataOperation.UpdateOwner);
@@ -70,7 +70,7 @@ public class PolicyEvaluatorTest {
   }
 
   @Test
-  public void dataSteward_can_update_owner() {
+  void dataSteward_can_update_owner() {
     User dataConsumer = createUser(ImmutableList.of(DATA_STEWARD));
     Table table = createTable();
     boolean hasPermission = policyEvaluator.hasPermission(dataConsumer, table, MetadataOperation.UpdateOwner);
@@ -78,7 +78,7 @@ public class PolicyEvaluatorTest {
   }
 
   @Test
-  public void dataConsumer_can_suggest_description() {
+  void dataConsumer_can_suggest_description() {
     User dataConsumer = createUser(ImmutableList.of(DATA_CONSUMER));
     Table table = createTable();
     boolean hasPermission = policyEvaluator.hasPermission(dataConsumer, table, MetadataOperation.SuggestDescription);
@@ -86,7 +86,7 @@ public class PolicyEvaluatorTest {
   }
 
   @Test
-  public void legal_can_update_tags_for_pii_tables() {
+  void legal_can_update_tags_for_pii_tables() {
     User dataConsumer = createUser(ImmutableList.of(LEGAL));
     Table table = createTable();
     boolean hasPermission = policyEvaluator.hasPermission(dataConsumer, table, MetadataOperation.UpdateTags);
@@ -94,7 +94,7 @@ public class PolicyEvaluatorTest {
   }
 
   @Test
-  public void auditor_cannot_update_tags_for_pii_tables() {
+  void auditor_cannot_update_tags_for_pii_tables() {
     User dataConsumer = createUser(ImmutableList.of(AUDITOR));
     Table table = createTable();
     boolean hasPermission = policyEvaluator.hasPermission(dataConsumer, table, MetadataOperation.UpdateTags);
@@ -102,7 +102,7 @@ public class PolicyEvaluatorTest {
   }
 
   @Test
-  public void devops_can_suggest_description() {
+  void devops_can_suggest_description() {
     User dataConsumer = createUser(ImmutableList.of(DEV_OPS));
     Table table = createTable();
     boolean hasPermission = policyEvaluator.hasPermission(dataConsumer, table, MetadataOperation.SuggestDescription);
@@ -110,7 +110,7 @@ public class PolicyEvaluatorTest {
   }
 
   @Test
-  public void devops_cannot_update_description() {
+  void devops_cannot_update_description() {
     User dataConsumer = createUser(ImmutableList.of(DEV_OPS));
     Table table = createTable();
     boolean hasPermission = policyEvaluator.hasPermission(dataConsumer, table, MetadataOperation.UpdateDescription);
@@ -118,7 +118,7 @@ public class PolicyEvaluatorTest {
   }
 
   @Test
-  public void devops_cannot_update_tags() {
+  void devops_cannot_update_tags() {
     User dataConsumer = createUser(ImmutableList.of(DEV_OPS));
     Table table = createTable();
     boolean hasPermission = policyEvaluator.hasPermission(dataConsumer, table, MetadataOperation.UpdateTags);

@@ -235,11 +235,11 @@ const DatabaseDetails: FunctionComponent = () => {
       ) : (
         <PageContainer>
           <div
-            className="tw-px-4 tw-w-full tw-h-full tw-flex tw-flex-col"
+            className="tw-px-6 tw-w-full tw-h-full tw-flex tw-flex-col"
             data-testid="page-container">
             <TitleBreadcrumb titleLinks={slashedTableName} />
 
-            <div data-testid="description-container">
+            <div className="tw-pl-2" data-testid="description-container">
               <Description
                 description={description}
                 entityName={databaseName}
@@ -256,7 +256,7 @@ const DatabaseDetails: FunctionComponent = () => {
                 setActiveTab={activeTabHandler}
                 tabs={tabs}
               />
-              <div className="tw-bg-white tw-flex-grow tw-py-4">
+              <div className="tw-bg-white tw-flex-grow tw--mx-6 tw-px-7 tw-py-4">
                 {activeTab === 1 && (
                   <>
                     <table

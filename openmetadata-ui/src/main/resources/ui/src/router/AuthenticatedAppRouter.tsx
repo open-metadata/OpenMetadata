@@ -15,7 +15,6 @@ import { isEmpty } from 'lodash';
 import React, { FunctionComponent } from 'react';
 import { Redirect, Route, Switch } from 'react-router-dom';
 import AppState from '../AppState';
-import Onboarding from '../components/onboarding/Onboarding'; // Remove this route once Onboarding is added to my-data
 import { ROUTES } from '../constants/constants';
 import { useAuth } from '../hooks/authHooks';
 import DashboardDetailsPage from '../pages/DashboardDetailsPage/DashboardDetailsPage.component';
@@ -91,7 +90,6 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         component={PipelineDetailsPage}
         path={ROUTES.PIPELINE_DETAILS_WITH_TAB}
       />
-      <Route component={Onboarding} path={ROUTES.ONBOARDING} />
       <Route exact component={EntityVersionPage} path={ROUTES.ENTITY_VERSION} />
       <Route exact component={IngestionPage} path={ROUTES.INGESTION} />
       {isAuthDisabled || isAdminUser ? (

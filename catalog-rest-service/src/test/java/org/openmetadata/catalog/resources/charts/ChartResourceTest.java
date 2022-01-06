@@ -77,7 +77,7 @@ public class ChartResourceTest extends EntityResourceTest<Chart> {
   }
 
   @Test
-  public void post_validCharts_as_admin_200_OK(TestInfo test) throws IOException {
+  void post_validCharts_as_admin_200_OK(TestInfo test) throws IOException {
     // Create team with different optional fields
     CreateChart create =
         create(test)
@@ -92,17 +92,17 @@ public class ChartResourceTest extends EntityResourceTest<Chart> {
   }
 
   @Test
-  public void post_chartWithUserOwner_200_ok(TestInfo test) throws IOException {
+  void post_chartWithUserOwner_200_ok(TestInfo test) throws IOException {
     createAndCheckEntity(create(test).withOwner(USER_OWNER1), adminAuthHeaders());
   }
 
   @Test
-  public void post_chartWithTeamOwner_200_ok(TestInfo test) throws IOException {
+  void post_chartWithTeamOwner_200_ok(TestInfo test) throws IOException {
     createAndCheckEntity(create(test).withOwner(TEAM_OWNER1).withDisplayName("chart1"), adminAuthHeaders());
   }
 
   @Test
-  public void post_chart_as_non_admin_401(TestInfo test) {
+  void post_chart_as_non_admin_401(TestInfo test) {
     CreateChart create = create(test);
     assertResponse(
         () -> createEntity(create, authHeaders("test@open-metadata.org")),
@@ -111,7 +111,7 @@ public class ChartResourceTest extends EntityResourceTest<Chart> {
   }
 
   @Test
-  public void post_chartWithoutRequiredFields_4xx(TestInfo test) {
+  void post_chartWithoutRequiredFields_4xx(TestInfo test) {
     // Service is required field
     assertResponse(
         () -> createEntity(create(test).withService(null), adminAuthHeaders()),
@@ -120,7 +120,7 @@ public class ChartResourceTest extends EntityResourceTest<Chart> {
   }
 
   @Test
-  public void post_chartWithDifferentService_200_ok(TestInfo test) throws IOException {
+  void post_chartWithDifferentService_200_ok(TestInfo test) throws IOException {
     EntityReference[] differentServices = {SUPERSET_REFERENCE, LOOKER_REFERENCE};
 
     // Create chart for each service and test APIs
@@ -142,13 +142,13 @@ public class ChartResourceTest extends EntityResourceTest<Chart> {
   }
 
   @Test
-  public void delete_emptyChart_200_ok(TestInfo test) throws HttpResponseException {
+  void delete_emptyChart_200_ok(TestInfo test) throws HttpResponseException {
     Chart chart = createEntity(create(test), adminAuthHeaders());
     deleteEntity(chart.getId(), adminAuthHeaders());
   }
 
   @Test
-  public void delete_nonEmptyChart_4xx() {
+  void delete_nonEmptyChart_4xx() {
     // TODO
   }
 

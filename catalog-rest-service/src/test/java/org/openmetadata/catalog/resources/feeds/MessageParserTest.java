@@ -21,7 +21,7 @@ import org.openmetadata.catalog.resources.feeds.MessageParser.EntityLink;
 
 public class MessageParserTest {
   @Test
-  public void parseMessage() {
+  void parseMessage() {
     String s =
         "abcd <angle1> <angle2> <angle3> "
             + // Text in angled brackets that are not entity links

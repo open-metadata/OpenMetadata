@@ -132,7 +132,7 @@ public class IngestionResourceTest extends EntityOperationsResourceTest<Ingestio
   }
 
   @Test
-  public void post_validIngestion_as_admin_200_OK(TestInfo test) throws IOException {
+  void post_validIngestion_as_admin_200_OK(TestInfo test) throws IOException {
     // Create team with different optional fields
     CreateIngestion create = create(test);
     createAndCheckEntity(create, adminAuthHeaders());
@@ -142,22 +142,22 @@ public class IngestionResourceTest extends EntityOperationsResourceTest<Ingestio
   }
 
   @Test
-  public void post_IngestionWithUserOwner_200_ok(TestInfo test) throws IOException {
+  void post_IngestionWithUserOwner_200_ok(TestInfo test) throws IOException {
     createAndCheckEntity(create(test).withOwner(USER_OWNER1), adminAuthHeaders());
   }
 
   @Test
-  public void post_IngestionWithTeamOwner_200_ok(TestInfo test) throws IOException {
+  void post_IngestionWithTeamOwner_200_ok(TestInfo test) throws IOException {
     createAndCheckEntity(create(test).withOwner(TEAM_OWNER1).withDisplayName("Ingestion1"), adminAuthHeaders());
   }
 
   @Test
-  public void post_IngestionWithConfig_200_ok(TestInfo test) throws IOException {
+  void post_IngestionWithConfig_200_ok(TestInfo test) throws IOException {
     createAndCheckEntity(create(test).withConnectorConfig(INGESTION_CONFIG), adminAuthHeaders());
   }
 
   @Test
-  public void post_Ingestion_as_non_admin_401(TestInfo test) {
+  void post_Ingestion_as_non_admin_401(TestInfo test) {
     CreateIngestion create = create(test);
     HttpResponseException exception =
         assertThrows(HttpResponseException.class, () -> createEntity(create, authHeaders("test@open-metadata.org")));
@@ -165,7 +165,7 @@ public class IngestionResourceTest extends EntityOperationsResourceTest<Ingestio
   }
 
   @Test
-  public void post_IngestionWithoutRequiredService_4xx(TestInfo test) {
+  void post_IngestionWithoutRequiredService_4xx(TestInfo test) {
     CreateIngestion create = create(test).withService(null);
     HttpResponseException exception =
         assertThrows(HttpResponseException.class, () -> createEntity(create, adminAuthHeaders()));
@@ -173,7 +173,7 @@ public class IngestionResourceTest extends EntityOperationsResourceTest<Ingestio
   }
 
   @Test
-  public void post_IngestionWithDeploy_4xx(TestInfo test) {
+  void post_IngestionWithDeploy_4xx(TestInfo test) {
     CreateIngestion create = create(test).withService(BIGQUERY_REFERENCE).withForceDeploy(true);
     HttpResponseException exception =
         assertThrows(HttpResponseException.class, () -> createEntity(create, adminAuthHeaders()));
@@ -181,7 +181,7 @@ public class IngestionResourceTest extends EntityOperationsResourceTest<Ingestio
   }
 
   @Test
-  public void post_IngestionWithDifferentService_200_ok(TestInfo test) throws IOException {
+  void post_IngestionWithDifferentService_200_ok(TestInfo test) throws IOException {
     EntityReference[] differentServices = {REDSHIFT_REFERENCE, BIGQUERY_REFERENCE};
 
     // Create Ingestion for each service and test APIs
@@ -192,7 +192,7 @@ public class IngestionResourceTest extends EntityOperationsResourceTest<Ingestio
   }
 
   @Test
-  public void put_IngestionUrlUpdate_200(TestInfo test) throws IOException {
+  void put_IngestionUrlUpdate_200(TestInfo test) throws IOException {
     CreateIngestion request =
         create(test)
             .withService(new EntityReference().withId(BIGQUERY_REFERENCE.getId()).withType("databaseService"))
@@ -222,7 +222,7 @@ public class IngestionResourceTest extends EntityOperationsResourceTest<Ingestio
   }
 
   @Test
-  public void put_IngestionUpdate_200(TestInfo test) throws IOException {
+  void put_IngestionUpdate_200(TestInfo test) throws IOException {
     CreateIngestion request = create(test).withService(BIGQUERY_REFERENCE).withDescription(null).withOwner(null);
     Ingestion ingestion = createAndCheckEntity(request, adminAuthHeaders());
 
@@ -235,13 +235,13 @@ public class IngestionResourceTest extends EntityOperationsResourceTest<Ingestio
   }
 
   @Test
-  public void delete_ingestion_200_ok(TestInfo test) throws HttpResponseException {
+  void delete_ingestion_200_ok(TestInfo test) throws HttpResponseException {
     Ingestion ingestion = createEntity(create(test), adminAuthHeaders());
     deleteEntity(ingestion.getId(), adminAuthHeaders());
   }
 
   @Test
-  public void delete_nonEmptyPipeline_4xx() {
+  void delete_nonEmptyPipeline_4xx() {
     // TODO
   }
 

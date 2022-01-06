@@ -9,6 +9,11 @@ import { ExploreSearchData } from '../../components/Explore/explore.interface';
 import MyData from '../../components/MyData/MyData.component';
 import { MyDataProps } from '../../components/MyData/MyData.interface';
 import Tour from '../../components/tour/Tour';
+import {
+  mockDatasetData,
+  mockFeedData,
+  mockSearchData as exploreSearchData,
+} from '../../constants/mockTourData.constants';
 import { CurrentTourPageType } from '../../enums/tour.enum';
 import {
   Table,
@@ -17,14 +22,10 @@ import {
 } from '../../generated/entity/data/table';
 import { TagLabel } from '../../generated/type/tagLabel';
 import { useTour } from '../../hooks/useTour';
-import { datasetData, mockFeedData } from './datasetDetailsData';
-import data from './mockData.json';
 
 const mockData = {
   data: { hits: { hits: [] } },
 };
-
-const exploreSearchData = data as unknown as ExploreSearchData;
 
 const exploreCount = {
   table: 4,
@@ -120,36 +121,36 @@ const TourPage = () => {
         return (
           <DatasetDetails
             activeTab={datasetActiveTab}
-            columns={datasetData.columns as unknown as Table['columns']}
+            columns={mockDatasetData.columns as unknown as Table['columns']}
             columnsUpdateHandler={handleCountChange}
-            datasetFQN={datasetData.datasetFQN}
-            description={datasetData.description}
+            datasetFQN={mockDatasetData.datasetFQN}
+            description={mockDatasetData.description}
             descriptionUpdateHandler={handleCountChange}
-            entityLineage={datasetData.entityLineage}
-            entityName={datasetData.entityName}
+            entityLineage={mockDatasetData.entityLineage}
+            entityName={mockDatasetData.entityName}
             followTableHandler={handleCountChange}
-            followers={datasetData.followers}
+            followers={mockDatasetData.followers}
             isNodeLoading={{
               id: undefined,
               state: false,
             }}
-            joins={datasetData.joins as unknown as TableJoins}
+            joins={mockDatasetData.joins as unknown as TableJoins}
             lineageLeafNodes={{} as LeafNodes}
             loadNodeHandler={handleCountChange}
             owner={undefined as unknown as DatasetOwner}
-            sampleData={datasetData.sampleData}
+            sampleData={mockDatasetData.sampleData}
             setActiveTabHandler={(tab) => setdatasetActiveTab(tab)}
             settingsUpdateHandler={() => Promise.resolve()}
-            slashedTableName={datasetData.slashedTableName}
-            tableDetails={datasetData.tableDetails as unknown as Table}
+            slashedTableName={mockDatasetData.slashedTableName}
+            tableDetails={mockDatasetData.tableDetails as unknown as Table}
             tableProfile={
-              datasetData.tableProfile as unknown as Table['tableProfile']
+              mockDatasetData.tableProfile as unknown as Table['tableProfile']
             }
-            tableTags={datasetData.tableTags}
+            tableTags={mockDatasetData.tableTags}
             tier={'' as unknown as TagLabel}
             unfollowTableHandler={handleCountChange}
             usageSummary={
-              datasetData.usageSummary as unknown as TypeUsedToReturnUsageDetailsOfAnEntity
+              mockDatasetData.usageSummary as unknown as TypeUsedToReturnUsageDetailsOfAnEntity
             }
             users={[]}
             versionHandler={handleCountChange}

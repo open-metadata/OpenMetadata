@@ -29,6 +29,10 @@ export const datasetTableTabs = [
     path: 'dbt',
   },
   {
+    name: 'Sample Data',
+    path: 'sample_data',
+  },
+  {
     name: 'Manage',
     path: 'manage',
   },
@@ -50,13 +54,17 @@ export const getCurrentDatasetTab = (tab: string) => {
 
       break;
 
-    case 'manage':
+    case 'sample_data':
       currentTab = 5;
 
       break;
 
+    case 'manage':
+      currentTab = 6;
+
+      break;
+
     case 'schema':
-    case 'sample_data':
     default:
       currentTab = 1;
 
