@@ -11,10 +11,10 @@ install:
 	python3 -m pip install ingestion/
 
 install_test:
-	python3 -m pip install -r ingestion/requirements-test.txt
+	python3 -m pip install "ingestion[test]/"
 
 install_dev:
-	python3 -m pip install -r ingestion/requirements-dev.txt
+	python3 -m pip install "ingestion[dev]/"
 
 precommit_install:
 	@echo "Installing pre-commit hooks"
@@ -55,7 +55,7 @@ sonar_ingestion:
 		--rm \
 		-e SONAR_HOST_URL="http://localhost:9000" \
 		#-e SONAR_LOGIN=$(token) \
-		-e SONAR_LOGIN=21482c1c85cc3d2d6860fff4c5ad9f3fb0a66e6a \
+		-e SONAR_LOGIN=a547ce2146c73ac5d1751c843242e4224e990d76 \
 		-v ${PWD}:/usr/src \
 		sonarsource/sonar-scanner-cli \
 		-Dproject.settings=ingestion/sonar-project.properties
