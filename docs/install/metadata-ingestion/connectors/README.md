@@ -24,10 +24,6 @@ OpenMetadata supports connectors to some popular services. We will continue as a
 * [Trino](../../../openmetadata/connectors/trino.md)
 * [Vertica](../../../openmetadata/connectors/vertica.md)
 
-**Data Model**
-
-* [DBT](broken-reference)
-
 #### Dashboard Services
 
 * [Looker](../../../openmetadata/connectors/looker.md)
