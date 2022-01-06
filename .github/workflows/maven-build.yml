@@ -17,7 +17,7 @@ on:
     paths:
       - "catalog-rest-service/**"
       - "openmetadata-ui/**"
-  pull_request:
+  pull_request_target:
     branches: [main]
     paths:
       - "catalog-rest-service/**"
