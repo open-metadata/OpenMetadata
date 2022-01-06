@@ -313,7 +313,7 @@ const DashboardDetails = ({
   return (
     <>
       <PageContainer>
-        <div className="tw-px-4 tw-w-full tw-h-full tw-flex tw-flex-col">
+        <div className="tw-px-6 tw-w-full tw-h-full tw-flex tw-flex-col">
           <EntityPageInfo
             isTagEditable
             entityName={entityName}
@@ -340,10 +340,10 @@ const DashboardDetails = ({
               tabs={tabs}
             />
 
-            <div className="tw-bg-white tw-flex-grow tw-mx-1">
+            <div className="tw-bg-white tw-flex-grow tw--mx-6 tw-px-7 tw-py-4">
               {activeTab === 1 && (
                 <>
-                  <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-w-full tw-mt-4">
+                  <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-w-full">
                     <div className="tw-col-span-full">
                       <Description
                         description={description}
@@ -494,7 +494,7 @@ const DashboardDetails = ({
                 </div>
               )}
               {activeTab === 3 && (
-                <div className="tw-mt-4">
+                <div>
                   <ManageTabComponent
                     currentTier={tier?.tagFQN}
                     currentUser={owner?.id}

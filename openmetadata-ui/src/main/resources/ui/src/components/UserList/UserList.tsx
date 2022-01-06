@@ -117,7 +117,7 @@ const UserList: FunctionComponent<Props> = ({
     return (
       <div className="tw-mb-3 ">
         <nav
-          className="tw-flex tw-flex-row tw-gh-tabs-container tw-px-4"
+          className="tw-flex tw-flex-row tw-gh-tabs-container"
           data-testid="tabs">
           <div className="tw-w-8/12">
             <button

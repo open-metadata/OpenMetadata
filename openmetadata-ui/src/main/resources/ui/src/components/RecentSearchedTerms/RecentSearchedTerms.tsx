@@ -60,7 +60,7 @@ const RecentSearchedTerms: FunctionComponent = () => {
           );
         })
       ) : (
-        <>No searched terms!</>
+        <>No searched terms.</>
       )}
     </>
   );

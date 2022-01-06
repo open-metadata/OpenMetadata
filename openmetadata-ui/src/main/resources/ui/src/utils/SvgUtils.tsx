@@ -82,6 +82,8 @@ import IconPlus from '../assets/svg/plus.svg';
 import IconProfilerColor from '../assets/svg/profiler-color.svg';
 import IconProfiler from '../assets/svg/profiler.svg';
 import IconHelpCircle from '../assets/svg/question-circle.svg';
+import IconSampleDataColor from '../assets/svg/sample-data-colored.svg';
+import IconSampleData from '../assets/svg/sample-data.svg';
 import IconSchemaColor from '../assets/svg/schema-color.svg';
 import IconSearchV1Color from '../assets/svg/search-color.svg';
 import IconSearchV1 from '../assets/svg/search.svg';
@@ -101,8 +103,6 @@ import IconVersionBlack from '../assets/svg/version-black.svg';
 import IconVersionWhite from '../assets/svg/version-white.svg';
 import IconVersion from '../assets/svg/version.svg';
 import IconWarning from '../assets/svg/warning.svg';
-import IconSampleDataColor from '../assets/svg/sample-data-colored.svg';
-import IconSampleData from '../assets/svg/sample-data.svg';
 
 type Props = {
   alt: string;

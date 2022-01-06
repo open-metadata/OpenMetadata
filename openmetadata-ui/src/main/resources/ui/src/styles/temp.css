@@ -407,6 +407,14 @@
   height: calc(100vh - 102px);
 }
 
+.container-fluid {
+  width: 100%;
+  padding-right: 15px;
+  padding-left: 15px;
+  margin-right: auto;
+  margin-left: auto;
+}
+
 .side-panel + .container-fluid {
   padding-left: 290px;
   min-height: 100%;
