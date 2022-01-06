@@ -191,6 +191,11 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     }
 
     @Override
+    public Boolean isDeleted() {
+      return entity.getDeleted();
+    }
+
+    @Override
     public EntityReference getOwner() {
       return entity.getOwner();
     }

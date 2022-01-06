@@ -381,6 +381,26 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
     deleteEntity(model.getId(), adminAuthHeaders());
   }
 
+  @Test
+  void delete_put_MlModel_200(TestInfo test) throws IOException {
+    // Create with empty description
+    CreateMlModel request = create(test).withDescription("");
+    MlModel model = createAndCheckEntity(request, adminAuthHeaders());
+
+    // Delete
+    deleteEntity(model.getId(), adminAuthHeaders());
+
+    ChangeDescription change = getChangeDescription(model.getVersion());
+    change.setFieldsUpdated(
+        Arrays.asList(
+            new FieldChange().withName("deleted").withNewValue(false).withOldValue(true),
+            new FieldChange().withName("description").withNewValue("updatedDescription").withOldValue("")));
+
+    // PUT with updated description and expect a MAJOR_UPDATE with updated description
+    updateAndCheckEntity(
+        request.withDescription("updatedDescription"), Status.OK, adminAuthHeaders(), MINOR_UPDATE, change);
+  }
+
   /** Validate returned fields GET .../models/{id}?fields="..." or GET .../models/name/{fqn}?fields="..." */
   @Override
   public void validateGetWithDifferentFields(MlModel model, boolean byName) throws HttpResponseException {

@@ -271,6 +271,11 @@ public class LocationRepository extends EntityRepository<Location> {
     }
 
     @Override
+    public Boolean isDeleted() {
+      return entity.getDeleted();
+    }
+
+    @Override
     public EntityReference getOwner() {
       return entity.getOwner();
     }

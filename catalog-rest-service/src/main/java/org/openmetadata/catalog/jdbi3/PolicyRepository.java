@@ -221,6 +221,11 @@ public class PolicyRepository extends EntityRepository<Policy> {
     }
 
     @Override
+    public Boolean isDeleted() {
+      return entity.getDeleted();
+    }
+
+    @Override
     public EntityReference getOwner() {
       return entity.getOwner();
     }

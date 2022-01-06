@@ -18,17 +18,20 @@ import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.openmetadata.catalog.security.SecurityUtil.authHeaders;
+import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
 import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import javax.ws.rs.client.WebTarget;
+import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
@@ -242,6 +245,25 @@ public class TopicResourceTest extends EntityResourceTest<Topic> {
   void delete_emptyTopic_200_ok(TestInfo test) throws HttpResponseException {
     Topic topic = createTopic(create(test), adminAuthHeaders());
     deleteEntity(topic.getId(), adminAuthHeaders());
+  }
+
+  @Test
+  void delete_put_Topic_200(TestInfo test) throws IOException {
+    CreateTopic request = create(test).withDescription("");
+    Topic topic = createEntity(request, adminAuthHeaders());
+
+    // Delete
+    deleteEntity(topic.getId(), adminAuthHeaders());
+
+    ChangeDescription change = getChangeDescription(topic.getVersion());
+    change.setFieldsUpdated(
+        Arrays.asList(
+            new FieldChange().withName("deleted").withNewValue(false).withOldValue(true),
+            new FieldChange().withName("description").withNewValue("updatedDescription").withOldValue("")));
+
+    // PUT with updated description
+    updateAndCheckEntity(
+        request.withDescription("updatedDescription"), Response.Status.OK, adminAuthHeaders(), MINOR_UPDATE, change);
   }
 
   @Test

@@ -58,6 +58,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import javax.ws.rs.client.WebTarget;
+import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.BeforeAll;
@@ -1021,6 +1022,25 @@ public class TableResourceTest extends EntityResourceTest<Table> {
   void delete_table_200_ok(TestInfo test) throws HttpResponseException {
     Table table = createEntity(create(test), adminAuthHeaders());
     deleteEntity(table.getId(), adminAuthHeaders());
+  }
+
+  @Test
+  void delete_put_Table_200(TestInfo test) throws IOException {
+    CreateTable request = create(test).withDatabase(DATABASE.getId()).withDescription("");
+    Table table = createEntity(request, adminAuthHeaders());
+
+    // Delete
+    deleteEntity(table.getId(), adminAuthHeaders());
+
+    ChangeDescription change = getChangeDescription(table.getVersion());
+    change.setFieldsUpdated(
+        Arrays.asList(
+            new FieldChange().withName("deleted").withNewValue(false).withOldValue(true),
+            new FieldChange().withName("description").withNewValue("updatedDescription").withOldValue("")));
+
+    // PUT with updated description
+    updateAndCheckEntity(
+        request.withDescription("updatedDescription"), Response.Status.OK, adminAuthHeaders(), MINOR_UPDATE, change);
   }
 
   @Test
