@@ -1,0 +1,268 @@
+/*
+ *  Copyright 2021 Collate
+ *  contributor license agreements. See the NOTICE file distributed with
+ *  this work for additional information regarding copyright ownership.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+package org.openmetadata.catalog.elasticsearch;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import javax.ws.rs.ProcessingException;
+import org.elasticsearch.action.ActionListener;
+import org.elasticsearch.action.update.UpdateRequest;
+import org.elasticsearch.action.update.UpdateResponse;
+import org.elasticsearch.client.RequestOptions;
+import org.elasticsearch.client.RestHighLevelClient;
+import org.elasticsearch.common.xcontent.XContentType;
+import org.elasticsearch.script.Script;
+import org.elasticsearch.script.ScriptType;
+import org.jdbi.v3.core.Jdbi;
+import org.openmetadata.catalog.Entity;
+import org.openmetadata.catalog.elasticsearch.ElasticSearchIndexDefinition.ElasticSearchIndexType;
+import org.openmetadata.catalog.entity.data.Dashboard;
+import org.openmetadata.catalog.entity.data.Pipeline;
+import org.openmetadata.catalog.entity.data.Table;
+import org.openmetadata.catalog.entity.data.Topic;
+import org.openmetadata.catalog.events.EventPubSub;
+import org.openmetadata.catalog.events.EventPublisher;
+import org.openmetadata.catalog.type.ChangeDescription;
+import org.openmetadata.catalog.type.ChangeEvent;
+import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.FieldChange;
+import org.openmetadata.catalog.util.ElasticSearchClientUtils;
+import org.openmetadata.catalog.util.JsonUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+public class ElasticSearchEventPublisher implements EventPublisher {
+  private static final Logger LOG = LoggerFactory.getLogger(ElasticSearchEventPublisher.class);
+  private RestHighLevelClient client;
+  private ElasticSearchIndexDefinition esIndexDefinition;
+
+  private final ActionListener<UpdateResponse> listener =
+      new ActionListener<>() {
+        @Override
+        public void onResponse(UpdateResponse updateResponse) {
+          LOG.info("Updated Elastic Search {}", updateResponse);
+        }
+
+        @Override
+        public void onFailure(Exception e) {
+          LOG.error("Failed to update Elastic Search", e);
+        }
+      };
+
+  public void init(Map<String, Object> config, Jdbi jdbi) {
+    ElasticSearchConfiguration esConfig = new ElasticSearchConfiguration(config);
+    this.client = ElasticSearchClientUtils.createElasticSearchClient(esConfig);
+    esIndexDefinition = new ElasticSearchIndexDefinition(client);
+    esIndexDefinition.createIndexes();
+  }
+
+  @Override
+  public void onStart() {
+    LOG.info("ElasticSearch Publisher Started");
+  }
+
+  @Override
+  public void publish(ChangeEvent event) {
+    LOG.info("log event {}", event);
+    try {
+      String entityType = event.getEntityType();
+      UpdateRequest updateRequest = null;
+      switch (entityType) {
+        case Entity.TABLE:
+          updateRequest = updateTable(event);
+          break;
+        case Entity.DASHBOARD:
+          updateRequest = updateDashboard(event);
+          break;
+        case Entity.TOPIC:
+          updateRequest = updateTopic(event);
+          break;
+        case Entity.PIPELINE:
+          updateRequest = updatePipeline(event);
+          break;
+      }
+      if (updateRequest != null) {
+        client.updateAsync(updateRequest, RequestOptions.DEFAULT, listener);
+      }
+    } catch (Exception e) {
+      LOG.error("failed to update ES doc", e);
+    }
+  }
+
+  @Override
+  public void onEvent(EventPubSub.ChangeEventHolder changeEventHolder, long sequence, boolean endOfBatch)
+      throws Exception {
+    ChangeEvent changeEvent = changeEventHolder.get();
+    long attemptTime = System.currentTimeMillis();
+    try {
+      publish(changeEvent);
+    } catch (ProcessingException ex) {
+      LOG.error("error", ex);
+    }
+  }
+
+  @Override
+  public void onShutdown() {
+    close();
+    LOG.info("Sample-EventPublisher-lifecycle-onShutdown");
+  }
+
+  private UpdateRequest applyChangeEvent(ChangeEvent event) {
+    String entityType = event.getEntityType();
+    ElasticSearchIndexType esIndexType = esIndexDefinition.getIndexMappingByEntityType(entityType);
+    UUID entityId = event.getEntityId();
+    ChangeDescription changeDescription = event.getChangeDescription();
+
+    List<FieldChange> fieldsAdded = changeDescription.getFieldsAdded();
+    StringBuilder scriptTxt = new StringBuilder();
+    Map<String, Object> fieldAddParams = new HashMap<>();
+    ESChangeDescription esChangeDescription =
+        ESChangeDescription.builder()
+            .updatedAt(event.getDateTime().getTime())
+            .updatedBy(event.getUserName())
+            .fieldsAdded(changeDescription.getFieldsAdded())
+            .fieldsUpdated(changeDescription.getFieldsUpdated())
+            .fieldsDeleted(changeDescription.getFieldsDeleted())
+            .build();
+    Map<String, Object> esChangeDescriptionDoc = JsonUtils.getMap(esChangeDescription);
+    fieldAddParams.put("change_description", esChangeDescriptionDoc);
+    fieldAddParams.put("last_updated_timestamp", event.getDateTime().getTime());
+    scriptTxt.append("ctx._source.change_descriptions.add(params.change_description); ");
+    scriptTxt.append("ctx._source.last_updated_timestamp=params.last_updated_timestamp;");
+    for (FieldChange fieldChange : fieldsAdded) {
+      if (fieldChange.getName().equalsIgnoreCase("followers")) {
+        List<EntityReference> entityReferences = (List<EntityReference>) fieldChange.getNewValue();
+        List<String> newFollowers = new ArrayList<>();
+        for (EntityReference follower : entityReferences) {
+          newFollowers.add(follower.getId().toString());
+        }
+        fieldAddParams.put(fieldChange.getName(), newFollowers);
+        scriptTxt.append("ctx._source.followers.addAll(params.followers);");
+      }
+    }
+
+    for (FieldChange fieldChange : changeDescription.getFieldsDeleted()) {
+      if (fieldChange.getName().equalsIgnoreCase("followers")) {
+        List<EntityReference> entityReferences = (List<EntityReference>) fieldChange.getOldValue();
+        for (EntityReference follower : entityReferences) {
+          fieldAddParams.put(fieldChange.getName(), follower.getId().toString());
+        }
+        scriptTxt.append("ctx._source.followers.removeAll(Collections.singleton(params.followers));");
+      }
+    }
+
+    if (!scriptTxt.toString().isEmpty()) {
+      Script script = new Script(ScriptType.INLINE, "painless", scriptTxt.toString(), fieldAddParams);
+      UpdateRequest updateRequest = new UpdateRequest(esIndexType.indexName, entityId.toString());
+      updateRequest.script(script);
+
+      return updateRequest;
+    } else {
+      return null;
+    }
+  }
+
+  private UpdateRequest updateTable(ChangeEvent event) throws IOException {
+    UpdateRequest updateRequest = null;
+    switch (event.getEventType()) {
+      case ENTITY_CREATED:
+        Table table = JsonUtils.readValue((String) event.getEntity(), Table.class);
+        TableESIndex tableESIndex = TableESIndex.builder(table, event.getEventType()).build();
+        updateRequest =
+            new UpdateRequest(ElasticSearchIndexType.TABLE_SEARCH_INDEX.indexName, table.getId().toString());
+        String json = JsonUtils.pojoToJson(tableESIndex);
+        updateRequest.doc(json, XContentType.JSON);
+        updateRequest.docAsUpsert(true);
+        break;
+      case ENTITY_UPDATED:
+        break;
+    }
+
+    return updateRequest;
+  }
+
+  private UpdateRequest updateTopic(ChangeEvent event) throws IOException {
+    UpdateRequest updateRequest = null;
+    switch (event.getEventType()) {
+      case ENTITY_CREATED:
+        Topic topic = JsonUtils.readValue((String) event.getEntity(), Topic.class);
+        TopicESIndex topicESIndex = TopicESIndex.builder(topic, event.getEventType()).build();
+        updateRequest =
+            new UpdateRequest(ElasticSearchIndexType.TOPIC_SEARCH_INDEX.indexName, topic.getId().toString());
+        String json = JsonUtils.pojoToJson(topicESIndex);
+        updateRequest.doc(json, XContentType.JSON);
+        updateRequest.docAsUpsert(true);
+        break;
+      case ENTITY_UPDATED:
+        break;
+    }
+    return updateRequest;
+  }
+
+  private UpdateRequest updateDashboard(ChangeEvent event) throws IOException {
+    UpdateRequest updateRequest = null;
+    switch (event.getEventType()) {
+      case ENTITY_CREATED:
+        Dashboard dashboard = JsonUtils.readValue((String) event.getEntity(), Dashboard.class);
+        DashboardESIndex dashboardESIndex = DashboardESIndex.builder(dashboard, event.getEventType()).build();
+        updateRequest =
+            new UpdateRequest(ElasticSearchIndexType.DASHBOARD_SEARCH_INDEX.indexName, dashboard.getId().toString());
+        break;
+      case ENTITY_UPDATED:
+        break;
+    }
+    return updateRequest;
+  }
+
+  private UpdateRequest updatePipeline(ChangeEvent event) throws IOException {
+    UpdateRequest updateRequest = null;
+    switch (event.getEventType()) {
+      case ENTITY_CREATED:
+        Pipeline pipeline = JsonUtils.readValue((String) event.getEntity(), Pipeline.class);
+        PipelineESIndex pipelineESIndex = PipelineESIndex.builder(pipeline, event.getEventType()).build();
+        updateRequest =
+            new UpdateRequest(ElasticSearchIndexType.PIPELINE_SEARCH_INDEX.indexName, pipeline.getId().toString());
+        break;
+      case ENTITY_UPDATED:
+        break;
+    }
+
+    return updateRequest;
+  }
+
+  private void scriptedUpsert(Object index, UpdateRequest updateRequest) {
+    String scriptTxt =
+        "for (k in params.keySet()) {if (k == 'change_descriptions') "
+            + "{ ctx._source.change_descriptions.addAll(params.change_descriptions) } "
+            + "else { ctx._source.put(k, params.get(k)) }}";
+    Map<String, Object> doc = JsonUtils.getMap(index);
+    Script script = new Script(ScriptType.INLINE, "painless", scriptTxt, doc);
+    updateRequest.script(script);
+    updateRequest.scriptedUpsert(true);
+  }
+
+  public void close() {
+    try {
+      this.client.close();
+    } catch (Exception e) {
+      LOG.error("Failed to close elastic search", e);
+    }
+  }
+}
