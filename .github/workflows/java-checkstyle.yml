@@ -16,7 +16,7 @@ jobs:
         with:
           args: "--set-exit-if-changed"
       - name: Check if formatter failed
-        if: steps.checkstyle.ouputs.exit_code == -1
+        if: steps.checkstyle.ouputs.exit_code != 0
         uses: actions/github-script@v3
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
