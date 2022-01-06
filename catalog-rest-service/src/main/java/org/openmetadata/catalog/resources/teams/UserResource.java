@@ -69,8 +69,9 @@ import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.RestUtil.PatchResponse;
 import org.openmetadata.catalog.util.ResultList;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
 
 @Path("/v1/users")
 @Api(value = "User collection", tags = "User collection")
@@ -78,7 +79,6 @@ import org.slf4j.LoggerFactory;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "users")
 public class UserResource {
-  public static final Logger LOG = LoggerFactory.getLogger(UserResource.class);
   public static final String COLLECTION_PATH = "v1/users/";
   private final UserRepository dao;
   private final Authorizer authorizer;

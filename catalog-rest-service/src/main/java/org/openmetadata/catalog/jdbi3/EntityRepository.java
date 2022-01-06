@@ -58,8 +58,9 @@ import org.openmetadata.catalog.util.RestUtil.PatchResponse;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.common.utils.CipherText;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
 
 /**
  * This is the base class used by Entity Resources to perform READ and WRITE operations to the backend database to
@@ -93,7 +94,6 @@ import org.slf4j.LoggerFactory;
  * information does not become stale.
  */
 public abstract class EntityRepository<T> {
-  public static final Logger LOG = LoggerFactory.getLogger(EntityRepository.class);
   private final String collectionPath;
   private final Class<T> entityClass;
   private final String entityName;

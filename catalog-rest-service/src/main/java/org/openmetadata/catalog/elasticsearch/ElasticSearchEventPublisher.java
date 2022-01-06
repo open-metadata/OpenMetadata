@@ -45,13 +45,13 @@ import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.util.ElasticSearchClientUtils;
 import org.openmetadata.catalog.util.JsonUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 
-public class ElasticSearchEventPublisher extends AbstractEventPublisher {
-  private static final Logger LOG = LoggerFactory.getLogger(ElasticSearchEventPublisher.class);
-  private final RestHighLevelClient client;
-  private final ElasticSearchIndexDefinition esIndexDefinition;
+@Slf4j
+
+public class ElasticSearchEventHandler implements EventHandler {
+  private RestHighLevelClient client;
+  private ElasticSearchIndexDefinition esIndexDefinition;
 
   public ElasticSearchEventPublisher(ElasticSearchConfiguration esConfig) {
     super(esConfig.getBatchSize(), new ArrayList<>());

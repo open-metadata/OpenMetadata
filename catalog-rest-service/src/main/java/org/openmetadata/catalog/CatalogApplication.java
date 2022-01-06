@@ -60,12 +60,13 @@ import org.openmetadata.catalog.security.NoopFilter;
 import org.openmetadata.catalog.security.auth.CatalogSecurityContextRequestFilter;
 import org.openmetadata.catalog.slack.SlackPublisherConfiguration;
 import org.openmetadata.catalog.slack.SlackWebhookEventPublisher;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+/** Main catalog application */
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
 
 /** Main catalog application */
 public class CatalogApplication extends Application<CatalogApplicationConfig> {
-  public static final Logger LOG = LoggerFactory.getLogger(CatalogApplication.class);
   private Authorizer authorizer;
 
   @Override
