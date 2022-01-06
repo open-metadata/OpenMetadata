@@ -276,8 +276,7 @@ public class UserResourceTest extends EntityResourceTest<User> {
    * @see TableResourceTest also tests GET user returns owns list
    */
   @Test
-  void patch_userNameChange_as_another_user_401(TestInfo test)
-      throws HttpResponseException, JsonProcessingException {
+  void patch_userNameChange_as_another_user_401(TestInfo test) throws HttpResponseException, JsonProcessingException {
     // Ensure username can't be changed using patch
     User user =
         createUser(
@@ -305,8 +304,7 @@ public class UserResourceTest extends EntityResourceTest<User> {
   }
 
   @Test
-  void patch_userNameChange_as_same_user_200_ok(TestInfo test)
-      throws HttpResponseException, JsonProcessingException {
+  void patch_userNameChange_as_same_user_200_ok(TestInfo test) throws HttpResponseException, JsonProcessingException {
     // Ensure username can't be changed using patch
     User user =
         createUser(
