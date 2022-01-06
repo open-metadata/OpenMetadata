@@ -17,13 +17,11 @@ import React, { FunctionComponent, useEffect, useRef, useState } from 'react';
 import ReactFlow, {
   addEdge,
   Connection,
-  Controls,
   Edge,
   Elements,
   FlowElement,
   ReactFlowProvider,
   removeElements,
-  ControlButton,
   Background,
   BackgroundVariant,
 } from 'react-flow-renderer';
@@ -46,6 +44,7 @@ import {
 import SVGIcons from '../../utils/SvgUtils';
 import { getEntityIcon } from '../../utils/TableUtils';
 import EntityInfoDrawer from '../EntityInfoDrawer/EntityInfoDrawer.component';
+import CustomControls from './CustomControls.component';
 import CustomNode from './CustomNode.component';
 import { EntityLineageProp, SelectedNode } from './EntityLineage.interface';
 
@@ -64,7 +63,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
   const [expandNode, setExpandNode] = useState<EntityReference | undefined>(
     undefined
   );
-  const [isEditMode, setEditMode] = useState<boolean>(false);
+  const [isEditMode] = useState<boolean>(false);
 
   const [tableColumns, setTableColumns] = useState<Column[]>([] as Column[]);
 
@@ -227,6 +226,8 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
           <ReactFlowProvider>
             <ReactFlow
               elements={elements as Elements}
+              maxZoom={2}
+              minZoom={0.5}
               nodeTypes={{
                 output: CustomNode,
                 input: CustomNode,
@@ -244,6 +245,10 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
               onNodeMouseEnter={onNodeMouseEnter}
               onNodeMouseLeave={onNodeMouseLeave}
               onNodeMouseMove={onNodeMouseMove}>
+              <CustomControls
+                className="tw-absolute tw-top-1 tw-left-1 tw-bottom-full tw-ml-4 tw-mt-4"
+                fitViewParams={{ minZoom: 0.5, maxZoom: 2.5 }}
+              />
               {isEditMode ? (
                 <Background
                   className="tw-text-grey-muted-lite tw-bg-body-main"
@@ -253,21 +258,6 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
                   variant={BackgroundVariant.Lines}
                 />
               ) : null}
-              <Controls
-                className="tw-top-1 tw-left-1 tw-bottom-full tw-ml-4 tw-mt-4"
-                showInteractive={false}>
-                <ControlButton
-                  onClick={() => {
-                    setEditMode((pre) => !pre);
-                    closeDrawer(false);
-                  }}>
-                  <SVGIcons
-                    alt="edit"
-                    icon={isEditMode ? 'icon-edit-primary' : 'icon-edit-black'}
-                    width="12"
-                  />
-                </ControlButton>
-              </Controls>
             </ReactFlow>
           </ReactFlowProvider>
         ) : (

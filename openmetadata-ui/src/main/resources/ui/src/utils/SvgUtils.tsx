@@ -105,6 +105,9 @@ import IconVersionBlack from '../assets/svg/version-black.svg';
 import IconVersionWhite from '../assets/svg/version-white.svg';
 import IconVersion from '../assets/svg/version.svg';
 import IconWarning from '../assets/svg/warning.svg';
+import IconFitView from '../assets/svg/fitview.svg';
+import IconControlPlus from '../assets/svg/control-plus.svg';
+import IconControlMinus from '../assets/svg/control-minus.svg';
 
 type Props = {
   alt: string;
@@ -207,6 +210,9 @@ export const Icons = {
   SEARCHV1COLOR: 'icon-searchv1color',
   SAMPLE_DATA: 'sample-data',
   SAMPLE_DATA_COLOR: 'sample-data-color',
+  FITVEW: 'icon-fitview',
+  CONTROLPLUS: 'icon-control-plus',
+  CONTROLMINUS: 'icon-control-minus',
 };
 
 const SVGIcons: FunctionComponent<Props> = ({
@@ -593,6 +599,18 @@ const SVGIcons: FunctionComponent<Props> = ({
       break;
     case Icons.SAMPLE_DATA_COLOR:
       IconComponent = IconSampleDataColor;
+
+      break;
+    case Icons.FITVEW:
+      IconComponent = IconFitView;
+
+      break;
+    case Icons.CONTROLPLUS:
+      IconComponent = IconControlPlus;
+
+      break;
+    case Icons.CONTROLMINUS:
+      IconComponent = IconControlMinus;
 
       break;
 
