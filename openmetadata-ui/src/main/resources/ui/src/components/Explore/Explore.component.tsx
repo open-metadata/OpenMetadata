@@ -385,12 +385,15 @@ const Explore: React.FC<ExploreProps> = ({
   };
   const getTabs = () => {
     return (
-      <div className="tw-mb-5">
-        <nav className="tw-flex tw-flex-row tw-gh-tabs-container tw-mx-9 lg:tw-pr-0 tw-justify-between">
+      <div className="tw-mb-5 tw-px-6 centered-layout">
+        <nav
+          className={classNames(
+            'tw-flex tw-flex-row tw-justify-between tw-gh-tabs-container'
+          )}>
           <div className="tw-flex">
-            <div className="tw-w-72 tw-flex-shrink-0">
+            <div className="tw-w-64 tw-mr-5 tw-flex-shrink-0">
               <Button
-                className={classNames('tw-underline tw-mt-5 tw-ml-5', {
+                className={classNames('tw-underline tw-mt-5', {
                   'tw-invisible': !isFilterSelected,
                 })}
                 size="custom"

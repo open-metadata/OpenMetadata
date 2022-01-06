@@ -291,6 +291,15 @@ a:focus {
   box-shadow: 0 -5px 5px -5px #d1cfc7;
 }
 
+.page-layout {
+  display: flex;
+  flex-direction: column;
+  flex-wrap: nowrap;
+  align-content: flex-start;
+  position: relative;
+  height: 100%;
+}
+
 .search-wrapper + .page-container {
   height: calc(100% - 104px);
 }

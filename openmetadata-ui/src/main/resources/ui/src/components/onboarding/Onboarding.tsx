@@ -11,64 +11,67 @@
  *  limitations under the License.
  */
 
-import classNames from 'classnames';
+import { uniqueId } from 'lodash';
 import React, { FC } from 'react';
-import SVGIcons, { Icons } from '../../utils/SvgUtils';
 
-const data = [
-  'Look at the popular data assets in your organization.',
-  'Data works well when it is owned. Take a look at the data assets that you own and claim ownership.',
-  'Follow the datasets that you frequently use to stay informed about it.',
+const stepsData = [
+  {
+    step: 1,
+    title: 'Explore Data',
+    description: 'Look at the popular data assets in your organization.',
+  },
+  {
+    step: 2,
+    title: 'Claim Ownership',
+    description:
+      'Data works well when it is owned. Take a look at the data assets that you own and claim ownership.',
+  },
+  {
+    step: 3,
+    title: 'Stay Up-to-date',
+    description:
+      'Follow the datasets that you frequently use to stay informed about it.',
+  },
 ];
 
-interface OnboardingProp {
-  showLogo?: boolean;
-}
-
-const Onboarding: FC<OnboardingProp> = ({
-  showLogo = true,
-}: OnboardingProp) => {
+const Onboarding: FC = () => {
   return (
     <div
-      className={classNames(
-        'tw-flex tw-items-center tw-justify-around tw-mt-10'
-      )}
+      className="tw-mt-10 tw-text-base tw-font-medium"
       data-testid="onboarding">
-      <div className="tw-p-4" style={{ maxWidth: '700px' }}>
-        <div className="tw-mb-6">
-          <h5>Welcome to OpenMetadata.</h5>
-          <p className="tw-font-normal">
-            A central place to discover and collaborate on all your data.
-          </p>
+      <div className="tw-text-center tw-text-xl tw-font-semibold tw-mb-1">
+        Welcome to OpenMetadata!
+      </div>
+      <div className="tw-mb-5">
+        <div className="tw-mb-3 tw-text-center">
+          A central place to discover and collaborate on all your data
         </div>
-        <div className="tw-text-base">
-          {data.map((d, i) => (
-            <div className="tw-flex tw-items-center tw-gap-4 tw-mb-5" key={i}>
-              <div className="tw-flex tw-items-center">
-                <span
-                  className="tw-w-6 tw-h-6 tw-flex tw-items-center tw-justify-center tw-font-normal tw-p-2 
-                  tw-bg-primary-lite tw-text-primary tw-rounded-full">
-                  {i + 1}
-                </span>
-              </div>
+        <div className="tw-grid tw-grid-cols-3 tw-gap-3 tw-mt-5">
+          {stepsData.map((data) => (
+            <div
+              className="tw-card tw-flex tw-flex-col tw-justify-between tw-p-5"
+              key={uniqueId()}>
               <div>
-                <p>{d}</p>
+                <div className="tw-flex tw-mb-2">
+                  <div className="tw-rounded-full tw-flex tw-justify-center tw-items-center tw-h-10 tw-w-10 tw-border-2 tw-border-primary tw-text-lg tw-font-bold tw-text-primary">
+                    {data.step}
+                  </div>
+                </div>
+
+                <h6
+                  className="tw-text-base tw-text-grey-body tw-font-medium"
+                  data-testid="service-name">
+                  {data.title}
+                </h6>
+
+                <p className="tw-text-grey-body tw-pb-1 tw-text-sm tw-mb-5">
+                  {data.description}
+                </p>
               </div>
             </div>
           ))}
         </div>
       </div>
-      {showLogo ? (
-        <div>
-          <SVGIcons
-            alt="OpenMetadata Logo"
-            className="tw-h-auto tw-filter tw-grayscale tw-opacity-50"
-            data-testid="logo"
-            icon={Icons.LOGO_SMALL}
-            width="350"
-          />
-        </div>
-      ) : null}
     </div>
   );
 };

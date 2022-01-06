@@ -103,7 +103,7 @@ public class MyDataPageTest {
   public void checkRecentViews() throws Exception {
     checkWhatsNew();
     WebElement recentViews =
-        webDriver.findElement(By.xpath("//*[text()[contains(.,'" + "No recently viewed data!" + "')]] "));
+        webDriver.findElement(By.xpath("//*[text()[contains(.,'" + "No recently viewed data." + "')]] "));
     if (!recentViews.isDisplayed()) {
       throw new Exception("There shouldn't be any viewed data");
     }
@@ -114,7 +114,7 @@ public class MyDataPageTest {
   public void checkRecentSearch() throws Exception {
     checkWhatsNew();
     WebElement recentSearch =
-        webDriver.findElement(By.xpath("//*[text()[contains(.,'" + "No searched terms!" + "')]] "));
+        webDriver.findElement(By.xpath("//*[text()[contains(.,'" + "No searched terms." + "')]] "));
     if (!recentSearch.isDisplayed()) {
       throw new Exception("There shouldn't be any searched terms");
     }
@@ -125,7 +125,7 @@ public class MyDataPageTest {
   public void checkMyDataTab() throws Exception {
     checkWhatsNew();
     WebElement myDataResults =
-        webDriver.findElement(By.xpath("//*[text()[contains(.,'" + "You have not owned anything yet!" + "')]] "));
+        webDriver.findElement(By.xpath("//*[text()[contains(.,'" + "You have not owned anything yet." + "')]] "));
     if (!myDataResults.isDisplayed()) {
       throw new Exception("There shouldn't be any owned data");
     }
@@ -136,7 +136,7 @@ public class MyDataPageTest {
   public void checkFollowingTab() throws Exception {
     checkWhatsNew();
     WebElement followResults =
-        webDriver.findElement(By.xpath("//*[text()[contains(.,'" + "You have not followed anything yet!" + "')]] "));
+        webDriver.findElement(By.xpath("//*[text()[contains(.,'" + "You have not followed anything yet." + "')]] "));
     if (!followResults.isDisplayed()) {
       throw new Exception("There shouldn't be any followed data");
     }
