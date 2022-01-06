@@ -16,7 +16,7 @@ jobs:
         with:
           args: "--set-exit-if-changed --offset 0 --length 120"
       - name: Create comment if checkstyle fails
-        if: failure()
+        if: ${{ failure() }}
         uses: actions/github-script@v5
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
