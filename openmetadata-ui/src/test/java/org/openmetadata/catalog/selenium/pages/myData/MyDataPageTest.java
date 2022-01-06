@@ -200,8 +200,8 @@ public class MyDataPageTest {
     Events.click(webDriver, By.cssSelector("[data-testid='image']"));
     Thread.sleep(2000);
     try {
-      WebElement spaceSearch = wait.until(ExpectedConditions.presenceOfElementLocated(
-          By.cssSelector("[data-testid='Recently-Search- ']")));
+      WebElement spaceSearch =
+          wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("[data-testid='Recently-Search- ']")));
       if (spaceSearch.isDisplayed()) {
         throw new Exception("Spaces are captured in Recent Search");
       }
