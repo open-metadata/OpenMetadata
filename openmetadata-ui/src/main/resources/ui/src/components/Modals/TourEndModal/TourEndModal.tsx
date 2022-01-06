@@ -28,9 +28,10 @@ const TourEndModal = ({ onSave }: TourEndModalProps) => {
             icon={Icons.LOGO_SMALL}
             width="70"
           />
-          <p className="tw-mt-5 tw-text-2xl">Hurray!</p>
-          <p className="tw-text-base tw-text-center tw-mt-3">
-            You have completed tour successfully, start exploring OpenMetadata.
+          <p className="tw-text-base tw-text-center tw-mt-5">
+            You’ve successfully completed the tour.
+            <br />
+            Get started with OpenMetadata.
           </p>
         </div>
         <div className="tw-modal-footer" data-testid="cta-container">
@@ -41,7 +42,7 @@ const TourEndModal = ({ onSave }: TourEndModalProps) => {
             type="submit"
             variant="contained"
             onClick={onSave}>
-            Start Exploring
+            Explore Now
           </Button>
         </div>
       </div>

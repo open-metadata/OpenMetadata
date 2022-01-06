@@ -82,6 +82,8 @@ import IconPlus from '../assets/svg/plus.svg';
 import IconProfilerColor from '../assets/svg/profiler-color.svg';
 import IconProfiler from '../assets/svg/profiler.svg';
 import IconHelpCircle from '../assets/svg/question-circle.svg';
+import IconSampleDataColor from '../assets/svg/sample-data-colored.svg';
+import IconSampleData from '../assets/svg/sample-data.svg';
 import IconSchemaColor from '../assets/svg/schema-color.svg';
 import IconSearchV1Color from '../assets/svg/search-color.svg';
 import IconSearchV1 from '../assets/svg/search.svg';
@@ -199,6 +201,8 @@ export const Icons = {
   PROFILERCOLOR: 'icon-profilercolor',
   MANAGECOLOR: 'icon-managecolor',
   SEARCHV1COLOR: 'icon-searchv1color',
+  SAMPLE_DATA: 'sample-data',
+  SAMPLE_DATA_COLOR: 'sample-data-color',
 };
 
 const SVGIcons: FunctionComponent<Props> = ({
@@ -567,6 +571,14 @@ const SVGIcons: FunctionComponent<Props> = ({
       break;
     case Icons.SEARCHV1COLOR:
       IconComponent = IconSearchV1Color;
+
+      break;
+    case Icons.SAMPLE_DATA:
+      IconComponent = IconSampleData;
+
+      break;
+    case Icons.SAMPLE_DATA_COLOR:
+      IconComponent = IconSampleDataColor;
 
       break;
 

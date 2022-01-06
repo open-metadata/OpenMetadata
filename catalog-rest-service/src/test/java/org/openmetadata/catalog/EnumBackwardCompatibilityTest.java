@@ -30,7 +30,7 @@ public class EnumBackwardCompatibilityTest {
    * number of the last enum. This will help catch new enum inadvertently being added in the middle.
    */
   @Test
-  public void testRelationshipEnumBackwardCompatible() {
+  void testRelationshipEnumBackwardCompatible() {
     assertEquals(15, Relationship.values().length);
     assertEquals(14, Relationship.APPLIED_TO.ordinal());
   }
@@ -40,7 +40,7 @@ public class EnumBackwardCompatibilityTest {
    * number of the last enum. This will help catch new enum inadvertently being added in the middle.
    */
   @Test
-  public void testTagLabelEnumBackwardCompatible() {
+  void testTagLabelEnumBackwardCompatible() {
     assertEquals(4, LabelType.values().length);
     assertEquals(3, LabelType.DERIVED.ordinal());
   }
@@ -50,7 +50,7 @@ public class EnumBackwardCompatibilityTest {
    * number of the last enum. This will help catch new enum inadvertently being added in the middle.
    */
   @Test
-  public void testTagStateEnumBackwardCompatible() {
+  void testTagStateEnumBackwardCompatible() {
     assertEquals(2, TagLabel.State.values().length);
     assertEquals(1, State.CONFIRMED.ordinal());
   }

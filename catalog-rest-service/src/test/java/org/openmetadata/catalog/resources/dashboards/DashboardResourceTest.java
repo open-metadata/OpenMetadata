@@ -32,11 +32,13 @@ import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import javax.ws.rs.core.Response;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -113,7 +115,7 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard> {
   }
 
   @Test
-  public void post_validDashboards_as_admin_200_OK(TestInfo test) throws IOException {
+  void post_validDashboards_as_admin_200_OK(TestInfo test) throws IOException {
     // Create team with different optional fields
     CreateDashboard create = create(test);
     createAndCheckEntity(create, adminAuthHeaders());
@@ -123,22 +125,22 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard> {
   }
 
   @Test
-  public void post_DashboardWithUserOwner_200_ok(TestInfo test) throws IOException {
+  void post_DashboardWithUserOwner_200_ok(TestInfo test) throws IOException {
     createAndCheckEntity(create(test).withOwner(USER_OWNER1), adminAuthHeaders());
   }
 
   @Test
-  public void post_DashboardWithTeamOwner_200_ok(TestInfo test) throws IOException {
+  void post_DashboardWithTeamOwner_200_ok(TestInfo test) throws IOException {
     createAndCheckEntity(create(test).withOwner(TEAM_OWNER1).withDisplayName("Dashboard1"), adminAuthHeaders());
   }
 
   @Test
-  public void post_DashboardWithCharts_200_ok(TestInfo test) throws IOException {
+  void post_DashboardWithCharts_200_ok(TestInfo test) throws IOException {
     createAndCheckEntity(create(test).withCharts(CHART_REFERENCES), adminAuthHeaders());
   }
 
   @Test
-  public void post_Dashboard_as_non_admin_401(TestInfo test) {
+  void post_Dashboard_as_non_admin_401(TestInfo test) {
     CreateDashboard create = create(test);
     assertResponse(
         () -> createDashboard(create, authHeaders("test@open-metadata.org")),
@@ -147,14 +149,14 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard> {
   }
 
   @Test
-  public void post_DashboardWithoutRequiredService_4xx(TestInfo test) {
+  void post_DashboardWithoutRequiredService_4xx(TestInfo test) {
     CreateDashboard create = create(test).withService(null);
     TestUtils.assertResponseContains(
         () -> createDashboard(create, adminAuthHeaders()), BAD_REQUEST, "service must not be null");
   }
 
   @Test
-  public void post_DashboardWithInvalidService_4xx(TestInfo test) {
+  void post_DashboardWithInvalidService_4xx(TestInfo test) {
     CreateDashboard create = create(test).withService(SUPERSET_INVALID_SERVICE_REFERENCE);
     HttpResponseException exception =
         assertThrows(HttpResponseException.class, () -> createDashboard(create, adminAuthHeaders()));
@@ -163,7 +165,7 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard> {
   }
 
   @Test
-  public void post_DashboardWithDifferentService_200_ok(TestInfo test) throws IOException {
+  void post_DashboardWithDifferentService_200_ok(TestInfo test) throws IOException {
     EntityReference[] differentServices = {SUPERSET_REFERENCE, LOOKER_REFERENCE};
 
     // Create Dashboard for each service and test APIs
@@ -188,7 +190,7 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard> {
   }
 
   @Test
-  public void put_DashboardChartsUpdate_200(TestInfo test) throws IOException {
+  void put_DashboardChartsUpdate_200(TestInfo test) throws IOException {
     CreateDashboard request = create(test).withService(SUPERSET_REFERENCE).withDescription(null);
     Dashboard dashboard = createAndCheckEntity(request, adminAuthHeaders());
 
@@ -206,7 +208,7 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard> {
   }
 
   @Test
-  public void put_AddRemoveDashboardChartsUpdate_200(TestInfo test) throws IOException {
+  void put_AddRemoveDashboardChartsUpdate_200(TestInfo test) throws IOException {
     CreateDashboard request = create(test).withService(SUPERSET_REFERENCE).withDescription(null);
     Dashboard dashboard = createAndCheckEntity(request, adminAuthHeaders());
 
@@ -225,14 +227,33 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard> {
   }
 
   @Test
-  public void delete_emptyDashboard_200_ok(TestInfo test) throws HttpResponseException {
+  void delete_emptyDashboard_200_ok(TestInfo test) throws HttpResponseException {
     Dashboard dashboard = createDashboard(create(test), adminAuthHeaders());
     deleteEntity(dashboard.getId(), adminAuthHeaders());
   }
 
   @Test
-  public void delete_nonEmptyDashboard_4xx() {
+  void delete_nonEmptyDashboard_4xx() {
     // TODO
+  }
+
+  @Test
+  void delete_put_Dashboard_200(TestInfo test) throws IOException {
+    CreateDashboard request = create(test).withDescription("");
+    Dashboard dashboard = createEntity(request, adminAuthHeaders());
+
+    // Delete
+    deleteEntity(dashboard.getId(), adminAuthHeaders());
+
+    ChangeDescription change = getChangeDescription(dashboard.getVersion());
+    change.setFieldsUpdated(
+        Arrays.asList(
+            new FieldChange().withName("deleted").withNewValue(false).withOldValue(true),
+            new FieldChange().withName("description").withNewValue("updatedDescription").withOldValue("")));
+
+    // PUT with updated description
+    updateAndCheckEntity(
+        request.withDescription("updatedDescription"), Response.Status.OK, adminAuthHeaders(), MINOR_UPDATE, change);
   }
 
   public Dashboard createDashboard(CreateDashboard create, Map<String, String> authHeaders)

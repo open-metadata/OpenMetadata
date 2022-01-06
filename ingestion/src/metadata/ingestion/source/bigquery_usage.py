@@ -106,6 +106,7 @@ class BigqueryUsageSource(Source[TableQuery]):
                                 aborted=0,
                                 database=str(database),
                                 sql=queryConfig["query"],
+                                service_name=self.config.service_name,
                             )
                             yield tq
         except Exception as err:

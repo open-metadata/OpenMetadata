@@ -18,6 +18,7 @@ import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.openmetadata.catalog.security.SecurityUtil.authHeaders;
+import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
 import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
@@ -25,8 +26,10 @@ import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+import javax.ws.rs.core.Response;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -42,8 +45,10 @@ import org.openmetadata.catalog.jdbi3.DashboardServiceRepository.DashboardServic
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.charts.ChartResource.ChartList;
 import org.openmetadata.catalog.resources.services.DashboardServiceResourceTest;
+import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.ChartType;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.TestUtils;
@@ -77,7 +82,7 @@ public class ChartResourceTest extends EntityResourceTest<Chart> {
   }
 
   @Test
-  public void post_validCharts_as_admin_200_OK(TestInfo test) throws IOException {
+  void post_validCharts_as_admin_200_OK(TestInfo test) throws IOException {
     // Create team with different optional fields
     CreateChart create =
         create(test)
@@ -92,17 +97,17 @@ public class ChartResourceTest extends EntityResourceTest<Chart> {
   }
 
   @Test
-  public void post_chartWithUserOwner_200_ok(TestInfo test) throws IOException {
+  void post_chartWithUserOwner_200_ok(TestInfo test) throws IOException {
     createAndCheckEntity(create(test).withOwner(USER_OWNER1), adminAuthHeaders());
   }
 
   @Test
-  public void post_chartWithTeamOwner_200_ok(TestInfo test) throws IOException {
+  void post_chartWithTeamOwner_200_ok(TestInfo test) throws IOException {
     createAndCheckEntity(create(test).withOwner(TEAM_OWNER1).withDisplayName("chart1"), adminAuthHeaders());
   }
 
   @Test
-  public void post_chart_as_non_admin_401(TestInfo test) {
+  void post_chart_as_non_admin_401(TestInfo test) {
     CreateChart create = create(test);
     assertResponse(
         () -> createEntity(create, authHeaders("test@open-metadata.org")),
@@ -111,7 +116,7 @@ public class ChartResourceTest extends EntityResourceTest<Chart> {
   }
 
   @Test
-  public void post_chartWithoutRequiredFields_4xx(TestInfo test) {
+  void post_chartWithoutRequiredFields_4xx(TestInfo test) {
     // Service is required field
     assertResponse(
         () -> createEntity(create(test).withService(null), adminAuthHeaders()),
@@ -120,7 +125,7 @@ public class ChartResourceTest extends EntityResourceTest<Chart> {
   }
 
   @Test
-  public void post_chartWithDifferentService_200_ok(TestInfo test) throws IOException {
+  void post_chartWithDifferentService_200_ok(TestInfo test) throws IOException {
     EntityReference[] differentServices = {SUPERSET_REFERENCE, LOOKER_REFERENCE};
 
     // Create chart for each service and test APIs
@@ -142,14 +147,33 @@ public class ChartResourceTest extends EntityResourceTest<Chart> {
   }
 
   @Test
-  public void delete_emptyChart_200_ok(TestInfo test) throws HttpResponseException {
+  void delete_emptyChart_200_ok(TestInfo test) throws HttpResponseException {
     Chart chart = createEntity(create(test), adminAuthHeaders());
     deleteEntity(chart.getId(), adminAuthHeaders());
   }
 
   @Test
-  public void delete_nonEmptyChart_4xx() {
+  void delete_nonEmptyChart_4xx() {
     // TODO
+  }
+
+  @Test
+  void delete_put_Chart_200(TestInfo test) throws IOException {
+    CreateChart request = create(test).withDescription("");
+    Chart chart = createEntity(request, adminAuthHeaders());
+
+    // Delete
+    deleteEntity(chart.getId(), adminAuthHeaders());
+
+    ChangeDescription change = getChangeDescription(chart.getVersion());
+    change.setFieldsUpdated(
+        Arrays.asList(
+            new FieldChange().withName("deleted").withNewValue(false).withOldValue(true),
+            new FieldChange().withName("description").withNewValue("updatedDescription").withOldValue("")));
+
+    // PUT with updated description
+    updateAndCheckEntity(
+        request.withDescription("updatedDescription"), Response.Status.OK, adminAuthHeaders(), MINOR_UPDATE, change);
   }
 
   /** Validate returned fields GET .../charts/{id}?fields="..." or GET .../charts/name/{fqn}?fields="..." */

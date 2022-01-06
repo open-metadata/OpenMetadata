@@ -29,6 +29,7 @@ class TableQuery(JsonSerializable):
         database: str,
         aborted: bool,
         sql: str,
+        service_name: str,
     ) -> None:
         """ """
         self.query = query
@@ -39,6 +40,7 @@ class TableQuery(JsonSerializable):
         self.database = database
         self.aborted = aborted
         self.sql = sql
+        self.service_name = service_name
 
 
 class TableColumn(BaseModel):
@@ -60,6 +62,7 @@ class TableUsageCount(BaseModel):
     database: str
     count: int = 1
     joins: TableColumnJoins
+    service_name: str
 
 
 class QueryParserData(BaseModel):
@@ -69,6 +72,7 @@ class QueryParserData(BaseModel):
     date: str
     database: str
     sql: str
+    service_name: str
 
     class Config:
         arbitrary_types_allowed = True

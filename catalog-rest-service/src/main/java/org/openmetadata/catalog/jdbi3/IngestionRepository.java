@@ -125,7 +125,7 @@ public class IngestionRepository extends EntityRepository<Ingestion> {
   }
 
   private EntityReference getService(Ingestion ingestion) throws IOException {
-    EntityReference ref = EntityUtil.getService(daoCollection.relationshipDAO(), ingestion.getId());
+    EntityReference ref = EntityUtil.getService(daoCollection.relationshipDAO(), Entity.INGESTION, ingestion.getId());
     return getService(Objects.requireNonNull(ref));
   }
 
@@ -159,6 +159,11 @@ public class IngestionRepository extends EntityRepository<Ingestion> {
     @Override
     public String getDisplayName() {
       return entity.getDisplayName();
+    }
+
+    @Override
+    public Boolean isDeleted() {
+      return entity.getDeleted();
     }
 
     @Override

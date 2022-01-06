@@ -33,7 +33,6 @@ logger = logging.getLogger(__name__)
 
 class MetadataUsageSinkConfig(ConfigModel):
     filename: str
-    service_name: str
 
 
 class MetadataUsageBulkSink(BulkSink):
@@ -48,6 +47,7 @@ class MetadataUsageBulkSink(BulkSink):
         super().__init__(ctx)
         self.config = config
         self.metadata_config = metadata_config
+        self.service_name = None
         self.wrote_something = False
         self.file_handler = open(self.config.filename, "r")
         self.metadata = OpenMetadata(self.metadata_config)
@@ -75,6 +75,7 @@ class MetadataUsageBulkSink(BulkSink):
             table_usage = TableUsageCount(**json.loads(record))
             if "." in table_usage.table:
                 table_usage.table = table_usage.table.split(".")[1]
+            self.service_name = table_usage.service_name
             table_entity = self.__get_table_entity(
                 table_usage.database, table_usage.table
             )
@@ -168,7 +169,7 @@ class MetadataUsageBulkSink(BulkSink):
                 return tbl_column.fullyQualifiedName.__root__
 
     def __get_table_entity(self, database_name: str, table_name: str) -> Table:
-        table_fqn = f"{self.config.service_name}.{database_name}.{table_name}"
+        table_fqn = f"{self.service_name}.{database_name}.{table_name}"
         table_entity = self.metadata.get_by_name(Table, fqdn=table_fqn)
         return table_entity
 

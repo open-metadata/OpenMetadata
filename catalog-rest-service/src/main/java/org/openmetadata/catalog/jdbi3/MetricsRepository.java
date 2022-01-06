@@ -110,7 +110,8 @@ public class MetricsRepository extends EntityRepository<Metrics> {
 
   private EntityReference getService(Metrics metrics) throws IOException { // Get service by metrics ID
     EntityReference ref =
-        EntityUtil.getService(daoCollection.relationshipDAO(), metrics.getId(), Entity.DASHBOARD_SERVICE);
+        EntityUtil.getService(
+            daoCollection.relationshipDAO(), Entity.METRICS, metrics.getId(), Entity.DASHBOARD_SERVICE);
     return getService(Objects.requireNonNull(ref));
   }
 
@@ -141,6 +142,11 @@ public class MetricsRepository extends EntityRepository<Metrics> {
     @Override
     public String getDisplayName() {
       return entity.getDisplayName();
+    }
+
+    @Override
+    public Boolean isDeleted() {
+      return entity.getDeleted();
     }
 
     @Override

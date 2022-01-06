@@ -30,12 +30,14 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import javax.ws.rs.client.WebTarget;
+import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 import org.apache.http.client.HttpResponseException;
 import org.joda.time.DateTime;
@@ -146,7 +148,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline> {
   }
 
   @Test
-  public void post_validPipelines_as_admin_200_OK(TestInfo test) throws IOException {
+  void post_validPipelines_as_admin_200_OK(TestInfo test) throws IOException {
     // Create team with different optional fields
     CreatePipeline create = create(test);
     createAndCheckEntity(create, adminAuthHeaders());
@@ -156,22 +158,22 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline> {
   }
 
   @Test
-  public void post_PipelineWithUserOwner_200_ok(TestInfo test) throws IOException {
+  void post_PipelineWithUserOwner_200_ok(TestInfo test) throws IOException {
     createAndCheckEntity(create(test).withOwner(USER_OWNER1), adminAuthHeaders());
   }
 
   @Test
-  public void post_PipelineWithTeamOwner_200_ok(TestInfo test) throws IOException {
+  void post_PipelineWithTeamOwner_200_ok(TestInfo test) throws IOException {
     createAndCheckEntity(create(test).withOwner(TEAM_OWNER1).withDisplayName("Pipeline1"), adminAuthHeaders());
   }
 
   @Test
-  public void post_PipelineWithTasks_200_ok(TestInfo test) throws IOException {
+  void post_PipelineWithTasks_200_ok(TestInfo test) throws IOException {
     createAndCheckEntity(create(test).withTasks(TASKS), adminAuthHeaders());
   }
 
   @Test
-  public void post_Pipeline_as_non_admin_401(TestInfo test) {
+  void post_Pipeline_as_non_admin_401(TestInfo test) {
     CreatePipeline create = create(test);
     HttpResponseException exception =
         assertThrows(HttpResponseException.class, () -> createPipeline(create, authHeaders("test@open-metadata.org")));
@@ -179,7 +181,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline> {
   }
 
   @Test
-  public void post_PipelineWithoutRequiredService_4xx(TestInfo test) {
+  void post_PipelineWithoutRequiredService_4xx(TestInfo test) {
     CreatePipeline create = create(test).withService(null);
     HttpResponseException exception =
         assertThrows(HttpResponseException.class, () -> createPipeline(create, adminAuthHeaders()));
@@ -187,7 +189,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline> {
   }
 
   @Test
-  public void post_PipelineWithDifferentService_200_ok(TestInfo test) throws IOException {
+  void post_PipelineWithDifferentService_200_ok(TestInfo test) throws IOException {
     EntityReference[] differentServices = {AIRFLOW_REFERENCE, PREFECT_REFERENCE};
 
     // Create Pipeline for each service and test APIs
@@ -209,7 +211,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline> {
   }
 
   @Test
-  public void put_PipelineUrlUpdate_200(TestInfo test) throws IOException, URISyntaxException {
+  void put_PipelineUrlUpdate_200(TestInfo test) throws IOException, URISyntaxException {
     CreatePipeline request =
         create(test)
             .withService(new EntityReference().withId(AIRFLOW_REFERENCE.getId()).withType("pipelineService"))
@@ -233,7 +235,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline> {
   }
 
   @Test
-  public void put_PipelineTasksUpdate_200(TestInfo test) throws IOException {
+  void put_PipelineTasksUpdate_200(TestInfo test) throws IOException {
     CreatePipeline request = create(test).withService(AIRFLOW_REFERENCE).withDescription(null);
     Pipeline pipeline = createAndCheckEntity(request, adminAuthHeaders());
 
@@ -246,7 +248,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline> {
   }
 
   @Test
-  public void put_AddRemovePipelineTasksUpdate_200(TestInfo test) throws IOException, URISyntaxException {
+  void put_AddRemovePipelineTasksUpdate_200(TestInfo test) throws IOException, URISyntaxException {
     CreatePipeline request =
         create(test)
             .withService(AIRFLOW_REFERENCE)
@@ -287,14 +289,33 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline> {
   }
 
   @Test
-  public void delete_emptyPipeline_200_ok(TestInfo test) throws HttpResponseException {
+  void delete_emptyPipeline_200_ok(TestInfo test) throws HttpResponseException {
     Pipeline pipeline = createPipeline(create(test), adminAuthHeaders());
     deleteEntity(pipeline.getId(), adminAuthHeaders());
   }
 
   @Test
-  public void delete_nonEmptyPipeline_4xx() {
+  void delete_nonEmptyPipeline_4xx() {
     // TODO
+  }
+
+  @Test
+  void delete_put_Pipeline_200(TestInfo test) throws IOException {
+    CreatePipeline request = create(test).withService(AIRFLOW_REFERENCE).withDescription("");
+    Pipeline pipeline = createEntity(request, adminAuthHeaders());
+
+    // Delete
+    deleteEntity(pipeline.getId(), adminAuthHeaders());
+
+    ChangeDescription change = getChangeDescription(pipeline.getVersion());
+    change.setFieldsUpdated(
+        Arrays.asList(
+            new FieldChange().withName("deleted").withNewValue(false).withOldValue(true),
+            new FieldChange().withName("description").withNewValue("updatedDescription").withOldValue("")));
+
+    // PUT with updated description
+    updateAndCheckEntity(
+        request.withDescription("updatedDescription"), Response.Status.OK, adminAuthHeaders(), MINOR_UPDATE, change);
   }
 
   public static Pipeline updatePipeline(CreatePipeline create, Status status, Map<String, String> authHeaders)

@@ -45,10 +45,9 @@ class SnowflakeUsageSource(Source[TableQuery]):
 
     def __init__(self, config, metadata_config, ctx):
         super().__init__(ctx)
+        self.config = config
         start, end = get_start_and_end(config.duration)
         self.analysis_date = start
-        print(start)
-        print(end)
         self.sql_stmt = SnowflakeUsageSource.SQL_STATEMENT.format(
             start_date=start, end_date=end
         )
@@ -92,6 +91,7 @@ class SnowflakeUsageSource(Source[TableQuery]):
                 aborted=True if "1969" in str(row["end_time"]) else False,
                 database=row["database_name"],
                 sql=row["query_text"],
+                service_name=self.config.service_name,
             )
             if row["schema_name"] is not None:
                 self.report.scanned(f"{row['database_name']}.{row['schema_name']}")

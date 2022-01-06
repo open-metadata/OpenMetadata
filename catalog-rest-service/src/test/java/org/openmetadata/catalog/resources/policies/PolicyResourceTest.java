@@ -31,12 +31,14 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import javax.ws.rs.client.WebTarget;
+import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.BeforeAll;
@@ -128,7 +130,7 @@ public class PolicyResourceTest extends EntityResourceTest<Policy> {
   }
 
   @Test
-  public void post_PolicyWithoutPolicyType_400_badRequest(TestInfo test) {
+  void post_PolicyWithoutPolicyType_400_badRequest(TestInfo test) {
     CreatePolicy create = create(test).withPolicyType(null);
     HttpResponseException exception =
         assertThrows(HttpResponseException.class, () -> createPolicy(create, adminAuthHeaders()));
@@ -136,7 +138,7 @@ public class PolicyResourceTest extends EntityResourceTest<Policy> {
   }
 
   @Test
-  public void post_validPolicies_as_admin_200_OK(TestInfo test) throws IOException {
+  void post_validPolicies_as_admin_200_OK(TestInfo test) throws IOException {
     // Create valid policy
     CreatePolicy create = create(test);
     createAndCheckEntity(create, adminAuthHeaders());
@@ -145,25 +147,25 @@ public class PolicyResourceTest extends EntityResourceTest<Policy> {
   }
 
   @Test
-  public void post_PolicyWithUserOwner_200_ok(TestInfo test) throws IOException {
+  void post_PolicyWithUserOwner_200_ok(TestInfo test) throws IOException {
     CreatePolicy create = create(test).withOwner(USER_OWNER1);
     createAndCheckEntity(create, adminAuthHeaders());
   }
 
   @Test
-  public void post_PolicyWithTeamOwner_200_ok(TestInfo test) throws IOException {
+  void post_PolicyWithTeamOwner_200_ok(TestInfo test) throws IOException {
     CreatePolicy create = create(test).withOwner(TEAM_OWNER1);
     createAndCheckEntity(create, adminAuthHeaders());
   }
 
   @Test
-  public void post_AccessControlPolicyWithValidRules_200_ok(TestInfo test) throws IOException {
+  void post_AccessControlPolicyWithValidRules_200_ok(TestInfo test) throws IOException {
     CreatePolicy create = createAccessControlPolicyWithValidRules(test);
     createAndCheckEntity(create, adminAuthHeaders());
   }
 
   @Test
-  public void post_AccessControlPolicyWithInvalidRules_400_error(TestInfo test) throws IOException {
+  void post_AccessControlPolicyWithInvalidRules_400_error(TestInfo test) throws IOException {
     CreatePolicy create = createAccessControlPolicyWithInvalidRules(test);
     HttpResponseException exception =
         assertThrows(HttpResponseException.class, () -> createEntity(create, adminAuthHeaders()));
@@ -175,7 +177,7 @@ public class PolicyResourceTest extends EntityResourceTest<Policy> {
   }
 
   @Test
-  public void post_Policy_as_non_admin_401(TestInfo test) {
+  void post_Policy_as_non_admin_401(TestInfo test) {
     CreatePolicy create = create(test);
     HttpResponseException exception =
         assertThrows(HttpResponseException.class, () -> createPolicy(create, authHeaders("test@open-metadata.org")));
@@ -183,7 +185,7 @@ public class PolicyResourceTest extends EntityResourceTest<Policy> {
   }
 
   @Test
-  public void get_PolicyListWithInvalidLimitOffset_4xx() {
+  void get_PolicyListWithInvalidLimitOffset_4xx() {
     // Limit must be >= 1 and <= 1000,000
     HttpResponseException exception =
         assertThrows(HttpResponseException.class, () -> listPolicies(null, -1, null, null, adminAuthHeaders()));
@@ -198,7 +200,7 @@ public class PolicyResourceTest extends EntityResourceTest<Policy> {
   }
 
   @Test
-  public void get_PolicyListWithInvalidPaginationCursors_4xx() {
+  void get_PolicyListWithInvalidPaginationCursors_4xx() {
     // Passing both before and after cursors is invalid
     HttpResponseException exception =
         assertThrows(HttpResponseException.class, () -> listPolicies(null, 1, "", "", adminAuthHeaders()));
@@ -206,7 +208,7 @@ public class PolicyResourceTest extends EntityResourceTest<Policy> {
   }
 
   @Test
-  public void get_PolicyListWithValidLimitOffset_4xx(TestInfo test) throws HttpResponseException {
+  void get_PolicyListWithValidLimitOffset_4xx(TestInfo test) throws HttpResponseException {
     // Create a large number of Policies
     int maxPolicies = 40;
     for (int i = 0; i < maxPolicies; i++) {
@@ -267,7 +269,7 @@ public class PolicyResourceTest extends EntityResourceTest<Policy> {
   }
 
   @Test
-  public void patch_PolicyAttributes_200_ok(TestInfo test) throws IOException {
+  void patch_PolicyAttributes_200_ok(TestInfo test) throws IOException {
     Policy policy = createAndCheckEntity(create(test), adminAuthHeaders());
 
     URI uri = null;
@@ -308,13 +310,32 @@ public class PolicyResourceTest extends EntityResourceTest<Policy> {
   }
 
   @Test
-  public void delete_emptyPolicy_200_ok(TestInfo test) throws HttpResponseException {
+  void delete_emptyPolicy_200_ok(TestInfo test) throws HttpResponseException {
     Policy policy = createPolicy(create(test), adminAuthHeaders());
     deleteEntity(policy.getId(), adminAuthHeaders());
   }
 
   @Test
-  public void delete_nonEmptyPolicy_4xx() {
+  void delete_put_Policy_200(TestInfo test) throws IOException {
+    CreatePolicy request = create(test).withDescription("");
+    Policy policy = createEntity(request, adminAuthHeaders());
+
+    // Delete
+    deleteEntity(policy.getId(), adminAuthHeaders());
+
+    ChangeDescription change = getChangeDescription(policy.getVersion());
+    change.setFieldsUpdated(
+        Arrays.asList(
+            new FieldChange().withName("deleted").withNewValue(false).withOldValue(true),
+            new FieldChange().withName("description").withNewValue("updatedDescription").withOldValue("")));
+
+    // PUT with updated description
+    updateAndCheckEntity(
+        request.withDescription("updatedDescription"), Response.Status.OK, adminAuthHeaders(), MINOR_UPDATE, change);
+  }
+
+  @Test
+  void delete_nonEmptyPolicy_4xx() {
     // TODO
   }
 

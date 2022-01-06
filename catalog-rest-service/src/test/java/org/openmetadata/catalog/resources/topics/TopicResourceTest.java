@@ -18,17 +18,20 @@ import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.openmetadata.catalog.security.SecurityUtil.authHeaders;
+import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
 import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import javax.ws.rs.client.WebTarget;
+import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
@@ -57,7 +60,7 @@ public class TopicResourceTest extends EntityResourceTest<Topic> {
   }
 
   @Test
-  public void post_validTopics_as_admin_200_OK(TestInfo test) throws IOException {
+  void post_validTopics_as_admin_200_OK(TestInfo test) throws IOException {
     // Create team with different optional fields
     CreateTopic create = create(test);
     createAndCheckEntity(create, adminAuthHeaders());
@@ -69,17 +72,17 @@ public class TopicResourceTest extends EntityResourceTest<Topic> {
   }
 
   @Test
-  public void post_topicWithUserOwner_200_ok(TestInfo test) throws IOException {
+  void post_topicWithUserOwner_200_ok(TestInfo test) throws IOException {
     createAndCheckEntity(create(test).withOwner(USER_OWNER1), adminAuthHeaders());
   }
 
   @Test
-  public void post_topicWithTeamOwner_200_ok(TestInfo test) throws IOException {
+  void post_topicWithTeamOwner_200_ok(TestInfo test) throws IOException {
     createAndCheckEntity(create(test).withOwner(TEAM_OWNER1), adminAuthHeaders());
   }
 
   @Test
-  public void post_topic_as_non_admin_401(TestInfo test) {
+  void post_topic_as_non_admin_401(TestInfo test) {
     CreateTopic create = create(test);
     HttpResponseException exception =
         assertThrows(HttpResponseException.class, () -> createTopic(create, authHeaders("test@open-metadata.org")));
@@ -87,7 +90,7 @@ public class TopicResourceTest extends EntityResourceTest<Topic> {
   }
 
   @Test
-  public void post_topicWithoutRequiredFields_4xx(TestInfo test) {
+  void post_topicWithoutRequiredFields_4xx(TestInfo test) {
     // Service is required field
     HttpResponseException exception =
         assertThrows(
@@ -108,7 +111,7 @@ public class TopicResourceTest extends EntityResourceTest<Topic> {
   }
 
   @Test
-  public void post_topicWithDifferentService_200_ok(TestInfo test) throws IOException {
+  void post_topicWithDifferentService_200_ok(TestInfo test) throws IOException {
     EntityReference[] differentServices = {PULSAR_REFERENCE, KAFKA_REFERENCE};
 
     // Create topic for each service and test APIs
@@ -130,7 +133,7 @@ public class TopicResourceTest extends EntityResourceTest<Topic> {
   }
 
   @Test
-  public void put_topicAttributes_200_ok(TestInfo test) throws IOException {
+  void put_topicAttributes_200_ok(TestInfo test) throws IOException {
     CreateTopic createTopic =
         create(test)
             .withOwner(USER_OWNER1)
@@ -183,7 +186,7 @@ public class TopicResourceTest extends EntityResourceTest<Topic> {
   }
 
   @Test
-  public void patch_topicAttributes_200_ok(TestInfo test) throws IOException {
+  void patch_topicAttributes_200_ok(TestInfo test) throws IOException {
     CreateTopic createTopic =
         create(test)
             .withOwner(USER_OWNER1)
@@ -239,13 +242,32 @@ public class TopicResourceTest extends EntityResourceTest<Topic> {
   }
 
   @Test
-  public void delete_emptyTopic_200_ok(TestInfo test) throws HttpResponseException {
+  void delete_emptyTopic_200_ok(TestInfo test) throws HttpResponseException {
     Topic topic = createTopic(create(test), adminAuthHeaders());
     deleteEntity(topic.getId(), adminAuthHeaders());
   }
 
   @Test
-  public void delete_nonEmptyTopic_4xx() {
+  void delete_put_Topic_200(TestInfo test) throws IOException {
+    CreateTopic request = create(test).withDescription("");
+    Topic topic = createEntity(request, adminAuthHeaders());
+
+    // Delete
+    deleteEntity(topic.getId(), adminAuthHeaders());
+
+    ChangeDescription change = getChangeDescription(topic.getVersion());
+    change.setFieldsUpdated(
+        Arrays.asList(
+            new FieldChange().withName("deleted").withNewValue(false).withOldValue(true),
+            new FieldChange().withName("description").withNewValue("updatedDescription").withOldValue("")));
+
+    // PUT with updated description
+    updateAndCheckEntity(
+        request.withDescription("updatedDescription"), Response.Status.OK, adminAuthHeaders(), MINOR_UPDATE, change);
+  }
+
+  @Test
+  void delete_nonEmptyTopic_4xx() {
     // TODO
   }
 

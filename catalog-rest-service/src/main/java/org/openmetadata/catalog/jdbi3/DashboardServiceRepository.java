@@ -125,6 +125,11 @@ public class DashboardServiceRepository extends EntityRepository<DashboardServic
     }
 
     @Override
+    public Boolean isDeleted() {
+      return entity.getDeleted();
+    }
+
+    @Override
     public String getFullyQualifiedName() {
       return entity.getName();
     }

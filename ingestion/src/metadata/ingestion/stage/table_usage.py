@@ -112,6 +112,7 @@ class TableUsageStage(Stage[QueryParserData]):
                         database=record.database,
                         date=record.date,
                         joins=joins,
+                        service_name=record.service_name,
                     )
                 self.table_usage[table] = table_usage_count
 
