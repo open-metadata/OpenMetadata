@@ -108,6 +108,24 @@ plugins: Dict[str, Set[str]] = {
     "okta": {"okta~=2.3.0"},
     "mlflow": {"mlflow-skinny~=1.22.0"},
 }
+dev = {
+    "boto3==1.20.14",
+    "botocore==1.23.14",
+    "datamodel-code-generator==0.11.14",
+    "docker",
+    "google-cloud-storage==1.43.0",
+    "twine",
+}
+test = {
+    "black",
+    "isort",
+    "pre-commit",
+    "pylint",
+    "pytest",
+    "pytest-cov",
+    "faker",
+    "coverage",
+}
 
 build_options = {"includes": ["_cffi_backend"]}
 setup(
@@ -138,6 +156,8 @@ setup(
     install_requires=list(base_requirements),
     extras_require={
         "base": list(base_requirements),
+        "dev": list(dev),
+        "test": list(test),
         **{plugin: list(dependencies) for (plugin, dependencies) in plugins.items()},
         "all": list(
             base_requirements.union(
