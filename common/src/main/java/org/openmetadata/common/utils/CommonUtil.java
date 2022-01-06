@@ -31,12 +31,12 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
 
 public final class CommonUtil {
-  public static final Logger LOG = LoggerFactory.getLogger(CommonUtil.class);
-
+ 
   private CommonUtil() {}
 
   /** Get resources from jar file or directories in the class path matching pattern */

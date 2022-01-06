@@ -25,13 +25,13 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.openmetadata.catalog.resources.CollectionRegistry;
 import org.openmetadata.catalog.resources.EmbeddedMySqlSupport;
 import org.openmetadata.catalog.resources.events.WebhookCallbackResource;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
 
 @ExtendWith(EmbeddedMySqlSupport.class)
 @ExtendWith(DropwizardExtensionsSupport.class)
 public abstract class CatalogApplicationTest {
-  public static final Logger LOG = LoggerFactory.getLogger(CatalogApplicationTest.class);
 
   protected static final String CONFIG_PATH;
   public static final DropwizardAppExtension<CatalogApplicationConfig> APP;

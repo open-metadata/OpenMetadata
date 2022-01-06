@@ -46,8 +46,9 @@ import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.resources.teams.UserResource;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.type.EntityLineage;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
 
 @Path("/v1/lineage")
 @Api(value = "Lineage resource", tags = "Lineage resource")
@@ -55,7 +56,7 @@ import org.slf4j.LoggerFactory;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "lineage")
 public class LineageResource {
-  private static final Logger LOG = LoggerFactory.getLogger(UserResource.class);
+  
   private final LineageRepository dao;
 
   @Inject

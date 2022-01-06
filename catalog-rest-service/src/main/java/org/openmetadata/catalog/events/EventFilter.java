@@ -25,13 +25,12 @@ import javax.ws.rs.ext.Provider;
 import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.util.ParallelStreamUtil;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
 
 @Provider
 public class EventFilter implements ContainerResponseFilter {
-
-  private static final Logger LOG = LoggerFactory.getLogger(EventFilter.class);
   private static final List<String> AUDITABLE_METHODS = Arrays.asList("POST", "PUT", "PATCH", "DELETE");
   private static final int FORK_JOIN_POOL_PARALLELISM = 20;
   private final ForkJoinPool forkJoinPool;

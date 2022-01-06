@@ -23,12 +23,13 @@ import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.core.UriInfo;
 import org.openmetadata.catalog.security.auth.CatalogSecurityContext;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
 
 @Priority(100)
 public class CatalogOpenIdAuthorizationRequestFilter implements ContainerRequestFilter {
-  private static final Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
+
   public static final String X_AUTH_PARAMS_EMAIL_HEADER = "X-Auth-Params-Email";
   public static final String EMAIL_ADDRESS = "emailAddress";
   private static final String HEALTH_AGENT = "health-agent";

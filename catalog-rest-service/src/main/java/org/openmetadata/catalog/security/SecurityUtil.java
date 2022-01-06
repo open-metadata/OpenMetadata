@@ -20,11 +20,10 @@ import javax.ws.rs.client.Invocation;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.SecurityContext;
 import org.openmetadata.catalog.type.EntityReference;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 public final class SecurityUtil {
-  private static final Logger LOG = LoggerFactory.getLogger(SecurityUtil.class);
 
   private SecurityUtil() {}
 

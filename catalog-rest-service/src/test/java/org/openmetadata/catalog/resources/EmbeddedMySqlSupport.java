@@ -24,11 +24,11 @@ import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.extension.AfterAllCallback;
 import org.junit.jupiter.api.extension.BeforeAllCallback;
 import org.junit.jupiter.api.extension.ExtensionContext;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
 
 public class EmbeddedMySqlSupport implements BeforeAllCallback, AfterAllCallback {
-  public static final Logger LOG = LoggerFactory.getLogger(EmbeddedMySqlSupport.class);
   static EmbeddedMysql embeddedMysql;
 
   @Override
