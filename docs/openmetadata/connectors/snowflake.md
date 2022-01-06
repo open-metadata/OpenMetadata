@@ -116,8 +116,8 @@ Note: The `source.config` field in the configuration JSON will include the major
       "host_port": "account.region.service.snowflakecomputing.com",
       "username": "username",
       "password": "strong_password",
-      "database": "SNOWFLAKE_SAMPLE_DATA",
       "warehouse": "DEMO",
+      "database": "SNOWFLAKE_SAMPLE_DATA",
       "account": "account_name",
       "service_name": "snowflake",
       "data_profiler_enabled": "false",
@@ -157,6 +157,7 @@ Note: The `source.config` field in the configuration JSON will include the major
       "host_port": "account.region.service.snowflakecomputing.com",
       "username": "OKTA_USER",
       "password": "OKTA_PASSWORD",
+      "warehouse": "DEMO",
       "database": "SNOWFLAKE_SAMPLE_DATA",
       "account": "account_name",
       "service_name": "snowflake",
@@ -199,6 +200,7 @@ Note: The `source.config` field in the configuration JSON will include the major
     "config": {
       "host_port": "account.region.service.snowflakecomputing.com",
       "username": "email",
+      "warehouse": "DEMO",
       "database": "SNOWFLAKE_SAMPLE_DATA",
       "account": "account_name",
       "service_name": "snowflake",
@@ -270,6 +272,14 @@ OpenMetadata uniquely identifies services by their `service_name`. Edit the valu
 
 ```json
 "service_name": "snowflake"
+```
+
+#### warehouse
+
+Edit the value for `source.config.warehouse` with the name of the Snowflake warehouse from which you want to ingest metadata.
+
+```
+// Some code
 ```
 
 #### database (optional)
