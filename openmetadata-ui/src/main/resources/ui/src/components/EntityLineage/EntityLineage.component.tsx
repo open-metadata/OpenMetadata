@@ -46,7 +46,6 @@ import {
 import SVGIcons from '../../utils/SvgUtils';
 import { getEntityIcon } from '../../utils/TableUtils';
 import EntityInfoDrawer from '../EntityInfoDrawer/EntityInfoDrawer.component';
-import EntityLineageDrawer from '../EntityLineageDrawer/EntityLineageDrawer.component';
 import CustomNode from './CustomNode.component';
 import { EntityLineageProp, SelectedNode } from './EntityLineage.interface';
 
@@ -279,12 +278,6 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
         isMainNode={selectedNode.name === entityLineage.entity.name}
         selectedNode={selectedNode}
         show={isDrawerOpen && !isEditMode}
-        onCancel={closeDrawer}
-      />
-      <EntityLineageDrawer
-        editModeHandler={(v: boolean) => setEditMode(v)}
-        selectedNode={selectedNode}
-        show={isEditMode && !isEmpty(selectedNode)}
         onCancel={closeDrawer}
       />
     </div>
