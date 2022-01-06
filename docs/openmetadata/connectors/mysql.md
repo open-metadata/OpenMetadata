@@ -110,9 +110,10 @@ Note: The `source.config` field in the configuration JSON will include the major
   "source": {
     "type": "mysql",
     "config": {
-      "username": "openmetadata_user",
-      "password": "openmetadata_password",
-      "database": "openmetadata_db",
+      "host_port": "hostname.domain.com:5439",
+      "username": "username",
+      "password": "strong_password",
+      "database": "mysql_db",
       "service_name": "local_mysql",
       "data_profiler_enabled": "false",
       "table_filter_pattern": {
