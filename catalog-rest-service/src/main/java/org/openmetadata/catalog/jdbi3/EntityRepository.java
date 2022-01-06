@@ -300,10 +300,14 @@ public abstract class EntityRepository<T> {
   @Transaction
   public final PutResponse<T> createOrUpdate(UriInfo uriInfo, T updated) throws IOException, ParseException {
     prepare(updated);
-    T original = JsonUtils.readValue(dao.findJsonByFqn(getFullyQualifiedName(updated)), entityClass);
+    // Check if there is any original, deleted or not
+    T original = JsonUtils.readValue(dao.findDeletedOrExists(getFullyQualifiedName(updated)), entityClass);
     if (original == null) {
       return new PutResponse<>(Status.CREATED, withHref(uriInfo, createNewEntity(updated)), RestUtil.ENTITY_CREATED);
     }
+
+    // Recover relationships if original was deleted before setFields
+    recoverDeletedRelationships(original);
     // Get all the fields in the original entity that can be updated during PUT operation
     setFields(original, putFields);
 
@@ -511,6 +515,15 @@ public abstract class EntityRepository<T> {
     return RestUtil.getHref(uriInfo, collectionPath, id);
   }
 
+  private void recoverDeletedRelationships(T original) {
+    // If original is deleted, we need to recover the relationships before setting the fields
+    // or we won't find the related services
+    EntityInterface<T> originalRef = getEntityInterface(original);
+    if (Boolean.TRUE.equals(originalRef.isDeleted())) {
+      daoCollection.relationshipDAO().recoverSoftDeleteAll(originalRef.getId().toString());
+    }
+  }
+
   /**
    * Class that performs PUT and PATCH update operation. It takes an <i>updated</i> entity and <i>original</i> entity.
    * Performs comparison between then and updates the stored entity and also updates all the relationships. This class
@@ -537,6 +550,7 @@ public abstract class EntityRepository<T> {
     /** Compare original and updated entities and perform updates. Update the entity version and track changes. */
     public final void update() throws IOException {
       updated.setId(original.getId());
+      updateDeleted();
       updateDescription();
       updateDisplayName();
       updateOwner();
@@ -558,6 +572,13 @@ public abstract class EntityRepository<T> {
         return;
       }
       recordChange("description", original.getDescription(), updated.getDescription());
+    }
+
+    private void updateDeleted() throws JsonProcessingException {
+      if (Boolean.TRUE.equals(original.isDeleted())) {
+        updated.setDeleted(false);
+        recordChange("deleted", true, false);
+      }
     }
 
     private void updateDisplayName() throws JsonProcessingException {

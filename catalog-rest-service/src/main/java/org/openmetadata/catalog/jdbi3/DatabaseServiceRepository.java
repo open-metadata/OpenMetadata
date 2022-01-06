@@ -104,6 +104,11 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
     }
 
     @Override
+    public Boolean isDeleted() {
+      return entity.getDeleted();
+    }
+
+    @Override
     public String getFullyQualifiedName() {
       return entity.getName();
     }

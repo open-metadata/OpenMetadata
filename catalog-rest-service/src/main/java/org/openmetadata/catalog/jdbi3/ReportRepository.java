@@ -129,6 +129,11 @@ public class ReportRepository extends EntityRepository<Report> {
     }
 
     @Override
+    public Boolean isDeleted() {
+      return entity.getDeleted();
+    }
+
+    @Override
     public EntityReference getOwner() {
       return entity.getOwner();
     }

@@ -145,6 +145,11 @@ public class MetricsRepository extends EntityRepository<Metrics> {
     }
 
     @Override
+    public Boolean isDeleted() {
+      return entity.getDeleted();
+    }
+
+    @Override
     public EntityReference getOwner() {
       return entity.getOwner();
     }
