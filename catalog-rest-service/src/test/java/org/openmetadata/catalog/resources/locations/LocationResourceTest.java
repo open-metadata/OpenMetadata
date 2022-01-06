@@ -19,6 +19,7 @@ import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.openmetadata.catalog.security.SecurityUtil.authHeaders;
+import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
 import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
@@ -32,6 +33,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import javax.ws.rs.client.WebTarget;
+import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.BeforeAll;
@@ -43,7 +45,9 @@ import org.openmetadata.catalog.entity.data.Location;
 import org.openmetadata.catalog.jdbi3.LocationRepository.LocationEntityInterface;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.locations.LocationResource.LocationList;
+import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.TestUtils;
@@ -186,6 +190,25 @@ public class LocationResourceTest extends EntityResourceTest<Location> {
   void delete_location_200_ok(TestInfo test) throws HttpResponseException {
     Location location = createLocation(create(test), adminAuthHeaders());
     deleteEntity(location.getId(), adminAuthHeaders());
+  }
+
+  @Test
+  void delete_put_Location_200(TestInfo test) throws IOException {
+    CreateLocation request = create(test).withDescription("");
+    Location location = createEntity(request, adminAuthHeaders());
+
+    // Delete
+    deleteEntity(location.getId(), adminAuthHeaders());
+
+    ChangeDescription change = getChangeDescription(location.getVersion());
+    change.setFieldsUpdated(
+        Arrays.asList(
+            new FieldChange().withName("deleted").withNewValue(false).withOldValue(true),
+            new FieldChange().withName("description").withNewValue("updatedDescription").withOldValue("")));
+
+    // PUT with updated description
+    updateAndCheckEntity(
+        request.withDescription("updatedDescription"), Response.Status.OK, adminAuthHeaders(), MINOR_UPDATE, change);
   }
 
   @Test

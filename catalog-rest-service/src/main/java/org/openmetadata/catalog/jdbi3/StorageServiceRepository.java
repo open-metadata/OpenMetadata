@@ -94,6 +94,11 @@ public class StorageServiceRepository extends EntityRepository<StorageService> {
     }
 
     @Override
+    public Boolean isDeleted() {
+      return entity.getDeleted();
+    }
+
+    @Override
     public String getFullyQualifiedName() {
       return entity.getName();
     }

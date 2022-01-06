@@ -701,6 +701,11 @@ public class TableRepository extends EntityRepository<Table> {
     }
 
     @Override
+    public Boolean isDeleted() {
+      return entity.getDeleted();
+    }
+
+    @Override
     public EntityReference getOwner() {
       return entity.getOwner();
     }
