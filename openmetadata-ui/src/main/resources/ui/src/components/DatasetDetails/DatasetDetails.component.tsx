@@ -134,6 +134,17 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
       position: 1,
     },
     {
+      name: 'Sample Data',
+      icon: {
+        alt: 'sample_data',
+        name: 'sample-data',
+        title: 'Sample Data',
+        selectedName: 'sample-data-color',
+      },
+      isProtected: false,
+      position: 2,
+    },
+    {
       name: 'Profiler',
       icon: {
         alt: 'profiler',
@@ -142,7 +153,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
         selectedName: 'icon-profilercolor',
       },
       isProtected: false,
-      position: 2,
+      position: 3,
     },
     {
       name: 'Lineage',
@@ -153,7 +164,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
         selectedName: 'icon-lineagecolor',
       },
       isProtected: false,
-      position: 3,
+      position: 4,
     },
     {
       name: 'DBT',
@@ -165,17 +176,6 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
       },
       isProtected: false,
       isHidden: !dataModel?.sql,
-      position: 4,
-    },
-    {
-      name: 'Sample Data',
-      icon: {
-        alt: 'sample_data',
-        name: 'sample-data',
-        title: 'Sample Data',
-        selectedName: 'sample-data-color',
-      },
-      isProtected: false,
       position: 5,
     },
     {
@@ -452,6 +452,11 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
             )}
             {activeTab === 2 && (
               <div>
+                <SampleDataTable sampleData={getSampleDataWithType()} />
+              </div>
+            )}
+            {activeTab === 3 && (
+              <div>
                 <TableProfiler
                   columns={columns.map((col) => ({
                     constraint: col.constraint as string,
@@ -461,7 +466,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                 />
               </div>
             )}
-            {activeTab === 3 && (
+            {activeTab === 4 && (
               <div
                 className={classNames(
                   location.pathname.includes(ROUTES.TOUR)
@@ -477,18 +482,13 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                 />
               </div>
             )}
-            {activeTab === 4 && Boolean(dataModel?.sql) && (
+            {activeTab === 5 && Boolean(dataModel?.sql) && (
               <div className="tw-border tw-border-main tw-rounded-md tw-py-4 tw-h-full cm-h-full">
                 <SchemaEditor
                   className="tw-h-full"
                   mode={{ name: CSMode.SQL }}
                   value={dataModel?.sql || ''}
                 />
-              </div>
-            )}
-            {activeTab === 5 && (
-              <div>
-                <SampleDataTable sampleData={getSampleDataWithType()} />
               </div>
             )}
             {activeTab === 6 && (
