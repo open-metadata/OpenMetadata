@@ -15,8 +15,8 @@ jobs:
         uses: axel-op/googlejavaformat-action@v3
         with:
           args: "--set-exit-if-changed"
-      - name: check steps.build.outputs.exit_code
-        run: echo ${{ steps.build.outputs.exit_code }}
+      - name: check steps.checkstyle.outputs.exit_code
+        run: echo ${{ steps.checkstyle.outputs.exit_code }}
         if: always()
       - name: Create comment if checkstyle fails
         if: steps.checkstyle.outputs.exit_code != 0
