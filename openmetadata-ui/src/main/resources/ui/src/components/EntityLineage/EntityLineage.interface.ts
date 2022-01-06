@@ -31,13 +31,6 @@ export interface EntityLineageProp {
   loadNodeHandler: (node: EntityReference, pos: LineagePos) => void;
 }
 
-export interface LineageDrawerProps {
-  show: boolean;
-  selectedNode: SelectedNode;
-  onCancel: (value: boolean) => void;
-  editModeHandler: (value: boolean) => void;
-}
-
 export interface Edge {
   edge: {
     fromEntity: {
