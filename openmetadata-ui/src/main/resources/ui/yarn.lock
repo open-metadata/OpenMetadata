@@ -996,10 +996,10 @@
     exec-sh "^0.3.2"
     minimist "^1.2.0"
 
-"@deuex-solutions/react-tutorial@1.0.0":
+"@deuex-solutions/react-tour@^1.0.0":
   version "1.0.0"
-  resolved "https://registry.yarnpkg.com/@deuex-solutions/react-tutorial/-/react-tutorial-1.0.0.tgz#546ec0c9bea04b1b025d3d0710e423ab3e6d996f"
-  integrity sha512-cROk3LqGJZOOXbocho65tp2oZekau36/cEZh7feaYeUNPhLSHBN6HBwOj0YPF4LnaXe/9Y/Wsm8XvmXySOaaZQ==
+  resolved "https://registry.yarnpkg.com/@deuex-solutions/react-tour/-/react-tour-1.0.0.tgz#5714dd38cf3f89fc781cc7f53965b08400e68a13"
+  integrity sha512-oSprYz81nejf3ZqgZAy6dgyuyEEujJvGs5b+YB2Pnfui9i0vyOEseTtIoamYV+eRTjBsPhwv2wUa7RkdcJUcSQ==
   dependencies:
     classnames "^2.2.6"
     lodash "^4.17.15"

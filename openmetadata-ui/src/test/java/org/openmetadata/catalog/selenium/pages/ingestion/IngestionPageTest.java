@@ -14,7 +14,14 @@
 package org.openmetadata.catalog.selenium.pages.ingestion;
 
 import com.github.javafaker.Faker;
+import java.time.Duration;
+import java.util.ArrayList;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.catalog.selenium.events.Events;
 import org.openmetadata.catalog.selenium.properties.Property;
 import org.openqa.selenium.By;
@@ -23,14 +30,6 @@ import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.interactions.Actions;
 import org.openqa.selenium.support.ui.WebDriverWait;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.Order;
-import org.junit.jupiter.api.TestMethodOrder;
-import org.junit.jupiter.api.MethodOrderer;
-
-import java.time.Duration;
-import java.util.ArrayList;
 
 @Order(12)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
@@ -61,8 +60,7 @@ public class IngestionPageTest {
   public void openIngestionPage() throws InterruptedException {
     Events.click(webDriver, By.cssSelector("[data-testid='closeWhatsNew']")); // Close What's new
     Thread.sleep(waitTime);
-    Events.click(webDriver, By.cssSelector(
-        "[data-testid='menu-button'][id='menu-button-Settings']")); // Setting
+    Events.click(webDriver, By.cssSelector("[data-testid='menu-button'][id='menu-button-Settings']")); // Setting
     Events.click(webDriver, By.cssSelector("[data-testid='menu-item-Ingestions']")); // Setting/Services
     Thread.sleep(waitTime);
   }
@@ -91,7 +89,7 @@ public class IngestionPageTest {
 
   @Test
   @Order(3)
-  public void runIngestionService() throws InterruptedException{
+  public void runIngestionService() throws InterruptedException {
     openIngestionPage();
     Events.click(webDriver, By.cssSelector("[data-testid='run']"));
     webDriver.navigate().refresh();
@@ -99,7 +97,7 @@ public class IngestionPageTest {
 
   @Test
   @Order(4)
-  public void editIngestionService() throws InterruptedException{
+  public void editIngestionService() throws InterruptedException {
     openIngestionPage();
     Events.click(webDriver, By.cssSelector("[data-testid='edit']"));
     Events.sendKeys(webDriver, By.cssSelector("[data-testid='include-filter-pattern']"), ",");

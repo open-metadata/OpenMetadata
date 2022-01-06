@@ -57,7 +57,7 @@ public class TopicResourceTest extends EntityResourceTest<Topic> {
   }
 
   @Test
-  public void post_validTopics_as_admin_200_OK(TestInfo test) throws IOException {
+  void post_validTopics_as_admin_200_OK(TestInfo test) throws IOException {
     // Create team with different optional fields
     CreateTopic create = create(test);
     createAndCheckEntity(create, adminAuthHeaders());
@@ -69,17 +69,17 @@ public class TopicResourceTest extends EntityResourceTest<Topic> {
   }
 
   @Test
-  public void post_topicWithUserOwner_200_ok(TestInfo test) throws IOException {
+  void post_topicWithUserOwner_200_ok(TestInfo test) throws IOException {
     createAndCheckEntity(create(test).withOwner(USER_OWNER1), adminAuthHeaders());
   }
 
   @Test
-  public void post_topicWithTeamOwner_200_ok(TestInfo test) throws IOException {
+  void post_topicWithTeamOwner_200_ok(TestInfo test) throws IOException {
     createAndCheckEntity(create(test).withOwner(TEAM_OWNER1), adminAuthHeaders());
   }
 
   @Test
-  public void post_topic_as_non_admin_401(TestInfo test) {
+  void post_topic_as_non_admin_401(TestInfo test) {
     CreateTopic create = create(test);
     HttpResponseException exception =
         assertThrows(HttpResponseException.class, () -> createTopic(create, authHeaders("test@open-metadata.org")));
@@ -87,7 +87,7 @@ public class TopicResourceTest extends EntityResourceTest<Topic> {
   }
 
   @Test
-  public void post_topicWithoutRequiredFields_4xx(TestInfo test) {
+  void post_topicWithoutRequiredFields_4xx(TestInfo test) {
     // Service is required field
     HttpResponseException exception =
         assertThrows(
@@ -108,7 +108,7 @@ public class TopicResourceTest extends EntityResourceTest<Topic> {
   }
 
   @Test
-  public void post_topicWithDifferentService_200_ok(TestInfo test) throws IOException {
+  void post_topicWithDifferentService_200_ok(TestInfo test) throws IOException {
     EntityReference[] differentServices = {PULSAR_REFERENCE, KAFKA_REFERENCE};
 
     // Create topic for each service and test APIs
@@ -130,7 +130,7 @@ public class TopicResourceTest extends EntityResourceTest<Topic> {
   }
 
   @Test
-  public void put_topicAttributes_200_ok(TestInfo test) throws IOException {
+  void put_topicAttributes_200_ok(TestInfo test) throws IOException {
     CreateTopic createTopic =
         create(test)
             .withOwner(USER_OWNER1)
@@ -183,7 +183,7 @@ public class TopicResourceTest extends EntityResourceTest<Topic> {
   }
 
   @Test
-  public void patch_topicAttributes_200_ok(TestInfo test) throws IOException {
+  void patch_topicAttributes_200_ok(TestInfo test) throws IOException {
     CreateTopic createTopic =
         create(test)
             .withOwner(USER_OWNER1)
@@ -239,13 +239,13 @@ public class TopicResourceTest extends EntityResourceTest<Topic> {
   }
 
   @Test
-  public void delete_emptyTopic_200_ok(TestInfo test) throws HttpResponseException {
+  void delete_emptyTopic_200_ok(TestInfo test) throws HttpResponseException {
     Topic topic = createTopic(create(test), adminAuthHeaders());
     deleteEntity(topic.getId(), adminAuthHeaders());
   }
 
   @Test
-  public void delete_nonEmptyTopic_4xx() {
+  void delete_nonEmptyTopic_4xx() {
     // TODO
   }
 

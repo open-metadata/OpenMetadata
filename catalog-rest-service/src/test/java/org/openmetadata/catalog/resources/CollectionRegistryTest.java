@@ -21,7 +21,7 @@ import org.openmetadata.catalog.type.CollectionDescriptor;
 
 public class CollectionRegistryTest {
   @Test
-  public void testCollections() {
+  void testCollections() {
     CollectionRegistry.getInstance();
     Map<String, CollectionRegistry.CollectionDetails> descriptors = CollectionRegistry.getInstance().getCollectionMap();
     String path = "/v1";

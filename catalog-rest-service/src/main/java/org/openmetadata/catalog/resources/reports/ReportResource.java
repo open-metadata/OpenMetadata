@@ -73,7 +73,7 @@ public class ReportResource {
   }
 
   static final String FIELDS = "owner,usageSummary";
-  public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replaceAll("\\s", "").split(","));
+  public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replace(" ", "").split(","));
 
   @GET
   @Operation(

@@ -39,8 +39,7 @@ public class TableDetailsPageTest {
   static WebDriver webDriver;
   static String url = Property.getInstance().getURL();
   static Faker faker = new Faker();
-  static String enterDescription =
-      "//div[@data-testid='enterDescription']/div/div[2]/div/div/div/div/div/div";
+  static String enterDescription = "//div[@data-testid='enterDescription']/div/div[2]/div/div/div/div/div/div";
   static Actions actions;
   static WebDriverWait wait;
   Integer waitTime = Property.getInstance().getSleepTime();
@@ -110,36 +109,27 @@ public class TableDetailsPageTest {
     String updateDescription = faker.address().toString();
     Events.sendKeys(webDriver, By.cssSelector("[data-testid='searchBox']"), tableName);
     Events.click(webDriver, By.cssSelector("[data-testid='data-name']"));
-    wait.until(
-        ExpectedConditions.elementToBeClickable(By.cssSelector("[data-testid='searchbar']")));
+    wait.until(ExpectedConditions.elementToBeClickable(By.cssSelector("[data-testid='searchbar']")));
     Events.sendKeys(webDriver, By.cssSelector("[data-testid='searchbar']"), "address1");
     Thread.sleep(2000);
-    actions
-        .moveToElement(webDriver.findElement(By.xpath("//div[@data-testid='description']//button")))
-        .perform();
+    actions.moveToElement(webDriver.findElement(By.xpath("//div[@data-testid='description']//button"))).perform();
     Events.click(webDriver, By.xpath("//div[@data-testid='description']//button"));
     Events.sendKeys(webDriver, By.xpath(enterDescription), editDescription);
     Events.click(webDriver, By.cssSelector("[data-testid='save']"));
     webDriver.navigate().refresh();
-    wait.until(
-        ExpectedConditions.elementToBeClickable(By.cssSelector("[data-testid='searchbar']")));
+    wait.until(ExpectedConditions.elementToBeClickable(By.cssSelector("[data-testid='searchbar']")));
     Events.sendKeys(webDriver, By.cssSelector("[data-testid='searchbar']"), "address1");
     Thread.sleep(2000);
-    actions
-        .moveToElement(webDriver.findElement(By.xpath("//div[@data-testid='description']//button")))
-        .perform();
+    actions.moveToElement(webDriver.findElement(By.xpath("//div[@data-testid='description']//button"))).perform();
     Events.click(webDriver, By.xpath("//div[@data-testid='description']//button"));
     webDriver.findElement(By.xpath("//*[text()[contains(.,'" + editDescription + "')]] "));
     Events.sendKeys(webDriver, By.xpath(enterDescription), updateDescription);
     Events.click(webDriver, By.cssSelector("[data-testid='save']"));
     webDriver.navigate().refresh();
-    wait.until(
-        ExpectedConditions.elementToBeClickable(By.cssSelector("[data-testid='searchbar']")));
+    wait.until(ExpectedConditions.elementToBeClickable(By.cssSelector("[data-testid='searchbar']")));
     Events.sendKeys(webDriver, By.cssSelector("[data-testid='searchbar']"), "address1");
     Thread.sleep(2000);
-    actions
-        .moveToElement(webDriver.findElement(By.xpath("//div[@data-testid='description']//button")))
-        .perform();
+    actions.moveToElement(webDriver.findElement(By.xpath("//div[@data-testid='description']//button"))).perform();
     Events.click(webDriver, By.xpath("//div[@data-testid='description']//button"));
     Thread.sleep(1000);
     webDriver.findElement(By.xpath("//*[text()[contains(.,'" + editDescription + updateDescription + "')]] "));
@@ -153,9 +143,7 @@ public class TableDetailsPageTest {
     Events.sendKeys(webDriver, By.cssSelector("[data-testid='searchBox']"), tableName);
     Events.click(webDriver, By.cssSelector("[data-testid='data-name']"));
     Thread.sleep(waitTime);
-    actions
-        .moveToElement(webDriver.findElement(By.xpath("//div[@data-testid='tag-conatiner']//span")))
-        .perform();
+    actions.moveToElement(webDriver.findElement(By.xpath("//div[@data-testid='tag-conatiner']//span"))).perform();
     Events.click(webDriver, By.xpath("//div[@data-testid='tag-conatiner']//span"));
     Events.click(webDriver, By.cssSelector("[data-testid='associatedTagName']"));
     for (int i = 0; i <= 1; i++) {
@@ -172,9 +160,7 @@ public class TableDetailsPageTest {
     Events.sendKeys(webDriver, By.cssSelector("[data-testid='searchBox']"), tableName);
     Events.click(webDriver, By.cssSelector("[data-testid='data-name']"));
     Thread.sleep(waitTime);
-    actions
-        .moveToElement(webDriver.findElement(By.xpath("//div[@data-testid='tag-conatiner']//span")))
-        .perform();
+    actions.moveToElement(webDriver.findElement(By.xpath("//div[@data-testid='tag-conatiner']//span"))).perform();
     Events.click(webDriver, By.xpath("//div[@data-testid='tag-conatiner']//span"));
     Events.click(webDriver, By.cssSelector("[data-testid='remove']"));
     Events.click(webDriver, By.cssSelector("[data-testid='remove']"));
@@ -203,17 +189,12 @@ public class TableDetailsPageTest {
     Events.click(webDriver, By.cssSelector("[data-testid='data-name']"));
     Events.click(webDriver, By.xpath("(//button[@data-testid='tab'])[2]")); // Profiler
     for (int i = 1; i <= 4; i++) {
-      Events.click(
-          webDriver,
-          By.xpath("(//td[@data-testid='tableBody-cell']//span)" + "[" + i + "]")); // Profiler
+      Events.click(webDriver, By.xpath("(//td[@data-testid='tableBody-cell']//span)" + "[" + i + "]")); // Profiler
       actions
           .moveToElement(
-              webDriver.findElement(
-                  By.xpath("(//tr[@data-testid='tableBody-row']//td" + "[" + i + "]" + ")")))
+              webDriver.findElement(By.xpath("(//tr[@data-testid='tableBody-row']//td" + "[" + i + "]" + ")")))
           .perform();
-      Events.click(
-          webDriver,
-          By.xpath("(//td[@data-testid='tableBody-cell']//span)" + "[" + i + "]")); // Profiler
+      Events.click(webDriver, By.xpath("(//td[@data-testid='tableBody-cell']//span)" + "[" + i + "]")); // Profiler
       Thread.sleep(waitTime);
     }
   }
@@ -245,8 +226,7 @@ public class TableDetailsPageTest {
     Events.click(webDriver, By.xpath("(//button[@data-testid='tab'])[3]"));
     for (int i = 1; i <= 3; i++) {
       WebElement lineageEntity =
-          webDriver.findElement(
-              By.xpath("(//span[@data-testid='lineage-entity'])" + "[" + i + "]"));
+          webDriver.findElement(By.xpath("(//span[@data-testid='lineage-entity'])" + "[" + i + "]"));
       actions.dragAndDropBy(lineageEntity, 100, 200).build();
     }
   }
@@ -289,11 +269,8 @@ public class TableDetailsPageTest {
     webDriver.findElement(By.xpath("//*[text()[contains(.,'" + editDescription + updateDescription + "')]] "));
     Events.click(webDriver, By.cssSelector("[data-testid='cancel']"));
     for (int i = 1; i <= 3; i++) { // check topics in service
-      Events.click(
-          webDriver,
-          By.xpath("(//tr[@data-testid='tabale-column']//td[1]/a)" + "[" + i + "]")); // tables
-      Events.click(
-          webDriver, By.cssSelector("[data-testid='edit-description']")); // edit description
+      Events.click(webDriver, By.xpath("(//tr[@data-testid='tabale-column']//td[1]/a)" + "[" + i + "]")); // tables
+      Events.click(webDriver, By.cssSelector("[data-testid='edit-description']")); // edit description
       Events.sendKeys(webDriver, By.xpath(enterDescription), editDescription);
       Events.click(webDriver, By.cssSelector("[data-testid='save']"));
       webDriver.navigate().refresh();
@@ -305,7 +282,7 @@ public class TableDetailsPageTest {
       webDriver.navigate().refresh();
       Events.click(webDriver, By.cssSelector("[data-testid='edit-description']"));
       Thread.sleep(1000);
-      webDriver.findElement(By.xpath("//*[text()[contains(.,'" + editDescription + updateDescription +"')]] "));
+      webDriver.findElement(By.xpath("//*[text()[contains(.,'" + editDescription + updateDescription + "')]] "));
       Events.click(webDriver, By.cssSelector("[data-testid='cancel']"));
       Thread.sleep(waitTime);
       webDriver.navigate().back();

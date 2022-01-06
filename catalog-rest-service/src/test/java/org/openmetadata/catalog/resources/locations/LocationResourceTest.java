@@ -124,7 +124,7 @@ public class LocationResourceTest extends EntityResourceTest<Location> {
   }
 
   @Test
-  public void get_locationListWithPrefix_2xx(TestInfo test) throws HttpResponseException {
+  void get_locationListWithPrefix_2xx(TestInfo test) throws HttpResponseException {
     // Create some nested locations.
     List<String> paths = Arrays.asList("/" + test.getDisplayName(), "/dwh", "/catalog", "/schema", "/table");
     String locationName =
@@ -155,7 +155,7 @@ public class LocationResourceTest extends EntityResourceTest<Location> {
   }
 
   @Test
-  public void post_validLocations_as_admin_200_OK(TestInfo test) throws IOException {
+  void post_validLocations_as_admin_200_OK(TestInfo test) throws IOException {
     // Create team with different optional fields
     CreateLocation create = create(test);
     createAndCheckEntity(create, adminAuthHeaders());
@@ -165,17 +165,17 @@ public class LocationResourceTest extends EntityResourceTest<Location> {
   }
 
   @Test
-  public void post_locationWithUserOwner_200_ok(TestInfo test) throws IOException {
+  void post_locationWithUserOwner_200_ok(TestInfo test) throws IOException {
     createAndCheckEntity(create(test).withOwner(USER_OWNER1), adminAuthHeaders());
   }
 
   @Test
-  public void post_locationWithTeamOwner_200_ok(TestInfo test) throws IOException {
+  void post_locationWithTeamOwner_200_ok(TestInfo test) throws IOException {
     createAndCheckEntity(create(test).withOwner(TEAM_OWNER1), adminAuthHeaders());
   }
 
   @Test
-  public void post_location_as_non_admin_401(TestInfo test) {
+  void post_location_as_non_admin_401(TestInfo test) {
     CreateLocation create = create(test);
     HttpResponseException exception =
         assertThrows(HttpResponseException.class, () -> createLocation(create, authHeaders("test@open-metadata.org")));
@@ -183,13 +183,13 @@ public class LocationResourceTest extends EntityResourceTest<Location> {
   }
 
   @Test
-  public void delete_location_200_ok(TestInfo test) throws HttpResponseException {
+  void delete_location_200_ok(TestInfo test) throws HttpResponseException {
     Location location = createLocation(create(test), adminAuthHeaders());
     deleteEntity(location.getId(), adminAuthHeaders());
   }
 
   @Test
-  public void delete_location_as_non_admin_401(TestInfo test) throws HttpResponseException {
+  void delete_location_as_non_admin_401(TestInfo test) throws HttpResponseException {
     Location location = createLocation(create(test), adminAuthHeaders());
     HttpResponseException exception =
         assertThrows(
@@ -198,7 +198,7 @@ public class LocationResourceTest extends EntityResourceTest<Location> {
   }
 
   @Test
-  public void post_locationWithoutRequiredFields_4xx(TestInfo test) {
+  void post_locationWithoutRequiredFields_4xx(TestInfo test) {
     HttpResponseException exception =
         assertThrows(
             HttpResponseException.class, () -> createLocation(create(test).withName(null), adminAuthHeaders()));
@@ -212,7 +212,7 @@ public class LocationResourceTest extends EntityResourceTest<Location> {
   }
 
   @Test
-  public void post_locationWithDifferentService_200_ok(TestInfo test) throws IOException {
+  void post_locationWithDifferentService_200_ok(TestInfo test) throws IOException {
     EntityReference[] differentServices = {GCP_STORAGE_SERVICE_REFERENCE, AWS_STORAGE_SERVICE_REFERENCE};
 
     // Create location for each service and test APIs
@@ -234,7 +234,7 @@ public class LocationResourceTest extends EntityResourceTest<Location> {
   }
 
   @Test
-  public void put_locationNonEmptyDescriptionUpdate_200(TestInfo test) throws IOException {
+  void put_locationNonEmptyDescriptionUpdate_200(TestInfo test) throws IOException {
     CreateLocation request = create(test).withService(AWS_STORAGE_SERVICE_REFERENCE).withDescription("description");
     createAndCheckEntity(request, adminAuthHeaders());
 

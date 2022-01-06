@@ -40,8 +40,7 @@ public class PipelineServiceTestPage {
   static String url = Property.getInstance().getURL();
   static Faker faker = new Faker();
   static String serviceName = faker.name().firstName();
-  static String enterDescription =
-      "//div[@data-testid='enterDescription']/div/div[2]/div/div/div/div/div/div";
+  static String enterDescription = "//div[@data-testid='enterDescription']/div/div[2]/div/div/div/div/div/div";
   static Actions actions;
   static WebDriverWait wait;
   Integer waitTime = Property.getInstance().getSleepTime();
@@ -63,11 +62,8 @@ public class PipelineServiceTestPage {
   @Order(1)
   public void openPipelineServicePage() throws InterruptedException {
     Events.click(webDriver, By.cssSelector("[data-testid='closeWhatsNew']")); // Close What's new
-    Events.click(
-        webDriver,
-        By.cssSelector("[data-testid='menu-button'][id='menu-button-Settings']")); // Setting
-    Events.click(
-        webDriver, By.cssSelector("[data-testid='menu-item-Services']")); // Setting/Services
+    Events.click(webDriver, By.cssSelector("[data-testid='menu-button'][id='menu-button-Settings']")); // Setting
+    Events.click(webDriver, By.cssSelector("[data-testid='menu-item-Services']")); // Setting/Services
     Events.click(webDriver, By.xpath("(//button[@data-testid='tab'])[4]"));
     Thread.sleep(waitTime);
   }
@@ -77,8 +73,7 @@ public class PipelineServiceTestPage {
   public void addPipelineService() throws InterruptedException {
     openPipelineServicePage();
     Thread.sleep(2000);
-    List<WebElement> webElementList =
-        webDriver.findElements(By.cssSelector("[data-testid='add-new-user-button']"));
+    List<WebElement> webElementList = webDriver.findElements(By.cssSelector("[data-testid='add-new-user-button']"));
     if (webElementList.isEmpty()) {
       Events.click(webDriver, By.cssSelector("[data-testid='add-service-button']"));
     } else {
@@ -86,8 +81,7 @@ public class PipelineServiceTestPage {
     }
     Events.click(webDriver, By.cssSelector("[value='Prefect']"));
     Events.sendKeys(webDriver, By.cssSelector("[data-testid='name']"), serviceName);
-    Events.sendKeys(
-        webDriver, By.cssSelector("[data-testid='pipeline-url']"), "http://localhost:8080");
+    Events.sendKeys(webDriver, By.cssSelector("[data-testid='pipeline-url']"), "http://localhost:8080");
     Events.click(webDriver, By.cssSelector("[data-testid='boldButton']"));
     Events.sendKeys(webDriver, By.xpath(enterDescription), faker.address().toString());
     Events.click(webDriver, By.xpath(enterDescription));
