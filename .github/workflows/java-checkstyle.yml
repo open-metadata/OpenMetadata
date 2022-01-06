@@ -18,4 +18,4 @@ jobs:
       - name: Run formatter check
         uses: axel-op/googlejavaformat-action@v3
         with:
-          args: "--set-exit-if-changed --length 120"
+          args: "--set-exit-if-changed"
