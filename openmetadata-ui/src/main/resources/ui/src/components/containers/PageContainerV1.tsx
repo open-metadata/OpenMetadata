@@ -11,10 +11,23 @@
  *  limitations under the License.
  */
 
+import classNames from 'classnames';
 import React, { ReactNode } from 'react';
 
-const PageContainerV1 = ({ children }: { children: ReactNode }) => {
-  return <div className="page-container-v1 tw-bg-body-main">{children}</div>;
+interface PageContainerV1Props {
+  children: ReactNode;
+  className?: string;
+}
+
+const PageContainerV1 = ({
+  children,
+  className = '',
+}: PageContainerV1Props) => {
+  return (
+    <div className={classNames('page-container-v1 tw-bg-body-main', className)}>
+      {children}
+    </div>
+  );
 };
 
 export default PageContainerV1;
