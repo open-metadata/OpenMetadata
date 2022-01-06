@@ -34,6 +34,7 @@ import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.interactions.Actions;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
+import org.testng.Assert;
 
 @Order(14)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
@@ -156,6 +157,33 @@ public class PaginationAndFilterTest {
     }
   }
 
+  @Test
+  @Order(6)
+  public void databaseFilterCountCheck() throws InterruptedException {
+    Events.click(webDriver, By.cssSelector("[data-testid='closeWhatsNew']")); // Close What's new
+    Thread.sleep(waitTime);
+    Events.click(webDriver, By.cssSelector("[data-testid='appbar-item'][id='explore']")); // Explore
+    Events.sendKeys(webDriver, By.cssSelector("[data-testid='searchBox']"), "dim_api_client");
+    Events.click(webDriver, By.cssSelector("[data-testid='data-name']"));
+    Thread.sleep(waitTime);
+    actions
+        .moveToElement(webDriver.findElement(By.xpath("//div[@data-testid='tag-conatiner']//span")))
+        .perform();
+    Events.click(webDriver, By.xpath("//div[@data-testid='tag-conatiner']//span"));
+    Events.click(webDriver, By.cssSelector("[data-testid='associatedTagName']"));
+    for (int i = 0; i <= 4; i++) {
+      Events.sendKeys(webDriver, By.cssSelector("[data-testid='associatedTagName']"), "P");
+      Events.click(webDriver, By.cssSelector("[data-testid='list-item']"));
+    }
+    Events.click(webDriver, By.cssSelector("[data-testid='saveAssociatedTag']"));
+    webDriver.navigate().back();
+    Events.click(webDriver, By.cssSelector("[data-testid='checkbox'][id='PII.None']"));
+    Events.click(webDriver, By.cssSelector("[data-testid='checkbox'][id='shopify']"));
+    Thread.sleep(2000);
+    Object filteredResults = webDriver.findElements(By.xpath("//div[@data-testid='search-results']/div")).size();
+    String databaseCount = webDriver.findElement(By.xpath("//div[@data-testid='filter-container-shopify']//span[@data-testid='filter-count']")).getAttribute("innerHTML");
+    Assert.assertEquals(databaseCount, filteredResults);
+  }
 
   @AfterEach
   public void closeTabs() {
