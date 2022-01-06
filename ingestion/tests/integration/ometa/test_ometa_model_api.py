@@ -193,27 +193,27 @@ class OMetaModelTest(TestCase):
         """
 
         service = CreateDatabaseServiceEntityRequest(
-            name="test-service-table",
+            name="test-service-table-ml",
             serviceType=DatabaseServiceType.MySQL,
             jdbc=JdbcInfo(driverClass="jdbc", connectionUrl="jdbc://localhost"),
         )
         service_entity = self.metadata.create_or_update(data=service)
 
         create_db = CreateDatabaseEntityRequest(
-            name="test-db",
+            name="test-db-ml",
             service=EntityReference(id=service_entity.id, type="databaseService"),
         )
         create_db_entity = self.metadata.create_or_update(data=create_db)
 
         create_table1 = CreateTableEntityRequest(
-            name="test",
+            name="test-ml",
             database=create_db_entity.id,
             columns=[Column(name="education", dataType=DataType.STRING)],
         )
         table1_entity = self.metadata.create_or_update(data=create_table1)
 
         create_table2 = CreateTableEntityRequest(
-            name="another_test",
+            name="another_test-ml",
             database=create_db_entity.id,
             columns=[Column(name="age", dataType=DataType.INT)],
         )
