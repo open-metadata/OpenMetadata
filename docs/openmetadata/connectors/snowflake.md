@@ -278,8 +278,8 @@ OpenMetadata uniquely identifies services by their `service_name`. Edit the valu
 
 Edit the value for `source.config.warehouse` with the name of the Snowflake warehouse from which you want to ingest metadata.
 
-```
-// Some code
+```json
+"warehouse": "DEMO",
 ```
 
 #### database (optional)
