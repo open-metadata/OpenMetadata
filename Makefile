@@ -53,8 +53,7 @@ coverage:
 sonar_ingestion:
 	docker run \
 		--rm \
-		--network=host \
-		-e SONAR_HOST_URL="http://localhost:9000/" \
+		-e SONAR_HOST_URL="https://sonarcloud.io" \
 		-e SONAR_LOGIN=$(token) \
 		-v ${PWD}:/usr/src \
 		sonarsource/sonar-scanner-cli \
