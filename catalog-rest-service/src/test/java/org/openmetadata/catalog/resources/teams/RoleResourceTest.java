@@ -110,8 +110,7 @@ public class RoleResourceTest extends EntityResourceTest<Role> {
   }
 
   @Test
-  void patch_roleAttributes_as_non_admin_403(TestInfo test)
-      throws HttpResponseException, JsonProcessingException {
+  void patch_roleAttributes_as_non_admin_403(TestInfo test) throws HttpResponseException, JsonProcessingException {
     // Create table without any attributes
     Role role = createRole(create(test), adminAuthHeaders());
     // Patching as a non-admin should is disallowed

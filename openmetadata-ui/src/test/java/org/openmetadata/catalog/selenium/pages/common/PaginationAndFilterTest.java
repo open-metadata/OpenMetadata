@@ -166,9 +166,7 @@ public class PaginationAndFilterTest {
     Events.sendKeys(webDriver, By.cssSelector("[data-testid='searchBox']"), "dim_api_client");
     Events.click(webDriver, By.cssSelector("[data-testid='data-name']"));
     Thread.sleep(waitTime);
-    actions
-        .moveToElement(webDriver.findElement(By.xpath("//div[@data-testid='tag-conatiner']//span")))
-        .perform();
+    actions.moveToElement(webDriver.findElement(By.xpath("//div[@data-testid='tag-conatiner']//span"))).perform();
     Events.click(webDriver, By.xpath("//div[@data-testid='tag-conatiner']//span"));
     Events.click(webDriver, By.cssSelector("[data-testid='associatedTagName']"));
     for (int i = 0; i <= 4; i++) {
@@ -181,7 +179,10 @@ public class PaginationAndFilterTest {
     Events.click(webDriver, By.cssSelector("[data-testid='checkbox'][id='shopify']"));
     Thread.sleep(2000);
     Object filteredResults = webDriver.findElements(By.xpath("//div[@data-testid='search-results']/div")).size();
-    String databaseCount = webDriver.findElement(By.xpath("//div[@data-testid='filter-container-shopify']//span[@data-testid='filter-count']")).getAttribute("innerHTML");
+    String databaseCount =
+        webDriver
+            .findElement(By.xpath("//div[@data-testid='filter-container-shopify']//span[@data-testid='filter-count']"))
+            .getAttribute("innerHTML");
     Assert.assertEquals(databaseCount, filteredResults);
   }
 
