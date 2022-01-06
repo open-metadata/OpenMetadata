@@ -9,8 +9,10 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-name: java-checkstyle
+name: Run the java checkstyle
 
+# read-only repo token
+# no access to secrets
 on:
   pull_request_target:
     branches: [ main ]
@@ -27,8 +29,6 @@ jobs:
       matrix:
         os:
           - ubuntu-latest
-        node-version:
-          - 12.x
 
     steps:
       - name: Checkout
@@ -42,22 +42,26 @@ jobs:
       - name: Run checkstyle
         run: mvn googleformatter:format@reformat-sources
 
-      - name: Save checkstyle outcome
-        id: git
-        continue-on-error: true
+      - name: Save checkstyle outcome and PR number
+        shell: bash {0}
         run: |
+          mkdir -p ./pr
           git diff-files --quiet
+          echo $? > ./pr/checkstyle_exit_code
+          echo ${{ github.event.number }} > ./pr/NR
 
-      - name: Create a comment in the PR with the instructions
-        if: steps.git.outcome != 'success'
-        uses: peter-evans/create-or-update-comment@v1
+      - name: Upload checkstyle outcome and PR number
+        uses: actions/upload-artifact@v2
         with:
-          issue-number: ${{ github.event.pull_request.number }}
-          body: |
-            The Java checkstyle failed. Please run `mvn googleformatter:format@reformat-sources` in the root
-            of your repository and commit the changes to this PR.
+          name: pr
+          path: pr/
 
-      - name: Java checkstyle failed, check the comment in the PR
-        if: steps.git.outcome != 'success'
-        run: |
-          exit 1
+      - name: Fail if Java checkstyle failed
+        uses: actions/github-script@v3
+        with:
+          script: |
+            var fs = require('fs');
+            var error = Number(fs.readFileSync('./pr/checkstyle_exit_code')) > 0
+            if (error) {
+              process.exit(error)
+            }
