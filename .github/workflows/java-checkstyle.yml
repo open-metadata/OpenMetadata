@@ -19,7 +19,7 @@ jobs:
         if: failure()
         uses: peter-evans/create-or-update-comment@v1
         with:
-          token: ${{ secrets.ACCESS_TOKEN }}
+          token: ${{ secrets.GITHUB_TOKEN }}
           repository: ${{ github.event.client_payload.repository }}
           issue-number: ${{ github.event.client_payload.issue_id }}
           body : |
