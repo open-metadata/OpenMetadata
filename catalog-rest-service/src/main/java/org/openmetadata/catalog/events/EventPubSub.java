@@ -87,8 +87,7 @@ public class EventPubSub {
   }
 
   public static BatchEventProcessor<ChangeEventHolder> addEventHandler(EventHandler<ChangeEventHolder> eventHandler) {
-    BatchEventProcessor<ChangeEventHolder> processor =
-        new BatchEventProcessor<>(ringBuffer, ringBuffer.newBarrier(), eventHandler);
+    BatchEventProcessor<ChangeEventHolder> processor = new BatchEventProcessor<>(ringBuffer, ringBuffer.newBarrier(), eventHandler);
     processor.setExceptionHandler(new DefaultExceptionHandler());
     ringBuffer.addGatingSequences(processor.getSequence());
     executor.execute(processor);
