@@ -28,7 +28,7 @@ const PageLayout: FC<PageLayoutProp> = ({
   return (
     <div
       className={classNames(
-        'page-layout-container tw-gap-x-3 tw-px-12 tw-overflow-y-auto',
+        'page-layout-container tw-gap-x-3 tw-px-6 tw-overflow-y-auto centered-layout',
         {
           'page-layout-container-left-center-right':
             leftPanel && children && rightPanel,
@@ -44,13 +44,21 @@ const PageLayout: FC<PageLayoutProp> = ({
         }
       )}>
       {leftPanel && (
-        <div
-          className="tw-overflow-y-auto tw-pl-2 tw-pr-4 tw-py-1"
-          id="left-panel">
+        <div className="tw-overflow-y-auto tw-pr-4 tw-py-1" id="left-panel">
           {leftPanel}
         </div>
       )}
-      <div className="tw-overflow-y-auto tw-py-1 tw-pl-2 tw-pr-4" id="center">
+      <div
+        className={classNames(
+          'tw-overflow-y-auto tw-py-1',
+          {
+            'tw-pl-2': leftPanel,
+          },
+          {
+            'tw-pr-4': rightPanel,
+          }
+        )}
+        id="center">
         {children}
       </div>
       {rightPanel && (
