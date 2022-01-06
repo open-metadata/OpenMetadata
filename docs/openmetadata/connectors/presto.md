@@ -157,7 +157,7 @@ Edit the value for `source.config.username` to identify your Presto user.
 **Note:** The user specified should be authorized to read all databases you want to include in the metadata ingestion workflow.
 {% endhint %}
 
-#### **password**
+#### **password (optional)**
 
 Edit the value for `source.config.password` with the password for your Presto user.
 
