@@ -77,6 +77,7 @@ SQLTYPES = [
     "TABLE",
     "TEXT",
     "TIME",
+    "TIMESTAMP_NTZ",
     "TIMESTAMP WITHOUT TIME ZONE",
     "TIMESTAMP",
     "TIMESTAMPTZ",

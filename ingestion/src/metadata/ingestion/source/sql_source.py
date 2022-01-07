@@ -16,13 +16,8 @@ import uuid
 from abc import abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Dict, Iterable, List, Optional, Set, Tuple, Type
+from typing import Dict, Iterable, List, Optional, Tuple
 from urllib.parse import quote_plus
-
-from pydantic import SecretStr
-from sqlalchemy import create_engine
-from sqlalchemy.engine.reflection import Inspector
-from sqlalchemy.inspection import inspect
 
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import (
@@ -48,6 +43,10 @@ from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.utils.column_helpers import check_column_complex_type, get_column_type
 from metadata.utils.helpers import get_database_service_or_create
+from pydantic import SecretStr
+from sqlalchemy import create_engine
+from sqlalchemy.engine.reflection import Inspector
+from sqlalchemy.inspection import inspect
 
 logger: logging.Logger = logging.getLogger(__name__)
 
@@ -64,21 +63,20 @@ class SQLSourceStatus(SourceStatus):
         logger.info("Table Scanned: {}".format(table_name))
 
     def filter(
-        self, table_name: str, err: str, dataset_name: str = None, col_type: str = None
+            self, table_name: str, err: str, dataset_name: str = None, col_type: str = None
     ) -> None:
         self.filtered.append(table_name)
         logger.warning("Dropped Table {} due to {}".format(table_name, err))
 
 
 def build_sql_source_connection_url(
-    host_port: str,
-    scheme: str,
-    username: Optional[str] = None,
-    password: Optional[SecretStr] = None,
-    database: Optional[str] = None,
-    options: dict = {},
+        host_port: str,
+        scheme: str,
+        username: Optional[str] = None,
+        password: Optional[SecretStr] = None,
+        database: Optional[str] = None,
+        options: dict = {},
 ) -> str:
-
     url = f"{scheme}://"
     if username is not None:
         url += f"{username}"
@@ -153,10 +151,10 @@ def _get_table_description(schema: str, table: str, inspector: Inspector) -> str
 
 class SQLSource(Source[OMetaDatabaseAndTable]):
     def __init__(
-        self,
-        config: SQLConnectionConfig,
-        metadata_config: MetadataServerConfig,
-        ctx: WorkflowContext,
+            self,
+            config: SQLConnectionConfig,
+            metadata_config: MetadataServerConfig,
+            ctx: WorkflowContext,
     ):
         super().__init__(ctx)
         self.config = config
@@ -200,7 +198,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
 
     @classmethod
     def create(
-        cls, config_dict: dict, metadata_config_dict: dict, ctx: WorkflowContext
+            cls, config_dict: dict, metadata_config_dict: dict, ctx: WorkflowContext
     ):
         pass
 
@@ -208,7 +206,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         return sa_type
 
     def standardize_schema_table_names(
-        self, schema: str, table: str
+            self, schema: str, table: str
     ) -> Tuple[str, str]:
         return schema, table
 
@@ -243,7 +241,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                 yield from self.fetch_views(inspector, schema)
 
     def fetch_tables(
-        self, inspector: Inspector, schema: str
+            self, inspector: Inspector, schema: str
     ) -> Iterable[OMetaDatabaseAndTable]:
         for table_name in inspector.get_table_names(schema):
             try:
@@ -300,7 +298,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                 continue
 
     def fetch_views(
-        self, inspector: Inspector, schema: str
+            self, inspector: Inspector, schema: str
     ) -> Iterable[OMetaDatabaseAndTable]:
         for view_name in inspector.get_view_names(schema):
             try:
@@ -370,33 +368,36 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
             catalog_entities = {**catalog_nodes, **catalog_sources}
 
             for key, mnode in manifest_entities.items():
-                name = mnode["alias"] if "alias" in mnode.keys() else mnode["name"]
-                cnode = catalog_entities.get(key)
-                if cnode is not None:
-                    columns = self._parse_data_model_columns(name, mnode, cnode)
-                else:
-                    columns = []
-                if mnode["resource_type"] == "test":
-                    continue
-                upstream_nodes = self._parse_data_model_upstream(mnode)
-                model_name = (
-                    mnode["alias"] if "alias" in mnode.keys() else mnode["name"]
-                )
-                model_name = model_name.replace(".", "_DOT_")
-                description = mnode.get("description", "")
-                schema = mnode["schema"]
-                path = f"{mnode['root_path']}/{mnode['original_file_path']}"
-                raw_sql = mnode.get("raw_sql", "")
-                model = DataModel(
-                    modelType=ModelType.DBT,
-                    description=description,
-                    path=path,
-                    rawSql=raw_sql,
-                    sql=mnode.get("compiled_sql", raw_sql),
-                    columns=columns,
-                    upstream=upstream_nodes,
-                )
-                model_fqdn = f"{schema}.{model_name}"
+                try:
+                    name = mnode["alias"] if "alias" in mnode.keys() else mnode["name"]
+                    cnode = catalog_entities.get(key)
+                    if cnode is not None:
+                        columns = self._parse_data_model_columns(name, mnode, cnode)
+                    else:
+                        columns = []
+                    if mnode["resource_type"] == "test":
+                        continue
+                    upstream_nodes = self._parse_data_model_upstream(mnode)
+                    model_name = (
+                        mnode["alias"] if "alias" in mnode.keys() else mnode["name"]
+                    )
+                    model_name = model_name.replace(".", "_DOT_")
+                    description = mnode.get("description", "")
+                    schema = mnode["schema"]
+                    path = f"{mnode['root_path']}/{mnode['original_file_path']}"
+                    raw_sql = mnode.get("raw_sql", "")
+                    model = DataModel(
+                        modelType=ModelType.DBT,
+                        description=description,
+                        path=path,
+                        rawSql=raw_sql,
+                        sql=mnode.get("compiled_sql", raw_sql),
+                        columns=columns,
+                        upstream=upstream_nodes,
+                    )
+                    model_fqdn = f"{schema}.{model_name}"
+                except Exception as err:
+                    logger.error(err)
                 self.data_models[model_fqdn] = model
 
     def _parse_data_model_upstream(self, mnode):
@@ -421,7 +422,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         return None
 
     def _parse_data_model_columns(
-        self, model_name: str, mnode: Dict, cnode: Dict
+            self, model_name: str, mnode: Dict, cnode: Dict
     ) -> [Column]:
         columns = []
         ccolumns = cnode.get("columns")
@@ -436,6 +437,8 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                 )
                 if description is None:
                     description = ccolumn.get("comment", None)
+                if col_type is None or col_type == "NULL":
+                    col_type = "BINARY"
                 col = Column(
                     name=ccolumn["name"].lower(),
                     description=description,
@@ -459,7 +462,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         return raw_data_type
 
     def _get_columns(
-        self, schema: str, table: str, inspector: Inspector
+            self, schema: str, table: str, inspector: Inspector
     ) -> List[Column]:
         pk_constraints = inspector.get_pk_constraint(table, schema)
         pk_columns = (
