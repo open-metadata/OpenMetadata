@@ -1,4 +1,3 @@
-# pylint: disable=invalid-name
 """
 Mixin class containing entity versioning specific methods
 
