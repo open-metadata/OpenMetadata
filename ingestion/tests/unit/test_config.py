@@ -24,7 +24,7 @@ class TestConfig(TestCase):
     Check config reading
     """
 
-    basedir = os.path.join("resources", "config")
+    basedir = os.path.join(os.path.dirname(__file__), "resources", "config")
 
     def test_basic(self):
         """

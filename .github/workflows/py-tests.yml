@@ -16,12 +16,12 @@ on:
     branches: [main]
     paths:
       - ingestion/**
-  pull_request:
+  pull_request_target:
     branches: [main]
     paths:
       - ingestion/**
 jobs:
-  run_integration_tests:
+  run_tests:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
@@ -30,22 +30,48 @@ jobs:
       with:
         java-version: '11'
         distribution: 'adopt'
+
     - name: Start Server and Ingest Sample Data
       run: ./docker/run_local_docker.sh
       timeout-minutes: 20
+
     - name: Set up Python 3.9
       uses: actions/setup-python@v2
       with:
         python-version: 3.9
+
     - name: Install Ubuntu dependencies
       run: |
         sudo apt-get install -y libsasl2-dev unixodbc-dev python3-venv
+
     - name: Install open-metadata dependencies
       run: |
         python3 -m venv env
         source env/bin/activate
-        make install_test install_dev generate install
-    - name: Run Python Integration Tests
+        make install_test install_dev generate
+
+    - name: Run Python Tests & record coverage
       run: |
         source env/bin/activate
-        make run_ometa_integration_tests
+        make coverage
+
+    - name: Run PR Sonar
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      if: ${{ github.event_name == 'pull_request_target' }}
+      run: |
+        git fetch --no-tags https://github.com/open-metadata/OpenMetadata.git +refs/heads/main:refs/remotes/origin/main
+
+        # Add PR analysis information
+        echo "\nsonar.pullrequest.key=${{ github.event.pull_request.number }}" >> ingestion/sonar-project.properties
+        echo "sonar.pullrequest.branch=${{ github.head_ref }}" >> ingestion/sonar-project.properties
+        echo "sonar.pullrequest.base=origin/main" >> ingestion/sonar-project.properties
+        echo "sonar.pullrequest.provider=github" >> ingestion/sonar-project.properties
+
+        make token=${{ secrets.INGESTION_SONAR_SECRET }} sonar_ingestion
+
+    - name: Run Sonar
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      if: ${{ github.event_name == 'push' }}
+      run: make token=${{ secrets.INGESTION_SONAR_SECRET }} sonar_ingestion
