@@ -12,8 +12,8 @@ from typing import Optional
 
 from pydantic import BaseModel
 
-from metadata.generated.schema.entity.policies.policy import Policy
 from metadata.generated.schema.entity.data.location import Location
+from metadata.generated.schema.entity.policies.policy import Policy
 
 
 class OMetaPolicy(BaseModel):

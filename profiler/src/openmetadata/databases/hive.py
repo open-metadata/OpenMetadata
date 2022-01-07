@@ -12,9 +12,6 @@
 import json
 from typing import Optional
 
-from pyhive import hive  # noqa: F401
-from pyhive.sqlalchemy_hive import HiveDate, HiveDecimal, HiveTimestamp
-
 from openmetadata.common.database_common import (
     DatabaseCommon,
     SQLConnectionConfig,
@@ -22,6 +19,8 @@ from openmetadata.common.database_common import (
     register_custom_type,
 )
 from openmetadata.profiler.profiler_metadata import SupportedDataType
+from pyhive import hive  # noqa: F401
+from pyhive.sqlalchemy_hive import HiveDate, HiveDecimal, HiveTimestamp
 
 register_custom_type([HiveDate, HiveTimestamp], SupportedDataType.TIME)
 register_custom_type([HiveDecimal], SupportedDataType.NUMERIC)
