@@ -26,7 +26,6 @@
   display: none;
   border-left: 1px solid #d9ceee;
   transition: transform 0.3s ease-out;
-  margin-top: -16px;
 }
 
 .side-drawer.open {

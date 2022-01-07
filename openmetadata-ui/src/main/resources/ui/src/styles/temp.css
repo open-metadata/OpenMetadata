@@ -825,3 +825,27 @@ body .list-option.rdw-option-active {
 .flow-control input[type='range']:focus::-ms-fill-upper {
   background: #7147e8;
 }
+
+/* EntityLineage Sidebar CSS */
+
+.entity-lineage.sidebar {
+  height: 110%;
+  background: white;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100px;
+  z-index: 200;
+  overflow-y: auto;
+  padding: 8px;
+  transform: translateX(100%);
+  display: none;
+  border-right: 1px solid #d9ceee;
+  transition: transform 0.3s ease-out;
+  margin-left: -16px;
+}
+
+.entity-lineage.sidebar.open {
+  transform: translateX(0);
+  display: block;
+}

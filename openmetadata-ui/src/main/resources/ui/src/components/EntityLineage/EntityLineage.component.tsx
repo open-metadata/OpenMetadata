@@ -48,6 +48,7 @@ import EntityInfoDrawer from '../EntityInfoDrawer/EntityInfoDrawer.component';
 import CustomControls, { ControlButton } from './CustomControls.component';
 import CustomNode from './CustomNode.component';
 import { EntityLineageProp, SelectedNode } from './EntityLineage.interface';
+import EntityLineageSidebar from './EntityLineageSidebar.component';
 
 const Entitylineage: FunctionComponent<EntityLineageProp> = ({
   entityLineage,
@@ -220,7 +221,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
   }, [tableColumns]);
 
   return (
-    <div className="tw-relative tw-h-full tw--mx-4">
+    <div className="tw-relative tw-h-full tw--mx-4 tw--mt-4">
       <div className="tw-w-full tw-h-full">
         {(entityLineage?.downstreamEdges ?? []).length > 0 ||
         (entityLineage?.upstreamEdges ?? []).length > 0 ? (
@@ -291,6 +292,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
         show={isDrawerOpen && !isEditMode}
         onCancel={closeDrawer}
       />
+      <EntityLineageSidebar show={isEditMode} />
     </div>
   );
 };
