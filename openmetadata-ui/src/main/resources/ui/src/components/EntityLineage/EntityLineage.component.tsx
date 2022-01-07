@@ -220,7 +220,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
   }, [tableColumns]);
 
   return (
-    <div className="tw-relative tw-h-full tw--ml-4">
+    <div className="tw-relative tw-h-full tw--mx-4">
       <div className="tw-w-full tw-h-full">
         {(entityLineage?.downstreamEdges ?? []).length > 0 ||
         (entityLineage?.upstreamEdges ?? []).length > 0 ? (
