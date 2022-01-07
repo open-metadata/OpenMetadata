@@ -60,7 +60,8 @@ jobs:
           mvn -Dsonar.login=${{ secrets.SONAR_TOKEN }} \
               -Dsonar.pullrequest.key=${{ github.event.pull_request.number }} \
               -Dsonar.pullrequest.branch=${{ github.head_ref }} \
-              -Dsonar.pullrequest.base=origin/main \
+              -Dsonar.pullrequest.base=main \
+              -Dsonar.pullrequest.github.repository=OpenMetadata \
               -Dsonar.pullrequest.provider=github clean install
 
       - name: Build with Maven
