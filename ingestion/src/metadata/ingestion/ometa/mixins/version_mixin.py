@@ -14,7 +14,7 @@ from metadata.generated.schema.type import basic
 from metadata.generated.schema.type.entityHistory import EntityVersionHistory
 from metadata.ingestion.ometa.client import REST
 
-T = TypeVar("T", bound=BaseModel)  # pylint: disable=invalid-name
+T = TypeVar("T", bound=BaseModel)
 logger = logging.getLogger(__name__)
 
 
