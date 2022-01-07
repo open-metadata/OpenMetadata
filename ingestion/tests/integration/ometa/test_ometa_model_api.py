@@ -281,3 +281,37 @@ class OMetaModelTest(TestCase):
         self.metadata.delete(entity=Table, entity_id=table2_entity.id)
         self.metadata.delete(entity=Database, entity_id=create_db_entity.id)
         self.metadata.delete(entity=DatabaseService, entity_id=service_entity.id)
+
+    def test_list_versions(self):
+        """
+        test list MLmodel entity versions
+        """
+        self.metadata.create_or_update(data=self.create)
+
+        # Find by name
+        res_name = self.metadata.get_by_name(
+            entity=MlModel, fqdn=self.entity.fullyQualifiedName
+        )
+
+        res = self.metadata.get_list_entity_versions(entity=MlModel, entity_id=res_name.id.__root__)
+        assert res
+
+    def test_get_entity_version(self):
+        """
+        test get MLModel entity version
+        """
+        self.metadata.create_or_update(data=self.create)
+
+        # Find by name
+        res_name = self.metadata.get_by_name(
+            entity=MlModel, fqdn=self.entity.fullyQualifiedName
+        )
+        res = self.metadata.get_entity_version(
+            entity=MlModel,
+            entity_id=res_name.id.__root__,
+            version=0.1
+        )
+
+        # check we get the correct version requested and the correct entity ID
+        assert res.version.__root__ == 0.1
+        assert res.id == res_name.id
