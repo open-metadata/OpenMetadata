@@ -8,7 +8,7 @@ config = """
   "source": {
     "type": "sample-data",
     "config": {
-      "sample_data_folder": "examples/sample_data/"
+      "sample_data_folder": "ingestion/examples/sample_data"
     }
   },
   "stage": {

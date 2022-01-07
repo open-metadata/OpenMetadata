@@ -11,10 +11,10 @@ install:
 	python3 -m pip install ingestion/
 
 install_test:
-	python3 -m pip install -r ingestion/requirements-test.txt
+	python3 -m pip install "ingestion[test]/"
 
 install_dev:
-	python3 -m pip install -r ingestion/requirements-dev.txt
+	python3 -m pip install "ingestion[dev]/"
 
 precommit_install:
 	@echo "Installing pre-commit hooks"
@@ -39,8 +39,25 @@ generate:
 	datamodel-codegen  --input catalog-rest-service/src/main/resources/json  --input-file-type jsonschema --output ingestion/src/metadata/generated
 
 run_ometa_integration_tests:
-	cd ingestion; \
-	pytest -c setup.cfg --override-ini=testpaths="tests/integration/ometa tests/unit/stage_test.py"
+	coverage run -m pytest -c ingestion/setup.cfg --doctest-modules --junitxml=ingestion/junit/test-results-integration.xml --override-ini=testpaths="ingestion/tests/integration/ometa ingestion/tests/integration/stage"
+
+unit_ingestion:
+	coverage run -m pytest -c ingestion/setup.cfg -s --doctest-modules --junitxml=ingestion/junit/test-results-unit.xml --override-ini=testpaths="ingestion/tests/unit"
+
+coverage:
+	coverage erase
+	make unit_ingestion
+	make run_ometa_integration_tests
+	coverage xml -i -o ingestion/coverage.xml
+
+sonar_ingestion:
+	docker run \
+		--rm \
+		-e SONAR_HOST_URL="https://sonarcloud.io" \
+		-e SONAR_LOGIN=$(token) \
+		-v ${PWD}:/usr/src \
+		sonarsource/sonar-scanner-cli \
+		-Dproject.settings=ingestion/sonar-project.properties
 
 publish:
 	make install_dev generate
