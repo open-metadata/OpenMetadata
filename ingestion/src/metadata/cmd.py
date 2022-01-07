@@ -22,7 +22,7 @@ from metadata.__version__ import get_metadata_version
 from metadata.config.common import load_config_file
 from metadata.ingestion.api.workflow import Workflow
 
-from ingestion.src.metadata.utils.docker import run_docker
+from metadata.utils.docker import run_docker
 
 logger = logging.getLogger(__name__)
 
@@ -126,15 +126,18 @@ def report(config: str) -> None:
 
 
 @metadata.command()
-@click.option("--start", help="Start release Docker containers", is_flag=True)
+@click.option("--start", help="Start release docker containers", is_flag=True)
 @click.option(
     "--stop",
-    help="Stop and remove openmetadata Docker containers (local and release) and images",
+    help="Stops openmetadata docker containers",
     is_flag=True,
 )
-@click.option("--pause", help="Pause openmetadata Docker containers", is_flag=True)
+@click.option("--pause", help="Pause openmetadata docker containers", is_flag=True)
 @click.option(
-    "--resume", help="Resume/Unpause openmetadata Docker containers", is_flag=True
+    "--resume", help="Resume/Unpause openmetadata docker containers", is_flag=True
+)
+@click.option(
+    "--clean", help="Stops and remove openmetadata docker containers along with images, volumes, networks associated", is_flag=True
 )
 @click.option(
     "-f",
@@ -143,13 +146,13 @@ def report(config: str) -> None:
     type=click.Path(exists=True, dir_okay=False),
     required=False,
 )
-def docker(start, stop, pause, resume, file_path) -> None:
+def docker(start, stop, pause, resume, clean, file_path) -> None:
     """
     Checks Docker Memory Allocation
     Run Latest Release Docker - metadata docker --start
     Run Local Docker - metadata docker --start -f path/to/docker-compose.yml
     """
-    run_docker(start, stop, pause, resume, file_path)
+    run_docker(start, stop, pause, resume, clean, file_path)
 
 
 metadata.add_command(check)

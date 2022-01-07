@@ -22,7 +22,7 @@ calc_gb = 1024 * 1024 * 1000
 min_memory_limit = 3 * calc_gb
 
 
-def run_docker(start, stop, pause, resume, file_path):
+def run_docker(start, stop, pause, resume, clean, file_path):
     try:
         from python_on_whales import DockerClient
 
@@ -44,21 +44,22 @@ def run_docker(start, stop, pause, resume, file_path):
         logger.info("Checking openmetadata memory constraints....")
         if docker_info.mem_total < min_memory_limit:
             raise MemoryError
-
+        
         # Check for -f <Path>
         start_time = time.time()
         if file_path is None:
-            logger.info(
-                "Downloading latest docker compose file from openmetadata repository..."
-            )
-            r = requests.get(
-                "https://raw.githubusercontent.com/open-metadata/OpenMetadata/main/docker/metadata/docker-compose.yml"
-            )
             docker_compose_file_path = (
                 pathlib.Path(tempfile.gettempdir()) / "docker-compose.yml"
             )
-            with open(docker_compose_file_path, "wb") as docker_compose_file_handle:
-                docker_compose_file_handle.write(r.content)
+            if not docker_compose_file_path.exists():
+                logger.info(
+                    "Downloading latest docker compose file from openmetadata repository..."
+                )
+                r = requests.get(
+                    "https://raw.githubusercontent.com/open-metadata/OpenMetadata/main/docker/metadata/docker-compose.yml"
+                )
+                with open(docker_compose_file_path, "wb") as docker_compose_file_handle:
+                    docker_compose_file_handle.write(r.content)
         else:
             if file_path == "":
                 raise ValueError("Please Provide Path to local docker-compose.yml file")
@@ -126,10 +127,18 @@ def run_docker(start, stop, pause, resume, file_path):
             logger.info("Resuming docker compose for Open Metadata Successful.")
         if stop:
             logger.info("Stopping docker compose for Open Metadata....")
-            docker.compose.down(
-                remove_orphans=True, remove_images="local", volumes=True
-            )
+            docker.compose.stop()
             logger.info("docker compose for Open Metadata stopped successfully.")
+        if clean:
+            logger.info("Stopping docker compose for Open Metadata and removing images, networks, volumes....")
+            docker.compose.down(
+                remove_orphans=True,
+                remove_images="all",
+                volumes=True
+            )
+            logger.info("Stopped docker compose for Open Metadata and removing images, networks, volumes.")
+            if file_path is None:
+                docker_compose_file_path.unlink()
 
     except MemoryError:
         click.secho(
