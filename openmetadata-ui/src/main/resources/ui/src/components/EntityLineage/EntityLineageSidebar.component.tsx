@@ -38,8 +38,17 @@ const entityData = [
 const EntityNode: FC<EntityNodeProps> = ({ type, label }) => {
   return (
     <div className="tw-flex tw-flex-col tw-mb-3 tw-items-center">
-      <div className="tw-border tw-p-2 tw-border-main tw-flex tw-justify-between tw-w-16 tw-rounded">
-        <SVGIcons alt={type} icon={type} width="14" />
+      <div
+        draggable
+        className="tw-border tw-p-2 tw-border-main tw-flex tw-justify-between tw-w-16 tw-rounded"
+        style={{ cursor: 'grab' }}>
+        <span
+          onDragStart={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}>
+          <SVGIcons alt={type} icon={type} width="14" />
+        </span>
         <span>
           <i className="fas fa-grip-vertical" style={{ color: '#B3B3B3' }} />
         </span>

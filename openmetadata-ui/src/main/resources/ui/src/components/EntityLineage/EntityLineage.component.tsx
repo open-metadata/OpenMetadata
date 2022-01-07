@@ -23,6 +23,7 @@ import ReactFlow, {
   Edge,
   Elements,
   FlowElement,
+  OnLoadParams,
   ReactFlowProvider,
   removeElements,
 } from 'react-flow-renderer';
@@ -57,6 +58,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
   isNodeLoading,
 }: EntityLineageProp) => {
   const showToast = useToastContext();
+  const [, setReactFlowInstance] = useState<OnLoadParams>();
   const [isDrawerOpen, setIsDrawerOpen] = useState<boolean>(false);
   const [selectedNode, setSelectedNode] = useState<SelectedNode>(
     {} as SelectedNode
@@ -239,7 +241,10 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
               onConnect={onConnect}
               onElementClick={(_e, el) => onElementClick(el)}
               onElementsRemove={onElementsRemove}
-              onLoad={onLoad}
+              onLoad={(reactFlowInstance: OnLoadParams) => {
+                onLoad(reactFlowInstance);
+                setReactFlowInstance(reactFlowInstance);
+              }}
               onNodeContextMenu={onNodeContextMenu}
               onNodeDrag={dragHandle}
               onNodeDragStart={dragHandle}
