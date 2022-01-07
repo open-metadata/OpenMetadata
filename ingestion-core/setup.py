@@ -32,8 +32,8 @@ setup(
     package_dir={"": "src"},
     zip_safe=False,
     use_incremental=True,
-    setup_requires=['incremental'],
-    install_requires=['incremental'],
+    setup_requires=["incremental"],
+    install_requires=["incremental"],
     project_urls={
         "Documentation": "https://docs.open-metadata.org/",
         "Source": "https://github.com/open-metadata/OpenMetadata",

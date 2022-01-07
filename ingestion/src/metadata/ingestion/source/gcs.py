@@ -11,7 +11,7 @@
 
 import logging
 import uuid
-from typing import List, Union, Optional, Iterable
+from typing import Iterable, List, Optional, Union
 
 from google.cloud import storage
 
@@ -20,14 +20,14 @@ from metadata.generated.schema.entity.policies.lifecycle.deleteAction import (
     LifecycleDeleteAction,
 )
 from metadata.generated.schema.entity.policies.lifecycle.moveAction import (
-    LifecycleMoveAction,
     Destination,
+    LifecycleMoveAction,
 )
 from metadata.generated.schema.entity.policies.lifecycle.rule import LifecycleRule
 from metadata.generated.schema.entity.policies.policy import Policy, PolicyType
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.storage import GcsStorageClass, StorageServiceType
-from metadata.ingestion.api.common import Entity, ConfigModel, WorkflowContext
+from metadata.ingestion.api.common import ConfigModel, Entity, WorkflowContext
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.models.ometa_policy import OMetaPolicy
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
