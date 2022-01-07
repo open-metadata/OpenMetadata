@@ -8,6 +8,12 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+"""
+OpenMetadata is the high level Python API that serves as a wrapper
+for the metadata-server API. It is based on the generated pydantic
+models from the JSON schemas and provides a typed approach to
+working with OpenMetadata entities.
+"""
 
 import logging
 from typing import Generic, List, Optional, Type, TypeVar, Union, get_args
@@ -38,10 +44,9 @@ from metadata.generated.schema.type import basic
 from metadata.generated.schema.type.entityHistory import EntityVersionHistory
 from metadata.ingestion.ometa.auth_provider import AuthenticationProvider
 from metadata.ingestion.ometa.client import REST, APIError, ClientConfig
-from metadata.ingestion.ometa.mixins.lineageMixin import OMetaLineageMixin
-from metadata.ingestion.ometa.mixins.mlModelMixin import OMetaMlModelMixin
-from metadata.ingestion.ometa.mixins.tableMixin import OMetaTableMixin
-from metadata.ingestion.ometa.mixins.versionMixin import OMetaVersionMixin
+from metadata.ingestion.ometa.mixins.mlmodel_mixin import OMetaMlModelMixin
+from metadata.ingestion.ometa.mixins.table_mixin import OMetaTableMixin
+from metadata.ingestion.ometa.mixins.version_mixin import OMetaVersionMixin
 from metadata.ingestion.ometa.openmetadata_rest import (
     Auth0AuthenticationProvider,
     GoogleAuthenticationProvider,
@@ -126,13 +131,16 @@ class OpenMetadata(
         self.client = REST(client_config)
         self._use_raw_data = raw_data
 
-    def get_suffix(self, entity: Type[T]) -> str:
+    def get_suffix(self, entity: Type[T]) -> str:  # pylint: disable=R0911,R0912
         """
         Given an entity Type from the generated sources,
         return the endpoint to run requests.
 
         Might be interesting to follow a more strict
         and type-checked approach
+
+        Disabled pylint R0911: too-many-return-statements
+        Disabled pylint R0912: too-many-branches
         """
 
         # Entity Schemas
@@ -411,11 +419,11 @@ class OpenMetadata(
 
         if self._use_raw_data:
             return resp
-        else:
-            entities = [entity(**t) for t in resp["data"]]
-            total = resp["paging"]["total"]
-            after = resp["paging"]["after"] if "after" in resp["paging"] else None
-            return EntityList(entities=entities, total=total, after=after)
+
+        entities = [entity(**t) for t in resp["data"]]
+        total = resp["paging"]["total"]
+        after = resp["paging"]["after"] if "after" in resp["paging"] else None
+        return EntityList(entities=entities, total=total, after=after)
 
     def list_versions(
         self, entity_id: Union[str, basic.Uuid], entity: Type[T]
@@ -430,8 +438,8 @@ class OpenMetadata(
 
         if self._use_raw_data:
             return resp
-        else:
-            return EntityVersionHistory(**resp)
+
+        return EntityVersionHistory(**resp)
 
     def list_services(self, entity: Type[T]) -> List[EntityList[T]]:
         """
@@ -441,8 +449,8 @@ class OpenMetadata(
         resp = self.client.get(self.get_suffix(entity))
         if self._use_raw_data:
             return resp
-        else:
-            return [entity(**p) for p in resp["data"]]
+
+        return [entity(**p) for p in resp["data"]]
 
     def delete(self, entity: Type[T], entity_id: Union[str, basic.Uuid]) -> None:
         self.client.delete(f"{self.get_suffix(entity)}/{self.uuid_to_str(entity_id)}")
