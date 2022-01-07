@@ -9,20 +9,16 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-name: Java checkstyle
+name: Java Checkstyle
 
 # read-write repo token
 # access to secrets
 on:
   pull_request_target:
     branches: [ main ]
-    paths:
-      - "catalog-rest-service/**"
-      - "common/**"
-      - "openmetadata-ui/src/test/java/**"
 
 jobs:
-  check:
+  java-checkstyle:
     runs-on: ${{matrix.os}}
 
     strategy:
