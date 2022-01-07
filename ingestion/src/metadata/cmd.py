@@ -137,7 +137,9 @@ def report(config: str) -> None:
     "--resume", help="Resume/Unpause openmetadata docker containers", is_flag=True
 )
 @click.option(
-    "--clean", help="Stops and remove openmetadata docker containers along with images, volumes, networks associated", is_flag=True
+    "--clean",
+    help="Stops and remove openmetadata docker containers along with images, volumes, networks associated",
+    is_flag=True,
 )
 @click.option(
     "-f",

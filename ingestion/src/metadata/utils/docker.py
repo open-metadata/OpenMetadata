@@ -44,7 +44,7 @@ def run_docker(start, stop, pause, resume, clean, file_path):
         logger.info("Checking openmetadata memory constraints....")
         if docker_info.mem_total < min_memory_limit:
             raise MemoryError
-        
+
         # Check for -f <Path>
         start_time = time.time()
         if file_path is None:
@@ -130,13 +130,13 @@ def run_docker(start, stop, pause, resume, clean, file_path):
             docker.compose.stop()
             logger.info("docker compose for Open Metadata stopped successfully.")
         if clean:
-            logger.info("Stopping docker compose for Open Metadata and removing images, networks, volumes....")
-            docker.compose.down(
-                remove_orphans=True,
-                remove_images="all",
-                volumes=True
+            logger.info(
+                "Stopping docker compose for Open Metadata and removing images, networks, volumes...."
             )
-            logger.info("Stopped docker compose for Open Metadata and removing images, networks, volumes.")
+            docker.compose.down(remove_orphans=True, remove_images="all", volumes=True)
+            logger.info(
+                "Stopped docker compose for Open Metadata and removing images, networks, volumes."
+            )
             if file_path is None:
                 docker_compose_file_path.unlink()
 
