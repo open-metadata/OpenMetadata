@@ -30,6 +30,7 @@ import TopicDetails from '../../components/TopicDetails/TopicDetails.component';
 import {
   getServiceDetailsPath,
   getTopicDetailsPath,
+  getVersionPath,
 } from '../../constants/constants';
 import { EntityType } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
@@ -78,6 +79,7 @@ const TopicDetailsPage: FunctionComponent = () => {
   const [slashedTopicName, setSlashedTopicName] = useState<
     TitleBreadcrumbProps['titleLinks']
   >([]);
+  const [currentVersion, setCurrentVersion] = useState<string>();
 
   const activeTabHandler = (tabValue: number) => {
     const currentTabIndex = tabValue - 1;
@@ -134,10 +136,12 @@ const TopicDetailsPage: FunctionComponent = () => {
           replicationFactor,
           retentionSize,
           serviceType,
+          version,
         } = res.data;
         setName(name);
         setTopicDetails(res.data);
         setTopicId(id);
+        setCurrentVersion(version);
         setDescription(description ?? '');
         setSchemaType(schemaType);
         setFollowers(followers);
@@ -206,7 +210,8 @@ const TopicDetailsPage: FunctionComponent = () => {
 
   const descriptionUpdateHandler = (updatedTopic: Topic) => {
     saveUpdatedTopicData(updatedTopic).then((res: AxiosResponse) => {
-      const { description } = res.data;
+      const { description, version } = res.data;
+      setCurrentVersion(version);
       setTopicDetails(res.data);
       setDescription(description);
     });
@@ -217,6 +222,7 @@ const TopicDetailsPage: FunctionComponent = () => {
       saveUpdatedTopicData(updatedTopic)
         .then((res) => {
           setTopicDetails(res.data);
+          setCurrentVersion(res.data.version);
           setOwner(getOwnerFromId(res.data.owner?.id));
           setTier(getTierTags(res.data.tags));
           resolve();
@@ -228,8 +234,15 @@ const TopicDetailsPage: FunctionComponent = () => {
   const onTagUpdate = (updatedTopic: Topic) => {
     saveUpdatedTopicData(updatedTopic).then((res: AxiosResponse) => {
       setTier(getTierTags(res.data.tags));
+      setCurrentVersion(res.data.version);
       setTags(getTagsWithoutTier(res.data.tags));
     });
+  };
+
+  const versionHandler = () => {
+    history.push(
+      getVersionPath(EntityType.TOPIC, topicFQN, currentVersion as string)
+    );
   };
 
   useEffect(() => {
@@ -270,6 +283,8 @@ const TopicDetailsPage: FunctionComponent = () => {
           topicTags={tags}
           unfollowTopicHandler={unfollowTopic}
           users={AppState.users}
+          version={currentVersion}
+          versionHandler={versionHandler}
         />
       )}
     </>

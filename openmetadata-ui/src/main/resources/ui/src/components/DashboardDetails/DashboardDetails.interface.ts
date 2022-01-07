@@ -32,6 +32,7 @@ export interface ChartType extends Chart {
 }
 
 export interface DashboardDetailsProps {
+  version: string;
   isNodeLoading: LoadingNodeState;
   lineageLeafNodes: LeafNodes;
   entityLineage: EntityLineage;
@@ -66,4 +67,5 @@ export interface DashboardDetailsProps {
   ) => void;
   tagUpdateHandler: (updatedDashboard: Dashboard) => void;
   loadNodeHandler: (node: EntityReference, pos: LineagePos) => void;
+  versionHandler: () => void;
 }

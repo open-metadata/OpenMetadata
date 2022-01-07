@@ -69,6 +69,7 @@ const MyData: React.FC<MyDataProps> = ({
             className="tw-underline"
             data-testid="feeds"
             size="custom"
+            tag="button"
             theme="primary"
             variant="link"
             onClick={() => setFieldListVisible((visible) => !visible)}>
@@ -98,7 +99,7 @@ const MyData: React.FC<MyDataProps> = ({
 
   const getLeftPanel = () => {
     return (
-      <div className="tw-mt-5">
+      <div className="tw-mt-12">
         <MyAssetStats
           countServices={countServices}
           entityCounts={entityCounts}
@@ -115,7 +116,7 @@ const MyData: React.FC<MyDataProps> = ({
 
   const getRightPanel = useCallback(() => {
     return (
-      <div className="tw-mt-5">
+      <div className="tw-mt-12">
         <EntityList
           entityList={ownedData}
           headerText={
@@ -125,14 +126,14 @@ const MyData: React.FC<MyDataProps> = ({
                 <Link
                   data-testid="my-data"
                   to={getLinkByFilter(Ownership.OWNER)}>
-                  <span className="link-text tw-font-light tw-text-xs">
+                  <span className="link-text tw-font-normal tw-text-xs">
                     View All
                   </span>
                 </Link>
               ) : null}
             </div>
           }
-          noDataPlaceholder={<>You have not owned anything yet!</>}
+          noDataPlaceholder={<>You have not owned anything yet.</>}
           testIDText="My data"
         />
         <div className="tw-filter-seperator tw-mt-3" />
@@ -145,14 +146,14 @@ const MyData: React.FC<MyDataProps> = ({
                 <Link
                   data-testid="following-data"
                   to={getLinkByFilter(Ownership.FOLLOWERS)}>
-                  <span className="link-text tw-font-light tw-text-xs">
+                  <span className="link-text tw-font-normal tw-text-xs">
                     View All
                   </span>
                 </Link>
               ) : null}
             </div>
           }
-          noDataPlaceholder={<>You have not followed anything yet!</>}
+          noDataPlaceholder={<>You have not followed anything yet.</>}
           testIDText="Following data"
         />
         <div className="tw-filter-seperator tw-mt-3" />
@@ -171,7 +172,7 @@ const MyData: React.FC<MyDataProps> = ({
       .map((d) => {
         return (
           d.changeDescriptions
-            .filter(
+            ?.filter(
               (c) =>
                 c.fieldsAdded?.length ||
                 c.fieldsDeleted?.length ||
@@ -213,7 +214,7 @@ const MyData: React.FC<MyDataProps> = ({
           {getFeedsData().feeds.length > 0 ? (
             <FeedCards {...getFeedsData()} />
           ) : (
-            <Onboarding showLogo={false} />
+            <Onboarding />
           )}
         </Fragment>
       )}

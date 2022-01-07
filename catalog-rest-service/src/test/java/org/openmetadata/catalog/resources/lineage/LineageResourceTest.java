@@ -52,9 +52,9 @@ public class LineageResourceTest extends CatalogApplicationTest {
 
   @BeforeAll
   public static void setup(TestInfo test) throws IOException, URISyntaxException {
-    TableResourceTest.setup(test); // Initialize TableResourceTest for using helper methods
     // Create TABLE_COUNT number of tables
     TableResourceTest tableResourceTest = new TableResourceTest();
+    tableResourceTest.setup(test); // Initialize TableResourceTest for using helper methods
     for (int i = 0; i < TABLE_COUNT; i++) {
       CreateTable createTable = tableResourceTest.create(test, i);
       TABLES.add(tableResourceTest.createEntity(createTable, adminAuthHeaders()));
@@ -62,7 +62,7 @@ public class LineageResourceTest extends CatalogApplicationTest {
   }
 
   @Test
-  public void put_addLineageForInvalidEntities() throws HttpResponseException {
+  void put_addLineageForInvalidEntities() throws HttpResponseException {
     // Add lineage table4-->table5
     addEdge(TABLES.get(4), TABLES.get(5));
 

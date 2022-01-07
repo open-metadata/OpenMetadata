@@ -44,6 +44,7 @@ import org.openmetadata.catalog.jdbi3.Relationship;
 import org.openmetadata.catalog.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.catalog.type.Column;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.FailureDetails;
 import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.type.MlFeature;
 import org.openmetadata.catalog.type.MlHyperParameter;
@@ -107,6 +108,10 @@ public final class EntityUtil {
 
   public static final BiPredicate<MlFeature, MlFeature> mlFeatureMatch = MlFeature::equals;
   public static final BiPredicate<MlHyperParameter, MlHyperParameter> mlHyperParameterMatch = MlHyperParameter::equals;
+  public static final BiPredicate<FailureDetails, FailureDetails> failureDetailsMatch =
+      (failureDetails1, failureDetails2) ->
+          Objects.equals(failureDetails2.getLastFailedAt(), failureDetails1.getLastFailedAt())
+              && Objects.equals(failureDetails2.getLastSuccessfulAt(), failureDetails1.getLastSuccessfulAt());
 
   private EntityUtil() {}
 
@@ -147,8 +152,8 @@ public final class EntityUtil {
     return entity;
   }
 
-  public static EntityReference getService(EntityRelationshipDAO dao, UUID entityId) {
-    List<EntityReference> refs = dao.findFrom(entityId.toString(), Relationship.CONTAINS.ordinal());
+  public static EntityReference getService(EntityRelationshipDAO dao, String entityType, UUID entityId) {
+    List<EntityReference> refs = dao.findFrom(entityId.toString(), entityType, Relationship.CONTAINS.ordinal());
     if (refs.size() > 1) {
       LOG.warn("Possible database issues - multiple services found for entity {}", entityId);
       return refs.get(0);
@@ -156,8 +161,10 @@ public final class EntityUtil {
     return refs.isEmpty() ? null : refs.get(0);
   }
 
-  public static EntityReference getService(EntityRelationshipDAO dao, UUID entityId, String serviceType) {
-    List<EntityReference> refs = dao.findFromEntity(entityId.toString(), Relationship.CONTAINS.ordinal(), serviceType);
+  public static EntityReference getService(
+      EntityRelationshipDAO dao, String entityType, UUID entityId, String serviceType) {
+    List<EntityReference> refs =
+        dao.findFromEntity(entityId.toString(), entityType, Relationship.CONTAINS.ordinal(), serviceType);
     if (refs.size() > 1) {
       LOG.warn("Possible database issues - multiple services found for entity {}", entityId);
       return refs.get(0);
@@ -173,8 +180,9 @@ public final class EntityUtil {
 
   // Get owner for a given entity
   public static EntityReference populateOwner(
-      UUID id, EntityRelationshipDAO entityRelationshipDAO, UserDAO userDAO, TeamDAO teamDAO) throws IOException {
-    List<EntityReference> ids = entityRelationshipDAO.findFrom(id.toString(), Relationship.OWNS.ordinal());
+      UUID id, String entityType, EntityRelationshipDAO entityRelationshipDAO, UserDAO userDAO, TeamDAO teamDAO)
+      throws IOException {
+    List<EntityReference> ids = entityRelationshipDAO.findFrom(id.toString(), entityType, Relationship.OWNS.ordinal());
     if (ids.size() > 1) {
       LOG.warn("Possible database issues - multiple owners {} found for entity {}", ids, id);
     }
@@ -190,7 +198,7 @@ public final class EntityUtil {
     if (owner.getType().equalsIgnoreCase("user")) {
       User ownerInstance = userDAO.findEntityById(id);
       owner.setName(ownerInstance.getName());
-      if (Optional.ofNullable(ownerInstance.getDeactivated()).orElse(false)) {
+      if (Optional.ofNullable(ownerInstance.getDeleted()).orElse(false)) {
         throw new IllegalArgumentException(CatalogExceptionMessage.deactivatedUser(id));
       }
     } else if (owner.getType().equalsIgnoreCase("team")) {
@@ -218,10 +226,12 @@ public final class EntityUtil {
   }
 
   /** Unassign owner relationship for a given entity */
-  public static void unassignOwner(EntityRelationshipDAO dao, EntityReference owner, String ownedEntityId) {
+  public static void unassignOwner(
+      EntityRelationshipDAO dao, EntityReference owner, String ownedEntityId, String ownedEntityType) {
     if (owner != null && owner.getId() != null) {
       LOG.info("Removing owner {}:{} for entity {}", owner.getType(), owner.getId(), ownedEntityId);
-      dao.delete(owner.getId().toString(), ownedEntityId, Relationship.OWNS.ordinal());
+      dao.delete(
+          owner.getId().toString(), owner.getType(), ownedEntityId, ownedEntityType, Relationship.OWNS.ordinal());
     }
   }
 
@@ -233,7 +243,7 @@ public final class EntityUtil {
       String ownedEntityType) {
     // TODO inefficient use replace instead of delete and add?
     // TODO check for orig and new owners being the same
-    unassignOwner(dao, originalOwner, ownedEntityId.toString());
+    unassignOwner(dao, originalOwner, ownedEntityId.toString(), ownedEntityType);
     setOwner(dao, ownedEntityId, ownedEntityType, newOwner);
   }
 
@@ -355,7 +365,7 @@ public final class EntityUtil {
       String followerEntity)
       throws IOException {
     User user = userDAO.findEntityById(followerId);
-    if (Optional.ofNullable(user.getDeactivated()).orElse(false)) {
+    if (Optional.ofNullable(user.getDeleted()).orElse(false)) {
       throw new IllegalArgumentException(CatalogExceptionMessage.deactivatedUser(followerId));
     }
     return dao.insert(
@@ -367,14 +377,12 @@ public final class EntityUtil {
         > 0;
   }
 
-  public static void removeFollower(EntityRelationshipDAO dao, UUID followedEntityId, UUID followerId) {
-    dao.delete(followerId.toString(), followedEntityId.toString(), Relationship.FOLLOWS.ordinal());
-  }
-
   public static List<EntityReference> getFollowers(
-      UUID followedEntityId, EntityRelationshipDAO entityRelationshipDAO, UserDAO userDAO) throws IOException {
+      UUID followedEntityId, String entityName, EntityRelationshipDAO entityRelationshipDAO, UserDAO userDAO)
+      throws IOException {
     List<String> followerIds =
-        entityRelationshipDAO.findFrom(followedEntityId.toString(), Relationship.FOLLOWS.ordinal(), Entity.USER);
+        entityRelationshipDAO.findFrom(
+            followedEntityId.toString(), entityName, Relationship.FOLLOWS.ordinal(), Entity.USER);
     List<EntityReference> followers = new ArrayList<>();
     for (String followerId : followerIds) {
       User user = userDAO.findEntityById(UUID.fromString(followerId));
@@ -392,7 +400,7 @@ public final class EntityUtil {
         fieldList = Collections.emptyList();
         return;
       }
-      fieldList = Arrays.asList(fieldsParam.replaceAll("\\s", "").split(","));
+      fieldList = Arrays.asList(fieldsParam.replace(" ", "").split(","));
       for (String field : fieldList) {
         if (!validFields.contains(field)) {
           throw new IllegalArgumentException(CatalogExceptionMessage.invalidField(field));

@@ -37,7 +37,7 @@ class OracleConfig(SQLConnectionConfig):
         url = super().get_connection_url()
         if self.oracle_service_name:
             assert not self.database
-            url = f"{url}/?service_name={self.oracle_service_name}"
+            url = f"{url}service_name={self.oracle_service_name}"
         return url
 
 

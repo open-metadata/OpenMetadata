@@ -29,11 +29,17 @@ public interface EntityInterface<T> {
 
   String getDisplayName();
 
-  EntityReference getOwner();
+  Boolean isDeleted();
+
+  default EntityReference getOwner() {
+    return null;
+  }
 
   String getFullyQualifiedName();
 
-  List<TagLabel> getTags();
+  default List<TagLabel> getTags() {
+    return null;
+  }
 
   Double getVersion();
 
@@ -43,7 +49,9 @@ public interface EntityInterface<T> {
 
   URI getHref();
 
-  List<EntityReference> getFollowers();
+  default List<EntityReference> getFollowers() {
+    return null;
+  }
 
   ChangeDescription getChangeDescription();
 
@@ -51,11 +59,17 @@ public interface EntityInterface<T> {
 
   T getEntity();
 
+  default EntityReference getContainer() {
+    return null;
+  }
+
   void setId(UUID id);
 
   void setDescription(String description);
 
-  void setTags(List<TagLabel> tags);
+  default void setTags(List<TagLabel> tags) {
+    return;
+  };
 
   void setDisplayName(String displayName);
 
@@ -63,7 +77,11 @@ public interface EntityInterface<T> {
 
   void setChangeDescription(Double newVersion, ChangeDescription changeDescription);
 
-  void setOwner(EntityReference owner);
+  default void setOwner(EntityReference owner) {
+    return;
+  };
+
+  void setDeleted(boolean flag);
 
   T withHref(URI href);
 }

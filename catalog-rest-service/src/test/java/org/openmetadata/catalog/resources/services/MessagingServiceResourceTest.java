@@ -21,14 +21,17 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.catalog.security.SecurityUtil.authHeaders;
+import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
 
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import javax.ws.rs.core.Response;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -75,7 +78,7 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
   }
 
   @Test
-  public void post_withoutRequiredFields_400_badRequest(TestInfo test) {
+  void post_withoutRequiredFields_400_badRequest(TestInfo test) {
     // Create messaging with mandatory serviceType field empty
     HttpResponseException exception =
         assertThrows(
@@ -90,7 +93,7 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
   }
 
   @Test
-  public void post_validService_as_admin_200_ok(TestInfo test) throws IOException {
+  void post_validService_as_admin_200_ok(TestInfo test) throws IOException {
     // Create messaging service with different optional fields
     Map<String, String> authHeaders = adminAuthHeaders();
     createAndCheckEntity(create(test, 1).withDescription(null), authHeaders);
@@ -99,7 +102,7 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
   }
 
   @Test
-  public void post_validService_as_non_admin_401(TestInfo test) {
+  void post_validService_as_non_admin_401(TestInfo test) {
     // Create messaging service with different optional fields
     Map<String, String> authHeaders = authHeaders("test@open-metadata.org");
 
@@ -111,7 +114,7 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
   }
 
   @Test
-  public void post_invalidIngestionSchedule_4xx(TestInfo test) {
+  void post_invalidIngestionSchedule_4xx(TestInfo test) {
     // No jdbc connection set
     CreateMessagingService create = create(test);
     Schedule schedule = create.getIngestionSchedule();
@@ -146,7 +149,7 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
   }
 
   @Test
-  public void post_validIngestionSchedules_as_admin_200(TestInfo test) throws IOException {
+  void post_validIngestionSchedules_as_admin_200(TestInfo test) throws IOException {
     Schedule schedule = new Schedule().withStartDate(new Date());
     schedule.withRepeatFrequency("PT60M"); // Repeat every 60M should be valid
     createAndCheckEntity(create(test, 1).withIngestionSchedule(schedule), adminAuthHeaders());
@@ -159,7 +162,7 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
   }
 
   @Test
-  public void post_ingestionScheduleIsTooShort_4xx(TestInfo test) {
+  void post_ingestionScheduleIsTooShort_4xx(TestInfo test) {
     // No jdbc connection set
     CreateMessagingService create = create(test);
     Schedule schedule = create.getIngestionSchedule();
@@ -176,7 +179,7 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
   }
 
   @Test
-  public void put_updateService_as_admin_2xx(TestInfo test) throws IOException, URISyntaxException {
+  void put_updateService_as_admin_2xx(TestInfo test) throws IOException, URISyntaxException {
     MessagingService service =
         createAndCheckEntity(
             create(test)
@@ -228,7 +231,7 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
   }
 
   @Test
-  public void put_update_as_non_admin_401(TestInfo test) throws IOException {
+  void put_update_as_non_admin_401(TestInfo test) throws IOException {
     Map<String, String> authHeaders = adminAuthHeaders();
     createAndCheckEntity(create(test).withDescription(null).withIngestionSchedule(null), authHeaders);
 
@@ -243,14 +246,33 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
   }
 
   @Test
-  public void delete_ExistentMessagingService_as_admin_200(TestInfo test) throws HttpResponseException {
+  void delete_ExistentMessagingService_as_admin_200(TestInfo test) throws HttpResponseException {
     Map<String, String> authHeaders = adminAuthHeaders();
     MessagingService messagingService = createEntity(create(test), authHeaders);
     deleteEntity(messagingService.getId(), authHeaders);
   }
 
   @Test
-  public void delete_as_user_401(TestInfo test) throws HttpResponseException {
+  void delete_put_MessagingService_200(TestInfo test) throws IOException {
+    CreateMessagingService request = create(test).withDescription("");
+    MessagingService messagingService = createEntity(request, adminAuthHeaders());
+
+    // Delete
+    deleteEntity(messagingService.getId(), adminAuthHeaders());
+
+    ChangeDescription change = getChangeDescription(messagingService.getVersion());
+    change.setFieldsUpdated(
+        Arrays.asList(
+            new FieldChange().withName("deleted").withNewValue(false).withOldValue(true),
+            new FieldChange().withName("description").withNewValue("updatedDescription").withOldValue("")));
+
+    // PUT with updated description
+    updateAndCheckEntity(
+        request.withDescription("updatedDescription"), Response.Status.OK, adminAuthHeaders(), MINOR_UPDATE, change);
+  }
+
+  @Test
+  void delete_as_user_401(TestInfo test) throws HttpResponseException {
     Map<String, String> authHeaders = adminAuthHeaders();
     MessagingService messagingService = createEntity(create(test), authHeaders);
     HttpResponseException exception =
@@ -261,7 +283,7 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
   }
 
   @Test
-  public void delete_notExistentMessagingService() {
+  void delete_notExistentMessagingService() {
     HttpResponseException exception =
         assertThrows(HttpResponseException.class, () -> getEntity(TestUtils.NON_EXISTENT_ENTITY, adminAuthHeaders()));
     TestUtils.assertResponse(
@@ -290,6 +312,11 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
   @Override
   public Object createRequest(String name, String description, String displayName, EntityReference owner) {
     return create(name).withDescription(description).withIngestionSchedule(null);
+  }
+
+  @Override
+  public EntityReference getContainer(Object createRequest) throws URISyntaxException {
+    return null; //// No container entity
   }
 
   @Override

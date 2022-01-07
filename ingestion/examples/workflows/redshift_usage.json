@@ -26,8 +26,7 @@
   "bulk_sink": {
     "type": "metadata-usage",
     "config": {
-      "filename": "/tmp/redshift_usage",
-      "service_name": "aws_redshift"
+      "filename": "/tmp/redshift_usage"
     }
   },
   "metadata_server": {

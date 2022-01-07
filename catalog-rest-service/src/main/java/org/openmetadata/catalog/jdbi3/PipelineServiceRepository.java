@@ -16,23 +16,18 @@ package org.openmetadata.catalog.jdbi3;
 import java.io.IOException;
 import java.net.URI;
 import java.util.Date;
-import java.util.List;
 import java.util.UUID;
-import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.services.PipelineService;
 import org.openmetadata.catalog.resources.services.pipeline.PipelineServiceResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
-import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
 
 public class PipelineServiceRepository extends EntityRepository<PipelineService> {
-  private final CollectionDAO dao;
-
   public PipelineServiceRepository(CollectionDAO dao) {
     super(
         PipelineServiceResource.COLLECTION_PATH,
@@ -41,14 +36,10 @@ public class PipelineServiceRepository extends EntityRepository<PipelineService>
         dao.pipelineServiceDAO(),
         dao,
         Fields.EMPTY_FIELDS,
-        Fields.EMPTY_FIELDS);
-    this.dao = dao;
-  }
-
-  @Transaction
-  public void delete(UUID id) {
-    dao.pipelineServiceDAO().delete(id);
-    dao.relationshipDAO().deleteAll(id.toString());
+        Fields.EMPTY_FIELDS,
+        false,
+        false,
+        false);
   }
 
   @Override
@@ -57,7 +48,9 @@ public class PipelineServiceRepository extends EntityRepository<PipelineService>
   }
 
   @Override
-  public void restorePatchAttributes(PipelineService original, PipelineService updated) {}
+  public void restorePatchAttributes(PipelineService original, PipelineService updated) {
+    /* Nothing to do */
+  }
 
   @Override
   public EntityInterface<PipelineService> getEntityInterface(PipelineService entity) {
@@ -72,14 +65,16 @@ public class PipelineServiceRepository extends EntityRepository<PipelineService>
   @Override
   public void storeEntity(PipelineService service, boolean update) throws IOException {
     if (update) {
-      dao.pipelineServiceDAO().update(service.getId(), JsonUtils.pojoToJson(service));
+      daoCollection.pipelineServiceDAO().update(service.getId(), JsonUtils.pojoToJson(service));
     } else {
-      dao.pipelineServiceDAO().insert(service);
+      daoCollection.pipelineServiceDAO().insert(service);
     }
   }
 
   @Override
-  public void storeRelationships(PipelineService entity) {}
+  public void storeRelationships(PipelineService entity) {
+    /* Nothing to do */
+  }
 
   @Override
   public EntityUpdater getUpdater(PipelineService original, PipelineService updated, boolean patchOperation) {
@@ -109,18 +104,13 @@ public class PipelineServiceRepository extends EntityRepository<PipelineService>
     }
 
     @Override
-    public EntityReference getOwner() {
-      return null;
+    public Boolean isDeleted() {
+      return entity.getDeleted();
     }
 
     @Override
     public String getFullyQualifiedName() {
       return entity.getName();
-    }
-
-    @Override
-    public List<TagLabel> getTags() {
-      return null;
     }
 
     @Override
@@ -141,11 +131,6 @@ public class PipelineServiceRepository extends EntityRepository<PipelineService>
     @Override
     public URI getHref() {
       return entity.getHref();
-    }
-
-    @Override
-    public List<EntityReference> getFollowers() {
-      throw new UnsupportedOperationException("Pipeline service does not support followers");
     }
 
     @Override
@@ -196,15 +181,14 @@ public class PipelineServiceRepository extends EntityRepository<PipelineService>
     }
 
     @Override
-    public void setOwner(EntityReference owner) {}
+    public void setDeleted(boolean flag) {
+      entity.setDeleted(flag);
+    }
 
     @Override
     public PipelineService withHref(URI href) {
       return entity.withHref(href);
     }
-
-    @Override
-    public void setTags(List<TagLabel> tags) {}
   }
 
   public class PipelineServiceUpdater extends EntityUpdater {

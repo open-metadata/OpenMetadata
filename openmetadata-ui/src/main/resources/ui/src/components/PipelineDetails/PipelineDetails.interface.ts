@@ -29,6 +29,7 @@ import { TagLabel } from '../../generated/type/tagLabel';
 import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
 
 export interface PipeLineDetailsProp {
+  version: string;
   isNodeLoading: LoadingNodeState;
   lineageLeafNodes: LeafNodes;
   serviceType: string;
@@ -54,4 +55,5 @@ export interface PipeLineDetailsProp {
   tagUpdateHandler: (updatedPipeline: Pipeline) => void;
   taskUpdateHandler: (patch: Array<Operation>) => void;
   loadNodeHandler: (node: EntityReference, pos: LineagePos) => void;
+  versionHandler: () => void;
 }

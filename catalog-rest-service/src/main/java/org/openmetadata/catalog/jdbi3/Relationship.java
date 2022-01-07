@@ -16,18 +16,26 @@ package org.openmetadata.catalog.jdbi3;
 /**
  * This enum captures all the relationships between Catalog entities Note that the relationship from is a Strong entity
  * and to is Weak entity when possible.
+ *
+ * <p>Note: Rules for changing enums since the ordinal position is stored in the database. - Don't remove an enum, since
+ * the database might have stored the enum ordinal number - When adding a new enum, add it as the last enum to preserve
+ * the ordinal positions of the existing enums
  */
 public enum Relationship {
 
   /**
-   * Rules for changing enums since the ordinal position is stored in the database. - Don't remove an enum, since the
-   * database might have stored the enum ordinal number - When adding a new enum, add it as the last enum to preserve
-   * the ordinal positions of the existing enums
+   * CONTAINS relationship is a stronger relationship than HAS. The entity that contains other entities can't be deleted
+   * until all the entities that it contains are also deleted. Some examples of these relationships:
+   *
+   * <ul>
+   *   <li>Database --- contains --> Table
+   *   <li>DatabaseService --- contains --> Database
+   *   <li>MessagingService --- contains --> Topic
+   *   <li>PipelineService --- contains --> Pipeline
+   *   <li>DashboardService --- contains --> Charts
+   *   <li>DashboardService --- contains --> Dashboard
+   * </ul>
    */
-  // Database --- contains --> Table
-  // Organization --- contains --> Team
-  // Team --- contains --> User
-  // Service --- contains --> Database
   CONTAINS("contains"), // 0
 
   // User/Bot --- created ---> Thread
@@ -59,9 +67,18 @@ public enum Relationship {
   // {Role} --- parentOf ---> {Role}
   PARENT_OF("parentOf"), // 9
 
-  // {User} --- has ---> {Role}
-  // {Table} --- has ---> {Location}
-  // {Database} --- has ---> {Location}
+  /**
+   * HAS relationship is a weaker relationship compared to CONTAINS relationship. The entity that has HAS another entity
+   * can be deleted. During deletion, the HAS relationship is simply deleted. Examples of HAS relationship:
+   *
+   * <ul>
+   *   <li>Team --- has --> User
+   *   <li>User --- has ---> Role
+   *   <li>Table --- has ---> Location
+   *   <li>Database --- has ---> Location
+   *   <li>Dashboard --- has ---> Chart
+   * </ul>
+   */
   HAS("has"), // 10
 
   // {User} --- follows ----> {Table, Database, Metrics...}
@@ -74,7 +91,12 @@ public enum Relationship {
   // {Table1} --- upstream ---> {Table2} (Table1 is used for creating Table2}
   // {Pipeline} --- upstream ---> {Table2} (Pipeline creates Table2)
   // {Table} --- upstream ---> {Dashboard} (Table was used to  create Dashboard)
-  UPSTREAM("upstream"); // 13
+  UPSTREAM("upstream"), // 13
+
+  // Policy relationship
+  // {Policy1} -- appliedTo --> {Location1} (Policy1 is applied to Location1)
+  APPLIED_TO("appliedTo"); // 14
+
   /** * Add new enums to the end of the list * */
   private final String value;
 

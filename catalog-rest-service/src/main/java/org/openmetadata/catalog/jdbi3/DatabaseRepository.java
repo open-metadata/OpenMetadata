@@ -31,7 +31,6 @@ import org.openmetadata.catalog.jdbi3.DatabaseServiceRepository.DatabaseServiceE
 import org.openmetadata.catalog.resources.databases.DatabaseResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
-import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
@@ -40,7 +39,6 @@ import org.openmetadata.catalog.util.JsonUtils;
 public class DatabaseRepository extends EntityRepository<Database> {
   private static final Fields DATABASE_UPDATE_FIELDS = new Fields(DatabaseResource.FIELD_LIST, "owner");
   private static final Fields DATABASE_PATCH_FIELDS = new Fields(DatabaseResource.FIELD_LIST, "owner,usageSummary");
-  private final CollectionDAO dao;
 
   public DatabaseRepository(CollectionDAO dao) {
     super(
@@ -50,8 +48,10 @@ public class DatabaseRepository extends EntityRepository<Database> {
         dao.databaseDAO(),
         dao,
         DATABASE_PATCH_FIELDS,
-        DATABASE_UPDATE_FIELDS);
-    this.dao = dao;
+        DATABASE_UPDATE_FIELDS,
+        false,
+        true,
+        false);
   }
 
   public static String getFQN(Database database) {
@@ -59,24 +59,19 @@ public class DatabaseRepository extends EntityRepository<Database> {
   }
 
   @Transaction
-  public void delete(UUID id) {
-    if (dao.relationshipDAO().findToCount(id.toString(), Relationship.CONTAINS.ordinal(), Entity.TABLE) > 0) {
-      throw new IllegalArgumentException("Database is not empty");
-    }
-    dao.databaseDAO().delete(id);
-    dao.relationshipDAO().deleteAll(id.toString());
-  }
-
-  @Transaction
   public void deleteLocation(String databaseId) {
-    dao.relationshipDAO().deleteFrom(databaseId, Relationship.HAS.ordinal(), Entity.LOCATION);
+    daoCollection
+        .relationshipDAO()
+        .deleteFrom(databaseId, Entity.DATABASE, Relationship.HAS.ordinal(), Entity.LOCATION);
   }
 
   @Override
   public void prepare(Database database) throws IOException {
     populateService(database);
     database.setFullyQualifiedName(getFQN(database));
-    database.setOwner(EntityUtil.populateOwner(dao.userDAO(), dao.teamDAO(), database.getOwner())); // Validate owner
+    database.setOwner(
+        EntityUtil.populateOwner(
+            daoCollection.userDAO(), daoCollection.teamDAO(), database.getOwner())); // Validate owner
   }
 
   @Override
@@ -89,9 +84,9 @@ public class DatabaseRepository extends EntityRepository<Database> {
     database.withOwner(null).withService(null).withHref(null);
 
     if (update) {
-      dao.databaseDAO().update(database.getId(), JsonUtils.pojoToJson(database));
+      daoCollection.databaseDAO().update(database.getId(), JsonUtils.pojoToJson(database));
     } else {
-      dao.databaseDAO().insert(database);
+      daoCollection.databaseDAO().insert(database);
     }
 
     // Restore the relationships
@@ -100,20 +95,15 @@ public class DatabaseRepository extends EntityRepository<Database> {
 
   @Override
   public void storeRelationships(Database database) {
-    dao.relationshipDAO()
+    daoCollection
+        .relationshipDAO()
         .insert(
             database.getService().getId().toString(),
             database.getId().toString(),
             database.getService().getType(),
             Entity.DATABASE,
             Relationship.CONTAINS.ordinal());
-    EntityUtil.setOwner(dao.relationshipDAO(), database.getId(), Entity.DATABASE, database.getOwner());
-  }
-
-  public EntityReference getOwner(Database database) throws IOException {
-    return database != null
-        ? EntityUtil.populateOwner(database.getId(), dao.relationshipDAO(), dao.userDAO(), dao.teamDAO())
-        : null;
+    EntityUtil.setOwner(daoCollection.relationshipDAO(), database.getId(), Entity.DATABASE, database.getOwner());
   }
 
   private List<EntityReference> getTables(Database database) throws IOException {
@@ -121,10 +111,13 @@ public class DatabaseRepository extends EntityRepository<Database> {
       return null;
     }
     String databaseId = database.getId().toString();
-    List<String> tableIds = dao.relationshipDAO().findTo(databaseId, Relationship.CONTAINS.ordinal(), Entity.TABLE);
+    List<String> tableIds =
+        daoCollection
+            .relationshipDAO()
+            .findTo(databaseId, Entity.DATABASE, Relationship.CONTAINS.ordinal(), Entity.TABLE);
     List<EntityReference> tables = new ArrayList<>();
     for (String tableId : tableIds) {
-      tables.add(dao.tableDAO().findEntityReferenceById(UUID.fromString(tableId)));
+      tables.add(daoCollection.tableDAO().findEntityReferenceById(UUID.fromString(tableId)));
     }
     return tables;
   }
@@ -134,7 +127,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
     database.setOwner(fields.contains("owner") ? getOwner(database) : null);
     database.setTables(fields.contains("tables") ? getTables(database) : null);
     database.setUsageSummary(
-        fields.contains("usageSummary") ? EntityUtil.getLatestUsage(dao.usageDAO(), database.getId()) : null);
+        fields.contains("usageSummary") ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), database.getId()) : null);
     database.setLocation(fields.contains("location") ? getLocation(database) : null);
     return database;
   }
@@ -159,17 +152,22 @@ public class DatabaseRepository extends EntityRepository<Database> {
       return null;
     }
     String databaseId = database.getId().toString();
-    List<String> result = dao.relationshipDAO().findTo(databaseId, Relationship.HAS.ordinal(), Entity.LOCATION);
+    List<String> result =
+        daoCollection
+            .relationshipDAO()
+            .findTo(databaseId, Entity.DATABASE, Relationship.HAS.ordinal(), Entity.LOCATION);
     if (result.size() == 1) {
       String locationId = result.get(0);
-      return dao.locationDAO().findEntityReferenceById(UUID.fromString(locationId));
+      return daoCollection.locationDAO().findEntityReferenceById(UUID.fromString(locationId));
     } else {
       return null;
     }
   }
 
   private EntityReference getService(Database database) throws IOException {
-    EntityReference ref = EntityUtil.getService(dao.relationshipDAO(), database.getId(), Entity.DATABASE_SERVICE);
+    EntityReference ref =
+        EntityUtil.getService(
+            daoCollection.relationshipDAO(), Entity.DATABASE, database.getId(), Entity.DATABASE_SERVICE);
     if (ref != null) {
       DatabaseService service = getService(ref.getId(), ref.getType());
       ref.setName(service.getName());
@@ -186,18 +184,21 @@ public class DatabaseRepository extends EntityRepository<Database> {
 
   private DatabaseService getService(UUID serviceId, String entityType) throws IOException {
     if (entityType.equalsIgnoreCase(Entity.DATABASE_SERVICE)) {
-      return dao.dbServiceDAO().findEntityById(serviceId);
+      return daoCollection.dbServiceDAO().findEntityById(serviceId);
     }
     throw new IllegalArgumentException(CatalogExceptionMessage.invalidServiceEntity(entityType, Entity.DATABASE));
   }
 
   @Transaction
   public Status addLocation(UUID databaseId, UUID locationId) throws IOException {
-    dao.databaseDAO().findEntityById(databaseId);
-    dao.locationDAO().findEntityById(locationId);
+    daoCollection.databaseDAO().findEntityById(databaseId);
+    daoCollection.locationDAO().findEntityById(locationId);
     // A database has only one location.
-    dao.relationshipDAO().deleteFrom(databaseId.toString(), Relationship.HAS.ordinal(), Entity.LOCATION);
-    dao.relationshipDAO()
+    daoCollection
+        .relationshipDAO()
+        .deleteFrom(databaseId.toString(), Entity.DATABASE, Relationship.HAS.ordinal(), Entity.LOCATION);
+    daoCollection
+        .relationshipDAO()
         .insert(
             databaseId.toString(), locationId.toString(), Entity.DATABASE, Entity.LOCATION, Relationship.HAS.ordinal());
     return CREATED;
@@ -226,6 +227,11 @@ public class DatabaseRepository extends EntityRepository<Database> {
     }
 
     @Override
+    public Boolean isDeleted() {
+      return entity.getDeleted();
+    }
+
+    @Override
     public EntityReference getOwner() {
       return entity.getOwner();
     }
@@ -233,11 +239,6 @@ public class DatabaseRepository extends EntityRepository<Database> {
     @Override
     public String getFullyQualifiedName() {
       return entity.getFullyQualifiedName();
-    }
-
-    @Override
-    public List<TagLabel> getTags() {
-      return null;
     }
 
     @Override
@@ -261,11 +262,6 @@ public class DatabaseRepository extends EntityRepository<Database> {
     }
 
     @Override
-    public List<EntityReference> getFollowers() {
-      throw new UnsupportedOperationException("Database does not support followers");
-    }
-
-    @Override
     public EntityReference getEntityReference() {
       return new EntityReference()
           .withId(getId())
@@ -278,6 +274,11 @@ public class DatabaseRepository extends EntityRepository<Database> {
     @Override
     public Database getEntity() {
       return entity;
+    }
+
+    @Override
+    public EntityReference getContainer() {
+      return entity.getService();
     }
 
     @Override
@@ -313,6 +314,11 @@ public class DatabaseRepository extends EntityRepository<Database> {
     }
 
     @Override
+    public void setDeleted(boolean flag) {
+      entity.setDeleted(flag);
+    }
+
+    @Override
     public Database withHref(URI href) {
       return entity.withHref(href);
     }
@@ -321,8 +327,5 @@ public class DatabaseRepository extends EntityRepository<Database> {
     public ChangeDescription getChangeDescription() {
       return entity.getChangeDescription();
     }
-
-    @Override
-    public void setTags(List<TagLabel> tags) {}
   }
 }

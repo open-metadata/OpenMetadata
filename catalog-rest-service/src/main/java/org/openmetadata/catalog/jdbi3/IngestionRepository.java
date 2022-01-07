@@ -30,14 +30,12 @@ import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
-import org.openmetadata.catalog.util.JsonUtils;
 
 public class IngestionRepository extends EntityRepository<Ingestion> {
   private static final Fields INGESTION_UPDATE_FIELDS =
       new Fields(IngestionResource.FIELD_LIST, "scheduleInterval,owner,tags");
   private static final Fields INGESTION_PATCH_FIELDS =
       new Fields(IngestionResource.FIELD_LIST, "scheduleInterval,owner,tags");
-  private final CollectionDAO dao;
 
   public IngestionRepository(CollectionDAO dao) {
     super(
@@ -47,8 +45,10 @@ public class IngestionRepository extends EntityRepository<Ingestion> {
         dao.ingestionDAO(),
         dao,
         INGESTION_PATCH_FIELDS,
-        INGESTION_UPDATE_FIELDS);
-    this.dao = dao;
+        INGESTION_UPDATE_FIELDS,
+        true,
+        true,
+        false);
   }
 
   public static String getFQN(Ingestion ingestion) {
@@ -56,17 +56,8 @@ public class IngestionRepository extends EntityRepository<Ingestion> {
   }
 
   @Transaction
-  public void delete(UUID id) {
-    if (dao.relationshipDAO().findToCount(id.toString(), Relationship.CONTAINS.ordinal(), Entity.INGESTION) > 0) {
-      throw new IllegalArgumentException("Ingestion is not empty");
-    }
-    dao.ingestionDAO().delete(id);
-    dao.relationshipDAO().deleteAll(id.toString());
-  }
-
-  @Transaction
   public EntityReference getOwnerReference(Ingestion ingestion) throws IOException {
-    return EntityUtil.populateOwner(dao.userDAO(), dao.teamDAO(), ingestion.getOwner());
+    return EntityUtil.populateOwner(daoCollection.userDAO(), daoCollection.teamDAO(), ingestion.getOwner());
   }
 
   @Override
@@ -88,17 +79,13 @@ public class IngestionRepository extends EntityRepository<Ingestion> {
     return new IngestionEntityInterface(entity);
   }
 
-  private List<TagLabel> getTags(String fqn) {
-    return dao.tagDAO().getTags(fqn);
-  }
-
   @Override
   public void prepare(Ingestion ingestion) throws IOException {
     ingestion.setService(getService(ingestion.getService()));
     ingestion.setFullyQualifiedName(getFQN(ingestion));
-    EntityUtil.populateOwner(dao.userDAO(), dao.teamDAO(), ingestion.getOwner()); // Validate owner
+    EntityUtil.populateOwner(daoCollection.userDAO(), daoCollection.teamDAO(), ingestion.getOwner()); // Validate owner
     getService(ingestion.getService());
-    ingestion.setTags(EntityUtil.addDerivedTags(dao.tagDAO(), ingestion.getTags()));
+    ingestion.setTags(EntityUtil.addDerivedTags(daoCollection.tagDAO(), ingestion.getTags()));
   }
 
   @Override
@@ -111,11 +98,7 @@ public class IngestionRepository extends EntityRepository<Ingestion> {
     // Don't store owner, dashboard, href and tags as JSON. Build it on the fly based on relationships
     ingestion.withOwner(null).withHref(null).withTags(null);
 
-    if (update) {
-      dao.ingestionDAO().update(ingestion.getId(), JsonUtils.pojoToJson(ingestion));
-    } else {
-      dao.ingestionDAO().insert(ingestion);
-    }
+    store(ingestion.getId(), ingestion, update);
 
     // Restore the relationships
     ingestion.withOwner(owner).withService(service).withTags(tags);
@@ -124,7 +107,8 @@ public class IngestionRepository extends EntityRepository<Ingestion> {
   @Override
   public void storeRelationships(Ingestion ingestion) {
     EntityReference service = ingestion.getService();
-    dao.relationshipDAO()
+    daoCollection
+        .relationshipDAO()
         .insert(
             service.getId().toString(),
             ingestion.getId().toString(),
@@ -140,33 +124,16 @@ public class IngestionRepository extends EntityRepository<Ingestion> {
     return new IngestionUpdater(original, updated, patchOperation);
   }
 
-  private EntityReference getOwner(Ingestion ingestion) throws IOException {
-    return ingestion == null
-        ? null
-        : EntityUtil.populateOwner(ingestion.getId(), dao.relationshipDAO(), dao.userDAO(), dao.teamDAO());
-  }
-
-  public void setOwner(Ingestion ingestion, EntityReference owner) {
-    EntityUtil.setOwner(dao.relationshipDAO(), ingestion.getId(), Entity.INGESTION, owner);
-    ingestion.setOwner(owner);
-  }
-
-  private void applyTags(Ingestion ingestion) {
-    // Add ingestion level tags by adding tag to ingestion relationship
-    EntityUtil.applyTags(dao.tagDAO(), ingestion.getTags(), ingestion.getFullyQualifiedName());
-    ingestion.setTags(getTags(ingestion.getFullyQualifiedName())); // Update tag to handle additional derived tags
-  }
-
   private EntityReference getService(Ingestion ingestion) throws IOException {
-    EntityReference ref = EntityUtil.getService(dao.relationshipDAO(), ingestion.getId());
+    EntityReference ref = EntityUtil.getService(daoCollection.relationshipDAO(), Entity.INGESTION, ingestion.getId());
     return getService(Objects.requireNonNull(ref));
   }
 
   private EntityReference getService(EntityReference service) throws IOException {
     if (service.getType().equalsIgnoreCase(Entity.DATABASE_SERVICE)) {
-      return dao.dbServiceDAO().findEntityReferenceById(service.getId());
+      return daoCollection.dbServiceDAO().findEntityReferenceById(service.getId());
     } else if (service.getType().equalsIgnoreCase(Entity.DASHBOARD_SERVICE)) {
-      return dao.dashboardServiceDAO().findEntityReferenceById(service.getId());
+      return daoCollection.dashboardServiceDAO().findEntityReferenceById(service.getId());
     }
     throw new IllegalArgumentException(
         CatalogExceptionMessage.invalidServiceEntity(service.getType(), Entity.INGESTION));
@@ -192,6 +159,11 @@ public class IngestionRepository extends EntityRepository<Ingestion> {
     @Override
     public String getDisplayName() {
       return entity.getDisplayName();
+    }
+
+    @Override
+    public Boolean isDeleted() {
+      return entity.getDeleted();
     }
 
     @Override
@@ -250,9 +222,8 @@ public class IngestionRepository extends EntityRepository<Ingestion> {
     }
 
     @Override
-    public List<EntityReference> getFollowers() {
-      // Ingestion does not have followers.
-      return null;
+    public EntityReference getContainer() {
+      return entity.getService();
     }
 
     @Override
@@ -285,6 +256,11 @@ public class IngestionRepository extends EntityRepository<Ingestion> {
     @Override
     public void setOwner(EntityReference owner) {
       entity.setOwner(owner);
+    }
+
+    @Override
+    public void setDeleted(boolean flag) {
+      entity.setDeleted(flag);
     }
 
     @Override

@@ -18,21 +18,15 @@ import static org.openmetadata.catalog.util.EntityUtil.Fields;
 import java.io.IOException;
 import java.net.URI;
 import java.util.Date;
-import java.util.List;
 import java.util.UUID;
-import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.services.StorageService;
 import org.openmetadata.catalog.resources.services.storage.StorageServiceResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
-import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
-import org.openmetadata.catalog.util.JsonUtils;
 
 public class StorageServiceRepository extends EntityRepository<StorageService> {
-  private final CollectionDAO dao;
-
   public StorageServiceRepository(CollectionDAO dao) {
     super(
         StorageServiceResource.COLLECTION_PATH,
@@ -41,14 +35,10 @@ public class StorageServiceRepository extends EntityRepository<StorageService> {
         dao.storageServiceDAO(),
         dao,
         Fields.EMPTY_FIELDS,
-        Fields.EMPTY_FIELDS);
-    this.dao = dao;
-  }
-
-  @Transaction
-  public void delete(UUID id) {
-    dao.storageServiceDAO().delete(id);
-    dao.relationshipDAO().deleteAll(id.toString());
+        Fields.EMPTY_FIELDS,
+        false,
+        false,
+        false);
   }
 
   @Override
@@ -57,7 +47,9 @@ public class StorageServiceRepository extends EntityRepository<StorageService> {
   }
 
   @Override
-  public void restorePatchAttributes(StorageService original, StorageService updated) {}
+  public void restorePatchAttributes(StorageService original, StorageService updated) {
+    /* Nothing to do */
+  }
 
   @Override
   public EntityInterface<StorageService> getEntityInterface(StorageService entity) {
@@ -65,19 +57,19 @@ public class StorageServiceRepository extends EntityRepository<StorageService> {
   }
 
   @Override
-  public void prepare(StorageService entity) {}
-
-  @Override
-  public void storeEntity(StorageService service, boolean update) throws IOException {
-    if (update) {
-      dao.storageServiceDAO().update(service.getId(), JsonUtils.pojoToJson(service));
-    } else {
-      dao.storageServiceDAO().insert(service);
-    }
+  public void prepare(StorageService entity) {
+    /* Nothing to do */
   }
 
   @Override
-  public void storeRelationships(StorageService entity) {}
+  public void storeEntity(StorageService service, boolean update) throws IOException {
+    store(service.getId(), service, update);
+  }
+
+  @Override
+  public void storeRelationships(StorageService entity) {
+    /* Nothing to do */
+  }
 
   public static class StorageServiceEntityInterface implements EntityInterface<StorageService> {
     private final StorageService entity;
@@ -102,18 +94,13 @@ public class StorageServiceRepository extends EntityRepository<StorageService> {
     }
 
     @Override
-    public EntityReference getOwner() {
-      return null;
+    public Boolean isDeleted() {
+      return entity.getDeleted();
     }
 
     @Override
     public String getFullyQualifiedName() {
       return entity.getName();
-    }
-
-    @Override
-    public List<TagLabel> getTags() {
-      return null;
     }
 
     @Override
@@ -134,11 +121,6 @@ public class StorageServiceRepository extends EntityRepository<StorageService> {
     @Override
     public URI getHref() {
       return entity.getHref();
-    }
-
-    @Override
-    public List<EntityReference> getFollowers() {
-      throw new UnsupportedOperationException("Storage service does not support followers");
     }
 
     @Override
@@ -189,14 +171,13 @@ public class StorageServiceRepository extends EntityRepository<StorageService> {
     }
 
     @Override
-    public void setOwner(EntityReference owner) {}
+    public void setDeleted(boolean flag) {
+      entity.setDeleted(flag);
+    }
 
     @Override
     public StorageService withHref(URI href) {
       return entity.withHref(href);
     }
-
-    @Override
-    public void setTags(List<TagLabel> tags) {}
   }
 }

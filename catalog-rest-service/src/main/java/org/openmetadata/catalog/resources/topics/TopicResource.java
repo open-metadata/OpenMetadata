@@ -59,7 +59,7 @@ import org.openmetadata.catalog.entity.data.Topic;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.TopicRepository;
 import org.openmetadata.catalog.resources.Collection;
-import org.openmetadata.catalog.security.CatalogAuthorizer;
+import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
@@ -76,7 +76,7 @@ import org.openmetadata.catalog.util.ResultList;
 public class TopicResource {
   public static final String COLLECTION_PATH = "v1/topics/";
   private final TopicRepository dao;
-  private final CatalogAuthorizer authorizer;
+  private final Authorizer authorizer;
 
   public static ResultList<Topic> addHref(UriInfo uriInfo, ResultList<Topic> topics) {
     Optional.ofNullable(topics.getData()).orElse(Collections.emptyList()).forEach(i -> addHref(uriInfo, i));
@@ -91,7 +91,7 @@ public class TopicResource {
   }
 
   @Inject
-  public TopicResource(CollectionDAO dao, CatalogAuthorizer authorizer) {
+  public TopicResource(CollectionDAO dao, Authorizer authorizer) {
     this.dao = new TopicRepository(dao);
     this.authorizer = authorizer;
   }
@@ -109,7 +109,7 @@ public class TopicResource {
   }
 
   static final String FIELDS = "owner,followers,tags";
-  public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replaceAll(" ", "").split(","));
+  public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replace(" ", "").split(","));
 
   @GET
   @Operation(
@@ -390,8 +390,8 @@ public class TopicResource {
         @ApiResponse(responseCode = "200", description = "OK"),
         @ApiResponse(responseCode = "404", description = "Topic for instance {id} is not found")
       })
-  public Response delete(@Context UriInfo uriInfo, @PathParam("id") String id) {
-    dao.delete(UUID.fromString(id));
+  public Response delete(@Context UriInfo uriInfo, @PathParam("id") String id) throws IOException {
+    dao.delete(UUID.fromString(id), false);
     return Response.ok().build();
   }
 

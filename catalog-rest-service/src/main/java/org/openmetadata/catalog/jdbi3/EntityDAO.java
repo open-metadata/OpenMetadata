@@ -46,30 +46,29 @@ public interface EntityDAO<T> {
   @SqlUpdate("UPDATE <table> SET  json = :json WHERE id = :id")
   void update(@Define("table") String table, @Bind("id") String id, @Bind("json") String json);
 
-  @SqlQuery("SELECT json FROM <table> WHERE id = :id")
+  @SqlQuery("SELECT json FROM <table> WHERE id = :id AND deleted IS NOT TRUE")
   String findById(@Define("table") String table, @Bind("id") String id);
 
+  @SqlQuery("SELECT json FROM <table> WHERE <nameColumn> = :name AND deleted IS NOT TRUE")
+  String findByName(@Define("table") String table, @Define("nameColumn") String nameColumn, @Bind("name") String name);
+
   @SqlQuery("SELECT json FROM <table> WHERE <nameColumn> = :name")
-  String findByName(
-      @Define("table") String table,
-      @Define("nameColumn") String nameColumn,
-      @Bind("name") String name);
+  String findByNameDeletedOrExists(
+      @Define("table") String table, @Define("nameColumn") String nameColumn, @Bind("name") String name);
 
   @SqlQuery(
       "SELECT count(*) FROM <table> WHERE "
-          + "(<nameColumn> LIKE CONCAT(:fqnPrefix, '.%') OR :fqnPrefix IS NULL)")
+          + "(<nameColumn> LIKE CONCAT(:fqnPrefix, '.%') OR :fqnPrefix IS NULL) AND deleted IS NOT TRUE")
   int listCount(
-      @Define("table") String table,
-      @Define("nameColumn") String nameColumn,
-      @Bind("fqnPrefix") String fqnPrefix);
+      @Define("table") String table, @Define("nameColumn") String nameColumn, @Bind("fqnPrefix") String fqnPrefix);
 
   @SqlQuery(
       "SELECT json FROM ("
           + "SELECT <nameColumn>, json FROM <table> WHERE "
           + "(<nameColumn> LIKE CONCAT(:fqnPrefix, '.%') OR :fqnPrefix IS NULL) AND "
-          + // Filter by
-          // service name
-          "<nameColumn> < :before "
+          + // Filter by service name
+          "<nameColumn> < :before AND "
+          + "deleted = false "
           + // Pagination by chart fullyQualifiedName
           "ORDER BY <nameColumn> DESC "
           + // Pagination ordering by chart fullyQualifiedName
@@ -85,7 +84,8 @@ public interface EntityDAO<T> {
   @SqlQuery(
       "SELECT json FROM <table> WHERE "
           + "(<nameColumn> LIKE CONCAT(:fqnPrefix, '.%') OR :fqnPrefix IS NULL) AND "
-          + "<nameColumn> > :after "
+          + "<nameColumn> > :after AND "
+          + "deleted = false "
           + "ORDER BY <nameColumn> "
           + "LIMIT :limit")
   List<String> listAfter(
@@ -119,8 +119,7 @@ public interface EntityDAO<T> {
     }
     if (entity == null) {
       String entityName = Entity.getEntityNameFromClass(clz);
-      throw EntityNotFoundException.byMessage(
-          CatalogExceptionMessage.entityNotFound(entityName, id));
+      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(entityName, id));
     }
     return entity;
   }
@@ -134,8 +133,7 @@ public interface EntityDAO<T> {
     }
     if (entity == null) {
       String entityName = Entity.getEntityNameFromClass(clz);
-      throw EntityNotFoundException.byMessage(
-          CatalogExceptionMessage.entityNotFound(entityName, fqn));
+      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(entityName, fqn));
     }
     return entity;
   }
@@ -154,6 +152,10 @@ public interface EntityDAO<T> {
 
   default String findJsonByFqn(String fqn) {
     return findByName(getTableName(), getNameColumn(), fqn);
+  }
+
+  default String findDeletedOrExists(String fqn) {
+    return findByNameDeletedOrExists(getTableName(), getNameColumn(), fqn);
   }
 
   default int listCount(String databaseFQN) {

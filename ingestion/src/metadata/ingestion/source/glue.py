@@ -12,9 +12,7 @@
 import logging
 import traceback
 import uuid
-from typing import Iterable, Optional
-
-from boto3 import Session
+from typing import Iterable
 
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.location import Location, LocationType
@@ -24,12 +22,13 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.api.common import ConfigModel, Entity, IncludeFilterPattern
+from metadata.ingestion.api.common import Entity, IncludeFilterPattern
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.source.sql_source import SQLSourceStatus
+from metadata.utils.aws_client import AWSClient, AWSClientConfigModel
 from metadata.utils.column_helpers import check_column_complex_type
 from metadata.utils.helpers import (
     get_database_service_or_create,
@@ -40,13 +39,8 @@ from metadata.utils.helpers import (
 logger: logging.Logger = logging.getLogger(__name__)
 
 
-class GlueSourceConfig(ConfigModel):
+class GlueSourceConfig(AWSClientConfigModel):
     service_type = "Glue"
-    aws_access_key_id: Optional[str]
-    aws_secret_access_key: Optional[str]
-    aws_session_token: Optional[str]
-    endpoint_url: Optional[str]
-    region_name: str
     service_name: str
     storage_service_name: str = "S3"
     pipeline_service_name: str
@@ -56,35 +50,6 @@ class GlueSourceConfig(ConfigModel):
 
     def get_service_type(self) -> DatabaseServiceType:
         return DatabaseServiceType[self.service_type]
-
-    @property
-    def glue(self):
-        return self.get_glue_client()
-
-    def get_glue_client(self):
-        if (
-            self.aws_access_key_id
-            and self.aws_secret_access_key
-            and self.aws_session_token
-        ):
-            session = Session(
-                aws_access_key_id=self.aws_access_key_id,
-                aws_secret_access_key=self.aws_secret_access_key,
-                aws_session_token=self.aws_session_token,
-                region_name=self.region_name,
-            )
-        elif self.aws_access_key_id and self.aws_secret_access_key:
-            session = Session(
-                aws_access_key_id=self.aws_access_key_id,
-                aws_secret_access_key=self.aws_secret_access_key,
-                region_name=self.region_name,
-            )
-        else:
-            session = Session(region_name=self.region_name)
-        if self.endpoint_url is not None:
-            return session.client(service_name="glue", endpoint_url=self.endpoint_url)
-        else:
-            return session.client(service_name="glue")
 
 
 class GlueSource(Source[Entity]):
@@ -114,7 +79,7 @@ class GlueSource(Source[Entity]):
             },
             metadata_config,
         )
-        self.glue = config.glue
+        self.glue = AWSClient(self.config).get_client("glue")
         self.database_name = None
         self.next_db_token = None
 
@@ -150,9 +115,9 @@ class GlueSource(Source[Entity]):
                 yield from self.ingest_tables()
         yield from self.ingest_pipelines()
 
-    def get_columns(self, columnData):
+    def get_columns(self, column_data):
         row_order = 0
-        for column in columnData["Columns"]:
+        for column in column_data["Columns"]:
             if column["Type"].lower().startswith("union"):
                 column["Type"] = column["Type"].replace(" ", "")
             (
@@ -229,26 +194,28 @@ class GlueSource(Source[Entity]):
             logger.error(err)
 
     def get_downstream_tasks(self, task_unique_id, tasks):
-        downstreamTasks = []
+        downstream_tasks = []
         for edges in tasks["Edges"]:
-            if edges["SourceId"] == task_unique_id:
-                if edges["DestinationId"] in self.task_id_mapping.values():
-                    downstreamTasks.append(
-                        list(self.task_id_mapping.keys())[
-                            list(self.task_id_mapping.values()).index(
-                                edges["DestinationId"]
-                            )
-                        ][:128]
-                    )
-        return downstreamTasks
+            if (
+                edges["SourceId"] == task_unique_id
+                and edges["DestinationId"] in self.task_id_mapping.values()
+            ):
+                downstream_tasks.append(
+                    list(self.task_id_mapping.keys())[
+                        list(self.task_id_mapping.values()).index(
+                            edges["DestinationId"]
+                        )
+                    ][:128]
+                )
+        return downstream_tasks
 
     def get_tasks(self, tasks):
-        taskList = []
+        task_list = []
         for task in tasks["Graph"]["Nodes"]:
             task_name = task["Name"][:128]
             self.task_id_mapping[task_name] = task["UniqueId"]
         for task in tasks["Graph"]["Nodes"]:
-            taskList.append(
+            task_list.append(
                 Task(
                     name=task["Name"],
                     displayName=task["Name"],
@@ -258,7 +225,7 @@ class GlueSource(Source[Entity]):
                     ),
                 )
             )
-        return taskList
+        return task_list
 
     def ingest_pipelines(self) -> Iterable[OMetaDatabaseAndTable]:
         try:

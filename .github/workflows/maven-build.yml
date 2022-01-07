@@ -17,7 +17,7 @@ on:
     paths:
       - "catalog-rest-service/**"
       - "openmetadata-ui/**"
-  pull_request:
+  pull_request_target:
     branches: [main]
     paths:
       - "catalog-rest-service/**"
@@ -49,5 +49,20 @@ jobs:
         with:
           java-version: 11
 
+      - name: Build PR with Maven
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        if: ${{ github.event_name == 'pull_request_target' }}
+        run: |
+          git fetch --no-tags https://github.com/open-metadata/OpenMetadata.git +refs/heads/main:refs/remotes/origin/main
+          mvn -Dsonar.login=${{ secrets.SONAR_TOKEN }} \
+              -Dsonar.pullrequest.key=${{ github.event.pull_request.number }} \
+              -Dsonar.pullrequest.branch=${{ github.head_ref }} \
+              -Dsonar.pullrequest.base=origin/main \
+              -Dsonar.pullrequest.provider=github clean install
+
       - name: Build with Maven
-        run: mvn clean package
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        if: ${{ github.event_name == 'push' }}
+        run: mvn -Dsonar.login=${{ secrets.SONAR_TOKEN }} clean install

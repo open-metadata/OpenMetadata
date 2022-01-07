@@ -64,6 +64,8 @@ const PipelineDetails = ({
   loadNodeHandler,
   lineageLeafNodes,
   isNodeLoading,
+  version,
+  versionHandler,
 }: PipeLineDetailsProp) => {
   const { isAuthDisabled } = useAuth();
   const [isEdit, setIsEdit] = useState(false);
@@ -267,7 +269,7 @@ const PipelineDetails = ({
   return (
     <>
       <PageContainer>
-        <div className="tw-px-4 tw-w-full tw-h-full tw-flex tw-flex-col">
+        <div className="tw-px-6 tw-w-full tw-h-full tw-flex tw-flex-col">
           <EntityPageInfo
             isTagEditable
             entityName={entityName}
@@ -283,6 +285,8 @@ const PipelineDetails = ({
             tagsHandler={onTagUpdate}
             tier={tier}
             titleLinks={slashedPipelineName}
+            version={version}
+            versionHandler={versionHandler}
           />
           <div className="tw-mt-4 tw-flex tw-flex-col tw-flex-grow">
             <TabsPane
@@ -291,10 +295,10 @@ const PipelineDetails = ({
               tabs={tabs}
             />
 
-            <div className="tw-bg-white tw-flex-grow tw-mx-1">
+            <div className="tw-bg-white tw-flex-grow tw--mx-6 tw-px-7 tw-py-4">
               {activeTab === 1 && (
                 <>
-                  <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-w-full tw-mt-4">
+                  <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-w-full">
                     <div className="tw-col-span-full">
                       <Description
                         description={description}
@@ -387,7 +391,7 @@ const PipelineDetails = ({
                 </div>
               )}
               {activeTab === 3 && (
-                <div className="tw-mt-4">
+                <div>
                   <ManageTabComponent
                     currentTier={tier?.tagFQN}
                     currentUser={owner?.id}

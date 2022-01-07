@@ -19,7 +19,6 @@ import java.net.URI;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
-import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Chart;
 import org.openmetadata.catalog.entity.services.DashboardService;
@@ -32,12 +31,10 @@ import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
-import org.openmetadata.catalog.util.JsonUtils;
 
 public class ChartRepository extends EntityRepository<Chart> {
   private static final Fields CHART_UPDATE_FIELDS = new Fields(ChartResource.FIELD_LIST, "owner");
   private static final Fields CHART_PATCH_FIELDS = new Fields(ChartResource.FIELD_LIST, "owner,tags");
-  private final CollectionDAO dao;
 
   public ChartRepository(CollectionDAO dao) {
     super(
@@ -47,29 +44,23 @@ public class ChartRepository extends EntityRepository<Chart> {
         dao.chartDAO(),
         dao,
         CHART_PATCH_FIELDS,
-        CHART_UPDATE_FIELDS);
-    this.dao = dao;
+        CHART_UPDATE_FIELDS,
+        true,
+        true,
+        true);
   }
 
   public static String getFQN(Chart chart) {
     return (chart.getService().getName() + "." + chart.getName());
   }
 
-  @Transaction
-  public void delete(UUID id) {
-    if (dao.relationshipDAO().findToCount(id.toString(), Relationship.CONTAINS.ordinal(), Entity.CHART) > 0) {
-      throw new IllegalArgumentException("Chart is not empty");
-    }
-    dao.chartDAO().delete(id);
-    dao.relationshipDAO().deleteAll(id.toString());
-  }
-
   @Override
   public void prepare(Chart chart) throws IOException {
     populateService(chart);
     chart.setFullyQualifiedName(getFQN(chart));
-    EntityUtil.populateOwner(dao.userDAO(), dao.teamDAO(), chart.getOwner()); // Validate and populate owner
-    chart.setTags(EntityUtil.addDerivedTags(dao.tagDAO(), chart.getTags()));
+    EntityUtil.populateOwner(
+        daoCollection.userDAO(), daoCollection.teamDAO(), chart.getOwner()); // Validate and populate owner
+    chart.setTags(EntityUtil.addDerivedTags(daoCollection.tagDAO(), chart.getTags()));
   }
 
   @Override
@@ -82,11 +73,7 @@ public class ChartRepository extends EntityRepository<Chart> {
     // Don't store owner, database, href and tags as JSON. Build it on the fly based on relationships
     chart.withOwner(null).withService(null).withHref(null).withTags(null);
 
-    if (update) {
-      dao.chartDAO().update(chart.getId(), JsonUtils.pojoToJson(chart));
-    } else {
-      dao.chartDAO().insert(chart);
-    }
+    store(chart.getId(), chart, update);
 
     // Restore the relationships
     chart.withOwner(owner).withService(service).withTags(tags);
@@ -95,7 +82,8 @@ public class ChartRepository extends EntityRepository<Chart> {
   @Override
   public void storeRelationships(Chart chart) {
     EntityReference service = chart.getService();
-    dao.relationshipDAO()
+    daoCollection
+        .relationshipDAO()
         .insert(
             service.getId().toString(),
             chart.getId().toString(),
@@ -104,24 +92,6 @@ public class ChartRepository extends EntityRepository<Chart> {
             Relationship.CONTAINS.ordinal());
     setOwner(chart, chart.getOwner());
     applyTags(chart);
-  }
-
-  private void applyTags(Chart chart) {
-    // Add chart level tags by adding tag to chart relationship
-    EntityUtil.applyTags(dao.tagDAO(), chart.getTags(), chart.getFullyQualifiedName());
-    chart.setTags(getTags(chart.getFullyQualifiedName())); // Update tag to handle additional derived tags
-  }
-
-  public EntityReference getOwner(Chart chart) throws IOException {
-    return chart != null
-        ? EntityUtil.populateOwner(chart.getId(), dao.relationshipDAO(), dao.userDAO(), dao.teamDAO())
-        : null;
-  }
-
-  private void setOwner(Chart chart, EntityReference owner) {
-    EntityUtil.setOwner(dao.relationshipDAO(), chart.getId(), Entity.CHART, owner);
-    // TODO not required
-    chart.setOwner(owner);
   }
 
   @Override
@@ -148,16 +118,9 @@ public class ChartRepository extends EntityRepository<Chart> {
     return new ChartEntityInterface(entity);
   }
 
-  private List<EntityReference> getFollowers(Chart chart) throws IOException {
-    return chart == null ? null : EntityUtil.getFollowers(chart.getId(), dao.relationshipDAO(), dao.userDAO());
-  }
-
-  private List<TagLabel> getTags(String fqn) {
-    return dao.tagDAO().getTags(fqn);
-  }
-
   private EntityReference getService(Chart chart) throws IOException {
-    EntityReference ref = EntityUtil.getService(dao.relationshipDAO(), chart.getId(), Entity.DASHBOARD_SERVICE);
+    EntityReference ref =
+        EntityUtil.getService(daoCollection.relationshipDAO(), Entity.CHART, chart.getId(), Entity.DASHBOARD_SERVICE);
     if (ref != null) {
       DashboardService service = getService(ref.getId(), ref.getType());
       ref.setName(service.getName());
@@ -174,7 +137,7 @@ public class ChartRepository extends EntityRepository<Chart> {
 
   private DashboardService getService(UUID serviceId, String serviceType) throws IOException {
     if (serviceType.equalsIgnoreCase(Entity.DASHBOARD_SERVICE)) {
-      return dao.dashboardServiceDAO().findEntityById(serviceId);
+      return daoCollection.dashboardServiceDAO().findEntityById(serviceId);
     }
     throw new IllegalArgumentException(
         CatalogExceptionMessage.invalidServiceEntity(serviceType, Entity.DASHBOARD_SERVICE));
@@ -200,6 +163,11 @@ public class ChartRepository extends EntityRepository<Chart> {
     @Override
     public String getDisplayName() {
       return entity.getDisplayName();
+    }
+
+    @Override
+    public Boolean isDeleted() {
+      return entity.getDeleted();
     }
 
     @Override
@@ -258,6 +226,11 @@ public class ChartRepository extends EntityRepository<Chart> {
     }
 
     @Override
+    public EntityReference getContainer() {
+      return entity.getService();
+    }
+
+    @Override
     public void setId(UUID id) {
       entity.setId(id);
     }
@@ -287,6 +260,11 @@ public class ChartRepository extends EntityRepository<Chart> {
     @Override
     public void setOwner(EntityReference owner) {
       entity.setOwner(owner);
+    }
+
+    @Override
+    public void setDeleted(boolean flag) {
+      entity.setDeleted(flag);
     }
 
     @Override

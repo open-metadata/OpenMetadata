@@ -54,6 +54,8 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   unfollowTopicHandler,
   descriptionUpdateHandler,
   tagUpdateHandler,
+  version,
+  versionHandler,
 }: TopicDetailsProps) => {
   const { isAuthDisabled } = useAuth();
   const [isEdit, setIsEdit] = useState(false);
@@ -270,7 +272,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
 
   return (
     <PageContainer>
-      <div className="tw-px-4 tw-w-full tw-h-full tw-flex tw-flex-col">
+      <div className="tw-px-6 tw-w-full tw-h-full tw-flex tw-flex-col">
         <EntityPageInfo
           isTagEditable
           entityName={entityName}
@@ -286,6 +288,8 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
           tagsHandler={onTagUpdate}
           tier={tier ?? ''}
           titleLinks={slashedTopicName}
+          version={version}
+          versionHandler={versionHandler}
         />
         <div className="tw-mt-4 tw-flex tw-flex-col tw-flex-grow">
           <TabsPane
@@ -294,10 +298,10 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
             tabs={tabs}
           />
 
-          <div className="tw-bg-white tw-flex-grow tw-mx-1">
+          <div className="tw-bg-white tw-flex-grow tw--mx-6 tw-px-7 tw-py-4">
             {activeTab === 1 && (
               <>
-                <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-w-full tw-mt-4">
+                <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-w-full">
                   <div className="tw-col-span-full">
                     <Description
                       description={description}
@@ -318,12 +322,12 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
               </>
             )}
             {activeTab === 2 && (
-              <div className="tw-mt-4">
+              <div>
                 <SchemaEditor value={JSON.stringify(getConfigObject())} />
               </div>
             )}
             {activeTab === 3 && (
-              <div className="tw-mt-4">
+              <div>
                 <ManageTabComponent
                   currentTier={tier?.tagFQN}
                   currentUser={owner?.id}

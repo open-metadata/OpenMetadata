@@ -31,6 +31,7 @@ env
 logs
 *.log
 *.egg-info
+.eggs
 *.db
 # Eclipse
 .settings/
@@ -76,10 +77,11 @@ openmetadata-ui/src/main/resources/ui/tsconfig.tsbuildinfo
 */.vscode/*
 
 # Python generated sources
+ingestion-core/src/metadata/generated/**
 ingestion/src/metadata/generated/**
 ingestion/requirements.txt
 ingestion/.python-version
 
 # MLFlow
 mlruns/
-/ingestion/tests/integration/mlflow/tests/db/
+/ingestion/tests/integration/source/mlflow/tests/db/

@@ -44,6 +44,7 @@ jobs:
 
     - name: Start Server and Ingest Sample Data
       run: ./docker/run_local_docker.sh
+      timeout-minutes: 20
 
     - name: Run Page Tests
       run: mvn clean test -Dtest="org.openmetadata.catalog.selenium.pages.**.*.java" -DfailIfNoTests=false

@@ -30,6 +30,7 @@ export const imageTypes = {
   image512: 's512-c',
   image72: 's72-c',
 };
+export const TOUR_SEARCH_TERM = 'dim_a';
 export const ERROR404 = 'No data found';
 export const ERROR500 = 'Something went wrong';
 const PLACEHOLDER_ROUTE_DATASET_FQN = ':datasetFQN';
@@ -44,6 +45,8 @@ const PLACEHOLDER_ROUTE_SEARCHQUERY = ':searchQuery';
 const PLACEHOLDER_ROUTE_TAB = ':tab';
 const PLACEHOLDER_ROUTE_TEAM = ':team';
 const PLAEHOLDER_ROUTE_VERSION = ':version';
+const PLACEHOLDER_ROUTE_ENTITY_TYPE = ':entityType';
+const PLACEHOLDER_ROUTE_ENTITY_FQN = ':entityFQN';
 
 export const pagingObject = { after: '', before: '' };
 
@@ -135,7 +138,7 @@ export const ROUTES = {
   SIGNIN: '/signin',
   DATASET_DETAILS: `/dataset/${PLACEHOLDER_ROUTE_DATASET_FQN}`,
   DATASET_DETAILS_WITH_TAB: `/dataset/${PLACEHOLDER_ROUTE_DATASET_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
-  DATASET_VERSION: `/dataset/${PLACEHOLDER_ROUTE_DATASET_FQN}/versions/${PLAEHOLDER_ROUTE_VERSION}`,
+  ENTITY_VERSION: `/${PLACEHOLDER_ROUTE_ENTITY_TYPE}/${PLACEHOLDER_ROUTE_ENTITY_FQN}/versions/${PLAEHOLDER_ROUTE_VERSION}`,
   TOPIC_DETAILS: `/topic/${PLACEHOLDER_ROUTE_TOPIC_FQN}`,
   TOPIC_DETAILS_WITH_TAB: `/topic/${PLACEHOLDER_ROUTE_TOPIC_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
   DASHBOARD_DETAILS: `/dashboard/${PLACEHOLDER_ROUTE_DASHBOARD_FQN}`,
@@ -162,10 +165,15 @@ export const getDatasetDetailsPath = (
   return `${path}${columnName ? `.${columnName}` : ''}`;
 };
 
-export const getDatasetVersionPath = (datasetFQN: string, version: string) => {
-  let path = ROUTES.DATASET_VERSION;
+export const getVersionPath = (
+  entityType: string,
+  fqn: string,
+  version: string
+) => {
+  let path = ROUTES.ENTITY_VERSION;
   path = path
-    .replace(PLACEHOLDER_ROUTE_DATASET_FQN, datasetFQN)
+    .replace(PLACEHOLDER_ROUTE_ENTITY_TYPE, entityType)
+    .replace(PLACEHOLDER_ROUTE_ENTITY_FQN, fqn)
     .replace(PLAEHOLDER_ROUTE_VERSION, version);
 
   return path;
@@ -279,3 +287,10 @@ export const TITLE_FOR_NON_OWNER_ACTION =
 
 export const TITLE_FOR_NON_ADMIN_ACTION =
   'Only Admin is allowed for the action';
+
+// Entity Lineage Constant
+export const positionX = 150;
+export const positionY = 60;
+
+export const nodeWidth = 172;
+export const nodeHeight = 36;

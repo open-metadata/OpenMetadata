@@ -197,9 +197,9 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
         });
       };
 
-      formatColumnData(colList);
+      formatColumnData(colList ?? []);
 
-      return colList;
+      return colList ?? [];
     } else if (
       isEndsWithField(
         columnsDiff?.added?.name ??
@@ -244,9 +244,9 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
         });
       };
 
-      formatColumnData(colList);
+      formatColumnData(colList ?? []);
 
-      return colList;
+      return colList ?? [];
     } else {
       const columnsDiff = getDiffByFieldName(
         'columns',
@@ -279,7 +279,7 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
               }
             });
           };
-          formatColumnData(colList);
+          formatColumnData(colList ?? []);
         });
       }
       if (columnsDiff.deleted) {
@@ -302,10 +302,10 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
           name: getDescriptionDiff(col.name, undefined, col.name),
         }));
       } else {
-        return colList;
+        return colList ?? [];
       }
 
-      return [...newColumns, ...colList];
+      return [...newColumns, ...(colList ?? [])];
     }
   };
 
@@ -333,7 +333,7 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
     <PageContainer>
       <div
         className={classNames(
-          'tw-px-4 tw-w-full tw-h-full tw-flex tw-flex-col tw-relative'
+          'tw-px-6 tw-w-full tw-h-full tw-flex tw-flex-col tw-relative'
         )}>
         {isVersionLoading ? (
           <Loader />
@@ -341,7 +341,7 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
           <div className={classNames('version-data')}>
             <EntityPageInfo
               isVersionSelected
-              entityName={currentVersionData.name}
+              entityName={currentVersionData.name ?? ''}
               extraInfo={getExtraInfo()}
               followersList={[]}
               tags={getTableTags(currentVersionData.columns || [])}
@@ -352,8 +352,8 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
             />
             <div className="tw-mt-1 tw-flex tw-flex-col tw-flex-grow ">
               <TabsPane activeTab={1} className="tw-flex-initial" tabs={tabs} />
-              <div className="tw-bg-white tw-flex-grow tw-mx-1">
-                <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-w-full tw-mt-4 ">
+              <div className="tw-bg-white tw-flex-grow tw--mx-6 tw-px-7 tw-py-4">
+                <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-w-full">
                   <div className="tw-col-span-full">
                     <Description
                       isReadOnly

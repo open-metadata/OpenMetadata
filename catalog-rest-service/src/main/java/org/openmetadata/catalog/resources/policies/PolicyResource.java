@@ -60,9 +60,10 @@ import org.openmetadata.catalog.entity.policies.Policy;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.PolicyRepository;
 import org.openmetadata.catalog.resources.Collection;
-import org.openmetadata.catalog.security.CatalogAuthorizer;
+import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
+import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.RestUtil.PatchResponse;
@@ -77,7 +78,7 @@ import org.openmetadata.catalog.util.ResultList;
 public class PolicyResource {
   public static final String COLLECTION_PATH = "v1/policies/";
   private final PolicyRepository dao;
-  private final CatalogAuthorizer authorizer;
+  private final Authorizer authorizer;
 
   public static ResultList<Policy> addHref(UriInfo uriInfo, ResultList<Policy> policies) {
     Optional.ofNullable(policies.getData()).orElse(Collections.emptyList()).forEach(i -> addHref(uriInfo, i));
@@ -90,7 +91,7 @@ public class PolicyResource {
   }
 
   @Inject
-  public PolicyResource(CollectionDAO dao, CatalogAuthorizer authorizer) {
+  public PolicyResource(CollectionDAO dao, Authorizer authorizer) {
     Objects.requireNonNull(dao, "PolicyRepository must not be null");
     this.dao = new PolicyRepository(dao);
     this.authorizer = authorizer;
@@ -108,8 +109,8 @@ public class PolicyResource {
     }
   }
 
-  static final String FIELDS = "displayName,description,owner,policyUrl,enabled,rules";
-  public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replaceAll(" ", "").split(","));
+  static final String FIELDS = "displayName,description,owner,policyUrl,enabled,rules,location";
+  public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replace(" ", "").split(","));
 
   @GET
   @Valid
@@ -277,19 +278,7 @@ public class PolicyResource {
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreatePolicy create)
       throws IOException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    Policy policy =
-        new Policy()
-            .withId(UUID.randomUUID())
-            .withName(create.getName())
-            .withDisplayName(create.getDisplayName())
-            .withDescription(create.getDescription())
-            .withOwner(create.getOwner())
-            .withPolicyUrl(create.getPolicyUrl())
-            .withPolicyType(create.getPolicyType())
-            .withUpdatedBy(securityContext.getUserPrincipal().getName())
-            .withUpdatedAt(new Date())
-            .withRules(create.getRules());
-
+    Policy policy = getPolicy(securityContext, create);
     policy = addHref(uriInfo, dao.create(uriInfo, policy));
     return Response.created(policy.getHref()).entity(policy).build();
   }
@@ -302,7 +291,7 @@ public class PolicyResource {
       description = "Update an existing policy using JsonPatch.",
       externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
-  public Response updateDescription(
+  public Response patch(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @PathParam("id") String id,
@@ -341,19 +330,7 @@ public class PolicyResource {
   public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreatePolicy create)
       throws IOException, ParseException {
-    Policy policy =
-        new Policy()
-            .withId(UUID.randomUUID())
-            .withName(create.getName())
-            .withDisplayName(create.getDisplayName())
-            .withDescription(create.getDescription())
-            .withOwner(create.getOwner())
-            .withPolicyUrl(create.getPolicyUrl())
-            .withPolicyType(create.getPolicyType())
-            .withUpdatedBy(securityContext.getUserPrincipal().getName())
-            .withUpdatedAt(new Date())
-            .withRules(create.getRules());
-
+    Policy policy = getPolicy(securityContext, create);
     PutResponse<Policy> response = dao.createOrUpdate(uriInfo, policy);
     addHref(uriInfo, response.getEntity());
     return response.toResponse();
@@ -369,8 +346,27 @@ public class PolicyResource {
         @ApiResponse(responseCode = "200", description = "OK"),
         @ApiResponse(responseCode = "404", description = "policy for instance {id} is not found")
       })
-  public Response delete(@Context UriInfo uriInfo, @PathParam("id") String id) {
-    dao.delete(UUID.fromString(id));
+  public Response delete(@Context UriInfo uriInfo, @PathParam("id") String id) throws IOException {
+    dao.delete(UUID.fromString(id), false);
     return Response.ok().build();
+  }
+
+  private Policy getPolicy(SecurityContext securityContext, CreatePolicy create) {
+    Policy policy =
+        new Policy()
+            .withId(UUID.randomUUID())
+            .withName(create.getName())
+            .withDisplayName(create.getDisplayName())
+            .withDescription(create.getDescription())
+            .withOwner(create.getOwner())
+            .withPolicyUrl(create.getPolicyUrl())
+            .withPolicyType(create.getPolicyType())
+            .withUpdatedBy(securityContext.getUserPrincipal().getName())
+            .withUpdatedAt(new Date())
+            .withRules(create.getRules());
+    if (create.getLocation() != null) {
+      policy = policy.withLocation(new EntityReference().withId(create.getLocation()));
+    }
+    return policy;
   }
 }

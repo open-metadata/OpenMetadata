@@ -15,18 +15,18 @@ package org.openmetadata.catalog.module;
 
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
-import org.openmetadata.catalog.security.CatalogAuthorizer;
+import org.openmetadata.catalog.security.Authorizer;
 
 public class CatalogModule extends AbstractModule {
-  private final CatalogAuthorizer authorizer;
+  private final Authorizer authorizer;
 
-  public CatalogModule(CatalogAuthorizer authorizer) {
+  public CatalogModule(Authorizer authorizer) {
     this.authorizer = authorizer;
   }
 
   // Authorizer
   @Provides
-  public CatalogAuthorizer providesAuthorizer() {
+  public Authorizer providesAuthorizer() {
     return authorizer;
   }
 

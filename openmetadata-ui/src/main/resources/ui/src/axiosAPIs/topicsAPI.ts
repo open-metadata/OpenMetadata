@@ -16,6 +16,22 @@ import { Topic } from 'Models';
 import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
 
+export const getTopicVersions: Function = (
+  id: string
+): Promise<AxiosResponse> => {
+  const url = `/topics/${id}/versions`;
+
+  return APIClient.get(url);
+};
+export const getTopicVersion: Function = (
+  id: string,
+  version: string
+): Promise<AxiosResponse> => {
+  const url = `/topics/${id}/versions/${version}`;
+
+  return APIClient.get(url);
+};
+
 export const getTopics: Function = (
   serviceName: string,
   paging: string,

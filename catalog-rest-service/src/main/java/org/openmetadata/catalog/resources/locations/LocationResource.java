@@ -58,7 +58,7 @@ import org.openmetadata.catalog.entity.data.Location;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.LocationRepository;
 import org.openmetadata.catalog.resources.Collection;
-import org.openmetadata.catalog.security.CatalogAuthorizer;
+import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
@@ -75,7 +75,7 @@ import org.openmetadata.catalog.util.ResultList;
 public class LocationResource {
   public static final String COLLECTION_PATH = "v1/locations/";
   private final LocationRepository dao;
-  private final CatalogAuthorizer authorizer;
+  private final Authorizer authorizer;
 
   public static Location addHref(UriInfo uriInfo, Location location) {
     Entity.withHref(uriInfo, location.getOwner());
@@ -85,7 +85,7 @@ public class LocationResource {
   }
 
   @Inject
-  public LocationResource(CollectionDAO dao, CatalogAuthorizer authorizer) {
+  public LocationResource(CollectionDAO dao, Authorizer authorizer) {
     Objects.requireNonNull(dao, "LocationRepository must not be null");
     this.dao = new LocationRepository(dao);
     this.authorizer = authorizer;
@@ -102,7 +102,7 @@ public class LocationResource {
   }
 
   static final String FIELDS = "owner,followers,tags";
-  public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replaceAll(" ", "").split(","));
+  public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replace(" ", "").split(","));
 
   @GET
   @Operation(
@@ -404,9 +404,10 @@ public class LocationResource {
   public Response delete(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the location", schema = @Schema(type = "string")) @PathParam("id") String id) {
+      @Parameter(description = "Id of the location", schema = @Schema(type = "string")) @PathParam("id") String id)
+      throws IOException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    dao.delete(UUID.fromString(id));
+    dao.delete(UUID.fromString(id), false);
     return Response.ok().build();
   }
 

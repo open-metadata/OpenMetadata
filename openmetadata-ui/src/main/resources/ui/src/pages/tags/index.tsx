@@ -27,7 +27,8 @@ import { Button } from '../../components/buttons/Button/Button';
 import Description from '../../components/common/description/Description';
 import NonAdminAction from '../../components/common/non-admin-action/NonAdminAction';
 import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
-import PageContainer from '../../components/containers/PageContainer';
+import PageContainerV1 from '../../components/containers/PageContainerV1';
+import PageLayout from '../../components/containers/PageLayout';
 import Loader from '../../components/Loader/Loader';
 import FormModal from '../../components/Modals/FormModal';
 import { ModalWithMarkdownEditor } from '../../components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
@@ -226,229 +227,235 @@ const TagsPage = () => {
       {error ? (
         <p className="tw-text-2xl tw-text-center tw-m-auto">{error}</p>
       ) : (
-        <PageContainer className="py-0" leftPanelContent={fetchLeftPanel()}>
-          {isLoading ? (
-            <Loader />
-          ) : (
-            <div className="container-fluid py-3" data-testid="tags-container">
-              {currentCategory && (
-                <div
-                  className="tw-flex tw-justify-between tw-pl-1"
-                  data-testid="header">
+        <PageContainerV1 className="tw-py-4">
+          <PageLayout leftPanel={fetchLeftPanel()}>
+            {isLoading ? (
+              <Loader />
+            ) : (
+              <div data-testid="tags-container">
+                {currentCategory && (
                   <div
-                    className="tw-heading tw-text-link tw-text-base"
-                    data-testid="category-name">
-                    {currentCategory.name}
+                    className="tw-flex tw-justify-between tw-pl-1"
+                    data-testid="header">
+                    <div
+                      className="tw-heading tw-text-link tw-text-base"
+                      data-testid="category-name">
+                      {currentCategory.name}
+                    </div>
+                    <NonAdminAction
+                      position="bottom"
+                      title={TITLE_FOR_NON_ADMIN_ACTION}>
+                      <Button
+                        className={classNames('tw-h-8 tw-rounded tw-mb-2', {
+                          'tw-opacity-40': !isAdminUser && !isAuthDisabled,
+                        })}
+                        data-testid="add-new-tag-button"
+                        size="small"
+                        theme="primary"
+                        variant="contained"
+                        onClick={() =>
+                          setIsAddingTag((prevState) => !prevState)
+                        }>
+                        Add new tag
+                      </Button>
+                    </NonAdminAction>
                   </div>
-                  <NonAdminAction
-                    position="bottom"
-                    title={TITLE_FOR_NON_ADMIN_ACTION}>
-                    <Button
-                      className={classNames('tw-h-8 tw-rounded tw-mb-2', {
-                        'tw-opacity-40': !isAdminUser && !isAuthDisabled,
-                      })}
-                      data-testid="add-new-tag-button"
-                      size="small"
-                      theme="primary"
-                      variant="contained"
-                      onClick={() => setIsAddingTag((prevState) => !prevState)}>
-                      Add new tag
-                    </Button>
-                  </NonAdminAction>
+                )}
+                <div className="tw-mb-3" data-testid="description-container">
+                  <Description
+                    description={currentCategory?.description || ''}
+                    entityName={currentCategory?.displayName}
+                    isEdit={isEditCategory}
+                    onCancel={() => setIsEditCategory(false)}
+                    onDescriptionEdit={() => setIsEditCategory(true)}
+                    onDescriptionUpdate={UpdateCategory}
+                  />
                 </div>
-              )}
-              <div className="tw-mb-3" data-testid="description-container">
-                <Description
-                  description={currentCategory?.description || ''}
-                  entityName={currentCategory?.displayName}
-                  isEdit={isEditCategory}
-                  onCancel={() => setIsEditCategory(false)}
-                  onDescriptionEdit={() => setIsEditCategory(true)}
-                  onDescriptionUpdate={UpdateCategory}
-                />
-              </div>
-              <div className="tw-bg-white">
-                <table
-                  className="tw-w-full tw-overflow-x-auto"
-                  data-testid="table">
-                  <thead>
-                    <tr className="tableHead-row">
-                      <th className="tableHead-cell" data-testid="heading-name">
-                        Name
-                      </th>
-                      <th
-                        className="tableHead-cell"
-                        data-testid="heading-description">
-                        Description
-                      </th>
-                      <th
-                        className="tableHead-cell tw-w-60"
-                        data-testid="heading-associated-tags">
-                        Associated tags
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="tw-text-sm" data-testid="table-body">
-                    {(currentCategory?.children as TagClass[])?.map(
-                      (tag: TagClass, index: number) => {
-                        return (
-                          <tr
-                            className={`tableBody-row ${
-                              !isEven(index + 1) && 'odd-row'
-                            }`}
-                            key={index}>
-                            <td className="tableBody-cell">
-                              <p>{tag.name}</p>
-                            </td>
-                            <td
-                              className="tw-group tableBody-cell"
-                              onClick={() => {
-                                setIsEditTag(true);
-                                setEditTag(tag);
-                              }}>
-                              <NonAdminAction
-                                position="left"
-                                title={TITLE_FOR_NON_ADMIN_ACTION}>
-                                <div className="tw-cursor-pointer hover:tw-underline tw-flex">
-                                  <div>
-                                    {tag.description ? (
-                                      <RichTextEditorPreviewer
-                                        markdown={tag.description}
-                                      />
-                                    ) : (
-                                      <span className="tw-no-description">
-                                        No description added
-                                      </span>
-                                    )}
-                                  </div>
-                                  <button className="tw-self-start tw-w-8 tw-h-auto tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none">
-                                    <SVGIcons
-                                      alt="edit"
-                                      data-testid="editTagDescription"
-                                      icon="icon-edit"
-                                      title="Edit"
-                                      width="10px"
-                                    />
-                                  </button>
-                                </div>
-                              </NonAdminAction>
-                              <div className="tw-mt-1">
-                                <span className="tw-text-grey-muted tw-mr-1">
-                                  Usage:
-                                </span>
-                                {tag.usageCount ? (
-                                  <Link
-                                    className="link-text tw-align-middle"
-                                    data-testid="usage-count"
-                                    to={getUsageCountLink(
-                                      tag.fullyQualifiedName || ''
-                                    )}>
-                                    {tag.usageCount}
-                                  </Link>
-                                ) : (
-                                  <span className="tw-no-description">
-                                    Not used
-                                  </span>
-                                )}
-                              </div>
-                            </td>
-                            <td
-                              className="tw-group tableBody-cell"
-                              onClick={() => {
-                                setEditTag(tag);
-                              }}>
-                              <NonAdminAction
-                                position="left"
-                                title={TITLE_FOR_NON_ADMIN_ACTION}
-                                trigger="click">
-                                <TagsContainer
-                                  editable={
-                                    editTag?.name === tag.name && !isEditTag
-                                  }
-                                  selectedTags={
-                                    tag.associatedTags?.map((tag) => ({
-                                      tagFQN: tag,
-                                    })) || []
-                                  }
-                                  tagList={
-                                    getTaglist(categories) as Array<string>
-                                  }
-                                  onCancel={() => {
-                                    handleTagSelection();
-                                  }}
-                                  onSelectionChange={(tags) => {
-                                    handleTagSelection(tags);
-                                  }}>
-                                  {tag.associatedTags?.length ? (
-                                    <button className="tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none">
+                <div className="tw-bg-white">
+                  <table
+                    className="tw-w-full tw-overflow-x-auto"
+                    data-testid="table">
+                    <thead>
+                      <tr className="tableHead-row">
+                        <th
+                          className="tableHead-cell"
+                          data-testid="heading-name">
+                          Name
+                        </th>
+                        <th
+                          className="tableHead-cell"
+                          data-testid="heading-description">
+                          Description
+                        </th>
+                        <th
+                          className="tableHead-cell tw-w-60"
+                          data-testid="heading-associated-tags">
+                          Associated tags
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="tw-text-sm" data-testid="table-body">
+                      {(currentCategory?.children as TagClass[])?.map(
+                        (tag: TagClass, index: number) => {
+                          return (
+                            <tr
+                              className={`tableBody-row ${
+                                !isEven(index + 1) && 'odd-row'
+                              }`}
+                              key={index}>
+                              <td className="tableBody-cell">
+                                <p>{tag.name}</p>
+                              </td>
+                              <td
+                                className="tw-group tableBody-cell"
+                                onClick={() => {
+                                  setIsEditTag(true);
+                                  setEditTag(tag);
+                                }}>
+                                <NonAdminAction
+                                  position="left"
+                                  title={TITLE_FOR_NON_ADMIN_ACTION}>
+                                  <div className="tw-cursor-pointer hover:tw-underline tw-flex">
+                                    <div>
+                                      {tag.description ? (
+                                        <RichTextEditorPreviewer
+                                          markdown={tag.description}
+                                        />
+                                      ) : (
+                                        <span className="tw-no-description">
+                                          No description added
+                                        </span>
+                                      )}
+                                    </div>
+                                    <button className="tw-self-start tw-w-8 tw-h-auto tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none">
                                       <SVGIcons
                                         alt="edit"
+                                        data-testid="editTagDescription"
                                         icon="icon-edit"
                                         title="Edit"
                                         width="10px"
                                       />
                                     </button>
+                                  </div>
+                                </NonAdminAction>
+                                <div className="tw-mt-1">
+                                  <span className="tw-text-grey-muted tw-mr-1">
+                                    Usage:
+                                  </span>
+                                  {tag.usageCount ? (
+                                    <Link
+                                      className="link-text tw-align-middle"
+                                      data-testid="usage-count"
+                                      to={getUsageCountLink(
+                                        tag.fullyQualifiedName || ''
+                                      )}>
+                                      {tag.usageCount}
+                                    </Link>
                                   ) : (
-                                    <span className="tw-opacity-0 group-hover:tw-opacity-100">
-                                      <Tags
-                                        className="tw-border-main"
-                                        startWith="+ "
-                                        tag="Add tag"
-                                        type="outlined"
-                                      />
+                                    <span className="tw-no-description">
+                                      Not used
                                     </span>
                                   )}
-                                </TagsContainer>
-                              </NonAdminAction>
-                            </td>
-                          </tr>
-                        );
-                      }
-                    )}
-                  </tbody>
-                </table>
+                                </div>
+                              </td>
+                              <td
+                                className="tw-group tableBody-cell"
+                                onClick={() => {
+                                  setEditTag(tag);
+                                }}>
+                                <NonAdminAction
+                                  position="left"
+                                  title={TITLE_FOR_NON_ADMIN_ACTION}
+                                  trigger="click">
+                                  <TagsContainer
+                                    editable={
+                                      editTag?.name === tag.name && !isEditTag
+                                    }
+                                    selectedTags={
+                                      tag.associatedTags?.map((tag) => ({
+                                        tagFQN: tag,
+                                      })) || []
+                                    }
+                                    tagList={
+                                      getTaglist(categories) as Array<string>
+                                    }
+                                    onCancel={() => {
+                                      handleTagSelection();
+                                    }}
+                                    onSelectionChange={(tags) => {
+                                      handleTagSelection(tags);
+                                    }}>
+                                    {tag.associatedTags?.length ? (
+                                      <button className="tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none">
+                                        <SVGIcons
+                                          alt="edit"
+                                          icon="icon-edit"
+                                          title="Edit"
+                                          width="10px"
+                                        />
+                                      </button>
+                                    ) : (
+                                      <span className="tw-opacity-0 group-hover:tw-opacity-100">
+                                        <Tags
+                                          className="tw-border-main"
+                                          startWith="+ "
+                                          tag="Add tag"
+                                          type="outlined"
+                                        />
+                                      </span>
+                                    )}
+                                  </TagsContainer>
+                                </NonAdminAction>
+                              </td>
+                            </tr>
+                          );
+                        }
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+                {isEditTag && (
+                  <ModalWithMarkdownEditor
+                    header={`Edit description for ${editTag?.name}`}
+                    placeholder="Enter Description"
+                    value={editTag?.description as string}
+                    onCancel={() => {
+                      setIsEditTag(false);
+                      setEditTag(undefined);
+                    }}
+                    onSave={updatePrimaryTag}
+                  />
+                )}
+                {isAddingCategory && (
+                  <FormModal
+                    form={Form}
+                    header="Adding new category"
+                    initialData={{
+                      name: '',
+                      description: '',
+                      categoryType: TagCategoryType.Descriptive,
+                    }}
+                    onCancel={() => setIsAddingCategory(false)}
+                    onSave={(data) => createCategory(data as TagCategory)}
+                  />
+                )}
+                {isAddingTag && (
+                  <FormModal
+                    form={Form}
+                    header={`Adding new tag on ${currentCategory?.name}`}
+                    initialData={{
+                      name: '',
+                      description: '',
+                      categoryType: '',
+                    }}
+                    onCancel={() => setIsAddingTag(false)}
+                    onSave={(data) => createPrimaryTag(data as TagCategory)}
+                  />
+                )}
               </div>
-              {isEditTag && (
-                <ModalWithMarkdownEditor
-                  header={`Edit description for ${editTag?.name}`}
-                  placeholder="Enter Description"
-                  value={editTag?.description as string}
-                  onCancel={() => {
-                    setIsEditTag(false);
-                    setEditTag(undefined);
-                  }}
-                  onSave={updatePrimaryTag}
-                />
-              )}
-              {isAddingCategory && (
-                <FormModal
-                  form={Form}
-                  header="Adding new category"
-                  initialData={{
-                    name: '',
-                    description: '',
-                    categoryType: TagCategoryType.Descriptive,
-                  }}
-                  onCancel={() => setIsAddingCategory(false)}
-                  onSave={(data) => createCategory(data as TagCategory)}
-                />
-              )}
-              {isAddingTag && (
-                <FormModal
-                  form={Form}
-                  header={`Adding new tag on ${currentCategory?.name}`}
-                  initialData={{
-                    name: '',
-                    description: '',
-                    categoryType: '',
-                  }}
-                  onCancel={() => setIsAddingTag(false)}
-                  onSave={(data) => createPrimaryTag(data as TagCategory)}
-                />
-              )}
-            </div>
-          )}
-        </PageContainer>
+            )}
+          </PageLayout>
+        </PageContainerV1>
       )}
     </>
   );

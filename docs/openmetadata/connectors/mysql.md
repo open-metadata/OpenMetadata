@@ -43,8 +43,11 @@ metadata ingest -c ./examples/workflows/mysql.json
       "data_profiler_enabled": "true",
       "data_profiler_offset": "0",
       "data_profiler_limit": "50000",
-      "filter_pattern": {
-        "excludes": ["mysql.*", "information_schema.*", "performance_schema.*", "sys.*"]
+      "table_filter_pattern": {
+        "excludes": ["demo.*","orders.*"]
+      },
+      "schema_filter_pattern": {
+        "excludes": ["information_schema.*"]
       }
     }
   },
@@ -55,10 +58,11 @@ metadata ingest -c ./examples/workflows/mysql.json
 1. **username** - pass the MySQL username. We recommend creating a user with read-only permissions to all the databases in your MySQL installation
 2. **password** - password for the username
 3. **service\_name** - Service Name for this MySQL cluster. If you added MySQL cluster through OpenMetadata UI, make sure the service name matches the same.
-4. **filter\_pattern** - It contains includes, excludes options to choose which pattern of datasets you want to ingest into OpenMetadata
-5. **data\_profiler\_enabled** - Enable data-profiling (Optional). It will provide you the newly ingested data.
-6. **data\_profiler\_offset** - Specify offset.
-7. **data\_profiler\_limit** - Specify limit.
+4. **table\_filter\_pattern** - It contains includes, excludes options to choose which pattern of tables you want to ingest into OpenMetadata.
+5. **schema\_filter\_pattern** - It contains includes, excludes options to choose which pattern of schemas you want to ingest into OpenMetadata.
+6. **data\_profiler\_enabled** - Enable data-profiling (Optional). It will provide you the newly ingested data.
+7. **data\_profiler\_offset** - Specify offset.
+8. **data\_profiler\_limit** - Specify limit.
 
 ## Publish to OpenMetadata
 
@@ -79,7 +83,10 @@ Add `metadata-rest` sink along with `metadata-server` config
       "data_profiler_enabled": "true",
       "data_profiler_offset": "0",
       "data_profiler_limit": "50000",
-      "filter_pattern": {
+      "table_filter_pattern": {
+        "excludes": ["demo.*","orders.*"]
+      },
+      "schema_filter_pattern": {
         "excludes": ["mysql.*", "information_schema.*", "performance_schema.*", "sys.*"]
       }
     }

@@ -40,7 +40,7 @@ import org.openmetadata.catalog.Entity.EntityList;
 import org.openmetadata.catalog.jdbi3.ChangeEventRepository;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.resources.Collection;
-import org.openmetadata.catalog.security.CatalogAuthorizer;
+import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.type.ChangeEvent;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.ResultList;
@@ -52,8 +52,10 @@ import org.openmetadata.catalog.util.ResultList;
 @Collection(name = "events")
 public class EventResource {
   private final ChangeEventRepository dao;
+  private final Authorizer authorizer;
 
   public static class ChangeEventList extends ResultList<ChangeEvent> {
+
     @SuppressWarnings("unused") /* Required for tests */
     public ChangeEventList() {}
 
@@ -64,9 +66,10 @@ public class EventResource {
   }
 
   @Inject
-  public EventResource(CollectionDAO dao, CatalogAuthorizer authorizer) {
+  public EventResource(CollectionDAO dao, Authorizer authorizer) {
     Objects.requireNonNull(dao, "ChangeEventRepository must not be null");
     this.dao = new ChangeEventRepository(dao);
+    this.authorizer = authorizer;
   }
 
   @GET
@@ -87,7 +90,7 @@ public class EventResource {
       @Parameter(
               description =
                   "List of comma separated entities requested for "
-                      + "`entityCreated` event. When null or not set, all entities will be "
+                      + "`entityCreated` event. When set to `*` all entities will be "
                       + "returned",
               schema = @Schema(type = "string", example = "table,dashboard,..."))
           @QueryParam("entityCreated")
@@ -95,7 +98,7 @@ public class EventResource {
       @Parameter(
               description =
                   "List of comma separated entities requested for "
-                      + "`entityUpdated` event. When null or not set, all entities will be "
+                      + "`entityCreated` event. When set to `*` all entities will be "
                       + "returned",
               schema = @Schema(type = "string", example = "table,dashboard,..."))
           @QueryParam("entityUpdated")
@@ -103,7 +106,7 @@ public class EventResource {
       @Parameter(
               description =
                   "List of comma separated entities requested for "
-                      + "`entityDeleted` event. When null or not set, all entities will be "
+                      + "`entityCreated` event. When set to `*` all entities will be "
                       + "returned",
               schema = @Schema(type = "string", example = "table,dashboard,..."))
           @QueryParam("entityDeleted")

@@ -26,7 +26,7 @@ const FilterContainer: FunctionComponent<FilterContainerProp> = ({
   return (
     <div
       className="filter-group tw-justify-between tw-mb-2"
-      data-testid="filter-container">
+      data-testid={`filter-container-${name}`}>
       <div className="tw-flex">
         <input
           checked={isSelected}
