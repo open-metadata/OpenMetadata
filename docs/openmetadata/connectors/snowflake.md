@@ -162,8 +162,9 @@ Note: The `source.config` field in the configuration JSON will include the major
       "account": "account_name",
       "service_name": "snowflake",
       "data_profiler_enabled": "false",
-      "options":{
-        "authenticator": "https://something.okta.com/",
+      "role": "OPTIONAL - role",
+      "connect_args":{
+        "authenticator": "https://something.okta.com/"
       },
       "table_filter_pattern": {
         "excludes": [
@@ -205,8 +206,9 @@ Note: The `source.config` field in the configuration JSON will include the major
       "account": "account_name",
       "service_name": "snowflake",
       "data_profiler_enabled": "false",
-      "options":{
-        "authenticator": "externalbrowser",
+      "role": "Optional - Role",
+      "connect_args":{
+        "authenticator": "externalbrowser"
       },
       "table_filter_pattern": {
         "excludes": [
