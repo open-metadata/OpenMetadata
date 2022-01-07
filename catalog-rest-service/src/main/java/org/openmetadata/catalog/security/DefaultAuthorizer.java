@@ -42,7 +42,7 @@ public class DefaultAuthorizer implements Authorizer {
 
   private String principalDomain;
   private UserRepository userRepository;
-  private final String fieldsParam = "teams";
+  private static final String fieldsParam = "teams";
 
   @Override
   public void init(AuthorizerConfiguration config, Jdbi dbi) {

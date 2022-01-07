@@ -19,6 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.openmetadata.catalog.security.SecurityUtil.authHeaders;
+import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
 import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
 import static org.openmetadata.catalog.util.TestUtils.assertListNull;
@@ -26,8 +27,10 @@ import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+import javax.ws.rs.core.Response;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -39,7 +42,9 @@ import org.openmetadata.catalog.entity.data.Database;
 import org.openmetadata.catalog.jdbi3.DatabaseRepository.DatabaseEntityInterface;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.databases.DatabaseResource.DatabaseList;
+import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.TestUtils;
@@ -57,7 +62,7 @@ public class DatabaseResourceTest extends EntityResourceTest<Database> {
   }
 
   @Test
-  public void post_validDatabases_as_admin_200_OK(TestInfo test) throws IOException {
+  void post_validDatabases_as_admin_200_OK(TestInfo test) throws IOException {
     // Create team with different optional fields
     CreateDatabase create = create(test);
     createAndCheckEntity(create, adminAuthHeaders());
@@ -67,7 +72,7 @@ public class DatabaseResourceTest extends EntityResourceTest<Database> {
   }
 
   @Test
-  public void post_databaseFQN_as_admin_200_OK(TestInfo test) throws IOException {
+  void post_databaseFQN_as_admin_200_OK(TestInfo test) throws IOException {
     // Create team with different optional fields
     CreateDatabase create = create(test);
     create.setService(new EntityReference().withId(SNOWFLAKE_REFERENCE.getId()).withType("databaseService"));
@@ -77,17 +82,17 @@ public class DatabaseResourceTest extends EntityResourceTest<Database> {
   }
 
   @Test
-  public void post_databaseWithUserOwner_200_ok(TestInfo test) throws IOException {
+  void post_databaseWithUserOwner_200_ok(TestInfo test) throws IOException {
     createAndCheckEntity(create(test).withOwner(USER_OWNER1), adminAuthHeaders());
   }
 
   @Test
-  public void post_databaseWithTeamOwner_200_ok(TestInfo test) throws IOException {
+  void post_databaseWithTeamOwner_200_ok(TestInfo test) throws IOException {
     createAndCheckEntity(create(test).withOwner(TEAM_OWNER1), adminAuthHeaders());
   }
 
   @Test
-  public void post_database_as_non_admin_401(TestInfo test) {
+  void post_database_as_non_admin_401(TestInfo test) {
     CreateDatabase create = create(test);
     HttpResponseException exception =
         assertThrows(HttpResponseException.class, () -> createDatabase(create, authHeaders("test@open-metadata.org")));
@@ -95,7 +100,7 @@ public class DatabaseResourceTest extends EntityResourceTest<Database> {
   }
 
   @Test
-  public void post_databaseWithoutRequiredService_4xx(TestInfo test) {
+  void post_databaseWithoutRequiredService_4xx(TestInfo test) {
     CreateDatabase create = create(test).withService(null);
     HttpResponseException exception =
         assertThrows(HttpResponseException.class, () -> createDatabase(create, adminAuthHeaders()));
@@ -103,7 +108,7 @@ public class DatabaseResourceTest extends EntityResourceTest<Database> {
   }
 
   @Test
-  public void post_databaseWithDifferentService_200_ok(TestInfo test) throws IOException {
+  void post_databaseWithDifferentService_200_ok(TestInfo test) throws IOException {
     EntityReference[] differentServices = {
       MYSQL_REFERENCE, REDSHIFT_REFERENCE, BIGQUERY_REFERENCE, SNOWFLAKE_REFERENCE
     };
@@ -127,13 +132,32 @@ public class DatabaseResourceTest extends EntityResourceTest<Database> {
   }
 
   @Test
-  public void delete_emptyDatabase_200_ok(TestInfo test) throws HttpResponseException {
+  void delete_emptyDatabase_200_ok(TestInfo test) throws HttpResponseException {
     Database database = createDatabase(create(test), adminAuthHeaders());
     deleteEntity(database.getId(), adminAuthHeaders());
   }
 
   @Test
-  public void delete_nonEmptyDatabase_4xx() {
+  void delete_put_Database_200(TestInfo test) throws IOException {
+    CreateDatabase request = create(test).withService(MYSQL_REFERENCE).withDescription("");
+    Database database = createEntity(request, adminAuthHeaders());
+
+    // Delete
+    deleteEntity(database.getId(), adminAuthHeaders());
+
+    ChangeDescription change = getChangeDescription(database.getVersion());
+    change.setFieldsUpdated(
+        Arrays.asList(
+            new FieldChange().withName("deleted").withNewValue(false).withOldValue(true),
+            new FieldChange().withName("description").withNewValue("updatedDescription").withOldValue("")));
+
+    // PUT with updated description
+    updateAndCheckEntity(
+        request.withDescription("updatedDescription"), Response.Status.OK, adminAuthHeaders(), MINOR_UPDATE, change);
+  }
+
+  @Test
+  void delete_nonEmptyDatabase_4xx() {
     // TODO
   }
 

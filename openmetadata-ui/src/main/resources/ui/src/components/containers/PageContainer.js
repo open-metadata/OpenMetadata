@@ -29,8 +29,12 @@ const PageContainer = ({ children, leftPanelContent, className }) => {
         !isAuthenticatedRoute ? 'full-page' : null
       )}
       data-testid="container">
-      {leftPanelContent && <div className="side-panel">{leftPanelContent}</div>}
-      {children}
+      <div className="page-layout centered-layout">
+        {leftPanelContent && (
+          <div className="side-panel">{leftPanelContent}</div>
+        )}
+        {children}
+      </div>
     </div>
   );
 };

@@ -32,7 +32,7 @@ import org.openmetadata.catalog.entity.teams.Team;
 public class JsonUtilsTest {
   /** Test apply patch method with different operations. */
   @Test
-  public void applyPatch() throws IOException {
+  void applyPatch() throws IOException {
     JsonObjectBuilder teamJson = Json.createObjectBuilder();
     JsonObjectBuilder user1 = Json.createObjectBuilder();
     JsonObjectBuilder user2 = Json.createObjectBuilder();

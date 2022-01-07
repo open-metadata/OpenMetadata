@@ -221,7 +221,8 @@ public abstract class EntityRepository<T> {
     }
     int total = dao.listCount(fqnPrefix);
 
-    String beforeCursor, afterCursor = null;
+    String beforeCursor;
+    String afterCursor = null;
     beforeCursor = after == null ? null : getFullyQualifiedName(entities.get(0));
     if (entities.size() > limitParam) { // If extra result exists, then next page exists - return after cursor
       entities.remove(limitParam);
@@ -243,7 +244,8 @@ public abstract class EntityRepository<T> {
     }
     int total = dao.listCount(fqnPrefix);
 
-    String beforeCursor = null, afterCursor;
+    String beforeCursor = null;
+    String afterCursor;
     if (entities.size() > limitParam) { // If extra result exists, then previous page exists - return before cursor
       entities.remove(0);
       beforeCursor = getFullyQualifiedName(entities.get(0));
@@ -298,10 +300,14 @@ public abstract class EntityRepository<T> {
   @Transaction
   public final PutResponse<T> createOrUpdate(UriInfo uriInfo, T updated) throws IOException, ParseException {
     prepare(updated);
-    T original = JsonUtils.readValue(dao.findJsonByFqn(getFullyQualifiedName(updated)), entityClass);
+    // Check if there is any original, deleted or not
+    T original = JsonUtils.readValue(dao.findDeletedOrExists(getFullyQualifiedName(updated)), entityClass);
     if (original == null) {
       return new PutResponse<>(Status.CREATED, withHref(uriInfo, createNewEntity(updated)), RestUtil.ENTITY_CREATED);
     }
+
+    // Recover relationships if original was deleted before setFields
+    recoverDeletedRelationships(original);
     // Get all the fields in the original entity that can be updated during PUT operation
     setFields(original, putFields);
 
@@ -341,7 +347,7 @@ public abstract class EntityRepository<T> {
 
     // Validate follower
     User user = daoCollection.userDAO().findEntityById(userId);
-    if (user.getDeleted()) {
+    if (Boolean.TRUE.equals(user.getDeleted())) {
       throw new IllegalArgumentException(CatalogExceptionMessage.deactivatedUser(userId));
     }
 
@@ -374,15 +380,15 @@ public abstract class EntityRepository<T> {
   public final void delete(UUID id, boolean recursive) throws IOException {
     // If an entity being deleted contains other children entities, it can't be deleted
     List<EntityReference> contains =
-        daoCollection.relationshipDAO().findTo(id.toString(), entityName,Relationship.CONTAINS.ordinal());
+        daoCollection.relationshipDAO().findTo(id.toString(), entityName, Relationship.CONTAINS.ordinal());
 
-    if (contains.size() > 0) {
+    if (!contains.isEmpty()) {
       if (!recursive) {
         throw new IllegalArgumentException(entityName + " is not empty");
       }
       // Soft delete all the contained entities
       for (EntityReference entityReference : contains) {
-        LOG.info("Recursively deleting {} {}",entityReference.getType(),entityReference.getId());
+        LOG.info("Recursively deleting {} {}", entityReference.getType(), entityReference.getId());
         Entity.deleteEntity(entityReference.getType(), entityReference.getId(), recursive);
       }
     }
@@ -409,8 +415,9 @@ public abstract class EntityRepository<T> {
     User user = daoCollection.userDAO().findEntityById(userId);
 
     // Remove follower
-    daoCollection.relationshipDAO().delete(userId.toString(), Entity.USER, entityId.toString(), entityName,
-            Relationship.FOLLOWS.ordinal());
+    daoCollection
+        .relationshipDAO()
+        .delete(userId.toString(), Entity.USER, entityId.toString(), entityName, Relationship.FOLLOWS.ordinal());
 
     ChangeDescription change = new ChangeDescription().withPreviousVersion(entityInterface.getVersion());
     change
@@ -458,7 +465,11 @@ public abstract class EntityRepository<T> {
     EntityInterface entityInterface = getEntityInterface(entity);
     return supportsOwner && entity != null
         ? EntityUtil.populateOwner(
-            entityInterface.getId(), entityName, daoCollection.relationshipDAO(), daoCollection.userDAO(), daoCollection.teamDAO())
+            entityInterface.getId(),
+            entityName,
+            daoCollection.relationshipDAO(),
+            daoCollection.userDAO(),
+            daoCollection.teamDAO())
         : null;
   }
 
@@ -488,7 +499,8 @@ public abstract class EntityRepository<T> {
     EntityInterface<T> entityInterface = getEntityInterface(entity);
     return !supportsFollower || entity == null
         ? null
-        : EntityUtil.getFollowers(entityInterface.getId(), entityName, daoCollection.relationshipDAO(), daoCollection.userDAO());
+        : EntityUtil.getFollowers(
+            entityInterface.getId(), entityName, daoCollection.relationshipDAO(), daoCollection.userDAO());
   }
 
   public T withHref(UriInfo uriInfo, T entity) {
@@ -501,6 +513,15 @@ public abstract class EntityRepository<T> {
 
   public URI getHref(UriInfo uriInfo, UUID id) {
     return RestUtil.getHref(uriInfo, collectionPath, id);
+  }
+
+  private void recoverDeletedRelationships(T original) {
+    // If original is deleted, we need to recover the relationships before setting the fields
+    // or we won't find the related services
+    EntityInterface<T> originalRef = getEntityInterface(original);
+    if (Boolean.TRUE.equals(originalRef.isDeleted())) {
+      daoCollection.relationshipDAO().recoverSoftDeleteAll(originalRef.getId().toString());
+    }
   }
 
   /**
@@ -529,6 +550,7 @@ public abstract class EntityRepository<T> {
     /** Compare original and updated entities and perform updates. Update the entity version and track changes. */
     public final void update() throws IOException {
       updated.setId(original.getId());
+      updateDeleted();
       updateDescription();
       updateDisplayName();
       updateOwner();
@@ -550,6 +572,13 @@ public abstract class EntityRepository<T> {
         return;
       }
       recordChange("description", original.getDescription(), updated.getDescription());
+    }
+
+    private void updateDeleted() throws JsonProcessingException {
+      if (Boolean.TRUE.equals(original.isDeleted())) {
+        updated.setDeleted(false);
+        recordChange("deleted", true, false);
+      }
     }
 
     private void updateDisplayName() throws JsonProcessingException {

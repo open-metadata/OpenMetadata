@@ -50,7 +50,8 @@ public class FeedRepository {
 
     // Get owner for the addressed to Entity
     EntityReference owner =
-        EntityUtil.populateOwner(aboutRef.getId(), aboutRef.getType(), dao.relationshipDAO(), dao.userDAO(), dao.teamDAO());
+        EntityUtil.populateOwner(
+            aboutRef.getId(), aboutRef.getType(), dao.relationshipDAO(), dao.userDAO(), dao.teamDAO());
 
     // Insert a new thread
     dao.feedDAO().insert(JsonUtils.pojoToJson(thread));
@@ -163,9 +164,11 @@ public class FeedRepository {
     // For a user entitylink get created or replied relationships to the thread
     if (reference.getType().equals(Entity.USER)) {
       threadIds.addAll(
-          dao.relationshipDAO().findTo(reference.getId().toString(), reference.getType(), Relationship.CREATED.ordinal(), "thread"));
+          dao.relationshipDAO()
+              .findTo(reference.getId().toString(), reference.getType(), Relationship.CREATED.ordinal(), "thread"));
       threadIds.addAll(
-          dao.relationshipDAO().findTo(reference.getId().toString(), reference.getType(), Relationship.REPLIED_TO.ordinal(), "thread"));
+          dao.relationshipDAO()
+              .findTo(reference.getId().toString(), reference.getType(), Relationship.REPLIED_TO.ordinal(), "thread"));
     } else {
       // Only data assets are added as about
       result =

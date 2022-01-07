@@ -17,6 +17,10 @@ export const datasetTableTabs = [
     path: 'schema',
   },
   {
+    name: 'Sample Data',
+    path: 'sample_data',
+  },
+  {
     name: 'Profiler',
     path: 'profiler',
   },
@@ -37,26 +41,32 @@ export const datasetTableTabs = [
 export const getCurrentDatasetTab = (tab: string) => {
   let currentTab = 1;
   switch (tab) {
-    case 'profiler':
+    case 'sample_data':
       currentTab = 2;
 
       break;
-    case 'lineage':
+
+    case 'profiler':
       currentTab = 3;
 
       break;
-    case 'dbt':
+
+    case 'lineage':
       currentTab = 4;
 
       break;
 
-    case 'manage':
+    case 'dbt':
       currentTab = 5;
 
       break;
 
+    case 'manage':
+      currentTab = 6;
+
+      break;
+
     case 'schema':
-    case 'sample_data':
     default:
       currentTab = 1;
 

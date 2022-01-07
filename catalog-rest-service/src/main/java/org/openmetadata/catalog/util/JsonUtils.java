@@ -30,6 +30,7 @@ import javax.json.JsonArray;
 import javax.json.JsonArrayBuilder;
 import javax.json.JsonObject;
 import javax.json.JsonPatch;
+import javax.json.JsonReader;
 import javax.json.JsonStructure;
 import javax.json.JsonValue;
 import javax.ws.rs.core.MediaType;
@@ -153,18 +154,18 @@ public final class JsonUtils {
 
     // Apply sortedPatch
     JsonValue patchedJson = sortedPatch.apply(targetJson);
-    return JsonUtils.convertValue(patchedJson, clz);
-  }
-
-  public static <T> T convertValue(JsonValue patched, Class<T> clz) {
-    return OBJECT_MAPPER.convertValue(patched, clz);
+    return OBJECT_MAPPER.convertValue(patchedJson, clz);
   }
 
   public static JsonPatch getJsonPatch(String v1, String v2) {
-    System.out.println(v1);
-    System.out.println(v2);
-    JsonValue source = Json.createReader(new StringReader(v1)).readValue();
-    JsonValue dest = Json.createReader(new StringReader(v2)).readValue();
+    JsonValue source = readJson(v1);
+    JsonValue dest = readJson(v2);
     return Json.createDiff(source.asJsonObject(), dest.asJsonObject());
+  }
+
+  public static JsonValue readJson(String s) {
+    try (JsonReader reader = Json.createReader(new StringReader(s))) {
+      return reader.readValue();
+    }
   }
 }

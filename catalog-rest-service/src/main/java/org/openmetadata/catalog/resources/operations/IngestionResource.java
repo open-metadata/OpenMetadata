@@ -128,7 +128,7 @@ public class IngestionResource {
   }
 
   static final String FIELDS = "owner,tags,status,scheduleInterval";
-  public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replaceAll(" ", "").split(","));
+  public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replace(" ", "").split(","));
 
   @GET
   @Valid
@@ -431,7 +431,7 @@ public class IngestionResource {
   }
 
   private void deploy(Ingestion ingestion) {
-    if (ingestion.getForceDeploy()) {
+    if (Boolean.TRUE.equals(ingestion.getForceDeploy())) {
       airflowRESTClient.deploy(ingestion, config);
     }
   }

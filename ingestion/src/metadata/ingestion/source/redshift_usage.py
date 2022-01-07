@@ -60,6 +60,7 @@ class RedshiftUsageSource(Source[TableQuery]):
 
     def __init__(self, config, metadata_config, ctx):
         super().__init__(ctx)
+        self.config = config
         start, end = get_start_and_end(config.duration)
         self.sql_stmt = RedshiftUsageSource.SQL_STATEMENT.format(
             start_time=start, end_time=end
@@ -105,6 +106,7 @@ class RedshiftUsageSource(Source[TableQuery]):
                 database=row["database"],
                 aborted=row["aborted"],
                 sql=row["querytxt"],
+                service_name=self.config.service_name,
             )
             yield tq
 

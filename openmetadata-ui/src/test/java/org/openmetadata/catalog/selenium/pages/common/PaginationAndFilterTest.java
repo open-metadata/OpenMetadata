@@ -13,6 +13,9 @@
 
 package org.openmetadata.catalog.selenium.pages.common;
 
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.logging.Logger;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.MethodOrderer;
@@ -22,6 +25,7 @@ import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.catalog.selenium.events.Events;
 import org.openmetadata.catalog.selenium.properties.Property;
 import org.openqa.selenium.By;
+import org.openqa.selenium.Keys;
 import org.openqa.selenium.TimeoutException;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
@@ -30,10 +34,7 @@ import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.interactions.Actions;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
-
-import java.time.Duration;
-import java.util.ArrayList;
-import java.util.logging.Logger;
+import org.testng.Assert;
 
 @Order(14)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
@@ -71,8 +72,10 @@ public class PaginationAndFilterTest {
     }
     Events.click(webDriver, By.cssSelector("[data-testid='checkbox'][id='BigQuery']")); // Select Filter
     try {
-      WebElement noDataFound = wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath(
-          "//*[contains(text(), 'No matching data assets found')]")));
+      WebElement noDataFound =
+          wait.until(
+              ExpectedConditions.presenceOfElementLocated(
+                  By.xpath("//*[contains(text(), 'No matching data assets found')]")));
       if (noDataFound.isDisplayed()) {
         throw new Exception("Flakiness exists");
       }
@@ -89,8 +92,10 @@ public class PaginationAndFilterTest {
     Events.click(webDriver, By.cssSelector("[data-testid='tables']")); // Tables
     Events.click(webDriver, By.cssSelector("[data-testid='checkbox'][id='BigQuery']")); // Select Filter
     try {
-      WebElement noDataFound = wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath(
-          "//*[contains(text(), 'No matching data assets found')]")));
+      WebElement noDataFound =
+          wait.until(
+              ExpectedConditions.presenceOfElementLocated(
+                  By.xpath("//*[contains(text(), 'No matching data assets found')]")));
       if (noDataFound.isDisplayed()) {
         throw new Exception("Data not found with filter count more than 0");
       }
@@ -108,12 +113,12 @@ public class PaginationAndFilterTest {
     Events.click(webDriver, By.cssSelector("[data-testid='checkbox'][id='Tier.Tier3']")); // Select Filter
     try {
 
-      WebElement dataFound = wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector(
-          "[data-testid='search-results']")));
+      WebElement dataFound =
+          wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("[data-testid='search-results']")));
       if (dataFound.isDisplayed()) {
         throw new Exception("Data found with filter count 0");
       }
-    } catch(TimeoutException exception) {
+    } catch (TimeoutException exception) {
       LOG.info("Success");
     }
   }
@@ -128,6 +133,57 @@ public class PaginationAndFilterTest {
     webDriver.navigate().refresh();
     Events.click(webDriver, By.cssSelector("[data-testid='appbar-item'][id='explore']")); // Explore
     Events.click(webDriver, By.cssSelector("[data-testid='checkbox'][id='BigQuery']")); // Tables
+  }
+
+  @Test
+  @Order(5)
+  public void filterDisappearsAfterSearchCheck() throws Exception {
+    Events.click(webDriver, By.cssSelector("[data-testid='closeWhatsNew']")); // Close What's new
+    Thread.sleep(waitTime);
+    Events.click(webDriver, By.cssSelector("[data-testid='appbar-item'][id='explore']")); // Explore
+    Events.click(webDriver, By.cssSelector("[data-testid='checkbox'][id='BigQuery']"));
+    Events.sendKeys(webDriver, By.cssSelector("[data-testid='searchBox']"), "dim");
+    Events.sendEnter(webDriver, By.cssSelector("[data-testid='searchBox']"));
+    Thread.sleep(2000);
+    WebElement clearSearchBox = webDriver.findElement(By.cssSelector("[data-testid='searchBox']"));
+    clearSearchBox.sendKeys(Keys.CONTROL + "a");
+    clearSearchBox.sendKeys(Keys.DELETE);
+    Events.sendEnter(webDriver, By.cssSelector("[data-testid='searchBox']"));
+    try {
+      Events.click(webDriver, By.cssSelector("[data-testid='checkbox'][id='Glue']"));
+      Events.click(webDriver, By.cssSelector("[data-testid='checkbox'][id='default']"));
+    } catch (TimeoutException exception) {
+      throw new Exception("filters are missing");
+    }
+  }
+
+  @Test
+  @Order(6)
+  public void databaseFilterCountCheck() throws InterruptedException {
+    Events.click(webDriver, By.cssSelector("[data-testid='closeWhatsNew']")); // Close What's new
+    Thread.sleep(waitTime);
+    Events.click(webDriver, By.cssSelector("[data-testid='appbar-item'][id='explore']")); // Explore
+    Events.sendKeys(webDriver, By.cssSelector("[data-testid='searchBox']"), "dim_api_client");
+    Events.click(webDriver, By.cssSelector("[data-testid='data-name']"));
+    Thread.sleep(waitTime);
+    actions.moveToElement(webDriver.findElement(By.xpath("//div[@data-testid='tag-conatiner']//span"))).perform();
+    Events.click(webDriver, By.xpath("//div[@data-testid='tag-conatiner']//span"));
+    Events.click(webDriver, By.cssSelector("[data-testid='associatedTagName']"));
+    for (int i = 0; i <= 4; i++) {
+      Events.sendKeys(webDriver, By.cssSelector("[data-testid='associatedTagName']"), "P");
+      Events.click(webDriver, By.cssSelector("[data-testid='list-item']"));
+    }
+    Events.click(webDriver, By.cssSelector("[data-testid='saveAssociatedTag']"));
+    webDriver.navigate().back();
+    Events.click(webDriver, By.cssSelector("[data-testid='checkbox'][id='PII.None']"));
+    Events.click(webDriver, By.cssSelector("[data-testid='checkbox'][id='shopify']"));
+    Thread.sleep(2000);
+    Object filteredResults = webDriver.findElements(By.xpath("//div[@data-testid='search-results']/div")).size();
+    String databaseCount =
+        webDriver
+            .findElement(By.xpath("//div[@data-testid='filter-container-shopify']//span[@data-testid='filter-count']"))
+            .getAttribute("innerHTML");
+    Assert.assertEquals(databaseCount, filteredResults);
   }
 
   @AfterEach

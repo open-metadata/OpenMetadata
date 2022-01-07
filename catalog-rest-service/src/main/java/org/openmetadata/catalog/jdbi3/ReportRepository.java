@@ -81,7 +81,9 @@ public class ReportRepository extends EntityRepository<Report> {
   }
 
   private EntityReference getService(Report report) {
-    return report == null ? null : getService(EntityUtil.getService(daoCollection.relationshipDAO(), Entity.REPORT, report.getId()));
+    return report == null
+        ? null
+        : getService(EntityUtil.getService(daoCollection.relationshipDAO(), Entity.REPORT, report.getId()));
   }
 
   private EntityReference getService(EntityReference service) {
@@ -124,6 +126,11 @@ public class ReportRepository extends EntityRepository<Report> {
     @Override
     public String getDisplayName() {
       return entity.getDisplayName();
+    }
+
+    @Override
+    public Boolean isDeleted() {
+      return entity.getDeleted();
     }
 
     @Override

@@ -63,6 +63,7 @@ class SampleUsageSource(Source[TableQuery]):
                 database="shopify",
                 aborted=False,
                 sql=row["query"],
+                service_name=self.config.service_name,
             )
             yield tq
 

@@ -11,6 +11,7 @@
 
 import pathlib
 from datetime import timedelta
+
 from airflow_provider_openmetadata import DAG
 
 try:
@@ -18,9 +19,9 @@ try:
 except ModuleNotFoundError:
     from airflow_provider_openmetadata.operators.python_operator import PythonOperator
 
+from airflow_provider_openmetadata.utils.dates import days_ago
 from metadata.config.common import load_config_file
 from metadata.ingestion.api.workflow import Workflow
-from airflow_provider_openmetadata.utils.dates import days_ago
 
 default_args = {
     "owner": "user_name",
@@ -28,14 +29,14 @@ default_args = {
     "email_on_failure": False,
     "retries": 3,
     "retry_delay": timedelta(minutes=5),
-    "execution_timeout": timedelta(minutes=60)
+    "execution_timeout": timedelta(minutes=60),
 }
 
 
 def metadata_ingestion_workflow():
     config_file = pathlib.Path("/tmp/sample_data.json")
     workflow_config = load_config_file(config_file)
-    
+
     workflow = Workflow.create(workflow_config)
     workflow.execute()
     workflow.raise_from_status()

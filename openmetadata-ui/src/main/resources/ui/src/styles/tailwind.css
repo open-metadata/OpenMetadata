@@ -325,6 +325,10 @@
     border-radius: 4px;
   }
 
+  .centered-layout {
+    @apply tw-max-w-screen-xxl xxl:tw-mx-auto xxl:tw-w-screen-xxl;
+  }
+
   .column-highlight {
     animation: highlight 3000ms ease-out;
   }
