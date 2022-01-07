@@ -36,12 +36,18 @@ const entityData = [
 ];
 
 const EntityNode: FC<EntityNodeProps> = ({ type, label }) => {
+  const onDragStart = (event: React.DragEvent, nodeType: string) => {
+    event.dataTransfer.setData('application/reactflow', nodeType);
+    event.dataTransfer.effectAllowed = 'move';
+  };
+
   return (
     <div className="tw-flex tw-flex-col tw-mb-3 tw-items-center">
       <div
         draggable
         className="tw-border tw-p-2 tw-border-main tw-flex tw-justify-between tw-w-16 tw-rounded"
-        style={{ cursor: 'grab' }}>
+        style={{ cursor: 'grab' }}
+        onDragStart={(event) => onDragStart(event, 'default')}>
         <span
           onDragStart={(e) => {
             e.preventDefault();

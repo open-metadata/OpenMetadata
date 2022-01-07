@@ -13,8 +13,14 @@
 
 import { AxiosResponse } from 'axios';
 import classNames from 'classnames';
-import { isEmpty } from 'lodash';
-import React, { FunctionComponent, useEffect, useRef, useState } from 'react';
+import { isEmpty, uniqueId } from 'lodash';
+import React, {
+  DragEvent,
+  FunctionComponent,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import ReactFlow, {
   addEdge,
   Background,
@@ -58,7 +64,8 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
   isNodeLoading,
 }: EntityLineageProp) => {
   const showToast = useToastContext();
-  const [, setReactFlowInstance] = useState<OnLoadParams>();
+  const reactFlowWrapper = useRef<HTMLDivElement>(null);
+  const [reactFlowInstance, setReactFlowInstance] = useState<OnLoadParams>();
   const [isDrawerOpen, setIsDrawerOpen] = useState<boolean>(false);
   const [selectedNode, setSelectedNode] = useState<SelectedNode>(
     {} as SelectedNode
@@ -199,6 +206,30 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
     }
   };
 
+  const onDragOver = (event: DragEvent) => {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'move';
+  };
+
+  const onDrop = (event: DragEvent) => {
+    event.preventDefault();
+
+    const reactFlowBounds = reactFlowWrapper.current?.getBoundingClientRect();
+    const type = event.dataTransfer.getData('application/reactflow');
+    const position = reactFlowInstance?.project({
+      x: event.clientX - (reactFlowBounds?.left ?? 0),
+      y: event.clientY - (reactFlowBounds?.top ?? 0),
+    });
+    const newNode = {
+      id: uniqueId(),
+      type,
+      position,
+      data: { label: `${type} node` },
+    };
+
+    setElements((es) => es.concat(newNode as FlowElement));
+  };
+
   useEffect(() => {
     setElements(getLayoutedElements(setElementsHandle()));
     setExpandNode(undefined);
@@ -224,7 +255,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
 
   return (
     <div className="tw-relative tw-h-full tw--mx-4 tw--mt-4">
-      <div className="tw-w-full tw-h-full">
+      <div className="tw-w-full tw-h-full" ref={reactFlowWrapper}>
         {(entityLineage?.downstreamEdges ?? []).length > 0 ||
         (entityLineage?.upstreamEdges ?? []).length > 0 ? (
           <ReactFlowProvider>
@@ -237,8 +268,10 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
                 input: CustomNode,
                 default: CustomNode,
               }}
-              nodesConnectable={false}
+              nodesConnectable={isEditMode}
               onConnect={onConnect}
+              onDragOver={onDragOver}
+              onDrop={onDrop}
               onElementClick={(_e, el) => onElementClick(el)}
               onElementsRemove={onElementsRemove}
               onLoad={(reactFlowInstance: OnLoadParams) => {
