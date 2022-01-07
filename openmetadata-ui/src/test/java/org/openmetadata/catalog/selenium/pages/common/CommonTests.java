@@ -13,6 +13,8 @@
 
 package org.openmetadata.catalog.selenium.pages.common;
 
+import java.time.Duration;
+import java.util.ArrayList;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.MethodOrderer;
@@ -29,9 +31,6 @@ import org.openqa.selenium.interactions.Actions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.testng.Assert;
 
-import java.time.Duration;
-import java.util.ArrayList;
-
 @Order(17)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class CommonTests {
@@ -41,7 +40,6 @@ public class CommonTests {
   static Actions actions;
   static WebDriverWait wait;
   Integer waitTime = Property.getInstance().getSleepTime();
-
 
   @BeforeEach
   public void openMetadataWindow() {
@@ -58,7 +56,7 @@ public class CommonTests {
 
   @Test
   @Order(1)
-  public void tagDuplicationCheck()  throws InterruptedException {
+  public void tagDuplicationCheck() throws InterruptedException {
     Events.click(webDriver, By.cssSelector("[data-testid='closeWhatsNew']")); // Close What's new
     Thread.sleep(waitTime);
     Events.click(webDriver, By.cssSelector("[data-testid='tables']")); // Tables
@@ -74,7 +72,8 @@ public class CommonTests {
     Events.click(webDriver, By.cssSelector("[data-testid='list-item']"));
     Events.click(webDriver, By.cssSelector("[data-testid='saveAssociatedTag']"));
     Thread.sleep(2000);
-    Object tagCount = webDriver.findElements(By.xpath("//*[text()[contains(.,'" + "#PersonalData.Personal" + "')]] ")).size();
+    Object tagCount =
+        webDriver.findElements(By.xpath("//*[text()[contains(.,'" + "#PersonalData.Personal" + "')]] ")).size();
     Assert.assertEquals(tagCount, 2);
   }
 
