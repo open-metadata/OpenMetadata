@@ -335,3 +335,37 @@ class OMetaTableTest(TestCase):
 
         self.metadata.publish_frequently_joined_with(res, joins)
         self.metadata.delete(entity=Table, entity_id=str(another_res.id.__root__))
+
+    def test_list_versions(self):
+        """
+        test list table entity versions
+        """
+        self.metadata.create_or_update(data=self.create)
+
+        # Find by name
+        res_name = self.metadata.get_by_name(
+            entity=Table, fqdn=self.entity.fullyQualifiedName
+        )
+
+        res = self.metadata.get_list_entity_versions(entity=Table, entity_id=res_name.id.__root__)
+        assert res
+
+    def test_get_entity_version(self):
+        """
+        test get table entity version
+        """
+        self.metadata.create_or_update(data=self.create)
+
+        # Find by name
+        res_name = self.metadata.get_by_name(
+            entity=Table, fqdn=self.entity.fullyQualifiedName
+        )
+        res = self.metadata.get_entity_version(
+            entity=Table,
+            entity_id=res_name.id.__root__,
+            version=0.1
+        )
+
+        # check we get the correct version requested and the correct entity ID
+        assert res.version.__root__ == 0.1
+        assert res.id == res_name.id
