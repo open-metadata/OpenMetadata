@@ -12,18 +12,19 @@
  */
 
 import { AxiosResponse } from 'axios';
+import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import React, { FunctionComponent, useEffect, useRef, useState } from 'react';
 import ReactFlow, {
   addEdge,
+  Background,
+  BackgroundVariant,
   Connection,
   Edge,
   Elements,
   FlowElement,
   ReactFlowProvider,
   removeElements,
-  Background,
-  BackgroundVariant,
 } from 'react-flow-renderer';
 import { getTableDetails } from '../../axiosAPIs/tableAPI';
 import { Column } from '../../generated/entity/data/table';
@@ -44,7 +45,7 @@ import {
 import SVGIcons from '../../utils/SvgUtils';
 import { getEntityIcon } from '../../utils/TableUtils';
 import EntityInfoDrawer from '../EntityInfoDrawer/EntityInfoDrawer.component';
-import CustomControls from './CustomControls.component';
+import CustomControls, { ControlButton } from './CustomControls.component';
 import CustomNode from './CustomNode.component';
 import { EntityLineageProp, SelectedNode } from './EntityLineage.interface';
 
@@ -63,7 +64,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
   const [expandNode, setExpandNode] = useState<EntityReference | undefined>(
     undefined
   );
-  const [isEditMode] = useState<boolean>(false);
+  const [isEditMode, setEditMode] = useState<boolean>(false);
 
   const [tableColumns, setTableColumns] = useState<Column[]>([] as Column[]);
 
@@ -246,9 +247,29 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
               onNodeMouseLeave={onNodeMouseLeave}
               onNodeMouseMove={onNodeMouseMove}>
               <CustomControls
-                className="tw-absolute tw-top-1 tw-left-1 tw-bottom-full tw-ml-4 tw-mt-4"
-                fitViewParams={{ minZoom: 0.5, maxZoom: 2.5 }}
-              />
+                className="tw-absolute tw-top-1 tw-right-1 tw-bottom-full tw-ml-4 tw-mt-4"
+                fitViewParams={{ minZoom: 0.5, maxZoom: 2.5 }}>
+                <ControlButton
+                  className={classNames(
+                    'tw-h-9 tw-w-9 tw-rounded-full tw-px-1 tw-shadow-lg tw-cursor-pointer',
+                    {
+                      'tw-bg-primary': isEditMode,
+                      'tw-bg-primary-hover-lite': !isEditMode,
+                    }
+                  )}
+                  onClick={() => setEditMode((pre) => !pre)}>
+                  <SVGIcons
+                    alt="icon-edit-lineag"
+                    className="tw--mt-0.5"
+                    icon={
+                      !isEditMode
+                        ? 'icon-edit-lineage-color'
+                        : 'icon-edit-lineage'
+                    }
+                    width="14"
+                  />
+                </ControlButton>
+              </CustomControls>
               {isEditMode ? (
                 <Background
                   className="tw-text-grey-muted-lite tw-bg-body-main"

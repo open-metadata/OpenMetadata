@@ -12,7 +12,7 @@
  */
 
 import classNames from 'classnames';
-import React, { FC, HTMLAttributes, useCallback, memo, useState } from 'react';
+import React, { FC, HTMLAttributes, memo, useCallback, useState } from 'react';
 import { FitViewParams, useZoomPanHelper } from 'react-flow-renderer';
 import SVGIcons from '../../utils/SvgUtils';
 
@@ -85,10 +85,15 @@ const CustomControls: FC<ControlProps> = ({
           <ControlButton
             className="tw-px-1 tw-cursor-pointer tw-w-8 tw-h-8"
             onClick={onZoomOutHandler}>
-            <SVGIcons alt="minus-icon" icon="icon-control-minus" width="12" />
+            <SVGIcons
+              alt="minus-icon"
+              className="tw--mt-0.5"
+              icon="icon-control-minus"
+              width="12"
+            />
           </ControlButton>
           <input
-            className="tw-border tw-mt-1 tw-rounded"
+            className="tw-mt-0.5 tw-bg-body-hover"
             max={2.5}
             min={0.5}
             step={0.1}
@@ -103,7 +108,12 @@ const CustomControls: FC<ControlProps> = ({
           <ControlButton
             className="tw-px-1 tw-cursor-pointer tw-w-8 tw-h-8"
             onClick={onZoomInHandler}>
-            <SVGIcons alt="plus-icon" icon="icon-control-plus" width="12" />
+            <SVGIcons
+              alt="plus-icon"
+              className="tw--mt-0.5"
+              icon="icon-control-plus"
+              width="12"
+            />
           </ControlButton>
         </div>
       )}

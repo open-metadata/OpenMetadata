@@ -21,6 +21,8 @@ import IconAPI from '../assets/svg/api.svg';
 import IconSuccess from '../assets/svg/check.svg';
 import IconConfigColor from '../assets/svg/config-color.svg';
 import IconConfig from '../assets/svg/config.svg';
+import IconControlMinus from '../assets/svg/control-minus.svg';
+import IconControlPlus from '../assets/svg/control-plus.svg';
 import IconDashboardGrey from '../assets/svg/dashboard-grey.svg';
 import IconDashboard from '../assets/svg/dashboard.svg';
 import IconAsstest from '../assets/svg/data-assets.svg';
@@ -30,14 +32,17 @@ import IconDBTModelPrimeryColor from '../assets/svg/dbt-model-primery.svg';
 import IconDBTModel from '../assets/svg/dbt-model.svg';
 import IconDeploy from '../assets/svg/deploy-icon.svg';
 import IconDoc from '../assets/svg/doc.svg';
+import IconEditBlack from '../assets/svg/edit-black.svg';
+import IconEditPrimary from '../assets/svg/edit-primary.svg';
 import IconError from '../assets/svg/error.svg';
 import IconExternalLink from '../assets/svg/external-link.svg';
+import IconFitView from '../assets/svg/fitview.svg';
 import IconCheckCircle from '../assets/svg/ic-check-circle.svg';
 import IconDelete from '../assets/svg/ic-delete.svg';
 import IconDownArrow from '../assets/svg/ic-down-arrow.svg';
+import IconEditLineageColor from '../assets/svg/ic-edit-lineage-colored.svg';
+import IconEditLineage from '../assets/svg/ic-edit-lineage.svg';
 import IconEdit from '../assets/svg/ic-edit.svg';
-import IconEditBlack from '../assets/svg/edit-black.svg';
-import IconEditPrimary from '../assets/svg/edit-primary.svg';
 import IconExclamationCircle from '../assets/svg/ic-exclamation-circle.svg';
 import IconExplore from '../assets/svg/ic-explore.svg';
 import IconFeed from '../assets/svg/ic-feed.svg';
@@ -105,9 +110,6 @@ import IconVersionBlack from '../assets/svg/version-black.svg';
 import IconVersionWhite from '../assets/svg/version-white.svg';
 import IconVersion from '../assets/svg/version.svg';
 import IconWarning from '../assets/svg/warning.svg';
-import IconFitView from '../assets/svg/fitview.svg';
-import IconControlPlus from '../assets/svg/control-plus.svg';
-import IconControlMinus from '../assets/svg/control-minus.svg';
 
 type Props = {
   alt: string;
@@ -213,6 +215,8 @@ export const Icons = {
   FITVEW: 'icon-fitview',
   CONTROLPLUS: 'icon-control-plus',
   CONTROLMINUS: 'icon-control-minus',
+  EDITLINEAGECOLOR: 'icon-edit-lineage-color',
+  EDITLINEAGE: 'icon-edit-lineage',
 };
 
 const SVGIcons: FunctionComponent<Props> = ({
@@ -611,6 +615,14 @@ const SVGIcons: FunctionComponent<Props> = ({
       break;
     case Icons.CONTROLMINUS:
       IconComponent = IconControlMinus;
+
+      break;
+    case Icons.EDITLINEAGE:
+      IconComponent = IconEditLineage;
+
+      break;
+    case Icons.EDITLINEAGECOLOR:
+      IconComponent = IconEditLineageColor;
 
       break;
 
