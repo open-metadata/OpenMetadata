@@ -1,3 +1,4 @@
+# pylint: disable=invalid-name
 """
 Mixin class containing entity versioning specific methods
 
@@ -12,9 +13,9 @@ from requests.models import Response
 
 from metadata.generated.schema.type import basic
 from metadata.generated.schema.type.entityHistory import EntityVersionHistory
-from metadata.ingestion.ometa.client import REST, APIError
+from metadata.ingestion.ometa.client import REST
 
-T = TypeVar("T", bound=BaseModel)
+T = TypeVar("T", bound=BaseModel)  # pylint: disable=invalid-name
 logger = logging.getLogger(__name__)
 
 
@@ -27,7 +28,8 @@ class OMetaVersionMixin(Generic[T]):
 
     client: REST
 
-    def version_to_str(self, version: Union[str, float]):
+    @staticmethod
+    def version_to_str(version: Union[str, float]):
         """convert float version to str
 
         Parameters
@@ -93,7 +95,6 @@ class OMetaVersionMixin(Generic[T]):
         List
             lists of available versions for a specific entity
         """
-        suffix = self.get_suffix(entity)
         path = f"{entity_id}/versions"
 
         resp = self.client.get(f"{self.get_suffix(entity)}/{path}")
