@@ -10,7 +10,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-name: py-integration-tests
+name: py-tests
 on:
   push:
     branches: [main]
@@ -24,7 +24,11 @@ jobs:
   run_tests:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+    - name: Checkout
+      uses: actions/checkout@v2
+      with:
+        ref: ${{ github.event.pull_request.head.sha }}
+
     - name: Set up JDK 11
       uses: actions/setup-java@v2
       with:
@@ -67,6 +71,9 @@ jobs:
         echo "sonar.pullrequest.branch=${{ github.head_ref }}" >> ingestion/sonar-project.properties
         echo "sonar.pullrequest.base=origin/main" >> ingestion/sonar-project.properties
         echo "sonar.pullrequest.provider=github" >> ingestion/sonar-project.properties
+
+        # Validate new properties
+        cat ingestion/sonar-project.properties
 
         make token=${{ secrets.INGESTION_SONAR_SECRET }} sonar_ingestion
 

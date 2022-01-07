@@ -8,6 +8,10 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+"""
+Helper methods to handle creds retrieval
+for the OpenMetadata Python API
+"""
 
 import os
 from typing import Tuple
@@ -23,17 +27,17 @@ class URL(str):
         note: we use *value and v0 to allow an empty URL string
         """
         if value:
-            v0 = value[0]
-            if not (isinstance(v0, str) or isinstance(v0, URL)):
-                raise TypeError(f'Unexpected type for URL: "{type(v0)}"')
+            url = value[0]
+            if not isinstance(url, (URL, str)):
+                raise TypeError(f'Unexpected type for URL: "{type(url)}"')
             if not (
-                v0.startswith("http://")
-                or v0.startswith("https://")
-                or v0.startswith("ws://")
-                or v0.startswith("wss://")
+                url.startswith("http://")
+                or url.startswith("https://")
+                or url.startswith("ws://")
+                or url.startswith("wss://")
             ):
                 raise ValueError(
-                    f'Passed string value "{v0}" is not an'
+                    f'Passed string value "{url}" is not an'
                     f' "http*://" or "ws*://" URL'
                 )
         return str.__new__(cls, *value)
@@ -55,9 +59,10 @@ class DATE(str):
             )
         try:
             dateutil.parser.parse(value)
-        except Exception as e:
-            msg = f"{value} is not a valid date string: {e}"
+        except Exception as exc:
+            msg = f"{value} is not a valid date string: {exc}"
             raise Exception(msg)
+
         return str.__new__(cls, value)
 
 
@@ -69,10 +74,11 @@ class FLOAT(str):
     """
 
     def __new__(cls, value):
-        if isinstance(value, float) or isinstance(value, int):
+        if isinstance(value, (float, int)):
             return value
         if isinstance(value, str):
             return float(value.strip())
+
         raise ValueError(f'Unexpected float format "{value}"')
 
 
