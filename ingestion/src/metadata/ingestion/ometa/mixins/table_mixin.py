@@ -36,7 +36,7 @@ class OMetaTableMixin:
         :param table: Table Entity to update
         :param location: Location Entity to add
         """
-        resp = self.client.put(
+        self.client.put(
             f"{self.get_suffix(Table)}/{table.id.__root__}/location",
             data=str(location.id.__root__),
         )

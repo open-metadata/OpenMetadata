@@ -11,7 +11,7 @@ from metadata.generated.schema.entity.data.mlmodel import MlModel
 from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.client import REST
-from metadata.ingestion.ometa.mixins.lineageMixin import OMetaLineageMixin
+from metadata.ingestion.ometa.mixins.lineage_mixin import OMetaLineageMixin
 
 logger = logging.getLogger(__name__)
 
