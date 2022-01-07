@@ -13,15 +13,8 @@ import logging
 import uuid
 from typing import Iterable, List, Union
 
-from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.api.common import Entity, WorkflowContext
-from metadata.ingestion.api.source import Source, SourceStatus
-from metadata.ingestion.models.ometa_policy import OMetaPolicy
-from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.generated.schema.entity.data.location import Location, LocationType
 from metadata.generated.schema.entity.policies.filters import Prefix
-from metadata.generated.schema.entity.policies.policy import Policy, PolicyType
-from metadata.generated.schema.entity.policies.lifecycle.rule import LifecycleRule
 from metadata.generated.schema.entity.policies.lifecycle.deleteAction import (
     LifecycleDeleteAction,
 )
@@ -29,8 +22,15 @@ from metadata.generated.schema.entity.policies.lifecycle.moveAction import (
     Destination,
     LifecycleMoveAction,
 )
-from metadata.generated.schema.type.storage import StorageServiceType, S3StorageClass
-from metadata.utils.aws_client import AWSClientConfigModel, AWSClient
+from metadata.generated.schema.entity.policies.lifecycle.rule import LifecycleRule
+from metadata.generated.schema.entity.policies.policy import Policy, PolicyType
+from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.storage import S3StorageClass, StorageServiceType
+from metadata.ingestion.api.common import Entity, WorkflowContext
+from metadata.ingestion.api.source import Source, SourceStatus
+from metadata.ingestion.models.ometa_policy import OMetaPolicy
+from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
+from metadata.utils.aws_client import AWSClient, AWSClientConfigModel
 from metadata.utils.helpers import get_storage_service_or_create
 
 logger: logging.Logger = logging.getLogger(__name__)
