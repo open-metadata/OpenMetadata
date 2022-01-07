@@ -14,11 +14,10 @@ import pathlib
 import sys
 
 import click
-from pydantic import ValidationError
-
 from openmetadata.common.config import load_config_file
 from openmetadata.profiler.profiler_metadata import ProfileResult
 from openmetadata.profiler.profiler_runner import ProfilerRunner
+from pydantic import ValidationError
 
 logger = logging.getLogger(__name__)
 

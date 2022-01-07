@@ -19,7 +19,7 @@ install_dev:
 precommit_install:
 	@echo "Installing pre-commit hooks"
 	@echo "Make sure to first run `make install_test`"
-	pre-commit install --config ingestion/.pre-commit-config.yaml
+	pre-commit install
 
 isort:
 	isort $(PY_SOURCE) --skip $(PY_SOURCE)/metadata/generated --profile black --multi-line 3

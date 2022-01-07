@@ -28,7 +28,8 @@ import { Button } from '../../components/buttons/Button/Button';
 import Description from '../../components/common/description/Description';
 import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
 import NonAdminAction from '../../components/common/non-admin-action/NonAdminAction';
-import PageContainer from '../../components/containers/PageContainer';
+import PageContainerV1 from '../../components/containers/PageContainerV1';
+import PageLayout from '../../components/containers/PageLayout';
 import Loader from '../../components/Loader/Loader';
 import FormModal from '../../components/Modals/FormModal';
 import {
@@ -160,7 +161,7 @@ const TeamsPage = () => {
     return (
       <div className="tw-mb-3 ">
         <nav
-          className="tw-flex tw-flex-row tw-gh-tabs-container tw-px-4"
+          className="tw-flex tw-flex-row tw-gh-tabs-container"
           data-testid="tabs">
           <button
             className={`tw-pb-2 tw-px-4 tw-gh-tabs ${getActiveTabClass(1)}`}
@@ -372,92 +373,94 @@ const TeamsPage = () => {
       {error ? (
         <ErrorPlaceHolder />
       ) : (
-        <PageContainer leftPanelContent={fetchLeftPanel()}>
-          {isLoading ? (
-            <Loader />
-          ) : (
-            <div
-              className="container-fluid tw-pt-1 tw-pb-3"
-              data-testid="team-container">
-              {teams.length > 0 ? (
-                <>
-                  <div
-                    className="tw-flex tw-justify-between tw-pl-1"
-                    data-testid="header">
-                    <div className="tw-heading tw-text-link tw-text-base">
-                      {currentTeam?.displayName}
+        <PageContainerV1 className="tw-py-4">
+          <PageLayout leftPanel={fetchLeftPanel()}>
+            {isLoading ? (
+              <Loader />
+            ) : (
+              <div className="tw-pb-3" data-testid="team-container">
+                {teams.length > 0 ? (
+                  <>
+                    <div
+                      className="tw-flex tw-justify-between tw-pl-1"
+                      data-testid="header">
+                      <div className="tw-heading tw-text-link tw-text-base">
+                        {currentTeam?.displayName}
+                      </div>
+                      <NonAdminAction
+                        position="bottom"
+                        title={TITLE_FOR_NON_ADMIN_ACTION}>
+                        <Button
+                          className={classNames('tw-h-8 tw-rounded tw-mb-2', {
+                            'tw-opacity-40': !isAdminUser && !isAuthDisabled,
+                          })}
+                          data-testid="add-new-user-button"
+                          size="small"
+                          theme="primary"
+                          variant="contained"
+                          onClick={() => setIsAddingUsers(true)}>
+                          Add new user
+                        </Button>
+                      </NonAdminAction>
                     </div>
-                    <NonAdminAction
-                      position="bottom"
-                      title={TITLE_FOR_NON_ADMIN_ACTION}>
-                      <Button
-                        className={classNames('tw-h-8 tw-rounded tw-mb-2', {
-                          'tw-opacity-40': !isAdminUser && !isAuthDisabled,
-                        })}
-                        data-testid="add-new-user-button"
-                        size="small"
-                        theme="primary"
-                        variant="contained"
-                        onClick={() => setIsAddingUsers(true)}>
-                        Add new user
-                      </Button>
-                    </NonAdminAction>
-                  </div>
-                  <div className="tw-mb-3" data-testid="description-container">
-                    <Description
-                      description={currentTeam?.description || ''}
-                      entityName={currentTeam?.displayName}
-                      isEdit={isEditable}
-                      onCancel={onCancel}
-                      onDescriptionEdit={onDescriptionEdit}
-                      onDescriptionUpdate={onDescriptionUpdate}
-                    />
-                  </div>
+                    <div
+                      className="tw-mb-3"
+                      data-testid="description-container">
+                      <Description
+                        description={currentTeam?.description || ''}
+                        entityName={currentTeam?.displayName}
+                        isEdit={isEditable}
+                        onCancel={onCancel}
+                        onDescriptionEdit={onDescriptionEdit}
+                        onDescriptionUpdate={onDescriptionUpdate}
+                      />
+                    </div>
 
-                  {getTabs()}
+                    {getTabs()}
 
-                  {currentTab === 1 && getUserCards()}
+                    {currentTab === 1 && getUserCards()}
 
-                  {currentTab === 2 && getDatasetCards()}
-                  {isAddingUsers && (
-                    <AddUsersModal
-                      header={`Adding new users to ${currentTeam?.name}`}
-                      list={getUniqueUserList()}
-                      onCancel={() => setIsAddingUsers(false)}
-                      onSave={(data) => createUsers(data)}
-                    />
-                  )}
-                </>
-              ) : (
-                <ErrorPlaceHolder>
-                  <p className="w-text-lg tw-text-center">No Teams Added.</p>
-                  <p className="w-text-lg tw-text-center">
-                    <button
-                      className="link-text tw-underline"
-                      onClick={() => setIsAddingTeam(true)}>
-                      Click here
-                    </button>
-                    {' to add new Team'}
-                  </p>
-                </ErrorPlaceHolder>
-              )}
+                    {currentTab === 2 && getDatasetCards()}
+                    {isAddingUsers && (
+                      <AddUsersModal
+                        header={`Adding new users to ${currentTeam?.name}`}
+                        list={getUniqueUserList()}
+                        onCancel={() => setIsAddingUsers(false)}
+                        onSave={(data) => createUsers(data)}
+                      />
+                    )}
+                  </>
+                ) : (
+                  <ErrorPlaceHolder>
+                    <p className="w-text-lg tw-text-center">No Teams Added.</p>
+                    <p className="w-text-lg tw-text-center">
+                      <button
+                        className="link-text tw-underline"
+                        onClick={() => setIsAddingTeam(true)}>
+                        Click here
+                      </button>
+                      {' to add new Team'}
+                    </p>
+                  </ErrorPlaceHolder>
+                )}
 
-              {isAddingTeam && (
-                <FormModal
-                  form={Form}
-                  header="Adding new team"
-                  initialData={{
-                    name: '',
-                    description: '',
-                    displayName: '',
-                  }}
-                  onCancel={() => setIsAddingTeam(false)}
-                  onSave={(data) => createNewTeam(data as Team)}
-                />
-              )}
-            </div>
-          )}
-        </PageContainer>
+                {isAddingTeam && (
+                  <FormModal
+                    form={Form}
+                    header="Adding new team"
+                    initialData={{
+                      name: '',
+                      description: '',
+                      displayName: '',
+                    }}
+                    onCancel={() => setIsAddingTeam(false)}
+                    onSave={(data) => createNewTeam(data as Team)}
+                  />
+                )}
+              </div>
+            )}
+          </PageLayout>
+        </PageContainerV1>
       )}
     </>
   );

@@ -13,7 +13,7 @@ import importlib
 import pathlib
 from unittest import TestCase
 
-from metadata.config.common import load_config_file, ConfigurationError
+from metadata.config.common import ConfigurationError, load_config_file
 from metadata.ingestion.api.workflow import Workflow
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
