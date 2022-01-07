@@ -98,7 +98,7 @@ class OMetaVersionMixin(Generic[T]):
 
         resp = self.client.get(f"{self.get_suffix(entity)}/{path}")
 
-        if self.__use_raw_data:
+        if self._use_raw_data:
             return resp
 
         return EntityVersionHistory(**resp)
