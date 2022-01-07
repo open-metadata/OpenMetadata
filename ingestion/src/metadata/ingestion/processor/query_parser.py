@@ -14,12 +14,13 @@ import logging
 import traceback
 from typing import Optional
 
+from sql_metadata import Parser
+
 from metadata.config.common import ConfigModel
 from metadata.ingestion.api.common import WorkflowContext
 from metadata.ingestion.api.processor import Processor, ProcessorStatus
 from metadata.ingestion.models.table_queries import QueryParserData, TableQuery
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
-from sql_metadata import Parser
 
 
 class QueryParserProcessorConfig(ConfigModel):

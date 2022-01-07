@@ -12,10 +12,10 @@
 import json
 import logging
 import uuid
-from typing import Optional, Iterable
+from typing import Iterable, Optional
 
 from metadata.generated.schema.entity.policies.policy import Policy
-from metadata.ingestion.api.common import Entity, ConfigModel, WorkflowContext
+from metadata.ingestion.api.common import ConfigModel, Entity, WorkflowContext
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.models.ometa_policy import OMetaPolicy
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
