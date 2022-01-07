@@ -123,6 +123,7 @@ _column_string_mapping = {
     "XML": "BINARY",
     "XMLTYPE": "BINARY",
     "CURSOR": "BINARY",
+    "TIMESTAMP_NTZ": "TIMESTAMP",
 }
 
 _known_unknown_column_types: Set[Type[types.TypeEngine]] = {

@@ -90,6 +90,7 @@ SQLTYPES = [
     "XML",
     "XMLTYPE",
     "YEAR",
+    "TIMESTAMP_NTZ",
 ]
 
 
