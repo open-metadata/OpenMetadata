@@ -47,7 +47,7 @@ import org.elasticsearch.search.suggest.Suggest;
 import org.elasticsearch.search.suggest.SuggestBuilder;
 import org.elasticsearch.search.suggest.SuggestBuilders;
 import org.elasticsearch.search.suggest.completion.CompletionSuggestionBuilder;
-import org.openmetadata.catalog.ElasticSearchConfiguration;
+import org.openmetadata.catalog.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.catalog.util.ElasticSearchClientUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

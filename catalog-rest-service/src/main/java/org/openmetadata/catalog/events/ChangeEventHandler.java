@@ -48,10 +48,6 @@ public class ChangeEventHandler implements EventHandler {
             changeEvent.getEventType(),
             changeEvent.getEntityType());
         EventPubSub.publish(changeEvent);
-        if (changeEvent.getEntity() != null) {
-          changeEvent.setEntity(JsonUtils.pojoToJson(changeEvent.getEntity()));
-        }
-
         dao.changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
       }
     } catch (Exception e) {
@@ -91,7 +87,8 @@ public class ChangeEventHandler implements EventHandler {
       var entityInterface = Entity.getEntityInterface(entity);
       String entityType = Entity.getEntityReference(entity).getType();
       return getChangeEvent(EventType.ENTITY_UPDATED, entityType, entityInterface)
-          .withPreviousVersion(entityInterface.getChangeDescription().getPreviousVersion());
+          .withPreviousVersion(entityInterface.getChangeDescription().getPreviousVersion())
+          .withEntity(entity);
     }
 
     // Entity field was updated by PUT .../entities/{id}/fieldName - Example PUT ../tables/{id}/follower

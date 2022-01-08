@@ -1,29 +1,28 @@
 package org.openmetadata.catalog.slack;
 
-import java.util.Map;
 import java.util.concurrent.TimeUnit;
-import javax.ws.rs.ProcessingException;
 import javax.ws.rs.client.Client;
 import javax.ws.rs.client.ClientBuilder;
 import javax.ws.rs.client.Entity;
 import javax.ws.rs.client.Invocation;
 import javax.ws.rs.core.MediaType;
-import org.jdbi.v3.core.Jdbi;
-import org.openmetadata.catalog.events.EventPubSub;
-import org.openmetadata.catalog.events.EventPublisher;
+import org.openmetadata.catalog.events.AbstractEventPublisher;
+import org.openmetadata.catalog.events.errors.EventPublisherException;
+import org.openmetadata.catalog.resources.events.EventResource.ChangeEventList;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.ChangeEvent;
 import org.openmetadata.catalog.type.FieldChange;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class SlackWebhookEventPublisher implements EventPublisher {
+public class SlackWebhookEventPublisher extends AbstractEventPublisher {
   private static final Logger LOG = LoggerFactory.getLogger(SlackWebhookEventPublisher.class);
   private Invocation.Builder target;
   private Client client;
 
-  public void init(Map<String, Object> config, Jdbi jdbi) {
-    String slackWebhookURL = (String) config.get("webhookUrl");
+  public SlackWebhookEventPublisher(SlackPublisherConfiguration config) {
+    super(config.getBatchSize(), config.getFilters());
+    String slackWebhookURL = config.getWebhookUrl();
     ClientBuilder clientBuilder = ClientBuilder.newBuilder();
     clientBuilder.connectTimeout(10, TimeUnit.SECONDS);
     clientBuilder.readTimeout(12, TimeUnit.SECONDS);
@@ -38,35 +37,22 @@ public class SlackWebhookEventPublisher implements EventPublisher {
 
   @Override
   public void onShutdown() {
-    close();
-  }
-
-  @Override
-  public void onEvent(EventPubSub.ChangeEventHolder changeEventHolder, long sequence, boolean endOfBatch)
-      throws Exception {
-    ChangeEvent changeEvent = changeEventHolder.get();
-    long attemptTime = System.currentTimeMillis();
-    try {
-      publish(changeEvent);
-    } catch (ProcessingException ex) {
-      LOG.error("error", ex);
+    if (client != null) {
+      client.close();
     }
   }
 
   @Override
-  public void publish(ChangeEvent event) {
-    LOG.info("log event {}", event);
-    try {
-      SlackMessage slackMessage = buildSlackMessage(event);
-      target.post(Entity.entity(slackMessage, MediaType.APPLICATION_JSON_TYPE));
-    } catch (Exception e) {
-      LOG.error("failed to update ES doc", e);
+  public void publish(ChangeEventList events) throws EventPublisherException {
+    for (ChangeEvent event : events.getData()) {
+      LOG.info("log event {}", event);
+      try {
+        SlackMessage slackMessage = buildSlackMessage(event);
+        target.post(Entity.entity(slackMessage, MediaType.APPLICATION_JSON_TYPE));
+      } catch (Exception e) {
+        LOG.error("failed to update ES doc", e);
+      }
     }
-  }
-
-  @Override
-  public void close() {
-    client.close();
   }
 
   private SlackMessage buildSlackMessage(ChangeEvent event) {

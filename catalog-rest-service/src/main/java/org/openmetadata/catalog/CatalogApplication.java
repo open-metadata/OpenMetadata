@@ -42,6 +42,7 @@ import org.glassfish.jersey.media.multipart.MultiPartFeature;
 import org.glassfish.jersey.server.ServerProperties;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.statement.SqlLogger;
+import org.openmetadata.catalog.elasticsearch.ElasticSearchEventPublisher;
 import org.jdbi.v3.core.statement.StatementContext;
 import org.openmetadata.catalog.events.EventFilter;
 import org.openmetadata.catalog.events.EventPubSub;
@@ -57,6 +58,8 @@ import org.openmetadata.catalog.security.AuthorizerConfiguration;
 import org.openmetadata.catalog.security.NoopAuthorizer;
 import org.openmetadata.catalog.security.NoopFilter;
 import org.openmetadata.catalog.security.auth.CatalogSecurityContextRequestFilter;
+import org.openmetadata.catalog.slack.SlackPublisherConfiguration;
+import org.openmetadata.catalog.slack.SlackWebhookEventPublisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -114,6 +117,10 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
     // Register Event Handler
     registerEventFilter(catalogConfig, environment, jdbi);
     environment.lifecycle().manage(new ManagedShutdown());
+    // start event hub before registering publishers
+    EventPubSub.start();
+    // Register Event publishers
+    registerEventPublisher(catalogConfig, jdbi);
   }
 
   @SneakyThrows
@@ -176,6 +183,20 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
     }
   }
 
+  private void registerEventPublisher(CatalogApplicationConfig catalogApplicationConfig, Jdbi jdbi)
+      throws NoSuchMethodException, ClassNotFoundException, IllegalAccessException, InvocationTargetException,
+          InstantiationException {
+    // register ElasticSearch Event publisher
+    ElasticSearchEventPublisher elasticSearchEventPublisher =
+        new ElasticSearchEventPublisher(catalogApplicationConfig.getElasticSearchConfiguration());
+    EventPubSub.addEventHandler(elasticSearchEventPublisher);
+    // register slack Event publishers
+    for (SlackPublisherConfiguration slackPublisherConfiguration : catalogApplicationConfig.getSlackEventPublishers()) {
+      SlackWebhookEventPublisher slackPublisher = new SlackWebhookEventPublisher(slackPublisherConfiguration);
+      EventPubSub.addEventHandler(slackPublisher);
+    }
+  }
+
   private void registerResources(CatalogApplicationConfig config, Environment environment, Jdbi jdbi) {
     CollectionRegistry.getInstance().registerResources(jdbi, environment, config, authorizer);
     environment.jersey().register(new SearchResource(config.getElasticSearchConfiguration()));
@@ -195,7 +216,6 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
     @Override
     public void start() throws Exception {
       LOG.info("Starting the application");
-      EventPubSub.start();
     }
 
     @Override

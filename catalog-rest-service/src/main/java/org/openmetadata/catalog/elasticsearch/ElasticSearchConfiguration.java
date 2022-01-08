@@ -13,28 +13,9 @@
 
 package org.openmetadata.catalog.elasticsearch;
 
-import java.util.Map;
 import javax.validation.constraints.NotEmpty;
 
 public class ElasticSearchConfiguration {
-
-  public ElasticSearchConfiguration() {}
-
-  public ElasticSearchConfiguration(Map<String, Object> config) {
-    host = (String) config.get("host");
-    port = (Integer) config.get("port");
-    username = (String) config.get("username");
-    password = (String) config.get("password");
-    scheme = (String) config.get("scheme");
-    truststorePath = (String) config.get("truststorePath");
-    truststorePassword = (String) config.get("truststorePassword");
-    if (config.containsKey("connectionTimeoutSecs")) {
-      connectionTimeoutSecs = (Integer) config.get("connectionTimeoutSecs");
-    }
-    if (config.containsKey("socketTimeoutSecs")) {
-      socketTimeoutSecs = (Integer) config.get("socketTimeoutSecs");
-    }
-  }
 
   @NotEmpty private String host;
 
@@ -53,6 +34,8 @@ public class ElasticSearchConfiguration {
   private Integer connectionTimeoutSecs = 5;
 
   private Integer socketTimeoutSecs = 60;
+
+  private Integer batchSize = 10;
 
   public String getHost() {
     return host;
@@ -124,6 +107,14 @@ public class ElasticSearchConfiguration {
 
   public void setSocketTimeoutSecs(Integer socketTimeoutSecs) {
     this.socketTimeoutSecs = socketTimeoutSecs;
+  }
+
+  public Integer getBatchSize() {
+    return batchSize;
+  }
+
+  public void setBatchSize(Integer batchSize) {
+    this.batchSize = batchSize;
   }
 
   @Override

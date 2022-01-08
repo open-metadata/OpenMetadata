@@ -145,7 +145,6 @@ airflowConfiguration:
 eventHandlerConfiguration:
   eventHandlerClassNames:
     - "org.openmetadata.catalog.events.AuditEventHandler"
-    - "org.openmetadata.catalog.elasticsearch.ElasticSearchEventHandler"
     - "org.openmetadata.catalog.events.ChangeEventHandler"
 
 health:
