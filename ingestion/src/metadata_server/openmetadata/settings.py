@@ -1,3 +1,6 @@
+"""
+Settings and constants for OpenMetadata web server
+"""
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
