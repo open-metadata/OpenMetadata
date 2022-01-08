@@ -396,7 +396,7 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
             new FieldChange().withName("deleted").withNewValue(false).withOldValue(true),
             new FieldChange().withName("description").withNewValue("updatedDescription").withOldValue("")));
 
-    // PUT with updated description and expect a MAJOR_UPDATE with updated description
+    // PUT with updated description and expect a MINOR_UPDATE with updated description
     updateAndCheckEntity(
         request.withDescription("updatedDescription"), Status.OK, adminAuthHeaders(), MINOR_UPDATE, change);
   }
