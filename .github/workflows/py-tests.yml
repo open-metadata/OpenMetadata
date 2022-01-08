@@ -69,7 +69,9 @@ jobs:
         # Add PR analysis information
         echo "\nsonar.pullrequest.key=${{ github.event.pull_request.number }}" >> ingestion/sonar-project.properties
         echo "sonar.pullrequest.branch=${{ github.head_ref }}" >> ingestion/sonar-project.properties
-        echo "sonar.pullrequest.base=origin/main" >> ingestion/sonar-project.properties
+        echo "sonar.pullrequest.base=main" >> ingestion/sonar-project.properties
+        echo "sonar.pullrequest.github.repository=OpenMetadata" >> ingestion/sonar-project.properties
+        echo "sonar.scm.revision=${{ github.event.pull_request.head.sha }}" >> ingestion/sonar-project.properties
         echo "sonar.pullrequest.provider=github" >> ingestion/sonar-project.properties
 
         # Validate new properties
