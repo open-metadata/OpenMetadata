@@ -13,7 +13,6 @@
 
 package org.openmetadata.catalog.resources.tags;
 
-import com.google.inject.Inject;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -81,7 +80,6 @@ public class TagResource {
     }
   }
 
-  @Inject
   public TagResource(CollectionDAO dao, Authorizer authorizer) {
     Objects.requireNonNull(dao, "TagRepository must not be null");
     this.dao = new TagRepository(dao);

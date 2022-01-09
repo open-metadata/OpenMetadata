@@ -13,7 +13,6 @@
 
 package org.openmetadata.catalog.resources.dashboards;
 
-import com.google.inject.Inject;
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -92,7 +91,6 @@ public class DashboardResource {
     return dashboard;
   }
 
-  @Inject
   public DashboardResource(CollectionDAO dao, Authorizer authorizer) {
     Objects.requireNonNull(dao, "DashboardRepository must not be null");
     this.dao = new DashboardRepository(dao);
