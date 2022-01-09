@@ -230,8 +230,8 @@ class OMetaModelTest(TestCase):
                         FeatureSource(
                             name="age",
                             dataType=FeatureSourceDataType.integer,
-                            dataSource=EntityReference(
-                                id=table2_entity.id, type="table"
+                            dataSource=self.metadata.get_entity_reference(
+                                entity=Table, fqdn=table2_entity.fullyQualifiedName
                             ),
                         )
                     ],
@@ -243,15 +243,15 @@ class OMetaModelTest(TestCase):
                         FeatureSource(
                             name="age",
                             dataType=FeatureSourceDataType.integer,
-                            dataSource=EntityReference(
-                                id=table2_entity.id, type="table"
+                            dataSource=self.metadata.get_entity_reference(
+                                entity=Table, fqdn=table2_entity.fullyQualifiedName
                             ),
                         ),
                         FeatureSource(
                             name="education",
                             dataType=FeatureSourceDataType.string,
-                            dataSource=EntityReference(
-                                id=table1_entity.id, type="table"
+                            dataSource=self.metadata.get_entity_reference(
+                                entity=Table, fqdn=table1_entity.fullyQualifiedName
                             ),
                         ),
                         FeatureSource(
