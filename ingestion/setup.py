@@ -107,6 +107,7 @@ plugins: Dict[str, Set[str]] = {
     "salesforce": {"simple_salesforce~=1.11.4"},
     "okta": {"okta~=2.3.0"},
     "mlflow": {"mlflow-skinny~=1.22.0"},
+    "sklearn": {"scikit-learn==1.0.2"},
 }
 dev = {
     "boto3==1.20.14",
@@ -125,6 +126,9 @@ test = {
     "pytest-cov",
     "faker",
     "coverage",
+    # sklearn integration
+    "scikit-learn==1.0.2",
+    "pandas==1.3.5",
 }
 
 build_options = {"includes": ["_cffi_backend"]}
