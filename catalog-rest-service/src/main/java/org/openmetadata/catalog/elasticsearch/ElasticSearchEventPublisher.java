@@ -111,7 +111,7 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
   @Override
   public void onShutdown() {
     close();
-    LOG.info("Sample-EventPublisher-lifecycle-onShutdown");
+    LOG.info("Shutting down ElasticSearchEventPublisher");
   }
 
   private UpdateRequest applyChangeEvent(ChangeEvent event) {
