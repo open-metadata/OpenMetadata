@@ -1,11 +1,13 @@
 package org.openmetadata.catalog.slack;
 
 import java.util.concurrent.TimeUnit;
+import javax.ws.rs.ProcessingException;
 import javax.ws.rs.client.Client;
 import javax.ws.rs.client.ClientBuilder;
 import javax.ws.rs.client.Entity;
 import javax.ws.rs.client.Invocation;
 import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.Response;
 import org.openmetadata.catalog.events.AbstractEventPublisher;
 import org.openmetadata.catalog.events.errors.EventPublisherException;
 import org.openmetadata.catalog.resources.events.EventResource.ChangeEventList;
@@ -48,9 +50,16 @@ public class SlackWebhookEventPublisher extends AbstractEventPublisher {
       LOG.info("log event {}", event);
       try {
         SlackMessage slackMessage = buildSlackMessage(event);
-        target.post(Entity.entity(slackMessage, MediaType.APPLICATION_JSON_TYPE));
-      } catch (Exception e) {
-        LOG.error("failed to update ES doc", e);
+        Response response = target.post(Entity.entity(slackMessage, MediaType.APPLICATION_JSON_TYPE));
+        if (response.getStatus() >= 300 && response.getStatus() < 400) {
+          throw new EventPublisherException(
+              "Slack webhook callback is getting redirected. " + "Please check your configuration");
+        } else if (response.getStatus() >= 300 && response.getStatus() < 600) {
+          throw new SlackRetriableException(response.getStatusInfo().getReasonPhrase());
+        }
+      } catch (ProcessingException e) {
+        LOG.error("Failed to publish event {} to slack ", event);
+        throw new EventPublisherException(e.getMessage());
       }
     }
   }

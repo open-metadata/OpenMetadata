@@ -3,6 +3,7 @@ package org.openmetadata.catalog.events;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
+import org.openmetadata.catalog.events.errors.EventPublisherException;
 import org.openmetadata.catalog.events.errors.RetriableException;
 import org.openmetadata.catalog.resources.events.EventResource.ChangeEventList;
 import org.openmetadata.catalog.type.ChangeEvent;
@@ -59,6 +60,8 @@ public abstract class AbstractEventPublisher implements EventPublisher {
     } catch (RetriableException ex) {
       setNextBackOff();
       Thread.sleep(currentBackoffTime);
+    } catch (EventPublisherException e) {
+      LOG.error("Failed to publish event {}", changeEvent);
     }
   }
 

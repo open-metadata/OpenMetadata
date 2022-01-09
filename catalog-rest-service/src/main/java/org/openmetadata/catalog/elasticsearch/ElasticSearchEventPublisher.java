@@ -22,12 +22,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.action.ActionListener;
 import org.elasticsearch.action.update.UpdateRequest;
 import org.elasticsearch.action.update.UpdateResponse;
 import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.client.RestHighLevelClient;
 import org.elasticsearch.common.xcontent.XContentType;
+import org.elasticsearch.rest.RestStatus;
 import org.elasticsearch.script.Script;
 import org.elasticsearch.script.ScriptType;
 import org.openmetadata.catalog.Entity;
@@ -101,9 +103,28 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
         if (updateRequest != null) {
           client.update(updateRequest, RequestOptions.DEFAULT);
         }
-      } catch (Exception e) {
+      } catch (ElasticsearchException e) {
         LOG.error("failed to update ES doc");
         LOG.debug(e.getMessage());
+        if (e.status() == RestStatus.NOT_FOUND) {
+          LOG.error("ElasticSearch index is not found. Please run ./bootstrap-storage.sh es-create");
+          throw new ElasticSearchRetriableException(e.getMessage());
+        } else if (e.status() == RestStatus.GATEWAY_TIMEOUT) {
+          LOG.error("ElasticSearch is not reachable. Please check configuration and ElasticSearch health");
+          throw new ElasticSearchRetriableException(e.getMessage());
+        } else if (e.status() == RestStatus.INTERNAL_SERVER_ERROR) {
+          LOG.error(
+              "ElasticSearch internal server error. Pausing ElasticSearch publisher until "
+                  + "ElasticSearch is recovered");
+          throw new ElasticSearchRetriableException(e.getMessage());
+        } else if (e.status() == RestStatus.REQUEST_TIMEOUT) {
+          LOG.error("ElasticSearch request timed out");
+          throw new ElasticSearchRetriableException(e.getMessage());
+        } else {
+          throw new EventPublisherException(e.getMessage());
+        }
+      } catch (IOException ie) {
+        throw new EventPublisherException(ie.getMessage());
       }
     }
   }
