@@ -266,7 +266,7 @@ class OpenMetadata(
         if isinstance(entity, str):
             return entity
 
-        class_name: str = entity.__class__.__name__.lower()
+        class_name: str = entity.__name__.lower()
 
         if "service" in class_name:
             # Capitalize service, e.g., pipelineService
@@ -419,14 +419,14 @@ class OpenMetadata(
         :param fqdn: Entity instance FQDN
         :return: EntityReference or None
         """
-        entity = self.get_by_name(entity, fqdn)
-        if entity:
+        instance = self.get_by_name(entity, fqdn)
+        if instance:
             return EntityReference(
-                id=entity.id,
+                id=instance.id,
                 type=self.get_entity_type(entity),
-                name=entity.fullyQualifiedName,
-                description=entity.description,
-                href=entity.href,
+                name=instance.fullyQualifiedName,
+                description=instance.description,
+                href=instance.href,
             )
 
         logger.error(f"Cannot find the Entity {fqdn}")
