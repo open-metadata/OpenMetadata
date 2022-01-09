@@ -54,6 +54,7 @@ from metadata.ingestion.ometa.openmetadata_rest import (
     NoOpAuthenticationProvider,
     OktaAuthenticationProvider,
 )
+from metadata.ingestion.ometa.utils import get_entity_type, uuid_to_str
 
 logger = logging.getLogger(__name__)
 
@@ -252,18 +253,6 @@ class OpenMetadata(
             f"Missing {entity} type when generating suffixes"
         )
 
-    @staticmethod
-    def get_entity_type(
-        entity: Union[Type[T], str],
-    ) -> str:
-        """
-        Given an Entity T, return its type.
-        E.g., Table returns table, Dashboard returns dashboard...
-
-        Also allow to be the identity if we just receive a string
-        """
-        return entity if isinstance(entity, str) else entity.__name__.lower()
-
     def get_module_path(self, entity: Type[T]) -> str:
         """
         Based on the entity, return the module path
@@ -345,20 +334,6 @@ class OpenMetadata(
         resp = self.client.put(self.get_suffix(entity), data=data.json())
         return entity_class(**resp)
 
-    @staticmethod
-    def uuid_to_str(entity_id: Union[str, basic.Uuid]) -> str:
-        """
-        Given an entity_id, that can be a str or our pydantic
-        definition of Uuid, return a proper str to build
-        the endpoint path
-        :param entity_id: Entity ID to onvert to string
-        :return: str for the ID
-        """
-        if isinstance(entity_id, basic.Uuid):
-            return str(entity_id.__root__)
-
-        return entity_id
-
     def get_by_name(
         self, entity: Type[T], fqdn: str, fields: Optional[List[str]] = None
     ) -> Optional[T]:
@@ -378,7 +353,7 @@ class OpenMetadata(
         Return entity by ID or None
         """
 
-        return self._get(entity=entity, path=self.uuid_to_str(entity_id), fields=fields)
+        return self._get(entity=entity, path=uuid_to_str(entity_id), fields=fields)
 
     def _get(
         self, entity: Type[T], path: str, fields: Optional[List[str]] = None
@@ -395,7 +370,8 @@ class OpenMetadata(
             return entity(**resp)
         except APIError as err:
             logger.error(
-                f"Creating new {entity.__class__.__name__} for {path}. Error {err.status_code}"
+                f"Creating new {entity.__class__.__name__} for {path}. "
+                + f"Error {err.status_code}"
             )
             return None
 
@@ -433,7 +409,7 @@ class OpenMetadata(
         """
 
         suffix = self.get_suffix(entity)
-        path = f"/{self.uuid_to_str(entity_id)}/versions"
+        path = f"/{uuid_to_str(entity_id)}/versions"
         resp = self.client.get(f"{suffix}{path}")
 
         if self._use_raw_data:
@@ -453,13 +429,13 @@ class OpenMetadata(
         return [entity(**p) for p in resp["data"]]
 
     def delete(self, entity: Type[T], entity_id: Union[str, basic.Uuid]) -> None:
-        self.client.delete(f"{self.get_suffix(entity)}/{self.uuid_to_str(entity_id)}")
+        self.client.delete(f"{self.get_suffix(entity)}/{uuid_to_str(entity_id)}")
 
     def compute_percentile(self, entity: Union[Type[T], str], date: str) -> None:
         """
         Compute an entity usage percentile
         """
-        entity_name = self.get_entity_type(entity)
+        entity_name = get_entity_type(entity)
         resp = self.client.post(f"/usage/compute.percentile/{entity_name}/{date}")
         logger.debug("published compute percentile {}".format(resp))
 
