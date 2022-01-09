@@ -48,6 +48,9 @@ public class ChangeEventHandler implements EventHandler {
             changeEvent.getEventType(),
             changeEvent.getEntityType());
         EventPubSub.publish(changeEvent);
+        if (changeEvent.getEntity() != null) {
+          changeEvent.setEntity(JsonUtils.pojoToJson(changeEvent.getEntity()));
+        }
         dao.changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
       }
     } catch (Exception e) {

@@ -102,7 +102,8 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
           client.update(updateRequest, RequestOptions.DEFAULT);
         }
       } catch (Exception e) {
-        LOG.error("failed to update ES doc", e);
+        LOG.error("failed to update ES doc");
+        LOG.debug(e.getMessage());
       }
     }
   }

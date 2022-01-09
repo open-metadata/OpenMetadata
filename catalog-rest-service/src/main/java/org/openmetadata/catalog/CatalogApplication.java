@@ -187,13 +187,18 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
       throws NoSuchMethodException, ClassNotFoundException, IllegalAccessException, InvocationTargetException,
           InstantiationException {
     // register ElasticSearch Event publisher
-    ElasticSearchEventPublisher elasticSearchEventPublisher =
-        new ElasticSearchEventPublisher(catalogApplicationConfig.getElasticSearchConfiguration());
-    EventPubSub.addEventHandler(elasticSearchEventPublisher);
+    if (catalogApplicationConfig.getElasticSearchConfiguration() != null) {
+      ElasticSearchEventPublisher elasticSearchEventPublisher =
+          new ElasticSearchEventPublisher(catalogApplicationConfig.getElasticSearchConfiguration());
+      EventPubSub.addEventHandler(elasticSearchEventPublisher);
+    }
     // register slack Event publishers
-    for (SlackPublisherConfiguration slackPublisherConfiguration : catalogApplicationConfig.getSlackEventPublishers()) {
-      SlackWebhookEventPublisher slackPublisher = new SlackWebhookEventPublisher(slackPublisherConfiguration);
-      EventPubSub.addEventHandler(slackPublisher);
+    if (catalogApplicationConfig.getSlackEventPublishers() != null) {
+      for (SlackPublisherConfiguration slackPublisherConfiguration :
+          catalogApplicationConfig.getSlackEventPublishers()) {
+        SlackWebhookEventPublisher slackPublisher = new SlackWebhookEventPublisher(slackPublisherConfiguration);
+        EventPubSub.addEventHandler(slackPublisher);
+      }
     }
   }
 
