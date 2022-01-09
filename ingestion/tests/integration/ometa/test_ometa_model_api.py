@@ -293,7 +293,9 @@ class OMetaModelTest(TestCase):
             entity=MlModel, fqdn=self.entity.fullyQualifiedName
         )
 
-        res = self.metadata.get_list_entity_versions(entity=MlModel, entity_id=res_name.id.__root__)
+        res = self.metadata.get_list_entity_versions(
+            entity=MlModel, entity_id=res_name.id.__root__
+        )
         assert res
 
     def test_get_entity_version(self):
@@ -307,11 +309,20 @@ class OMetaModelTest(TestCase):
             entity=MlModel, fqdn=self.entity.fullyQualifiedName
         )
         res = self.metadata.get_entity_version(
-            entity=MlModel,
-            entity_id=res_name.id.__root__,
-            version=0.1
+            entity=MlModel, entity_id=res_name.id.__root__, version=0.1
         )
 
         # check we get the correct version requested and the correct entity ID
         assert res.version.__root__ == 0.1
         assert res.id == res_name.id
+
+    def test_get_entity_ref(self):
+        """
+        test get EntityReference
+        """
+        res = self.metadata.create_or_update(data=self.create)
+        entity_ref = self.metadata.get_entity_reference(
+            entity=MlModel, fqdn=res.fullyQualifiedName
+        )
+
+        assert res.id == entity_ref.id
