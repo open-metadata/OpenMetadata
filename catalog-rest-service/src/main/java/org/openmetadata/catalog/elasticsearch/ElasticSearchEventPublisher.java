@@ -23,9 +23,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import org.elasticsearch.ElasticsearchException;
-import org.elasticsearch.action.ActionListener;
 import org.elasticsearch.action.update.UpdateRequest;
-import org.elasticsearch.action.update.UpdateResponse;
 import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.client.RestHighLevelClient;
 import org.elasticsearch.common.xcontent.XContentType;
@@ -54,19 +52,6 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
   private static final Logger LOG = LoggerFactory.getLogger(ElasticSearchEventPublisher.class);
   private RestHighLevelClient client;
   private ElasticSearchIndexDefinition esIndexDefinition;
-
-  private final ActionListener<UpdateResponse> listener =
-      new ActionListener<>() {
-        @Override
-        public void onResponse(UpdateResponse updateResponse) {
-          LOG.info("Updated Elastic Search {}", updateResponse);
-        }
-
-        @Override
-        public void onFailure(Exception e) {
-          LOG.error("Failed to update Elastic Search", e);
-        }
-      };
 
   public ElasticSearchEventPublisher(ElasticSearchConfiguration esConfig) {
     super(esConfig.getBatchSize(), new ArrayList<>());
@@ -99,6 +84,8 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
           case Entity.PIPELINE:
             updateRequest = updatePipeline(event);
             break;
+          default:
+            LOG.warn("Ignoring Entity Type {}", entityType);
         }
         if (updateRequest != null) {
           client.update(updateRequest, RequestOptions.DEFAULT);
@@ -210,6 +197,8 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
           scriptedUpsert(tableESIndex, updateRequest);
         }
         break;
+      case ENTITY_DELETED:
+        break;
     }
 
     return updateRequest;
@@ -237,6 +226,8 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
           scriptedUpsert(topicESIndex, updateRequest);
         }
         break;
+      case ENTITY_DELETED:
+        break;
     }
     return updateRequest;
   }
@@ -262,6 +253,8 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
           scriptedUpsert(dashboardESIndex, updateRequest);
         }
         break;
+      case ENTITY_DELETED:
+        break;
     }
     return updateRequest;
   }
@@ -286,6 +279,8 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
         } else {
           scriptedUpsert(pipelineESIndex, updateRequest);
         }
+        break;
+      case ENTITY_DELETED:
         break;
     }
 

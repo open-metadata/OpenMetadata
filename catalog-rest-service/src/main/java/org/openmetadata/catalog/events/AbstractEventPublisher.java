@@ -27,11 +27,8 @@ public abstract class AbstractEventPublisher implements EventPublisher {
   private final ConcurrentHashMap<EventType, List<String>> filter = new ConcurrentHashMap<>();
   private int batchSize = 10;
 
-  public AbstractEventPublisher(int batchSize, List<EventFilter> filters) {
-    filters.forEach(
-        f -> { // Set up filters
-          filter.put(f.getEventType(), f.getEntities());
-        });
+  protected AbstractEventPublisher(int batchSize, List<EventFilter> filters) {
+    filters.forEach(f -> filter.put(f.getEventType(), f.getEntities()));
     this.batchSize = batchSize;
   }
 

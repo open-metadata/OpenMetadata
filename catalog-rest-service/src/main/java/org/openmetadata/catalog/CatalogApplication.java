@@ -120,7 +120,7 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
     // start event hub before registering publishers
     EventPubSub.start();
     // Register Event publishers
-    registerEventPublisher(catalogConfig, jdbi);
+    registerEventPublisher(catalogConfig);
   }
 
   @SneakyThrows
@@ -183,9 +183,7 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
     }
   }
 
-  private void registerEventPublisher(CatalogApplicationConfig catalogApplicationConfig, Jdbi jdbi)
-      throws NoSuchMethodException, ClassNotFoundException, IllegalAccessException, InvocationTargetException,
-          InstantiationException {
+  private void registerEventPublisher(CatalogApplicationConfig catalogApplicationConfig) {
     // register ElasticSearch Event publisher
     if (catalogApplicationConfig.getElasticSearchConfiguration() != null) {
       ElasticSearchEventPublisher elasticSearchEventPublisher =
