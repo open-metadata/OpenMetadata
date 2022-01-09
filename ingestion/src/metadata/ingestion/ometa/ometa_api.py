@@ -42,6 +42,7 @@ from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.type import basic
 from metadata.generated.schema.type.entityHistory import EntityVersionHistory
+from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.auth_provider import AuthenticationProvider
 from metadata.ingestion.ometa.client import REST, APIError, ClientConfig
 from metadata.ingestion.ometa.mixins.mlmodel_mixin import OMetaMlModelMixin
@@ -262,7 +263,16 @@ class OpenMetadata(
 
         Also allow to be the identity if we just receive a string
         """
-        return entity if isinstance(entity, str) else entity.__name__.lower()
+        if isinstance(entity, str):
+            return entity
+
+        class_name: str = entity.__class__.__name__.lower()
+
+        if "service" in class_name:
+            # Capitalize service, e.g., pipelineService
+            return class_name.replace("service", "Service")
+
+        return class_name
 
     def get_module_path(self, entity: Type[T]) -> str:
         """
@@ -398,6 +408,29 @@ class OpenMetadata(
                 f"Creating new {entity.__class__.__name__} for {path}. Error {err.status_code}"
             )
             return None
+
+    def get_entity_reference(
+        self, entity: Type[T], fqdn: str
+    ) -> Optional[EntityReference]:
+        """
+        Helper method to obtain an EntityReference from
+        a FQDN and the Entity class.
+        :param entity: Entity Class
+        :param fqdn: Entity instance FQDN
+        :return: EntityReference or None
+        """
+        entity = self.get_by_name(entity, fqdn)
+        if entity:
+            return EntityReference(
+                id=entity.id,
+                type=self.get_entity_type(entity),
+                name=entity.fullyQualifiedName,
+                description=entity.description,
+                href=entity.href,
+            )
+
+        logger.error(f"Cannot find the Entity {fqdn}")
+        return None
 
     def list_entities(
         self,
