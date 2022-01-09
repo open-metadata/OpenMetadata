@@ -93,19 +93,11 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
       } catch (ElasticsearchException e) {
         LOG.error("failed to update ES doc");
         LOG.debug(e.getMessage());
-        if (e.status() == RestStatus.NOT_FOUND) {
-          LOG.error("ElasticSearch index is not found. Please run ./bootstrap-storage.sh es-create");
-          throw new ElasticSearchRetriableException(e.getMessage());
-        } else if (e.status() == RestStatus.GATEWAY_TIMEOUT) {
-          LOG.error("ElasticSearch is not reachable. Please check configuration and ElasticSearch health");
-          throw new ElasticSearchRetriableException(e.getMessage());
-        } else if (e.status() == RestStatus.INTERNAL_SERVER_ERROR) {
-          LOG.error(
-              "ElasticSearch internal server error. Pausing ElasticSearch publisher until "
-                  + "ElasticSearch is recovered");
-          throw new ElasticSearchRetriableException(e.getMessage());
-        } else if (e.status() == RestStatus.REQUEST_TIMEOUT) {
-          LOG.error("ElasticSearch request timed out");
+        if (e.status() == RestStatus.NOT_FOUND
+            || e.status() == RestStatus.GATEWAY_TIMEOUT
+            || e.status() == RestStatus.INTERNAL_SERVER_ERROR
+            || e.status() == RestStatus.REQUEST_TIMEOUT) {
+          LOG.error("Error in publishing to ElasticSearch");
           throw new ElasticSearchRetriableException(e.getMessage());
         } else {
           throw new EventPublisherException(e.getMessage());
