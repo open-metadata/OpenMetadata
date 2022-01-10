@@ -72,9 +72,10 @@ public class TableDetailsPageTest {
     openExplorePage();
     Events.sendKeys(webDriver, By.cssSelector("[data-testid='searchBox']"), tableName);
     Events.click(webDriver, By.cssSelector("[data-testid='data-name']"));
-    Events.click(webDriver, By.xpath("(//button[@data-testid='tab'])[2]")); // Profiler
-    Events.click(webDriver, By.xpath("(//button[@data-testid='tab'])[3]")); // Lineage
-    Events.click(webDriver, By.xpath("(//button[@data-testid='tab'])[4]")); // Manage
+    Events.click(webDriver, By.xpath("(//button[@data-testid='tab'])[2]")); // Sample Data
+    Events.click(webDriver, By.xpath("(//button[@data-testid='tab'])[3]")); // Profiler
+    Events.click(webDriver, By.xpath("(//button[@data-testid='tab'])[4]")); // Lineage
+    Events.click(webDriver, By.xpath("(//button[@data-testid='tab'])[5]")); // Manage
   }
 
   @Test
@@ -178,7 +179,6 @@ public class TableDetailsPageTest {
     Events.click(webDriver, By.cssSelector("[data-testid='getFollowerDetail']"));
     Events.click(webDriver, By.cssSelector("[data-testid='follow-button']"));
     Events.click(webDriver, By.cssSelector("[data-testid='getFollowerDetail']"));
-    Events.click(webDriver, By.cssSelector("[data-testid='sample-data-button']"));
   }
 
   @Test
@@ -187,7 +187,7 @@ public class TableDetailsPageTest {
     openExplorePage();
     Events.sendKeys(webDriver, By.cssSelector("[data-testid='searchBox']"), tableName);
     Events.click(webDriver, By.cssSelector("[data-testid='data-name']"));
-    Events.click(webDriver, By.xpath("(//button[@data-testid='tab'])[2]")); // Profiler
+    Events.click(webDriver, By.xpath("(//button[@data-testid='tab'])[3]")); // Profiler
     for (int i = 1; i <= 4; i++) {
       Events.click(webDriver, By.xpath("(//td[@data-testid='tableBody-cell']//span)" + "[" + i + "]")); // Profiler
       actions
@@ -207,7 +207,7 @@ public class TableDetailsPageTest {
     Events.click(webDriver, By.cssSelector("[data-testid='list-item']")); // Last Updated
     Thread.sleep(3000);
     Events.click(webDriver, By.xpath("(//button[@data-testid='table-link'])[last()]"));
-    Events.click(webDriver, By.xpath("(//button[@data-testid='tab'])[4]")); // Manage
+    Events.click(webDriver, By.xpath("(//button[@data-testid='tab'])[5]")); // Manage
     Events.click(webDriver, By.cssSelector("[data-testid='owner-dropdown']")); // Owner
     Events.sendKeys(webDriver, By.cssSelector("[data-testid='searchInputText']"), "Cloud");
     Events.click(webDriver, By.cssSelector("[data-testid='list-item']")); // Select User/Team
@@ -223,7 +223,7 @@ public class TableDetailsPageTest {
     openExplorePage();
     Events.sendKeys(webDriver, By.cssSelector("[data-testid='searchBox']"), tableName);
     Events.click(webDriver, By.cssSelector("[data-testid='data-name']"));
-    Events.click(webDriver, By.xpath("(//button[@data-testid='tab'])[3]"));
+    Events.click(webDriver, By.xpath("(//button[@data-testid='tab'])[4]"));
     for (int i = 1; i <= 3; i++) {
       WebElement lineageEntity =
           webDriver.findElement(By.xpath("(//span[@data-testid='lineage-entity'])" + "[" + i + "]"));
