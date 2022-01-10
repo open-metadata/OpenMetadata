@@ -41,7 +41,7 @@ import { Team } from '../../generated/entity/teams/team';
 import { User } from '../../generated/entity/teams/user';
 import { useAuth } from '../../hooks/authHooks';
 import { UserTeam } from '../../interface/team.interface';
-import { getCountBadge } from '../../utils/CommonUtils';
+import { getActiveCatClass, getCountBadge } from '../../utils/CommonUtils';
 import AddUsersModal from './AddUsersModal';
 import Form from './Form';
 import UserCard from './UserCard';
@@ -143,13 +143,6 @@ const TeamsPage = () => {
     });
   };
 
-  const getCurrentTeamClass = (name: string) => {
-    if (currentTeam?.name === name) {
-      return 'activeCategory';
-    } else {
-      return '';
-    }
-  };
   const getActiveTabClass = (tab: number) => {
     return tab === currentTab ? 'active' : '';
   };
@@ -276,11 +269,11 @@ const TeamsPage = () => {
   const fetchLeftPanel = () => {
     return (
       <>
-        <div className="tw-flex tw-justify-between tw-items-baseline tw-mb-3 tw-border-b">
-          <h6 className="tw-heading">Teams</h6>
+        <div className="tw-flex tw-justify-between tw-items-center tw-mb-3 tw-border-b">
+          <h6 className="tw-heading tw-text-base">Teams</h6>
           <NonAdminAction position="bottom" title={TITLE_FOR_NON_ADMIN_ACTION}>
             <Button
-              className={classNames('tw-h-7 tw-px-2', {
+              className={classNames('tw-h-7 tw-px-2 tw-mb-4', {
                 'tw-opacity-40': !isAdminUser && !isAuthDisabled,
               })}
               data-testid="add-teams"
@@ -295,14 +288,15 @@ const TeamsPage = () => {
         {teams &&
           teams.map((team: Team) => (
             <div
-              className={`tw-group tw-text-grey-body tw-cursor-pointer tw-text-body tw-mb-3 tw-flex tw-justify-between ${getCurrentTeamClass(
-                team.name
+              className={`tw-group tw-text-grey-body tw-cursor-pointer tw-text-body tw-mb-3 tw-flex tw-justify-between ${getActiveCatClass(
+                team.name,
+                currentTeam?.name
               )}`}
               key={team.name}
               onClick={() => {
                 changeCurrentTeam(team.name);
               }}>
-              <p className="tw-text-center tag-category tw-self-center">
+              <p className="tw-text-center tag-category label-category tw-self-center">
                 {team.displayName}
               </p>
             </div>
@@ -382,7 +376,7 @@ const TeamsPage = () => {
                 {teams.length > 0 ? (
                   <>
                     <div
-                      className="tw-flex tw-justify-between tw-pl-1"
+                      className="tw-flex tw-justify-between tw-items-center"
                       data-testid="header">
                       <div className="tw-heading tw-text-link tw-text-base">
                         {currentTeam?.displayName}
@@ -391,7 +385,7 @@ const TeamsPage = () => {
                         position="bottom"
                         title={TITLE_FOR_NON_ADMIN_ACTION}>
                         <Button
-                          className={classNames('tw-h-8 tw-rounded tw-mb-2', {
+                          className={classNames('tw-h-8 tw-rounded tw-mb-3', {
                             'tw-opacity-40': !isAdminUser && !isAuthDisabled,
                           })}
                           data-testid="add-new-user-button"
@@ -404,7 +398,7 @@ const TeamsPage = () => {
                       </NonAdminAction>
                     </div>
                     <div
-                      className="tw-mb-3"
+                      className="tw-mb-3 tw--ml-5"
                       data-testid="description-container">
                       <Description
                         description={currentTeam?.description || ''}
