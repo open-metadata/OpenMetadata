@@ -80,7 +80,7 @@ openmetadata-ui/src/main/resources/ui/tsconfig.tsbuildinfo
 ingestion-core/src/metadata/generated/**
 ingestion/src/metadata/generated/**
 ingestion/requirements.txt
-ingestion/.python-version
+.python-version
 
 # MLFlow
 mlruns/
