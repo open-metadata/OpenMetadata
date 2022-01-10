@@ -232,8 +232,8 @@
     @apply tw-border-b tw-border-separator;
   }
 
-  .side-panel .activeCategory .tag-category {
-    @apply tw-text-primary tw-font-medium;
+  .activeCategory .label-category {
+    @apply tw-text-primary;
   }
 
   .custom-checkbox {
