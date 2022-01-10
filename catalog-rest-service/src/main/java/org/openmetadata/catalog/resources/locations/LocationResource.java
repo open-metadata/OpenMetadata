@@ -202,6 +202,7 @@ public class LocationResource {
               description = "Include all, deleted, or non-deleted (default)",
               schema = @Schema(type = "string", example = "non-deleted"))
           @QueryParam("include")
+          @DefaultValue("non-deleted")
           Include include)
       throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, fieldsParam);

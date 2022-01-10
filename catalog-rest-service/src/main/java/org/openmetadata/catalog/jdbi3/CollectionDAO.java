@@ -401,6 +401,19 @@ public interface CollectionDAO {
         @Bind("relation") int relation,
         @Bind("fromEntity") String fromEntity);
 
+    @SqlQuery(
+        "SELECT fromId, fromEntity FROM entity_relationship "
+            + "WHERE toId = :toId AND toEntity = :toEntity AND relation = :relation AND fromEntity = :fromEntity "
+            + "AND (deleted = :deleted OR :deleted IS NULL) "
+            + "ORDER BY fromId")
+    @RegisterRowMapper(FromEntityReferenceMapper.class)
+    List<EntityReference> findFromEntity(
+        @Bind("toId") String toId,
+        @Bind("toEntity") String toEntity,
+        @Bind("relation") int relation,
+        @Bind("fromEntity") String fromEntity,
+        @Bind("deleted") Boolean deleted);
+
     //
     // Delete Operations
     //

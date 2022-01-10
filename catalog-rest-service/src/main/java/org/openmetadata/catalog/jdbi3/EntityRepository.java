@@ -540,17 +540,14 @@ public abstract class EntityRepository<T> {
     private final Boolean sqlPredicate;
 
     Include(String value) {
-      String tmpValue = value;
-      if (value == null || value.equals("non-deleted")) {
-        tmpValue = "non-deleted";
-        this.sqlPredicate = false;
-      } else if (value.equals("all")) {
-        this.sqlPredicate = null;
-      } else {
-        // deleted
+      this.value = value == null ? "non-deleted" : value;
+      if ("deleted".equals(this.value)) {
         this.sqlPredicate = true;
+      } else if ("all".equals(this.value)) {
+        this.sqlPredicate = null;
+      } else { // "non-deleted"
+        this.sqlPredicate = false;
       }
-      this.value = tmpValue;
     }
 
     Include(String value, Boolean sqlPredicate) {

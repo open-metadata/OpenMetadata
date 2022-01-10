@@ -440,6 +440,10 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     EntityInterface<T> entityInterface = getEntityInterface(entity);
     // delete it
     deleteEntity(entityInterface.getId(), adminAuthHeaders());
+    assertResponse(
+        () -> getEntity(entityInterface.getId(), Collections.emptyMap(), null, adminAuthHeaders()),
+        NOT_FOUND,
+        entityNotFound(entityName, entityInterface.getId()));
     // get it with ?include=deleted
     Map<String, String> queryParams =
         new HashMap<>() {
@@ -448,6 +452,13 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
           }
         };
     getEntity(entityInterface.getId(), queryParams, null, adminAuthHeaders());
+    queryParams.put("include", "all");
+    getEntity(entityInterface.getId(), queryParams, null, adminAuthHeaders());
+    queryParams.put("include", "non-deleted");
+    assertResponse(
+        () -> getEntity(entityInterface.getId(), Collections.emptyMap(), null, adminAuthHeaders()),
+        NOT_FOUND,
+        entityNotFound(entityName, entityInterface.getId()));
   }
 
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////

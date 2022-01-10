@@ -40,6 +40,7 @@ import org.openmetadata.catalog.jdbi3.CollectionDAO.TagDAO;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.TeamDAO;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.UsageDAO;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.UserDAO;
+import org.openmetadata.catalog.jdbi3.EntityRepository.Include;
 import org.openmetadata.catalog.jdbi3.Relationship;
 import org.openmetadata.catalog.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.catalog.type.Column;
@@ -165,6 +166,18 @@ public final class EntityUtil {
       EntityRelationshipDAO dao, String entityType, UUID entityId, String serviceType) {
     List<EntityReference> refs =
         dao.findFromEntity(entityId.toString(), entityType, Relationship.CONTAINS.ordinal(), serviceType);
+    if (refs.size() > 1) {
+      LOG.warn("Possible database issues - multiple services found for entity {}", entityId);
+      return refs.get(0);
+    }
+    return refs.isEmpty() ? null : refs.get(0);
+  }
+
+  public static EntityReference getService(
+      EntityRelationshipDAO dao, String entityType, UUID entityId, String serviceType, Include include) {
+    List<EntityReference> refs =
+        dao.findFromEntity(
+            entityId.toString(), entityType, Relationship.CONTAINS.ordinal(), serviceType, include.sqlPredicate());
     if (refs.size() > 1) {
       LOG.warn("Possible database issues - multiple services found for entity {}", entityId);
       return refs.get(0);
