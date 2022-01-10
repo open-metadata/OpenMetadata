@@ -12,7 +12,9 @@
 import os
 from typing import Optional, Tuple
 
-import sqlalchemy.types
+from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
+from metadata.ingestion.source.sql_source import SQLConnectionConfig, SQLSource
+from metadata.utils.column_helpers import create_sqlalchemy_type
 from sqlalchemy_bigquery import _types
 from sqlalchemy_bigquery._struct import STRUCT
 from sqlalchemy_bigquery._types import (
@@ -20,11 +22,8 @@ from sqlalchemy_bigquery._types import (
     _get_transitive_schema_fields,
 )
 
-from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
-from metadata.ingestion.source.sql_source import SQLConnectionConfig, SQLSource
-
-_types._type_map["GEOGRAPHY"] = sqlalchemy.types.BINARY
-GEOGRAPHY = _types._type_map["GEOGRAPHY"]
+GEOGRAPHY = create_sqlalchemy_type("GEOGRAPHY")
+_types._type_map["GEOGRAPHY"] = GEOGRAPHY
 
 
 def get_columns(bq_schema):
@@ -42,7 +41,7 @@ def get_columns(bq_schema):
             "precision": field.precision,
             "scale": field.scale,
             "max_length": field.max_length,
-            "raw_data_type": str(_get_sqla_column_type(field)),
+            "raw_data_type": repr(_get_sqla_column_type(field)),
         }
         col_list.append(col_obj)
     return col_list
@@ -77,7 +76,7 @@ class BigquerySource(SQLSource):
         return cls(config, metadata_config, ctx)
 
     def standardize_schema_table_names(
-        self, schema: str, table: str
+            self, schema: str, table: str
     ) -> Tuple[str, str]:
         segments = table.split(".")
         if len(segments) != 2:
