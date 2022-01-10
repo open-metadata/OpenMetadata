@@ -42,6 +42,7 @@ from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.type import basic
 from metadata.generated.schema.type.entityHistory import EntityVersionHistory
+from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.auth_provider import AuthenticationProvider
 from metadata.ingestion.ometa.client import REST, APIError, ClientConfig
 from metadata.ingestion.ometa.mixins.mlmodel_mixin import OMetaMlModelMixin
@@ -262,7 +263,16 @@ class OpenMetadata(
 
         Also allow to be the identity if we just receive a string
         """
-        return entity if isinstance(entity, str) else entity.__name__.lower()
+        if isinstance(entity, str):
+            return entity
+
+        class_name: str = entity.__name__.lower()
+
+        if "service" in class_name:
+            # Capitalize service, e.g., pipelineService
+            return class_name.replace("service", "Service")
+
+        return class_name
 
     def get_module_path(self, entity: Type[T]) -> str:
         """
@@ -399,6 +409,29 @@ class OpenMetadata(
             )
             return None
 
+    def get_entity_reference(
+        self, entity: Type[T], fqdn: str
+    ) -> Optional[EntityReference]:
+        """
+        Helper method to obtain an EntityReference from
+        a FQDN and the Entity class.
+        :param entity: Entity Class
+        :param fqdn: Entity instance FQDN
+        :return: EntityReference or None
+        """
+        instance = self.get_by_name(entity, fqdn)
+        if instance:
+            return EntityReference(
+                id=instance.id,
+                type=self.get_entity_type(entity),
+                name=instance.fullyQualifiedName,
+                description=instance.description,
+                href=instance.href,
+            )
+
+        logger.error(f"Cannot find the Entity {fqdn}")
+        return None
+
     def list_entities(
         self,
         entity: Type[T],
@@ -424,22 +457,6 @@ class OpenMetadata(
         total = resp["paging"]["total"]
         after = resp["paging"]["after"] if "after" in resp["paging"] else None
         return EntityList(entities=entities, total=total, after=after)
-
-    def list_versions(
-        self, entity_id: Union[str, basic.Uuid], entity: Type[T]
-    ) -> EntityVersionHistory:
-        """
-        Helps us paginate over the collection
-        """
-
-        suffix = self.get_suffix(entity)
-        path = f"/{self.uuid_to_str(entity_id)}/versions"
-        resp = self.client.get(f"{suffix}{path}")
-
-        if self._use_raw_data:
-            return resp
-
-        return EntityVersionHistory(**resp)
 
     def list_services(self, entity: Type[T]) -> List[EntityList[T]]:
         """
