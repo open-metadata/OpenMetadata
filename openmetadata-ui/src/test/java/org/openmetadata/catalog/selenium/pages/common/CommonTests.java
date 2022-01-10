@@ -13,12 +13,12 @@
 
 package org.openmetadata.catalog.selenium.pages.common;
 
+import com.github.javafaker.Faker;
 import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.time.Duration;
 import java.util.ArrayList;
-import com.github.javafaker.Faker;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.MethodOrderer;
@@ -104,11 +104,11 @@ public class CommonTests {
     Events.sendKeys(webDriver, By.name("name"), "Testing Tag");
     Events.sendKeys(webDriver, By.xpath(enterDescription), faker.address().toString());
     Events.click(webDriver, By.cssSelector("[data-testid='saveButton']"));
-    URL url = new URL("http://localhost:8585/api/v1/tags/" + tagCategoryDisplayName + "/" );
-    HttpURLConnection http = (HttpURLConnection)url.openConnection();
+    URL url = new URL("http://localhost:8585/api/v1/tags/" + tagCategoryDisplayName + "/");
+    HttpURLConnection http = (HttpURLConnection) url.openConnection();
     http.setRequestMethod("HEAD");
     http.connect();
-    Assert.assertEquals(http.getResponseCode(),200);
+    Assert.assertEquals(http.getResponseCode(), 200);
   }
 
   @Test
@@ -125,7 +125,7 @@ public class CommonTests {
     Events.click(webDriver, By.cssSelector("[data-testid='saveButton']"));
     webDriver.navigate().refresh();
     URL url = new URL("http://localhost:8585/api/v1/tags/");
-    HttpURLConnection http = (HttpURLConnection)url.openConnection();
+    HttpURLConnection http = (HttpURLConnection) url.openConnection();
     http.setRequestMethod("HEAD");
     http.connect();
     Assert.assertEquals(http.getResponseCode(), 200);
