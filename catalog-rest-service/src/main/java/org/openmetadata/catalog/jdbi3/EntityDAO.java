@@ -56,6 +56,13 @@ public interface EntityDAO<T> {
   @SqlQuery("SELECT json FROM <table> WHERE <nameColumn> = :name AND deleted IS NOT TRUE")
   String findByName(@Define("table") String table, @Define("nameColumn") String nameColumn, @Bind("name") String name);
 
+  @SqlQuery("SELECT json FROM <table> WHERE <nameColumn> = :name AND (deleted = :deleted OR :deleted IS NULL)")
+  String findByName(
+      @Define("table") String table,
+      @Define("nameColumn") String nameColumn,
+      @Bind("name") String name,
+      @Bind("deleted") Boolean deleted);
+
   @SqlQuery("SELECT json FROM <table> WHERE <nameColumn> = :name")
   String findByNameDeletedOrExists(
       @Define("table") String table, @Define("nameColumn") String nameColumn, @Bind("name") String name);
@@ -145,6 +152,20 @@ public interface EntityDAO<T> {
   default T findEntityByName(String fqn) throws IOException {
     Class<T> clz = getEntityClass();
     String json = findByName(getTableName(), getNameColumn(), fqn);
+    T entity = null;
+    if (json != null) {
+      entity = JsonUtils.readValue(json, clz);
+    }
+    if (entity == null) {
+      String entityName = Entity.getEntityNameFromClass(clz);
+      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(entityName, fqn));
+    }
+    return entity;
+  }
+
+  default T findEntityByName(String fqn, Include include) throws IOException {
+    Class<T> clz = getEntityClass();
+    String json = findByName(getTableName(), getNameColumn(), fqn, include.sqlPredicate());
     T entity = null;
     if (json != null) {
       entity = JsonUtils.readValue(json, clz);

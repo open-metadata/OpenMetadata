@@ -213,6 +213,12 @@ public abstract class EntityRepository<T> {
   }
 
   @Transaction
+  public final T getByName(UriInfo uriInfo, String fqn, Fields fields, Include include)
+      throws IOException, ParseException {
+    return withHref(uriInfo, setFields(dao.findEntityByName(fqn, include), fields));
+  }
+
+  @Transaction
   public final ResultList<T> listAfter(UriInfo uriInfo, Fields fields, String fqnPrefix, int limitParam, String after)
       throws GeneralSecurityException, IOException, ParseException {
     // forward scrolling, if after == null then first page is being asked

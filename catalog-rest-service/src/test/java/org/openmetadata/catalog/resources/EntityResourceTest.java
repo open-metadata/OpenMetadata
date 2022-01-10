@@ -444,7 +444,12 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
         () -> getEntity(entityInterface.getId(), Collections.emptyMap(), null, adminAuthHeaders()),
         NOT_FOUND,
         entityNotFound(entityName, entityInterface.getId()));
-    // get it with ?include=deleted
+    assertResponse(
+        () ->
+            getEntityByName(entityInterface.getFullyQualifiedName(), Collections.emptyMap(), null, adminAuthHeaders()),
+        NOT_FOUND,
+        entityNotFound(entityName, entityInterface.getFullyQualifiedName()));
+
     Map<String, String> queryParams =
         new HashMap<>() {
           {
@@ -452,13 +457,21 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
           }
         };
     getEntity(entityInterface.getId(), queryParams, null, adminAuthHeaders());
+    getEntityByName(entityInterface.getFullyQualifiedName(), queryParams, null, adminAuthHeaders());
+
     queryParams.put("include", "all");
     getEntity(entityInterface.getId(), queryParams, null, adminAuthHeaders());
+    getEntityByName(entityInterface.getFullyQualifiedName(), queryParams, null, adminAuthHeaders());
+
     queryParams.put("include", "non-deleted");
     assertResponse(
-        () -> getEntity(entityInterface.getId(), Collections.emptyMap(), null, adminAuthHeaders()),
+        () -> getEntity(entityInterface.getId(), queryParams, null, adminAuthHeaders()),
         NOT_FOUND,
         entityNotFound(entityName, entityInterface.getId()));
+    assertResponse(
+        () -> getEntityByName(entityInterface.getFullyQualifiedName(), queryParams, null, adminAuthHeaders()),
+        NOT_FOUND,
+        entityNotFound(entityName, entityInterface.getFullyQualifiedName()));
   }
 
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -886,6 +899,17 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
       throws HttpResponseException {
     WebTarget target = getResourceByName(name);
     target = target.queryParam("fields", fields);
+    return TestUtils.get(target, entityClass, authHeaders);
+  }
+
+  protected final T getEntityByName(
+      String name, Map<String, String> queryParams, String fields, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    WebTarget target = getResourceByName(name);
+    target = fields != null ? target.queryParam("fields", fields) : target;
+    for (Entry<String, String> entry : Optional.ofNullable(queryParams).orElse(Collections.emptyMap()).entrySet()) {
+      target = target.queryParam(entry.getKey(), entry.getValue());
+    }
     return TestUtils.get(target, entityClass, authHeaders);
   }
 

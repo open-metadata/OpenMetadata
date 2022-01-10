@@ -288,10 +288,16 @@ public class LocationResource {
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
-          String fieldsParam)
+          String fieldsParam,
+      @Parameter(
+              description = "Include all, deleted, or non-deleted (default)",
+              schema = @Schema(type = "string", example = "non-deleted"))
+          @QueryParam("include")
+          @DefaultValue("non-deleted")
+          Include include)
       throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
-    return addHref(uriInfo, dao.getByName(uriInfo, fqn, fields));
+    return addHref(uriInfo, dao.getByName(uriInfo, fqn, fields, include));
   }
 
   @GET
