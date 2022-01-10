@@ -23,8 +23,6 @@ class BigQueryConfig(SQLConnectionConfig, SQLSource):
     duration: int = 1
     service_type = "BigQuery"
 
-
-
     def get_connection_url(self):
         if self.project_id:
             return f"{self.scheme}://{self.project_id}"
