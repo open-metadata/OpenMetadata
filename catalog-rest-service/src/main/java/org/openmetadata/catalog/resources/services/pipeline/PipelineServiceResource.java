@@ -13,7 +13,6 @@
 
 package org.openmetadata.catalog.resources.services.pipeline;
 
-import com.google.inject.Inject;
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -73,7 +72,6 @@ public class PipelineServiceResource {
     return service.withHref(RestUtil.getHref(uriInfo, "v1/services/pipelineServices/", service.getId()));
   }
 
-  @Inject
   public PipelineServiceResource(CollectionDAO dao, Authorizer authorizer) {
     Objects.requireNonNull(dao, "PipelineServiceRepository must not be null");
     this.dao = new PipelineServiceRepository(dao);

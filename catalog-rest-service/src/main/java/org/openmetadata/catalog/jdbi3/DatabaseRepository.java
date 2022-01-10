@@ -227,6 +227,11 @@ public class DatabaseRepository extends EntityRepository<Database> {
     }
 
     @Override
+    public Boolean isDeleted() {
+      return entity.getDeleted();
+    }
+
+    @Override
     public EntityReference getOwner() {
       return entity.getOwner();
     }

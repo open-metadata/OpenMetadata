@@ -19,15 +19,14 @@ from numbers import Number
 from typing import List, Optional, Type
 from urllib.parse import quote_plus
 
+from openmetadata.common.config import ConfigModel, IncludeFilterPattern
+from openmetadata.common.database import Database
+from openmetadata.profiler.profiler_metadata import Column, SupportedDataType
 from pydantic import BaseModel
 from sqlalchemy import create_engine
 from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.inspection import inspect
 from sqlalchemy.sql import sqltypes as types
-
-from openmetadata.common.config import ConfigModel, IncludeFilterPattern
-from openmetadata.common.database import Database
-from openmetadata.profiler.profiler_metadata import Column, SupportedDataType
 
 logger = logging.getLogger(__name__)
 

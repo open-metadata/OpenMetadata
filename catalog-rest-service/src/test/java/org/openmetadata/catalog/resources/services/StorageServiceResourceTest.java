@@ -19,12 +19,15 @@ import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.openmetadata.catalog.security.SecurityUtil.authHeaders;
+import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
 import static org.openmetadata.catalog.util.TestUtils.getPrincipal;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
+import java.util.Arrays;
 import java.util.Map;
+import javax.ws.rs.core.Response;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
@@ -35,7 +38,9 @@ import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.jdbi3.StorageServiceRepository.StorageServiceEntityInterface;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.services.storage.StorageServiceResource.StorageServiceList;
+import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.type.StorageServiceType;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.TestUtils;
@@ -102,6 +107,25 @@ public class StorageServiceResourceTest extends EntityResourceTest<StorageServic
     Map<String, String> authHeaders = adminAuthHeaders();
     StorageService storageService = createEntity(create(test), authHeaders);
     deleteEntity(storageService.getId(), authHeaders);
+  }
+
+  @Test
+  void delete_put_StorageService_200(TestInfo test) throws IOException {
+    CreateStorageService request = create(test).withDescription("");
+    StorageService storageService = createEntity(request, adminAuthHeaders());
+
+    // Delete
+    deleteEntity(storageService.getId(), adminAuthHeaders());
+
+    ChangeDescription change = getChangeDescription(storageService.getVersion());
+    change.setFieldsUpdated(
+        Arrays.asList(
+            new FieldChange().withName("deleted").withNewValue(false).withOldValue(true),
+            new FieldChange().withName("description").withNewValue("updatedDescription").withOldValue("")));
+
+    // PUT with updated description
+    updateAndCheckEntity(
+        request.withDescription("updatedDescription"), Response.Status.OK, adminAuthHeaders(), MINOR_UPDATE, change);
   }
 
   @Test

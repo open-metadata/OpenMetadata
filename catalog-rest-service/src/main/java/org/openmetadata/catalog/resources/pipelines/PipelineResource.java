@@ -13,7 +13,6 @@
 
 package org.openmetadata.catalog.resources.pipelines;
 
-import com.google.inject.Inject;
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -92,7 +91,6 @@ public class PipelineResource {
     return pipeline;
   }
 
-  @Inject
   public PipelineResource(CollectionDAO dao, Authorizer authorizer) {
     Objects.requireNonNull(dao, "PipelineRepository must not be null");
     this.dao = new PipelineRepository(dao);
@@ -112,7 +110,7 @@ public class PipelineResource {
   }
 
   static final String FIELDS = "owner,tasks,followers,tags,usageSummary";
-  public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replaceAll("\\s", "").split(","));
+  public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replace(" ", "").split(","));
 
   @GET
   @Valid

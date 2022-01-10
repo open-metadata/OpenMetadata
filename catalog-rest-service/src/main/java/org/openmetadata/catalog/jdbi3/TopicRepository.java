@@ -172,6 +172,11 @@ public class TopicRepository extends EntityRepository<Topic> {
     }
 
     @Override
+    public Boolean isDeleted() {
+      return entity.getDeleted();
+    }
+
+    @Override
     public EntityReference getOwner() {
       return entity.getOwner();
     }

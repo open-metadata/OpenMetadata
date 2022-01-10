@@ -13,7 +13,6 @@
 
 package org.openmetadata.catalog.resources.reports;
 
-import com.google.inject.Inject;
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -60,7 +59,6 @@ public class ReportResource {
   public static final String COLLECTION_PATH = "/v1/bots/";
   private final ReportRepository dao;
 
-  @Inject
   public ReportResource(CollectionDAO dao, Authorizer authorizer) {
     Objects.requireNonNull(dao, "ReportRepository must not be null");
     this.dao = new ReportRepository(dao);
@@ -73,7 +71,7 @@ public class ReportResource {
   }
 
   static final String FIELDS = "owner,usageSummary";
-  public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replaceAll("\\s", "").split(","));
+  public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replace(" ", "").split(","));
 
   @GET
   @Operation(

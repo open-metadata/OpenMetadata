@@ -125,6 +125,11 @@ module.exports = {
       },
       width: {
         120: '30rem',
+        'screen-sm': '576px',
+        'screen-md': '768px',
+        'screen-lg': '992px',
+        'screen-xl': '1200px',
+        'screen-xxl': '1440px',
       },
       minWidth: {
         badgeCount: '30px',

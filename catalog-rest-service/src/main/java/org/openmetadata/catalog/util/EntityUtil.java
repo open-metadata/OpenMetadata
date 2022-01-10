@@ -28,6 +28,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.ws.rs.WebApplicationException;
 import lombok.extern.slf4j.Slf4j;
+import lombok.RequiredArgsConstructor;
 import org.joda.time.Period;
 import org.joda.time.format.ISOPeriodFormat;
 import org.openmetadata.catalog.Entity;
@@ -390,6 +391,7 @@ public final class EntityUtil {
     return followers;
   }
 
+  @RequiredArgsConstructor
   public static class Fields {
     public static final Fields EMPTY_FIELDS = new Fields(null, null);
     private final List<String> fieldList;
@@ -399,7 +401,7 @@ public final class EntityUtil {
         fieldList = Collections.emptyList();
         return;
       }
-      fieldList = Arrays.asList(fieldsParam.replaceAll("\\s", "").split(","));
+      fieldList = Arrays.asList(fieldsParam.replace(" ", "").split(","));
       for (String field : fieldList) {
         if (!validFields.contains(field)) {
           throw new IllegalArgumentException(CatalogExceptionMessage.invalidField(field));

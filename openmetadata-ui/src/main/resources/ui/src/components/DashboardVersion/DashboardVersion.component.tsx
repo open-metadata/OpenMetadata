@@ -211,7 +211,7 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
     <PageContainer>
       <div
         className={classNames(
-          'tw-px-4 tw-w-full tw-h-full tw-flex tw-flex-col tw-relative'
+          'tw-px-6 tw-w-full tw-h-full tw-flex tw-flex-col tw-relative'
         )}>
         {isVersionLoading ? (
           <Loader />
@@ -230,8 +230,8 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
             />
             <div className="tw-mt-1 tw-flex tw-flex-col tw-flex-grow ">
               <TabsPane activeTab={1} className="tw-flex-initial" tabs={tabs} />
-              <div className="tw-bg-white tw-flex-grow tw-mx-1">
-                <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-w-full tw-mt-4 ">
+              <div className="tw-bg-white tw-flex-grow tw--mx-6 tw-px-7 tw-py-4">
+                <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-w-full">
                   <div className="tw-col-span-full">
                     <Description
                       isReadOnly

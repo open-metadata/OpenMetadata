@@ -20,14 +20,17 @@ import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.openmetadata.catalog.security.SecurityUtil.authHeaders;
+import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
 import static org.openmetadata.catalog.util.TestUtils.getPrincipal;
 
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.Map;
+import javax.ws.rs.core.Response;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -227,6 +230,25 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
     Map<String, String> authHeaders = adminAuthHeaders();
     PipelineService pipelineService = createEntity(create(test), authHeaders);
     deleteEntity(pipelineService.getId(), authHeaders);
+  }
+
+  @Test
+  void delete_put_PipelineService_200(TestInfo test) throws IOException {
+    CreatePipelineService request = create(test).withDescription("");
+    PipelineService pipelineService = createEntity(request, adminAuthHeaders());
+
+    // Delete
+    deleteEntity(pipelineService.getId(), adminAuthHeaders());
+
+    ChangeDescription change = getChangeDescription(pipelineService.getVersion());
+    change.setFieldsUpdated(
+        Arrays.asList(
+            new FieldChange().withName("deleted").withNewValue(false).withOldValue(true),
+            new FieldChange().withName("description").withNewValue("updatedDescription").withOldValue("")));
+
+    // PUT with updated description
+    updateAndCheckEntity(
+        request.withDescription("updatedDescription"), Response.Status.OK, adminAuthHeaders(), MINOR_UPDATE, change);
   }
 
   @Test

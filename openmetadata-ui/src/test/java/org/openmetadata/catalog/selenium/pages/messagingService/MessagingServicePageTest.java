@@ -50,6 +50,7 @@ public class MessagingServicePageTest {
     System.setProperty("webdriver.chrome.driver", "src/test/resources/drivers/linux/chromedriver");
     ChromeOptions options = new ChromeOptions();
     options.addArguments("--headless");
+    options.addArguments("--window-size=1280,800");
     webDriver = new ChromeDriver(options);
     actions = new Actions(webDriver);
     wait = new WebDriverWait(webDriver, Duration.ofSeconds(30));

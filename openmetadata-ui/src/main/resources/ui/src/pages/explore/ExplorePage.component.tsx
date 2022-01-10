@@ -201,6 +201,10 @@ const ExplorePage: FunctionComponent = () => {
   }, [searchText]);
 
   useEffect(() => {
+    AppState.explorePageTab = tab;
+  }, [tab]);
+
+  useEffect(() => {
     fetchData([
       {
         queryString: searchText,

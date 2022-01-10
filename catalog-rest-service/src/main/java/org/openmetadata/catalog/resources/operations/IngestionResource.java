@@ -13,7 +13,6 @@
 
 package org.openmetadata.catalog.resources.operations;
 
-import com.google.inject.Inject;
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -102,7 +101,6 @@ public class IngestionResource {
     return ingestion;
   }
 
-  @Inject
   public IngestionResource(CollectionDAO dao, Authorizer authorizer) {
     Objects.requireNonNull(dao, "IngestionRepository must not be null");
     this.dao = new IngestionRepository(dao);
@@ -127,7 +125,7 @@ public class IngestionResource {
   }
 
   static final String FIELDS = "owner,tags,status,scheduleInterval";
-  public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replaceAll("\\s", "").split(","));
+  public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replace(" ", "").split(","));
 
   @GET
   @Valid

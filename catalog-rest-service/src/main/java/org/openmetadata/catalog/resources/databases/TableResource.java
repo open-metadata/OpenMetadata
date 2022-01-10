@@ -13,7 +13,6 @@
 
 package org.openmetadata.catalog.resources.databases;
 
-import com.google.inject.Inject;
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -90,7 +89,6 @@ public class TableResource {
     return table;
   }
 
-  @Inject
   public TableResource(CollectionDAO dao, Authorizer authorizer) {
     this.dao = new TableRepository(dao);
     this.authorizer = authorizer;
@@ -109,7 +107,7 @@ public class TableResource {
   static final String FIELDS =
       "columns,tableConstraints,usageSummary,owner,"
           + "tags,followers,joins,sampleData,viewDefinition,tableProfile,location,tableQueries,dataModel";
-  public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replaceAll("\\s", "").split(","));
+  public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replace(" ", "").split(","));
 
   @GET
   @Operation(

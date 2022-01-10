@@ -119,7 +119,7 @@ public class TeamsPageTest {
     Events.click(webDriver, By.cssSelector("[data-testid='sortBy']")); // Sort By
     Events.click(webDriver, By.cssSelector("[data-testid='list-item']")); // Last Updated // Last Updated
     Events.click(webDriver, By.xpath("(//button[@data-testid='table-link'])[last()]"));
-    Events.click(webDriver, By.xpath("(//button[@data-testid='tab'])[4]")); // Manage
+    Events.click(webDriver, By.xpath("(//button[@data-testid='tab'])[5]")); // Manage
     Events.click(webDriver, By.cssSelector("[data-testid='owner-dropdown']")); // Owner
     Events.sendKeys(webDriver, By.cssSelector("[data-testid='searchInputText']"), teamDisplayName);
     Events.click(webDriver, By.cssSelector("[data-testid='list-item']")); // Select User/Team

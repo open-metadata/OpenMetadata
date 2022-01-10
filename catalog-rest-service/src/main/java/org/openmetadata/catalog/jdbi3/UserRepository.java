@@ -216,6 +216,11 @@ public class UserRepository extends EntityRepository<User> {
     }
 
     @Override
+    public Boolean isDeleted() {
+      return entity.getDeleted();
+    }
+
+    @Override
     public String getFullyQualifiedName() {
       return entity.getName();
     }

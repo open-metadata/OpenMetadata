@@ -13,7 +13,6 @@
 
 package org.openmetadata.catalog.resources.lineage;
 
-import com.google.inject.Inject;
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -57,7 +56,6 @@ public class LineageResource {
 
   private final LineageRepository dao;
 
-  @Inject
   public LineageResource(CollectionDAO dao, Authorizer authorizer) {
     Objects.requireNonNull(dao, "LineageRepository must not be null");
     this.dao = new LineageRepository(dao);

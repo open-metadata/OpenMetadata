@@ -133,7 +133,7 @@ const MyData: React.FC<MyDataProps> = ({
               ) : null}
             </div>
           }
-          noDataPlaceholder={<>You have not owned anything yet!</>}
+          noDataPlaceholder={<>You have not owned anything yet.</>}
           testIDText="My data"
         />
         <div className="tw-filter-seperator tw-mt-3" />
@@ -153,7 +153,7 @@ const MyData: React.FC<MyDataProps> = ({
               ) : null}
             </div>
           }
-          noDataPlaceholder={<>You have not followed anything yet!</>}
+          noDataPlaceholder={<>You have not followed anything yet.</>}
           testIDText="Following data"
         />
         <div className="tw-filter-seperator tw-mt-3" />
@@ -214,7 +214,7 @@ const MyData: React.FC<MyDataProps> = ({
           {getFeedsData().feeds.length > 0 ? (
             <FeedCards {...getFeedsData()} />
           ) : (
-            <Onboarding showLogo={false} />
+            <Onboarding />
           )}
         </Fragment>
       )}
