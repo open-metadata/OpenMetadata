@@ -141,16 +141,22 @@ public class LocationResource {
           String before,
       @Parameter(description = "Returns list of locations after this cursor", schema = @Schema(type = "string"))
           @QueryParam("after")
-          String after)
+          String after,
+      @Parameter(
+              description = "Include all, deleted, or non-deleted (default)",
+              schema = @Schema(type = "string", example = "non-deleted"))
+          @QueryParam("include")
+          @DefaultValue("non-deleted")
+          Include include)
       throws IOException, GeneralSecurityException, ParseException {
     RestUtil.validateCursors(before, after);
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
 
     ResultList<Location> locations;
     if (before != null) { // Reverse paging
-      locations = dao.listBefore(uriInfo, fields, serviceParam, limitParam, before); // Ask for one extra entry
+      locations = dao.listBefore(uriInfo, fields, serviceParam, limitParam, before, include); // Ask for one extra entry
     } else { // Forward paging or first page
-      locations = dao.listAfter(uriInfo, fields, serviceParam, limitParam, after);
+      locations = dao.listAfter(uriInfo, fields, serviceParam, limitParam, after, include);
     }
     locations.getData().forEach(l -> addHref(uriInfo, l));
     return locations;

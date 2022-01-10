@@ -243,6 +243,31 @@ public abstract class EntityRepository<T> {
   }
 
   @Transaction
+  public final ResultList<T> listAfter(
+      UriInfo uriInfo, Fields fields, String fqnPrefix, int limitParam, String after, Include include)
+      throws GeneralSecurityException, IOException, ParseException {
+    // forward scrolling, if after == null then first page is being asked
+    List<String> jsons =
+        dao.listAfter(fqnPrefix, limitParam + 1, after == null ? "" : CipherText.instance().decrypt(after), include);
+
+    List<T> entities = new ArrayList<>();
+    for (String json : jsons) {
+      T entity = withHref(uriInfo, setFields(JsonUtils.readValue(json, entityClass), fields));
+      entities.add(entity);
+    }
+    int total = dao.listCount(fqnPrefix, include);
+
+    String beforeCursor;
+    String afterCursor = null;
+    beforeCursor = after == null ? null : getFullyQualifiedName(entities.get(0));
+    if (entities.size() > limitParam) { // If extra result exists, then next page exists - return after cursor
+      entities.remove(limitParam);
+      afterCursor = getFullyQualifiedName(entities.get(limitParam - 1));
+    }
+    return getResultList(entities, beforeCursor, afterCursor, total);
+  }
+
+  @Transaction
   public final ResultList<T> listBefore(UriInfo uriInfo, Fields fields, String fqnPrefix, int limitParam, String before)
       throws IOException, GeneralSecurityException, ParseException {
     // Reverse scrolling - Get one extra result used for computing before cursor
@@ -254,6 +279,30 @@ public abstract class EntityRepository<T> {
       entities.add(entity);
     }
     int total = dao.listCount(fqnPrefix);
+
+    String beforeCursor = null;
+    String afterCursor;
+    if (entities.size() > limitParam) { // If extra result exists, then previous page exists - return before cursor
+      entities.remove(0);
+      beforeCursor = getFullyQualifiedName(entities.get(0));
+    }
+    afterCursor = getFullyQualifiedName(entities.get(entities.size() - 1));
+    return getResultList(entities, beforeCursor, afterCursor, total);
+  }
+
+  @Transaction
+  public final ResultList<T> listBefore(
+      UriInfo uriInfo, Fields fields, String fqnPrefix, int limitParam, String before, Include include)
+      throws IOException, GeneralSecurityException, ParseException {
+    // Reverse scrolling - Get one extra result used for computing before cursor
+    List<String> jsons = dao.listBefore(fqnPrefix, limitParam + 1, CipherText.instance().decrypt(before), include);
+
+    List<T> entities = new ArrayList<>();
+    for (String json : jsons) {
+      T entity = withHref(uriInfo, setFields(JsonUtils.readValue(json, entityClass), fields));
+      entities.add(entity);
+    }
+    int total = dao.listCount(fqnPrefix, include);
 
     String beforeCursor = null;
     String afterCursor;

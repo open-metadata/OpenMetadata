@@ -328,7 +328,7 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
       createEntity(createRequest(getEntityName(test, i), null, null, null), adminAuthHeaders());
     }
 
-    T entity = createEntity(createRequest(getEntityName(test, maxEntities), "", "", null), adminAuthHeaders());
+    T entity = createEntity(createRequest(getEntityName(test, -1), null, null, null), adminAuthHeaders());
     EntityInterface<T> deleted = getEntityInterface(entity);
     deleteEntity(deleted.getId(), adminAuthHeaders());
 
@@ -338,7 +338,8 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
           return entityInterface.getId().equals(deleted.getId());
         };
 
-    for (String include : List.of("all", "deleted", "non-deleted")) {
+    for (String include : List.of("non-deleted", "all", "deleted")) {
+
       Map<String, String> queryParams =
           new HashMap<>() {
             {
@@ -407,6 +408,17 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
           assertTrue(foundDeleted);
         } else { // non-delete
           assertFalse(foundDeleted);
+        }
+      }
+
+      // before running "deleted" delete all entries
+      if ("all".equals(include)) {
+        // delete all entries
+        for (T e : allEntities.getData()) {
+          EntityInterface<T> toBeDeleted = getEntityInterface(e);
+          if (!toBeDeleted.isDeleted()) {
+            deleteEntity(toBeDeleted.getId(), adminAuthHeaders());
+          }
         }
       }
     }
