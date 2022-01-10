@@ -109,7 +109,7 @@ class OMetaLineageMixin(Generic[T]):
             return res
         except APIError as err:
             logger.error(
-                f"Error {err.status_code} trying to GET linage for"
+                f"Error {err.status_code} trying to GET linage for "
                 + f"{entity.__class__.__name__} and {path}"
             )
             return None

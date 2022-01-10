@@ -9,7 +9,6 @@ from typing import Any, Dict
 from metadata.generated.schema.api.lineage.addLineage import AddLineage
 from metadata.generated.schema.entity.data.mlmodel import MlModel
 from metadata.generated.schema.type.entityLineage import EntitiesEdge
-from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.client import REST
 from metadata.ingestion.ometa.mixins.lineage_mixin import OMetaLineageMixin
 
@@ -49,7 +48,9 @@ class OMetaMlModelMixin(OMetaLineageMixin):
                 AddLineage(
                     description="MlModel uses FeatureSource",
                     edge=EntitiesEdge(
-                        fromEntity=EntityReference(id=model.id, type="mlmodel"),
+                        fromEntity=self.get_entity_reference(
+                            entity=MlModel, fqdn=model.fullyQualifiedName
+                        ),
                         toEntity=entity_ref,
                     ),
                 )
