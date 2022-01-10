@@ -23,13 +23,7 @@ class BigQueryConfig(SQLConnectionConfig, SQLSource):
     duration: int = 1
     service_type = "BigQuery"
 
-    def __init__(self, **data: Any):
-        if self.options.get("credentials", None):
-            cred_path = create_credential_temp_file(self.options.get("credentials"))
-        os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = cred_path
-        del self.options["credentials"]
-        self.options["credentials_path"] = cred_path
-        super().__init__(**data)
+
 
     def get_connection_url(self):
         if self.project_id:
