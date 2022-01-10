@@ -20,6 +20,7 @@ import javax.ws.rs.client.Invocation;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.SecurityContext;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.MetadataOperation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -51,6 +52,20 @@ public final class SecurityUtil {
     if (!authorizer.isAdmin(authenticationCtx)
         && !authorizer.isBot(authenticationCtx)
         && !authorizer.hasPermissions(authenticationCtx, entityReference)) {
+      throw new AuthorizationException("Principal: " + principal + " does not have permissions");
+    }
+  }
+
+  public static void checkAdminRoleOrPermissions(
+      Authorizer authorizer,
+      SecurityContext securityContext,
+      EntityReference entityReference,
+      MetadataOperation metadataOperation) {
+    Principal principal = securityContext.getUserPrincipal();
+    AuthenticationContext authenticationCtx = SecurityUtil.getAuthenticationContext(principal);
+    if (!authorizer.isAdmin(authenticationCtx)
+        && !authorizer.isBot(authenticationCtx)
+        && !authorizer.hasPermissions(authenticationCtx, entityReference, metadataOperation)) {
       throw new AuthorizationException("Principal: " + principal + " does not have permissions");
     }
   }

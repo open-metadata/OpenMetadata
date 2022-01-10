@@ -27,7 +27,9 @@ import io.dropwizard.setup.Bootstrap;
 import io.dropwizard.setup.Environment;
 import io.federecio.dropwizard.swagger.SwaggerBundle;
 import io.federecio.dropwizard.swagger.SwaggerBundleConfiguration;
+import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
+import java.time.temporal.ChronoUnit;
 import javax.ws.rs.container.ContainerRequestFilter;
 import javax.ws.rs.container.ContainerResponseFilter;
 import javax.ws.rs.core.Response;
@@ -37,6 +39,8 @@ import org.eclipse.jetty.servlet.ErrorPageErrorHandler;
 import org.glassfish.jersey.media.multipart.MultiPartFeature;
 import org.glassfish.jersey.server.ServerProperties;
 import org.jdbi.v3.core.Jdbi;
+import org.jdbi.v3.core.statement.SqlLogger;
+import org.jdbi.v3.core.statement.StatementContext;
 import org.openmetadata.catalog.events.EventFilter;
 import org.openmetadata.catalog.events.EventPubSub;
 import org.openmetadata.catalog.exception.CatalogGenericExceptionMapper;
@@ -62,19 +66,25 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
   @Override
   public void run(CatalogApplicationConfig catalogConfig, Environment environment)
       throws ClassNotFoundException, IllegalAccessException, InstantiationException, NoSuchMethodException,
-          InvocationTargetException {
+          InvocationTargetException, IOException {
 
     final JdbiFactory factory = new JdbiFactory();
     final Jdbi jdbi = factory.build(environment, catalogConfig.getDataSourceFactory(), "mysql3");
 
-    //    SqlLogger sqlLogger = new SqlLogger() {
-    //      @Override
-    //      public void logAfterExecution(StatementContext context) {
-    //        LOG.info("sql {}, parameters {}, timeTaken {} ms", context.getRenderedSql(),
-    //                context.getBinding().toString(), context.getElapsedTime(ChronoUnit.MILLIS));
-    //      }
-    //    };
-    //    jdbi.setSqlLogger(sqlLogger);
+    SqlLogger sqlLogger =
+        new SqlLogger() {
+          @Override
+          public void logAfterExecution(StatementContext context) {
+            LOG.debug(
+                "sql {}, parameters {}, timeTaken {} ms",
+                context.getRenderedSql(),
+                context.getBinding(),
+                context.getElapsedTime(ChronoUnit.MILLIS));
+          }
+        };
+    if (LOG.isDebugEnabled()) {
+      jdbi.setSqlLogger(sqlLogger);
+    }
 
     // Register Authorizer
     registerAuthorizer(catalogConfig, environment, jdbi);
@@ -128,7 +138,7 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
 
   private void registerAuthorizer(CatalogApplicationConfig catalogConfig, Environment environment, Jdbi jdbi)
       throws NoSuchMethodException, ClassNotFoundException, IllegalAccessException, InvocationTargetException,
-          InstantiationException {
+          InstantiationException, IOException {
     AuthorizerConfiguration authorizerConf = catalogConfig.getAuthorizerConfiguration();
     AuthenticationConfiguration authenticationConfiguration = catalogConfig.getAuthenticationConfiguration();
     if (authorizerConf != null) {

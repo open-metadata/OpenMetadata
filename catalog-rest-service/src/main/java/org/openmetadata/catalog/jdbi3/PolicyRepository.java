@@ -15,6 +15,7 @@ package org.openmetadata.catalog.jdbi3;
 
 import java.io.IOException;
 import java.net.URI;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
@@ -24,6 +25,7 @@ import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Location;
 import org.openmetadata.catalog.entity.policies.Policy;
 import org.openmetadata.catalog.entity.policies.accessControl.Rule;
+import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.resources.policies.PolicyResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
@@ -184,6 +186,33 @@ public class PolicyRepository extends EntityRepository<Policy> {
     // No validation errors, if execution reaches here.
   }
 
+  private List<Policy> getAccessControlPolicies() throws IOException {
+    EntityUtil.Fields fields = new EntityUtil.Fields(List.of("policyType", "rules"));
+    List<String> jsons = daoCollection.policyDAO().listAfter(null, Integer.MAX_VALUE, "");
+    List<Policy> policies = new ArrayList<>(jsons.size());
+    for (String json : jsons) {
+      Policy policy = setFields(JsonUtils.readValue(json, Policy.class), fields);
+      if (policy.getPolicyType() != PolicyType.AccessControl) {
+        continue;
+      }
+      policies.add(policy);
+    }
+    return policies;
+  }
+
+  public List<Rule> getAccessControlPolicyRules() throws IOException {
+    List<Policy> policies = getAccessControlPolicies();
+    List<Rule> rules = new ArrayList<>();
+    for (Policy policy : policies) {
+      List<Object> ruleObjects = policy.getRules();
+      for (Object ruleObject : ruleObjects) {
+        Rule rule = JsonUtils.readValue(JsonUtils.getJsonStructure(ruleObject).toString(), Rule.class);
+        rules.add(rule);
+      }
+    }
+    return rules;
+  }
+
   private void setLocation(Policy policy, EntityReference location) {
     if (location == null || location.getId() == null) {
       return;
@@ -334,6 +363,10 @@ public class PolicyRepository extends EntityRepository<Policy> {
 
     @Override
     public void entitySpecificUpdate() throws IOException {
+      // Disallow changing policyType.
+      if (original.getEntity().getPolicyType() != updated.getEntity().getPolicyType()) {
+        throw new IllegalArgumentException(CatalogExceptionMessage.readOnlyAttribute(Entity.POLICY, "policyType"));
+      }
       recordChange("policyUrl", original.getEntity().getPolicyUrl(), updated.getEntity().getPolicyUrl());
       recordChange("enabled", original.getEntity().getEnabled(), updated.getEntity().getEnabled());
       recordChange("rules", original.getEntity().getRules(), updated.getEntity().getRules());
