@@ -13,8 +13,12 @@
 
 package org.openmetadata.catalog.selenium.pages.common;
 
+import java.io.IOException;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.time.Duration;
 import java.util.ArrayList;
+import com.github.javafaker.Faker;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.MethodOrderer;
@@ -28,6 +32,7 @@ import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.interactions.Actions;
+import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.testng.Assert;
 
@@ -38,6 +43,9 @@ public class CommonTests {
   static WebDriver webDriver;
   static String url = Property.getInstance().getURL();
   static Actions actions;
+  static Faker faker = new Faker();
+  static String tagCategoryDisplayName = faker.name().firstName();
+  static String enterDescription = "//div[@data-testid='enterDescription']/div/div[2]/div/div/div/div/div/div";
   static WebDriverWait wait;
   Integer waitTime = Property.getInstance().getSleepTime();
 
@@ -75,6 +83,52 @@ public class CommonTests {
     Object tagCount =
         webDriver.findElements(By.xpath("//*[text()[contains(.,'" + "#PersonalData.Personal" + "')]] ")).size();
     Assert.assertEquals(tagCount, 2);
+  }
+
+  @Test
+  @Order(2)
+  public void addTagWithSpaceCheck() throws InterruptedException, IOException {
+    Events.click(webDriver, By.cssSelector("[data-testid='closeWhatsNew']")); // Close What's new
+    Thread.sleep(waitTime);
+    Events.click(webDriver, By.cssSelector("[data-testid='menu-button'][id='menu-button-Settings']")); // Setting
+    Events.click(webDriver, By.cssSelector("[data-testid='menu-item-Tags']")); // Setting/Tags
+    Events.click(webDriver, By.cssSelector("[data-testid='add-category']"));
+    wait.until(ExpectedConditions.elementToBeClickable(webDriver.findElement(By.name("name"))));
+    Events.sendKeys(webDriver, By.name("name"), tagCategoryDisplayName);
+    Events.sendKeys(webDriver, By.xpath(enterDescription), faker.address().toString());
+    Events.click(webDriver, By.cssSelector("[data-testid='saveButton']"));
+    webDriver.navigate().refresh();
+    Events.click(webDriver, By.xpath("//*[text()[contains(.,'" + tagCategoryDisplayName + "')]] "));
+    Events.click(webDriver, By.cssSelector("[data-testid='add-new-tag-button']"));
+    wait.until(ExpectedConditions.elementToBeClickable(By.name("name")));
+    Events.sendKeys(webDriver, By.name("name"), "Testing Tag");
+    Events.sendKeys(webDriver, By.xpath(enterDescription), faker.address().toString());
+    Events.click(webDriver, By.cssSelector("[data-testid='saveButton']"));
+    URL url = new URL("http://localhost:8585/api/v1/tags/" + tagCategoryDisplayName + "/" );
+    HttpURLConnection http = (HttpURLConnection)url.openConnection();
+    http.setRequestMethod("HEAD");
+    http.connect();
+    Assert.assertEquals(http.getResponseCode(),200);
+  }
+
+  @Test
+  @Order(3)
+  public void addTagCategoryWithSpaceCheck() throws InterruptedException, IOException {
+    Events.click(webDriver, By.cssSelector("[data-testid='closeWhatsNew']")); // Close What's new
+    Thread.sleep(waitTime);
+    Events.click(webDriver, By.cssSelector("[data-testid='menu-button'][id='menu-button-Settings']")); // Setting
+    Events.click(webDriver, By.cssSelector("[data-testid='menu-item-Tags']")); // Setting/Tags
+    Events.click(webDriver, By.cssSelector("[data-testid='add-category']"));
+    wait.until(ExpectedConditions.elementToBeClickable(webDriver.findElement(By.name("name"))));
+    Events.sendKeys(webDriver, By.name("name"), "Space Tag");
+    Events.sendKeys(webDriver, By.xpath(enterDescription), faker.address().toString());
+    Events.click(webDriver, By.cssSelector("[data-testid='saveButton']"));
+    webDriver.navigate().refresh();
+    URL url = new URL("http://localhost:8585/api/v1/tags/");
+    HttpURLConnection http = (HttpURLConnection)url.openConnection();
+    http.setRequestMethod("HEAD");
+    http.connect();
+    Assert.assertEquals(http.getResponseCode(), 200);
   }
 
   @AfterEach
