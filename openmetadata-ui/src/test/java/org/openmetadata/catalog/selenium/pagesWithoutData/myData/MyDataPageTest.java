@@ -103,7 +103,11 @@ public class MyDataPageTest {
   public void checkRecentViews() throws Exception {
     checkWhatsNew();
     WebElement recentViews =
+<<<<<<< HEAD
         webDriver.findElement(By.xpath("//*[text()[contains(.,'" + "No recently viewed data." + "')]] "));
+=======
+        webDriver.findElement(By.xpath("//*[text()[contains(.,'" + "No recently viewed data!" + "')]] "));
+>>>>>>> 636f98ac (Fix #2037 : Use lombok Slf4j annotation to initialize logger)
     if (!recentViews.isDisplayed()) {
       throw new Exception("There shouldn't be any viewed data");
     }
@@ -125,7 +129,11 @@ public class MyDataPageTest {
   public void checkMyDataTab() throws Exception {
     checkWhatsNew();
     WebElement myDataResults =
+<<<<<<< HEAD
         webDriver.findElement(By.xpath("//*[text()[contains(.,'" + "You have not owned anything yet." + "')]] "));
+=======
+        webDriver.findElement(By.xpath("//*[text()[contains(.,'" + "You have not owned anything yet!" + "')]] "));
+>>>>>>> 636f98ac (Fix #2037 : Use lombok Slf4j annotation to initialize logger)
     if (!myDataResults.isDisplayed()) {
       throw new Exception("There shouldn't be any owned data");
     }
@@ -136,7 +144,11 @@ public class MyDataPageTest {
   public void checkFollowingTab() throws Exception {
     checkWhatsNew();
     WebElement followResults =
+<<<<<<< HEAD
         webDriver.findElement(By.xpath("//*[text()[contains(.,'" + "You have not followed anything yet." + "')]] "));
+=======
+        webDriver.findElement(By.xpath("//*[text()[contains(.,'" + "You have not followed anything yet!" + "')]] "));
+>>>>>>> 636f98ac (Fix #2037 : Use lombok Slf4j annotation to initialize logger)
     if (!followResults.isDisplayed()) {
       throw new Exception("There shouldn't be any followed data");
     }

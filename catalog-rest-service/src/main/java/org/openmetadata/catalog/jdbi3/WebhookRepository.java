@@ -34,6 +34,7 @@ import javax.ws.rs.client.Client;
 import javax.ws.rs.client.ClientBuilder;
 import javax.ws.rs.client.Invocation.Builder;
 import javax.ws.rs.core.Response;
+import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.events.EventPubSub;
@@ -57,7 +58,6 @@ import org.openmetadata.common.utils.CommonUtil;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-
 public class WebhookRepository extends EntityRepository<Webhook> {
   private static final ConcurrentHashMap<UUID, WebhookPublisher> webhookPublisherMap = new ConcurrentHashMap<>();
 

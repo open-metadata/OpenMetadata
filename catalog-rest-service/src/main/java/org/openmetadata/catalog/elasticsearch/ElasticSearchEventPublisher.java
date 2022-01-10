@@ -22,7 +22,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+<<<<<<< HEAD:catalog-rest-service/src/main/java/org/openmetadata/catalog/elasticsearch/ElasticSearchEventPublisher.java
 import org.elasticsearch.ElasticsearchException;
+=======
+import javax.ws.rs.container.ContainerRequestContext;
+import javax.ws.rs.container.ContainerResponseContext;
+import javax.ws.rs.core.Response;
+import lombok.extern.slf4j.Slf4j;
+import org.elasticsearch.action.ActionListener;
+>>>>>>> 636f98ac (Fix #2037 : Use lombok Slf4j annotation to initialize logger):catalog-rest-service/src/main/java/org/openmetadata/catalog/elasticsearch/ElasticSearchEventHandler.java
 import org.elasticsearch.action.update.UpdateRequest;
 import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.client.RestHighLevelClient;
@@ -45,10 +53,8 @@ import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.util.ElasticSearchClientUtils;
 import org.openmetadata.catalog.util.JsonUtils;
-import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-
 public class ElasticSearchEventHandler implements EventHandler {
   private RestHighLevelClient client;
   private ElasticSearchIndexDefinition esIndexDefinition;

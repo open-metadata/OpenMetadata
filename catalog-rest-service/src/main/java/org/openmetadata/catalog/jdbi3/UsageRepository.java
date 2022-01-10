@@ -20,6 +20,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.UUID;
+import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.mapper.RowMapper;
 import org.jdbi.v3.core.statement.StatementContext;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
@@ -31,10 +32,8 @@ import org.openmetadata.catalog.type.EntityUsage;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.UsageDetails;
 import org.openmetadata.catalog.type.UsageStats;
-import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-
 public class UsageRepository {
   private final CollectionDAO dao;
 

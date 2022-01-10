@@ -21,13 +21,12 @@ import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.CatalogApplication;
 import org.openmetadata.catalog.api.CatalogVersion;
 import org.openmetadata.catalog.resources.Collection;
-import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-
 @Path("/v1/version")
 @Api(value = "Catalog version", tags = "Catalog version related operations")
 @Produces(MediaType.APPLICATION_JSON)

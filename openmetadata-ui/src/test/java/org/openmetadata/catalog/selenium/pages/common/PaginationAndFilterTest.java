@@ -157,6 +157,7 @@ public class PaginationAndFilterTest {
     }
   }
 
+<<<<<<< HEAD
   @Test
   @Order(6)
   public void databaseFilterCountCheck() throws InterruptedException {
@@ -187,6 +188,8 @@ public class PaginationAndFilterTest {
     Assert.assertEquals(databaseCount, filteredResults);
   }
 
+=======
+>>>>>>> 636f98ac (Fix #2037 : Use lombok Slf4j annotation to initialize logger)
   @AfterEach
   public void closeTabs() {
     ArrayList<String> tabs = new ArrayList<>(webDriver.getWindowHandles());

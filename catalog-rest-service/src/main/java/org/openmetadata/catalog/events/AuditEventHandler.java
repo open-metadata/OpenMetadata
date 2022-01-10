@@ -15,17 +15,16 @@ package org.openmetadata.catalog.events;
 
 import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.container.ContainerResponseContext;
+import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.type.AuditLog;
 import org.openmetadata.catalog.type.EntityReference;
-import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-
 public class AuditEventHandler implements EventHandler {
- 
+
   public void init(CatalogApplicationConfig config, Jdbi jdbi) {
     // Nothing to do
   }

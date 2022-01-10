@@ -29,15 +29,14 @@ import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.ext.ExceptionMapper;
+import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.statement.UnableToExecuteStatementException;
 import org.openmetadata.catalog.security.AuthenticationException;
 import org.openmetadata.catalog.security.AuthorizationException;
-import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-
 public class CatalogGenericExceptionMapper implements ExceptionMapper<Throwable> {
-  
+
   @Override
   public Response toResponse(Throwable ex) {
     if (ex instanceof ProcessingException || ex instanceof IllegalArgumentException) {
