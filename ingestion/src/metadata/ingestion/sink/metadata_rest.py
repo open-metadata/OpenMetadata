@@ -427,7 +427,7 @@ class MetadataRestSink(Sink[Entity]):
         try:
             self.metadata.delete(entity=Table, entity_id=record.table.id)
             logger.info(
-                f"{record.table.name} doesn't exist in source state, marking it as deleted"
+                f"{record.table.fullyQualifiedName} doesn't exist in source state, marking it as deleted"
             )
         except Exception as err:
             logger.debug(traceback.format_exc())

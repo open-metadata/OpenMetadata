@@ -24,7 +24,7 @@ from datetime import timedelta
 from airflow.decorators import dag, task
 from airflow.utils.dates import days_ago
 
-from metadata.ingestion.models.table_metadata import Table
+from metadata.ingestion.models.table_metadata import TableFQDN
 
 default_args = {
     "owner": "openmetadata_airflow_example",
@@ -45,12 +45,12 @@ def openmetadata_airflow_lineage_example():
     @task(
         inlets={
             "tables": [
-                Table(fullyQualifiedName="bigquery_gcp.shopify.raw_order"),
-                Table(fullyQualifiedName="bigquery_gcp.shopify.raw_customer"),
+                TableFQDN(fullyQualifiedName="bigquery_gcp.shopify.raw_order"),
+                TableFQDN(fullyQualifiedName="bigquery_gcp.shopify.raw_customer"),
             ],
         },
         outlets={
-            "tables": [Table(fullyQualifiedName="bigquery_gcp.shopify.fact_order")]
+            "tables": [TableFQDN(fullyQualifiedName="bigquery_gcp.shopify.fact_order")]
         },
     )
     def generate_data():

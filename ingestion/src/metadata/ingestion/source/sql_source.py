@@ -406,9 +406,9 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
 
     def delete_tables(self, schema_fqdn: str) -> DeleteTable:
         database_state = self._build_database_state(schema_fqdn)
-        for table_ref in database_state:
-            if table_ref.name not in self.database_source_state:
-                yield DeleteTable(table=table_ref)
+        for table in database_state:
+            if table.name.__root__ not in self.database_source_state:
+                yield DeleteTable(table=table)
 
     def _parse_data_model(self):
         """
@@ -662,10 +662,17 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         return profile
 
     def _build_database_state(self, schema_fqdn: str) -> [EntityReference]:
-        database = self.metadata.get_by_name(
-            entity=Database, fqdn=schema_fqdn, fields=["tables"]
-        )
-        return database.tables.__root__
+        after = None
+        tables = []
+        while True:
+            table_entities = self.metadata.list_entities(
+                entity=Table, params={"database": schema_fqdn}, after=after, limit=10
+            )
+            tables.extend(table_entities.entities)
+            if table_entities.after is None:
+                break
+            after = table_entities.after
+        return tables
 
     def close(self):
         if self.connection is not None:
