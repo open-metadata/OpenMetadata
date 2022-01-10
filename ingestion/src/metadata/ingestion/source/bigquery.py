@@ -48,7 +48,19 @@ class BigquerySource(SQLSource):
     def create(cls, config_dict, metadata_config_dict, ctx):
         config: SQLConnectionConfig = BigQueryConfig.parse_obj(config_dict)
         metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
+        if config.options.get("credentials", None):
+            cred_path = create_credential_temp_file(
+                config.options.get("credentials")
+            )
+        os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = cred_path
+        del config.options["credentials"]
+        config.options["credentials_path"] = cred_path
         return cls(config, metadata_config, ctx)
+
+    def close(self):
+        super().close()
+        if self.config.options["credentials_path"]:
+            os.unlink(self.config.options["credentials_path"])
 
     def standardize_schema_table_names(
         self, schema: str, table: str
