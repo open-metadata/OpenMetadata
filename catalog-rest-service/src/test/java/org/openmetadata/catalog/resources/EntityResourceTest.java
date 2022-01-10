@@ -19,6 +19,7 @@ import static javax.ws.rs.core.Response.Status.CREATED;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -56,6 +57,7 @@ import java.util.Optional;
 import java.util.Random;
 import java.util.UUID;
 import java.util.function.BiConsumer;
+import java.util.function.Predicate;
 import javax.json.JsonPatch;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response.Status;
@@ -326,53 +328,87 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
       createEntity(createRequest(getEntityName(test, i), null, null, null), adminAuthHeaders());
     }
 
-    // List all entities and use it for checking pagination
-    ResultList<T> allEntities = listEntities(null, 1000000, null, null, adminAuthHeaders());
-    int totalRecords = allEntities.getData().size();
-    printEntities(allEntities);
+    T entity = createEntity(createRequest(getEntityName(test, maxEntities), "", "", null), adminAuthHeaders());
+    EntityInterface<T> deleted = getEntityInterface(entity);
+    deleteEntity(deleted.getId(), adminAuthHeaders());
 
-    // List entity with limit set from 1 to maxTables size
-    // Each time compare the returned list with allTables list to make sure right results are
-    // returned
-    for (int limit = 1; limit < maxEntities; limit++) {
-      String after = null;
-      String before;
-      int pageCount = 0;
-      int indexInAllTables = 0;
-      ResultList<T> forwardPage;
-      ResultList<T> backwardPage;
-      do { // For each limit (or page size) - forward scroll till the end
-        LOG.info("Limit {} forward scrollCount {} afterCursor {}", limit, pageCount, after);
-        forwardPage = listEntities(null, limit, null, after, adminAuthHeaders());
-        after = forwardPage.getPaging().getAfter();
-        before = forwardPage.getPaging().getBefore();
-        assertEntityPagination(allEntities.getData(), forwardPage, limit, indexInAllTables);
+    Predicate<T> matchDeleted =
+        e -> {
+          EntityInterface<T> entityInterface = getEntityInterface(e);
+          return entityInterface.getId().equals(deleted.getId());
+        };
 
-        if (pageCount == 0) { // CASE 0 - First page is being returned. There is no before-cursor
-          assertNull(before);
-        } else {
-          // Make sure scrolling back based on before cursor returns the correct result
-          backwardPage = listEntities(null, limit, before, null, adminAuthHeaders());
-          assertEntityPagination(allEntities.getData(), backwardPage, limit, (indexInAllTables - limit));
+    for (String include : List.of("all", "deleted", "non-deleted")) {
+      Map<String, String> queryParams =
+          new HashMap<>() {
+            {
+              put("include", include);
+            }
+          };
+      // List all entities and use it for checking pagination
+      ResultList<T> allEntities = listEntities(queryParams, 1000000, null, null, adminAuthHeaders());
+      int totalRecords = allEntities.getData().size();
+      printEntities(allEntities);
+
+      // List entity with limit set from 1 to maxTables size
+      // Each time compare the returned list with allTables list to make sure right results are
+      // returned
+      for (int limit = 1; limit < maxEntities; limit++) {
+        String after = null;
+        String before;
+        int pageCount = 0;
+        int indexInAllTables = 0;
+        ResultList<T> forwardPage;
+        ResultList<T> backwardPage;
+        Boolean foundDeleted = false;
+        do { // For each limit (or page size) - forward scroll till the end
+          LOG.info("Limit {} forward scrollCount {} afterCursor {}", limit, pageCount, after);
+          forwardPage = listEntities(queryParams, limit, null, after, adminAuthHeaders());
+          foundDeleted = forwardPage.getData().stream().anyMatch(matchDeleted) ? true : foundDeleted;
+          after = forwardPage.getPaging().getAfter();
+          before = forwardPage.getPaging().getBefore();
+          assertEntityPagination(allEntities.getData(), forwardPage, limit, indexInAllTables);
+
+          if (pageCount == 0) { // CASE 0 - First page is being returned. There is no before-cursor
+            assertNull(before);
+          } else {
+            // Make sure scrolling back based on before cursor returns the correct result
+            backwardPage = listEntities(queryParams, limit, before, null, adminAuthHeaders());
+            assertEntityPagination(allEntities.getData(), backwardPage, limit, (indexInAllTables - limit));
+          }
+
+          printEntities(forwardPage);
+          indexInAllTables += forwardPage.getData().size();
+          pageCount++;
+        } while (after != null);
+
+        if ("all".equals(include) || "deleted".equals(include)) {
+          assertTrue(foundDeleted);
+        } else { // non-delete
+          assertFalse(foundDeleted);
         }
 
-        printEntities(forwardPage);
-        indexInAllTables += forwardPage.getData().size();
-        pageCount++;
-      } while (after != null);
+        // We have now reached the last page - test backward scroll till the beginning
+        pageCount = 0;
+        indexInAllTables = totalRecords - limit - forwardPage.getData().size();
+        foundDeleted = false;
+        do {
+          LOG.info("Limit {} backward scrollCount {} beforeCursor {}", limit, pageCount, before);
+          forwardPage = listEntities(queryParams, limit, before, null, adminAuthHeaders());
+          foundDeleted = forwardPage.getData().stream().anyMatch(matchDeleted) ? true : foundDeleted;
+          printEntities(forwardPage);
+          before = forwardPage.getPaging().getBefore();
+          assertEntityPagination(allEntities.getData(), forwardPage, limit, indexInAllTables);
+          pageCount++;
+          indexInAllTables -= forwardPage.getData().size();
+        } while (before != null);
 
-      // We have now reached the last page - test backward scroll till the beginning
-      pageCount = 0;
-      indexInAllTables = totalRecords - limit - forwardPage.getData().size();
-      do {
-        LOG.info("Limit {} backward scrollCount {} beforeCursor {}", limit, pageCount, before);
-        forwardPage = listEntities(null, limit, before, null, adminAuthHeaders());
-        printEntities(forwardPage);
-        before = forwardPage.getPaging().getBefore();
-        assertEntityPagination(allEntities.getData(), forwardPage, limit, indexInAllTables);
-        pageCount++;
-        indexInAllTables -= forwardPage.getData().size();
-      } while (before != null);
+        if ("all".equals(include) || "deleted".equals(include)) {
+          assertTrue(foundDeleted);
+        } else { // non-delete
+          assertFalse(foundDeleted);
+        }
+      }
     }
   }
 
