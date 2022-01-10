@@ -71,6 +71,7 @@ public final class TablesInitializer {
         "Creates all the indexes in the elastic search");
     OPTIONS.addOption(null, SchemaMigrationOption.ES_DROP.toString(), false,
         "Drop all the indexes in the elastic search");
+    OPTIONS.addOption(null, SchemaMigrationOption.ES_MIGRATE.toString(), false, "Update Elastic Search index mapping");
 
   }
 
