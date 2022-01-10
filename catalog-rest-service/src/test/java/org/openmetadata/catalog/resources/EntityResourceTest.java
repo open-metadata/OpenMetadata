@@ -432,6 +432,24 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     validateGetWithDifferentFields(entity, true);
   }
 
+  @Test
+  void get_entityIncludeDeleted_200(TestInfo test) throws HttpResponseException, URISyntaxException {
+    Object create = createRequest(getEntityName(test), "", "", null);
+    // Create first time using POST
+    T entity = createEntity(create, adminAuthHeaders());
+    EntityInterface<T> entityInterface = getEntityInterface(entity);
+    // delete it
+    deleteEntity(entityInterface.getId(), adminAuthHeaders());
+    // get it with ?include=deleted
+    Map<String, String> queryParams =
+        new HashMap<>() {
+          {
+            put("include", "deleted");
+          }
+        };
+    getEntity(entityInterface.getId(), queryParams, null, adminAuthHeaders());
+  }
+
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // Common entity tests for POST operations
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -840,6 +858,16 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
   public final T getEntity(UUID id, String fields, Map<String, String> authHeaders) throws HttpResponseException {
     WebTarget target = getResource(id);
     target = target.queryParam("fields", fields);
+    return TestUtils.get(target, entityClass, authHeaders);
+  }
+
+  public final T getEntity(UUID id, Map<String, String> queryParams, String fields, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    WebTarget target = getResource(id);
+    target = fields != null ? target.queryParam("fields", fields) : target;
+    for (Entry<String, String> entry : Optional.ofNullable(queryParams).orElse(Collections.emptyMap()).entrySet()) {
+      target = target.queryParam(entry.getKey(), entry.getValue());
+    }
     return TestUtils.get(target, entityClass, authHeaders);
   }
 
