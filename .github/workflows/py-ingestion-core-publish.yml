@@ -12,7 +12,7 @@
 name: Publish openmetadata-ingestion-core packages
 
 on:
-  pull_request:
+  pull_request_target:
     branches:
       - main
     paths:
@@ -22,25 +22,33 @@ jobs:
   build-and-push:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
       - name: Set up Python 3.9
         uses: actions/setup-python@v2
         with:
           python-version: 3.9
+
       - name: Install Ubuntu related dependencies
         run: |
           sudo apt-get install -y libsasl2-dev unixodbc-dev python3-venv
+
       - name: Generate models
         working-directory: ingestion-core
         run: |
           python3 -m venv env
           source env/bin/activate
           make generate
+
       - name: Bump Version
         working-directory: ingestion-core
         run: |
           source env/bin/activate
           make bump-version-dev
+
       - name: Publish PyPi packages
         working-directory: ingestion-core
         env:
@@ -49,6 +57,7 @@ jobs:
         run: |
           source env/bin/activate
           make publish
+
       - name: Commit and Push New Version
         uses: EndBug/add-and-commit@v7
         with:
