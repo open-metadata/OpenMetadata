@@ -229,8 +229,7 @@ public class TeamResourceTest extends EntityResourceTest<Team> {
   //  }
 
   @Test
-  void patch_teamAttributes_as_non_admin_403(TestInfo test)
-      throws HttpResponseException, JsonProcessingException {
+  void patch_teamAttributes_as_non_admin_403(TestInfo test) throws HttpResponseException, JsonProcessingException {
     // Create table without any attributes
     Team team = createTeam(create(test), adminAuthHeaders());
     // Patching as a non-admin should is disallowed

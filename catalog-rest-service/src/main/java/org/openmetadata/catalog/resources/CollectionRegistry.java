@@ -29,6 +29,7 @@ import java.util.Objects;
 import java.util.Set;
 import javax.ws.rs.Path;
 import javax.ws.rs.core.UriInfo;
+import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
@@ -37,7 +38,6 @@ import org.openmetadata.catalog.type.CollectionDescriptor;
 import org.openmetadata.catalog.type.CollectionInfo;
 import org.openmetadata.catalog.util.RestUtil;
 import org.reflections.Reflections;
-import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 

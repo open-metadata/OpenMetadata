@@ -216,8 +216,7 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
   }
 
   @Test
-  void delete_ExistentDashboardService_as_admin_200(TestInfo test)
-      throws HttpResponseException, URISyntaxException {
+  void delete_ExistentDashboardService_as_admin_200(TestInfo test) throws HttpResponseException, URISyntaxException {
     Map<String, String> authHeaders = adminAuthHeaders();
     DashboardService dashboardService = createEntity(create(test), authHeaders);
     deleteEntity(dashboardService.getId(), authHeaders);

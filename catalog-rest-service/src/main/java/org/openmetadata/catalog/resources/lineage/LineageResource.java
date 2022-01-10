@@ -38,25 +38,23 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 import javax.ws.rs.core.UriInfo;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.lineage.AddLineage;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.LineageRepository;
 import org.openmetadata.catalog.resources.Collection;
-import org.openmetadata.catalog.resources.teams.UserResource;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.type.EntityLineage;
-import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-
 @Path("/v1/lineage")
 @Api(value = "Lineage resource", tags = "Lineage resource")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "lineage")
 public class LineageResource {
-  
+
   private final LineageRepository dao;
 
   @Inject

@@ -40,8 +40,7 @@ public class TeamsPageTest {
   static String URL = Property.getInstance().getURL();
   Integer waitTime = Property.getInstance().getSleepTime();
   static Faker faker = new Faker();
-  static String enterDescription =
-      "//div[@data-testid='enterDescription']/div/div[2]/div/div/div/div/div/div";
+  static String enterDescription = "//div[@data-testid='enterDescription']/div/div[2]/div/div/div/div/div/div";
   static String teamDisplayName = faker.name().lastName();
   static Actions actions;
   static WebDriverWait wait;
@@ -64,9 +63,7 @@ public class TeamsPageTest {
   @Order(1)
   public void openTeamsPage() throws InterruptedException {
     Events.click(webDriver, By.cssSelector("[data-testid='closeWhatsNew']")); // Close What's new
-    Events.click(
-        webDriver,
-        By.cssSelector("[data-testid='menu-button'][id='menu-button-Settings']")); // Setting
+    Events.click(webDriver, By.cssSelector("[data-testid='menu-button'][id='menu-button-Settings']")); // Setting
     Events.click(webDriver, By.cssSelector("[data-testid='menu-item-Teams']")); // Setting/Teams
     Thread.sleep(waitTime);
   }
@@ -92,9 +89,7 @@ public class TeamsPageTest {
     Events.click(webDriver, By.xpath("//*[text()[contains(.,'" + teamDisplayName + "')]] "));
     // Select the created listed team
     for (int i = 0; i <= 10; i++) {
-      Events.click(
-          webDriver,
-          By.cssSelector("[data-testid='add-new-user-button']")); // select add user button
+      Events.click(webDriver, By.cssSelector("[data-testid='add-new-user-button']")); // select add user button
       Events.click(webDriver, By.cssSelector("[data-testid='checkboxAddUser']"));
       Events.click(webDriver, By.cssSelector("[data-testid='AddUserSave']"));
       Thread.sleep(waitTime);
@@ -122,17 +117,14 @@ public class TeamsPageTest {
     Events.click(webDriver, By.cssSelector("[data-testid='assets']")); // Assets
     Events.click(webDriver, By.cssSelector("[data-testid='appbar-item'][id='explore']")); // Explore
     Events.click(webDriver, By.cssSelector("[data-testid='sortBy']")); // Sort By
-    Events.click(
-        webDriver, By.cssSelector("[data-testid='list-item']")); // Last Updated // Last Updated
+    Events.click(webDriver, By.cssSelector("[data-testid='list-item']")); // Last Updated // Last Updated
     Events.click(webDriver, By.xpath("(//button[@data-testid='table-link'])[last()]"));
     Events.click(webDriver, By.xpath("(//button[@data-testid='tab'])[4]")); // Manage
     Events.click(webDriver, By.cssSelector("[data-testid='owner-dropdown']")); // Owner
     Events.sendKeys(webDriver, By.cssSelector("[data-testid='searchInputText']"), teamDisplayName);
     Events.click(webDriver, By.cssSelector("[data-testid='list-item']")); // Select User/Team
     Events.click(webDriver, By.cssSelector("[data-testid='saveManageTab']")); // Save
-    Events.click(
-        webDriver,
-        By.cssSelector("[data-testid='menu-button'][id='menu-button-Settings']")); // Setting
+    Events.click(webDriver, By.cssSelector("[data-testid='menu-button'][id='menu-button-Settings']")); // Setting
     Events.click(webDriver, By.cssSelector("[data-testid='menu-item-Teams']")); // Setting/Teams
     Events.click(webDriver, By.xpath("//*[text()[contains(.,'" + teamDisplayName + "')]] "));
     // Select the created listed team

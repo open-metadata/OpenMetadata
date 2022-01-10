@@ -54,6 +54,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.operations.workflows.CreateIngestion;
@@ -71,10 +72,8 @@ import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.RestUtil.PatchResponse;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
-import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-
 @Path("operations/v1/ingestion")
 @Api(value = "Ingestion collection", tags = "Ingestion collection")
 @Produces(MediaType.APPLICATION_JSON)

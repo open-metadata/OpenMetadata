@@ -34,9 +34,8 @@ import java.util.zip.ZipFile;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-
 public final class CommonUtil {
- 
+
   private CommonUtil() {}
 
   /** Get resources from jar file or directories in the class path matching pattern */

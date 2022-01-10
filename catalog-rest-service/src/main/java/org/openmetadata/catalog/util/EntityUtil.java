@@ -27,6 +27,7 @@ import java.util.function.BiPredicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.ws.rs.WebApplicationException;
+import lombok.extern.slf4j.Slf4j;
 import org.joda.time.Period;
 import org.joda.time.format.ISOPeriodFormat;
 import org.openmetadata.catalog.Entity;
@@ -56,10 +57,8 @@ import org.openmetadata.catalog.type.TagLabel.LabelType;
 import org.openmetadata.catalog.type.Task;
 import org.openmetadata.catalog.type.UsageDetails;
 import org.openmetadata.catalog.type.UsageStats;
-import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-
 public final class EntityUtil {
 
   //

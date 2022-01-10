@@ -23,9 +23,8 @@ import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-
 public final class ParallelStreamUtil {
- 
+
   private ParallelStreamUtil() {}
 
   public static <T> T execute(Supplier<T> supplier, Executor executor) {

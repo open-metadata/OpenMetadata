@@ -24,6 +24,7 @@ import java.util.UUID;
 import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.container.ContainerResponseContext;
 import javax.ws.rs.core.Response;
+import lombok.extern.slf4j.Slf4j;
 import org.elasticsearch.action.ActionListener;
 import org.elasticsearch.action.update.UpdateRequest;
 import org.elasticsearch.action.update.UpdateResponse;
@@ -48,10 +49,8 @@ import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.util.ElasticSearchClientUtils;
 import org.openmetadata.catalog.util.JsonUtils;
-import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-
 public class ElasticSearchEventHandler implements EventHandler {
   private RestHighLevelClient client;
   private ElasticSearchIndexDefinition esIndexDefinition;
