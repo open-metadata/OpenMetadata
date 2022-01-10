@@ -1,13 +1,18 @@
 import re
 from typing import Any, Dict, Optional, Set, Type
 
-from sqlalchemy.sql import sqltypes as types
-
 from metadata.ingestion.api.source import SourceStatus
+from sqlalchemy.sql import sqltypes as types
+from sqlalchemy.types import TypeEngine
 
 
 def register_custom_str_type(tp: str, output: str) -> None:
     _column_string_mapping[tp] = output
+
+
+def create_sqlalchemy_type(name: str):
+    sqlalchemy_type = type(name, (TypeEngine,), {"__repr__": lambda self: f"{name}()", }, )
+    return sqlalchemy_type
 
 
 _column_type_mapping: Dict[Type[types.TypeEngine], str] = {
@@ -116,6 +121,8 @@ _column_string_mapping = {
     "XML": "BINARY",
     "XMLTYPE": "BINARY",
     "CURSOR": "BINARY",
+    "TIMESTAMP_LTZ": "TIMESTAMP",
+    "TIMESTAMP_TZ": "TIMESTAMP"
 }
 
 _known_unknown_column_types: Set[Type[types.TypeEngine]] = {
@@ -125,7 +132,7 @@ _known_unknown_column_types: Set[Type[types.TypeEngine]] = {
 
 
 def check_column_complex_type(
-    status: SourceStatus, dataset_name: str, column_raw_type: Any, col_name: str
+        status: SourceStatus, dataset_name: str, column_raw_type: Any, col_name: str
 ):
     arr_data_type = None
     col_obj = None
@@ -152,7 +159,7 @@ def check_column_complex_type(
         arr_data_type = re.match(r"(?:array<)(\w*)(?:.*)", column_raw_type)
         arr_data_type = arr_data_type.groups()[0].upper()
     elif column_raw_type.startswith("uniontype<") or column_raw_type.startswith(
-        "union<"
+            "union<"
     ):
         col_type = "UNION"
     else:
@@ -266,7 +273,7 @@ def _handle_complex_data_types(status, dataset_name, raw_type: str, level=0):
                 if plucked.endswith(type):
                     break
                 counter += 1
-            pluck_nested = col_type[get_last_index(col_type) + 3 :]
+            pluck_nested = col_type[get_last_index(col_type) + 3:]
             col["children"] = children
     elif col_type.startswith("array"):
         col.update(get_array_type(col_type))
