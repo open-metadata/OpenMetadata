@@ -95,7 +95,7 @@ class OMetaVersionMixin(Generic[T]):
         List
             lists of available versions for a specific entity
         """
-        path = f"{self.uuid_to_str(entity_id)}/versions"
+        path = f"{uuid_to_str(entity_id)}/versions"
 
         resp = self.client.get(f"{self.get_suffix(entity)}/{path}")
 

@@ -42,7 +42,16 @@ def get_entity_type(
 
     Also allow to be the identity if we just receive a string
     """
-    return entity if isinstance(entity, str) else entity.__name__.lower()
+    if isinstance(entity, str):
+        return entity
+
+    class_name: str = entity.__name__.lower()
+
+    if "service" in class_name:
+        # Capitalize service, e.g., pipelineService
+        return class_name.replace("service", "Service")
+
+    return class_name
 
 
 def uuid_to_str(entity_id: Union[str, basic.Uuid]) -> str:
