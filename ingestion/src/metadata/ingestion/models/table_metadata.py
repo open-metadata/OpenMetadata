@@ -36,6 +36,12 @@ class TableFQDN(BaseModel):
     fullyQualifiedName: str
 
 
+class DeleteTable(BaseModel):
+    """Entity Reference of a table to be deleted"""
+
+    table: EntityReference
+
+
 class FieldChange(BaseModel):
     name: str
     newValue: Optional[str]
