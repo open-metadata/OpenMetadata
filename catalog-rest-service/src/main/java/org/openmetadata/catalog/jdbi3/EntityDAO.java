@@ -26,6 +26,7 @@ import org.jdbi.v3.sqlobject.statement.SqlUpdate;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
+import org.openmetadata.catalog.jdbi3.EntityRepository.Include;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.util.JsonUtils;
 
@@ -48,6 +49,9 @@ public interface EntityDAO<T> {
 
   @SqlQuery("SELECT json FROM <table> WHERE id = :id AND deleted IS NOT TRUE")
   String findById(@Define("table") String table, @Bind("id") String id);
+
+  @SqlQuery("SELECT json FROM <table> WHERE id = :id AND (deleted = :deleted OR :deleted IS NULL)")
+  String findById(@Define("table") String table, @Bind("id") String id, @Bind("deleted") Boolean deleted);
 
   @SqlQuery("SELECT json FROM <table> WHERE <nameColumn> = :name AND deleted IS NOT TRUE")
   String findByName(@Define("table") String table, @Define("nameColumn") String nameColumn, @Bind("name") String name);
@@ -108,6 +112,20 @@ public interface EntityDAO<T> {
 
   default void update(UUID id, String json) {
     update(getTableName(), id.toString(), json);
+  }
+
+  default T findEntityById(UUID id, Include include) throws IOException {
+    Class<T> clz = getEntityClass();
+    String json = findById(getTableName(), id.toString(), include.sqlPredicate());
+    T entity = null;
+    if (json != null) {
+      entity = JsonUtils.readValue(json, clz);
+    }
+    if (entity == null) {
+      String entityName = Entity.getEntityNameFromClass(clz);
+      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(entityName, id));
+    }
+    return entity;
   }
 
   default T findEntityById(UUID id) throws IOException {

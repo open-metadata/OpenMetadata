@@ -203,6 +203,11 @@ public abstract class EntityRepository<T> {
   }
 
   @Transaction
+  public final T get(UriInfo uriInfo, String id, Fields fields, Include include) throws IOException, ParseException {
+    return withHref(uriInfo, setFields(dao.findEntityById(UUID.fromString(id), include), fields));
+  }
+
+  @Transaction
   public final T getByName(UriInfo uriInfo, String fqn, Fields fields) throws IOException, ParseException {
     return withHref(uriInfo, setFields(dao.findEntityByName(fqn), fields));
   }
@@ -523,6 +528,42 @@ public abstract class EntityRepository<T> {
     EntityInterface<T> originalRef = getEntityInterface(original);
     if (Boolean.TRUE.equals(originalRef.isDeleted())) {
       daoCollection.relationshipDAO().recoverSoftDeleteAll(originalRef.getId().toString());
+    }
+  }
+
+  public enum Include {
+    ALL("all", null),
+    DELETED("deleted", true),
+    NON_DELETED("non-deleted", false);
+
+    private final String value;
+    private final Boolean sqlPredicate;
+
+    Include(String value) {
+      String tmpValue = value;
+      if (value == null || value.equals("non-deleted")) {
+        tmpValue = "non-deleted";
+        this.sqlPredicate = false;
+      } else if (value.equals("all")) {
+        this.sqlPredicate = null;
+      } else {
+        // deleted
+        this.sqlPredicate = true;
+      }
+      this.value = tmpValue;
+    }
+
+    Include(String value, Boolean sqlPredicate) {
+      this.value = value;
+      this.sqlPredicate = sqlPredicate;
+    }
+
+    public String value() {
+      return value;
+    }
+
+    public Boolean sqlPredicate() {
+      return sqlPredicate;
     }
   }
 
