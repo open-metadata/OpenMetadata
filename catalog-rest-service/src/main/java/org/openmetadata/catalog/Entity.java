@@ -15,6 +15,7 @@ package org.openmetadata.catalog;
 
 import java.io.IOException;
 import java.net.URI;
+import java.text.ParseException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -24,13 +25,17 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import javax.ws.rs.core.UriInfo;
+import lombok.NonNull;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.jdbi3.EntityDAO;
 import org.openmetadata.catalog.jdbi3.EntityRepository;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.util.EntityInterface;
+import org.openmetadata.catalog.util.EntityUtil;
 
+@Slf4j
 public final class Entity {
   private static final Map<String, EntityDAO<?>> DAO_MAP = new HashMap<>();
   private static final Map<String, EntityRepository<?>> ENTITY_REPOSITORY_MAP = new HashMap<>();
@@ -86,7 +91,7 @@ public final class Entity {
     DAO_MAP.put(entity, dao);
     ENTITY_REPOSITORY_MAP.put(entity, entityRepository);
     CANONICAL_ENTITY_NAME_MAP.put(entity.toLowerCase(Locale.ROOT), entity);
-    System.out.println("Registering entity " + entity);
+    log.info("Registering entity {}", entity);
   }
 
   public static EntityReference getEntityReference(String entity, UUID id) throws IOException {
@@ -138,12 +143,45 @@ public final class Entity {
       return null;
     }
     String entityName = getEntityNameFromObject(entity);
+    EntityRepository<T> entityRepository = getEntityRepository(entityName);
+    return entityRepository.getEntityInterface(entity);
+  }
+
+  /**
+   * Retrieve the entity using id from given entity reference and fields
+   *
+   * @return entity object eg: {@link org.openmetadata.catalog.entity.data.Table}, {@link
+   *     org.openmetadata.catalog.entity.data.Topic}, etc
+   */
+  public static <T> T getEntity(EntityReference entityReference, EntityUtil.Fields fields)
+      throws IOException, ParseException {
+    if (entityReference == null) {
+      return null;
+    }
+
+    EntityRepository<?> entityRepository = Entity.getEntityRepository(entityReference.getType());
+    @SuppressWarnings("unchecked")
+    T entity = (T) entityRepository.get(null, entityReference.getId().toString(), fields);
+    if (entity == null) {
+      throw EntityNotFoundException.byMessage(
+          CatalogExceptionMessage.entityNotFound(entityReference.getType(), entityReference.getId()));
+    }
+    return entity;
+  }
+
+  /**
+   * Retrieve the corresponding entity repository for a given entity name.
+   *
+   * @param entityName type of entity, eg: {@link Entity#TABLE}, {@link Entity#TOPIC}, etc
+   * @return entity repository corresponding to the entity name
+   */
+  public static <T> EntityRepository<T> getEntityRepository(@NonNull String entityName) {
     @SuppressWarnings("unchecked")
     EntityRepository<T> entityRepository = (EntityRepository<T>) ENTITY_REPOSITORY_MAP.get(entityName);
     if (entityRepository == null) {
       throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entityName));
     }
-    return entityRepository.getEntityInterface(entity);
+    return entityRepository;
   }
 
   public static void deleteEntity(String entity, UUID entityId, boolean recursive) throws IOException {
