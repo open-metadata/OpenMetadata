@@ -18,7 +18,6 @@ import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.MetadataOperation;
 
-
 @Slf4j
 public class NoopAuthorizer implements Authorizer {
 
