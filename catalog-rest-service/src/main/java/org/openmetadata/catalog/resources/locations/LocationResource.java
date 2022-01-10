@@ -13,7 +13,6 @@
 
 package org.openmetadata.catalog.resources.locations;
 
-import com.google.inject.Inject;
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -84,7 +83,6 @@ public class LocationResource {
     return location;
   }
 
-  @Inject
   public LocationResource(CollectionDAO dao, Authorizer authorizer) {
     Objects.requireNonNull(dao, "LocationRepository must not be null");
     this.dao = new LocationRepository(dao);

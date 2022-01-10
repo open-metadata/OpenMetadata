@@ -13,7 +13,6 @@
 
 package org.openmetadata.catalog.resources.services.storage;
 
-import com.google.inject.Inject;
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -68,7 +67,6 @@ public class StorageServiceResource {
   private final StorageServiceRepository dao;
   private final Authorizer authorizer;
 
-  @Inject
   public StorageServiceResource(CollectionDAO dao, Authorizer authorizer) {
     Objects.requireNonNull(dao, "StorageServiceRepository must not be null");
     this.dao = new StorageServiceRepository(dao);

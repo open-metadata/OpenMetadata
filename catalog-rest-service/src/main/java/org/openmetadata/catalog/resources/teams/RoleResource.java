@@ -13,7 +13,6 @@
 
 package org.openmetadata.catalog.resources.teams;
 
-import com.google.inject.Inject;
 import io.dropwizard.jersey.PATCH;
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
@@ -75,7 +74,6 @@ public class RoleResource {
   private final RoleRepository dao;
   private final Authorizer authorizer;
 
-  @Inject
   public RoleResource(CollectionDAO dao, Authorizer authorizer) {
     Objects.requireNonNull(dao, "RoleRepository must not be null");
     this.dao = new RoleRepository(dao);

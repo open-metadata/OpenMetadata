@@ -13,7 +13,6 @@
 
 package org.openmetadata.catalog.resources.services.database;
 
-import com.google.inject.Inject;
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -68,7 +67,6 @@ public class DatabaseServiceResource {
   private final DatabaseServiceRepository dao;
   private final Authorizer authorizer;
 
-  @Inject
   public DatabaseServiceResource(CollectionDAO dao, Authorizer authorizer) {
     Objects.requireNonNull(dao, "DatabaseServiceRepository must not be null");
     this.dao = new DatabaseServiceRepository(dao);

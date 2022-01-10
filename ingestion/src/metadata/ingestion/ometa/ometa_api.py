@@ -42,6 +42,7 @@ from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.type import basic
 from metadata.generated.schema.type.entityHistory import EntityVersionHistory
+from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.auth_provider import AuthenticationProvider
 from metadata.ingestion.ometa.client import REST, APIError, ClientConfig
 from metadata.ingestion.ometa.mixins.mlmodel_mixin import OMetaMlModelMixin
@@ -253,6 +254,27 @@ class OpenMetadata(
             f"Missing {entity} type when generating suffixes"
         )
 
+    @staticmethod
+    def get_entity_type(
+        entity: Union[Type[T], str],
+    ) -> str:
+        """
+        Given an Entity T, return its type.
+        E.g., Table returns table, Dashboard returns dashboard...
+
+        Also allow to be the identity if we just receive a string
+        """
+        if isinstance(entity, str):
+            return entity
+
+        class_name: str = entity.__name__.lower()
+
+        if "service" in class_name:
+            # Capitalize service, e.g., pipelineService
+            return class_name.replace("service", "Service")
+
+        return class_name
+
     def get_module_path(self, entity: Type[T]) -> str:
         """
         Based on the entity, return the module path
@@ -334,6 +356,20 @@ class OpenMetadata(
         resp = self.client.put(self.get_suffix(entity), data=data.json())
         return entity_class(**resp)
 
+    @staticmethod
+    def uuid_to_str(entity_id: Union[str, basic.Uuid]) -> str:
+        """
+        Given an entity_id, that can be a str or our pydantic
+        definition of Uuid, return a proper str to build
+        the endpoint path
+        :param entity_id: Entity ID to onvert to string
+        :return: str for the ID
+        """
+        if isinstance(entity_id, basic.Uuid):
+            return str(entity_id.__root__)
+
+        return entity_id
+
     def get_by_name(
         self, entity: Type[T], fqdn: str, fields: Optional[List[str]] = None
     ) -> Optional[T]:
@@ -353,7 +389,7 @@ class OpenMetadata(
         Return entity by ID or None
         """
 
-        return self._get(entity=entity, path=uuid_to_str(entity_id), fields=fields)
+        return self._get(entity=entity, path=self.uuid_to_str(entity_id), fields=fields)
 
     def _get(
         self, entity: Type[T], path: str, fields: Optional[List[str]] = None
@@ -374,6 +410,29 @@ class OpenMetadata(
                 + f"Error {err.status_code}"
             )
             return None
+
+    def get_entity_reference(
+        self, entity: Type[T], fqdn: str
+    ) -> Optional[EntityReference]:
+        """
+        Helper method to obtain an EntityReference from
+        a FQDN and the Entity class.
+        :param entity: Entity Class
+        :param fqdn: Entity instance FQDN
+        :return: EntityReference or None
+        """
+        instance = self.get_by_name(entity, fqdn)
+        if instance:
+            return EntityReference(
+                id=instance.id,
+                type=self.get_entity_type(entity),
+                name=instance.fullyQualifiedName,
+                description=instance.description,
+                href=instance.href,
+            )
+
+        logger.error(f"Cannot find the Entity {fqdn}")
+        return None
 
     def list_entities(
         self,
@@ -400,22 +459,6 @@ class OpenMetadata(
         total = resp["paging"]["total"]
         after = resp["paging"]["after"] if "after" in resp["paging"] else None
         return EntityList(entities=entities, total=total, after=after)
-
-    def list_versions(
-        self, entity_id: Union[str, basic.Uuid], entity: Type[T]
-    ) -> EntityVersionHistory:
-        """
-        Helps us paginate over the collection
-        """
-
-        suffix = self.get_suffix(entity)
-        path = f"/{uuid_to_str(entity_id)}/versions"
-        resp = self.client.get(f"{suffix}{path}")
-
-        if self._use_raw_data:
-            return resp
-
-        return EntityVersionHistory(**resp)
 
     def list_services(self, entity: Type[T]) -> List[EntityList[T]]:
         """

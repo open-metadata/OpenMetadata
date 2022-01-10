@@ -15,6 +15,7 @@ package org.openmetadata.catalog.security;
 
 import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.MetadataOperation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -28,6 +29,12 @@ public class NoopAuthorizer implements Authorizer {
 
   @Override
   public boolean hasPermissions(AuthenticationContext ctx, EntityReference entityOwnership) {
+    return true;
+  }
+
+  @Override
+  public boolean hasPermissions(
+      AuthenticationContext ctx, EntityReference entityReference, MetadataOperation operation) {
     return true;
   }
 

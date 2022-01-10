@@ -14,7 +14,6 @@ from metadata.generated.schema.entity.data.mlmodel import (
     MlModel,
 )
 from metadata.generated.schema.type.entityLineage import EntitiesEdge
-from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.client import REST
 from metadata.ingestion.ometa.mixins.lineage_mixin import OMetaLineageMixin
 from metadata.ingestion.ometa.utils import format_name
@@ -55,7 +54,9 @@ class OMetaMlModelMixin(OMetaLineageMixin):
                 AddLineage(
                     description="MlModel uses FeatureSource",
                     edge=EntitiesEdge(
-                        fromEntity=EntityReference(id=model.id, type="mlmodel"),
+                        fromEntity=self.get_entity_reference(
+                            entity=MlModel, fqdn=model.fullyQualifiedName
+                        ),
                         toEntity=entity_ref,
                     ),
                 )
