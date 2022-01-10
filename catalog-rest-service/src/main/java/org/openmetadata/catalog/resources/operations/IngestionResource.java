@@ -13,7 +13,6 @@
 
 package org.openmetadata.catalog.resources.operations;
 
-import com.google.inject.Inject;
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -103,7 +102,6 @@ public class IngestionResource {
     return ingestion;
   }
 
-  @Inject
   public IngestionResource(CollectionDAO dao, Authorizer authorizer) {
     Objects.requireNonNull(dao, "IngestionRepository must not be null");
     this.dao = new IngestionRepository(dao);
