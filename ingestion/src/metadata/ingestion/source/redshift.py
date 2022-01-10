@@ -24,6 +24,7 @@ class RedshiftConfig(SQLConnectionConfig):
     where_clause: Optional[str] = None
     duration: int = 1
     service_type = "Redshift"
+    random = "test"
 
     def get_identifier(self, schema: str, table: str) -> str:
         regular = f"{schema}.{table}"
