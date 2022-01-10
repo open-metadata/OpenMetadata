@@ -376,6 +376,30 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
   }
 
   @Test
+  void put_MlModelAddTarget_200(TestInfo test) throws IOException {
+    CreateMlModel request = create(test);
+    MlModel model = createAndCheckEntity(request, adminAuthHeaders());
+
+    ChangeDescription change = getChangeDescription(model.getVersion());
+    change.getFieldsAdded().add(new FieldChange().withName("target").withNewValue("myTarget"));
+
+    updateAndCheckEntity(request.withTarget("myTarget"), Status.OK, adminAuthHeaders(), MAJOR_UPDATE, change);
+  }
+
+  @Test
+  void put_MlModelUpdateTarget_200(TestInfo test) throws IOException {
+    CreateMlModel request = create(test).withTarget("origTarget");
+    MlModel model = createAndCheckEntity(request, adminAuthHeaders());
+
+    ChangeDescription change = getChangeDescription(model.getVersion());
+    change
+        .getFieldsUpdated()
+        .add(new FieldChange().withName("target").withNewValue("newTarget").withOldValue("origTarget"));
+
+    updateAndCheckEntity(request.withTarget("newTarget"), Status.OK, adminAuthHeaders(), MAJOR_UPDATE, change);
+  }
+
+  @Test
   void delete_MlModel_200_ok(TestInfo test) throws HttpResponseException {
     MlModel model = createMlModel(create(test), adminAuthHeaders());
     deleteEntity(model.getId(), adminAuthHeaders());
