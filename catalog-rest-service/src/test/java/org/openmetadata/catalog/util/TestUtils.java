@@ -59,6 +59,7 @@ public final class TestUtils {
     LONG_ENTITY_NAME = "1".repeat(ENTITY_NAME_MAX_LEN + 1);
   }
 
+  public static final String ADMIN_USER_NAME = "admin";
   public static final String ENTITY_NAME_LENGTH_ERROR =
       String.format("[name size must be between 1 and %d]", ENTITY_NAME_MAX_LEN);
 
@@ -267,7 +268,7 @@ public final class TestUtils {
   }
 
   public static Map<String, String> adminAuthHeaders() {
-    return SecurityUtil.authHeaders("admin@open-metadata.org");
+    return SecurityUtil.authHeaders(ADMIN_USER_NAME + "@open-metadata.org");
   }
 
   public static Map<String, String> userAuthHeaders() {

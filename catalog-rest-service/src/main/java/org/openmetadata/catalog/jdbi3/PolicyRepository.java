@@ -20,6 +20,7 @@ import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
@@ -194,12 +195,12 @@ public class PolicyRepository extends EntityRepository<Policy> {
   }
 
   private List<Policy> getAccessControlPolicies() throws IOException {
-    EntityUtil.Fields fields = new EntityUtil.Fields(List.of("policyType", "rules"));
+    EntityUtil.Fields fields = new EntityUtil.Fields(List.of("policyType", "rules", "enabled"));
     List<String> jsons = daoCollection.policyDAO().listAfter(null, Integer.MAX_VALUE, "", Include.NON_DELETED);
     List<Policy> policies = new ArrayList<>(jsons.size());
     for (String json : jsons) {
       Policy policy = setFields(JsonUtils.readValue(json, Policy.class), fields);
-      if (policy.getPolicyType() != PolicyType.AccessControl) {
+      if (!policy.getPolicyType().equals(PolicyType.AccessControl)) {
         continue;
       }
       policies.add(policy);
@@ -207,10 +208,17 @@ public class PolicyRepository extends EntityRepository<Policy> {
     return policies;
   }
 
+  /**
+   * Helper method to get Access Control Policies Rules. This method returns only rules for policies that are enabled.
+   */
   public List<Rule> getAccessControlPolicyRules() throws IOException {
     List<Policy> policies = getAccessControlPolicies();
     List<Rule> rules = new ArrayList<>();
     for (Policy policy : policies) {
+      if (!policy.getEnabled()) {
+        // Skip if policy is not enabled.
+        continue;
+      }
       List<Object> ruleObjects = policy.getRules();
       for (Object ruleObject : ruleObjects) {
         Rule rule = JsonUtils.readValue(JsonUtils.getJsonStructure(ruleObject).toString(), Rule.class);
@@ -218,6 +226,10 @@ public class PolicyRepository extends EntityRepository<Policy> {
       }
     }
     return rules;
+  }
+
+  public static List<Object> getRuleObjects(List<Rule> rules) {
+    return rules.stream().map(rule -> (Object) rule).collect(Collectors.toList());
   }
 
   private void setLocation(Policy policy, EntityReference location) {

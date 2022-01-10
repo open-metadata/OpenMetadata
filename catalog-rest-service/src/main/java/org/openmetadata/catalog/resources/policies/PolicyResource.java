@@ -379,7 +379,8 @@ public class PolicyResource {
             .withPolicyType(create.getPolicyType())
             .withUpdatedBy(securityContext.getUserPrincipal().getName())
             .withUpdatedAt(System.currentTimeMillis())
-            .withRules(create.getRules());
+            .withRules(create.getRules())
+            .withEnabled(create.getEnabled());
     if (create.getLocation() != null) {
       policy = policy.withLocation(new EntityReference().withId(create.getLocation()));
     }

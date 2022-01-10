@@ -68,6 +68,7 @@ import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestInstance;
 import org.openmetadata.catalog.CatalogApplicationTest;
 import org.openmetadata.catalog.Entity;
+import org.openmetadata.catalog.api.policies.CreatePolicy;
 import org.openmetadata.catalog.api.services.CreateDatabaseService;
 import org.openmetadata.catalog.api.services.CreateDatabaseService.DatabaseServiceType;
 import org.openmetadata.catalog.api.services.CreateMessagingService;
@@ -75,23 +76,29 @@ import org.openmetadata.catalog.api.services.CreateMessagingService.MessagingSer
 import org.openmetadata.catalog.api.services.CreatePipelineService;
 import org.openmetadata.catalog.api.services.CreatePipelineService.PipelineServiceType;
 import org.openmetadata.catalog.api.services.CreateStorageService;
+import org.openmetadata.catalog.entity.policies.Policy;
+import org.openmetadata.catalog.entity.policies.accessControl.Rule;
 import org.openmetadata.catalog.entity.services.DatabaseService;
 import org.openmetadata.catalog.entity.services.MessagingService;
 import org.openmetadata.catalog.entity.services.PipelineService;
 import org.openmetadata.catalog.entity.services.StorageService;
+import org.openmetadata.catalog.entity.teams.Role;
 import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.jdbi3.DatabaseServiceRepository.DatabaseServiceEntityInterface;
 import org.openmetadata.catalog.jdbi3.MessagingServiceRepository.MessagingServiceEntityInterface;
 import org.openmetadata.catalog.jdbi3.PipelineServiceRepository.PipelineServiceEntityInterface;
+import org.openmetadata.catalog.jdbi3.PolicyRepository;
 import org.openmetadata.catalog.resources.events.EventResource.ChangeEventList;
 import org.openmetadata.catalog.resources.events.WebhookResourceTest;
+import org.openmetadata.catalog.resources.policies.PolicyResourceTest;
 import org.openmetadata.catalog.resources.services.DatabaseServiceResourceTest;
 import org.openmetadata.catalog.resources.services.MessagingServiceResourceTest;
 import org.openmetadata.catalog.resources.services.PipelineServiceResourceTest;
 import org.openmetadata.catalog.resources.services.StorageServiceResourceTest;
 import org.openmetadata.catalog.resources.tags.TagResourceTest;
+import org.openmetadata.catalog.resources.teams.RoleResourceTest;
 import org.openmetadata.catalog.resources.teams.TeamResourceTest;
 import org.openmetadata.catalog.resources.teams.UserResourceTest;
 import org.openmetadata.catalog.type.ChangeDescription;
@@ -100,12 +107,15 @@ import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.EventType;
 import org.openmetadata.catalog.type.FieldChange;
+import org.openmetadata.catalog.type.MetadataOperation;
+import org.openmetadata.catalog.type.PolicyType;
 import org.openmetadata.catalog.type.StorageServiceType;
 import org.openmetadata.catalog.type.Tag;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.JsonUtils;
+import org.openmetadata.catalog.util.PolicyUtils;
 import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.TestUtils;
 
@@ -122,10 +132,19 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
   private final boolean supportsTags;
   protected boolean supportsPatch = true;
 
+  public static final String DATA_STEWARD_ROLE_NAME = "DataSteward";
+  public static final String DATA_CONSUMER_ROLE_NAME = "DataConsumer";
+
   public static User USER1;
   public static EntityReference USER_OWNER1;
   public static Team TEAM1;
   public static EntityReference TEAM_OWNER1;
+  public static User USER_WITH_DATA_STEWARD_ROLE;
+  public static Role DATA_STEWARD_ROLE;
+  public static EntityReference DATA_STEWARD_ROLE_REFERENCE;
+  public static User USER_WITH_DATA_CONSUMER_ROLE;
+  public static Role DATA_CONSUMER_ROLE;
+  public static EntityReference DATA_CONSUMER_ROLE_REFERENCE;
 
   public static EntityReference SNOWFLAKE_REFERENCE;
   public static EntityReference REDSHIFT_REFERENCE;
@@ -175,12 +194,31 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     webhookResourceTest.startWebhookEntitySubscriptions(entityName);
 
     UserResourceTest userResourceTest = new UserResourceTest();
-    USER1 = UserResourceTest.createUser(userResourceTest.create(test), authHeaders("test@open-metadata.org"));
+    USER1 = UserResourceTest.createUser(userResourceTest.create(test), adminAuthHeaders());
     USER_OWNER1 = new EntityReference().withId(USER1.getId()).withType("user");
+
+    RoleResourceTest roleResourceTest = new RoleResourceTest();
+    DATA_STEWARD_ROLE =
+        RoleResourceTest.createRole(roleResourceTest.create(DATA_STEWARD_ROLE_NAME), adminAuthHeaders());
+    DATA_STEWARD_ROLE_REFERENCE = new EntityReference().withId(DATA_STEWARD_ROLE.getId()).withType("role");
+    USER_WITH_DATA_STEWARD_ROLE =
+        UserResourceTest.createUser(
+            userResourceTest.create("user-data-steward").withRoles(List.of(DATA_STEWARD_ROLE.getId())),
+            adminAuthHeaders());
+    DATA_CONSUMER_ROLE =
+        RoleResourceTest.createRole(roleResourceTest.create(DATA_CONSUMER_ROLE_NAME), adminAuthHeaders());
+    DATA_CONSUMER_ROLE_REFERENCE = new EntityReference().withId(DATA_CONSUMER_ROLE.getId()).withType("role");
+    USER_WITH_DATA_CONSUMER_ROLE =
+        UserResourceTest.createUser(
+            userResourceTest.create("user-data-consumer").withRoles(List.of(DATA_CONSUMER_ROLE.getId())),
+            adminAuthHeaders());
 
     TeamResourceTest teamResourceTest = new TeamResourceTest();
     TEAM1 = TeamResourceTest.createTeam(teamResourceTest.create(test), adminAuthHeaders());
     TEAM_OWNER1 = new EntityReference().withId(TEAM1.getId()).withType("team");
+
+    Policy policy = PolicyResourceTest.createPolicy(createAccessControlPolicies(), adminAuthHeaders());
+    assertTrue(policy.getEnabled());
 
     // Create snowflake database service
     DatabaseServiceResourceTest databaseServiceResourceTest = new DatabaseServiceResourceTest();
@@ -1447,5 +1485,19 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
 
   public final String getEntityName(TestInfo test, int index) {
     return String.format("%s_%d_%s", entityName, index, test.getDisplayName());
+  }
+
+  private CreatePolicy createAccessControlPolicies() {
+    List<Rule> rules = new ArrayList<>();
+    rules.add(
+        PolicyUtils.accessControlRule(
+            null, Entity.TABLE, DATA_STEWARD_ROLE_NAME, MetadataOperation.UpdateDescription, true, 1, true));
+
+    return new CreatePolicy()
+        .withName("test-acp")
+        .withDescription("description")
+        .withPolicyType(PolicyType.AccessControl)
+        .withRules(PolicyRepository.getRuleObjects(rules))
+        .withOwner(USER_OWNER1);
   }
 }
