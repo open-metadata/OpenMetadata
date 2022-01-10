@@ -13,7 +13,6 @@
 
 package org.openmetadata.catalog.resources.charts;
 
-import com.google.inject.Inject;
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -92,7 +91,6 @@ public class ChartResource {
     return chart;
   }
 
-  @Inject
   public ChartResource(CollectionDAO dao, Authorizer authorizer) {
     this.dao = new ChartRepository(dao);
     this.authorizer = authorizer;

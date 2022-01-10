@@ -13,7 +13,6 @@
 
 package org.openmetadata.catalog.resources.feeds;
 
-import com.google.inject.Inject;
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -67,7 +66,6 @@ public class FeedResource {
     return thread;
   }
 
-  @Inject
   public FeedResource(CollectionDAO dao, Authorizer authorizer) {
     Objects.requireNonNull(dao, "FeedRepository must not be null");
     this.dao = new FeedRepository(dao);

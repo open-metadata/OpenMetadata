@@ -13,7 +13,6 @@
 
 package org.openmetadata.catalog.resources.databases;
 
-import com.google.inject.Inject;
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -103,7 +102,6 @@ public class DatabaseResource {
     databaseEntityReference.withHref(RestUtil.getHref(uriInfo, COLLECTION_PATH, databaseEntityReference.getId()));
   }
 
-  @Inject
   public DatabaseResource(CollectionDAO dao, Authorizer authorizer) {
     this.dao = new DatabaseRepository(dao);
     this.authorizer = authorizer;

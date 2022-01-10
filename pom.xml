@@ -44,7 +44,6 @@
     <jersey-client.version>2.33</jersey-client.version>
     <jersey-media-json-jackson.version>2.33</jersey-media-json-jackson.version>
     <ambari-metrics-common.version>2.6.1.0.0</ambari-metrics-common.version>
-    <google-guice.version>5.0.1</google-guice.version>
     <javax.ws.rs-api.version>2.1.1</javax.ws.rs-api.version>
     <!-- update from here -->
     <javax.servlet-api.version>3.1.0</javax.servlet-api.version>
@@ -187,11 +186,6 @@
         <groupId>org.glassfish.jersey.media</groupId>
         <artifactId>jersey-media-multipart</artifactId>
         <version>${jersey-media-multipart.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>com.google.inject</groupId>
-        <artifactId>guice</artifactId>
-        <version>${google-guice.version}</version>
       </dependency>
       <dependency>
         <groupId>com.google.code.gson</groupId>

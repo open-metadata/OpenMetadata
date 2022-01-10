@@ -13,8 +13,6 @@
 
 package org.openmetadata.catalog;
 
-import com.google.inject.Guice;
-import com.google.inject.Injector;
 import io.dropwizard.Application;
 import io.dropwizard.assets.AssetsBundle;
 import io.dropwizard.health.conf.HealthConfiguration;
@@ -44,7 +42,6 @@ import org.openmetadata.catalog.events.EventPubSub;
 import org.openmetadata.catalog.exception.CatalogGenericExceptionMapper;
 import org.openmetadata.catalog.exception.ConstraintViolationExceptionMapper;
 import org.openmetadata.catalog.exception.JsonMappingExceptionMapper;
-import org.openmetadata.catalog.module.CatalogModule;
 import org.openmetadata.catalog.resources.CollectionRegistry;
 import org.openmetadata.catalog.resources.config.ConfigResource;
 import org.openmetadata.catalog.resources.search.SearchResource;
@@ -60,7 +57,6 @@ import org.slf4j.LoggerFactory;
 /** Main catalog application */
 public class CatalogApplication extends Application<CatalogApplicationConfig> {
   public static final Logger LOG = LoggerFactory.getLogger(CatalogApplication.class);
-  private Injector injector;
   private Authorizer authorizer;
 
   @Override
@@ -156,7 +152,6 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
       ContainerRequestFilter filter = NoopFilter.class.getConstructor().newInstance();
       environment.jersey().register(filter);
     }
-    injector = Guice.createInjector(new CatalogModule(authorizer));
   }
 
   private void registerEventFilter(CatalogApplicationConfig catalogConfig, Environment environment, Jdbi jdbi) {
@@ -168,22 +163,6 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
 
   private void registerResources(CatalogApplicationConfig config, Environment environment, Jdbi jdbi) {
     CollectionRegistry.getInstance().registerResources(jdbi, environment, config, authorizer);
-
-    environment
-        .lifecycle()
-        .manage(
-            new Managed() {
-              @Override
-              public void start() {
-                LOG.info("Application starting");
-              }
-
-              @Override
-              public void stop() {
-                long startTime = System.currentTimeMillis();
-                LOG.info("Took {} ms to close all the services", (System.currentTimeMillis() - startTime));
-              }
-            });
     environment.jersey().register(new SearchResource(config.getElasticSearchConfiguration()));
     environment.jersey().register(new JsonPatchProvider());
     ErrorPageErrorHandler eph = new ErrorPageErrorHandler();
@@ -200,14 +179,14 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
 
     @Override
     public void start() throws Exception {
-      LOG.info("starting the application");
+      LOG.info("Starting the application");
       EventPubSub.start();
     }
 
     @Override
     public void stop() throws Exception {
       EventPubSub.shutdown();
-      LOG.info("stopping the application");
+      LOG.info("Stopping the application");
     }
   }
 }
