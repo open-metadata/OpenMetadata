@@ -14,8 +14,10 @@
 import { makeAutoObservable } from 'mobx';
 import { ClientAuth, NewUser } from 'Models';
 import { CurrentTourPageType } from './enums/tour.enum';
-import { User } from './generated/entity/teams/user';
-import { UserTeam } from './interface/team.interface';
+import {
+  EntityReference as UserTeams,
+  User,
+} from './generated/entity/teams/user';
 
 class AppState {
   users: Array<User> = [];
@@ -28,7 +30,7 @@ class AppState {
     signingIn: false,
   };
   userDetails: User = {} as User;
-  userTeams: Array<UserTeam> = [];
+  userTeams: Array<UserTeams> = [];
 
   inPageSearchText = '';
   explorePageTab = 'tables';

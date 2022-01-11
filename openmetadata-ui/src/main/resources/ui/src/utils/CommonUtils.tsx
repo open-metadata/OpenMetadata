@@ -28,8 +28,10 @@ import {
   TITLE_FOR_NON_OWNER_ACTION,
 } from '../constants/constants';
 import { Ownership } from '../enums/mydata.enum';
-import { User } from '../generated/entity/teams/user';
-import { UserTeam } from '../interface/team.interface';
+import {
+  EntityReference as UserTeams,
+  User,
+} from '../generated/entity/teams/user';
 
 export const arraySorterByKey = (
   key: string,
@@ -109,8 +111,8 @@ export const pluralize = (count: number, noun: string, suffix = 's') => {
   }
 };
 
-export const getUserTeams = (): Array<UserTeam> => {
-  let retVal: Array<UserTeam>;
+export const getUserTeams = (): Array<UserTeams> => {
+  let retVal: Array<UserTeams>;
   if (AppState.userDetails.teams) {
     retVal = AppState.userDetails.teams.map((item) => {
       const team = AppState.userTeams.find((obj) => obj.id === item.id);
@@ -277,4 +279,12 @@ export const getOwnerIds = (
 
 export const getActiveCatClass = (name: string, activeName = '') => {
   return activeName === name ? 'activeCategory' : '';
+};
+
+export const errorMsg = (value: string) => {
+  return (
+    <div className="tw-mt-1">
+      <strong className="tw-text-red-500 tw-text-xs tw-italic">{value}</strong>
+    </div>
+  );
 };

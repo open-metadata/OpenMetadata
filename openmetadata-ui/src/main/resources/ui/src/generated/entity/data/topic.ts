@@ -26,6 +26,10 @@ export interface Topic {
    */
   cleanupPolicies?: CleanupPolicy[];
   /**
+   * When `true` indicates the entity has been soft deleted.
+   */
+  deleted?: boolean;
+  /**
    * Description of the topic instance.
    */
   description?: string;

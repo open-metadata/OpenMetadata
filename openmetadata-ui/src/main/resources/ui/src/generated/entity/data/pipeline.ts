@@ -27,6 +27,10 @@ export interface Pipeline {
    */
   concurrency?: number;
   /**
+   * When `true` indicates the entity has been soft deleted.
+   */
+  deleted?: boolean;
+  /**
    * Description of this Pipeline.
    */
   description?: string;

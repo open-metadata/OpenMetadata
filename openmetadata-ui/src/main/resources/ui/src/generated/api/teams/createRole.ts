@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /*
  *  Copyright 2021 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -11,8 +12,17 @@
  *  limitations under the License.
  */
 
-import { EntityReference as UserTeams } from '../generated/entity/teams/user';
-
-export interface UserTeam extends UserTeams {
+/**
+ * Role entity
+ */
+export interface CreateRole {
+  /**
+   * Optional description of the role
+   */
+  description?: string;
+  /**
+   * Optional name used for display purposes. Example 'Data Consumer'
+   */
   displayName?: string;
+  name: string;
 }

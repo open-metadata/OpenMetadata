@@ -23,10 +23,9 @@ export interface User {
    */
   changeDescription?: ChangeDescription;
   /**
-   * When true indicates the user has been deactivated. Users are deactivated instead of
-   * deleted.
+   * When `true` indicates the entity has been soft deleted.
    */
-  deactivated?: boolean;
+  deleted?: boolean;
   /**
    * Used for user biography.
    */
@@ -68,6 +67,10 @@ export interface User {
    * Profile of the user.
    */
   profile?: Profile;
+  /**
+   * Roles that the user has been assigned.
+   */
+  roles?: EntityReference[];
   /**
    * Teams that the user belongs to.
    */
