@@ -205,6 +205,7 @@ class ElasticSearchIndex {
 
   String fqdn;
   String service;
+  Boolean deleted = false;
 
   @JsonProperty("service_type")
   String serviceType;
@@ -353,6 +354,7 @@ class TableESIndex extends ElasticSearchIndex {
     TableESIndexBuilder tableESIndexBuilder =
         internalBuilder()
             .tableId(tableId)
+            .deleted(table.getDeleted())
             .name(tableName)
             .displayName(tableName)
             .description(description)
@@ -476,6 +478,7 @@ class TopicESIndex extends ElasticSearchIndex {
     TopicESIndexBuilder topicESIndexBuilder =
         internalBuilder()
             .topicId(topic.getId().toString())
+            .deleted(topic.getDeleted())
             .name(topic.getName())
             .displayName(displayName)
             .description(description)
@@ -574,6 +577,7 @@ class DashboardESIndex extends ElasticSearchIndex {
     DashboardESIndexBuilder dashboardESIndexBuilder =
         internalBuilder()
             .dashboardId(dashboard.getId().toString())
+            .deleted(dashboard.getDeleted())
             .name(dashboard.getDisplayName())
             .displayName(displayName)
             .description(description)
@@ -662,6 +666,7 @@ class PipelineESIndex extends ElasticSearchIndex {
     PipelineESIndexBuilder pipelineESIndexBuilder =
         internalBuilder()
             .pipelineId(pipeline.getId().toString())
+            .deleted(pipeline.getDeleted())
             .name(pipeline.getDisplayName())
             .displayName(description)
             .description(displayName)

@@ -254,6 +254,7 @@ class ElasticsearchSink(Sink[Entity]):
         change_descriptions = self._get_change_descriptions(Table, table.id.__root__)
         table_doc = TableESDocument(
             table_id=str(table.id.__root__),
+            deleted=table.deleted,
             database=str(database_entity.name.__root__),
             service=service_entity.name,
             service_type=service_entity.serviceType.name,
@@ -306,6 +307,7 @@ class ElasticsearchSink(Sink[Entity]):
         change_descriptions = self._get_change_descriptions(Topic, topic.id.__root__)
         topic_doc = TopicESDocument(
             topic_id=str(topic.id.__root__),
+            deleted=topic.deleted,
             service=service_entity.name,
             service_type=service_entity.serviceType.name,
             service_category="messagingService",
@@ -359,6 +361,7 @@ class ElasticsearchSink(Sink[Entity]):
         )
         dashboard_doc = DashboardESDocument(
             dashboard_id=str(dashboard.id.__root__),
+            deleted=dashboard.deleted,
             service=service_entity.name,
             service_type=service_entity.serviceType.name,
             service_category="dashboardService",
@@ -420,6 +423,7 @@ class ElasticsearchSink(Sink[Entity]):
         )
         pipeline_doc = PipelineESDocument(
             pipeline_id=str(pipeline.id.__root__),
+            deleted=pipeline.deleted,
             service=service_entity.name,
             service_type=service_entity.serviceType.name,
             service_category="pipelineService",

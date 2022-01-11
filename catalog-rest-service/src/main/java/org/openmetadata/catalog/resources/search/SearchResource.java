@@ -101,6 +101,10 @@ public class SearchResource {
           @DefaultValue("table_search_index")
           @QueryParam("index")
           String index,
+      @Parameter(description = "Filter documents by deleted param. By default deleted is false")
+          @DefaultValue("false")
+          @QueryParam("deleted")
+          boolean deleted,
       @Parameter(description = "From field to paginate the results, defaults to 0")
           @DefaultValue("0")
           @QueryParam("from")
@@ -128,7 +132,8 @@ public class SearchResource {
     if (sortOrderParam.equals("asc")) {
       sortOrder = SortOrder.ASC;
     }
-
+    // add deleted flag
+    query += " AND deleted=" + deleted;
     switch (index) {
       case "topic_search_index":
         searchSourceBuilder = buildTopicSearchBuilder(query, from, size);

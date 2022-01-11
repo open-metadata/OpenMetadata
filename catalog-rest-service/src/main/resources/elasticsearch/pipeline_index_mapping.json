@@ -12,6 +12,9 @@
       "followers": {
         "type": "keyword"
       },
+      "deleted": {
+        "type": "boolean"
+      },
       "last_updated_timestamp": {
         "type": "date",
         "format": "epoch_second"
