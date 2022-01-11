@@ -23,6 +23,7 @@ import React, {
 } from 'react';
 import ReactFlow, {
   addEdge,
+  ArrowHeadType,
   Background,
   BackgroundVariant,
   Connection,
@@ -150,8 +151,11 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
   };
   const onElementsRemove = (elementsToRemove: Elements) =>
     setElements((els) => removeElements(elementsToRemove, els));
-  const onConnect = (params: Edge | Connection) =>
-    setElements((els) => addEdge(params, els));
+  const onConnect = (params: Edge | Connection) => {
+    setElements((els) =>
+      addEdge({ ...params, arrowHeadType: ArrowHeadType.ArrowClosed }, els)
+    );
+  };
 
   const onElementClick = (el: FlowElement) => {
     const node = [

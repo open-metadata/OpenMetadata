@@ -66,7 +66,9 @@ const EntityNode: FC<EntityNodeProps> = ({ type, label, draggable }) => {
           <i className="fas fa-grip-vertical" style={{ color: '#B3B3B3' }} />
         </span>
       </div>
-      <p className="tw-text-primary tw-text-center">{upperCase(`${label}s`)}</p>
+      <p className="tw-text-primary tw-text-center tw-text-xs">
+        {upperCase(`${label}s`)}
+      </p>
     </div>
   );
 };
