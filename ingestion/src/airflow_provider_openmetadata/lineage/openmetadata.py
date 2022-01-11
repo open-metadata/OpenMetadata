@@ -30,14 +30,9 @@ if TYPE_CHECKING:
     from airflow import DAG
     from airflow.models.baseoperator import BaseOperator
 
-from metadata.config.common import ConfigModel
 
-
-class OpenMetadataLineageConfig(ConfigModel):
+class OpenMetadataLineageConfig(MetadataServerConfig):
     airflow_service_name: str = "airflow"
-    api_endpoint: str = "http://localhost:8585"
-    auth_provider_type: str = "no-auth"
-    secret_key: str = None
 
 
 def get_lineage_config() -> OpenMetadataLineageConfig:
@@ -51,12 +46,35 @@ def get_lineage_config() -> OpenMetadataLineageConfig:
             "lineage", "auth_provider_type", fallback="no-auth"
         )
         secret_key = conf.get("lineage", "secret_key", fallback=None)
+        api_version = conf.get("lineage", "api_version", fallback="v1")
+        retry = conf.get("lineage", "retry", fallback=3)
+        retry_wait = conf.get("lineage", "retry_wait", fallback=3)
+        org_url = conf.get("lineage", "org_url", fallback=None)
+        client_id = conf.get("lineage", "client_id", fallback=None)
+        private_key = conf.get("lineage", "private_key", fallback=None)
+        domain = conf.get("lineage", "domain", fallback=None)
+        email = conf.get("lineage", "email", fallback=None)
+        audience = conf.get(
+            "lineage", "audience", fallback="https://www.googleapis.com/oauth2/v4/token"
+        )
+        auth_header = conf.get("lineage", "auth_header", fallback="X-Catalog-Source")
+
         return OpenMetadataLineageConfig.parse_obj(
             {
                 "airflow_service_name": airflow_service_name,
                 "api_endpoint": api_endpoint,
+                "api_version": api_version,
+                "retry": retry,
+                "retry_wait": retry_wait,
+                "org_url": org_url,
                 "auth_provider_type": auth_provider_type,
                 "secret_key": secret_key,
+                "client_id": client_id,
+                "private_key": private_key,
+                "domain": domain,
+                "email": email,
+                "audience": audience,
+                "auth_header": auth_header,
             }
         )
     else:
@@ -280,13 +298,7 @@ class OpenMetadataLineageBackend(LineageBackend):
 
         try:
             config = get_lineage_config()
-            metadata_config = MetadataServerConfig.parse_obj(
-                {
-                    "api_endpoint": config.api_endpoint,
-                    "auth_provider_type": config.auth_provider_type,
-                    "secret_key": config.secret_key,
-                }
-            )
+            metadata_config = MetadataServerConfig.parse_obj(config)
             client = OpenMetadata(metadata_config)
             op_inlets = []
             op_outlets = []
