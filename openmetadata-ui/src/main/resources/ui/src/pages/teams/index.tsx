@@ -40,10 +40,12 @@ import {
   TITLE_FOR_NON_ADMIN_ACTION,
 } from '../../constants/constants';
 import { Team } from '../../generated/entity/teams/team';
-import { User } from '../../generated/entity/teams/user';
+import {
+  EntityReference as UserTeams,
+  User,
+} from '../../generated/entity/teams/user';
 import { useAuth } from '../../hooks/authHooks';
 import useToastContext from '../../hooks/useToastContext';
-import { UserTeam } from '../../interface/team.interface';
 import { getActiveCatClass, getCountBadge } from '../../utils/CommonUtils';
 import AddUsersModal from './AddUsersModal';
 import Form from './Form';
@@ -150,10 +152,10 @@ const TeamsPage = () => {
     }
   };
 
-  const createUsers = (data: Array<UserTeam>) => {
+  const createUsers = (data: Array<UserTeams>) => {
     const updatedTeam = {
       ...currentTeam,
-      users: [...(currentTeam?.users as Array<UserTeam>), ...data],
+      users: [...(currentTeam?.users as Array<UserTeams>), ...data],
     };
     const jsonPatch = compare(currentTeam as Team, updatedTeam);
     patchTeamDetail(currentTeam?.id, jsonPatch).then((res: AxiosResponse) => {
@@ -165,7 +167,7 @@ const TeamsPage = () => {
   };
 
   const deleteUser = (id: string) => {
-    const users = [...(currentTeam?.users as Array<UserTeam>)];
+    const users = [...(currentTeam?.users as Array<UserTeams>)];
     const newUsers = users.filter((user) => {
       return user.id !== id;
     });

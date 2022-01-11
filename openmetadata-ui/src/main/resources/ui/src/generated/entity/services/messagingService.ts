@@ -25,6 +25,10 @@ export interface MessagingService {
    */
   changeDescription?: ChangeDescription;
   /**
+   * When `true` indicates the entity has been soft deleted.
+   */
+  deleted?: boolean;
+  /**
    * Description of a messaging service instance.
    */
   description?: string;

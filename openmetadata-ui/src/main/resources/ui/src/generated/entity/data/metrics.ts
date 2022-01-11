@@ -24,6 +24,10 @@ export interface Metrics {
    */
   changeDescription?: ChangeDescription;
   /**
+   * When `true` indicates the entity has been soft deleted.
+   */
+  deleted?: boolean;
+  /**
    * Description of metrics instance, what it is, and how to use it.
    */
   description?: string;
