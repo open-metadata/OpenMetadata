@@ -47,7 +47,7 @@ const EntityNode: FC<EntityNodeProps> = ({ type, label }) => {
         draggable
         className="tw-border tw-p-2 tw-border-main tw-flex tw-justify-between tw-w-16 tw-rounded"
         style={{ cursor: 'grab' }}
-        onDragStart={(event) => onDragStart(event, 'default')}>
+        onDragStart={(event) => onDragStart(event, `${label}-default`)}>
         <span
           onDragStart={(e) => {
             e.preventDefault();

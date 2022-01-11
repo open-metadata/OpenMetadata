@@ -220,11 +220,12 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
       x: event.clientX - (reactFlowBounds?.left ?? 0),
       y: event.clientY - (reactFlowBounds?.top ?? 0),
     });
+    const [lable, nodeType] = type.split('-');
     const newNode = {
       id: uniqueId(),
-      type,
+      nodeType,
       position,
-      data: { label: `${type} node` },
+      data: { label: `${lable} node` },
     };
 
     setElements((es) => es.concat(newNode as FlowElement));
@@ -261,6 +262,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
           <ReactFlowProvider>
             <ReactFlow
               elements={elements as Elements}
+              elementsSelectable={!isEditMode}
               maxZoom={2}
               minZoom={0.5}
               nodeTypes={{
@@ -269,6 +271,10 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
                 default: CustomNode,
               }}
               nodesConnectable={isEditMode}
+              selectNodesOnDrag={false}
+              zoomOnDoubleClick={false}
+              zoomOnPinch={false}
+              zoomOnScroll={false}
               onConnect={onConnect}
               onDragOver={onDragOver}
               onDrop={onDrop}
@@ -296,7 +302,11 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
                       'tw-bg-primary-hover-lite': !isEditMode,
                     }
                   )}
-                  onClick={() => setEditMode((pre) => !pre)}>
+                  onClick={() => {
+                    setEditMode((pre) => !pre);
+                    setSelectedNode({} as SelectedNode);
+                    setIsDrawerOpen(false);
+                  }}>
                   <SVGIcons
                     alt="icon-edit-lineag"
                     className="tw--mt-0.5"
