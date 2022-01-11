@@ -65,6 +65,7 @@ export interface Schedule {
  */
 export enum DashboardServiceType {
   Looker = 'Looker',
+  Metabase = 'Metabase',
   Redash = 'Redash',
   Superset = 'Superset',
   Tableau = 'Tableau',

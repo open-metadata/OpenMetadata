@@ -22,7 +22,7 @@ export interface Team {
    */
   changeDescription?: ChangeDescription;
   /**
-   * When true the team has been deleted.
+   * When `true` indicates the entity has been soft deleted.
    */
   deleted?: boolean;
   /**

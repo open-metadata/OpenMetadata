@@ -22,6 +22,10 @@ export interface Database {
    */
   changeDescription?: ChangeDescription;
   /**
+   * When `true` indicates the entity has been soft deleted.
+   */
+  deleted?: boolean;
+  /**
    * Description of the database instance.
    */
   description?: string;

@@ -21,6 +21,10 @@ export interface StorageService {
    */
   changeDescription?: ChangeDescription;
   /**
+   * When `true` indicates the entity has been soft deleted.
+   */
+  deleted?: boolean;
+  /**
    * Description of a storage service instance.
    */
   description?: string;

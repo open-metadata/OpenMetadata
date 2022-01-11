@@ -22,6 +22,10 @@ export interface Location {
    */
   changeDescription?: ChangeDescription;
   /**
+   * When `true` indicates the entity has been soft deleted.
+   */
+  deleted?: boolean;
+  /**
    * Description of a location.
    */
   description?: string;

@@ -28,7 +28,7 @@ export interface MoveAction {
   /**
    * Location where this entity needs to be moved to.
    */
-  destination: Destination;
+  destination?: Destination;
 }
 
 /**
@@ -60,6 +60,10 @@ export interface Location {
    * Change that lead to this version of the entity.
    */
   changeDescription?: ChangeDescription;
+  /**
+   * When `true` indicates the entity has been soft deleted.
+   */
+  deleted?: boolean;
   /**
    * Description of a location.
    */
@@ -337,6 +341,10 @@ export interface StorageService {
    * Change that lead to this version of the entity.
    */
   changeDescription?: ChangeDescription;
+  /**
+   * When `true` indicates the entity has been soft deleted.
+   */
+  deleted?: boolean;
   /**
    * Description of a storage service instance.
    */
