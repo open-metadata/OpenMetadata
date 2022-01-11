@@ -58,7 +58,7 @@ import { MessagingService } from '../../generated/entity/services/messagingServi
 import { PipelineService } from '../../generated/entity/services/pipelineService';
 import { useAuth } from '../../hooks/authHooks';
 import useToastContext from '../../hooks/useToastContext';
-import { getCountBadge, getTabClasses } from '../../utils/CommonUtils';
+import { getActiveCatClass, getCountBadge } from '../../utils/CommonUtils';
 import { getFrequencyTime, serviceTypeLogo } from '../../utils/ServiceUtils';
 import SVGIcons from '../../utils/SvgUtils';
 
@@ -327,6 +327,41 @@ const ServicesPage = () => {
     setServiceList(services[tabName] as unknown as Array<ServiceDataObj>);
   };
 
+  const fetchLeftPanel = () => {
+    return (
+      <>
+        <div className="tw-flex tw-justify-between tw-items-center tw-mb-3 tw-border-b">
+          <h6 className="tw-heading tw-text-base">Services</h6>
+        </div>
+
+        {getServiceTabs()?.map((tab, index) => {
+          return (
+            <div
+              className={`tw-group tw-text-grey-body tw-cursor-pointer tw-text-body tw-mb-3 tw-flex tw-justify-between ${getActiveCatClass(
+                tab.name,
+                serviceName
+              )}`}
+              data-testid="tab"
+              key={index}
+              onClick={() => {
+                handleTabChange(tab.name);
+              }}>
+              <p className="tw-text-center tw-self-center label-category">
+                {tab.displayName}
+              </p>
+
+              {getCountBadge(
+                servicesCount[tab.name],
+                '',
+                tab.name === serviceName
+              )}
+            </div>
+          );
+        })}
+      </>
+    );
+  };
+
   const getOptionalFields = (service: ServiceDataObj): JSX.Element => {
     switch (serviceName) {
       case ServiceCategory.DATABASE_SERVICES: {
@@ -452,174 +487,135 @@ const ServicesPage = () => {
   return (
     <>
       {!isLoading ? (
-        <PageContainerV1 className="tw-pt-1">
-          <PageLayout>
+        <PageContainerV1 className="tw-pt-4">
+          <PageLayout leftPanel={fetchLeftPanel()}>
             <div data-testid="services-container">
-              <div className="tw-bg-transparent tw-mb-4">
-                <nav className="tw-flex tw-flex-row tw-gh-tabs-container">
-                  {getServiceTabs().map((tab, index) => (
-                    <button
-                      className={getTabClasses(tab.name, serviceName)}
-                      data-testid="tab"
-                      key={index}
-                      onClick={() => handleTabChange(tab.name)}>
-                      {tab.displayName}
-                      {getCountBadge(
-                        servicesCount[tab.name],
-                        '',
-                        tab.name === serviceName
-                      )}
-                    </button>
-                  ))}
-                  <div className="tw-self-end tw-ml-auto">
-                    {serviceList.length > 0 ? (
-                      <NonAdminAction
-                        position="bottom"
-                        title={TITLE_FOR_NON_ADMIN_ACTION}>
-                        <Button
-                          className={classNames('tw-h-8 tw-rounded tw-mb-2', {
-                            'tw-opacity-40': !isAdminUser && !isAuthDisabled,
-                          })}
-                          data-testid="add-new-user-button"
-                          size="small"
-                          theme="primary"
-                          variant="contained"
-                          onClick={() => handleAddService()}>
-                          Add New Service
-                        </Button>
-                      </NonAdminAction>
-                    ) : null}
-                  </div>
-                </nav>
-              </div>
-              {/* <div className="tw-flex">
-              <div className="tw-w-8/12 tw-flex tw-justify-end">
-                {serviceList.length > 0 ? (
-                  <NonAdminAction
-                    position="bottom"
-                    title={TITLE_FOR_NON_ADMIN_ACTION}>
-                    <Button
-                      className={classNames('tw-h-8 tw-rounded tw-mb-2', {
-                        'tw-opacity-40': !isAdminUser && !isAuthDisabled,
-                      })}
-                      data-testid="add-new-user-button"
-                      size="small"
-                      theme="primary"
-                      variant="contained"
-                      onClick={() => handleAddService()}>
-                      Add New Service
-                    </Button>
-                  </NonAdminAction>
-                ) : null}
-              </div>
-            </div> */}
               {serviceList.length ? (
-                <div
-                  className="tw-grid tw-grid-cols-4 tw-gap-4 tw-mb-4"
-                  data-testid="data-container">
-                  {serviceList.map((service, index) => (
+                <>
+                  <div
+                    className="tw-flex tw-justify-between"
+                    data-testid="header">
                     <div
-                      className="tw-card tw-flex tw-py-2 tw-px-3 tw-justify-between tw-text-grey-muted"
-                      key={index}>
-                      <div className="tw-flex-auto">
-                        <Link
-                          to={getServiceDetailsPath(
-                            service.name,
-                            service.serviceType || '',
-                            serviceName
-                          )}>
-                          <button>
-                            <h6
-                              className="tw-text-base tw-text-grey-body tw-font-medium"
-                              data-testid={`service-name-${service.name}`}>
-                              {service.name}
-                            </h6>
-                          </button>
-                        </Link>
-                        <div
-                          className="tw-text-grey-body tw-pb-1 tw-break-all description-text"
-                          data-testid="service-description">
-                          {service.description ? (
-                            <RichTextEditorPreviewer
-                              markdown={service.description}
-                            />
-                          ) : (
-                            <span className="tw-no-description">
-                              No description added
-                            </span>
-                          )}
-                        </div>
-                        {getOptionalFields(service)}
-                        <div
-                          className="tw-mb-1"
-                          data-testid="service-ingestion">
-                          <label className="tw-mb-0">Ingestion:</label>
-                          <span className=" tw-ml-1 tw-font-normal tw-text-grey-body">
-                            {service.ingestionSchedule?.repeatFrequency
-                              ? getFrequencyTime(
-                                  service.ingestionSchedule.repeatFrequency
-                                )
-                              : '--'}
-                          </span>
-                        </div>
-                        <div className="" data-testid="service-type">
-                          <label className="tw-mb-0">Type:</label>
-                          <span className=" tw-ml-1 tw-font-normal tw-text-grey-body">
-                            {service.serviceType}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="tw-flex tw-flex-col tw-justify-between tw-flex-none">
-                        <div className="tw-flex tw-justify-end">
-                          <NonAdminAction
-                            position="top"
-                            title={TITLE_FOR_NON_ADMIN_ACTION}>
-                            <button
-                              className="tw-pr-3 focus:tw-outline-none"
-                              data-testid={`edit-service-${service.name}`}
-                              onClick={() => handleEdit(service)}>
-                              <SVGIcons
-                                alt="edit"
-                                icon="icon-edit"
-                                title="Edit"
-                                width="12px"
-                              />
-                            </button>
-                          </NonAdminAction>
-                          <NonAdminAction
-                            position="top"
-                            title={TITLE_FOR_NON_ADMIN_ACTION}>
-                            <button
-                              className="focus:tw-outline-none"
-                              data-testid={`delete-service-${service.name}`}
-                              onClick={() =>
-                                ConfirmDelete(service.id || '', service.name)
-                              }>
-                              <SVGIcons
-                                alt="delete"
-                                icon="icon-delete"
-                                title="Delete"
-                                width="12px"
-                              />
-                            </button>
-                          </NonAdminAction>
-                        </div>
-                        <div
-                          className="tw-flex tw-justify-end"
-                          data-testid="service-icon">
-                          {/* {!isNull(serviceTypeLogo(service.serviceType)) && (
-                          <img
-                            alt=""
-                            className="tw-h-10 tw-w-10"
-                            src={serviceTypeLogo(service.serviceType)}
-                          />
-                        )} */}
-                          {getServiceLogo(service.serviceType || '')}
-                        </div>
-                      </div>
+                      className="tw-heading tw-text-link tw-text-base"
+                      data-testid="service-name">
+                      {servicesDisplayName[serviceName]}
                     </div>
-                  ))}
-                </div>
+                    <NonAdminAction
+                      position="bottom"
+                      title={TITLE_FOR_NON_ADMIN_ACTION}>
+                      <Button
+                        className={classNames('tw-h-8 tw-rounded tw-mb-2', {
+                          'tw-opacity-40': !isAdminUser && !isAuthDisabled,
+                        })}
+                        data-testid="add-new-user-button"
+                        size="small"
+                        theme="primary"
+                        variant="contained"
+                        onClick={() => handleAddService()}>
+                        Add New Service
+                      </Button>
+                    </NonAdminAction>
+                  </div>
+                  <div
+                    className="tw-grid tw-grid-cols-4 tw-gap-4 tw-mb-4"
+                    data-testid="data-container">
+                    {serviceList.map((service, index) => (
+                      <div
+                        className="tw-card tw-flex tw-py-2 tw-px-3 tw-justify-between tw-text-grey-muted"
+                        key={index}>
+                        <div className="tw-flex-auto">
+                          <Link
+                            to={getServiceDetailsPath(
+                              service.name,
+                              service.serviceType || '',
+                              serviceName
+                            )}>
+                            <button>
+                              <h6
+                                className="tw-text-base tw-text-grey-body tw-font-medium"
+                                data-testid={`service-name-${service.name}`}>
+                                {service.name}
+                              </h6>
+                            </button>
+                          </Link>
+                          <div
+                            className="tw-text-grey-body tw-pb-1 tw-break-all description-text"
+                            data-testid="service-description">
+                            {service.description ? (
+                              <RichTextEditorPreviewer
+                                markdown={service.description}
+                              />
+                            ) : (
+                              <span className="tw-no-description">
+                                No description added
+                              </span>
+                            )}
+                          </div>
+                          {getOptionalFields(service)}
+                          <div
+                            className="tw-mb-1"
+                            data-testid="service-ingestion">
+                            <label className="tw-mb-0">Ingestion:</label>
+                            <span className=" tw-ml-1 tw-font-normal tw-text-grey-body">
+                              {service.ingestionSchedule?.repeatFrequency
+                                ? getFrequencyTime(
+                                    service.ingestionSchedule.repeatFrequency
+                                  )
+                                : '--'}
+                            </span>
+                          </div>
+                          <div className="" data-testid="service-type">
+                            <label className="tw-mb-0">Type:</label>
+                            <span className=" tw-ml-1 tw-font-normal tw-text-grey-body">
+                              {service.serviceType}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="tw-flex tw-flex-col tw-justify-between tw-flex-none">
+                          <div className="tw-flex tw-justify-end">
+                            <NonAdminAction
+                              position="top"
+                              title={TITLE_FOR_NON_ADMIN_ACTION}>
+                              <button
+                                className="tw-pr-3 focus:tw-outline-none"
+                                data-testid={`edit-service-${service.name}`}
+                                onClick={() => handleEdit(service)}>
+                                <SVGIcons
+                                  alt="edit"
+                                  icon="icon-edit"
+                                  title="Edit"
+                                  width="12px"
+                                />
+                              </button>
+                            </NonAdminAction>
+                            <NonAdminAction
+                              position="top"
+                              title={TITLE_FOR_NON_ADMIN_ACTION}>
+                              <button
+                                className="focus:tw-outline-none"
+                                data-testid={`delete-service-${service.name}`}
+                                onClick={() =>
+                                  ConfirmDelete(service.id || '', service.name)
+                                }>
+                                <SVGIcons
+                                  alt="delete"
+                                  icon="icon-delete"
+                                  title="Delete"
+                                  width="12px"
+                                />
+                              </button>
+                            </NonAdminAction>
+                          </div>
+                          <div
+                            className="tw-flex tw-justify-end"
+                            data-testid="service-icon">
+                            {getServiceLogo(service.serviceType || '')}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
               ) : (
                 <div className="tw-flex tw-items-center tw-flex-col">
                   <div className="tw-mt-24">

@@ -38,11 +38,14 @@ from metadata.generated.schema.entity.services.databaseService import (
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.common import (
     ConfigModel,
+    Entity,
     IncludeFilterPattern,
     WorkflowContext,
 )
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
+from metadata.ingestion.models.table_metadata import DeleteTable
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.utils.column_helpers import check_column_complex_type, get_column_type
 from metadata.utils.helpers import get_database_service_or_create
@@ -134,6 +137,7 @@ class SQLConnectionConfig(ConfigModel):
     schema_filter_pattern: IncludeFilterPattern = IncludeFilterPattern.allow_all()
     dbt_manifest_file: Optional[str] = None
     dbt_catalog_file: Optional[str] = None
+    mark_deleted_tables_as_deleted: Optional[bool] = True
 
     @abstractmethod
     def get_connection_url(self):
@@ -182,6 +186,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         self.config = config
         self.metadata_config = metadata_config
         self.service = get_database_service_or_create(config, metadata_config)
+        self.metadata = OpenMetadata(metadata_config)
         self.status = SQLSourceStatus()
         self.sql_config = self.config
         self.connection_string = self.sql_config.get_connection_url()
@@ -193,6 +198,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         self.connection = self.engine.connect()
         self.data_profiler = None
         self.data_models = {}
+        self.database_source_state = set()
         if self.config.dbt_catalog_file is not None:
             with open(self.config.dbt_catalog_file, "r", encoding="utf-8") as catalog:
                 self.dbt_catalog = json.load(catalog)
@@ -262,18 +268,22 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
             logger.error(f"Failed to generate sample data for {table} - {err}")
         return None
 
-    def next_record(self) -> Iterable[OMetaDatabaseAndTable]:
+    def next_record(self) -> Iterable[Entity]:
         inspector = inspect(self.engine)
         schema_names = inspector.get_schema_names()
         for schema in schema_names:
+            # clear any previous source database state
+            self.database_source_state.clear()
             if not self.sql_config.schema_filter_pattern.included(schema):
                 self.status.filter(schema, "Schema pattern not allowed")
                 continue
-            logger.debug(f"Total tables {inspector.get_table_names(schema)}")
             if self.config.include_tables:
                 yield from self.fetch_tables(inspector, schema)
             if self.config.include_views:
                 yield from self.fetch_views(inspector, schema)
+            if self.config.mark_deleted_tables_as_deleted:
+                schema_fqdn = f"{self.config.service_name}.{schema}"
+                yield from self.delete_tables(schema_fqdn)
 
     def fetch_tables(
         self, inspector: Inspector, schema: str
@@ -295,7 +305,8 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                     )
                     continue
                 description = _get_table_description(schema, table_name, inspector)
-                fqn = f"{self.config.service_name}.{self.config.database}.{schema}.{table_name}"
+                fqn = f"{self.config.service_name}.{schema}.{table_name}"
+                self.database_source_state.add(fqn)
                 table_columns = self._get_columns(schema, table_name, inspector)
                 table_entity = Table(
                     id=uuid.uuid4(),
@@ -370,7 +381,8 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                     )
                 except NotImplementedError:
                     view_definition = ""
-
+                fqn = f"{self.config.service_name}.{schema}.{view_name}"
+                self.database_source_state.add(fqn)
                 table = Table(
                     id=uuid.uuid4(),
                     name=view_name.replace(".", "_DOT_"),
@@ -395,6 +407,12 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                 logger.error(err)
                 self.status.warnings.append(f"{self.config.service_name}.{view_name}")
                 continue
+
+    def delete_tables(self, schema_fqdn: str) -> DeleteTable:
+        database_state = self._build_database_state(schema_fqdn)
+        for table in database_state:
+            if table.fullyQualifiedName not in self.database_source_state:
+                yield DeleteTable(table=table)
 
     def _parse_data_model(self):
         """
@@ -668,6 +686,19 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
 
     def parse_raw_data_type(self, raw_data_type):
         return raw_data_type
+    
+    def _build_database_state(self, schema_fqdn: str) -> [EntityReference]:
+        after = None
+        tables = []
+        while True:
+            table_entities = self.metadata.list_entities(
+                entity=Table, after=after, limit=10, params={"database": schema_fqdn}
+            )
+            tables.extend(table_entities.entities)
+            if table_entities.after is None:
+                break
+            after = table_entities.after
+        return tables
 
     def close(self):
         if self.connection is not None:

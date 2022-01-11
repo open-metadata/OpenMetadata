@@ -13,7 +13,6 @@
 
 package org.openmetadata.catalog.resources.events;
 
-import com.google.inject.Inject;
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -82,7 +81,6 @@ public class WebhookResource {
     }
   }
 
-  @Inject
   public WebhookResource(CollectionDAO dao, Authorizer authorizer) {
     Objects.requireNonNull(dao, "ChangeEventRepository must not be null");
     this.dao = new WebhookRepository(dao);

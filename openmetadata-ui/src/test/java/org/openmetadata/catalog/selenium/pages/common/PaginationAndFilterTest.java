@@ -175,6 +175,7 @@ public class PaginationAndFilterTest {
     }
     Events.click(webDriver, By.cssSelector("[data-testid='saveAssociatedTag']"));
     webDriver.navigate().back();
+    webDriver.navigate().refresh();
     Events.click(webDriver, By.cssSelector("[data-testid='checkbox'][id='PII.None']"));
     Events.click(webDriver, By.cssSelector("[data-testid='checkbox'][id='shopify']"));
     Thread.sleep(2000);

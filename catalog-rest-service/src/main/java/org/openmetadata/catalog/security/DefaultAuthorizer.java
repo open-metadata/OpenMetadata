@@ -19,6 +19,7 @@ import java.io.IOException;
 import java.text.ParseException;
 import java.util.Date;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import org.apache.commons.lang3.exception.ExceptionUtils;
@@ -28,8 +29,11 @@ import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.DuplicateEntityException;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
+import org.openmetadata.catalog.jdbi3.PolicyRepository;
 import org.openmetadata.catalog.jdbi3.UserRepository;
+import org.openmetadata.catalog.security.policyevaluator.PolicyEvaluator;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.MetadataOperation;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,19 +46,22 @@ public class DefaultAuthorizer implements Authorizer {
 
   private String principalDomain;
   private UserRepository userRepository;
-  private static final String fieldsParam = "teams";
+  private PolicyEvaluator policyEvaluator;
+  private static final String fieldsParam = "roles,teams";
 
   @Override
-  public void init(AuthorizerConfiguration config, Jdbi dbi) {
+  public void init(AuthorizerConfiguration config, Jdbi dbi) throws IOException {
     LOG.debug("Initializing DefaultAuthorizer with config {}", config);
     this.adminUsers = new HashSet<>(config.getAdminPrincipals());
     this.botUsers = new HashSet<>(config.getBotPrincipals());
     this.principalDomain = config.getPrincipalDomain();
     LOG.debug("Admin users: {}", adminUsers);
-    CollectionDAO repo = dbi.onDemand(CollectionDAO.class);
-    this.userRepository = new UserRepository(repo);
+    CollectionDAO collectionDAO = dbi.onDemand(CollectionDAO.class);
+    this.userRepository = new UserRepository(collectionDAO);
     mayBeAddAdminUsers();
     mayBeAddBotUsers();
+    // Load all rules from access control policies at once during init.
+    this.policyEvaluator = new PolicyEvaluator(new PolicyRepository(collectionDAO).getAccessControlPolicyRules());
   }
 
   private void mayBeAddAdminUsers() {
@@ -104,10 +111,8 @@ public class DefaultAuthorizer implements Authorizer {
     if (owner == null) {
       return true;
     }
-    String userName = SecurityUtil.getUserName(ctx);
-    EntityUtil.Fields fields = new EntityUtil.Fields(FIELD_LIST, fieldsParam);
     try {
-      User user = userRepository.getByName(null, userName, fields);
+      User user = getUserFromAuthenticationContext(ctx);
       if (owner.getType().equals(Entity.TEAM)) {
         for (EntityReference team : user.getTeams()) {
           if (team.getName().equals(owner.getName())) {
@@ -118,6 +123,20 @@ public class DefaultAuthorizer implements Authorizer {
         return user.getName().equals(owner.getName());
       }
       return false;
+    } catch (IOException | EntityNotFoundException | ParseException ex) {
+      return false;
+    }
+  }
+
+  @Override
+  public boolean hasPermissions(
+      AuthenticationContext ctx, EntityReference entityReference, MetadataOperation operation) {
+    validateAuthenticationContext(ctx);
+    try {
+      return policyEvaluator.hasPermission(
+          getUserFromAuthenticationContext(ctx),
+          Entity.getEntity(entityReference, new EntityUtil.Fields(List.of("tags"))),
+          operation);
     } catch (IOException | EntityNotFoundException | ParseException ex) {
       return false;
     }
@@ -159,6 +178,12 @@ public class DefaultAuthorizer implements Authorizer {
     if (ctx == null || ctx.getPrincipal() == null) {
       throw new AuthenticationException("No principal in AuthenticationContext");
     }
+  }
+
+  private User getUserFromAuthenticationContext(AuthenticationContext ctx) throws IOException, ParseException {
+    String userName = SecurityUtil.getUserName(ctx);
+    EntityUtil.Fields fields = new EntityUtil.Fields(FIELD_LIST, fieldsParam);
+    return userRepository.getByName(null, userName, fields);
   }
 
   private void addAdmin(String name) {
