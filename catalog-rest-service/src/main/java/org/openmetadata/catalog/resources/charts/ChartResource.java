@@ -62,7 +62,6 @@ import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
-import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.RestUtil.PatchResponse;
@@ -308,8 +307,10 @@ public class ChartResource {
                       }))
           JsonPatch patch)
       throws IOException, ParseException {
-    EntityReference entityReference = dao.getEntityReference(id);
-    SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, entityReference);
+    Fields fields = new Fields(FIELD_LIST, FIELDS);
+    Chart chart = dao.get(uriInfo, id, fields);
+    SecurityUtil.checkAdminRoleOrPermissions(
+        authorizer, securityContext, new ChartEntityInterface(chart).getEntityReference());
     PatchResponse<Chart> response =
         dao.patch(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
     addHref(uriInfo, response.getEntity());

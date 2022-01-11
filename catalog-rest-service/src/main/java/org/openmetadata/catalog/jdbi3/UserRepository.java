@@ -313,6 +313,10 @@ public class UserRepository extends EntityRepository<User> {
 
     @Override
     public void entitySpecificUpdate() throws IOException {
+      // Update operation can't undelete a user
+      if (updated.getEntity().getDeleted() != original.getEntity().getDeleted()) {
+        throw new IllegalArgumentException(CatalogExceptionMessage.readOnlyAttribute("User", "deactivated"));
+      }
       updateRoles(original.getEntity(), updated.getEntity());
       updateTeams(original.getEntity(), updated.getEntity());
       recordChange("profile", original.getEntity().getProfile(), updated.getEntity().getProfile(), true);

@@ -56,10 +56,6 @@ public interface EntityDAO<T> {
   String findByNameDeletedOrExists(
       @Define("table") String table, @Define("nameColumn") String nameColumn, @Bind("name") String name);
 
-  @SqlQuery("SELECT json FROM <table> WHERE id = :id")
-  String findByIdDeletedOrExists(
-          @Define("table") String table, @Define("nameColumn") String nameColumn, @Bind("id") String id);
-
   @SqlQuery(
       "SELECT count(*) FROM <table> WHERE "
           + "(<nameColumn> LIKE CONCAT(:fqnPrefix, '.%') OR :fqnPrefix IS NULL) AND deleted IS NOT TRUE")
@@ -114,35 +110,36 @@ public interface EntityDAO<T> {
     update(getTableName(), id.toString(), json);
   }
 
-  default T getEntity(String json, String idOrName) throws IOException {
+  default T findEntityById(UUID id) throws IOException {
     Class<T> clz = getEntityClass();
+    String json = findById(getTableName(), id.toString());
     T entity = null;
     if (json != null) {
       entity = JsonUtils.readValue(json, clz);
     }
     if (entity == null) {
       String entityName = Entity.getEntityNameFromClass(clz);
-      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(entityName, idOrName));
+      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(entityName, id));
     }
     return entity;
   }
 
-  default T findEntityById(UUID id) throws IOException {
-    String json = findById(getTableName(), id.toString());
-    return getEntity(json, id.toString());
-  }
-
   default T findEntityByName(String fqn) throws IOException {
+    Class<T> clz = getEntityClass();
     String json = findByName(getTableName(), getNameColumn(), fqn);
-    return getEntity(json, fqn);
+    T entity = null;
+    if (json != null) {
+      entity = JsonUtils.readValue(json, clz);
+    }
+    if (entity == null) {
+      String entityName = Entity.getEntityNameFromClass(clz);
+      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(entityName, fqn));
+    }
+    return entity;
   }
 
   default EntityReference findEntityReferenceById(UUID id) throws IOException {
     return getEntityReference(findEntityById(id));
-  }
-
-  default EntityReference findEntityReferenceByIdDeletedOrExists(UUID id) throws IOException {
-    return getEntityReference(findEntityByIdDeletedOrExists(id));
   }
 
   default EntityReference findEntityReferenceByName(String fqn) throws IOException {
@@ -159,11 +156,6 @@ public interface EntityDAO<T> {
 
   default String findDeletedOrExists(String fqn) {
     return findByNameDeletedOrExists(getTableName(), getNameColumn(), fqn);
-  }
-
-  default T findEntityByIdDeletedOrExists(UUID id) throws IOException {
-    String json = findByIdDeletedOrExists(getTableName(), getNameColumn(), id.toString());
-    return getEntity(json, id.toString());
   }
 
   default int listCount(String databaseFQN) {
