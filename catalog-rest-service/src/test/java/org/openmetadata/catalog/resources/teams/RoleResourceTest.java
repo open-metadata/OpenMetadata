@@ -99,17 +99,6 @@ public class RoleResourceTest extends EntityResourceTest<Role> {
   }
 
   @Test
-  void patch_roleDeletedDisallowed_400(TestInfo test) throws HttpResponseException, JsonProcessingException {
-    // Ensure role deleted attribute can't be changed using patch
-    Role role = createRole(create(test), adminAuthHeaders());
-    String roleJson = JsonUtils.pojoToJson(role);
-    role.setDeleted(true);
-    HttpResponseException exception =
-        assertThrows(HttpResponseException.class, () -> patchRole(roleJson, role, adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, CatalogExceptionMessage.readOnlyAttribute("Role", "deleted"));
-  }
-
-  @Test
   void patch_roleAttributes_as_non_admin_403(TestInfo test) throws HttpResponseException, JsonProcessingException {
     // Create table without any attributes
     Role role = createRole(create(test), adminAuthHeaders());
