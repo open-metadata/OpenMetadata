@@ -33,7 +33,7 @@ if TYPE_CHECKING:
 from metadata.config.common import ConfigModel
 
 
-class OpenMetadataLineageConfig(ConfigModel):
+class OpenMetadataLineageConfig(ConfigModel, MetadataServerConfig):
     airflow_service_name: str = "airflow"
     api_endpoint: str = "http://localhost:8585"
     auth_provider_type: str = "no-auth"
@@ -51,6 +51,18 @@ def get_lineage_config() -> OpenMetadataLineageConfig:
             "lineage", "auth_provider_type", fallback="no-auth"
         )
         secret_key = conf.get("lineage", "secret_key", fallback=None)
+        token = conf.get("lineage", "token", fallback="okta")
+        if auth_provider_type == "okta":
+            return OpenMetadataLineageConfig.parse_obj(
+                {
+                    "airflow_service_name": airflow_service_name,
+                    "api_endpoint": api_endpoint,
+                    "auth_provider_type": auth_provider_type,
+                    "secret_key": secret_key,
+                    "token": token,
+                }
+            )
+
         return OpenMetadataLineageConfig.parse_obj(
             {
                 "airflow_service_name": airflow_service_name,
