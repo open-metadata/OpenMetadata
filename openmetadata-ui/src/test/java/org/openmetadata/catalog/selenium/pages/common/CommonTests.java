@@ -137,7 +137,7 @@ public class CommonTests {
     http.connect();
     Assert.assertEquals(http.getResponseCode(), 200);
   }
-  
+
   @Test
   @Order(4)
   public void onlySpaceAsNameForServiceCheck() throws InterruptedException {
