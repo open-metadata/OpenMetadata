@@ -55,7 +55,7 @@ const EntitySuggestions: FC<EntitySuggestionProps> = ({
               className="tw-flex tw-items-center hover:tw-bg-body-hover"
               key={entity.fullyQualifiedName}>
               <span
-                className="tw-block tw-px-4 tw-py-2 tw-text-sm"
+                className="tw-block tw-px-2 tw-py-2 tw-text-sm tw-break-all"
                 onClick={() => {
                   setIsOpen(false);
                   onSelectHandler?.({
@@ -66,7 +66,9 @@ const EntitySuggestions: FC<EntitySuggestionProps> = ({
                     name: entity.name,
                   });
                 }}>
-                {entity.name}
+                {entity.database
+                  ? `${entity.database}/${entity.name}`
+                  : entity.name}
               </span>
             </div>
           ))}
