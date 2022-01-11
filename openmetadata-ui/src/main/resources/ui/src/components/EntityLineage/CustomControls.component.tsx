@@ -35,6 +35,7 @@ export const ControlButton: FC<ControlButtonProps> = ({
 }) => (
   <button
     className={classNames('control-button', className)}
+    draggable={false}
     type="button"
     {...rest}>
     {children}

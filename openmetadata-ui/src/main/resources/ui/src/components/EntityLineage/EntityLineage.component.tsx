@@ -13,7 +13,7 @@
 
 import { AxiosResponse } from 'axios';
 import classNames from 'classnames';
-import { isEmpty, uniqueId } from 'lodash';
+import { isEmpty, uniqueId, upperCase } from 'lodash';
 import React, {
   DragEvent,
   FunctionComponent,
@@ -56,6 +56,7 @@ import CustomControls, { ControlButton } from './CustomControls.component';
 import CustomNode from './CustomNode.component';
 import { EntityLineageProp, SelectedNode } from './EntityLineage.interface';
 import EntityLineageSidebar from './EntityLineageSidebar.component';
+import EntitySuggestions from './EntitySuggestions.component';
 
 const Entitylineage: FunctionComponent<EntityLineageProp> = ({
   entityLineage,
@@ -77,8 +78,15 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
   const [isEditMode, setEditMode] = useState<boolean>(false);
 
   const [tableColumns, setTableColumns] = useState<Column[]>([] as Column[]);
-  const [newAddedNode, setNewAddedNode] = useState<FlowElement>();
-
+  const [newAddedNode, setNewAddedNode] = useState<FlowElement>(
+    {} as FlowElement
+  );
+  const [selectedEntity, setSelectedEntity] = useState<EntityReference>(
+    {} as EntityReference
+  );
+  const selectedEntityHandler = (entity: EntityReference) => {
+    setSelectedEntity(entity);
+  };
   const selectNodeHandler = (state: boolean, value: SelectedNode) => {
     setIsDrawerOpen(state);
     setSelectedNode(value);
@@ -236,9 +244,9 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
       connectable: false,
       data: {
         label: (
-          <div className="tw-mx-2 tw-my-2 tw-w-auto">
+          <div className="tw-relative">
             <button
-              className="tw-absolute tw--top-7 tw--left-5 tw-cursor-pointer tw-z-9999 tw-bg-white"
+              className="tw-absolute tw--top-5 tw--left-6 tw-cursor-pointer tw-z-9999 tw-bg-white"
               onClick={() => {
                 if (
                   window.confirm(
@@ -250,10 +258,9 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
               }}>
               <SVGIcons alt="plus" icon="icon-times-circle" width="16px" />
             </button>
-            <input
-              className="tw-form-inputs tw-px-3 tw-py-2 tw-w-full"
-              placeholder={`Search for ${lable}s...`}
-              type="search"
+            <EntitySuggestions
+              entityType={upperCase(lable)}
+              onSelectHandler={selectedEntityHandler}
             />
           </div>
         ),
@@ -286,6 +293,25 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
       onNodeExpand(tableColumns);
     }
   }, [tableColumns]);
+
+  useEffect(() => {
+    if (!isEmpty(selectedEntity)) {
+      setElements((es) => {
+        return es.map((el) => {
+          if (el.id === newAddedNode.id) {
+            return {
+              ...el,
+              connectable: true,
+              id: selectedEntity.id,
+              data: { label: getNodeLable(selectedEntity) },
+            };
+          } else {
+            return el;
+          }
+        });
+      });
+    }
+  }, [selectedEntity]);
 
   return (
     <div className="tw-relative tw-h-full tw--mx-4 tw--mt-4">
