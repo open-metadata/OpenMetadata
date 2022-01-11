@@ -39,10 +39,6 @@ if TYPE_CHECKING:
 
 class OpenMetadataLineageConfig(MetadataServerConfig):
     airflow_service_name: str = "airflow"
-    api_endpoint: str = "http://localhost:8585"
-    auth_provider_type: str = "no-auth"
-    secret_key: str = None
-
 
 def get_lineage_config() -> OpenMetadataLineageConfig:
     """Load the lineage config from airflow_provider_openmetadata.cfg."""
