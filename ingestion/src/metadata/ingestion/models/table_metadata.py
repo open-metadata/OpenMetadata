@@ -14,10 +14,23 @@ from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel
 
+from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.type.entityReference import EntityReference
 
 
-class Table(BaseModel):
+class DatabaseAndTableState(BaseModel):
+    database: str
+    table: str
+    exists: bool
+
+
+class DeleteTable(BaseModel):
+    """Entity Reference of a table to be deleted"""
+
+    table: Table
+
+
+class TableFQDN(BaseModel):
     """Table Fully Qualified Name"""
 
     fullyQualifiedName: str
