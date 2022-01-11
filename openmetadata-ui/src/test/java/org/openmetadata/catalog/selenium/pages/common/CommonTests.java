@@ -13,8 +13,11 @@
 
 package org.openmetadata.catalog.selenium.pages.common;
 
+import com.github.javafaker.Faker;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.List;
+import java.util.logging.Logger;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.MethodOrderer;
@@ -24,7 +27,9 @@ import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.catalog.selenium.events.Events;
 import org.openmetadata.catalog.selenium.properties.Property;
 import org.openqa.selenium.By;
+import org.openqa.selenium.TimeoutException;
 import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.interactions.Actions;
@@ -35,9 +40,13 @@ import org.testng.Assert;
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class CommonTests {
 
+  private static final Logger LOG = Logger.getLogger(CommonTests.class.getName());
+
   static WebDriver webDriver;
   static String url = Property.getInstance().getURL();
   static Actions actions;
+  static Faker faker = new Faker();
+  static String enterDescription = "//div[@data-testid='enterDescription']/div/div[2]/div/div/div/div/div/div";
   static WebDriverWait wait;
   Integer waitTime = Property.getInstance().getSleepTime();
 
@@ -75,6 +84,34 @@ public class CommonTests {
     Object tagCount =
         webDriver.findElements(By.xpath("//*[text()[contains(.,'" + "#PersonalData.Personal" + "')]] ")).size();
     Assert.assertEquals(tagCount, 2);
+  }
+
+  @Test
+  @Order(4)
+  public void onlySpaceAsNameForServiceCheck() throws InterruptedException {
+    Events.click(webDriver, By.cssSelector("[data-testid='closeWhatsNew']")); // Close What's new
+    Thread.sleep(waitTime);
+    Events.click(webDriver, By.cssSelector("[data-testid='service']")); // Service
+    Thread.sleep(2000);
+    List<WebElement> webElementList = webDriver.findElements(By.cssSelector("[data-testid='add-new-user-button']"));
+    if (webElementList.isEmpty()) {
+      Events.click(webDriver, By.cssSelector("[data-testid='add-service-button']"));
+    } else {
+      Events.click(webDriver, By.cssSelector("[data-testid='add-new-user-button']"));
+    }
+    Events.click(webDriver, By.cssSelector("[data-testid='selectService']"));
+    Events.click(webDriver, By.cssSelector("[value='MySQL']"));
+    Events.sendKeys(webDriver, By.cssSelector("[data-testid='name']"), " ");
+    Events.sendKeys(webDriver, By.cssSelector("[data-testid='url']"), "localhost:3306");
+    Events.sendKeys(webDriver, By.cssSelector("[data-testid='database']"), "openmetadata_db");
+    Events.sendKeys(webDriver, By.xpath(enterDescription), faker.address().toString());
+    Events.click(webDriver, By.cssSelector("[data-testid='save-button']"));
+    webDriver.navigate().refresh();
+    try {
+      Events.click(webDriver, By.cssSelector("[data-testid='delete-service-" + " " + "']"));
+    } catch (TimeoutException exception) {
+      LOG.info("Success");
+    }
   }
 
   @AfterEach
