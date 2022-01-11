@@ -8,27 +8,27 @@ description: >-
 
 ## Requirements
 
-An OpenMetadata deployment that you installed and configured following the [Run in Production](run-in-production.md) guide.
+This guide assumes that you have an OpenMetadata deployment that you installed and configured following the [Run in Production](run-in-production.md) guide.
 
 ## Procedure
 
-### 1. Download the release binaries you want to install
+### 1. Download the binaries for the release you want to install
 
 OpenMetadata release binaries are maintained as GitHub releases. To download a specific release binary:
 
 1. Visit [github.com/open-metadata/OpenMetadata/releases](https://github.com/open-metadata/OpenMetadata/releases). The latest release will be at the top of this page.
 2. Locate the Assets section for the release you want to upgrade to.
-3. Download the release binaries. The release binaries will be in a compressed tar file named using the following convention, `openmetadata-x.y.z.tar.gz` Where `x`, `y`, `z` are the major, minor, and patch release numbers respectively.
+3. Download the release binaries. The release binaries will be in a compressed tar file named using the following convention, `openmetadata-x.y.z.tar.gz` Where `x`, `y`, `z` are the major, minor, and patch release numbers, respectively.
 
 ### 2. Extract the release binaries from the download file
 
-Using the command line tool or application of your choice, uncompress and untar the release binary download. For example, to extract using tar, run the following command.
+Using the command line tool or application of your choice, extract the release binaries. For example, to extract using tar, run the following command.
 
 ```
 tar xfz openmetadata-0.7.1.tar.gz
 ```
 
-This will create a directory with the same name as the file minus the `.tar` and `.gz` extensions.
+This will create a directory with the same name as the download file minus the `.tar` and `.gz` extensions.
 
 ### 3. Navigate into the directory created by extracting the release binaries
 
@@ -48,7 +48,7 @@ cd openmetadata-0.7.1
 
 OpenMetadata ships with a few control scripts. One is `openmetadata.sh`. This script enables you to start, stop, and perform other deployment operations on the OpenMetadata server.
 
-Before you migrate your data to the new release you are upgrading to, stop the OpenMetadata server by running the following command.
+Most OpenMetadata releases will require you to migrate your data to updated schemas. Before you migrate your data to the new release you are upgrading to, stop the OpenMetadata server by running the following command.
 
 ```
 ./bin/openmetadata.sh stop
@@ -81,6 +81,10 @@ If you are ingesting data manually using OpenMetadata connectors, upgrade all yo
 ```bash
 pip3 install --upgrade 'openmetadata-ingestion[<connectorname>]'
 ```
+
+{% hint style="info" %}
+Note: Please see the installation instructions for the connectors you are using in order to ensure you are using the right Python virtual environment and following other norms for installing and upgrading connectors.
+{% endhint %}
 
 ## Troubleshooting
 
