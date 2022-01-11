@@ -77,6 +77,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
   const [isEditMode, setEditMode] = useState<boolean>(false);
 
   const [tableColumns, setTableColumns] = useState<Column[]>([] as Column[]);
+  const [newAddedNode, setNewAddedNode] = useState<FlowElement>();
 
   const selectNodeHandler = (state: boolean, value: SelectedNode) => {
     setIsDrawerOpen(state);
@@ -207,6 +208,11 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
     }
   };
 
+  const removeNodeHandler = (node: FlowElement) => {
+    setElements((es) => es.filter((n) => n.id !== node.id));
+    setNewAddedNode({} as FlowElement);
+  };
+
   const onDragOver = (event: DragEvent) => {
     event.preventDefault();
     event.dataTransfer.dropEffect = 'move';
@@ -226,8 +232,29 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
       id: uniqueId(),
       nodeType,
       position,
-      data: { label: `${lable} node` },
+      className: 'leaf-node',
+      data: {
+        label: (
+          <div className="tw-m-3 tw-w-auto">
+            <button
+              className="tw-absolute tw--top-7 tw--left-5 tw-cursor-pointer tw-z-9999 tw-bg-white"
+              onClick={() => {
+                if (
+                  window.confirm(
+                    `Do you really want to delete ${lable} entity node?`
+                  )
+                ) {
+                  removeNodeHandler(newNode as FlowElement);
+                }
+              }}>
+              <SVGIcons alt="plus" icon="icon-times-circle" width="16px" />
+            </button>
+            <span>{`Search for ${lable} entities`}</span>
+          </div>
+        ),
+      },
     };
+    setNewAddedNode(newNode as FlowElement);
 
     setElements((es) => es.concat(newNode as FlowElement));
   };
@@ -307,6 +334,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
                     setEditMode((pre) => !pre);
                     setSelectedNode({} as SelectedNode);
                     setIsDrawerOpen(false);
+                    setNewAddedNode({} as FlowElement);
                   }}>
                   <SVGIcons
                     alt="icon-edit-lineag"
@@ -341,7 +369,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
         show={isDrawerOpen && !isEditMode}
         onCancel={closeDrawer}
       />
-      <EntityLineageSidebar show={isEditMode} />
+      <EntityLineageSidebar newAddedNode={newAddedNode} show={isEditMode} />
     </div>
   );
 };

@@ -12,13 +12,15 @@
  */
 
 import classNames from 'classnames';
-import { capitalize, uniqueId } from 'lodash';
+import { capitalize, isEmpty, uniqueId, upperCase } from 'lodash';
 import React, { FC, HTMLAttributes } from 'react';
+import { FlowElement } from 'react-flow-renderer';
 import { EntityType } from '../../enums/entity.enum';
 import SVGIcons from '../../utils/SvgUtils';
 
 interface SidebarProps extends HTMLAttributes<HTMLDivElement> {
   show: boolean;
+  newAddedNode?: FlowElement;
 }
 
 interface EntityNodeProps extends HTMLAttributes<HTMLDivElement> {
@@ -35,7 +37,7 @@ const entityData = [
   { type: EntityType.DASHBOARD, label: capitalize(EntityType.DASHBOARD) },
 ];
 
-const EntityNode: FC<EntityNodeProps> = ({ type, label }) => {
+const EntityNode: FC<EntityNodeProps> = ({ type, label, draggable }) => {
   const onDragStart = (event: React.DragEvent, nodeType: string) => {
     event.dataTransfer.setData('application/reactflow', nodeType);
     event.dataTransfer.effectAllowed = 'move';
@@ -44,9 +46,14 @@ const EntityNode: FC<EntityNodeProps> = ({ type, label }) => {
   return (
     <div className="tw-flex tw-flex-col tw-mb-3 tw-items-center">
       <div
-        draggable
-        className="tw-border tw-p-2 tw-border-main tw-flex tw-justify-between tw-w-16 tw-rounded"
-        style={{ cursor: 'grab' }}
+        className={classNames(
+          'tw-border tw-p-2 tw-border-main tw-flex tw-justify-between tw-w-16 tw-rounded',
+          {
+            'tw-cursor-not-allowed tw-opacity-50': !draggable,
+          }
+        )}
+        draggable={draggable}
+        style={{ ...(draggable && { cursor: 'grab' }) }}
         onDragStart={(event) => onDragStart(event, `${label}-default`)}>
         <span
           onDragStart={(e) => {
@@ -59,17 +66,22 @@ const EntityNode: FC<EntityNodeProps> = ({ type, label }) => {
           <i className="fas fa-grip-vertical" style={{ color: '#B3B3B3' }} />
         </span>
       </div>
-      <p className="tw-text-primary tw-text-center">{label}</p>
+      <p className="tw-text-primary tw-text-center">{upperCase(label)}</p>
     </div>
   );
 };
 
-const EntityLineageSidebar: FC<SidebarProps> = ({ show }) => {
+const EntityLineageSidebar: FC<SidebarProps> = ({ show, newAddedNode }) => {
   return (
     <div className={classNames('entity-lineage sidebar', { open: show })}>
       <div className="tw-flex tw-flex-col tw-mt-3">
         {entityData.map((d) => (
-          <EntityNode key={uniqueId()} label={d.label} type={d.type} />
+          <EntityNode
+            draggable={isEmpty(newAddedNode)}
+            key={uniqueId()}
+            label={d.label}
+            type={d.type}
+          />
         ))}
       </div>
     </div>
