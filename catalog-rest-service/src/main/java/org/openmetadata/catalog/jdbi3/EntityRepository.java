@@ -46,6 +46,7 @@ import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.EventType;
 import org.openmetadata.catalog.type.FieldChange;
+import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
@@ -583,39 +584,6 @@ public abstract class EntityRepository<T> {
     EntityInterface<T> originalRef = getEntityInterface(original);
     if (Boolean.TRUE.equals(originalRef.isDeleted())) {
       daoCollection.relationshipDAO().recoverSoftDeleteAll(originalRef.getId().toString());
-    }
-  }
-
-  public enum Include {
-    ALL("all", null),
-    DELETED("deleted", true),
-    NON_DELETED("non-deleted", false);
-
-    private final String value;
-    private final Boolean sqlPredicate;
-
-    Include(String value) {
-      this.value = value == null ? "non-deleted" : value;
-      if ("deleted".equals(this.value)) {
-        this.sqlPredicate = true;
-      } else if ("all".equals(this.value)) {
-        this.sqlPredicate = null;
-      } else { // "non-deleted"
-        this.sqlPredicate = false;
-      }
-    }
-
-    Include(String value, Boolean sqlPredicate) {
-      this.value = value;
-      this.sqlPredicate = sqlPredicate;
-    }
-
-    public String value() {
-      return value;
-    }
-
-    public Boolean sqlPredicate() {
-      return sqlPredicate;
     }
   }
 

@@ -55,12 +55,12 @@ import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.data.CreateLocation;
 import org.openmetadata.catalog.entity.data.Location;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
-import org.openmetadata.catalog.jdbi3.EntityRepository.Include;
 import org.openmetadata.catalog.jdbi3.LocationRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
+import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.RestUtil.PatchResponse;
@@ -143,8 +143,8 @@ public class LocationResource {
           @QueryParam("after")
           String after,
       @Parameter(
-              description = "Include all, deleted, or non-deleted (default)",
-              schema = @Schema(type = "string", example = "non-deleted"))
+              description = "Include all, deleted, or non-deleted entities.",
+              schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)
@@ -205,8 +205,8 @@ public class LocationResource {
           @QueryParam("fields")
           String fieldsParam,
       @Parameter(
-              description = "Include all, deleted, or non-deleted (default)",
-              schema = @Schema(type = "string", example = "non-deleted"))
+              description = "Include all, deleted, or non-deleted entities.",
+              schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)
@@ -296,8 +296,8 @@ public class LocationResource {
           @QueryParam("fields")
           String fieldsParam,
       @Parameter(
-              description = "Include all, deleted, or non-deleted (default)",
-              schema = @Schema(type = "string", example = "non-deleted"))
+              description = "Include all, deleted, or non-deleted entities.",
+              schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)

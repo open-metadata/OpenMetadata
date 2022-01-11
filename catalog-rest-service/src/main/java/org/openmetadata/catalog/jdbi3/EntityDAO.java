@@ -14,6 +14,7 @@
 package org.openmetadata.catalog.jdbi3;
 
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
+import static org.openmetadata.catalog.util.EntityUtil.toBoolean;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
@@ -26,8 +27,8 @@ import org.jdbi.v3.sqlobject.statement.SqlUpdate;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
-import org.openmetadata.catalog.jdbi3.EntityRepository.Include;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.JsonUtils;
 
 public interface EntityDAO<T> {
@@ -168,7 +169,7 @@ public interface EntityDAO<T> {
 
   default T findEntityById(UUID id, Include include) throws IOException {
     Class<T> clz = getEntityClass();
-    String json = findById(getTableName(), id.toString(), include.sqlPredicate());
+    String json = findById(getTableName(), id.toString(), toBoolean(include));
     T entity = null;
     if (json != null) {
       entity = JsonUtils.readValue(json, clz);
@@ -210,7 +211,7 @@ public interface EntityDAO<T> {
 
   default T findEntityByName(String fqn, Include include) throws IOException {
     Class<T> clz = getEntityClass();
-    String json = findByName(getTableName(), getNameColumn(), fqn, include.sqlPredicate());
+    String json = findByName(getTableName(), getNameColumn(), fqn, toBoolean(include));
     T entity = null;
     if (json != null) {
       entity = JsonUtils.readValue(json, clz);
@@ -247,7 +248,7 @@ public interface EntityDAO<T> {
   }
 
   default int listCount(String databaseFQN, Include include) {
-    return listCount(getTableName(), getNameColumn(), databaseFQN, include.sqlPredicate());
+    return listCount(getTableName(), getNameColumn(), databaseFQN, toBoolean(include));
   }
 
   default List<String> listBefore(String parentFQN, int limit, String before) {
@@ -255,7 +256,7 @@ public interface EntityDAO<T> {
   }
 
   default List<String> listBefore(String parentFQN, int limit, String before, Include include) {
-    return listBefore(getTableName(), getNameColumn(), parentFQN, limit, before, include.sqlPredicate());
+    return listBefore(getTableName(), getNameColumn(), parentFQN, limit, before, toBoolean(include));
   }
 
   default List<String> listAfter(String databaseFQN, int limit, String after) {
@@ -263,7 +264,7 @@ public interface EntityDAO<T> {
   }
 
   default List<String> listAfter(String databaseFQN, int limit, String after, Include include) {
-    return listAfter(getTableName(), getNameColumn(), databaseFQN, limit, after, include.sqlPredicate());
+    return listAfter(getTableName(), getNameColumn(), databaseFQN, limit, after, toBoolean(include));
   }
 
   default boolean exists(UUID id) {

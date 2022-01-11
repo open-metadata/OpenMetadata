@@ -13,8 +13,8 @@
 
 package org.openmetadata.catalog.jdbi3;
 
-import static org.openmetadata.catalog.jdbi3.EntityRepository.Include.DELETED;
-import static org.openmetadata.catalog.jdbi3.EntityRepository.Include.NON_DELETED;
+import static org.openmetadata.catalog.type.Include.DELETED;
+import static org.openmetadata.catalog.type.Include.NON_DELETED;
 
 import java.io.IOException;
 import java.net.URI;
@@ -32,6 +32,7 @@ import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.resources.locations.LocationResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;

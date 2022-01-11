@@ -13,6 +13,9 @@
 
 package org.openmetadata.catalog.util;
 
+import static org.openmetadata.catalog.type.Include.ALL;
+import static org.openmetadata.catalog.type.Include.DELETED;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -40,13 +43,13 @@ import org.openmetadata.catalog.jdbi3.CollectionDAO.TagDAO;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.TeamDAO;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.UsageDAO;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.UserDAO;
-import org.openmetadata.catalog.jdbi3.EntityRepository.Include;
 import org.openmetadata.catalog.jdbi3.Relationship;
 import org.openmetadata.catalog.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.catalog.type.Column;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.FailureDetails;
 import org.openmetadata.catalog.type.FieldChange;
+import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.MlFeature;
 import org.openmetadata.catalog.type.MlHyperParameter;
 import org.openmetadata.catalog.type.Schedule;
@@ -177,7 +180,7 @@ public final class EntityUtil {
       EntityRelationshipDAO dao, String entityType, UUID entityId, String serviceType, Include include) {
     List<EntityReference> refs =
         dao.findFromEntity(
-            entityId.toString(), entityType, Relationship.CONTAINS.ordinal(), serviceType, include.sqlPredicate());
+            entityId.toString(), entityType, Relationship.CONTAINS.ordinal(), serviceType, toBoolean(include));
     if (refs.size() > 1) {
       LOG.warn("Possible database issues - multiple services found for entity {}", entityId);
       return refs.get(0);
@@ -464,5 +467,15 @@ public final class EntityUtil {
     }
     localColumnName.append(s[s.length - 1]);
     return localColumnName.toString();
+  }
+
+  public static Boolean toBoolean(Include include) {
+    if (include.equals(DELETED)) {
+      return Boolean.TRUE;
+    } else if (include.equals(ALL)) {
+      return null;
+    } else { // "non-deleted"
+      return Boolean.FALSE;
+    }
   }
 }
