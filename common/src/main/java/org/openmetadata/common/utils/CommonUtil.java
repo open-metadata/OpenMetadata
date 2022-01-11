@@ -64,7 +64,7 @@ public final class CommonUtil {
         String fileName = e.nextElement().getName();
         if (pattern.matcher(fileName).matches()) {
           retval.add(fileName);
-          LOG.info("Adding file from jar {}", fileName);
+          log.info("Adding file from jar {}", fileName);
         }
       }
     } catch (Exception ignored) {
@@ -82,7 +82,7 @@ public final class CommonUtil {
           .map(
               path -> {
                 String relativePath = root.relativize(path).toString();
-                LOG.info("Adding directory file {}", relativePath);
+                log.info("Adding directory file {}", relativePath);
                 return relativePath;
               })
           .collect(Collectors.toSet());

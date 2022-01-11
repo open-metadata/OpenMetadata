@@ -42,17 +42,17 @@ public class CatalogOpenIdAuthorizationRequestFilter implements ContainerRequest
 
   public void filter(ContainerRequestContext containerRequestContext) {
     if (isHealthEndpoint(containerRequestContext)) {
-      LOG.debug("Caller is health-agent, no authorization needed.");
+      log.debug("Caller is health-agent, no authorization needed.");
       return;
     }
     MultivaluedMap<String, String> headers = containerRequestContext.getHeaders();
     String principal = extractAuthorizedUserName(headers);
-    LOG.debug("AuthorizedUserName:{}", principal);
+    log.debug("AuthorizedUserName:{}", principal);
     CatalogPrincipal catalogPrincipal = new CatalogPrincipal(principal);
     String scheme = containerRequestContext.getUriInfo().getRequestUri().getScheme();
     CatalogSecurityContext catalogSecurityContext =
         new CatalogSecurityContext(catalogPrincipal, scheme, CatalogSecurityContext.OPENID_AUTH);
-    LOG.debug("SecurityContext {}", catalogSecurityContext);
+    log.debug("SecurityContext {}", catalogSecurityContext);
     containerRequestContext.setSecurityContext(catalogSecurityContext);
   }
 
@@ -62,7 +62,7 @@ public class CatalogOpenIdAuthorizationRequestFilter implements ContainerRequest
   }
 
   protected String extractAuthorizedUserName(MultivaluedMap<String, String> headers) {
-    LOG.debug("Request Headers:{}", headers);
+    log.debug("Request Headers:{}", headers);
 
     String openIdEmail = headers.getFirst(X_AUTH_PARAMS_EMAIL_HEADER);
     if (Strings.isNullOrEmpty(openIdEmail)) {
@@ -73,7 +73,7 @@ public class CatalogOpenIdAuthorizationRequestFilter implements ContainerRequest
   }
 
   protected String extractAuthorizedEmailAddress(MultivaluedMap<String, String> headers) {
-    LOG.debug("Request Headers:{}", headers);
+    log.debug("Request Headers:{}", headers);
     String openIdEmail = headers.getFirst(X_AUTH_PARAMS_EMAIL_HEADER);
     if (Strings.isNullOrEmpty(openIdEmail)) {
       throw new AuthenticationException("Not authorized; User's Email is not present");

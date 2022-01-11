@@ -60,7 +60,7 @@ public class JwtFilter implements ContainerRequestFilter {
     // Extract token from the header
     MultivaluedMap<String, String> headers = requestContext.getHeaders();
     String tokenFromHeader = extractToken(headers);
-    LOG.debug("Token from header:{}", tokenFromHeader);
+    log.debug("Token from header:{}", tokenFromHeader);
 
     // Decode JWT Token
     DecodedJWT jwt = JWT.decode(tokenFromHeader);
@@ -98,12 +98,12 @@ public class JwtFilter implements ContainerRequestFilter {
     String scheme = requestContext.getUriInfo().getRequestUri().getScheme();
     CatalogSecurityContext catalogSecurityContext =
         new CatalogSecurityContext(catalogPrincipal, scheme, CatalogSecurityContext.DIGEST_AUTH);
-    LOG.debug("SecurityContext {}", catalogSecurityContext);
+    log.debug("SecurityContext {}", catalogSecurityContext);
     requestContext.setSecurityContext(catalogSecurityContext);
   }
 
   protected static String extractToken(MultivaluedMap<String, String> headers) {
-    LOG.debug("Request Headers:{}", headers);
+    log.debug("Request Headers:{}", headers);
     String source = headers.getFirst(TOKEN_HEADER);
     if (Strings.isNullOrEmpty(source)) {
       throw new AuthenticationException("Not Authorized! Token not present");

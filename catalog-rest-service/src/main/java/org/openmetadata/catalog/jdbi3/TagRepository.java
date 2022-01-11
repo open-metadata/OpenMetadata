@@ -45,7 +45,7 @@ public class TagRepository {
   public void initCategory(TagCategory category) throws JsonProcessingException {
     String json = dao.tagDAO().findCategory(category.getName());
     if (json == null) {
-      TagResource.LOG.info("Tag category {} is not initialized", category.getName());
+      TagResource.log.info("Tag category {} is not initialized", category.getName());
       createCategoryInternal(category);
 
       // Only two levels of tag allowed under a category
@@ -53,7 +53,7 @@ public class TagRepository {
         createTagInternal(category.getName(), primaryTag);
       }
     } else {
-      TagResource.LOG.info("Tag category {} is already initialized", category.getName());
+      TagResource.log.info("Tag category {} is already initialized", category.getName());
     }
   }
 
@@ -115,7 +115,7 @@ public class TagRepository {
     TagCategory original = EntityUtil.validate(category, dao.tagDAO().findCategory(category), TagCategory.class);
     if (!original.getName().equals(updated.getName())) {
       // Category name changed - update tag names starting from category and all the children tags
-      LOG.info("Tag category name changed from {} to {}", original.getName(), updated.getName());
+      log.info("Tag category name changed from {} to {}", original.getName(), updated.getName());
       updateChildrenTagNames(original.getName(), updated.getName());
       original.setName(updated.getName());
     }
@@ -150,7 +150,7 @@ public class TagRepository {
 
     if (!original.getName().equals(updated.getName())) {
       // Tag name changed
-      LOG.info("Tag name changed from {} to {}", original.getName(), updated.getName());
+      log.info("Tag name changed from {} to {}", original.getName(), updated.getName());
       String updatedFQN = fqnPrefix + "." + updated.getName();
       updateChildrenTagNames(originalFQN, updatedFQN);
       original.withName(updated.getName()).withFullyQualifiedName(updatedFQN);
@@ -177,7 +177,7 @@ public class TagRepository {
       Tag tag = JsonUtils.readValue(json, Tag.class);
       String oldFQN = tag.getFullyQualifiedName();
       String newFQN = oldFQN.replace(prefix, newPrefix);
-      LOG.info("Replacing tag fqn from {} to {}", oldFQN, newFQN);
+      log.info("Replacing tag fqn from {} to {}", oldFQN, newFQN);
       tag.setFullyQualifiedName(oldFQN.replace(prefix, newPrefix));
       dao.tagDAO().updateTag(oldFQN, JsonUtils.pojoToJson(tag));
       updateChildrenTagNames(oldFQN, newFQN);
@@ -188,7 +188,7 @@ public class TagRepository {
     List<Tag> primaryTags = category.getChildren();
     category.setChildren(null); // Children are not stored as json and are constructed on the fly
     dao.tagDAO().insertCategory(JsonUtils.pojoToJson(category));
-    LOG.info("Create a new tag category {}", category.getName());
+    log.info("Create a new tag category {}", category.getName());
     return category.withChildren(primaryTags);
   }
 
@@ -199,13 +199,13 @@ public class TagRepository {
     tag.setFullyQualifiedName(parentFQN + "." + tag.getName());
     dao.tagDAO().insertTag(JsonUtils.pojoToJson(tag));
     tag.setChildren(tags);
-    TagResource.LOG.info("Added tag {}", tag.getFullyQualifiedName());
+    TagResource.log.info("Added tag {}", tag.getFullyQualifiedName());
 
     // Then add the children
     for (Tag children : Optional.ofNullable(tags).orElse(Collections.emptyList())) {
       children.setChildren(null); // No children allowed for the leaf tag
       children.setFullyQualifiedName(children.getFullyQualifiedName() + "." + children.getName());
-      TagResource.LOG.info("Added tag {}", children.getFullyQualifiedName());
+      TagResource.log.info("Added tag {}", children.getFullyQualifiedName());
       dao.tagDAO().insertTag(JsonUtils.pojoToJson(children));
     }
     return tag;

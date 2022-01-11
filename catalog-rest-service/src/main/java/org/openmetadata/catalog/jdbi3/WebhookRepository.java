@@ -447,7 +447,7 @@ public class WebhookRepository extends EntityRepository<Webhook> {
     }
 
     private void awaitShutdown() throws InterruptedException {
-      LOG.info("Awaiting shutdown webhook-lifecycle {}", webhook.getName());
+      log.info("Awaiting shutdown webhook-lifecycle {}", webhook.getName());
       shutdownLatch.await();
     }
 

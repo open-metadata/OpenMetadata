@@ -22,15 +22,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
-<<<<<<< HEAD:catalog-rest-service/src/main/java/org/openmetadata/catalog/elasticsearch/ElasticSearchEventPublisher.java
 import org.elasticsearch.ElasticsearchException;
-=======
-import javax.ws.rs.container.ContainerRequestContext;
-import javax.ws.rs.container.ContainerResponseContext;
-import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
-import org.elasticsearch.action.ActionListener;
->>>>>>> 636f98ac (Fix #2037 : Use lombok Slf4j annotation to initialize logger):catalog-rest-service/src/main/java/org/openmetadata/catalog/elasticsearch/ElasticSearchEventHandler.java
 import org.elasticsearch.action.update.UpdateRequest;
 import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.client.RestHighLevelClient;
@@ -300,7 +293,7 @@ public class ElasticSearchEventHandler implements EventHandler {
     try {
       this.client.close();
     } catch (Exception e) {
-      LOG.error("Failed to close elastic search", e);
+      log.error("Failed to close elastic search", e);
     }
   }
 }

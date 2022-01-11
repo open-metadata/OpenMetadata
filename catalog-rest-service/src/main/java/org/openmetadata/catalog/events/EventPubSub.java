@@ -41,7 +41,7 @@ public class EventPubSub {
       disruptor.setDefaultExceptionHandler(new DefaultExceptionHandler());
       executor = Executors.newCachedThreadPool(DaemonThreadFactory.INSTANCE);
       ringBuffer = disruptor.start();
-      LOG.info("Disruptor started");
+      log.info("Disruptor started");
       started = true;
     }
   }
@@ -55,7 +55,7 @@ public class EventPubSub {
       disruptor = null;
       ringBuffer = null;
       started = false;
-      LOG.info("Disruptor stopped");
+      log.info("Disruptor stopped");
     }
   }
 
@@ -92,13 +92,13 @@ public class EventPubSub {
     processor.setExceptionHandler(new DefaultExceptionHandler());
     ringBuffer.addGatingSequences(processor.getSequence());
     executor.execute(processor);
-    LOG.info("Processor added for {}", processor);
+    log.info("Processor added for {}", processor);
     return processor;
   }
 
   public static void removeProcessor(BatchEventProcessor<ChangeEventHolder> processor) {
     ringBuffer.removeGatingSequence(processor.getSequence());
-    LOG.info("Processor removed for {}", processor);
+    log.info("Processor removed for {}", processor);
   }
 
   public void close() {}
@@ -106,18 +106,18 @@ public class EventPubSub {
   public static class DefaultExceptionHandler implements ExceptionHandler<ChangeEventHolder> {
     @Override
     public void handleEventException(Throwable throwable, long l, ChangeEventHolder changeEventHolder) {
-      LOG.warn("Disruptor error in onEvent {}", throwable.getMessage());
+      log.warn("Disruptor error in onEvent {}", throwable.getMessage());
       throw new RuntimeException(throwable.getMessage()); // Throw runtime exception to stop the event handler thread
     }
 
     @Override
     public void handleOnStartException(Throwable throwable) {
-      LOG.warn("Disruptor error in onStart {}", throwable.getMessage());
+      log.warn("Disruptor error in onStart {}", throwable.getMessage());
     }
 
     @Override
     public void handleOnShutdownException(Throwable throwable) {
-      LOG.warn("Disruptor error on onShutdown {}", throwable.getMessage());
+      log.warn("Disruptor error on onShutdown {}", throwable.getMessage());
     }
   }
 }
