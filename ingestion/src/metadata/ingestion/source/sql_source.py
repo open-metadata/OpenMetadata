@@ -686,7 +686,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
 
     def parse_raw_data_type(self, raw_data_type):
         return raw_data_type
-    
+
     def _build_database_state(self, schema_fqdn: str) -> [EntityReference]:
         after = None
         tables = []
