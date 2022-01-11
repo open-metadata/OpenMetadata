@@ -13,7 +13,7 @@
 
 import { AxiosResponse } from 'axios';
 import classNames from 'classnames';
-import { isEmpty, uniqueId, upperCase } from 'lodash';
+import { isEmpty, isUndefined, uniqueId, upperCase } from 'lodash';
 import React, {
   DragEvent,
   FunctionComponent,
@@ -34,6 +34,7 @@ import ReactFlow, {
   ReactFlowProvider,
   removeElements,
 } from 'react-flow-renderer';
+import { addLineage } from '../../axiosAPIs/miscAPI';
 import { getTableDetails } from '../../axiosAPIs/tableAPI';
 import { Column } from '../../generated/entity/data/table';
 import { EntityReference } from '../../generated/type/entityReference';
@@ -55,7 +56,11 @@ import { getEntityIcon } from '../../utils/TableUtils';
 import EntityInfoDrawer from '../EntityInfoDrawer/EntityInfoDrawer.component';
 import CustomControls, { ControlButton } from './CustomControls.component';
 import CustomNode from './CustomNode.component';
-import { EntityLineageProp, SelectedNode } from './EntityLineage.interface';
+import {
+  Edge as NewEdge,
+  EntityLineageProp,
+  SelectedNode,
+} from './EntityLineage.interface';
 import EntityLineageSidebar from './EntityLineageSidebar.component';
 import EntitySuggestions from './EntitySuggestions.component';
 
@@ -152,9 +157,47 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
   const onElementsRemove = (elementsToRemove: Elements) =>
     setElements((els) => removeElements(elementsToRemove, els));
   const onConnect = (params: Edge | Connection) => {
-    setElements((els) =>
-      addEdge({ ...params, arrowHeadType: ArrowHeadType.ArrowClosed }, els)
-    );
+    const { target, source } = params;
+    let targetNode = entityLineage.nodes?.find((n) => target?.includes(n.id));
+
+    let sourceNode = entityLineage.nodes?.find((n) => source?.includes(n.id));
+
+    if (isUndefined(targetNode)) {
+      targetNode = selectedEntity;
+    }
+    if (isUndefined(sourceNode)) {
+      sourceNode = selectedEntity;
+    }
+
+    const newEdge: NewEdge = {
+      edge: {
+        fromEntity: {
+          id: sourceNode.id,
+          type: sourceNode.type,
+        },
+        toEntity: {
+          id: targetNode.id,
+          type: targetNode.type,
+        },
+      },
+    };
+    addLineage(newEdge)
+      .then((res: AxiosResponse) => {
+        if (res) {
+          setElements((els) =>
+            addEdge(
+              { ...params, arrowHeadType: ArrowHeadType.ArrowClosed },
+              els
+            )
+          );
+        }
+      })
+      .catch(() => {
+        showToast({
+          variant: 'error',
+          body: `Error while adding adding new edge`,
+        });
+      });
   };
 
   const onElementClick = (el: FlowElement) => {
