@@ -22,11 +22,6 @@ from datetime import datetime
 from typing import Dict, Iterable, List, Optional, Tuple
 from urllib.parse import quote_plus
 
-from pydantic import SecretStr
-from sqlalchemy import create_engine
-from sqlalchemy.engine.reflection import Inspector
-from sqlalchemy.inspection import inspect
-
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import (
     Column,
@@ -43,14 +38,21 @@ from metadata.generated.schema.entity.services.databaseService import (
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.common import (
     ConfigModel,
+    Entity,
     IncludeFilterPattern,
     WorkflowContext,
 )
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
+from metadata.ingestion.models.table_metadata import DeleteTable
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.utils.column_helpers import check_column_complex_type, get_column_type
 from metadata.utils.helpers import get_database_service_or_create
+from pydantic import SecretStr
+from sqlalchemy import create_engine
+from sqlalchemy.engine.reflection import Inspector
+from sqlalchemy.inspection import inspect
 
 logger: logging.Logger = logging.getLogger(__name__)
 
@@ -135,6 +137,7 @@ class SQLConnectionConfig(ConfigModel):
     schema_filter_pattern: IncludeFilterPattern = IncludeFilterPattern.allow_all()
     dbt_manifest_file: Optional[str] = None
     dbt_catalog_file: Optional[str] = None
+    mark_deleted_tables_as_deleted: Optional[bool] = True
 
     @abstractmethod
     def get_connection_url(self):
@@ -183,6 +186,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         self.config = config
         self.metadata_config = metadata_config
         self.service = get_database_service_or_create(config, metadata_config)
+        self.metadata = OpenMetadata(metadata_config)
         self.status = SQLSourceStatus()
         self.sql_config = self.config
         self.connection_string = self.sql_config.get_connection_url()
@@ -194,6 +198,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         self.connection = self.engine.connect()
         self.data_profiler = None
         self.data_models = {}
+        self.database_source_state = set()
         if self.config.dbt_catalog_file is not None:
             with open(self.config.dbt_catalog_file, "r", encoding="utf-8") as catalog:
                 self.dbt_catalog = json.load(catalog)
@@ -263,17 +268,22 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
             logger.error(f"Failed to generate sample data for {table} - {err}")
         return None
 
-    def next_record(self) -> Iterable[OMetaDatabaseAndTable]:
+    def next_record(self) -> Iterable[Entity]:
         inspector = inspect(self.engine)
-        for schema in inspector.get_schema_names():
+        schema_names = inspector.get_schema_names()
+        for schema in schema_names:
+            # clear any previous source database state
+            self.database_source_state.clear()
             if not self.sql_config.schema_filter_pattern.included(schema):
                 self.status.filter(schema, "Schema pattern not allowed")
                 continue
-            logger.debug(f"Total tables {inspector.get_table_names(schema)}")
             if self.config.include_tables:
                 yield from self.fetch_tables(inspector, schema)
             if self.config.include_views:
                 yield from self.fetch_views(inspector, schema)
+            if self.config.mark_deleted_tables_as_deleted:
+                schema_fqdn = f"{self.config.service_name}.{schema}"
+                yield from self.delete_tables(schema_fqdn)
 
     def fetch_tables(
         self, inspector: Inspector, schema: str
@@ -282,7 +292,8 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         Scrape an SQL schema and prepare Database and Table
         OpenMetadata Entities
         """
-        for table_name in inspector.get_table_names(schema):
+        tables = inspector.get_table_names(schema)
+        for table_name in tables:
             try:
                 schema, table_name = self.standardize_schema_table_names(
                     schema, table_name
@@ -293,10 +304,9 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                         "Table pattern not allowed",
                     )
                     continue
-                self.status.scanned(f"{self.config.get_service_name()}.{table_name}")
-
                 description = _get_table_description(schema, table_name, inspector)
-                fqn = f"{self.config.service_name}.{self.config.database}.{schema}.{table_name}"
+                fqn = f"{self.config.service_name}.{schema}.{table_name}"
+                self.database_source_state.add(fqn)
                 table_columns = self._get_columns(schema, table_name, inspector)
                 table_entity = Table(
                     id=uuid.uuid4(),
@@ -327,10 +337,15 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                     table=table_entity, database=self._get_database(schema)
                 )
                 yield table_and_db
-            # Catch any errors during the ingestion and continue
-            except Exception as err:  # pylint: disable=broad-except
+                self.status.scanned(
+                    "{}.{}".format(self.config.get_service_name(), table_name)
+                )
+            except Exception as err:
+                traceback.print_exc()
                 logger.error(err)
-                self.status.warnings.append(f"{self.config.service_name}.{table_name}")
+                self.status.failures.append(
+                    "{}.{}".format(self.config.service_name, table_name)
+                )
                 continue
 
     def fetch_views(
@@ -366,7 +381,8 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                     )
                 except NotImplementedError:
                     view_definition = ""
-
+                fqn = f"{self.config.service_name}.{schema}.{view_name}"
+                self.database_source_state.add(fqn)
                 table = Table(
                     id=uuid.uuid4(),
                     name=view_name.replace(".", "_DOT_"),
@@ -392,6 +408,12 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                 self.status.warnings.append(f"{self.config.service_name}.{view_name}")
                 continue
 
+    def delete_tables(self, schema_fqdn: str) -> DeleteTable:
+        database_state = self._build_database_state(schema_fqdn)
+        for table in database_state:
+            if table.fullyQualifiedName not in self.database_source_state:
+                yield DeleteTable(table=table)
+
     def _parse_data_model(self):
         """
         Get all the DBT information and feed it to the Table Entity
@@ -408,31 +430,36 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
             }
 
             for key, mnode in manifest_entities.items():
-                name = mnode["alias"] if "alias" in mnode.keys() else mnode["name"]
-                cnode = catalog_entities.get(key)
-                columns = (
-                    self._parse_data_model_columns(name, mnode, cnode) if cnode else []
-                )
+                try:
+                    name = mnode["alias"] if "alias" in mnode.keys() else mnode["name"]
+                    cnode = catalog_entities.get(key)
+                    columns = (
+                        self._parse_data_model_columns(name, mnode, cnode)
+                        if cnode
+                        else []
+                    )
 
-                if mnode["resource_type"] == "test":
-                    continue
-                upstream_nodes = self._parse_data_model_upstream(mnode)
-                model_name = (
-                    mnode["alias"] if "alias" in mnode.keys() else mnode["name"]
-                )
-                model_name = model_name.replace(".", "_DOT_")
-                schema = mnode["schema"]
-                raw_sql = mnode.get("raw_sql", "")
-                model = DataModel(
-                    modelType=ModelType.DBT,
-                    description=mnode.get("description", ""),
-                    path=f"{mnode['root_path']}/{mnode['original_file_path']}",
-                    rawSql=raw_sql,
-                    sql=mnode.get("compiled_sql", raw_sql),
-                    columns=columns,
-                    upstream=upstream_nodes,
-                )
-                model_fqdn = f"{schema}.{model_name}"
+                    if mnode["resource_type"] == "test":
+                        continue
+                    upstream_nodes = self._parse_data_model_upstream(mnode)
+                    model_name = (
+                        mnode["alias"] if "alias" in mnode.keys() else mnode["name"]
+                    )
+                    model_name = model_name.replace(".", "_DOT_")
+                    schema = mnode["schema"]
+                    raw_sql = mnode.get("raw_sql", "")
+                    model = DataModel(
+                        modelType=ModelType.DBT,
+                        description=mnode.get("description", ""),
+                        path=f"{mnode['root_path']}/{mnode['original_file_path']}",
+                        rawSql=raw_sql,
+                        sql=mnode.get("compiled_sql", raw_sql),
+                        columns=columns,
+                        upstream=upstream_nodes,
+                    )
+                    model_fqdn = f"{schema}.{model_name}"
+                except Exception as err:
+                    print(err)
                 self.data_models[model_fqdn] = model
 
     def _parse_data_model_upstream(self, mnode):
@@ -489,7 +516,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
 
     def _get_database(self, schema: str) -> Database:
         return Database(
-            name=schema,
+            name=schema.replace(".", "_DOT_"),
             service=EntityReference(id=self.service.id, type=self.config.service_type),
         )
 
@@ -543,48 +570,61 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
 
         dataset_name = f"{schema}.{table}"
         table_columns = []
+        columns = inspector.get_columns(table, schema)
         try:
-            for row_order, column in enumerate(inspector.get_columns(table, schema)):
-                if "." in column["name"]:
-                    logger.info(f"Found '.' in {column['name']}")
-                    column["name"] = column["name"].replace(".", "_DOT_")
-                children = None
-                data_type_display = None
-                col_data_length = None
-                arr_data_type = None
-                if "raw_data_type" in column and column["raw_data_type"] is not None:
-                    (
-                        col_type,
-                        data_type_display,
-                        arr_data_type,
-                        children,
-                    ) = check_column_complex_type(
-                        self.status,
-                        dataset_name,
-                        column["raw_data_type"],
-                        column["name"],
-                    )
-                else:
-                    col_type = get_column_type(
-                        self.status, dataset_name, column["type"]
-                    )
-                    if col_type == "ARRAY" and re.match(
-                        r"(?:\w*)(?:\()(\w*)(?:.*)", str(column["type"])
-                    ):
-                        arr_data_type = re.match(
-                            r"(?:\w*)(?:[(]*)(\w*)(?:.*)", str(column["type"])
-                        ).groups()
-                        data_type_display = column["type"]
-
-                col_constraint = self._get_column_constraints(
-                    column, pk_columns, unique_columns
-                )
-
-                if col_type.upper() in {"CHAR", "VARCHAR", "BINARY", "VARBINARY"}:
-                    col_data_length = column["type"].length
-                if col_data_length is None:
-                    col_data_length = 1
+            for row_order, column in enumerate(columns):
                 try:
+                    if "." in column["name"]:
+                        logger.info(
+                            f"Found '.' in {column['name']}, changing '.' to '_DOT_'"
+                        )
+                        column["name"] = column["name"].replace(".", "_DOT_")
+                    children = None
+                    data_type_display = None
+                    col_data_length = None
+                    arr_data_type = None
+                    if (
+                        "raw_data_type" in column
+                        and column["raw_data_type"] is not None
+                    ):
+                        column["raw_data_type"] = self.parse_raw_data_type(
+                            column["raw_data_type"]
+                        )
+                        (
+                            col_type,
+                            data_type_display,
+                            arr_data_type,
+                            children,
+                        ) = check_column_complex_type(
+                            self.status,
+                            dataset_name,
+                            column["raw_data_type"],
+                            column["name"],
+                        )
+                    else:
+                        col_type = get_column_type(
+                            self.status, dataset_name, column["type"]
+                        )
+                        if col_type == "ARRAY" and re.match(
+                            r"(?:\w*)(?:\()(\w*)(?:.*)", str(column["type"])
+                        ):
+                            arr_data_type = re.match(
+                                r"(?:\w*)(?:[(]*)(\w*)(?:.*)", str(column["type"])
+                            ).groups()
+                            data_type_display = column["type"]
+                    if repr(column["type"]).upper().startswith("ARRAY("):
+                        arr_data_type = "STRUCT"
+                        data_type_display = (
+                            repr(column["type"])
+                            .replace("(", "<")
+                            .replace(")", ">")
+                            .lower()
+                        )
+                    col_constraint = self._get_column_constraints(
+                        column, pk_columns, unique_columns
+                    )
+                    if col_type.upper() in {"CHAR", "VARCHAR", "BINARY", "VARBINARY"}:
+                        col_data_length = column["type"].length
                     if col_type == "NULL":
                         col_type = "VARCHAR"
                         data_type_display = "varchar"
@@ -595,23 +635,24 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                         name=column["name"],
                         description=column.get("comment", None),
                         dataType=col_type,
-                        dataTypeDisplay=f"{col_type}({col_data_length})"
+                        dataTypeDisplay="{}({})".format(
+                            col_type, 1 if col_data_length is None else col_data_length
+                        )
                         if data_type_display is None
                         else f"{data_type_display}",
-                        dataLength=col_data_length,
+                        dataLength=1 if col_data_length is None else col_data_length,
                         constraint=col_constraint,
-                        ordinalPosition=row_order + 1,  # enumerate starts at 0
-                        children=children,
+                        ordinalPosition=row_order,
+                        children=children if children is not None else None,
                         arrayDataType=arr_data_type,
                     )
-                except Exception as err:  # pylint: disable=broad-except
-                    logger.error(traceback.format_exc())
+                except Exception as err:
                     logger.error(traceback.print_exc())
                     logger.error(f"{err} : {column}")
                     continue
                 table_columns.append(om_column)
             return table_columns
-        except Exception as err:  # pylint: disable=broad-except
+        except Exception as err:
             logger.error(f"{repr(err)}: {table} {err}")
             return None
 
@@ -642,6 +683,22 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         )
         logger.debug(f"Finished profiling {dataset_name}")
         return profile
+
+    def parse_raw_data_type(self, raw_data_type):
+        return raw_data_type
+
+    def _build_database_state(self, schema_fqdn: str) -> [EntityReference]:
+        after = None
+        tables = []
+        while True:
+            table_entities = self.metadata.list_entities(
+                entity=Table, after=after, limit=10, params={"database": schema_fqdn}
+            )
+            tables.extend(table_entities.entities)
+            if table_entities.after is None:
+                break
+            after = table_entities.after
+        return tables
 
     def close(self):
         if self.connection is not None:

@@ -11,27 +11,31 @@
  *  limitations under the License.
  */
 
-import { Team } from 'Models';
+import { FormErrorData, Team } from 'Models';
 import React, { useRef, useState } from 'react';
 import { TagsCategory } from '../../../pages/tags/tagsTypes';
 import { Button } from '../../buttons/Button/Button';
 type FormData = TagsCategory | Team;
 type FormModalProp = {
   onCancel: () => void;
-  onSave: (data: TagsCategory) => void;
+  onChange?: (data: TagsCategory | Team) => void;
+  onSave: (data: TagsCategory | Team) => void;
   form: React.ElementType;
   header: string;
   initialData: FormData;
+  errorData?: FormErrorData;
 };
 type FormRef = {
   fetchMarkDownData: () => string;
 };
 const FormModal = ({
   onCancel,
+  onChange,
   onSave,
   form: Form,
   header,
   initialData,
+  errorData,
 }: FormModalProp) => {
   const formRef = useRef<FormRef>();
   const [data, setData] = useState<FormData>(initialData);
@@ -57,7 +61,15 @@ const FormModal = ({
             </p>
           </div>
           <div className="tw-modal-body">
-            <Form initialData={initialData} ref={formRef} saveData={setData} />
+            <Form
+              errorData={errorData}
+              initialData={initialData}
+              ref={formRef}
+              saveData={(data: TagsCategory | Team) => {
+                setData(data);
+                onChange && onChange(data);
+              }}
+            />
           </div>
           <div className="tw-modal-footer" data-testid="cta-container">
             <Button

@@ -14,7 +14,6 @@ from openmetadata.common.database_common import (
     DatabaseCommon,
     SQLConnectionConfig,
     SQLExpressions,
-    register_custom_type,
 )
 
 logger = logging.getLogger(__name__)

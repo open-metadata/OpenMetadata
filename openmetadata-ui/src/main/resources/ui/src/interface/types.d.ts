@@ -423,4 +423,8 @@ declare module 'Models' {
     openInNewTab?: boolean;
     showLabel?: boolean;
   };
+
+  export interface FormErrorData {
+    [key: string]: string | undefined;
+  }
 }
