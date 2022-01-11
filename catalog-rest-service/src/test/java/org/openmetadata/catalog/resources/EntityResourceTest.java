@@ -13,52 +13,7 @@
 
 package org.openmetadata.catalog.resources;
 
-import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
-import static javax.ws.rs.core.Response.Status.CONFLICT;
-import static javax.ws.rs.core.Response.Status.CREATED;
-import static javax.ws.rs.core.Response.Status.NOT_FOUND;
-import static javax.ws.rs.core.Response.Status.OK;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.openmetadata.catalog.exception.CatalogExceptionMessage.ENTITY_ALREADY_EXISTS;
-import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
-import static org.openmetadata.catalog.security.SecurityUtil.authHeaders;
-import static org.openmetadata.catalog.util.TestUtils.ENTITY_NAME_LENGTH_ERROR;
-import static org.openmetadata.catalog.util.TestUtils.LONG_ENTITY_NAME;
-import static org.openmetadata.catalog.util.TestUtils.NON_EXISTENT_ENTITY;
-import static org.openmetadata.catalog.util.TestUtils.UpdateType;
-import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
-import static org.openmetadata.catalog.util.TestUtils.UpdateType.NO_CHANGE;
-import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
-import static org.openmetadata.catalog.util.TestUtils.assertEntityPagination;
-import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
-import static org.openmetadata.catalog.util.TestUtils.assertListNull;
-import static org.openmetadata.catalog.util.TestUtils.assertResponse;
-import static org.openmetadata.catalog.util.TestUtils.checkUserFollowing;
-import static org.openmetadata.catalog.util.TestUtils.userAuthHeaders;
-
 import com.fasterxml.jackson.core.JsonProcessingException;
-import java.io.IOException;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Optional;
-import java.util.Random;
-import java.util.UUID;
-import java.util.function.BiConsumer;
-import javax.json.JsonPatch;
-import javax.ws.rs.client.WebTarget;
-import javax.ws.rs.core.Response.Status;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -108,6 +63,55 @@ import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.TestUtils;
+
+import javax.json.JsonPatch;
+import javax.ws.rs.client.WebTarget;
+import javax.ws.rs.core.Response;
+import javax.ws.rs.core.Response.Status;
+import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Optional;
+import java.util.Random;
+import java.util.UUID;
+import java.util.function.BiConsumer;
+
+import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
+import static javax.ws.rs.core.Response.Status.CONFLICT;
+import static javax.ws.rs.core.Response.Status.CREATED;
+import static javax.ws.rs.core.Response.Status.NOT_FOUND;
+import static javax.ws.rs.core.Response.Status.OK;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.catalog.exception.CatalogExceptionMessage.ENTITY_ALREADY_EXISTS;
+import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
+import static org.openmetadata.catalog.exception.CatalogExceptionMessage.readOnlyAttribute;
+import static org.openmetadata.catalog.security.SecurityUtil.authHeaders;
+import static org.openmetadata.catalog.util.TestUtils.ENTITY_NAME_LENGTH_ERROR;
+import static org.openmetadata.catalog.util.TestUtils.LONG_ENTITY_NAME;
+import static org.openmetadata.catalog.util.TestUtils.NON_EXISTENT_ENTITY;
+import static org.openmetadata.catalog.util.TestUtils.UpdateType;
+import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
+import static org.openmetadata.catalog.util.TestUtils.UpdateType.NO_CHANGE;
+import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
+import static org.openmetadata.catalog.util.TestUtils.assertEntityPagination;
+import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
+import static org.openmetadata.catalog.util.TestUtils.assertListNull;
+import static org.openmetadata.catalog.util.TestUtils.assertResponse;
+import static org.openmetadata.catalog.util.TestUtils.checkUserFollowing;
+import static org.openmetadata.catalog.util.TestUtils.userAuthHeaders;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
@@ -285,7 +289,7 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
       throws URISyntaxException;
 
   // Get container entity based on create request that has CONTAINS relationship to the entity created with this
-  // request has . For table, it is database. For database, it is databaseService. See Relationship.CONTAINS for
+  // request has . For a table, it is database. For a database, it is databaseService. See Relationship.CONTAINS for
   // details.
   public abstract EntityReference getContainer(Object createRequest) throws URISyntaxException;
 
@@ -370,31 +374,6 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
         pageCount++;
         indexInAllTables -= forwardPage.getData().size();
       } while (before != null);
-    }
-  }
-
-  /** At the end of test for an entity, delete the parent container to test recursive delete functionality */
-  private void delete_recursiveTest() throws URISyntaxException, HttpResponseException {
-    // Finally, delete the container that contains the entities created for this test
-    EntityReference container = getContainer(createRequest("deleteRecursive", "", "", null));
-    if (container != null) {
-      ResultList<T> listBeforeDeletion = listEntities(null, 1000, null, null, adminAuthHeaders());
-      // Delete non-empty container entity and ensure deletion is not allowed
-      EntityResourceTest<?> containerTest = ENTITY_RESOURCE_TEST_MAP.get(container.getType());
-      HttpResponseException exception =
-          assertThrows(
-              HttpResponseException.class, () -> containerTest.deleteEntity(container.getId(), adminAuthHeaders()));
-      assertResponse(exception, BAD_REQUEST, container.getType() + " is not empty");
-
-      // Now delete the container with recursive flag on
-      containerTest.deleteEntity(container.getId(), true, adminAuthHeaders());
-
-      // Make sure entities contained are deleted and the new list operation returns 0 entities
-      ResultList<T> listAfterDeletion = listEntities(null, 1000, null, null, adminAuthHeaders());
-      listAfterDeletion
-          .getData()
-          .forEach(e -> assertNotEquals(getEntityInterface(e).getContainer().getId(), container.getId()));
-      assertTrue(listAfterDeletion.getData().size() < listBeforeDeletion.getData().size());
     }
   }
 
@@ -776,6 +755,103 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     HttpResponseException exception =
         assertThrows(HttpResponseException.class, () -> deleteEntity(NON_EXISTENT_ENTITY, adminAuthHeaders()));
     assertResponse(exception, NOT_FOUND, entityNotFound(entityName, NON_EXISTENT_ENTITY));
+  }
+
+  @Test
+  final void delete_put_entity_200(TestInfo test) throws IOException, URISyntaxException {
+    Object request = createRequest(getEntityName(test), "", "", null);
+    T entity = createEntity(request, adminAuthHeaders());
+    EntityInterface<T> entityInterface = getEntityInterface(entity);
+
+    // Delete the entity
+    deleteEntity(entityInterface.getId(), adminAuthHeaders());
+
+    // Update the entity with PUT operation. It should restore the entity.
+    ChangeDescription change = getChangeDescription(entityInterface.getVersion());
+    change.setFieldsUpdated(
+            Arrays.asList(
+                    new FieldChange().withName("deleted").withNewValue(false).withOldValue(true),
+                    new FieldChange().withName("description").withNewValue("updatedDescription").withOldValue("")));
+
+    request = createRequest(getEntityName(test), "updatedDescription", "", null);
+    updateAndCheckEntity(request, Response.Status.OK, adminAuthHeaders(), MINOR_UPDATE, change);
+  }
+
+//  @Test
+//  final void delete_patch_entity_200(TestInfo test) throws IOException, URISyntaxException {
+//    if (!supportsPatch) {
+//      return;
+//    }
+//
+//    Object request = createRequest(getEntityName(test), "", "", null);
+//    T entity = createEntity(request, adminAuthHeaders());
+//    EntityInterface<T> entityInterface = getEntityInterface(entity);
+//
+//    // PATCH operation to set the `deleted` field to true should fail
+//    // Note that PUT operation has CreateRequest that does not support setting `deleted` field
+//    String origJson = JsonUtils.pojoToJson(entity);
+//    entityInterface.setDeleted(true);
+//    assertResponse(() -> patchEntity(entityInterface.getId(), origJson, entity, adminAuthHeaders()), BAD_REQUEST,
+//            readOnlyAttribute(entityName, "deleted"));
+//
+//    // Delete the entity
+//    deleteEntity(entityInterface.getId(), adminAuthHeaders());
+//
+//    // Update the entity with PATCH operation. It should restore the entity
+//    ChangeDescription change = getChangeDescription(entityInterface.getVersion());
+//    entityInterface.setDeleted(false);
+//    entityInterface.setDescription("updatedDescription");
+//    change.setFieldsUpdated(
+//            Arrays.asList(
+//                    new FieldChange().withName("deleted").withNewValue(false).withOldValue(true),
+//                    new FieldChange().withName("description").withNewValue("updatedDescription").withOldValue("")));
+//
+//    patchEntityAndCheck(entity, origJson, adminAuthHeaders(), MINOR_UPDATE, change);
+//  }
+
+  /** At the end of test for an entity, delete the parent container to test recursive delete functionality */
+  private void delete_recursiveTest() throws URISyntaxException, HttpResponseException {
+    //
+    // Finally, delete the container that contains the entities created in this test
+    // For table entity related test, the entity will be database and so on.
+    //
+    EntityReference container = getContainer(createRequest("deleteRecursive", "", "", null));
+    if (container != null) {
+      // List entities before deletion
+      ResultList<T> listBeforeDeletion = listEntities(null, 1000, null, null, adminAuthHeaders());
+
+      // Delete non-empty container entity and ensure deletion is not allowed
+      EntityResourceTest<?> containerTest = ENTITY_RESOURCE_TEST_MAP.get(container.getType());
+      HttpResponseException exception =
+              assertThrows(
+                      HttpResponseException.class, () -> containerTest.deleteEntity(container.getId(), adminAuthHeaders()));
+      assertResponse(exception, BAD_REQUEST, container.getType() + " is not empty");
+
+      // Now delete the container with **recursive** query parameter on
+      containerTest.deleteEntity(container.getId(), true, adminAuthHeaders());
+
+      // Make sure entities contained are deleted and the new list operation returns less entities
+      ResultList<T> listAfterDeletion = listEntities(null, 1000, null, null, adminAuthHeaders());
+      listAfterDeletion
+              .getData()
+              .forEach(e -> assertNotEquals(getEntityInterface(e).getContainer().getId(), container.getId()));
+      assertTrue(listAfterDeletion.getData().size() < listBeforeDeletion.getData().size());
+
+      // Restore the entity recursively and make sure the soft-deleted entity and the entities it contained are restored
+      System.out.println("XXX container name " + container.getName());
+      Object request = containerTest.createRequest(container.getName(), "newDescription", "", null);
+      containerTest.updateEntity(request, Status.OK, adminAuthHeaders());
+      ResultList<T> listAfterRestore = listEntities(null, 1000, null, null, adminAuthHeaders());
+      boolean restored = false;
+      for (T e : listAfterRestore.getData()) {
+        if (getEntityInterface(e).getContainer().getId().equals(container.getId())) {
+          restored = true;
+          break;
+        }
+      }
+      assertTrue(restored);
+      assertTrue(listAfterRestore.getData().size() < listBeforeDeletion.getData().size());
+    }
   }
 
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////

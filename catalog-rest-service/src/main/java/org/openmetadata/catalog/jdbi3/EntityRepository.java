@@ -203,6 +203,11 @@ public abstract class EntityRepository<T> {
   }
 
   @Transaction
+  public final EntityReference getEntityReference(String id) throws IOException, ParseException {
+    return dao.findEntityReferenceByIdDeletedOrExists(UUID.fromString(id));
+  }
+
+  @Transaction
   public final T getByName(UriInfo uriInfo, String fqn, Fields fields) throws IOException, ParseException {
     return withHref(uriInfo, setFields(dao.findEntityByName(fqn), fields));
   }
@@ -322,7 +327,7 @@ public abstract class EntityRepository<T> {
   public final PatchResponse<T> patch(UriInfo uriInfo, UUID id, String user, JsonPatch patch)
       throws IOException, ParseException {
     // Get all the fields in the original entity that can be updated during PATCH operation
-    T original = setFields(dao.findEntityById(id), patchFields);
+    T original = setFields(dao.findEntityByIdDeletedOrExists(id), patchFields);
 
     // Apply JSON patch to the original entity to get the updated entity
     T updated = JsonUtils.applyPatch(original, patch, entityClass);
@@ -575,6 +580,13 @@ public abstract class EntityRepository<T> {
     }
 
     private void updateDeleted() throws JsonProcessingException {
+      // PUT or PATCH operation can't mark entity as deleted
+      System.out.println("XXX entity deleted " + updated.isDeleted());
+      if (Boolean.TRUE.equals(updated.isDeleted())) {
+        throw new IllegalArgumentException(CatalogExceptionMessage.readOnlyAttribute(entityName, "deleted"));
+      }
+
+      // If the entity is already deleted (called soft-delete), a PUT or PATCH operation restored it back
       if (Boolean.TRUE.equals(original.isDeleted())) {
         updated.setDeleted(false);
         recordChange("deleted", true, false);
