@@ -25,7 +25,6 @@ public class Property {
   private static Property instance;
   String openMetadataUrl = "openMetadataUrl";
   String openMetadataWaitTime = "waitTime";
-  String openMetadataTagUrl = "tagUrl";
 
   public static Property getInstance() {
     if (instance == null) {
