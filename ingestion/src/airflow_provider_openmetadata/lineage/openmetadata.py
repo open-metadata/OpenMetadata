@@ -6,7 +6,6 @@ from typing import TYPE_CHECKING, Dict, List, Optional
 import dateutil
 from airflow.configuration import conf
 from airflow.lineage.backend import LineageBackend
-
 from metadata.generated.schema.api.data.createPipeline import (
     CreatePipelineEntityRequest,
 )
@@ -22,7 +21,14 @@ from metadata.generated.schema.entity.services.pipelineService import (
 )
 from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ingestion.ometa.auth_provider import AuthenticationProvider
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.ometa.openmetadata_rest import (
+    Auth0AuthenticationProvider,
+    GoogleAuthenticationProvider,
+    NoOpAuthenticationProvider,
+    OktaAuthenticationProvider,
+)
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.utils.helpers import convert_epoch_to_iso
 
@@ -30,10 +36,8 @@ if TYPE_CHECKING:
     from airflow import DAG
     from airflow.models.baseoperator import BaseOperator
 
-from metadata.config.common import ConfigModel
 
-
-class OpenMetadataLineageConfig(ConfigModel, MetadataServerConfig):
+class OpenMetadataLineageConfig(MetadataServerConfig):
     airflow_service_name: str = "airflow"
     api_endpoint: str = "http://localhost:8585"
     auth_provider_type: str = "no-auth"
@@ -50,25 +54,30 @@ def get_lineage_config() -> OpenMetadataLineageConfig:
         auth_provider_type = conf.get(
             "lineage", "auth_provider_type", fallback="no-auth"
         )
-        secret_key = conf.get("lineage", "secret_key", fallback=None)
-        token = conf.get("lineage", "token", fallback="okta")
-        if auth_provider_type == "okta":
-            return OpenMetadataLineageConfig.parse_obj(
-                {
-                    "airflow_service_name": airflow_service_name,
-                    "api_endpoint": api_endpoint,
-                    "auth_provider_type": auth_provider_type,
-                    "secret_key": secret_key,
-                    "token": token,
-                }
+        if auth_provider_type == "google":
+            auth_provider: AuthenticationProvider = (
+                GoogleAuthenticationProvider.create(self.config)
             )
-
+        elif auth_provider_type == "okta":
+            auth_provider: AuthenticationProvider = (
+                OktaAuthenticationProvider.create(self.config)
+            )
+        elif auth_provider_type == "auth0":
+            auth_provider: AuthenticationProvider = (
+                Auth0AuthenticationProvider.create(self.config)
+            )
+        else:
+            auth_provider: AuthenticationProvider = (
+                NoOpAuthenticationProvider.create(self.config)
+            )
+        secret_key = conf.get("lineage", "secret_key", fallback=None)
         return OpenMetadataLineageConfig.parse_obj(
             {
                 "airflow_service_name": airflow_service_name,
                 "api_endpoint": api_endpoint,
                 "auth_provider_type": auth_provider_type,
                 "secret_key": secret_key,
+                "auth_token": auth_provider.auth_token()
             }
         )
     else:
@@ -118,12 +127,12 @@ allowed_flow_keys = [
 
 
 def parse_lineage_to_openmetadata(
-    config: OpenMetadataLineageConfig,
-    context: Dict,
-    operator: "BaseOperator",
-    inlets: List,
-    outlets: List,
-    client: OpenMetadata,
+        config: OpenMetadataLineageConfig,
+        context: Dict,
+        operator: "BaseOperator",
+        inlets: List,
+        outlets: List,
+        client: OpenMetadata,
 ):
     import ast
 
@@ -284,10 +293,10 @@ class OpenMetadataLineageBackend(LineageBackend):
 
     @staticmethod
     def send_lineage(
-        operator: "BaseOperator",
-        inlets: Optional[List] = None,
-        outlets: Optional[List] = None,
-        context: Dict = None,
+            operator: "BaseOperator",
+            inlets: Optional[List] = None,
+            outlets: Optional[List] = None,
+            context: Dict = None,
     ) -> None:
 
         try:
@@ -303,18 +312,18 @@ class OpenMetadataLineageBackend(LineageBackend):
             op_inlets = []
             op_outlets = []
             if (
-                isinstance(operator._inlets, list)
-                and len(operator._inlets) == 1
-                and isinstance(operator._inlets[0], dict)
-                and not is_airflow_version_1()
+                    isinstance(operator._inlets, list)
+                    and len(operator._inlets) == 1
+                    and isinstance(operator._inlets[0], dict)
+                    and not is_airflow_version_1()
             ):
                 op_inlets = operator._inlets[0].get("tables", [])
 
             if (
-                isinstance(operator._outlets, list)
-                and len(operator._outlets) == 1
-                and isinstance(operator._outlets[0], dict)
-                and not is_airflow_version_1()
+                    isinstance(operator._outlets, list)
+                    and len(operator._outlets) == 1
+                    and isinstance(operator._outlets[0], dict)
+                    and not is_airflow_version_1()
             ):
                 op_outlets = operator._outlets[0].get("tables", [])
             if len(op_inlets) == 0 and len(operator.inlets) != 0:
