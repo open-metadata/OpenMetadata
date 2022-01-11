@@ -14,7 +14,9 @@
 import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
+import { isUndefined, toLower } from 'lodash';
 import { observer } from 'mobx-react';
+import { FormErrorData } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { Link, useHistory, useParams } from 'react-router-dom';
 import AppState from '../../AppState';
@@ -40,8 +42,9 @@ import {
 import { Team } from '../../generated/entity/teams/team';
 import { User } from '../../generated/entity/teams/user';
 import { useAuth } from '../../hooks/authHooks';
+import useToastContext from '../../hooks/useToastContext';
 import { UserTeam } from '../../interface/team.interface';
-import { getCountBadge } from '../../utils/CommonUtils';
+import { getActiveCatClass, getCountBadge } from '../../utils/CommonUtils';
 import AddUsersModal from './AddUsersModal';
 import Form from './Form';
 import UserCard from './UserCard';
@@ -59,6 +62,9 @@ const TeamsPage = () => {
   const [isAddingTeam, setIsAddingTeam] = useState<boolean>(false);
   const [isAddingUsers, setIsAddingUsers] = useState<boolean>(false);
   const [userList, setUserList] = useState<Array<User>>([]);
+  const [errorData, setErrorData] = useState<FormErrorData>();
+
+  const showToast = useToastContext();
 
   const fetchTeams = () => {
     setIsLoading(true);
@@ -100,16 +106,48 @@ const TeamsPage = () => {
     }
   };
 
+  const onNewDataChange = (data: Team, forceSet = false) => {
+    if (errorData || forceSet) {
+      const errData: { [key: string]: string } = {};
+      if (!data.name.trim()) {
+        errData['name'] = 'Name is required';
+      } else if (
+        !isUndefined(
+          teams.find((item) => toLower(item.name) === toLower(data.name))
+        )
+      ) {
+        errData['name'] = 'Name already exists';
+      }
+      if (!data.displayName?.trim()) {
+        errData['displayName'] = 'Display name is required';
+      }
+      setErrorData(errData);
+
+      return errData;
+    }
+
+    return {};
+  };
+
   const createNewTeam = (data: Team) => {
-    createTeam(data)
-      .then((res: AxiosResponse) => {
-        if (res.data) {
-          fetchTeams();
-        }
-      })
-      .finally(() => {
-        setIsAddingTeam(false);
-      });
+    const errData = onNewDataChange(data, true);
+    if (!Object.values(errData).length) {
+      createTeam(data)
+        .then((res: AxiosResponse) => {
+          if (res.data) {
+            fetchTeams();
+          }
+        })
+        .catch((error: AxiosError) => {
+          showToast({
+            variant: 'error',
+            body: error.message ?? 'Something went wrong!',
+          });
+        })
+        .finally(() => {
+          setIsAddingTeam(false);
+        });
+    }
   };
 
   const createUsers = (data: Array<UserTeam>) => {
@@ -143,13 +181,6 @@ const TeamsPage = () => {
     });
   };
 
-  const getCurrentTeamClass = (name: string) => {
-    if (currentTeam?.name === name) {
-      return 'activeCategory';
-    } else {
-      return '';
-    }
-  };
   const getActiveTabClass = (tab: number) => {
     return tab === currentTab ? 'active' : '';
   };
@@ -276,18 +307,21 @@ const TeamsPage = () => {
   const fetchLeftPanel = () => {
     return (
       <>
-        <div className="tw-flex tw-justify-between tw-items-baseline tw-mb-3 tw-border-b">
-          <h6 className="tw-heading">Teams</h6>
+        <div className="tw-flex tw-justify-between tw-items-center tw-mb-3 tw-border-b">
+          <h6 className="tw-heading tw-text-base">Teams</h6>
           <NonAdminAction position="bottom" title={TITLE_FOR_NON_ADMIN_ACTION}>
             <Button
-              className={classNames('tw-h-7 tw-px-2', {
+              className={classNames('tw-h-7 tw-px-2 tw-mb-4', {
                 'tw-opacity-40': !isAdminUser && !isAuthDisabled,
               })}
               data-testid="add-teams"
               size="small"
               theme="primary"
               variant="contained"
-              onClick={() => setIsAddingTeam(true)}>
+              onClick={() => {
+                setErrorData(undefined);
+                setIsAddingTeam(true);
+              }}>
               <i aria-hidden="true" className="fa fa-plus" />
             </Button>
           </NonAdminAction>
@@ -295,14 +329,15 @@ const TeamsPage = () => {
         {teams &&
           teams.map((team: Team) => (
             <div
-              className={`tw-group tw-text-grey-body tw-cursor-pointer tw-text-body tw-mb-3 tw-flex tw-justify-between ${getCurrentTeamClass(
-                team.name
+              className={`tw-group tw-text-grey-body tw-cursor-pointer tw-text-body tw-mb-3 tw-flex tw-justify-between ${getActiveCatClass(
+                team.name,
+                currentTeam?.name
               )}`}
               key={team.name}
               onClick={() => {
                 changeCurrentTeam(team.name);
               }}>
-              <p className="tw-text-center tag-category tw-self-center">
+              <p className="tw-text-center tag-category label-category tw-self-center">
                 {team.displayName}
               </p>
             </div>
@@ -382,7 +417,7 @@ const TeamsPage = () => {
                 {teams.length > 0 ? (
                   <>
                     <div
-                      className="tw-flex tw-justify-between tw-pl-1"
+                      className="tw-flex tw-justify-between tw-items-center"
                       data-testid="header">
                       <div className="tw-heading tw-text-link tw-text-base">
                         {currentTeam?.displayName}
@@ -391,7 +426,7 @@ const TeamsPage = () => {
                         position="bottom"
                         title={TITLE_FOR_NON_ADMIN_ACTION}>
                         <Button
-                          className={classNames('tw-h-8 tw-rounded tw-mb-2', {
+                          className={classNames('tw-h-8 tw-rounded tw-mb-3', {
                             'tw-opacity-40': !isAdminUser && !isAuthDisabled,
                           })}
                           data-testid="add-new-user-button"
@@ -404,7 +439,7 @@ const TeamsPage = () => {
                       </NonAdminAction>
                     </div>
                     <div
-                      className="tw-mb-3"
+                      className="tw-mb-3 tw--ml-5"
                       data-testid="description-container">
                       <Description
                         description={currentTeam?.description || ''}
@@ -446,6 +481,7 @@ const TeamsPage = () => {
 
                 {isAddingTeam && (
                   <FormModal
+                    errorData={errorData}
                     form={Form}
                     header="Adding new team"
                     initialData={{
@@ -454,6 +490,7 @@ const TeamsPage = () => {
                       displayName: '',
                     }}
                     onCancel={() => setIsAddingTeam(false)}
+                    onChange={(data) => onNewDataChange(data as Team)}
                     onSave={(data) => createNewTeam(data as Team)}
                   />
                 )}

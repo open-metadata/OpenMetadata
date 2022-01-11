@@ -10,6 +10,7 @@ from pydantic import BaseModel
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineage
 from metadata.ingestion.ometa.client import REST, APIError
+from metadata.ingestion.ometa.utils import get_entity_type
 
 logger = logging.getLogger(__name__)
 
@@ -97,7 +98,7 @@ class OMetaLineageMixin(Generic[T]):
         :param up_depth: Upstream depth of lineage (default=1, min=0, max=3)"
         :param down_depth: Downstream depth of lineage (default=1, min=0, max=3)
         """
-        entity_name = self.get_entity_type(entity)
+        entity_name = get_entity_type(entity)
         search = (
             f"?upstreamDepth={min(up_depth, 3)}&downstreamDepth={min(down_depth, 3)}"
         )

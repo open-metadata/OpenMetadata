@@ -97,6 +97,9 @@ class BigqueryUsageSource(Source[TableQuery]):
                                     jobStats["startTime"][0:19], "%Y-%m-%dT%H:%M:%S"
                                 ).strftime("%Y-%m-%d %H:%M:%S")
                             )
+                            logger.debug(
+                                f"Query :{statementType}:{queryConfig['query']}"
+                            )
                             tq = TableQuery(
                                 query=statementType,
                                 user_name=entry.resource.labels["project_id"],
