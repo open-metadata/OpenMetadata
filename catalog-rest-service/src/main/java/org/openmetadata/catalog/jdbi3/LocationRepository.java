@@ -222,16 +222,10 @@ public class LocationRepository extends EntityRepository<Location> {
   }
 
   private EntityReference getService(Location location) throws IOException {
-    EntityReference ref;
-    if (location.getDeleted()) {
-      ref =
-          EntityUtil.getService(
-              daoCollection.relationshipDAO(), Entity.LOCATION, location.getId(), Entity.STORAGE_SERVICE, DELETED);
-    } else {
-      ref =
-          EntityUtil.getService(
-              daoCollection.relationshipDAO(), Entity.LOCATION, location.getId(), Entity.STORAGE_SERVICE, NON_DELETED);
-    }
+    Include include = location.getDeleted() ? DELETED : NON_DELETED;
+    EntityReference ref =
+        EntityUtil.getService(
+            daoCollection.relationshipDAO(), Entity.LOCATION, location.getId(), Entity.STORAGE_SERVICE, include);
     return getService(Objects.requireNonNull(ref));
   }
 
