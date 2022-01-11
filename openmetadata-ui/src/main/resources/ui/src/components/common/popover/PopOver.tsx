@@ -21,6 +21,8 @@ const PopOver: React.FC<PopOverProp> = ({
   arrow = true,
   children,
   className = '',
+  delay = 500,
+  hideDelay = 0,
   html,
   position,
   size = 'regular',
@@ -32,6 +34,8 @@ const PopOver: React.FC<PopOverProp> = ({
     <Tooltip
       arrow={arrow}
       className={className}
+      delay={delay}
+      hideDelay={hideDelay}
       html={html}
       position={position}
       size={size}

@@ -274,3 +274,7 @@ export const getOwnerIds = (
     return [getCurrentUserId()];
   }
 };
+
+export const getActiveCatClass = (name: string, activeName = '') => {
+  return activeName === name ? 'activeCategory' : '';
+};

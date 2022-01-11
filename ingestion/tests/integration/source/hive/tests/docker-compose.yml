@@ -19,7 +19,7 @@ services:
     environment:
       - CLUSTER_NAME=test
     env_file:
-      - ./hadoop-hive.env
+      - hadoop-hive.env
     ports:
       - "50070:50070"
   datanode:
@@ -27,7 +27,7 @@ services:
     volumes:
       - datanode:/hadoop/dfs/data
     env_file:
-      - ./hadoop-hive.env
+      - hadoop-hive.env
     environment:
       SERVICE_PRECONDITION: "namenode:50070"
     ports:
@@ -35,7 +35,7 @@ services:
   hive-server:
     image: bde2020/hive:2.3.2-postgresql-metastore
     env_file:
-      - ./hadoop-hive.env
+      - hadoop-hive.env
     command: "sh /setup/setup.sh"
     volumes:
       - ./setup:/setup
@@ -47,7 +47,7 @@ services:
   hive-metastore:
     image: bde2020/hive:2.3.2-postgresql-metastore
     env_file:
-      - ./hadoop-hive.env
+      - hadoop-hive.env
     command: /opt/hive/bin/hive --service metastore
     environment:
       SERVICE_PRECONDITION: "namenode:50070 datanode:50075 hive-metastore-postgresql:5432"

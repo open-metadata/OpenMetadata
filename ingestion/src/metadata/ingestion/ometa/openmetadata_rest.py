@@ -8,7 +8,10 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-
+"""
+Helper classes to model OpenMetadata Entities,
+server configuration and auth.
+"""
 import http.client
 import json
 import logging
@@ -110,6 +113,10 @@ class GoogleAuthenticationProvider(AuthenticationProvider):
 
 
 class OktaAuthenticationProvider(AuthenticationProvider):
+    """
+    Prepare the Json Web Token for Okta auth
+    """
+
     def __init__(self, config: MetadataServerConfig):
         self.config = config
 
@@ -118,9 +125,9 @@ class OktaAuthenticationProvider(AuthenticationProvider):
         return cls(config)
 
     def auth_token(self) -> str:
-        from okta.jwt import JWT
+        from okta.jwt import JWT  # pylint: disable=import-outside-toplevel
 
-        my_pem, my_jwk = JWT.get_PEM_JWK(self.config.private_key)
+        _, my_jwk = JWT.get_PEM_JWK(self.config.private_key)
         claims = {
             "sub": self.config.client_id,
             "iat": time.time(),

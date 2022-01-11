@@ -28,4 +28,6 @@ export type PopOverProp = {
   trigger: Trigger;
   children: ReactNode;
   className?: string;
+  delay?: number;
+  hideDelay?: number;
 };
