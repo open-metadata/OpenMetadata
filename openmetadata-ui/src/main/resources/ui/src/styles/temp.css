@@ -834,7 +834,7 @@ body .list-option.rdw-option-active {
   position: absolute;
   top: 0;
   left: 0;
-  width: 100px;
+  width: 110px;
   z-index: 200;
   overflow-y: auto;
   padding: 8px;
