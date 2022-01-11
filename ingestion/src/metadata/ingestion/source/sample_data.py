@@ -456,12 +456,26 @@ class SampleDataSource(Source[Entity]):
                         description=f"This is {user['teams']} description.",
                     )
                 ]
+                roles = (
+                    [
+                        EntityReference(
+                            id=uuid.uuid4(),
+                            name=role,
+                            type="role",
+                            description=f"This is {role} description.",
+                        )
+                        for role in user["roles"]
+                    ]
+                    if "roles" in user
+                    else []
+                )
                 user_metadata = User(
                     id=uuid.uuid4(),
                     name=user["name"],
                     displayName=user["displayName"],
                     email=user["email"],
                     teams=teams,
+                    roles=roles,
                     href=Href(__root__="http://localhost"),
                 )
                 yield user_metadata

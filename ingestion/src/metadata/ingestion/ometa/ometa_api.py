@@ -39,6 +39,7 @@ from metadata.generated.schema.entity.services.messagingService import Messaging
 from metadata.generated.schema.entity.services.pipelineService import PipelineService
 from metadata.generated.schema.entity.services.storageService import StorageService
 from metadata.generated.schema.entity.tags.tagCategory import Tag
+from metadata.generated.schema.entity.teams.role import Role
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.type import basic
@@ -204,6 +205,9 @@ class OpenMetadata(
         if issubclass(entity, Tag):
             return "/tags"
 
+        if issubclass(entity, get_args(Union[Role, self.get_create_entity_type(Role)])):
+            return "/roles"
+
         if issubclass(entity, get_args(Union[Team, self.get_create_entity_type(Team)])):
             return "/teams"
 
@@ -267,7 +271,11 @@ class OpenMetadata(
         if "service" in entity.__name__.lower():
             return self.services_path
 
-        if "user" in entity.__name__.lower() or "team" in entity.__name__.lower():
+        if (
+            "user" in entity.__name__.lower()
+            or "role" in entity.__name__.lower()
+            or "team" in entity.__name__.lower()
+        ):
             return self.teams_path
 
         return self.data_path
