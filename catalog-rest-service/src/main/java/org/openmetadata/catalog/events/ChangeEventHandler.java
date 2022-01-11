@@ -21,6 +21,7 @@ import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.type.ChangeEvent;
+import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.EventType;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.JsonUtils;
@@ -78,8 +79,12 @@ public class ChangeEventHandler implements EventHandler {
     // Entity was created by either POST .../entities or PUT .../entities
     if (responseCode == Status.CREATED.getStatusCode() && !RestUtil.ENTITY_FIELDS_CHANGED.equals(changeType)) {
       var entityInterface = Entity.getEntityInterface(entity);
-      String entityType = Entity.getEntityReference(entity).getType();
-      return getChangeEvent(EventType.ENTITY_CREATED, entityType, entityInterface).withEntity(entity);
+      EntityReference entityReference = Entity.getEntityReference(entity);
+      String entityType = entityReference.getType();
+      String entityFQN = entityReference.getName();
+      return getChangeEvent(EventType.ENTITY_CREATED, entityType, entityInterface)
+          .withEntity(entity)
+          .withEntityFullyQualifiedName(entityFQN);
     }
 
     // PUT or PATCH operation didn't result in any change
@@ -90,10 +95,13 @@ public class ChangeEventHandler implements EventHandler {
     // Entity was updated by either PUT .../entities or PATCH .../entities
     if (changeType.equals(RestUtil.ENTITY_UPDATED)) {
       var entityInterface = Entity.getEntityInterface(entity);
-      String entityType = Entity.getEntityReference(entity).getType();
+      EntityReference entityReference = Entity.getEntityReference(entity);
+      String entityType = entityReference.getType();
+      String entityFQN = entityReference.getName();
       return getChangeEvent(EventType.ENTITY_UPDATED, entityType, entityInterface)
           .withPreviousVersion(entityInterface.getChangeDescription().getPreviousVersion())
-          .withEntity(entity);
+          .withEntity(entity)
+          .withEntityFullyQualifiedName(entityFQN);
     }
 
     // Entity field was updated by PUT .../entities/{id}/fieldName - Example PUT ../tables/{id}/follower

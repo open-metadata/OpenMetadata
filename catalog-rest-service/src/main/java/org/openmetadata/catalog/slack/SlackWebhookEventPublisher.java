@@ -4,7 +4,6 @@ import java.util.concurrent.TimeUnit;
 import javax.ws.rs.ProcessingException;
 import javax.ws.rs.client.Client;
 import javax.ws.rs.client.ClientBuilder;
-import javax.ws.rs.client.Entity;
 import javax.ws.rs.client.Invocation;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
@@ -13,6 +12,7 @@ import org.openmetadata.catalog.events.errors.EventPublisherException;
 import org.openmetadata.catalog.resources.events.EventResource.ChangeEventList;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.ChangeEvent;
+import org.openmetadata.catalog.type.EventType;
 import org.openmetadata.catalog.type.FieldChange;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -50,7 +50,8 @@ public class SlackWebhookEventPublisher extends AbstractEventPublisher {
       LOG.info("log event {}", event);
       try {
         SlackMessage slackMessage = buildSlackMessage(event);
-        Response response = target.post(Entity.entity(slackMessage, MediaType.APPLICATION_JSON_TYPE));
+        Response response =
+            target.post(javax.ws.rs.client.Entity.entity(slackMessage, MediaType.APPLICATION_JSON_TYPE));
         if (response.getStatus() >= 300 && response.getStatus() < 400) {
           throw new EventPublisherException(
               "Slack webhook callback is getting redirected. " + "Please check your configuration");
@@ -68,20 +69,10 @@ public class SlackWebhookEventPublisher extends AbstractEventPublisher {
     StringBuilder stringBuilder = new StringBuilder();
     SlackMessage slackMessage = new SlackMessage();
     slackMessage.setUsername(event.getUserName());
-    stringBuilder.append(event.getUserName());
-    switch (event.getEventType()) {
-      case ENTITY_CREATED:
-        stringBuilder.append(" created ");
-        break;
-      case ENTITY_UPDATED:
-        stringBuilder.append(" updated ");
-        break;
-      case ENTITY_DELETED:
-        stringBuilder.append(" deleted ");
-        break;
-    }
-    stringBuilder.append("\n");
-    ChangeDescription changeDescription = event.getChangeDescription();
+    String headerText = getHeaderText(event);
+    slackMessage.setText(headerText);
+
+    String addedEvents = getAddedEventsText(event);
     if (changeDescription.getFieldsAdded() != null && !changeDescription.getFieldsAdded().isEmpty()) {
       stringBuilder.append("Added ");
       for (FieldChange fieldChange : changeDescription.getFieldsAdded()) {
@@ -114,5 +105,34 @@ public class SlackWebhookEventPublisher extends AbstractEventPublisher {
     attachments[0].setText(stringBuilder.toString());
     slackMessage.setAttachments(attachments);
     return slackMessage;
+  }
+
+  private String getHeaderText(ChangeEvent event) {
+    String headerTxt = "%s %s %s";
+    String operation = "";
+    String entityUrl =
+        String.format(
+            "<http://localhost:8585/%s/%s|%s>",
+            event.getEntityType(), event.getEntityFullyQualifiedName(), event.getEntityFullyQualifiedName());
+    if (event.getEventType().equals(EventType.ENTITY_CREATED)) {
+      operation = "created";
+    } else if (event.getEventType().equals(EventType.ENTITY_UPDATED)) {
+      operation = "updated";
+    } else if (event.getEventType().equals(EventType.ENTITY_DELETED)) {
+      operation = "deleted";
+    }
+    return String.format(headerTxt, event.getUserName(), operation, entityUrl);
+  }
+
+  private SlackAttachment getAddedEventsText(ChangeEvent event) {
+    SlackAttachment attachment = new SlackAttachment();
+    ChangeDescription changeDescription = event.getChangeDescription();
+    if (changeDescription.getFieldsAdded() != null && !changeDescription.getFieldsAdded().isEmpty()) {
+      attachment.setTitle("Added Following");
+      for (FieldChange fieldChange : changeDescription.getFieldsAdded()) {
+        if (fieldChange.getName().equals("tags")) {}
+      }
+    }
+    return String.format(headerTxt, event.getUserName(), operation, entityUrl);
   }
 }
