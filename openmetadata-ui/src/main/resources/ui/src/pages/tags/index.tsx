@@ -13,7 +13,7 @@
 
 import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
-import { isUndefined } from 'lodash';
+import { isUndefined, toLower } from 'lodash';
 import { EntityTags, FormErrorData } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -108,7 +108,9 @@ const TagsPage = () => {
       } else if (/\s/g.test(data.name)) {
         errData['name'] = 'Name with space is not allowed';
       } else if (
-        !isUndefined(categories.find((item) => item.name === data.name))
+        !isUndefined(
+          categories.find((item) => toLower(item.name) === toLower(data.name))
+        )
       ) {
         errData['name'] = 'Name already exists';
       }
@@ -155,7 +157,7 @@ const TagsPage = () => {
       } else if (
         !isUndefined(
           currentCategory?.children?.find(
-            (item) => (item as TagClass)?.name === data.name
+            (item) => toLower((item as TagClass)?.name) === toLower(data.name)
           )
         )
       ) {
