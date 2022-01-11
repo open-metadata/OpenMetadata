@@ -367,10 +367,10 @@ public abstract class EntityRepository<T> {
       return new PutResponse<>(Status.CREATED, withHref(uriInfo, createNewEntity(updated)), RestUtil.ENTITY_CREATED);
     }
 
-    // Recover relationships if original was deleted before setFields
-    recoverDeletedRelationships(original);
     // Get all the fields in the original entity that can be updated during PUT operation
     setFields(original, putFields);
+    // Recover relationships if original was deleted before setFields
+    recoverDeletedRelationships(original);
 
     // Update the attributes and relationships of an entity
     EntityUpdater entityUpdater = getUpdater(original, updated, false);
