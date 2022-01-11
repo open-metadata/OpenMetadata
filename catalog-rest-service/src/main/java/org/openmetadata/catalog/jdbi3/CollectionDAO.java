@@ -408,7 +408,7 @@ public interface CollectionDAO {
         "DELETE from entity_relationship WHERE fromId = :fromId "
             + "AND fromEntity = :fromEntity AND toId = :toId AND toEntity = :toEntity "
             + "AND relation = :relation")
-    void delete(
+    int delete(
         @Bind("fromId") String fromId,
         @Bind("fromEntity") String fromEntity,
         @Bind("toId") String toId,
@@ -419,7 +419,7 @@ public interface CollectionDAO {
     @SqlUpdate(
         "DELETE from entity_relationship WHERE fromId = :fromId AND fromEntity = :fromEntity "
             + "AND relation = :relation AND toEntity = :toEntity")
-    void deleteFrom(
+    int deleteFrom(
         @Bind("fromId") String fromId,
         @Bind("fromEntity") String fromEntity,
         @Bind("relation") int relation,
@@ -429,14 +429,14 @@ public interface CollectionDAO {
     @SqlUpdate(
         "DELETE from entity_relationship WHERE fromId = :fromId AND fromEntity = :fromEntity "
             + "AND relation = :relation")
-    void deleteFrom(
+    int deleteFrom(
         @Bind("fromId") String fromId, @Bind("fromEntity") String fromEntity, @Bind("relation") int relation);
 
     // Delete all the entity relationship toId <-- relation --  entity of type fromEntity
     @SqlUpdate(
         "DELETE from entity_relationship WHERE toId = :toId AND toEntity = :toEntity AND relation = :relation "
             + "AND fromEntity = :fromEntity")
-    void deleteTo(
+    int deleteTo(
         @Bind("toId") String toId,
         @Bind("toEntity") String toEntity,
         @Bind("relation") int relation,
@@ -445,7 +445,7 @@ public interface CollectionDAO {
     @SqlUpdate(
         "DELETE from entity_relationship WHERE (toId = :id AND toEntity = :entity) OR "
             + "(fromId = :id AND toEntity = :entity)")
-    void deleteAll(@Bind("id") String id, @Bind("entity") String entity);
+    int deleteAll(@Bind("id") String id, @Bind("entity") String entity);
 
     @SqlUpdate(
         "UPDATE entity_relationship SET deleted = true WHERE (toId = :id AND toEntity = :entity) "

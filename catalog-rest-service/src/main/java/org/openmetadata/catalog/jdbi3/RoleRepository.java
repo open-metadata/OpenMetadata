@@ -199,5 +199,13 @@ public class RoleRepository extends EntityRepository<Role> {
     public RoleUpdater(Role original, Role updated, boolean patchOperation) {
       super(original, updated, patchOperation);
     }
+
+    @Override
+    public void entitySpecificUpdate() throws IOException {
+      // Update operation cannot undelete a role.
+      if (updated.getEntity().getDeleted() != original.getEntity().getDeleted()) {
+        throw new IllegalArgumentException(CatalogExceptionMessage.readOnlyAttribute("Role", "deleted"));
+      }
+    }
   }
 }

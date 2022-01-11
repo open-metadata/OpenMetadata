@@ -131,7 +131,6 @@ public class ChartRepository extends EntityRepository<Chart> {
 
   private void populateService(Chart chart) throws IOException {
     DashboardService service = getService(chart.getService().getId(), chart.getService().getType());
-    System.out.println("XXX service is " + service);
     chart.setService(new DashboardServiceEntityInterface(service).getEntityReference());
     chart.setServiceType(service.getServiceType());
   }
@@ -265,7 +264,6 @@ public class ChartRepository extends EntityRepository<Chart> {
 
     @Override
     public void setDeleted(boolean flag) {
-      System.out.println("XXX setting deleted flag to " + flag);
       entity.setDeleted(flag);
     }
 

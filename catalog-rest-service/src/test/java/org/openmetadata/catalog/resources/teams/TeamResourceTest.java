@@ -166,6 +166,17 @@ public class TeamResourceTest extends EntityResourceTest<Team> {
     assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
   }
 
+  @Test
+  void patch_teamDeletedDisallowed_400(TestInfo test) throws HttpResponseException, JsonProcessingException {
+    // Ensure team deleted attribute can't be changed using patch
+    Team team = createTeam(create(test), adminAuthHeaders());
+    String teamJson = JsonUtils.pojoToJson(team);
+    team.setDeleted(true);
+    HttpResponseException exception =
+        assertThrows(HttpResponseException.class, () -> patchTeam(teamJson, team, adminAuthHeaders()));
+    assertResponse(exception, BAD_REQUEST, CatalogExceptionMessage.readOnlyAttribute("Team", "deleted"));
+  }
+
   //  @Test
   //  public void patch_teamAttributes_as_admin_200_ok(TestInfo test)
   //          throws HttpResponseException, JsonProcessingException {
