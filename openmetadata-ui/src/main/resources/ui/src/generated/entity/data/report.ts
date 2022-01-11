@@ -22,6 +22,10 @@ export interface Report {
    */
   changeDescription?: ChangeDescription;
   /**
+   * When `true` indicates the entity has been soft deleted.
+   */
+  deleted?: boolean;
+  /**
    * Description of this report instance.
    */
   description?: string;

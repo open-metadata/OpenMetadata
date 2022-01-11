@@ -23,6 +23,10 @@ export interface DatabaseService {
    */
   changeDescription?: ChangeDescription;
   /**
+   * When `true` indicates the entity has been soft deleted.
+   */
+  deleted?: boolean;
+  /**
    * Description of a database service instance.
    */
   description?: string;
