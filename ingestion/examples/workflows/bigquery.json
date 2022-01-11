@@ -2,13 +2,7 @@
   "source": {
     "type": "bigquery",
     "config": {
-      "project_id": "project_id",
-      "host_port": "bigquery.googleapis.com",
-      "username": "gcpuser@project_id.iam.gserviceaccount.com",
       "service_name": "gcp_bigquery",
-      "options": {
-        "credentials_path": "examples/creds/bigquery-cred.json"
-      },
       "table_filter_pattern": {
         "excludes": [
           "[\\w]*cloudaudit.*",

@@ -52,6 +52,8 @@ _types.get_columns = get_columns
 
 class BigQueryConfig(SQLConnectionConfig, SQLSource):
     scheme = "bigquery"
+    host_port: Optional[str] = "bigquery.googleapis.com"
+    username: Optional[str] = None
     project_id: Optional[str] = None
     duration: int = 1
     service_type = "BigQuery"
@@ -70,13 +72,14 @@ class BigquerySource(SQLSource):
     def create(cls, config_dict, metadata_config_dict, ctx):
         config: SQLConnectionConfig = BigQueryConfig.parse_obj(config_dict)
         metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
-        os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = config.options[
-            "credentials_path"
-        ]
+        if config.options.get("credentials_path"):
+            os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = config.options[
+                "credentials_path"
+            ]
         return cls(config, metadata_config, ctx)
 
     def standardize_schema_table_names(
-        self, schema: str, table: str
+            self, schema: str, table: str
     ) -> Tuple[str, str]:
         segments = table.split(".")
         if len(segments) != 2:
