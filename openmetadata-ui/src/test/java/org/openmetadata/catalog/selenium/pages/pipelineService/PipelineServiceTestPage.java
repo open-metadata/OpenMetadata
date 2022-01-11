@@ -64,7 +64,7 @@ public class PipelineServiceTestPage {
     Events.click(webDriver, By.cssSelector("[data-testid='closeWhatsNew']")); // Close What's new
     Events.click(webDriver, By.cssSelector("[data-testid='menu-button'][id='menu-button-Settings']")); // Setting
     Events.click(webDriver, By.cssSelector("[data-testid='menu-item-Services']")); // Setting/Services
-    Events.click(webDriver, By.xpath("(//button[@data-testid='tab'])[4]"));
+    Events.click(webDriver, By.xpath("(//div[@data-testid='tab'])[4]"));
     Thread.sleep(waitTime);
   }
 
