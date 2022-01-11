@@ -21,10 +21,12 @@ public class Property {
 
   private static Integer waitTime;
   private static String URL;
+  private static String tagUrl;
   private static final Object LOCK = new Object();
   private static Property instance;
   String openMetadataUrl = "openMetadataUrl";
   String openMetadataWaitTime = "waitTime";
+  String openMetadataTagUrl = "tagUrl";
 
   public static Property getInstance() {
     if (instance == null) {
@@ -45,6 +47,7 @@ public class Property {
     }
     URL = properties.getProperty(openMetadataUrl);
     waitTime = Integer.parseInt(properties.getProperty(openMetadataWaitTime));
+    tagUrl = properties.getProperty(openMetadataTagUrl);
   }
 
   public static String getURL() {
@@ -53,5 +56,9 @@ public class Property {
 
   public static Integer getSleepTime() {
     return waitTime;
+  }
+
+  public static String getTagUrl() {
+    return tagUrl;
   }
 }

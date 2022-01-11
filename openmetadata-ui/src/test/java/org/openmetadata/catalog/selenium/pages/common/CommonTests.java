@@ -48,6 +48,7 @@ public class CommonTests {
   static String enterDescription = "//div[@data-testid='enterDescription']/div/div[2]/div/div/div/div/div/div";
   static WebDriverWait wait;
   Integer waitTime = Property.getInstance().getSleepTime();
+  static String tagUrl = Property.getInstance().getTagUrl();
 
   @BeforeEach
   public void openMetadataWindow() {
@@ -104,7 +105,7 @@ public class CommonTests {
     Events.sendKeys(webDriver, By.name("name"), "Testing Tag");
     Events.sendKeys(webDriver, By.xpath(enterDescription), faker.address().toString());
     Events.click(webDriver, By.cssSelector("[data-testid='saveButton']"));
-    URL url = new URL("http://localhost:8585/api/v1/tags/" + tagCategoryDisplayName + "/");
+    URL url = new URL(tagUrl + tagCategoryDisplayName + "/");
     HttpURLConnection http = (HttpURLConnection) url.openConnection();
     http.setRequestMethod("HEAD");
     http.connect();
@@ -124,7 +125,7 @@ public class CommonTests {
     Events.sendKeys(webDriver, By.xpath(enterDescription), faker.address().toString());
     Events.click(webDriver, By.cssSelector("[data-testid='saveButton']"));
     webDriver.navigate().refresh();
-    URL url = new URL("http://localhost:8585/api/v1/tags/");
+    URL url = new URL(tagUrl);
     HttpURLConnection http = (HttpURLConnection) url.openConnection();
     http.setRequestMethod("HEAD");
     http.connect();
