@@ -40,7 +40,6 @@ import {
 } from '../generated/type/entityLineage';
 import { EntityReference } from '../generated/type/entityReference';
 import { isLeafNode } from './EntityUtils';
-
 import { getEntityLink } from './TableUtils';
 
 export const getHeaderLabel = (
@@ -103,7 +102,8 @@ export const getLineageData = (
   loadNodeHandler: (node: EntityReference, pos: LineagePos) => void,
   lineageLeafNodes: LeafNodes,
   isNodeLoading: LoadingNodeState,
-  getNodeLable: (node: EntityReference) => React.ReactNode
+  getNodeLable: (node: EntityReference) => React.ReactNode,
+  isEditMode: boolean
 ) => {
   const [x, y] = [0, 0];
   const nodes = entityLineage['nodes'];
@@ -267,15 +267,16 @@ export const getLineageData = (
       id: `node-${mainNode.id}-1`,
       sourcePosition: 'right',
       targetPosition: 'left',
-      type: lineageEdges.find((ed: FlowElement) =>
-        (ed as Edge).target.includes(mainNode.id)
-      )
-        ? lineageEdges.find((ed: FlowElement) =>
-            (ed as Edge).source.includes(mainNode.id)
-          )
-          ? 'default'
-          : 'output'
-        : 'input',
+      type:
+        lineageEdges.find((ed: FlowElement) =>
+          (ed as Edge).target.includes(mainNode.id)
+        ) || isEditMode
+          ? lineageEdges.find((ed: FlowElement) =>
+              (ed as Edge).source.includes(mainNode.id)
+            ) || isEditMode
+            ? 'default'
+            : 'output'
+          : 'input',
       className: 'leaf-node core',
       data: {
         label: getNodeLable(mainNode),
@@ -291,7 +292,7 @@ export const getLineageData = (
         ? up
         : {
             ...up,
-            type: 'input',
+            type: isEditMode ? 'default' : 'input',
             data: {
               label: (
                 <div className="tw-flex">
@@ -332,7 +333,7 @@ export const getLineageData = (
         ? down
         : {
             ...down,
-            type: 'output',
+            type: isEditMode ? 'default' : 'output',
             data: {
               label: (
                 <div className="tw-flex tw-justify-between">
