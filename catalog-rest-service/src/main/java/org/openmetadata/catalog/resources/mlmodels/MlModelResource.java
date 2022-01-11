@@ -103,7 +103,7 @@ public class MlModelResource {
   }
 
   static final String FIELDS =
-      "owner,dashboard,algorithm,mlFeatures,mlHyperParameters,mlStore,server,target," + "followers,tags,usageSummary";
+      "owner,dashboard,algorithm,mlFeatures,mlHyperParameters,mlStore,server,target,followers,tags,usageSummary";
   public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replace(" ", "").split(","));
 
   @GET
