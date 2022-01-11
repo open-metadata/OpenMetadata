@@ -44,7 +44,11 @@ import {
 } from '../../generated/api/tags/createTagCategory';
 import { TagCategory, TagClass } from '../../generated/entity/tags/tagCategory';
 import { useAuth } from '../../hooks/authHooks';
-import { getCountBadge, isEven } from '../../utils/CommonUtils';
+import {
+  getActiveCatClass,
+  getCountBadge,
+  isEven,
+} from '../../utils/CommonUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import { getTagCategories, getTaglist } from '../../utils/TagsUtils';
 import Form from './Form';
@@ -90,14 +94,6 @@ const TagsPage = () => {
         }
         setIsLoading(false);
       }
-    }
-  };
-
-  const currentCategoryTab = (name: string) => {
-    if (currentCategory?.name === name) {
-      return 'activeCategory';
-    } else {
-      return '';
     }
   };
 
@@ -180,11 +176,11 @@ const TagsPage = () => {
   const fetchLeftPanel = () => {
     return (
       <>
-        <div className="tw-flex tw-justify-between tw-items-baseline tw-mb-3 tw-border-b">
-          <h6 className="tw-heading">Tag Categories</h6>
+        <div className="tw-flex tw-justify-between tw-items-center tw-mb-3 tw-border-b">
+          <h6 className="tw-heading tw-text-base">Tag Categories</h6>
           <NonAdminAction position="bottom" title={TITLE_FOR_NON_ADMIN_ACTION}>
             <Button
-              className={classNames('tw-h-7 tw-px-2', {
+              className={classNames('tw-h-7 tw-px-2 tw-mb-4', {
                 'tw-opacity-40': !isAdminUser && !isAuthDisabled,
               })}
               data-testid="add-category"
@@ -199,15 +195,16 @@ const TagsPage = () => {
         {categories &&
           categories.map((category: TagCategory) => (
             <div
-              className={`tw-group tw-text-grey-body tw-cursor-pointer tw-text-body tw-mb-3 tw-flex tw-justify-between ${currentCategoryTab(
-                category.name
+              className={`tw-group tw-text-grey-body tw-cursor-pointer tw-text-body tw-mb-3 tw-flex tw-justify-between ${getActiveCatClass(
+                category.name,
+                currentCategory?.name
               )}`}
               data-testid="side-panel-category"
               key={category.name}
               onClick={() => {
                 fetchCurrentCategory(category.name);
               }}>
-              <p className="tw-text-center tw-self-center tag-category">
+              <p className="tw-text-center tw-self-center tag-category label-category">
                 {category.name}
               </p>
 
@@ -235,7 +232,7 @@ const TagsPage = () => {
               <div data-testid="tags-container">
                 {currentCategory && (
                   <div
-                    className="tw-flex tw-justify-between tw-pl-1"
+                    className="tw-flex tw-justify-between tw-items-center"
                     data-testid="header">
                     <div
                       className="tw-heading tw-text-link tw-text-base"
@@ -246,7 +243,7 @@ const TagsPage = () => {
                       position="bottom"
                       title={TITLE_FOR_NON_ADMIN_ACTION}>
                       <Button
-                        className={classNames('tw-h-8 tw-rounded tw-mb-2', {
+                        className={classNames('tw-h-8 tw-rounded tw-mb-3', {
                           'tw-opacity-40': !isAdminUser && !isAuthDisabled,
                         })}
                         data-testid="add-new-tag-button"
@@ -261,7 +258,9 @@ const TagsPage = () => {
                     </NonAdminAction>
                   </div>
                 )}
-                <div className="tw-mb-3" data-testid="description-container">
+                <div
+                  className="tw-mb-3 tw--ml-5"
+                  data-testid="description-container">
                   <Description
                     description={currentCategory?.description || ''}
                     entityName={currentCategory?.displayName}
