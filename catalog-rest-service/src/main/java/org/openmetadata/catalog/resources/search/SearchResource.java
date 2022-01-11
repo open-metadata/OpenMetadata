@@ -133,7 +133,7 @@ public class SearchResource {
       sortOrder = SortOrder.ASC;
     }
     // add deleted flag
-    query += " AND deleted=" + deleted;
+    query += " AND deleted:" + deleted;
     switch (index) {
       case "topic_search_index":
         searchSourceBuilder = buildTopicSearchBuilder(query, from, size);

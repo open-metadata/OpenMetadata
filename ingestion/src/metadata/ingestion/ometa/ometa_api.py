@@ -445,7 +445,7 @@ class OpenMetadata(
         """
 
         suffix = self.get_suffix(entity)
-        path = f"/{self.uuid_to_str(entity_id)}/versions"
+        path = f"/{uuid_to_str(entity_id)}/versions"
         resp = self.client.get(f"{suffix}{path}")
 
         if self._use_raw_data:
