@@ -49,7 +49,9 @@ public class ChangeEventHandler implements EventHandler {
             changeEvent.getEntityType());
         EventPubSub.publish(changeEvent);
         if (changeEvent.getEntity() != null) {
-          changeEvent.setEntity(JsonUtils.pojoToJson(changeEvent.getEntity()));
+          Object entity = changeEvent.getEntity();
+          changeEvent = copyChangeEvent(changeEvent);
+          changeEvent.setEntity(JsonUtils.pojoToJson(entity));
         }
         dao.changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
       }
@@ -115,6 +117,17 @@ public class ChangeEventHandler implements EventHandler {
         .withDateTime(entityInterface.getUpdatedAt())
         .withChangeDescription(entityInterface.getChangeDescription())
         .withCurrentVersion(entityInterface.getVersion());
+  }
+
+  private static ChangeEvent copyChangeEvent(ChangeEvent changeEvent) {
+    return new ChangeEvent()
+        .withEventType(changeEvent.getEventType())
+        .withEntityId(changeEvent.getEntityId())
+        .withEntityType(changeEvent.getEntityType())
+        .withUserName(changeEvent.getUserName())
+        .withDateTime(changeEvent.getDateTime())
+        .withChangeDescription(changeEvent.getChangeDescription())
+        .withCurrentVersion(changeEvent.getCurrentVersion());
   }
 
   public void close() {}
