@@ -14,6 +14,7 @@
 import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
+import { isUndefined, toLower } from 'lodash';
 import { observer } from 'mobx-react';
 import React, { useEffect, useState } from 'react';
 import { Link, useHistory, useParams } from 'react-router-dom';
@@ -40,6 +41,7 @@ import {
 import { Team } from '../../generated/entity/teams/team';
 import { User } from '../../generated/entity/teams/user';
 import { useAuth } from '../../hooks/authHooks';
+import useToastContext from '../../hooks/useToastContext';
 import { UserTeam } from '../../interface/team.interface';
 import { getActiveCatClass, getCountBadge } from '../../utils/CommonUtils';
 import AddUsersModal from './AddUsersModal';
@@ -59,6 +61,10 @@ const TeamsPage = () => {
   const [isAddingTeam, setIsAddingTeam] = useState<boolean>(false);
   const [isAddingUsers, setIsAddingUsers] = useState<boolean>(false);
   const [userList, setUserList] = useState<Array<User>>([]);
+  const [errorData, setErrorData] =
+    useState<{ [key: string]: string | undefined }>();
+
+  const showToast = useToastContext();
 
   const fetchTeams = () => {
     setIsLoading(true);
@@ -100,16 +106,48 @@ const TeamsPage = () => {
     }
   };
 
+  const onNewDataChange = (data: Team, forceSet = false) => {
+    if (errorData || forceSet) {
+      const errData: { [key: string]: string } = {};
+      if (!data.name.trim()) {
+        errData['name'] = 'Name is required';
+      } else if (
+        !isUndefined(
+          teams.find((item) => toLower(item.name) === toLower(data.name))
+        )
+      ) {
+        errData['name'] = 'Name already exists';
+      }
+      if (!data.displayName?.trim()) {
+        errData['displayName'] = 'Display name is required';
+      }
+      setErrorData(errData);
+
+      return errData;
+    }
+
+    return {};
+  };
+
   const createNewTeam = (data: Team) => {
-    createTeam(data)
-      .then((res: AxiosResponse) => {
-        if (res.data) {
-          fetchTeams();
-        }
-      })
-      .finally(() => {
-        setIsAddingTeam(false);
-      });
+    const errData = onNewDataChange(data, true);
+    if (!Object.values(errData).length) {
+      createTeam(data)
+        .then((res: AxiosResponse) => {
+          if (res.data) {
+            fetchTeams();
+          }
+        })
+        .catch((error: AxiosError) => {
+          showToast({
+            variant: 'error',
+            body: error.message ?? 'Something went wrong!',
+          });
+        })
+        .finally(() => {
+          setIsAddingTeam(false);
+        });
+    }
   };
 
   const createUsers = (data: Array<UserTeam>) => {
@@ -280,7 +318,10 @@ const TeamsPage = () => {
               size="small"
               theme="primary"
               variant="contained"
-              onClick={() => setIsAddingTeam(true)}>
+              onClick={() => {
+                setErrorData(undefined);
+                setIsAddingTeam(true);
+              }}>
               <i aria-hidden="true" className="fa fa-plus" />
             </Button>
           </NonAdminAction>
@@ -440,6 +481,7 @@ const TeamsPage = () => {
 
                 {isAddingTeam && (
                   <FormModal
+                    errorData={errorData}
                     form={Form}
                     header="Adding new team"
                     initialData={{
@@ -448,6 +490,7 @@ const TeamsPage = () => {
                       displayName: '',
                     }}
                     onCancel={() => setIsAddingTeam(false)}
+                    onChange={(data) => onNewDataChange(data as Team)}
                     onSave={(data) => createNewTeam(data as Team)}
                   />
                 )}
