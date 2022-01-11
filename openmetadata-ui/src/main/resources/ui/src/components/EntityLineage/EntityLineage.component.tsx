@@ -233,9 +233,10 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
       nodeType,
       position,
       className: 'leaf-node',
+      connectable: false,
       data: {
         label: (
-          <div className="tw-m-3 tw-w-auto">
+          <div className="tw-mx-2 tw-my-2 tw-w-auto">
             <button
               className="tw-absolute tw--top-7 tw--left-5 tw-cursor-pointer tw-z-9999 tw-bg-white"
               onClick={() => {
@@ -249,7 +250,11 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
               }}>
               <SVGIcons alt="plus" icon="icon-times-circle" width="16px" />
             </button>
-            <span>{`Search for ${lable} entities`}</span>
+            <input
+              className="tw-form-inputs tw-px-3 tw-py-2 tw-w-full"
+              placeholder={`Search for ${lable}s...`}
+              type="search"
+            />
           </div>
         ),
       },

@@ -53,10 +53,14 @@ export const fetchAuthorizerConfig: Function = (): Promise<AxiosResponse> => {
 };
 
 export const getSuggestions: Function = (
-  queryString: string
+  queryString: string,
+  searchIndex?: string
 ): Promise<AxiosResponse> => {
   return APIClient.get(
-    `/search/suggest?q=${queryString}&index=${SearchIndex.DASHBOARD},${SearchIndex.TABLE},${SearchIndex.TOPIC},${SearchIndex.PIPELINE}
+    `/search/suggest?q=${queryString}&index=${
+      searchIndex ??
+      `${SearchIndex.DASHBOARD},${SearchIndex.TABLE},${SearchIndex.TOPIC},${SearchIndex.PIPELINE}`
+    }
     `
   );
 };
