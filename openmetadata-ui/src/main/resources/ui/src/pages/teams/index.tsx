@@ -16,6 +16,7 @@ import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { isUndefined, toLower } from 'lodash';
 import { observer } from 'mobx-react';
+import { FormErrorData } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { Link, useHistory, useParams } from 'react-router-dom';
 import AppState from '../../AppState';
@@ -61,8 +62,7 @@ const TeamsPage = () => {
   const [isAddingTeam, setIsAddingTeam] = useState<boolean>(false);
   const [isAddingUsers, setIsAddingUsers] = useState<boolean>(false);
   const [userList, setUserList] = useState<Array<User>>([]);
-  const [errorData, setErrorData] =
-    useState<{ [key: string]: string | undefined }>();
+  const [errorData, setErrorData] = useState<FormErrorData>();
 
   const showToast = useToastContext();
 

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Team } from 'Models';
+import { FormErrorData, Team } from 'Models';
 import React, { useRef, useState } from 'react';
 import { TagsCategory } from '../../../pages/tags/tagsTypes';
 import { Button } from '../../buttons/Button/Button';
@@ -23,7 +23,7 @@ type FormModalProp = {
   form: React.ElementType;
   header: string;
   initialData: FormData;
-  errorData?: { [key: string]: string | undefined };
+  errorData?: FormErrorData;
 };
 type FormRef = {
   fetchMarkDownData: () => string;

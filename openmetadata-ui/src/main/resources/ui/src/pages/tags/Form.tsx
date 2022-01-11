@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import PropTypes from 'prop-types';
+import { FormErrorData } from 'Models';
 import React, {
   forwardRef,
   useEffect,
@@ -32,13 +32,13 @@ type CustomTagCategory = {
 type FormProp = {
   saveData: (value: CreateTagCategory) => void;
   initialData: CustomTagCategory;
-  errorData?: { [key: string]: string | undefined };
+  errorData?: FormErrorData;
 };
 type EditorContentRef = {
   getEditorContent: () => string;
 };
 const Form: React.FC<FormProp> = forwardRef(
-  ({ saveData, initialData, errorData }, ref): JSX.Element => {
+  ({ saveData, initialData, errorData }: FormProp, ref): JSX.Element => {
     const [data, setData] = useState<CustomTagCategory>({
       name: initialData.name,
       description: initialData.description,
@@ -128,17 +128,5 @@ const Form: React.FC<FormProp> = forwardRef(
     );
   }
 );
-
-Form.propTypes = {
-  saveData: PropTypes.func.isRequired,
-  initialData: PropTypes.shape({
-    name: PropTypes.string.isRequired,
-    description: PropTypes.string.isRequired,
-    categoryType: PropTypes.string.isRequired,
-  }).isRequired,
-  errorData: PropTypes.shape({
-    name: PropTypes.string.isRequired,
-  }).isRequired,
-};
 
 export default Form;

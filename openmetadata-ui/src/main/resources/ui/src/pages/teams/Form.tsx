@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Team } from 'Models';
+import { FormErrorData, Team } from 'Models';
 import React, {
   forwardRef,
   useEffect,
@@ -25,7 +25,7 @@ import { errorMsg } from '../../utils/CommonUtils';
 type FormProp = {
   saveData: (value: {}) => void;
   initialData: Team;
-  errorData?: { [key: string]: string | undefined };
+  errorData?: FormErrorData;
 };
 type EditorContentRef = {
   getEditorContent: () => string;

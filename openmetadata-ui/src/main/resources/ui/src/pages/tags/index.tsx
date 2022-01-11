@@ -14,7 +14,7 @@
 import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
-import { EntityTags } from 'Models';
+import { EntityTags, FormErrorData } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
@@ -65,10 +65,8 @@ const TagsPage = () => {
   const [editTag, setEditTag] = useState<TagClass>();
   const [error, setError] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [errorDataCategory, setErrorDataCategory] =
-    useState<{ [key: string]: string | undefined }>();
-  const [errorDataTag, setErrorDataTag] =
-    useState<{ [key: string]: string | undefined }>();
+  const [errorDataCategory, setErrorDataCategory] = useState<FormErrorData>();
+  const [errorDataTag, setErrorDataTag] = useState<FormErrorData>();
 
   const fetchCategories = () => {
     setIsLoading(true);
