@@ -388,7 +388,7 @@ public abstract class EntityRepository<T> {
       }
       // Soft delete all the contained entities
       for (EntityReference entityReference : contains) {
-        LOG.info("Recursively deleting {} {}", entityReference.getType(), entityReference.getId());
+        log.info("Recursively deleting {} {}", entityReference.getType(), entityReference.getId());
         Entity.deleteEntity(entityReference.getType(), entityReference.getId(), recursive);
       }
     }
@@ -634,7 +634,7 @@ public abstract class EntityRepository<T> {
       } else if (fieldsChanged()) {
         newVersion = Math.round((oldVersion + 0.1) * 10.0) / 10.0;
       }
-      LOG.info(
+      log.info(
           "{} {}->{} - Fields added {}, updated {}, deleted {}",
           original.getId(),
           oldVersion,

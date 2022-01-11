@@ -59,12 +59,12 @@ public class ElasticSearchEventHandler implements EventHandler {
       new ActionListener<>() {
         @Override
         public void onResponse(UpdateResponse updateResponse) {
-          LOG.info("Updated Elastic Search {}", updateResponse);
+          log.info("Updated Elastic Search {}", updateResponse);
         }
 
         @Override
         public void onFailure(Exception e) {
-          LOG.error("Failed to update Elastic Search", e);
+          log.error("Failed to update Elastic Search", e);
         }
       };
 
@@ -77,7 +77,7 @@ public class ElasticSearchEventHandler implements EventHandler {
 
   public Void process(ContainerRequestContext requestContext, ContainerResponseContext responseContext) {
     try {
-      LOG.info("request Context {}", requestContext.toString());
+      log.info("request Context {}", requestContext.toString());
       if (responseContext.getEntity() != null) {
         Object entity = responseContext.getEntity();
         UpdateRequest updateRequest = null;
@@ -115,7 +115,7 @@ public class ElasticSearchEventHandler implements EventHandler {
         }
       }
     } catch (Exception e) {
-      LOG.error("failed to update ES doc", e);
+      log.error("failed to update ES doc", e);
     }
     return null;
   }
@@ -253,7 +253,7 @@ public class ElasticSearchEventHandler implements EventHandler {
     try {
       this.client.close();
     } catch (Exception e) {
-      LOG.error("Failed to close elastic search", e);
+      log.error("Failed to close elastic search", e);
     }
   }
 }

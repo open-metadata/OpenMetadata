@@ -441,7 +441,7 @@ public class IngestionResource {
     try {
       ingestion = airflowRESTClient.getStatus(ingestion);
     } catch (Exception e) {
-      LOG.error("Failed to fetch status for {}", ingestion.getName());
+      log.error("Failed to fetch status for {}", ingestion.getName());
     }
     return ingestion;
   }

@@ -579,7 +579,7 @@ public class TableRepository extends EntityRepository<Table> {
           String reportedOnDate = iterator.next().getDate();
           if (!CommonUtil.dateInRange(RestUtil.DATE_FORMAT, reportedOnDate, 0, 30)) {
             iterator.remove();
-            LOG.info(
+            log.info(
                 "Removed join entry for column {} with column {} on older date {}",
                 columnFQN,
                 joinedWith.getFullyQualifiedName(),

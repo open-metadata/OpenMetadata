@@ -41,7 +41,7 @@ public class ChangeEventHandler implements EventHandler {
     try {
       ChangeEvent changeEvent = getChangeEvent(method, responseContext);
       if (changeEvent != null) {
-        LOG.info(
+        log.info(
             "Recording change event {}:{}:{}:{}",
             changeEvent.getDateTime().getTime(),
             changeEvent.getEntityId(),
@@ -55,7 +55,7 @@ public class ChangeEventHandler implements EventHandler {
         dao.changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
       }
     } catch (Exception e) {
-      LOG.error("Failed to capture change event for method {} due to ", method, e);
+      log.error("Failed to capture change event for method {} due to ", method, e);
     }
     return null;
   }

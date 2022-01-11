@@ -50,11 +50,11 @@ public class DefaultAuthorizer implements Authorizer {
 
   @Override
   public void init(AuthorizerConfiguration config, Jdbi dbi) throws IOException {
-    LOG.debug("Initializing DefaultAuthorizer with config {}", config);
+    log.debug("Initializing DefaultAuthorizer with config {}", config);
     this.adminUsers = new HashSet<>(config.getAdminPrincipals());
     this.botUsers = new HashSet<>(config.getBotPrincipals());
     this.principalDomain = config.getPrincipalDomain();
-    LOG.debug("Admin users: {}", adminUsers);
+    log.debug("Admin users: {}", adminUsers);
     CollectionDAO collectionDAO = dbi.onDemand(CollectionDAO.class);
     this.userRepository = new UserRepository(collectionDAO);
     mayBeAddAdminUsers();
@@ -64,7 +64,7 @@ public class DefaultAuthorizer implements Authorizer {
   }
 
   private void mayBeAddAdminUsers() {
-    LOG.debug("Checking user entries for admin users");
+    log.debug("Checking user entries for admin users");
     EntityUtil.Fields fields = new EntityUtil.Fields(FIELD_LIST, fieldsParam);
     adminUsers.stream()
         .filter(
@@ -72,7 +72,7 @@ public class DefaultAuthorizer implements Authorizer {
               try {
                 User user = userRepository.getByName(null, name, fields);
                 if (user != null) {
-                  LOG.debug("Entry for user '{}' already exists", name);
+                  log.debug("Entry for user '{}' already exists", name);
                   return false;
                 }
                 return true;
@@ -84,7 +84,7 @@ public class DefaultAuthorizer implements Authorizer {
   }
 
   private void mayBeAddBotUsers() {
-    LOG.debug("Checking user entries for bot users");
+    log.debug("Checking user entries for bot users");
     EntityUtil.Fields fields = new EntityUtil.Fields(FIELD_LIST, fieldsParam);
     botUsers.stream()
         .filter(
@@ -92,7 +92,7 @@ public class DefaultAuthorizer implements Authorizer {
               try {
                 User user = userRepository.getByName(null, name, fields);
                 if (user != null) {
-                  LOG.debug("Entry for user '{}' already exists", name);
+                  log.debug("Entry for user '{}' already exists", name);
                   return false;
                 }
                 return true;
@@ -197,11 +197,11 @@ public class DefaultAuthorizer implements Authorizer {
 
     try {
       User addedUser = userRepository.create(null, user);
-      LOG.debug("Added admin user entry: {}", addedUser);
+      log.debug("Added admin user entry: {}", addedUser);
     } catch (DuplicateEntityException | IOException exception) {
       // In HA set up the other server may have already added the user.
-      LOG.debug("Caught exception: {}", ExceptionUtils.getStackTrace(exception));
-      LOG.debug("Admin user entry: {} already exists.", user);
+      log.debug("Caught exception: {}", ExceptionUtils.getStackTrace(exception));
+      log.debug("Admin user entry: {} already exists.", user);
     }
   }
 
@@ -217,11 +217,11 @@ public class DefaultAuthorizer implements Authorizer {
 
     try {
       User addedUser = userRepository.create(null, user);
-      LOG.debug("Added bot user entry: {}", addedUser);
+      log.debug("Added bot user entry: {}", addedUser);
     } catch (DuplicateEntityException | IOException exception) {
       // In HA se tup the other server may have already added the user.
-      LOG.debug("Caught exception: {}", ExceptionUtils.getStackTrace(exception));
-      LOG.debug("Bot user entry: {} already exists.", user);
+      log.debug("Caught exception: {}", ExceptionUtils.getStackTrace(exception));
+      log.debug("Bot user entry: {} already exists.", user);
     }
   }
 }

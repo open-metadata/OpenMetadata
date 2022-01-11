@@ -62,7 +62,7 @@ public class UsageRepository {
   public void createByName(String entityType, String fullyQualifiedName, DailyCount usage) throws IOException {
     EntityReference ref = Entity.getEntityReferenceByName(entityType, fullyQualifiedName);
     addUsage(entityType, ref.getId().toString(), usage);
-    LOG.info("Usage successfully posted by name");
+    log.info("Usage successfully posted by name");
   }
 
   @Transaction

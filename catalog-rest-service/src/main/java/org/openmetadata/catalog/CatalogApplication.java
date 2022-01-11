@@ -77,14 +77,14 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
         new SqlLogger() {
           @Override
           public void logAfterExecution(StatementContext context) {
-            LOG.debug(
+            log.debug(
                 "sql {}, parameters {}, timeTaken {} ms",
                 context.getRenderedSql(),
                 context.getBinding(),
                 context.getElapsedTime(ChronoUnit.MILLIS));
           }
         };
-    if (LOG.isDebugEnabled()) {
+    if (log.isDebugEnabled()) {
       jdbi.setSqlLogger(sqlLogger);
     }
 
@@ -156,10 +156,10 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
                 .getConstructor(AuthenticationConfiguration.class)
                 .newInstance(authenticationConfiguration);
       }
-      LOG.info("Registering ContainerRequestFilter: {}", filter.getClass().getCanonicalName());
+      log.info("Registering ContainerRequestFilter: {}", filter.getClass().getCanonicalName());
       environment.jersey().register(filter);
     } else {
-      LOG.info("Authorizer config not set, setting noop authorizer");
+      log.info("Authorizer config not set, setting noop authorizer");
       authorizer = NoopAuthorizer.class.getConstructor().newInstance();
       ContainerRequestFilter filter = NoopFilter.class.getConstructor().newInstance();
       environment.jersey().register(filter);
@@ -191,14 +191,14 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
 
     @Override
     public void start() throws Exception {
-      LOG.info("Starting the application");
+      log.info("Starting the application");
       EventPubSub.start();
     }
 
     @Override
     public void stop() throws Exception {
       EventPubSub.shutdown();
-      LOG.info("Stopping the application");
+      log.info("Stopping the application");
     }
   }
 }

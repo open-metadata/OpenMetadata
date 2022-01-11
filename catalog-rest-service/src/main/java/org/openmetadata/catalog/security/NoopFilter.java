@@ -29,7 +29,7 @@ public class NoopFilter implements ContainerRequestFilter {
     String scheme = containerRequestContext.getUriInfo().getRequestUri().getScheme();
     CatalogSecurityContext catalogSecurityContext =
         new CatalogSecurityContext(catalogPrincipal, scheme, CatalogSecurityContext.BASIC_AUTH);
-    LOG.debug("SecurityContext {}", catalogSecurityContext);
+    log.debug("SecurityContext {}", catalogSecurityContext);
     containerRequestContext.setSecurityContext(catalogSecurityContext);
   }
 }

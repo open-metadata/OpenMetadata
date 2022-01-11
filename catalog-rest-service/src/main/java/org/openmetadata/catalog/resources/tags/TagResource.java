@@ -92,7 +92,7 @@ public class TagResource {
     tagFiles.forEach(
         tagFile -> {
           try {
-            LOG.info("Loading tag definitions from file {}", tagFile);
+            log.info("Loading tag definitions from file {}", tagFile);
             String tagJson = IOUtil.toString(getClass().getClassLoader().getResourceAsStream(tagFile));
             TagCategory tagCategory = JsonUtils.readValue(tagJson, TagCategory.class);
             // TODO hack for now
@@ -107,7 +107,7 @@ public class TagResource {
                     });
             dao.initCategory(tagCategory);
           } catch (Exception e) {
-            LOG.warn("Failed to initialize the tag files {} {}", tagFile, e.getMessage());
+            log.warn("Failed to initialize the tag files {} {}", tagFile, e.getMessage());
           }
         });
   }

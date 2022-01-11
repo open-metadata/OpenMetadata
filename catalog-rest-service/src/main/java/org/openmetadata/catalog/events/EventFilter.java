@@ -49,10 +49,10 @@ public class EventFilter implements ContainerResponseFilter {
             ((Class<EventHandler>) Class.forName(eventHandlerClassName)).getConstructor().newInstance();
         eventHandler.init(config, jdbi);
         eventHandlers.add(eventHandler);
-        LOG.info("Added event handler {}", eventHandlerClassName);
+        log.info("Added event handler {}", eventHandlerClassName);
       }
     } catch (Exception e) {
-      LOG.info("Exception ", e);
+      log.info("Exception ", e);
     }
   }
 
