@@ -12,7 +12,7 @@
  */
 
 import classNames from 'classnames';
-import { capitalize, isEmpty, uniqueId, upperCase } from 'lodash';
+import { capitalize, isEmpty, uniqueId } from 'lodash';
 import React, { FC, HTMLAttributes } from 'react';
 import { FlowElement } from 'react-flow-renderer';
 import { EntityType } from '../../enums/entity.enum';
@@ -60,14 +60,14 @@ const EntityNode: FC<EntityNodeProps> = ({ type, label, draggable }) => {
             e.preventDefault();
             e.stopPropagation();
           }}>
-          <SVGIcons alt={type} icon={type} width="14" />
+          <SVGIcons alt={type} icon={`${type}-grey`} width="14" />
         </span>
         <span>
-          <i className="fas fa-grip-vertical" style={{ color: '#B3B3B3' }} />
+          <i className="fas fa-grip-vertical" style={{ color: '#7147E8' }} />
         </span>
       </div>
-      <p className="tw-text-primary tw-text-center tw-text-xs">
-        {upperCase(`${label}s`)}
+      <p className="tw-text-grey-body tw-text-center">
+        {capitalize(`${label}s`)}
       </p>
     </div>
   );

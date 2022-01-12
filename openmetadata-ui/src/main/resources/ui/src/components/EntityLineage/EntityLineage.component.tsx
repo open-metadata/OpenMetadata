@@ -13,7 +13,7 @@
 
 import { AxiosResponse } from 'axios';
 import classNames from 'classnames';
-import { isEmpty, isUndefined, uniqueId, upperCase } from 'lodash';
+import { isEmpty, isUndefined, lowerCase, uniqueId, upperCase } from 'lodash';
 import React, {
   DragEvent,
   FunctionComponent,
@@ -285,22 +285,24 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
         label: (
           <div className="tw-relative">
             <button
-              className="tw-absolute tw--top-5 tw--left-6 tw-cursor-pointer tw-z-9999 tw-bg-white"
+              className="tw-absolute tw--top-5 tw--right-6 tw-cursor-pointer tw-z-9999 tw-bg-white"
               onClick={() => {
-                if (
-                  window.confirm(
-                    `Do you really want to delete ${lable} entity node?`
-                  )
-                ) {
-                  removeNodeHandler(newNode as FlowElement);
-                }
+                removeNodeHandler(newNode as FlowElement);
               }}>
               <SVGIcons alt="plus" icon="icon-times-circle" width="16px" />
             </button>
-            <EntitySuggestions
-              entityType={upperCase(lable)}
-              onSelectHandler={selectedEntityHandler}
-            />
+            <div className="tw-flex">
+              <SVGIcons
+                alt="entity-icon"
+                className="tw-mr-2"
+                icon={`${lowerCase(lable)}-grey`}
+                width="16px"
+              />
+              <EntitySuggestions
+                entityType={upperCase(lable)}
+                onSelectHandler={selectedEntityHandler}
+              />
+            </div>
           </div>
         ),
       },

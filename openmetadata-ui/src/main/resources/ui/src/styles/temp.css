@@ -750,10 +750,10 @@ body .list-option.rdw-option-active {
 }
 .flow-control input[type='range']::-webkit-slider-runnable-track {
   width: 100%;
-  height: 5px;
+  height: 3px;
   cursor: pointer;
   box-shadow: 0px 0px 0px #000000;
-  background: #7147e8;
+  background: #6b7280;
   border-radius: 4px;
   border: 0px solid #000000;
 }
@@ -769,14 +769,14 @@ body .list-option.rdw-option-active {
   margin-top: -7px;
 }
 .flow-control input[type='range']:focus::-webkit-slider-runnable-track {
-  background: #7147e8;
+  background: #6b7280;
 }
 .flow-control input[type='range']::-moz-range-track {
   width: 100%;
   height: 5px;
   cursor: pointer;
   box-shadow: 0px 0px 0px #000000;
-  background: #7147e8;
+  background: #6b7280;
   border-radius: 4px;
   border: 0px solid #000000;
 }
@@ -798,13 +798,13 @@ body .list-option.rdw-option-active {
   color: transparent;
 }
 .flow-control input[type='range']::-ms-fill-lower {
-  background: #7147e8;
+  background: #6b7280;
   border: 0px solid #000000;
   border-radius: 8px;
   box-shadow: 0px 0px 0px #000000;
 }
 .flow-control input[type='range']::-ms-fill-upper {
-  background: #7147e8;
+  background: #6b7280;
   border: 0px solid #000000;
   border-radius: 8px;
   box-shadow: 0px 0px 0px #000000;
@@ -820,10 +820,10 @@ body .list-option.rdw-option-active {
   cursor: pointer;
 }
 .flow-control input[type='range']:focus::-ms-fill-lower {
-  background: #7147e8;
+  background: #6b7280;
 }
 .flow-control input[type='range']:focus::-ms-fill-upper {
-  background: #7147e8;
+  background: #6b7280;
 }
 
 /* EntityLineage Sidebar CSS */
