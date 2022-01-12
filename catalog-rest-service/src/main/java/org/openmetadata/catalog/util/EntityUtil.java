@@ -166,6 +166,17 @@ public final class EntityUtil {
   }
 
   public static EntityReference getService(
+      EntityRelationshipDAO dao, String entityType, UUID entityId, Include include) {
+    List<EntityReference> refs =
+        dao.findFrom(entityId.toString(), entityType, Relationship.CONTAINS.ordinal(), toBoolean(include));
+    if (refs.size() > 1) {
+      LOG.warn("Possible database issues - multiple services found for entity {}", entityId);
+      return refs.get(0);
+    }
+    return refs.isEmpty() ? null : refs.get(0);
+  }
+
+  public static EntityReference getService(
       EntityRelationshipDAO dao, String entityType, UUID entityId, String serviceType) {
     List<EntityReference> refs =
         dao.findFromEntity(entityId.toString(), entityType, Relationship.CONTAINS.ordinal(), serviceType);

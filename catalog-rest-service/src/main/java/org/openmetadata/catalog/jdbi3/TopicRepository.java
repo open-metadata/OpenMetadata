@@ -29,6 +29,7 @@ import org.openmetadata.catalog.jdbi3.MessagingServiceRepository.MessagingServic
 import org.openmetadata.catalog.resources.topics.TopicResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.type.topic.CleanupPolicy;
 import org.openmetadata.catalog.util.EntityInterface;
@@ -124,7 +125,8 @@ public class TopicRepository extends EntityRepository<Topic> {
       return null;
     }
     // Find service by topic Id
-    EntityReference service = EntityUtil.getService(daoCollection.relationshipDAO(), Entity.TOPIC, topic.getId());
+    EntityReference service =
+        EntityUtil.getService(daoCollection.relationshipDAO(), Entity.TOPIC, topic.getId(), Include.ALL);
     return new MessagingServiceEntityInterface(getService(service.getId(), service.getType())).getEntityReference();
   }
 
