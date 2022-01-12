@@ -16,14 +16,20 @@ package org.openmetadata.catalog.util;
 import static org.flywaydb.core.internal.info.MigrationInfoDumper.dumpToAsciiTable;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.dataformat.yaml.YAMLMapper;
+import io.dropwizard.configuration.EnvironmentVariableSubstitutor;
+import io.dropwizard.configuration.ResourceConfigurationSourceProvider;
+import io.dropwizard.configuration.SubstitutingSourceProvider;
+import io.dropwizard.configuration.YamlConfigurationFactory;
+import io.dropwizard.db.DataSourceFactory;
+import io.dropwizard.jackson.Jackson;
+import io.dropwizard.jersey.validation.Validators;
 import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.Map;
+import javax.validation.Validator;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -32,6 +38,7 @@ import org.apache.commons.cli.Options;
 import org.elasticsearch.client.RestHighLevelClient;
 import org.flywaydb.core.Flyway;
 import org.flywaydb.core.api.MigrationVersion;
+import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.ElasticSearchConfiguration;
 import org.openmetadata.catalog.elasticsearch.ElasticSearchIndexDefinition;
 
@@ -112,24 +119,29 @@ public final class TablesInitializer {
     }
 
     String confFilePath = commandLine.getOptionValue(OPTION_CONFIG_FILE_PATH);
-    ObjectMapper objectMapper = new YAMLMapper();
-    Map<String, Object> conf = objectMapper.readValue(new File(confFilePath), Map.class);
-    Map<String, Object> dbConf = (Map<String, Object>) conf.get("database");
-    Map<String, Object> esConf = (Map<String, Object>) conf.get("elasticsearch");
-    if (dbConf == null) {
+    ObjectMapper objectMapper = Jackson.newObjectMapper();
+    Validator validator = Validators.newValidator();
+    YamlConfigurationFactory<CatalogApplicationConfig> factory =
+        new YamlConfigurationFactory<>(CatalogApplicationConfig.class, validator, objectMapper, "dw");
+    CatalogApplicationConfig config =
+        factory.build(
+            new SubstitutingSourceProvider(
+                new ResourceConfigurationSourceProvider(), new EnvironmentVariableSubstitutor(false)),
+            confFilePath);
+    DataSourceFactory dataSourceFactory = config.getDataSourceFactory();
+    ElasticSearchConfiguration esConfig = config.getElasticSearchConfiguration();
+    if (dataSourceFactory == null) {
       throw new RuntimeException("No database in config file");
     }
-    String jdbcUrl = (String) dbConf.get("url");
-    String user = (String) dbConf.get("user");
-    String password = (String) dbConf.get("password");
+    String jdbcUrl = dataSourceFactory.getUrl();
+    String user = dataSourceFactory.getUser();
+    String password = dataSourceFactory.getPassword();
     boolean disableValidateOnMigrate = commandLine.hasOption(DISABLE_VALIDATE_ON_MIGRATE);
     if (disableValidateOnMigrate) {
       System.out.println("Disabling validation on schema migrate");
     }
     String scriptRootPath = commandLine.getOptionValue(OPTION_SCRIPT_ROOT_PATH);
     Flyway flyway = get(jdbcUrl, user, password, scriptRootPath, !disableValidateOnMigrate);
-    ObjectMapper oMapper = new ObjectMapper();
-    ElasticSearchConfiguration esConfig = oMapper.convertValue(esConf, ElasticSearchConfiguration.class);
     RestHighLevelClient client = ElasticSearchClientUtils.createElasticSearchClient(esConfig);
     try {
       execute(flyway, client, schemaMigrationOptionSpecified);
