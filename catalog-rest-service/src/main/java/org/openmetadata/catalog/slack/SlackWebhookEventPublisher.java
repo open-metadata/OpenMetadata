@@ -9,6 +9,7 @@ import javax.ws.rs.client.Invocation;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import org.json.JSONArray;
+import org.json.JSONObject;
 import org.openmetadata.catalog.events.AbstractEventPublisher;
 import org.openmetadata.catalog.events.errors.EventPublisherException;
 import org.openmetadata.catalog.resources.events.EventResource.ChangeEventList;
@@ -68,22 +69,17 @@ public class SlackWebhookEventPublisher extends AbstractEventPublisher {
   }
 
   private SlackMessage buildSlackMessage(ChangeEvent event) {
-    StringBuilder stringBuilder = new StringBuilder();
     SlackMessage slackMessage = new SlackMessage();
     slackMessage.setUsername(event.getUserName());
     String headerText = getHeaderText(event);
     slackMessage.setText(headerText);
     List<SlackAttachment> attachmentList = new ArrayList<>();
     List<SlackAttachment> addedEvents = getAddedEventsText(event);
-    SlackAttachment updatedEvents = getUpdatedEventsText(event);
-    SlackAttachment deletedEvents = getDeletedEventsText(event);
+    List<SlackAttachment> updatedEvents = getUpdatedEventsText(event);
+    List<SlackAttachment> deletedEvents = getDeletedEventsText(event);
     attachmentList.addAll(addedEvents);
-    if (updatedEvents != null) {
-      attachmentList.add(updatedEvents);
-    }
-    if (deletedEvents != null) {
-      attachmentList.add(deletedEvents);
-    }
+    attachmentList.addAll(updatedEvents);
+    attachmentList.addAll(deletedEvents);
     slackMessage.setAttachments(attachmentList.toArray(new SlackAttachment[0]));
     return slackMessage;
   }
@@ -113,18 +109,58 @@ public class SlackWebhookEventPublisher extends AbstractEventPublisher {
         SlackAttachment attachment = new SlackAttachment();
         StringBuilder title = new StringBuilder();
         if (fieldChange.getName().contains("tags")) {
-          title.append("Added tags to ");
+          title.append("Added tags ");
+          title.append(fieldChange.getName().replace("tags", ""));
+          attachment.setText(parseTags((String) fieldChange.getNewValue()));
+        } else if (fieldChange.getName().equals("columns")) {
+          title.append("Added new columns ");
+          attachment.setText(parseColumns((String) fieldChange.getNewValue(), event));
+        } else if (fieldChange.getName().equals("owner")) {
+          title.append("Added ownership");
+          attachment.setText(parseOwnership((String) fieldChange.getOldValue(), (String) fieldChange.getNewValue()));
+        }
+        attachment.setTitle(title.toString());
+        attachments.add(attachment);
+      }
+    }
+    return attachments;
+  }
+
+  private List<SlackAttachment> getUpdatedEventsText(ChangeEvent event) {
+    List<SlackAttachment> attachments = new ArrayList<>();
+    ChangeDescription changeDescription = event.getChangeDescription();
+    if (changeDescription.getFieldsUpdated() != null && !changeDescription.getFieldsUpdated().isEmpty()) {
+      for (FieldChange fieldChange : changeDescription.getFieldsUpdated()) {
+        SlackAttachment attachment = new SlackAttachment();
+        attachment.setTitle("Updated " + fieldChange.getName());
+        if (fieldChange.getName().equals("owner")) {
+          attachment.setText(parseOwnership((String) fieldChange.getOldValue(), (String) fieldChange.getNewValue()));
+        } else {
+          attachment.setText((String) fieldChange.getNewValue());
+        }
+        attachments.add(attachment);
+      }
+    }
+    return attachments;
+  }
+
+  private List<SlackAttachment> getDeletedEventsText(ChangeEvent event) {
+    List<SlackAttachment> attachments = new ArrayList<>();
+    ChangeDescription changeDescription = event.getChangeDescription();
+    if (changeDescription.getFieldsDeleted() != null && !changeDescription.getFieldsDeleted().isEmpty()) {
+      for (FieldChange fieldChange : changeDescription.getFieldsDeleted()) {
+        SlackAttachment attachment = new SlackAttachment();
+        StringBuilder title = new StringBuilder();
+        if (fieldChange.getName().contains("tags")) {
+          attachment = new SlackAttachment();
+          title.append("Deleted tags from ");
           title.append(fieldChange.getName().replace(".tags", ""));
-          String tags = (String) fieldChange.getNewValue();
-          JSONArray jsonTags = new JSONArray(tags);
-          StringBuilder tagsText = new StringBuilder("Tags \n");
-          for (int i = 0; i < jsonTags.length(); i++) {
-            String tagFQN = jsonTags.getJSONObject(i).getString("tagFQN");
-            tagsText.append("- ");
-            tagsText.append(tagFQN);
-            tagsText.append("\n");
-          }
-          attachment.setText(tagsText.toString());
+          attachment.setText(parseTags((String) fieldChange.getOldValue()));
+          attachment.setTitle(title.toString());
+        } else if (fieldChange.getName().contains("columns")) {
+          attachment = new SlackAttachment();
+          title.append("Deleted columns ");
+          attachment.setText(parseColumns((String) fieldChange.getOldValue(), event));
           attachment.setTitle(title.toString());
         }
         attachments.add(attachment);
@@ -133,29 +169,48 @@ public class SlackWebhookEventPublisher extends AbstractEventPublisher {
     return attachments;
   }
 
-  private SlackAttachment getUpdatedEventsText(ChangeEvent event) {
-    SlackAttachment attachment = null;
-    ChangeDescription changeDescription = event.getChangeDescription();
-    if (changeDescription.getFieldsUpdated() != null && !changeDescription.getFieldsUpdated().isEmpty()) {
-      attachment = new SlackAttachment();
-      attachment.setTitle("Updated the following fields");
-      for (FieldChange fieldChange : changeDescription.getFieldsUpdated()) {
-        attachment.setText((String) fieldChange.getNewValue());
-      }
+  private String parseTags(String tags) {
+    JSONArray jsonTags = new JSONArray(tags);
+    StringBuilder tagsText = new StringBuilder("\n");
+    for (int i = 0; i < jsonTags.length(); i++) {
+      String tagFQN = jsonTags.getJSONObject(i).getString("tagFQN");
+      tagsText.append("- ");
+      tagsText.append(tagFQN);
+      tagsText.append("\n");
     }
-    return attachment;
+    return tagsText.toString();
   }
 
-  private SlackAttachment getDeletedEventsText(ChangeEvent event) {
-    SlackAttachment attachment = null;
-    ChangeDescription changeDescription = event.getChangeDescription();
-    if (changeDescription.getFieldsDeleted() != null && !changeDescription.getFieldsDeleted().isEmpty()) {
-      attachment = new SlackAttachment();
-      attachment.setTitle("Deleted the following");
-      for (FieldChange fieldChange : changeDescription.getFieldsUpdated()) {
-        attachment.setText((String) fieldChange.getNewValue());
-      }
+  private String parseColumns(String columns, ChangeEvent event) {
+    JSONArray jsonColumns = new JSONArray(columns);
+    StringBuilder columnsText = new StringBuilder("\n");
+    for (int i = 0; i < jsonColumns.length(); i++) {
+      String columnName = jsonColumns.getJSONObject(i).getString("name");
+      String columnType = jsonColumns.getJSONObject(i).getString("dataType");
+      String columnFQDN = jsonColumns.getJSONObject(i).getString("fullyQualifiedName");
+      String columnURL =
+          String.format("<http://localhost:8585/%s/%s|%s>", event.getEntityType(), columnFQDN, columnName);
+      columnsText.append("- ");
+      columnsText.append(columnURL);
+      columnsText.append(" of type ");
+      columnsText.append(columnType);
+      columnsText.append("\n");
     }
-    return attachment;
+    return columnsText.toString();
+  }
+
+  private String parseOwnership(String prevOwner, String newOwner) {
+    StringBuilder owner = new StringBuilder("\n");
+    if (prevOwner != null) {
+      JSONObject prevOwnerJson = new JSONObject(prevOwner);
+      owner.append("Updated from previous owner ");
+      owner.append(prevOwnerJson.getString("name"));
+      owner.append(" to ");
+    } else {
+      owner.append("Set owner to ");
+    }
+    JSONObject newOwnerJson = new JSONObject(newOwner);
+    owner.append(newOwnerJson.getString("name"));
+    return owner.toString();
   }
 }

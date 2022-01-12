@@ -130,7 +130,7 @@ airflowConfiguration:
 
 slackEventPublishers:
   - name: "slack events"
-    webhookUrl: "https://hooks.slack.com/services/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"
+    webhookUrl: "https://hooks.slack.com/services/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"
     filters:
       - eventType: "entityCreated"
         entities:
@@ -141,8 +141,6 @@ slackEventPublishers:
       - eventType: "entityDeleted"
         entities:
          - "*"
-
-
 health:
   delayedShutdownHandlerEnabled: true
   shutdownWaitPeriod: 1s

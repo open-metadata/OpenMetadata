@@ -39,7 +39,7 @@ import org.elasticsearch.client.RestHighLevelClient;
 import org.flywaydb.core.Flyway;
 import org.flywaydb.core.api.MigrationVersion;
 import org.openmetadata.catalog.CatalogApplicationConfig;
-import org.openmetadata.catalog.ElasticSearchConfiguration;
+import org.openmetadata.catalog.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.catalog.elasticsearch.ElasticSearchIndexDefinition;
 
 public final class TablesInitializer {

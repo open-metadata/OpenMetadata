@@ -42,8 +42,12 @@ logs
 *.iml
 *.ipr
 *.iws
-.idea/
-
+.idea/encodings.xml
+.idea/libraries
+.idea/inspectionProfiles/Project_Default.xml
+.idea/modules.xml
+.idea/runConfigurations.xml
+.idea/workspace.xml
 # Package Files
 *.jar
 *.war
