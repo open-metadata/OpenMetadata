@@ -27,7 +27,10 @@ from sqlalchemy_redshift.dialect import RedshiftDialectMixin, RelationKey
 from metadata.ingestion.api.source import SourceStatus
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.source.sql_source import SQLConnectionConfig, SQLSource
-from metadata.utils.sql_queries import REDSHIFT_GET_ALL_RELATION_INFO, REDSHIFT_GET_SCHEMA_COLUMN_INFO
+from metadata.utils.sql_queries import (
+    REDSHIFT_GET_ALL_RELATION_INFO,
+    REDSHIFT_GET_SCHEMA_COLUMN_INFO,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -109,7 +112,9 @@ def _get_schema_column_info(self, connection, schema=None, **kw):
     schema_clause = "AND schema = '{schema}'".format(schema=schema) if schema else ""
     all_columns = defaultdict(list)
     with connection.connect() as cc:
-        result = cc.execute(REDSHIFT_GET_SCHEMA_COLUMN_INFO.format(schema_clause=schema_clause))
+        result = cc.execute(
+            REDSHIFT_GET_SCHEMA_COLUMN_INFO.format(schema_clause=schema_clause)
+        )
         for col in result:
             key = RelationKey(col.table_name, col.schema, connection)
             all_columns[key].append(col)
