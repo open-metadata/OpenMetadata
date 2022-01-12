@@ -116,8 +116,8 @@ Note: The `source.config` field in the configuration JSON will include the major
       "query": "select top 50 * from {}.{}",
       "username": "username",
       "password": "strong_password",
-      "use_pymssql": "false",
-      "use_pyodbc": "false",
+      "use_pymssql": false,
+      "use_pyodbc": false,
       "uri_string": "uri_string"    
       "schema_filter_pattern": {
         "excludes": ["information_schema.*"]
