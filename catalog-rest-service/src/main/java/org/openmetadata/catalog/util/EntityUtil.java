@@ -425,7 +425,7 @@ public final class EntityUtil {
             toBoolean(ALL));
     List<EntityReference> followers = new ArrayList<>();
     for (String followerId : followerIds) {
-      User user = userDAO.findEntityById(UUID.fromString(followerId));
+      User user = userDAO.findEntityById(UUID.fromString(followerId), ALL);
       if (followedEntityInterface.isDeleted() || !user.getDeleted()) {
         followers.add(new EntityReference().withName(user.getName()).withId(user.getId()).withType("user"));
       }
