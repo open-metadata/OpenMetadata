@@ -36,6 +36,7 @@ from metadata.generated.schema.api.lineage.addLineage import AddLineage
 from metadata.generated.schema.api.policies.createPolicy import (
     CreatePolicyEntityRequest,
 )
+from metadata.generated.schema.api.teams.createRole import CreateRoleEntityRequest
 from metadata.generated.schema.api.teams.createTeam import CreateTeamEntityRequest
 from metadata.generated.schema.api.teams.createUser import CreateUserEntityRequest
 from metadata.generated.schema.entity.data.chart import ChartType
@@ -97,6 +98,7 @@ class MetadataRestSink(Sink[Entity]):
         self.charts_dict = {}
         self.metadata = OpenMetadata(self.metadata_config)
         self.api_client = self.metadata.client
+        self.role_entities = {}
         self.team_entities = {}
         self._bootstrap_entities()
 
@@ -387,6 +389,22 @@ class MetadataRestSink(Sink[Entity]):
         team_response = self.api_client.get("/teams")
         for team in team_response["data"]:
             self.team_entities[team["name"]] = team["id"]
+        role_response = self.api_client.get("/roles")
+        for role in role_response["data"]:
+            self.role_entities[role["name"]] = role["id"]
+
+    def _create_role(self, role: EntityReference) -> None:
+        metadata_role = CreateRoleEntityRequest(
+            name=role.name, displayName=role.name, description=role.description
+        )
+        try:
+            r = self.metadata.create_or_update(metadata_role)
+            instance_id = str(r.id.__root__)
+            self.role_entities[role.name] = instance_id
+        except Exception as err:
+            logger.debug(traceback.format_exc())
+            logger.debug(traceback.print_exc())
+            logger.error(err)
 
     def _create_team(self, team: EntityReference) -> None:
         metadata_team = CreateTeamEntityRequest(
@@ -397,11 +415,16 @@ class MetadataRestSink(Sink[Entity]):
             instance_id = str(r.id.__root__)
             self.team_entities[team.name] = instance_id
         except Exception as err:
-            logger.error(traceback.format_exc())
-            logger.error(traceback.print_exc())
+            logger.debug(traceback.format_exc())
+            logger.debug(traceback.print_exc())
             logger.error(err)
 
     def write_users(self, record: User):
+        roles = []
+        for role in record.roles.__root__:
+            if role.name not in self.role_entities:
+                self._create_role(role)
+            roles.append(self.role_entities[role.name])
         teams = []
         for team in record.teams.__root__:
             if team.name not in self.team_entities:
@@ -412,6 +435,7 @@ class MetadataRestSink(Sink[Entity]):
             name=record.name.__root__,
             displayName=record.displayName,
             email=record.email,
+            roles=roles,
             teams=teams,
         )
         try:
