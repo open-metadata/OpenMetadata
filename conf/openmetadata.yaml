@@ -108,7 +108,7 @@ database:
   user: ${MYSQL_USER:-openmetadata_user}
   password: ${MYSQL_USER_PASSWORD:-openmetadata_password}
   # the JDBC URL; the database is called openmetadata_db
-  url: jdbc:mysql://${MYSQL_HOST:-localhost}:${MYSQL_PORT:-3306}/${MYSQL_DATABASE:- openmetadata_db}?allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC
+  url: jdbc:mysql://${MYSQL_HOST:-localhost}:${MYSQL_PORT:-3306}/${MYSQL_DATABASE:-openmetadata_db}?allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC
 
 
 elasticsearch:
