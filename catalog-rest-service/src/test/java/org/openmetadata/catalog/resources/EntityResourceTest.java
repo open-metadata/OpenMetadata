@@ -483,6 +483,7 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
   @Test
   void get_entityIncludeDeleted_200(TestInfo test) throws HttpResponseException, URISyntaxException {
     Object create = createRequest(getEntityName(test), "", "", null);
+    EntityReference container = getContainer(create);
     // Create first time using POST
     T entity = createEntity(create, adminAuthHeaders());
     EntityInterface<T> entityInterface = getEntityInterface(entity);
@@ -504,12 +505,14 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
             put("include", "deleted");
           }
         };
-    getEntity(entityInterface.getId(), queryParams, null, adminAuthHeaders());
-    getEntityByName(entityInterface.getFullyQualifiedName(), queryParams, null, adminAuthHeaders());
+    checkContainer(container, getEntity(entityInterface.getId(), queryParams, null, adminAuthHeaders()));
+    checkContainer(
+        container, getEntityByName(entityInterface.getFullyQualifiedName(), queryParams, null, adminAuthHeaders()));
 
     queryParams.put("include", "all");
-    getEntity(entityInterface.getId(), queryParams, null, adminAuthHeaders());
-    getEntityByName(entityInterface.getFullyQualifiedName(), queryParams, null, adminAuthHeaders());
+    checkContainer(container, getEntity(entityInterface.getId(), queryParams, null, adminAuthHeaders()));
+    checkContainer(
+        container, getEntityByName(entityInterface.getFullyQualifiedName(), queryParams, null, adminAuthHeaders()));
 
     queryParams.put("include", "non-deleted");
     assertResponse(
@@ -520,6 +523,14 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
         () -> getEntityByName(entityInterface.getFullyQualifiedName(), queryParams, null, adminAuthHeaders()),
         NOT_FOUND,
         entityNotFound(entityName, entityInterface.getFullyQualifiedName()));
+  }
+
+  protected void checkContainer(EntityReference container, T entity) {
+    EntityInterface<T> entityInterface = getEntityInterface(entity);
+    if (container != null) {
+      assertNotNull(entityInterface.getContainer(), "Container is null");
+      assertEquals(container.getId(), entityInterface.getContainer().getId(), "Containers are different");
+    }
   }
 
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
