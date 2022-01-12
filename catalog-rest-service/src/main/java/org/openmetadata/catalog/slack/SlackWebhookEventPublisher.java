@@ -1,12 +1,14 @@
 package org.openmetadata.catalog.slack;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
-import javax.ws.rs.ProcessingException;
 import javax.ws.rs.client.Client;
 import javax.ws.rs.client.ClientBuilder;
 import javax.ws.rs.client.Invocation;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
+import org.json.JSONArray;
 import org.openmetadata.catalog.events.AbstractEventPublisher;
 import org.openmetadata.catalog.events.errors.EventPublisherException;
 import org.openmetadata.catalog.resources.events.EventResource.ChangeEventList;
@@ -58,7 +60,7 @@ public class SlackWebhookEventPublisher extends AbstractEventPublisher {
         } else if (response.getStatus() >= 300 && response.getStatus() < 600) {
           throw new SlackRetriableException(response.getStatusInfo().getReasonPhrase());
         }
-      } catch (ProcessingException e) {
+      } catch (Exception e) {
         LOG.error("Failed to publish event {} to slack ", event);
         throw new EventPublisherException(e.getMessage());
       }
@@ -71,39 +73,18 @@ public class SlackWebhookEventPublisher extends AbstractEventPublisher {
     slackMessage.setUsername(event.getUserName());
     String headerText = getHeaderText(event);
     slackMessage.setText(headerText);
-
-    String addedEvents = getAddedEventsText(event);
-    if (changeDescription.getFieldsAdded() != null && !changeDescription.getFieldsAdded().isEmpty()) {
-      stringBuilder.append("Added ");
-      for (FieldChange fieldChange : changeDescription.getFieldsAdded()) {
-        stringBuilder.append(fieldChange.getName());
-        stringBuilder.append(" added ");
-        stringBuilder.append(fieldChange.getNewValue());
-      }
+    List<SlackAttachment> attachmentList = new ArrayList<>();
+    List<SlackAttachment> addedEvents = getAddedEventsText(event);
+    SlackAttachment updatedEvents = getUpdatedEventsText(event);
+    SlackAttachment deletedEvents = getDeletedEventsText(event);
+    attachmentList.addAll(addedEvents);
+    if (updatedEvents != null) {
+      attachmentList.add(updatedEvents);
     }
-    if (changeDescription.getFieldsUpdated() != null && !changeDescription.getFieldsUpdated().isEmpty()) {
-      stringBuilder.append("Updated ");
-      for (FieldChange fieldChange : changeDescription.getFieldsUpdated()) {
-        stringBuilder.append(fieldChange.getName());
-        stringBuilder.append(" updated from _");
-        stringBuilder.append(fieldChange.getOldValue());
-        stringBuilder.append("_ to _");
-        stringBuilder.append(fieldChange.getNewValue());
-        stringBuilder.append("_");
-      }
+    if (deletedEvents != null) {
+      attachmentList.add(deletedEvents);
     }
-    if (changeDescription.getFieldsDeleted() != null && !changeDescription.getFieldsDeleted().isEmpty()) {
-      stringBuilder.append("Deleted ");
-      for (FieldChange fieldChange : changeDescription.getFieldsDeleted()) {
-        stringBuilder.append(fieldChange.getName());
-        stringBuilder.append(" deleted ");
-        stringBuilder.append(fieldChange.getOldValue());
-      }
-    }
-    SlackAttachment[] attachments = new SlackAttachment[1];
-    attachments[0] = new SlackAttachment();
-    attachments[0].setText(stringBuilder.toString());
-    slackMessage.setAttachments(attachments);
+    slackMessage.setAttachments(attachmentList.toArray(new SlackAttachment[0]));
     return slackMessage;
   }
 
@@ -124,15 +105,57 @@ public class SlackWebhookEventPublisher extends AbstractEventPublisher {
     return String.format(headerTxt, event.getUserName(), operation, entityUrl);
   }
 
-  private SlackAttachment getAddedEventsText(ChangeEvent event) {
-    SlackAttachment attachment = new SlackAttachment();
+  private List<SlackAttachment> getAddedEventsText(ChangeEvent event) {
+    List<SlackAttachment> attachments = new ArrayList<>();
     ChangeDescription changeDescription = event.getChangeDescription();
     if (changeDescription.getFieldsAdded() != null && !changeDescription.getFieldsAdded().isEmpty()) {
-      attachment.setTitle("Added Following");
       for (FieldChange fieldChange : changeDescription.getFieldsAdded()) {
-        if (fieldChange.getName().equals("tags")) {}
+        SlackAttachment attachment = new SlackAttachment();
+        StringBuilder title = new StringBuilder();
+        if (fieldChange.getName().contains("tags")) {
+          title.append("Added tags to ");
+          title.append(fieldChange.getName().replace(".tags", ""));
+          String tags = (String) fieldChange.getNewValue();
+          JSONArray jsonTags = new JSONArray(tags);
+          StringBuilder tagsText = new StringBuilder("Tags \n");
+          for (int i = 0; i < jsonTags.length(); i++) {
+            String tagFQN = jsonTags.getJSONObject(i).getString("tagFQN");
+            tagsText.append("- ");
+            tagsText.append(tagFQN);
+            tagsText.append("\n");
+          }
+          attachment.setText(tagsText.toString());
+          attachment.setTitle(title.toString());
+        }
+        attachments.add(attachment);
       }
     }
-    return String.format(headerTxt, event.getUserName(), operation, entityUrl);
+    return attachments;
+  }
+
+  private SlackAttachment getUpdatedEventsText(ChangeEvent event) {
+    SlackAttachment attachment = null;
+    ChangeDescription changeDescription = event.getChangeDescription();
+    if (changeDescription.getFieldsUpdated() != null && !changeDescription.getFieldsUpdated().isEmpty()) {
+      attachment = new SlackAttachment();
+      attachment.setTitle("Updated the following fields");
+      for (FieldChange fieldChange : changeDescription.getFieldsUpdated()) {
+        attachment.setText((String) fieldChange.getNewValue());
+      }
+    }
+    return attachment;
+  }
+
+  private SlackAttachment getDeletedEventsText(ChangeEvent event) {
+    SlackAttachment attachment = null;
+    ChangeDescription changeDescription = event.getChangeDescription();
+    if (changeDescription.getFieldsDeleted() != null && !changeDescription.getFieldsDeleted().isEmpty()) {
+      attachment = new SlackAttachment();
+      attachment.setTitle("Deleted the following");
+      for (FieldChange fieldChange : changeDescription.getFieldsUpdated()) {
+        attachment.setText((String) fieldChange.getNewValue());
+      }
+    }
+    return attachment;
   }
 }
