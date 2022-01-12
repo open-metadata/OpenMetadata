@@ -27,6 +27,10 @@ export interface Chart {
    */
   chartUrl?: string;
   /**
+   * When `true` indicates the entity has been soft deleted.
+   */
+  deleted?: boolean;
+  /**
    * Description of the dashboard, what it is, and how to use it.
    */
   description?: string;
@@ -198,6 +202,7 @@ export interface EntityReference {
  */
 export enum DashboardServiceType {
   Looker = 'Looker',
+  Metabase = 'Metabase',
   Redash = 'Redash',
   Superset = 'Superset',
   Tableau = 'Tableau',

@@ -615,9 +615,7 @@ public abstract class EntityRepository<T> {
       EntityUtil.removeTagsByPrefix(daoCollection.tagDAO(), fqn);
       if (!patchOperation) {
         // PUT operation merges tags in the request with what already exists
-        List<TagLabel> mergedTags = EntityUtil.mergeTags(updatedTags, origTags);
-        updatedTags.clear();
-        updatedTags.addAll(mergedTags);
+        EntityUtil.mergeTags(updatedTags, origTags);
       }
 
       List<TagLabel> addedTags = new ArrayList<>();

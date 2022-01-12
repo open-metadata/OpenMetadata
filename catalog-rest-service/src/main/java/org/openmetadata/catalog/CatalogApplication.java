@@ -15,6 +15,8 @@ package org.openmetadata.catalog;
 
 import io.dropwizard.Application;
 import io.dropwizard.assets.AssetsBundle;
+import io.dropwizard.configuration.EnvironmentVariableSubstitutor;
+import io.dropwizard.configuration.SubstitutingSourceProvider;
 import io.dropwizard.health.conf.HealthConfiguration;
 import io.dropwizard.health.core.HealthCheckBundle;
 import io.dropwizard.jdbi3.JdbiFactory;
@@ -117,6 +119,9 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
   @SneakyThrows
   @Override
   public void initialize(Bootstrap<CatalogApplicationConfig> bootstrap) {
+    bootstrap.setConfigurationSourceProvider(
+        new SubstitutingSourceProvider(
+            bootstrap.getConfigurationSourceProvider(), new EnvironmentVariableSubstitutor(false)));
     bootstrap.addBundle(
         new SwaggerBundle<>() {
           @Override

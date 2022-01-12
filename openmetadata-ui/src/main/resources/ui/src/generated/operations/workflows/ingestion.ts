@@ -26,6 +26,10 @@ export interface Ingestion {
   concurrency?: number;
   connectorConfig: ConnectorConfig;
   /**
+   * When `true` indicates the entity has been soft deleted.
+   */
+  deleted?: boolean;
+  /**
    * Description of the workflow.
    */
   description?: string;

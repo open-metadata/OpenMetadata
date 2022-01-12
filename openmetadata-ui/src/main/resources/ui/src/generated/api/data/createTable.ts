@@ -115,6 +115,7 @@ export enum DataType {
   Blob = 'BLOB',
   Boolean = 'BOOLEAN',
   Byteint = 'BYTEINT',
+  Bytes = 'BYTES',
   Char = 'CHAR',
   Date = 'DATE',
   Datetime = 'DATETIME',

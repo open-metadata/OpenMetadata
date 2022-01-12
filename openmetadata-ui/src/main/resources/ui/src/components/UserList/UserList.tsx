@@ -250,7 +250,7 @@ const UserList: FunctionComponent<Props> = ({
               name: user.name || '',
               id: user.id,
               email: user.email || '',
-              isActiveUser: !user.deactivated,
+              isActiveUser: !user.deleted,
               profilePhoto: user.profile?.images?.image || '',
               teamCount: user.teams?.length || 0,
             };

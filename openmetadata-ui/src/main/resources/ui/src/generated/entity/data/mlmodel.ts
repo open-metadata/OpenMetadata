@@ -30,6 +30,10 @@ export interface Mlmodel {
    */
   dashboard?: EntityReference;
   /**
+   * When `true` indicates the entity has been soft deleted.
+   */
+  deleted?: boolean;
+  /**
    * Description of the ML Model, what it is, and how to use it.
    */
   description?: string;
@@ -151,6 +155,8 @@ export interface FieldChange {
  *
  * Followers of this ML Model.
  *
+ * Description of the Data Source (e.g., a Table)
+ *
  * Owner of this ML Model.
  */
 export interface EntityReference {
@@ -224,6 +230,10 @@ export enum FeatureType {
  * This schema defines the sources of a ML Feature.
  */
 export interface FeatureSource {
+  /**
+   * Description of the Data Source (e.g., a Table)
+   */
+  dataSource?: EntityReference;
   /**
    * Data type of the source (int, date etc.).
    */

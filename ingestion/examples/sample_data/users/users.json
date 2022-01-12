@@ -11,6 +11,7 @@
       "timezone": "PST",
       "isAdmin": false,
       "teams": "Cloud_Infra",
+      "roles": ["DataSteward"],
       "owns": [],
       "follows": []
     },

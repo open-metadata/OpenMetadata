@@ -13,279 +13,53 @@
  */
 
 /**
- * Describes an entity Access Control Rule used within a Policy
+ * Describes an Access Control Rule for OpenMetadata Metadata Operations. All non-null user
+ * (subject) and entity (object) attributes are evaluated with logical AND.
  */
 export interface Rule {
   /**
-   * A set of access control enforcements to take on the entities.
+   * Allow or Deny operation on the entity.
    */
-  actions: TagBased[];
-  filters: Array<TagLabel | string>;
-}
-
-/**
- * Describes an Access Control Rule to selectively grant access to Teams/Users to tagged
- * entities.
- */
-export interface TagBased {
+  allow?: boolean;
   /**
-   * Teams and Users who are able to access the tagged entities.
+   * Is the rule enabled.
    */
-  allow: Team[];
+  enabled?: boolean;
   /**
-   * Tags that are associated with the entities.
+   * Entity tag that the rule should match on
    */
-  tags: TagLabel[];
-}
-
-/**
- * This schema defines the Team entity. A Team is a group of zero or more users. Teams can
- * own zero or more data assets.
- *
- * This schema defines the User entity. A user can be part of 0 or more teams. A special
- * type of user called Bot is used for automation. A user can be an owner of zero or more
- * data assets. A user can also follow zero or more data assets.
- */
-export interface Team {
+  entityTagAttr?: string;
   /**
-   * Change that lead to this version of the entity.
+   * Entity type that the rule should match on
    */
-  changeDescription?: ChangeDescription;
+  entityTypeAttr?: string;
   /**
-   * When true the team has been deleted.
+   * Name for this Rule.
    */
-  deleted?: boolean;
-  /**
-   * Description of the team.
-   *
-   * Used for user biography.
-   */
-  description?: string;
-  /**
-   * Name used for display purposes. Example 'Data Science team'.
-   *
-   * Name used for display purposes. Example 'FirstName LastName'.
-   */
-  displayName?: string;
-  /**
-   * Link to the resource corresponding to this entity.
-   */
-  href: string;
-  /**
-   * Unique identifier that identifies a user entity instance.
-   */
-  id: string;
   name: string;
   /**
-   * List of entities owned by the team.
-   *
-   * List of entities owned by the user.
+   * Operation on the entity.
    */
-  owns?: EntityReference[];
+  operation?: Operation;
   /**
-   * Team profile information.
-   *
-   * Profile of the user.
+   * Priority of this rule among other rules in this policy.
    */
-  profile?: Profile;
+  priority?: number;
   /**
-   * Last update time corresponding to the new version of the entity.
+   * Role of the user that the rule should match on
    */
-  updatedAt?: Date;
-  /**
-   * User who made the update.
-   */
-  updatedBy?: string;
-  /**
-   * Users that are part of the team.
-   */
-  users?: EntityReference[];
-  /**
-   * Metadata version of the entity.
-   */
-  version?: number;
-  /**
-   * When true indicates the user has been deactivated. Users are deactivated instead of
-   * deleted.
-   */
-  deactivated?: boolean;
-  /**
-   * Email address of the user.
-   */
-  email?: string;
-  /**
-   * List of entities followed by the user.
-   */
-  follows?: EntityReference[];
-  /**
-   * When true indicates user is an administrator for the system with superuser privileges.
-   */
-  isAdmin?: boolean;
-  /**
-   * When true indicates a special type of user called Bot.
-   */
-  isBot?: boolean;
-  /**
-   * Teams that the user belongs to.
-   */
-  teams?: EntityReference[];
-  /**
-   * Timezone of the user.
-   */
-  timezone?: string;
+  userRoleAttr?: string;
 }
 
 /**
- * Change that lead to this version of the entity.
+ * Operation on the entity.
  *
- * Description of the change.
+ * This schema defines all possible operations on metadata of data entities
  */
-export interface ChangeDescription {
-  /**
-   * Names of fields added during the version changes.
-   */
-  fieldsAdded?: FieldChange[];
-  /**
-   * Fields deleted during the version changes with old value before deleted.
-   */
-  fieldsDeleted?: FieldChange[];
-  /**
-   * Fields modified during the version changes with old and new values.
-   */
-  fieldsUpdated?: FieldChange[];
-  /**
-   * When a change did not result in change, this could be same as the current version.
-   */
-  previousVersion?: number;
-}
-
-export interface FieldChange {
-  /**
-   * Name of the entity field that changed.
-   */
-  name?: string;
-  /**
-   * New value of the field. Note that this is a JSON string and use the corresponding field
-   * type to deserialize it.
-   */
-  newValue?: any;
-  /**
-   * Previous value of the field. Note that this is a JSON string and use the corresponding
-   * field type to deserialize it.
-   */
-  oldValue?: any;
-}
-
-/**
- * List of entities owned by the team.
- *
- * This schema defines the EntityReference type used for referencing an entity.
- * EntityReference is used for capturing relationships from one entity to another. For
- * example, a table has an attribute called database of type EntityReference that captures
- * the relationship of a table `belongs to a` database.
- */
-export interface EntityReference {
-  /**
-   * Optional description of entity.
-   */
-  description?: string;
-  /**
-   * Display Name that identifies this entity.
-   */
-  displayName?: string;
-  /**
-   * Link to the entity resource.
-   */
-  href?: string;
-  /**
-   * Unique identifier that identifies an entity instance.
-   */
-  id: string;
-  /**
-   * Name of the entity instance. For entities such as tables, databases where the name is not
-   * unique, fullyQualifiedName is returned in this field.
-   */
-  name?: string;
-  /**
-   * Entity type/class name - Examples: `database`, `table`, `metrics`, `databaseService`,
-   * `dashboardService`...
-   */
-  type: string;
-}
-
-/**
- * Team profile information.
- *
- * This schema defines the type for a profile of a user, team, or organization.
- *
- * Profile of the user.
- */
-export interface Profile {
-  images?: ImageList;
-}
-
-/**
- * Links to a list of images of varying resolutions/sizes.
- */
-export interface ImageList {
-  image?: string;
-  image192?: string;
-  image24?: string;
-  image32?: string;
-  image48?: string;
-  image512?: string;
-  image72?: string;
-}
-
-/**
- * This schema defines the type for labeling an entity with a Tag.
- *
- * Entity tags to match on.
- */
-export interface TagLabel {
-  /**
-   * Unique name of the tag category.
-   */
-  description?: string;
-  /**
-   * Link to the tag resource.
-   */
-  href?: string;
-  /**
-   * Label type describes how a tag label was applied. 'Manual' indicates the tag label was
-   * applied by a person. 'Derived' indicates a tag label was derived using the associated tag
-   * relationship (see TagCategory.json for more details). 'Propagated` indicates a tag label
-   * was propagated from upstream based on lineage. 'Automated' is used when a tool was used
-   * to determine the tag label.
-   */
-  labelType: LabelType;
-  /**
-   * 'Suggested' state is used when a tag label is suggested by users or tools. Owner of the
-   * entity must confirm the suggested labels before it is marked as 'Confirmed'.
-   */
-  state: State;
-  tagFQN: string;
-}
-
-/**
- * Label type describes how a tag label was applied. 'Manual' indicates the tag label was
- * applied by a person. 'Derived' indicates a tag label was derived using the associated tag
- * relationship (see TagCategory.json for more details). 'Propagated` indicates a tag label
- * was propagated from upstream based on lineage. 'Automated' is used when a tool was used
- * to determine the tag label.
- */
-export enum LabelType {
-  Automated = 'Automated',
-  Derived = 'Derived',
-  Manual = 'Manual',
-  Propagated = 'Propagated',
-}
-
-/**
- * 'Suggested' state is used when a tag label is suggested by users or tools. Owner of the
- * entity must confirm the suggested labels before it is marked as 'Confirmed'.
- */
-export enum State {
-  Confirmed = 'Confirmed',
-  Suggested = 'Suggested',
+export enum Operation {
+  SuggestDescription = 'SuggestDescription',
+  SuggestTags = 'SuggestTags',
+  UpdateDescription = 'UpdateDescription',
+  UpdateOwner = 'UpdateOwner',
+  UpdateTags = 'UpdateTags',
 }

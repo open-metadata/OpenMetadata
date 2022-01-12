@@ -142,6 +142,8 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
 
   public static TagLabel USER_ADDRESS_TAG_LABEL;
   public static TagLabel USER_BANK_ACCOUNT_TAG_LABEL;
+  public static TagLabel PERSONAL_DATA_TAG_LABEL;
+  public static TagLabel PII_SENSITIVE_TAG_LABEL;
   public static TagLabel TIER1_TAG_LABEL;
   public static TagLabel TIER2_TAG_LABEL;
 
@@ -256,16 +258,17 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     GCP_STORAGE_SERVICE_REFERENCE =
         new EntityReference().withName(service.getName()).withId(service.getId()).withType(Entity.STORAGE_SERVICE);
 
-    Tag tag = TagResourceTest.getTag("User.Address", adminAuthHeaders());
-    USER_ADDRESS_TAG_LABEL =
-        new TagLabel().withTagFQN(tag.getFullyQualifiedName()).withDescription(tag.getDescription());
-    tag = TagResourceTest.getTag("User.BankAccount", adminAuthHeaders());
-    USER_BANK_ACCOUNT_TAG_LABEL =
-        new TagLabel().withTagFQN(tag.getFullyQualifiedName()).withDescription(tag.getDescription());
-    tag = TagResourceTest.getTag("Tier.Tier1", adminAuthHeaders());
-    TIER1_TAG_LABEL = new TagLabel().withTagFQN(tag.getFullyQualifiedName()).withDescription(tag.getDescription());
-    tag = TagResourceTest.getTag("Tier.Tier2", adminAuthHeaders());
-    TIER2_TAG_LABEL = new TagLabel().withTagFQN(tag.getFullyQualifiedName()).withDescription(tag.getDescription());
+    USER_ADDRESS_TAG_LABEL = getTagLabel("User.Address");
+    USER_BANK_ACCOUNT_TAG_LABEL = getTagLabel("User.BankAccount");
+    PERSONAL_DATA_TAG_LABEL = getTagLabel("PersonalData.Personal");
+    PII_SENSITIVE_TAG_LABEL = getTagLabel("PII.Sensitive");
+    TIER1_TAG_LABEL = getTagLabel("Tier.Tier1");
+    TIER2_TAG_LABEL = getTagLabel("Tier.Tier2");
+  }
+
+  private TagLabel getTagLabel(String tagName) throws HttpResponseException {
+    Tag tag = TagResourceTest.getTag(tagName, adminAuthHeaders());
+    return new TagLabel().withTagFQN(tag.getFullyQualifiedName()).withDescription(tag.getDescription());
   }
 
   @AfterAll
