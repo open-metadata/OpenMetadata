@@ -25,7 +25,6 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.function.BiPredicate;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import javax.ws.rs.WebApplicationException;
 import lombok.RequiredArgsConstructor;
 import org.joda.time.Period;
@@ -320,8 +319,12 @@ public final class EntityUtil {
 
   /** Validate given list of tags and add derived tags to it */
   public static List<TagLabel> addDerivedTags(TagDAO tagDAO, List<TagLabel> tagLabels) throws IOException {
-    List<TagLabel> updatedTagLabels = new ArrayList<>();
-    for (TagLabel tagLabel : Optional.ofNullable(tagLabels).orElse(Collections.emptyList())) {
+    if (tagLabels == null || tagLabels.isEmpty()) {
+      return tagLabels;
+    }
+
+    List<TagLabel> updatedTagLabels = new ArrayList<>(tagLabels);
+    for (TagLabel tagLabel : tagLabels) {
       String json = tagDAO.findTag(tagLabel.getTagFQN());
       if (json == null) {
         // Invalid TagLabel
@@ -329,11 +332,10 @@ public final class EntityUtil {
             CatalogExceptionMessage.entityNotFound(Tag.class.getSimpleName(), tagLabel.getTagFQN()));
       }
       Tag tag = JsonUtils.readValue(json, Tag.class);
-      updatedTagLabels.add(tagLabel);
 
       // Apply derived tags
       List<TagLabel> derivedTags = getDerivedTags(tagDAO, tagLabel, tag);
-      updatedTagLabels = mergeTags(updatedTagLabels, derivedTags);
+      mergeTags(updatedTagLabels, derivedTags);
     }
     updatedTagLabels.sort(compareTagLabel);
     return updatedTagLabels;
@@ -347,14 +349,17 @@ public final class EntityUtil {
     tagDAO.deleteTagsByPrefix(fullyQualifiedName);
   }
 
-  public static List<TagLabel> mergeTags(List<TagLabel> list1, List<TagLabel> list2) {
-    List<TagLabel> mergedTags =
-        Stream.concat(
-                Optional.ofNullable(list1).orElse(Collections.emptyList()).stream(),
-                Optional.ofNullable(list2).orElse(Collections.emptyList()).stream())
-            .distinct()
-            .collect(Collectors.toList());
-    return mergedTags.isEmpty() ? null : mergedTags;
+  /** Merge derivedTags into tags, if it already does not exist in tags */
+  public static void mergeTags(List<TagLabel> tags, List<TagLabel> derivedTags) {
+    if (derivedTags == null || derivedTags.isEmpty()) {
+      return;
+    }
+    for (TagLabel derivedTag : derivedTags) {
+      TagLabel tag = tags.stream().filter(t -> tagLabelMatch.test(t, derivedTag)).findAny().orElse(null);
+      if (tag == null) { // Derived tag does not exist in the list. Add it.
+        tags.add(derivedTag);
+      }
+    }
   }
 
   public static boolean addFollower(
