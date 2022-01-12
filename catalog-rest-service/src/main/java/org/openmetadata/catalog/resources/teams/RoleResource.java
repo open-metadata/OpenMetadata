@@ -59,6 +59,7 @@ import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
+import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.RestUtil.PatchResponse;
@@ -121,16 +122,22 @@ public class RoleResource {
           String before,
       @Parameter(description = "Returns list of tables after this cursor", schema = @Schema(type = "string"))
           @QueryParam("after")
-          String after)
+          String after,
+      @Parameter(
+              description = "Include all, deleted, or non-deleted entities.",
+              schema = @Schema(implementation = Include.class))
+          @QueryParam("include")
+          @DefaultValue("non-deleted")
+          Include include)
       throws IOException, GeneralSecurityException, ParseException {
     RestUtil.validateCursors(before, after);
     EntityUtil.Fields fields = new EntityUtil.Fields(FIELD_LIST, null);
 
     ResultList<Role> roles;
     if (before != null) { // Reverse paging
-      roles = dao.listBefore(uriInfo, fields, null, limitParam, before); // Ask for one extra entry
+      roles = dao.listBefore(uriInfo, fields, null, limitParam, before, include); // Ask for one extra entry
     } else { // Forward paging or first page
-      roles = dao.listAfter(uriInfo, fields, null, limitParam, after);
+      roles = dao.listAfter(uriInfo, fields, null, limitParam, after, include);
     }
     return roles;
   }
@@ -169,10 +176,19 @@ public class RoleResource {
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Role.class))),
         @ApiResponse(responseCode = "404", description = "Role for instance {id} is not found")
       })
-  public Role get(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("id") String id)
+  public Role get(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @PathParam("id") String id,
+      @Parameter(
+              description = "Include all, deleted, or non-deleted entities.",
+              schema = @Schema(implementation = Include.class))
+          @QueryParam("include")
+          @DefaultValue("non-deleted")
+          Include include)
       throws IOException, ParseException {
     EntityUtil.Fields fields = new EntityUtil.Fields(FIELD_LIST, null);
-    return dao.get(uriInfo, id, fields);
+    return dao.get(uriInfo, id, fields, include);
   }
 
   @GET
@@ -190,10 +206,18 @@ public class RoleResource {
         @ApiResponse(responseCode = "404", description = "Role for instance {name} is not found")
       })
   public Role getByName(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("name") String name)
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @PathParam("name") String name,
+      @Parameter(
+              description = "Include all, deleted, or non-deleted entities.",
+              schema = @Schema(implementation = Include.class))
+          @QueryParam("include")
+          @DefaultValue("non-deleted")
+          Include include)
       throws IOException, ParseException {
     EntityUtil.Fields fields = new EntityUtil.Fields(FIELD_LIST, null);
-    return dao.getByName(uriInfo, name, fields);
+    return dao.getByName(uriInfo, name, fields, include);
   }
 
   @GET
