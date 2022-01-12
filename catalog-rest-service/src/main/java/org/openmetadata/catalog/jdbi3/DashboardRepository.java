@@ -31,6 +31,7 @@ import org.openmetadata.catalog.jdbi3.DashboardServiceRepository.DashboardServic
 import org.openmetadata.catalog.resources.dashboards.DashboardResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
@@ -97,7 +98,11 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
   private EntityReference getService(Dashboard dashboard) throws IOException {
     EntityReference ref =
         EntityUtil.getService(
-            daoCollection.relationshipDAO(), Entity.DASHBOARD, dashboard.getId(), Entity.DASHBOARD_SERVICE);
+            daoCollection.relationshipDAO(),
+            Entity.DASHBOARD,
+            dashboard.getId(),
+            Entity.DASHBOARD_SERVICE,
+            Include.ALL);
     if (ref != null) {
       DashboardService service = getService(ref.getId(), ref.getType());
       ref.setName(service.getName());
