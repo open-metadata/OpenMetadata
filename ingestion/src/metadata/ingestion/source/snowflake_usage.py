@@ -22,17 +22,12 @@ from metadata.ingestion.source.sql_alchemy_helper import (
     SQLSourceStatus,
 )
 from metadata.utils.helpers import get_start_and_end
+from metadata.utils.sql_queries import SNOWFLAKE_SQL_STATEMENT
 
 
 class SnowflakeUsageSource(Source[TableQuery]):
     # SELECT statement from mysql information_schema to extract table and column metadata
-    SQL_STATEMENT = """
-        select query_type,query_text,user_name,database_name,
-        schema_name,start_time,end_time
-        from table(information_schema.query_history(
-        end_time_range_start=>to_timestamp_ltz('{start_date}'),
-        end_time_range_end=>to_timestamp_ltz('{end_date}')));
-        """
+    SQL_STATEMENT = SNOWFLAKE_SQL_STATEMENT
 
     # CONFIG KEYS
     WHERE_CLAUSE_SUFFIX_KEY = "where_clause"
