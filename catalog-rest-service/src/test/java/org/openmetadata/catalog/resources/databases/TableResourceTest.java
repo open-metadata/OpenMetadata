@@ -1249,7 +1249,7 @@ public class TableResourceTest extends EntityResourceTest<Table> {
     WebTarget target = CatalogApplicationTest.getResource(String.format("tables/%s/location", table.getId()));
     TestUtils.put(target, locationId.toString(), status, authHeaders);
 
-    // GET .../tables/{tableId} returns newly added follower
+    // GET .../tables/{tableId} returns newly added location
     Table getTable = getEntity(table.getId(), "location", authHeaders);
     TestUtils.validateEntityReference(getTable.getLocation());
     assertEquals(
