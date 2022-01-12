@@ -111,7 +111,7 @@ public class DefaultAuthorizer implements Authorizer {
                 .withUpdatedAt(new Date());
         addOrUpdateAdmin(user);
       } catch (IOException | ParseException e) {
-        LOG.error("Failed to create admin user {}", botUser, e);
+        LOG.error("Failed to create bot user {}", botUser, e);
       }
     }
   }
