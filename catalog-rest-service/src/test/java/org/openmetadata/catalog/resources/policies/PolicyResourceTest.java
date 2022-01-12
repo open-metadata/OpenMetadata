@@ -404,11 +404,7 @@ public class PolicyResourceTest extends EntityResourceTest<Policy> {
   }
 
   private CreatePolicy create(String name) {
-    return new CreatePolicy()
-        .withName(name)
-        .withDescription("description")
-        .withPolicyType(PolicyType.Lifecycle)
-        .withOwner(USER_OWNER1);
+    return new CreatePolicy().withName(name).withDescription("description").withPolicyType(PolicyType.Lifecycle);
   }
 
   private CreatePolicy createAccessControlPolicyWithRules(String name, List<Rule> rules) {
