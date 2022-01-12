@@ -9,6 +9,8 @@ public class SlackPublisherConfiguration {
 
   @NotEmpty private String name;
 
+  @NotEmpty private String openMetadataUrl;
+
   List<EventFilter> filters;
 
   private int batchSize = 10;
@@ -43,5 +45,13 @@ public class SlackPublisherConfiguration {
 
   public void setBatchSize(int batchSize) {
     this.batchSize = batchSize;
+  }
+
+  public void setOpenMetadataUrl(String openMetadataUrl) {
+    this.openMetadataUrl = openMetadataUrl;
+  }
+
+  public String getOpenMetadataUrl() {
+    return openMetadataUrl;
   }
 }

@@ -3,6 +3,7 @@ package org.openmetadata.catalog.slack;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 import javax.ws.rs.client.Client;
 import javax.ws.rs.client.ClientBuilder;
 import javax.ws.rs.client.Invocation;
@@ -15,6 +16,7 @@ import org.openmetadata.catalog.events.errors.EventPublisherException;
 import org.openmetadata.catalog.resources.events.EventResource.ChangeEventList;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.ChangeEvent;
+import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.EventType;
 import org.openmetadata.catalog.type.FieldChange;
 import org.slf4j.Logger;
@@ -24,6 +26,7 @@ public class SlackWebhookEventPublisher extends AbstractEventPublisher {
   private static final Logger LOG = LoggerFactory.getLogger(SlackWebhookEventPublisher.class);
   private Invocation.Builder target;
   private Client client;
+  private String openMetadataUrl;
 
   public SlackWebhookEventPublisher(SlackPublisherConfiguration config) {
     super(config.getBatchSize(), config.getFilters());
@@ -33,6 +36,7 @@ public class SlackWebhookEventPublisher extends AbstractEventPublisher {
     clientBuilder.readTimeout(12, TimeUnit.SECONDS);
     client = clientBuilder.build();
     target = client.target(slackWebhookURL).request();
+    openMetadataUrl = config.getOpenMetadataUrl();
   }
 
   @Override
@@ -71,8 +75,10 @@ public class SlackWebhookEventPublisher extends AbstractEventPublisher {
   private SlackMessage buildSlackMessage(ChangeEvent event) {
     SlackMessage slackMessage = new SlackMessage();
     slackMessage.setUsername(event.getUserName());
-    String headerText = getHeaderText(event);
-    slackMessage.setText(headerText);
+    if (event.getEntity() != null) {
+      String headerText = getHeaderText(event);
+      slackMessage.setText(headerText);
+    }
     List<SlackAttachment> attachmentList = new ArrayList<>();
     List<SlackAttachment> addedEvents = getAddedEventsText(event);
     List<SlackAttachment> updatedEvents = getUpdatedEventsText(event);
@@ -87,10 +93,7 @@ public class SlackWebhookEventPublisher extends AbstractEventPublisher {
   private String getHeaderText(ChangeEvent event) {
     String headerTxt = "%s %s %s";
     String operation = "";
-    String entityUrl =
-        String.format(
-            "<http://localhost:8585/%s/%s|%s>",
-            event.getEntityType(), event.getEntityFullyQualifiedName(), event.getEntityFullyQualifiedName());
+    String entityUrl = getEntityUrl(event);
     if (event.getEventType().equals(EventType.ENTITY_CREATED)) {
       operation = "created";
     } else if (event.getEventType().equals(EventType.ENTITY_UPDATED)) {
@@ -118,6 +121,10 @@ public class SlackWebhookEventPublisher extends AbstractEventPublisher {
         } else if (fieldChange.getName().equals("owner")) {
           title.append("Added ownership");
           attachment.setText(parseOwnership((String) fieldChange.getOldValue(), (String) fieldChange.getNewValue()));
+        } else if (fieldChange.getName().equals("followers")) {
+          String followers = parseFollowers((List<EntityReference>) fieldChange.getNewValue());
+          String entityUrl = getEntityUrl(event);
+          attachment.setText(followers + " started following " + entityUrl);
         }
         attachment.setTitle(title.toString());
         attachments.add(attachment);
@@ -162,6 +169,10 @@ public class SlackWebhookEventPublisher extends AbstractEventPublisher {
           title.append("Deleted columns ");
           attachment.setText(parseColumns((String) fieldChange.getOldValue(), event));
           attachment.setTitle(title.toString());
+        } else if (fieldChange.getName().equals("followers")) {
+          String followers = parseFollowers((List<EntityReference>) fieldChange.getOldValue());
+          String entityUrl = getEntityUrl(event);
+          attachment.setText(followers + " unfollowed " + entityUrl);
         }
         attachments.add(attachment);
       }
@@ -188,8 +199,7 @@ public class SlackWebhookEventPublisher extends AbstractEventPublisher {
       String columnName = jsonColumns.getJSONObject(i).getString("name");
       String columnType = jsonColumns.getJSONObject(i).getString("dataType");
       String columnFQDN = jsonColumns.getJSONObject(i).getString("fullyQualifiedName");
-      String columnURL =
-          String.format("<http://localhost:8585/%s/%s|%s>", event.getEntityType(), columnFQDN, columnName);
+      String columnURL = String.format("<%s/%s/%s|%s>", openMetadataUrl, event.getEntityType(), columnFQDN, columnName);
       columnsText.append("- ");
       columnsText.append(columnURL);
       columnsText.append(" of type ");
@@ -212,5 +222,18 @@ public class SlackWebhookEventPublisher extends AbstractEventPublisher {
     JSONObject newOwnerJson = new JSONObject(newOwner);
     owner.append(newOwnerJson.getString("name"));
     return owner.toString();
+  }
+
+  private String parseFollowers(List<EntityReference> followers) {
+    return followers.stream().map(EntityReference::getName).collect(Collectors.joining(","));
+  }
+
+  private String getEntityUrl(ChangeEvent event) {
+    return String.format(
+        "<%s/%s/%s|%s>",
+        openMetadataUrl,
+        event.getEntityType(),
+        event.getEntityFullyQualifiedName(),
+        event.getEntityFullyQualifiedName());
   }
 }
