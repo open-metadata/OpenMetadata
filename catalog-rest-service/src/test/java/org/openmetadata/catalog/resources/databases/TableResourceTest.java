@@ -1212,6 +1212,27 @@ public class TableResourceTest extends EntityResourceTest<Table> {
     deleteAndCheckLocation(table, userAuthHeaders());
   }
 
+  @Test
+  void put_addLocationAndDeleteTable_200(TestInfo test) throws IOException {
+    Table table = createAndCheckEntity(create(test), adminAuthHeaders());
+
+    // Add location to the table
+    CreateLocation create =
+        new CreateLocation().withName(getLocationName(test)).withService(AWS_STORAGE_SERVICE_REFERENCE);
+    Location location = createLocation(create, adminAuthHeaders());
+    addAndCheckLocation(table, location.getId(), OK, userAuthHeaders());
+    deleteEntity(table.getId(), adminAuthHeaders());
+    Map<String, String> queryParams =
+        new HashMap<>() {
+          {
+            put("include", "all");
+          }
+        };
+    table = getEntity(table.getId(), queryParams, "location", adminAuthHeaders());
+    assertNotNull(table.getLocation(), "The location is missing");
+    assertEquals(location.getId(), table.getLocation().getId(), "The locations are different");
+  }
+
   private void deleteAndCheckLocation(Table table, Map<String, String> authHeaders) throws HttpResponseException {
     WebTarget target = CatalogApplicationTest.getResource(String.format("tables/%s/location", table.getId()));
     TestUtils.delete(target, authHeaders);

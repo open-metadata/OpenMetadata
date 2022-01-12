@@ -38,6 +38,7 @@ import java.util.function.BiPredicate;
 import org.apache.commons.codec.binary.Hex;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
+import org.openmetadata.catalog.entity.data.Location;
 import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.entity.services.DatabaseService;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
@@ -105,7 +106,7 @@ public class TableRepository extends EntityRepository<Table> {
     table.setSampleData(fields.contains("sampleData") ? getSampleData(table) : null);
     table.setViewDefinition(fields.contains("viewDefinition") ? table.getViewDefinition() : null);
     table.setTableProfile(fields.contains("tableProfile") ? getTableProfile(table) : null);
-    table.setLocation(fields.contains("location") ? getLocation(table.getId()) : null);
+    table.setLocation(fields.contains("location") ? getLocation(table) : null);
     table.setTableQueries(fields.contains("tableQueries") ? getQueries(table) : null);
     return table;
   }
@@ -463,14 +464,24 @@ public class TableRepository extends EntityRepository<Table> {
     return daoCollection.databaseDAO().findEntityReferenceById(UUID.fromString(result.get(0)));
   }
 
-  private EntityReference getLocation(UUID tableId) throws IOException {
+  private EntityReference getLocation(Table table) throws IOException {
     // Find the location of the table
     List<String> result =
         daoCollection
             .relationshipDAO()
-            .findTo(tableId.toString(), Entity.TABLE, Relationship.HAS.ordinal(), Entity.LOCATION);
+            .findTo(
+                table.getId().toString(),
+                Entity.TABLE,
+                Relationship.HAS.ordinal(),
+                Entity.LOCATION,
+                toBoolean(Include.ALL));
     if (result.size() == 1) {
-      return daoCollection.locationDAO().findEntityReferenceById(UUID.fromString(result.get(0)));
+      Location location = daoCollection.locationDAO().findEntityById(UUID.fromString(result.get(0)));
+      if (!table.getDeleted() && location.getDeleted()) {
+        return null;
+      } else {
+        return daoCollection.locationDAO().getEntityReference(location);
+      }
     } else {
       return null;
     }
