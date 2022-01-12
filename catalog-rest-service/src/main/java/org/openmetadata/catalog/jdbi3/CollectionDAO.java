@@ -383,6 +383,18 @@ public interface CollectionDAO {
         @Bind("fromEntity") String fromEntity);
 
     @SqlQuery(
+        "SELECT fromId FROM entity_relationship "
+            + "WHERE toId = :toId AND toEntity = :toEntity AND relation = :relation AND fromEntity = :fromEntity "
+            + "AND (deleted = :deleted OR :deleted IS NULL) "
+            + "ORDER BY fromId")
+    List<String> findFrom(
+        @Bind("toId") String toId,
+        @Bind("toEntity") String toEntity,
+        @Bind("relation") int relation,
+        @Bind("fromEntity") String fromEntity,
+        @Bind("deleted") Boolean deleted);
+
+    @SqlQuery(
         "SELECT fromId, fromEntity FROM entity_relationship "
             + "WHERE toId = :toId AND toEntity = :toEntity AND relation = :relation AND deleted =  false "
             + "ORDER BY fromId")

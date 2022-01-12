@@ -14,6 +14,7 @@
 package org.openmetadata.catalog.jdbi3;
 
 import static org.openmetadata.catalog.jdbi3.Relationship.JOINED_WITH;
+import static org.openmetadata.catalog.util.EntityUtil.toBoolean;
 import static org.openmetadata.common.utils.CommonUtil.parseDate;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -50,6 +51,7 @@ import org.openmetadata.catalog.type.ColumnProfile;
 import org.openmetadata.catalog.type.DailyCount;
 import org.openmetadata.catalog.type.DataModel;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.JoinedWith;
 import org.openmetadata.catalog.type.SQLQuery;
 import org.openmetadata.catalog.type.TableConstraint;
@@ -333,7 +335,11 @@ public class TableRepository extends EntityRepository<Table> {
   private EntityReference getService(Table table) throws IOException {
     EntityReference ref =
         EntityUtil.getService(
-            daoCollection.relationshipDAO(), Entity.DATABASE, table.getDatabase().getId(), Entity.DATABASE_SERVICE);
+            daoCollection.relationshipDAO(),
+            Entity.DATABASE,
+            table.getDatabase().getId(),
+            Entity.DATABASE_SERVICE,
+            Include.ALL);
     DatabaseService service = getService(ref.getId(), ref.getType());
     ref.setName(service.getName());
     ref.setDescription(service.getDescription());
@@ -445,7 +451,12 @@ public class TableRepository extends EntityRepository<Table> {
     List<String> result =
         daoCollection
             .relationshipDAO()
-            .findFrom(tableId.toString(), Entity.TABLE, Relationship.CONTAINS.ordinal(), Entity.DATABASE);
+            .findFrom(
+                tableId.toString(),
+                Entity.TABLE,
+                Relationship.CONTAINS.ordinal(),
+                Entity.DATABASE,
+                toBoolean(Include.ALL));
     if (result.size() != 1) {
       throw EntityNotFoundException.byMessage(String.format("Database for table %s Not found", tableId));
     }

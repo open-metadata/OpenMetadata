@@ -13,9 +13,6 @@
 
 package org.openmetadata.catalog.jdbi3;
 
-import static org.openmetadata.catalog.type.Include.DELETED;
-import static org.openmetadata.catalog.type.Include.NON_DELETED;
-
 import java.io.IOException;
 import java.net.URI;
 import java.security.GeneralSecurityException;
@@ -223,10 +220,9 @@ public class LocationRepository extends EntityRepository<Location> {
   }
 
   private EntityReference getService(Location location) throws IOException {
-    Include include = location.getDeleted() ? DELETED : NON_DELETED;
     EntityReference ref =
         EntityUtil.getService(
-            daoCollection.relationshipDAO(), Entity.LOCATION, location.getId(), Entity.STORAGE_SERVICE, include);
+            daoCollection.relationshipDAO(), Entity.LOCATION, location.getId(), Entity.STORAGE_SERVICE, Include.ALL);
     return getService(Objects.requireNonNull(ref));
   }
 
