@@ -1,4 +1,3 @@
-
 REDSHIFT_SQL_STATEMENT = """
         SELECT DISTINCT ss.userid,
             ss.query,
@@ -29,5 +28,3 @@ SNOWFLAKE_SQL_STATEMENT = """
         end_time_range_start=>to_timestamp_ltz('{start_date}'),
         end_time_range_end=>to_timestamp_ltz('{end_date}')));
         """
-
-    
