@@ -736,6 +736,33 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
   }
 
   @Test
+  void put_addFollowerDeleteEntity_200(TestInfo test) throws IOException, URISyntaxException {
+    if (!supportsFollowers) {
+      return; // Entity does not support following
+    }
+    Object request = createRequest(getEntityName(test), "description", "displayName", null);
+    T entity = createAndCheckEntity(request, adminAuthHeaders());
+    UUID entityId = getEntityInterface(entity).getId();
+
+    // Add follower to the entity
+    UserResourceTest userResourceTest = new UserResourceTest();
+    User user1 = UserResourceTest.createUser(userResourceTest.create(test, 1), userAuthHeaders());
+    addAndCheckFollower(entityId, user1.getId(), CREATED, 1, userAuthHeaders());
+
+    deleteEntity(entityId, adminAuthHeaders());
+
+    Map<String, String> queryParams =
+        new HashMap<>() {
+          {
+            put("include", "deleted");
+          }
+        };
+    EntityInterface<T> entityInterface =
+        getEntityInterface(getEntity(entityId, queryParams, "followers", adminAuthHeaders()));
+    TestUtils.existsInEntityReferenceList(entityInterface.getFollowers(), user1.getId(), true);
+  }
+
+  @Test
   void put_addDeleteInvalidFollower_200(TestInfo test) throws IOException, URISyntaxException {
     if (!supportsFollowers) {
       return; // Entity does not support following

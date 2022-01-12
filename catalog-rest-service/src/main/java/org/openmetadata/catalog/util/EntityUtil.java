@@ -400,15 +400,24 @@ public final class EntityUtil {
   }
 
   public static List<EntityReference> getFollowers(
-      UUID followedEntityId, String entityName, EntityRelationshipDAO entityRelationshipDAO, UserDAO userDAO)
+      EntityInterface followedEntityInterface,
+      String entityName,
+      EntityRelationshipDAO entityRelationshipDAO,
+      UserDAO userDAO)
       throws IOException {
     List<String> followerIds =
         entityRelationshipDAO.findFrom(
-            followedEntityId.toString(), entityName, Relationship.FOLLOWS.ordinal(), Entity.USER);
+            followedEntityInterface.getId().toString(),
+            entityName,
+            Relationship.FOLLOWS.ordinal(),
+            Entity.USER,
+            toBoolean(ALL));
     List<EntityReference> followers = new ArrayList<>();
     for (String followerId : followerIds) {
       User user = userDAO.findEntityById(UUID.fromString(followerId));
-      followers.add(new EntityReference().withName(user.getName()).withId(user.getId()).withType("user"));
+      if (followedEntityInterface.isDeleted() || !user.getDeleted()) {
+        followers.add(new EntityReference().withName(user.getName()).withId(user.getId()).withType("user"));
+      }
     }
     return followers;
   }
