@@ -68,6 +68,7 @@ const DashboardDetailsProps = {
   isNodeLoading: {} as LoadingNodeState,
   version: '',
   versionHandler: jest.fn(),
+  addLineageHandler: jest.fn(),
 };
 
 jest.mock('../ManageTab/ManageTab.component', () => {

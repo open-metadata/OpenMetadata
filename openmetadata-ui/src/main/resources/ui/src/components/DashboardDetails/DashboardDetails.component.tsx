@@ -71,6 +71,7 @@ const DashboardDetails = ({
   loadNodeHandler,
   versionHandler,
   version,
+  addLineageHandler,
 }: DashboardDetailsProps) => {
   const { isAuthDisabled } = useAuth();
   const [isEdit, setIsEdit] = useState(false);
@@ -486,6 +487,7 @@ const DashboardDetails = ({
               {activeTab === 2 && (
                 <div className="tw-h-full">
                   <Entitylineage
+                    addLineageHandler={addLineageHandler}
                     entityLineage={entityLineage}
                     isNodeLoading={isNodeLoading}
                     lineageLeafNodes={lineageLeafNodes}

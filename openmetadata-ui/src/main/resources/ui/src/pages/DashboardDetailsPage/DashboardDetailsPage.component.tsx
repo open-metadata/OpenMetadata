@@ -31,8 +31,10 @@ import {
   removeFollower,
 } from '../../axiosAPIs/dashboardAPI';
 import { getLineageByFQN } from '../../axiosAPIs/lineageAPI';
+import { addLineage } from '../../axiosAPIs/miscAPI';
 import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
 import DashboardDetails from '../../components/DashboardDetails/DashboardDetails.component';
+import { Edge } from '../../components/EntityLineage/EntityLineage.interface';
 import Loader from '../../components/Loader/Loader';
 import {
   getDashboardDetailsPath,
@@ -47,6 +49,7 @@ import { User } from '../../generated/entity/teams/user';
 import { EntityLineage } from '../../generated/type/entityLineage';
 import { EntityReference } from '../../generated/type/entityReference';
 import { TagLabel } from '../../generated/type/tagLabel';
+import useToastContext from '../../hooks/useToastContext';
 import { addToRecentViewed, getCurrentUserId } from '../../utils/CommonUtils';
 import {
   dashboardDetailsTabs,
@@ -67,7 +70,7 @@ type ChartType = {
 const DashboardDetailsPage = () => {
   const USERId = getCurrentUserId();
   const history = useHistory();
-
+  const showToast = useToastContext();
   const [tagList, setTagList] = useState<Array<string>>([]);
   const { dashboardFQN, tab } = useParams() as Record<string, string>;
   const [dashboardDetails, setDashboardDetails] = useState<Dashboard>(
@@ -356,6 +359,28 @@ const DashboardDetailsPage = () => {
     );
   };
 
+  const addLineageHandler = (edge: Edge) => {
+    addLineage(edge)
+      .then(() => {
+        getLineageByFQN(dashboardFQN, EntityType.DASHBOARD)
+          .then((res: AxiosResponse) => {
+            setEntityLineage(res.data);
+          })
+          .catch(() => {
+            showToast({
+              variant: 'error',
+              body: `Error while getting entity lineage`,
+            });
+          });
+      })
+      .catch(() => {
+        showToast({
+          variant: 'error',
+          body: `Error while adding adding new edge`,
+        });
+      });
+  };
+
   useEffect(() => {
     fetchDashboardDetail(dashboardFQN);
   }, [dashboardFQN]);
@@ -371,6 +396,7 @@ const DashboardDetailsPage = () => {
       ) : (
         <DashboardDetails
           activeTab={activeTab}
+          addLineageHandler={addLineageHandler}
           chartDescriptionUpdateHandler={onChartUpdate}
           chartTagUpdateHandler={handleChartTagSelection}
           charts={charts}

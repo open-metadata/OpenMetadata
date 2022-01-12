@@ -34,7 +34,6 @@ import ReactFlow, {
   ReactFlowProvider,
   removeElements,
 } from 'react-flow-renderer';
-import { addLineage } from '../../axiosAPIs/miscAPI';
 import { getTableDetails } from '../../axiosAPIs/tableAPI';
 import { Column } from '../../generated/entity/data/table';
 import { EntityReference } from '../../generated/type/entityReference';
@@ -69,6 +68,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
   loadNodeHandler,
   lineageLeafNodes,
   isNodeLoading,
+  addLineageHandler,
 }: EntityLineageProp) => {
   const showToast = useToastContext();
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
@@ -156,6 +156,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
   };
   const onElementsRemove = (elementsToRemove: Elements) =>
     setElements((els) => removeElements(elementsToRemove, els));
+
   const onConnect = (params: Edge | Connection) => {
     const { target, source } = params;
     let targetNode = entityLineage.nodes?.find((n) => target?.includes(n.id));
@@ -181,23 +182,14 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
         },
       },
     };
-    addLineage(newEdge)
-      .then((res: AxiosResponse) => {
-        if (res) {
-          setElements((els) =>
-            addEdge(
-              { ...params, arrowHeadType: ArrowHeadType.ArrowClosed },
-              els
-            )
-          );
-        }
-      })
-      .catch(() => {
-        showToast({
-          variant: 'error',
-          body: `Error while adding adding new edge`,
-        });
-      });
+
+    addLineageHandler(newEdge);
+
+    setElements((els) =>
+      addEdge({ ...params, arrowHeadType: ArrowHeadType.ArrowClosed }, els)
+    );
+    setNewAddedNode({} as FlowElement);
+    setSelectedEntity({} as EntityReference);
   };
 
   const onElementClick = (el: FlowElement) => {

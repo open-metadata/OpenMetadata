@@ -29,6 +29,7 @@ export interface EntityLineageProp {
   lineageLeafNodes: LeafNodes;
   entityLineage: EntityLineage;
   loadNodeHandler: (node: EntityReference, pos: LineagePos) => void;
+  addLineageHandler: (edge: Edge) => void;
 }
 
 export interface Edge {

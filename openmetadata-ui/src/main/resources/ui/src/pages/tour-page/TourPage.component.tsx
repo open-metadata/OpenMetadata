@@ -121,6 +121,7 @@ const TourPage = () => {
         return (
           <DatasetDetails
             activeTab={datasetActiveTab}
+            addLineageHandler={handleCountChange}
             columns={mockDatasetData.columns as unknown as Table['columns']}
             columnsUpdateHandler={handleCountChange}
             datasetFQN={mockDatasetData.datasetFQN}
