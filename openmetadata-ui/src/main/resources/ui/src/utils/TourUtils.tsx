@@ -38,6 +38,7 @@ export const getSteps = (value: string, clearSearchTerm: () => void) => {
       ),
       position: [535, 70],
       selector: '#searchBox',
+      stepInteraction: false,
       beforeNext: clearSearchTerm,
     },
     {
