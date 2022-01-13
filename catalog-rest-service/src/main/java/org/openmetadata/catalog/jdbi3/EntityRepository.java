@@ -26,7 +26,6 @@ import java.security.GeneralSecurityException;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -355,7 +354,7 @@ public abstract class EntityRepository<T> {
     // Apply JSON patch to the original entity to get the updated entity
     T updated = JsonUtils.applyPatch(original, patch, entityClass);
     EntityInterface<T> updatedEntity = getEntityInterface(updated);
-    updatedEntity.setUpdateDetails(user, new Date());
+    updatedEntity.setUpdateDetails(user, System.currentTimeMillis());
 
     prepare(updated);
     restorePatchAttributes(original, updated);
@@ -398,7 +397,7 @@ public abstract class EntityRepository<T> {
             .withEntityId(entityId)
             .withEntityFullyQualifiedName(entityInterface.getFullyQualifiedName())
             .withUserName(updatedBy)
-            .withDateTime(new Date())
+            .withTimestamp(System.currentTimeMillis())
             .withCurrentVersion(entityInterface.getVersion())
             .withPreviousVersion(change.getPreviousVersion());
 
@@ -463,7 +462,7 @@ public abstract class EntityRepository<T> {
             .withEntityType(entityName)
             .withEntityId(entityId)
             .withUserName(updatedBy)
-            .withDateTime(new Date())
+            .withTimestamp(System.currentTimeMillis())
             .withCurrentVersion(entityInterface.getVersion())
             .withPreviousVersion(change.getPreviousVersion());
 

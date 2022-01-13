@@ -12,5 +12,6 @@
         <module name="openmetadata-ui" />
       </profile>
     </annotationProcessing>
+    <bytecodeTargetLevel target="11" />
   </component>
 </project>

@@ -24,7 +24,6 @@ import java.io.IOException;
 import java.net.URI;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -97,7 +96,7 @@ public class TagResource {
             String tagJson = IOUtil.toString(getClass().getClassLoader().getResourceAsStream(tagFile));
             TagCategory tagCategory = JsonUtils.readValue(tagJson, TagCategory.class);
             // TODO hack for now
-            Date now = new Date();
+            long now = System.currentTimeMillis();
             tagCategory.withUpdatedBy("admin").withUpdatedAt(now);
             tagCategory
                 .getChildren()
@@ -291,7 +290,7 @@ public class TagResource {
             .withCategoryType(create.getCategoryType())
             .withDescription(create.getDescription())
             .withUpdatedBy(securityContext.getUserPrincipal().getName())
-            .withUpdatedAt(new Date());
+            .withUpdatedAt(System.currentTimeMillis());
     category = addHref(uriInfo, dao.createCategory(category));
     return Response.created(category.getHref()).entity(category).build();
   }
@@ -323,7 +322,7 @@ public class TagResource {
             .withDescription(create.getDescription())
             .withAssociatedTags(create.getAssociatedTags())
             .withUpdatedBy(securityContext.getUserPrincipal().getName())
-            .withUpdatedAt(new Date());
+            .withUpdatedAt(System.currentTimeMillis());
     URI categoryHref = RestUtil.getHref(uriInfo, TAG_COLLECTION_PATH, category);
     tag = addHref(categoryHref, dao.createPrimaryTag(category, tag));
     return Response.created(tag.getHref()).entity(tag).build();
@@ -364,7 +363,7 @@ public class TagResource {
             .withDescription(create.getDescription())
             .withAssociatedTags(create.getAssociatedTags())
             .withUpdatedBy(securityContext.getUserPrincipal().getName())
-            .withUpdatedAt(new Date());
+            .withUpdatedAt(System.currentTimeMillis());
     URI categoryHref = RestUtil.getHref(uriInfo, TAG_COLLECTION_PATH, category);
     URI parentHRef = RestUtil.getHref(categoryHref, primaryTag);
     tag = addHref(parentHRef, dao.createSecondaryTag(category, primaryTag, tag));

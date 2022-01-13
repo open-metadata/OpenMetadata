@@ -14,7 +14,6 @@
 package org.openmetadata.catalog.util;
 
 import java.net.URI;
-import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 import org.openmetadata.catalog.type.ChangeDescription;
@@ -45,7 +44,7 @@ public interface EntityInterface<T> {
 
   String getUpdatedBy();
 
-  Date getUpdatedAt();
+  long getUpdatedAt();
 
   URI getHref();
 
@@ -73,7 +72,7 @@ public interface EntityInterface<T> {
 
   void setDisplayName(String displayName);
 
-  void setUpdateDetails(String updatedBy, Date updatedAt);
+  void setUpdateDetails(String updatedBy, long updatedAt);
 
   void setChangeDescription(Double newVersion, ChangeDescription changeDescription);
 

@@ -22,7 +22,6 @@ import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -121,7 +120,6 @@ public class TeamRepository extends EntityRepository<Team> {
       daoCollection
           .relationshipDAO()
           .insert(team.getId().toString(), user.getId().toString(), "team", "user", Relationship.HAS.ordinal());
-      System.out.println("Team " + team.getName() + " has user " + user.getName());
     }
   }
 
@@ -191,7 +189,7 @@ public class TeamRepository extends EntityRepository<Team> {
     }
 
     @Override
-    public Date getUpdatedAt() {
+    public long getUpdatedAt() {
       return entity.getUpdatedAt();
     }
 
@@ -232,7 +230,7 @@ public class TeamRepository extends EntityRepository<Team> {
     }
 
     @Override
-    public void setUpdateDetails(String updatedBy, Date updatedAt) {
+    public void setUpdateDetails(String updatedBy, long updatedAt) {
       entity.setUpdatedBy(updatedBy);
       entity.setUpdatedAt(updatedAt);
     }

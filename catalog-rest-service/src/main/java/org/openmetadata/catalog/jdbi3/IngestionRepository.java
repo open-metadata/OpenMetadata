@@ -15,7 +15,6 @@ package org.openmetadata.catalog.jdbi3;
 
 import java.io.IOException;
 import java.net.URI;
-import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -194,7 +193,7 @@ public class IngestionRepository extends EntityRepository<Ingestion> {
     }
 
     @Override
-    public Date getUpdatedAt() {
+    public long getUpdatedAt() {
       return entity.getUpdatedAt();
     }
 
@@ -244,7 +243,7 @@ public class IngestionRepository extends EntityRepository<Ingestion> {
     }
 
     @Override
-    public void setUpdateDetails(String updatedBy, Date updatedAt) {
+    public void setUpdateDetails(String updatedBy, long updatedAt) {
       entity.setUpdatedBy(updatedBy);
       entity.setUpdatedAt(updatedAt);
     }

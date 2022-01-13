@@ -350,7 +350,7 @@ class TableESIndex extends ElasticSearchIndex {
       }
     }
     ParseTags parseTags = new ParseTags(tags);
-    Long updatedTimestamp = table.getUpdatedAt().getTime();
+    Long updatedTimestamp = table.getUpdatedAt();
     TableESIndexBuilder tableESIndexBuilder =
         internalBuilder()
             .tableId(tableId)
@@ -472,7 +472,7 @@ class TopicESIndex extends ElasticSearchIndex {
       topic.getTags().forEach(tag -> tags.add(tag.getTagFQN()));
     }
     ParseTags parseTags = new ParseTags(tags);
-    Long updatedTimestamp = topic.getUpdatedAt().getTime();
+    Long updatedTimestamp = topic.getUpdatedAt();
     String description = topic.getDescription() != null ? topic.getDescription() : "";
     String displayName = topic.getDisplayName() != null ? topic.getDisplayName() : "";
     TopicESIndexBuilder topicESIndexBuilder =
@@ -562,7 +562,7 @@ class DashboardESIndex extends ElasticSearchIndex {
     List<ElasticSearchSuggest> suggest = new ArrayList<>();
     suggest.add(ElasticSearchSuggest.builder().input(dashboard.getFullyQualifiedName()).weight(5).build());
     suggest.add(ElasticSearchSuggest.builder().input(dashboard.getDisplayName()).weight(10).build());
-    Long updatedTimestamp = dashboard.getUpdatedAt().getTime();
+    Long updatedTimestamp = dashboard.getUpdatedAt();
     if (dashboard.getTags() != null) {
       dashboard.getTags().forEach(tag -> tags.add(tag.getTagFQN()));
     }
@@ -659,7 +659,7 @@ class PipelineESIndex extends ElasticSearchIndex {
       taskNames.add(task.getDisplayName());
       taskDescriptions.add(task.getDescription());
     }
-    Long updatedTimestamp = pipeline.getUpdatedAt().getTime();
+    Long updatedTimestamp = pipeline.getUpdatedAt();
     ParseTags parseTags = new ParseTags(tags);
     String description = pipeline.getDescription() != null ? pipeline.getDescription() : "";
     String displayName = pipeline.getDisplayName() != null ? pipeline.getDisplayName() : "";

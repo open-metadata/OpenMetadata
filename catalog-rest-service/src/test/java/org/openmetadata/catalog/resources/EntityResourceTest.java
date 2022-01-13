@@ -48,7 +48,6 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -107,7 +106,6 @@ import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.JsonUtils;
-import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.TestUtils;
 
@@ -918,21 +916,21 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     HttpResponseException exception =
         assertThrows(
             HttpResponseException.class,
-            () -> getChangeEvents("invalidEntity", entityName, null, new Date(), adminAuthHeaders()));
+            () -> getChangeEvents("invalidEntity", entityName, null, System.currentTimeMillis(), adminAuthHeaders()));
     assertResponse(exception, BAD_REQUEST, "Invalid entity invalidEntity in query param entityCreated");
 
     // Invalid entityUpdated list
     exception =
         assertThrows(
             HttpResponseException.class,
-            () -> getChangeEvents(null, "invalidEntity", entityName, new Date(), adminAuthHeaders()));
+            () -> getChangeEvents(null, "invalidEntity", entityName, System.currentTimeMillis(), adminAuthHeaders()));
     assertResponse(exception, BAD_REQUEST, "Invalid entity invalidEntity in query param entityUpdated");
 
     // Invalid entityDeleted list
     exception =
         assertThrows(
             HttpResponseException.class,
-            () -> getChangeEvents(entityName, null, "invalidEntity", new Date(), adminAuthHeaders()));
+            () -> getChangeEvents(entityName, null, "invalidEntity", System.currentTimeMillis(), adminAuthHeaders()));
     assertResponse(exception, BAD_REQUEST, "Invalid entity invalidEntity in query param entityDeleted");
   }
 
@@ -1180,18 +1178,18 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
    */
   protected final void validateChangeEvents(
       EntityInterface<T> entityInterface,
-      Date updateTime,
+      long timestamp,
       EventType expectedEventType,
       ChangeDescription expectedChangeDescription,
       Map<String, String> authHeaders)
       throws IOException {
-    validateChangeEvents(entityInterface, updateTime, expectedEventType, expectedChangeDescription, authHeaders, true);
-    validateChangeEvents(entityInterface, updateTime, expectedEventType, expectedChangeDescription, authHeaders, false);
+    validateChangeEvents(entityInterface, timestamp, expectedEventType, expectedChangeDescription, authHeaders, true);
+    validateChangeEvents(entityInterface, timestamp, expectedEventType, expectedChangeDescription, authHeaders, false);
   }
 
   private void validateChangeEvents(
       EntityInterface<T> entityInterface,
-      Date updateTime,
+      long timestamp,
       EventType expectedEventType,
       ChangeDescription expectedChangeDescription,
       Map<String, String> authHeaders,
@@ -1207,28 +1205,24 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
       // Try multiple times before giving up
       if (withEventFilter) {
         // Get change event with an event filter for specific entity entityName
-        changeEvents = getChangeEvents(entityName, entityName, null, updateTime, authHeaders);
+        changeEvents = getChangeEvents(entityName, entityName, null, timestamp, authHeaders);
       } else {
         // Get change event with no event filter for entity types
-        changeEvents = getChangeEvents("*", "*", null, updateTime, authHeaders);
+        changeEvents = getChangeEvents("*", "*", null, timestamp, authHeaders);
       }
 
-      // Wait for change event to be recorded
-      if (changeEvents.getData().size() == 0) {
-        continue;
-      }
-
-      for (ChangeEvent event : changeEvents.getData()) {
-        if (event.getDateTime().getTime() == updateTime.getTime()) {
-          changeEvent = event;
-          break;
-        }
-      }
-      if (changeEvent == null) {
+      if (changeEvent == null || changeEvents.getData().size() == 0) {
         try {
           Thread.sleep(iteration * 10L); // Sleep with backoff
         } catch (InterruptedException e) {
           e.printStackTrace();
+        }
+      }
+
+      for (ChangeEvent event : changeEvents.getData()) {
+        if (event.getTimestamp() == timestamp) {
+          changeEvent = event;
+          break;
         }
       }
       iteration++;
@@ -1239,7 +1233,7 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
         "Expected change event "
             + expectedEventType
             + " at "
-            + updateTime.getTime()
+            + timestamp
             + " was not found for entity "
             + entityInterface.getId());
 
@@ -1271,13 +1265,13 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
   }
 
   protected ResultList<ChangeEvent> getChangeEvents(
-      String entityCreated, String entityUpdated, String entityDeleted, Date date, Map<String, String> authHeaders)
+      String entityCreated, String entityUpdated, String entityDeleted, long timestamp, Map<String, String> authHeaders)
       throws HttpResponseException {
     WebTarget target = getResource("events");
     target = entityCreated == null ? target : target.queryParam("entityCreated", entityCreated);
     target = entityUpdated == null ? target : target.queryParam("entityUpdated", entityUpdated);
     target = entityDeleted == null ? target : target.queryParam("entityDeleted", entityDeleted);
-    target = target.queryParam("date", RestUtil.DATE_TIME_FORMAT.format(date));
+    target = target.queryParam("timestamp", timestamp);
     return TestUtils.get(target, ChangeEventList.class, authHeaders);
   }
 
@@ -1383,7 +1377,7 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
 
     // Validate change events
     validateChangeEvents(
-        entityInterface, event.getDateTime(), EventType.ENTITY_UPDATED, event.getChangeDescription(), authHeaders);
+        entityInterface, event.getTimestamp(), EventType.ENTITY_UPDATED, event.getChangeDescription(), authHeaders);
   }
 
   protected void deleteAndCheckFollower(
@@ -1399,7 +1393,7 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
 
     // Validate change events
     validateChangeEvents(
-        entityInterface, change.getDateTime(), EventType.ENTITY_UPDATED, change.getChangeDescription(), authHeaders);
+        entityInterface, change.getTimestamp(), EventType.ENTITY_UPDATED, change.getChangeDescription(), authHeaders);
   }
 
   public T checkFollowerDeleted(UUID entityId, UUID userId, Map<String, String> authHeaders)
