@@ -116,7 +116,8 @@ public class LineageRepository {
     }
     // from this id ---> find other ids
     List<EntityReference> upstreamEntities =
-        dao.relationshipDAO().findFrom(id.toString(), entityType, Relationship.UPSTREAM.ordinal());
+        dao.relationshipDAO()
+            .findFrom(id.toString(), entityType, Relationship.UPSTREAM.ordinal(), toBoolean(Include.NON_DELETED));
     lineage.getNodes().addAll(upstreamEntities);
 
     upstreamDepth--;

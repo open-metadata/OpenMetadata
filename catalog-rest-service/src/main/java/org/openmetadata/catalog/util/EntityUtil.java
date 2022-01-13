@@ -157,7 +157,8 @@ public final class EntityUtil {
   }
 
   public static EntityReference getService(EntityRelationshipDAO dao, String entityType, UUID entityId) {
-    List<EntityReference> refs = dao.findFrom(entityId.toString(), entityType, Relationship.CONTAINS.ordinal());
+    List<EntityReference> refs =
+        dao.findFrom(entityId.toString(), entityType, Relationship.CONTAINS.ordinal(), toBoolean(Include.NON_DELETED));
     if (refs.size() > 1) {
       LOG.warn("Possible database issues - multiple services found for entity {}", entityId);
       return refs.get(0);
@@ -179,7 +180,12 @@ public final class EntityUtil {
   public static EntityReference getService(
       EntityRelationshipDAO dao, String entityType, UUID entityId, String serviceType) {
     List<EntityReference> refs =
-        dao.findFromEntity(entityId.toString(), entityType, Relationship.CONTAINS.ordinal(), serviceType);
+        dao.findFromEntity(
+            entityId.toString(),
+            entityType,
+            Relationship.CONTAINS.ordinal(),
+            serviceType,
+            toBoolean(Include.NON_DELETED));
     if (refs.size() > 1) {
       LOG.warn("Possible database issues - multiple services found for entity {}", entityId);
       return refs.get(0);
@@ -209,7 +215,9 @@ public final class EntityUtil {
   public static EntityReference populateOwner(
       UUID id, String entityType, EntityRelationshipDAO entityRelationshipDAO, UserDAO userDAO, TeamDAO teamDAO)
       throws IOException {
-    List<EntityReference> ids = entityRelationshipDAO.findFrom(id.toString(), entityType, Relationship.OWNS.ordinal());
+    List<EntityReference> ids =
+        entityRelationshipDAO.findFrom(
+            id.toString(), entityType, Relationship.OWNS.ordinal(), toBoolean(Include.NON_DELETED));
     if (ids.size() > 1) {
       LOG.warn("Possible database issues - multiple owners {} found for entity {}", ids, id);
     }

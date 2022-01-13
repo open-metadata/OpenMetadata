@@ -177,7 +177,9 @@ public class UserRepository extends EntityRepository<User> {
   /* Add all the teams that user belongs to User entity */
   private List<EntityReference> getTeams(User user) throws IOException {
     List<String> teamIds =
-        daoCollection.relationshipDAO().findFrom(user.getId().toString(), Entity.USER, HAS.ordinal(), Entity.TEAM);
+        daoCollection
+            .relationshipDAO()
+            .findFrom(user.getId().toString(), Entity.USER, HAS.ordinal(), Entity.TEAM, toBoolean(Include.NON_DELETED));
     List<EntityReference> teams = new ArrayList<>();
     for (String teamId : teamIds) {
       teams.add(daoCollection.teamDAO().findEntityReferenceById(UUID.fromString(teamId)));

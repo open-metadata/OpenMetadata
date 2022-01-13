@@ -367,27 +367,18 @@ public interface CollectionDAO {
         "SELECT count(*) FROM entity_relationship "
             + "WHERE fromId = :fromId AND fromEntity = :fromEntity AND relation = :relation "
             + "AND (toEntity = :toEntity || :toEntity IS NULL) "
-            + "AND deleted = false "
+            + "AND (deleted = :deleted OR :deleted IS NULL) "
             + "ORDER BY fromId")
     int findToCount(
         @Bind("fromId") String fromId,
         @Bind("fromEntity") String fromEntity,
         @Bind("relation") int relation,
-        @Bind("toEntity") String toEntity);
+        @Bind("toEntity") String toEntity,
+        @Bind("deleted") Boolean deleted);
 
     //
     // Find from operations
     //
-    @SqlQuery(
-        "SELECT fromId FROM entity_relationship "
-            + "WHERE toId = :toId AND toEntity = :toEntity AND relation = :relation AND fromEntity = :fromEntity AND deleted = false "
-            + "ORDER BY fromId")
-    List<String> findFrom(
-        @Bind("toId") String toId,
-        @Bind("toEntity") String toEntity,
-        @Bind("relation") int relation,
-        @Bind("fromEntity") String fromEntity);
-
     @SqlQuery(
         "SELECT fromId FROM entity_relationship "
             + "WHERE toId = :toId AND toEntity = :toEntity AND relation = :relation AND fromEntity = :fromEntity "
@@ -402,14 +393,6 @@ public interface CollectionDAO {
 
     @SqlQuery(
         "SELECT fromId, fromEntity FROM entity_relationship "
-            + "WHERE toId = :toId AND toEntity = :toEntity AND relation = :relation AND deleted =  false "
-            + "ORDER BY fromId")
-    @RegisterRowMapper(FromEntityReferenceMapper.class)
-    List<EntityReference> findFrom(
-        @Bind("toId") String toId, @Bind("toEntity") String toEntity, @Bind("relation") int relation);
-
-    @SqlQuery(
-        "SELECT fromId, fromEntity FROM entity_relationship "
             + "WHERE toId = :toId AND toEntity = :toEntity AND relation = :relation "
             + "AND (deleted = :deleted OR :deleted IS NULL) "
             + "ORDER BY fromId")
@@ -419,17 +402,6 @@ public interface CollectionDAO {
         @Bind("toEntity") String toEntity,
         @Bind("relation") int relation,
         @Bind("deleted") Boolean deleted);
-
-    @SqlQuery(
-        "SELECT fromId, fromEntity FROM entity_relationship "
-            + "WHERE toId = :toId AND toEntity = :toEntity AND relation = :relation AND fromEntity = :fromEntity AND deleted = false "
-            + "ORDER BY fromId")
-    @RegisterRowMapper(FromEntityReferenceMapper.class)
-    List<EntityReference> findFromEntity(
-        @Bind("toId") String toId,
-        @Bind("toEntity") String toEntity,
-        @Bind("relation") int relation,
-        @Bind("fromEntity") String fromEntity);
 
     @SqlQuery(
         "SELECT fromId, fromEntity FROM entity_relationship "

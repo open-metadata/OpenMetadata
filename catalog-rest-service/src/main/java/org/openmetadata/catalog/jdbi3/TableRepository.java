@@ -359,7 +359,8 @@ public class TableRepository extends EntityRepository<Table> {
                 table.getDatabase().getId().toString(),
                 Entity.DATABASE,
                 Relationship.CONTAINS.ordinal(),
-                Entity.DATABASE_SERVICE)
+                Entity.DATABASE_SERVICE,
+                toBoolean(Include.NON_DELETED))
             .get(0);
     DatabaseService service = daoCollection.dbServiceDAO().findEntityById(UUID.fromString(serviceId));
     table.setService(new DatabaseServiceEntityInterface(service).getEntityReference());
