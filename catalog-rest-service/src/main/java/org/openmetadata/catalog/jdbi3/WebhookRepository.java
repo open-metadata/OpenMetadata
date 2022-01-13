@@ -34,7 +34,6 @@ import javax.ws.rs.ProcessingException;
 import javax.ws.rs.client.Client;
 import javax.ws.rs.client.ClientBuilder;
 import javax.ws.rs.client.Invocation.Builder;
-import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
@@ -52,6 +51,9 @@ import org.openmetadata.catalog.type.Webhook;
 import org.openmetadata.catalog.type.Webhook.Status;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
+import org.openmetadata.catalog.util.JsonUtils;
+import org.openmetadata.catalog.util.RestUtil;
+import org.openmetadata.common.utils.CommonUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -344,7 +346,14 @@ public class WebhookRepository extends EntityRepository<Webhook> {
       ChangeEventList list = new ChangeEventList(batch, null, null, batch.size());
       long attemptTime = System.currentTimeMillis();
       try {
-        Response response = target.post(javax.ws.rs.client.Entity.entity(list, MediaType.APPLICATION_JSON));
+        String json = JsonUtils.pojoToJson(list);
+        Response response;
+        if (webhook.getSecretKey() != null) {
+          String hmac = "sha256=" + CommonUtil.calculateHMAC(webhook.getSecretKey(), json);
+          response = target.header(RestUtil.SIGNATURE_HEADER, hmac).post(javax.ws.rs.client.Entity.json(json));
+        } else {
+          response = target.post(javax.ws.rs.client.Entity.json(json));
+        }
         LOG.info(
             "Webhook {}:{}:{} received response {}",
             webhook.getName(),

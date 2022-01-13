@@ -185,7 +185,8 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook> {
         .withEventFilters(ALL_EVENTS_FILTER)
         .withEndpoint(URI.create(uri))
         .withBatchSize(100)
-        .withEnabled(false);
+        .withEnabled(false)
+        .withSecretKey("webhookTest");
   }
 
   @Override

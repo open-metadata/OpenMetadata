@@ -297,6 +297,7 @@ public class WebhookResource {
         .withTimeout(create.getTimeout())
         .withEnabled(create.getEnabled())
         .withUpdatedBy(securityContext.getUserPrincipal().getName())
-        .withUpdatedAt(new Date());
+        .withUpdatedAt(new Date())
+        .withSecretKey(create.getSecretKey());
   }
 }
