@@ -15,6 +15,7 @@ import classNames from 'classnames';
 import { cloneDeep } from 'lodash';
 import {
   AggregationType,
+  Bucket,
   FilterObject,
   FormatedTableData,
   SearchResponse,
@@ -169,18 +170,21 @@ const Explore: React.FC<ExploreProps> = ({
       for (const newAgg of newAggregations) {
         for (const oldAgg of oldAggs) {
           if (newAgg.title === oldAgg.title) {
-            for (const oldBucket of oldAgg.buckets) {
-              let docCount = 0;
-              for (const newBucket of newAgg.buckets) {
-                if (newBucket.key === oldBucket.key) {
-                  docCount = newBucket.doc_count;
+            const buckets = cloneDeep(oldAgg.buckets)
+              .map((item) => {
+                // eslint-disable-next-line @typescript-eslint/camelcase
+                return { ...item, doc_count: 0 };
+              })
+              .concat(newAgg.buckets);
+            const bucketHashmap = buckets.reduce((obj, item) => {
+              obj[item.key]
+                ? // eslint-disable-next-line @typescript-eslint/camelcase
+                  (obj[item.key].doc_count += item.doc_count)
+                : (obj[item.key] = { ...item });
 
-                  break;
-                }
-              }
-              // eslint-disable-next-line @typescript-eslint/camelcase
-              oldBucket.doc_count = docCount;
-            }
+              return obj;
+            }, {} as { [key: string]: Bucket });
+            oldAgg.buckets = Object.values(bucketHashmap);
           }
         }
       }
@@ -505,7 +509,7 @@ const Explore: React.FC<ExploreProps> = ({
           'tags'
         );
         const aggDatabase = getAggregationList(
-          searchResult.resAggTag.data.aggregations,
+          searchResult.resAggDatabase.data.aggregations,
           'database'
         );
 
