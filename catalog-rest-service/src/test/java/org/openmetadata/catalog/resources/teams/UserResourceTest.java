@@ -529,7 +529,7 @@ public class UserResourceTest extends EntityResourceTest<User> {
     String fields = "profile";
     user =
         byName
-            ? getEntityByName(user.getName(), fields, adminAuthHeaders())
+            ? getEntityByName(user.getName(), null, fields, adminAuthHeaders())
             : getEntity(user.getId(), fields, adminAuthHeaders());
     assertNotNull(user.getProfile());
     assertNull(user.getTeams());
@@ -538,7 +538,7 @@ public class UserResourceTest extends EntityResourceTest<User> {
     fields = "profile, teams";
     user =
         byName
-            ? getEntityByName(user.getName(), fields, adminAuthHeaders())
+            ? getEntityByName(user.getName(), null, fields, adminAuthHeaders())
             : getEntity(user.getId(), fields, adminAuthHeaders());
     assertListNotNull(user.getProfile(), user.getTeams());
   }

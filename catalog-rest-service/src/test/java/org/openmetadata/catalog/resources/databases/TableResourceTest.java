@@ -1303,7 +1303,7 @@ public class TableResourceTest extends EntityResourceTest<Table> {
     // GET .../tables/{id}
     table =
         byName
-            ? getEntityByName(table.getFullyQualifiedName(), null, adminAuthHeaders())
+            ? getEntityByName(table.getFullyQualifiedName(), null, null, adminAuthHeaders())
             : getEntity(table.getId(), null, adminAuthHeaders());
     assertFields(table, null);
 
@@ -1311,7 +1311,7 @@ public class TableResourceTest extends EntityResourceTest<Table> {
     String fields = "columns,tableConstraints";
     table =
         byName
-            ? getEntityByName(table.getFullyQualifiedName(), fields, adminAuthHeaders())
+            ? getEntityByName(table.getFullyQualifiedName(), null, fields, adminAuthHeaders())
             : getEntity(table.getId(), fields, adminAuthHeaders());
     assertFields(table, fields);
 
@@ -1319,7 +1319,7 @@ public class TableResourceTest extends EntityResourceTest<Table> {
     fields = "columns,usageSummary,owner,tags";
     table =
         byName
-            ? getEntityByName(table.getFullyQualifiedName(), fields, adminAuthHeaders())
+            ? getEntityByName(table.getFullyQualifiedName(), null, fields, adminAuthHeaders())
             : getEntity(table.getId(), fields, adminAuthHeaders());
     assertEquals(table.getOwner().getId(), USER_OWNER1.getId());
     assertEquals(table.getOwner().getType(), USER_OWNER1.getType());

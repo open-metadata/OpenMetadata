@@ -352,14 +352,14 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook> {
   }
 
   public void assertWebhookStatusSuccess(String name) throws HttpResponseException {
-    Webhook webhook = getEntityByName(name, "", adminAuthHeaders());
+    Webhook webhook = getEntityByName(name, null, "", adminAuthHeaders());
     assertEquals(Status.STARTED, webhook.getStatus());
     assertNull(webhook.getFailureDetails());
   }
 
   public void assertWebhookStatus(String name, Status status, Integer statusCode, String failedReason)
       throws HttpResponseException {
-    Webhook webhook = getEntityByName(name, "", adminAuthHeaders());
+    Webhook webhook = getEntityByName(name, null, "", adminAuthHeaders());
     assertEquals(status, webhook.getStatus());
     assertEquals(statusCode, webhook.getFailureDetails().getLastFailedStatusCode());
     assertEquals(failedReason, webhook.getFailureDetails().getLastFailedReason());

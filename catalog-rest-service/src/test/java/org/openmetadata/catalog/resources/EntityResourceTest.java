@@ -981,13 +981,6 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     return TestUtils.get(target, entityClass, authHeaders);
   }
 
-  protected final T getEntityByName(String name, String fields, Map<String, String> authHeaders)
-      throws HttpResponseException {
-    WebTarget target = getResourceByName(name);
-    target = target.queryParam("fields", fields);
-    return TestUtils.get(target, entityClass, authHeaders);
-  }
-
   protected final T getEntityByName(
       String name, Map<String, String> queryParams, String fields, Map<String, String> authHeaders)
       throws HttpResponseException {
