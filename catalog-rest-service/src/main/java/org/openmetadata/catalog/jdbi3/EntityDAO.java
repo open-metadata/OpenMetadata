@@ -48,14 +48,8 @@ public interface EntityDAO<T> {
   @SqlUpdate("UPDATE <table> SET  json = :json WHERE id = :id")
   void update(@Define("table") String table, @Bind("id") String id, @Bind("json") String json);
 
-  @SqlQuery("SELECT json FROM <table> WHERE id = :id AND deleted IS NOT TRUE")
-  String findById(@Define("table") String table, @Bind("id") String id);
-
   @SqlQuery("SELECT json FROM <table> WHERE id = :id AND (deleted = :deleted OR :deleted IS NULL)")
   String findById(@Define("table") String table, @Bind("id") String id, @Bind("deleted") Boolean deleted);
-
-  @SqlQuery("SELECT json FROM <table> WHERE <nameColumn> = :name AND deleted IS NOT TRUE")
-  String findByName(@Define("table") String table, @Define("nameColumn") String nameColumn, @Bind("name") String name);
 
   @SqlQuery("SELECT json FROM <table> WHERE <nameColumn> = :name AND (deleted = :deleted OR :deleted IS NULL)")
   String findByName(
@@ -63,10 +57,6 @@ public interface EntityDAO<T> {
       @Define("nameColumn") String nameColumn,
       @Bind("name") String name,
       @Bind("deleted") Boolean deleted);
-
-  @SqlQuery("SELECT json FROM <table> WHERE <nameColumn> = :name")
-  String findByNameDeletedOrExists(
-      @Define("table") String table, @Define("nameColumn") String nameColumn, @Bind("name") String name);
 
   @SqlQuery(
       "SELECT count(*) FROM <table> WHERE "
@@ -183,7 +173,7 @@ public interface EntityDAO<T> {
 
   default T findEntityById(UUID id) throws IOException {
     Class<T> clz = getEntityClass();
-    String json = findById(getTableName(), id.toString());
+    String json = findById(getTableName(), id.toString(), toBoolean(Include.NON_DELETED));
     T entity = null;
     if (json != null) {
       entity = JsonUtils.readValue(json, clz);
@@ -197,7 +187,7 @@ public interface EntityDAO<T> {
 
   default T findEntityByName(String fqn) throws IOException {
     Class<T> clz = getEntityClass();
-    String json = findByName(getTableName(), getNameColumn(), fqn);
+    String json = findByName(getTableName(), getNameColumn(), fqn, toBoolean(Include.NON_DELETED));
     T entity = null;
     if (json != null) {
       entity = JsonUtils.readValue(json, clz);
@@ -231,16 +221,12 @@ public interface EntityDAO<T> {
     return getEntityReference(findEntityByName(fqn));
   }
 
-  default String findJsonById(String fqn) {
-    return findById(getTableName(), fqn);
+  default String findJsonById(String fqn, Include include) {
+    return findById(getTableName(), fqn, toBoolean(include));
   }
 
-  default String findJsonByFqn(String fqn) {
-    return findByName(getTableName(), getNameColumn(), fqn);
-  }
-
-  default String findDeletedOrExists(String fqn) {
-    return findByNameDeletedOrExists(getTableName(), getNameColumn(), fqn);
+  default String findJsonByFqn(String fqn, Include include) {
+    return findByName(getTableName(), getNameColumn(), fqn, toBoolean(include));
   }
 
   default int listCount(String databaseFQN) {

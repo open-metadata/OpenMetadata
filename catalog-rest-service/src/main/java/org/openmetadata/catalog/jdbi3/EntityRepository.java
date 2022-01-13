@@ -364,7 +364,7 @@ public abstract class EntityRepository<T> {
   public final PutResponse<T> createOrUpdate(UriInfo uriInfo, T updated) throws IOException, ParseException {
     prepare(updated);
     // Check if there is any original, deleted or not
-    T original = JsonUtils.readValue(dao.findDeletedOrExists(getFullyQualifiedName(updated)), entityClass);
+    T original = JsonUtils.readValue(dao.findJsonByFqn(getFullyQualifiedName(updated), Include.ALL), entityClass);
     if (original == null) {
       return new PutResponse<>(Status.CREATED, withHref(uriInfo, createNewEntity(updated)), RestUtil.ENTITY_CREATED);
     }
