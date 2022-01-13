@@ -31,7 +31,6 @@ import org.openmetadata.catalog.jdbi3.DatabaseServiceRepository.DatabaseServiceE
 import org.openmetadata.catalog.resources.databases.DatabaseResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
-import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
@@ -168,7 +167,11 @@ public class DatabaseRepository extends EntityRepository<Database> {
   private EntityReference getService(Database database) throws IOException {
     EntityReference ref =
         EntityUtil.getService(
-            daoCollection.relationshipDAO(), Entity.DATABASE, database.getId(), Entity.DATABASE_SERVICE, Include.ALL);
+            daoCollection.relationshipDAO(),
+            Entity.DATABASE,
+            database.getId(),
+            Entity.DATABASE_SERVICE,
+            toInclude(database));
     if (ref != null) {
       DatabaseService service = getService(ref.getId(), ref.getType());
       ref.setName(service.getName());

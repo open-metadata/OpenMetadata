@@ -27,7 +27,6 @@ import org.openmetadata.catalog.jdbi3.DashboardServiceRepository.DashboardServic
 import org.openmetadata.catalog.resources.charts.ChartResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
-import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
@@ -122,7 +121,7 @@ public class ChartRepository extends EntityRepository<Chart> {
   private EntityReference getService(Chart chart) throws IOException {
     EntityReference ref =
         EntityUtil.getService(
-            daoCollection.relationshipDAO(), Entity.CHART, chart.getId(), Entity.DASHBOARD_SERVICE, Include.ALL);
+            daoCollection.relationshipDAO(), Entity.CHART, chart.getId(), Entity.DASHBOARD_SERVICE, toInclude(chart));
     if (ref != null) {
       DashboardService service = getService(ref.getId(), ref.getType());
       ref.setName(service.getName());

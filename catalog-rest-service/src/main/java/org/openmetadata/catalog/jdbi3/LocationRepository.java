@@ -29,7 +29,6 @@ import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.resources.locations.LocationResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
-import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
@@ -222,7 +221,11 @@ public class LocationRepository extends EntityRepository<Location> {
   private EntityReference getService(Location location) throws IOException {
     EntityReference ref =
         EntityUtil.getService(
-            daoCollection.relationshipDAO(), Entity.LOCATION, location.getId(), Entity.STORAGE_SERVICE, Include.ALL);
+            daoCollection.relationshipDAO(),
+            Entity.LOCATION,
+            location.getId(),
+            Entity.STORAGE_SERVICE,
+            toInclude(location));
     return getService(Objects.requireNonNull(ref));
   }
 

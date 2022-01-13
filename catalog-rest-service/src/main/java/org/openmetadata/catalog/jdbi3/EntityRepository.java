@@ -13,6 +13,7 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import static org.openmetadata.catalog.type.Include.DELETED;
 import static org.openmetadata.catalog.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.catalog.util.EntityUtil.objectMatch;
 
@@ -572,6 +573,11 @@ public abstract class EntityRepository<T> {
     }
     EntityInterface<T> entityInterface = getEntityInterface(entity);
     return entityInterface.withHref(getHref(uriInfo, entityInterface.getId()));
+  }
+
+  public Include toInclude(T entity) {
+    EntityInterface<T> entityInterface = getEntityInterface(entity);
+    return entityInterface.isDeleted() ? DELETED : Include.NON_DELETED;
   }
 
   public URI getHref(UriInfo uriInfo, UUID id) {

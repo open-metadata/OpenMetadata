@@ -26,7 +26,6 @@ import org.openmetadata.catalog.operations.workflows.Ingestion;
 import org.openmetadata.catalog.resources.operations.IngestionResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
-import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
@@ -127,7 +126,8 @@ public class IngestionRepository extends EntityRepository<Ingestion> {
 
   private EntityReference getService(Ingestion ingestion) throws IOException {
     EntityReference ref =
-        EntityUtil.getService(daoCollection.relationshipDAO(), Entity.INGESTION, ingestion.getId(), Include.ALL);
+        EntityUtil.getService(
+            daoCollection.relationshipDAO(), Entity.INGESTION, ingestion.getId(), toInclude(ingestion));
     return getService(Objects.requireNonNull(ref));
   }
 

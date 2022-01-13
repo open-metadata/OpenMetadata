@@ -33,7 +33,6 @@ import org.openmetadata.catalog.jdbi3.PipelineServiceRepository.PipelineServiceE
 import org.openmetadata.catalog.resources.pipelines.PipelineResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
-import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.type.Task;
 import org.openmetadata.catalog.util.EntityInterface;
@@ -149,7 +148,11 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   private EntityReference getService(Pipeline pipeline) throws IOException {
     EntityReference ref =
         EntityUtil.getService(
-            daoCollection.relationshipDAO(), Entity.PIPELINE, pipeline.getId(), Entity.PIPELINE_SERVICE, Include.ALL);
+            daoCollection.relationshipDAO(),
+            Entity.PIPELINE,
+            pipeline.getId(),
+            Entity.PIPELINE_SERVICE,
+            toInclude(pipeline));
     PipelineService service = getService(ref.getId(), ref.getType());
     ref.setName(service.getName());
     ref.setDescription(service.getDescription());

@@ -38,6 +38,7 @@ import java.util.function.BiPredicate;
 import org.apache.commons.codec.binary.Hex;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
+import org.openmetadata.catalog.entity.data.Database;
 import org.openmetadata.catalog.entity.data.Location;
 import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.entity.services.DatabaseService;
@@ -93,7 +94,7 @@ public class TableRepository extends EntityRepository<Table> {
 
   @Override
   public Table setFields(Table table, Fields fields) throws IOException, ParseException {
-    table.setDatabase(getDatabase(table.getId()));
+    table.setDatabase(getDatabase(table));
     table.setService(getService(table));
     table.setTableConstraints(fields.contains("tableConstraints") ? table.getTableConstraints() : null);
     table.setOwner(fields.contains("owner") ? getOwner(table) : null);
@@ -334,13 +335,15 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   private EntityReference getService(Table table) throws IOException {
+    Database database = daoCollection.databaseDAO().findEntityById(table.getDatabase().getId(), Include.ALL);
+    Include include = database.getDeleted() ? Include.DELETED : Include.NON_DELETED;
     EntityReference ref =
         EntityUtil.getService(
             daoCollection.relationshipDAO(),
             Entity.DATABASE,
             table.getDatabase().getId(),
             Entity.DATABASE_SERVICE,
-            Include.ALL);
+            include);
     DatabaseService service = getService(ref.getId(), ref.getType());
     ref.setName(service.getName());
     ref.setDescription(service.getDescription());
@@ -447,19 +450,19 @@ public class TableRepository extends EntityRepository<Table> {
     applyTags(table.getColumns());
   }
 
-  private EntityReference getDatabase(UUID tableId) throws IOException {
+  private EntityReference getDatabase(Table table) throws IOException {
     // Find database for the table
     List<String> result =
         daoCollection
             .relationshipDAO()
             .findFrom(
-                tableId.toString(),
+                table.getId().toString(),
                 Entity.TABLE,
                 Relationship.CONTAINS.ordinal(),
                 Entity.DATABASE,
-                toBoolean(Include.ALL));
+                toBoolean(toInclude(table)));
     if (result.size() != 1) {
-      throw EntityNotFoundException.byMessage(String.format("Database for table %s Not found", tableId));
+      throw EntityNotFoundException.byMessage(String.format("Database for table %s Not found", table.getId()));
     }
     return daoCollection.databaseDAO().findEntityReferenceById(UUID.fromString(result.get(0)));
   }
@@ -474,7 +477,7 @@ public class TableRepository extends EntityRepository<Table> {
                 Entity.TABLE,
                 Relationship.HAS.ordinal(),
                 Entity.LOCATION,
-                toBoolean(Include.ALL));
+                toBoolean(toInclude(table)));
     if (result.size() == 1) {
       Location location = daoCollection.locationDAO().findEntityById(UUID.fromString(result.get(0)));
       if (!table.getDeleted() && location.getDeleted()) {
