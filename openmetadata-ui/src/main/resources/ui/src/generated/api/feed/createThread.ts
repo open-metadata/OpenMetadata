@@ -18,7 +18,7 @@
 export interface CreateThread {
   /**
    * Data asset about which this thread is created for with format
-   * <#E/{enties}/{entityName}/{field}/{fieldValue}
+   * <#E/{entities}/{entityName}/{field}/{fieldValue}
    */
   about: string;
   /**

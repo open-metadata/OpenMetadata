@@ -21,6 +21,8 @@ services:
       MYSQL_ROOT_PASSWORD: password
     expose:
       - 3306
+    ports:
+      - 3306:3306
     networks:
       local_app_net:
         ipv4_address: 172.16.239.10

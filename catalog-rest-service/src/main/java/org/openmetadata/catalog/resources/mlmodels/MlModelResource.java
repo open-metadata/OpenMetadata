@@ -13,7 +13,6 @@
 
 package org.openmetadata.catalog.resources.mlmodels;
 
-import com.google.inject.Inject;
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -85,7 +84,6 @@ public class MlModelResource {
     return mlmodel;
   }
 
-  @Inject
   public MlModelResource(CollectionDAO dao, Authorizer authorizer) {
     Objects.requireNonNull(dao, "ModelRepository must not be null");
     this.dao = new MlModelRepository(dao);

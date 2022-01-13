@@ -12,6 +12,9 @@
       "fqdn": {
         "type": "keyword"
       },
+      "deleted": {
+        "type": "boolean"
+      },
       "followers": {
         "type": "keyword"
       },

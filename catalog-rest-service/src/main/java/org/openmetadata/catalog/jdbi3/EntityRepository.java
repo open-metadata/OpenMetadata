@@ -368,6 +368,7 @@ public abstract class EntityRepository<T> {
             .withEventType(EventType.ENTITY_UPDATED)
             .withEntityType(entityName)
             .withEntityId(entityId)
+            .withEntityFullyQualifiedName(entityInterface.getFullyQualifiedName())
             .withUserName(updatedBy)
             .withDateTime(new Date())
             .withCurrentVersion(entityInterface.getVersion())
@@ -428,6 +429,7 @@ public abstract class EntityRepository<T> {
         new ChangeEvent()
             .withChangeDescription(change)
             .withEventType(EventType.ENTITY_UPDATED)
+            .withEntityFullyQualifiedName(entityInterface.getFullyQualifiedName())
             .withEntityType(entityName)
             .withEntityId(entityId)
             .withUserName(updatedBy)
@@ -615,9 +617,7 @@ public abstract class EntityRepository<T> {
       EntityUtil.removeTagsByPrefix(daoCollection.tagDAO(), fqn);
       if (!patchOperation) {
         // PUT operation merges tags in the request with what already exists
-        List<TagLabel> mergedTags = EntityUtil.mergeTags(updatedTags, origTags);
-        updatedTags.clear();
-        updatedTags.addAll(mergedTags);
+        EntityUtil.mergeTags(updatedTags, origTags);
       }
 
       List<TagLabel> addedTags = new ArrayList<>();

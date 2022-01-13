@@ -36,6 +36,10 @@ export interface Table {
    */
   dataModel?: DataModel;
   /**
+   * When `true` indicates the entity has been soft deleted.
+   */
+  deleted?: boolean;
+  /**
    * Description of a table.
    */
   description?: string;
@@ -234,6 +238,7 @@ export enum DataType {
   Blob = 'BLOB',
   Boolean = 'BOOLEAN',
   Byteint = 'BYTEINT',
+  Bytes = 'BYTES',
   Char = 'CHAR',
   Date = 'DATE',
   Datetime = 'DATETIME',
@@ -338,7 +343,7 @@ export interface DataModel {
    */
   columns?: Column[];
   /**
-   * Description of the Table from the model
+   * Description of the Table from the model.
    */
   description?: string;
   generatedAt?: Date;
@@ -358,7 +363,7 @@ export interface DataModel {
    */
   sql: string;
   /**
-   * Fully qualified name of Models/tables used for in `sql` for creating this table
+   * Fully qualified name of Models/tables used for in `sql` for creating this table.
    */
   upstream?: string[];
 }

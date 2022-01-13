@@ -431,4 +431,8 @@ declare module 'Models' {
     userTypeText?: string;
     waitTimer?: number;
   };
+
+  export interface FormErrorData {
+    [key: string]: string | undefined;
+  }
 }

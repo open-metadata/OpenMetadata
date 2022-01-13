@@ -13,7 +13,6 @@
 
 package org.openmetadata.catalog.resources.teams;
 
-import com.google.inject.Inject;
 import io.dropwizard.jersey.PATCH;
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
@@ -82,7 +81,6 @@ public class TeamResource {
     return team;
   }
 
-  @Inject
   public TeamResource(CollectionDAO dao, Authorizer authorizer) {
     Objects.requireNonNull(dao, "TeamRepository must not be null");
     this.dao = new TeamRepository(dao);

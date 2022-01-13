@@ -22,6 +22,10 @@ export interface Bots {
    */
   changeDescription?: ChangeDescription;
   /**
+   * When `true` indicates the entity has been soft deleted.
+   */
+  deleted?: boolean;
+  /**
    * Description of the bot.
    */
   description?: string;

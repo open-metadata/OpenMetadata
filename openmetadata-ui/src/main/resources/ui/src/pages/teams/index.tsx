@@ -14,7 +14,9 @@
 import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
+import { isUndefined, toLower } from 'lodash';
 import { observer } from 'mobx-react';
+import { FormErrorData } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { Link, useHistory, useParams } from 'react-router-dom';
 import AppState from '../../AppState';
@@ -28,7 +30,8 @@ import { Button } from '../../components/buttons/Button/Button';
 import Description from '../../components/common/description/Description';
 import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
 import NonAdminAction from '../../components/common/non-admin-action/NonAdminAction';
-import PageContainer from '../../components/containers/PageContainer';
+import PageContainerV1 from '../../components/containers/PageContainerV1';
+import PageLayout from '../../components/containers/PageLayout';
 import Loader from '../../components/Loader/Loader';
 import FormModal from '../../components/Modals/FormModal';
 import {
@@ -37,10 +40,13 @@ import {
   TITLE_FOR_NON_ADMIN_ACTION,
 } from '../../constants/constants';
 import { Team } from '../../generated/entity/teams/team';
-import { User } from '../../generated/entity/teams/user';
+import {
+  EntityReference as UserTeams,
+  User,
+} from '../../generated/entity/teams/user';
 import { useAuth } from '../../hooks/authHooks';
-import { UserTeam } from '../../interface/team.interface';
-import { getCountBadge } from '../../utils/CommonUtils';
+import useToastContext from '../../hooks/useToastContext';
+import { getActiveCatClass, getCountBadge } from '../../utils/CommonUtils';
 import AddUsersModal from './AddUsersModal';
 import Form from './Form';
 import UserCard from './UserCard';
@@ -58,6 +64,9 @@ const TeamsPage = () => {
   const [isAddingTeam, setIsAddingTeam] = useState<boolean>(false);
   const [isAddingUsers, setIsAddingUsers] = useState<boolean>(false);
   const [userList, setUserList] = useState<Array<User>>([]);
+  const [errorData, setErrorData] = useState<FormErrorData>();
+
+  const showToast = useToastContext();
 
   const fetchTeams = () => {
     setIsLoading(true);
@@ -99,22 +108,54 @@ const TeamsPage = () => {
     }
   };
 
-  const createNewTeam = (data: Team) => {
-    createTeam(data)
-      .then((res: AxiosResponse) => {
-        if (res.data) {
-          fetchTeams();
-        }
-      })
-      .finally(() => {
-        setIsAddingTeam(false);
-      });
+  const onNewDataChange = (data: Team, forceSet = false) => {
+    if (errorData || forceSet) {
+      const errData: { [key: string]: string } = {};
+      if (!data.name.trim()) {
+        errData['name'] = 'Name is required';
+      } else if (
+        !isUndefined(
+          teams.find((item) => toLower(item.name) === toLower(data.name))
+        )
+      ) {
+        errData['name'] = 'Name already exists';
+      }
+      if (!data.displayName?.trim()) {
+        errData['displayName'] = 'Display name is required';
+      }
+      setErrorData(errData);
+
+      return errData;
+    }
+
+    return {};
   };
 
-  const createUsers = (data: Array<UserTeam>) => {
+  const createNewTeam = (data: Team) => {
+    const errData = onNewDataChange(data, true);
+    if (!Object.values(errData).length) {
+      createTeam(data)
+        .then((res: AxiosResponse) => {
+          if (res.data) {
+            fetchTeams();
+          }
+        })
+        .catch((error: AxiosError) => {
+          showToast({
+            variant: 'error',
+            body: error.message ?? 'Something went wrong!',
+          });
+        })
+        .finally(() => {
+          setIsAddingTeam(false);
+        });
+    }
+  };
+
+  const createUsers = (data: Array<UserTeams>) => {
     const updatedTeam = {
       ...currentTeam,
-      users: [...(currentTeam?.users as Array<UserTeam>), ...data],
+      users: [...(currentTeam?.users as Array<UserTeams>), ...data],
     };
     const jsonPatch = compare(currentTeam as Team, updatedTeam);
     patchTeamDetail(currentTeam?.id, jsonPatch).then((res: AxiosResponse) => {
@@ -126,7 +167,7 @@ const TeamsPage = () => {
   };
 
   const deleteUser = (id: string) => {
-    const users = [...(currentTeam?.users as Array<UserTeam>)];
+    const users = [...(currentTeam?.users as Array<UserTeams>)];
     const newUsers = users.filter((user) => {
       return user.id !== id;
     });
@@ -142,13 +183,6 @@ const TeamsPage = () => {
     });
   };
 
-  const getCurrentTeamClass = (name: string) => {
-    if (currentTeam?.name === name) {
-      return 'activeCategory';
-    } else {
-      return '';
-    }
-  };
   const getActiveTabClass = (tab: number) => {
     return tab === currentTab ? 'active' : '';
   };
@@ -160,7 +194,7 @@ const TeamsPage = () => {
     return (
       <div className="tw-mb-3 ">
         <nav
-          className="tw-flex tw-flex-row tw-gh-tabs-container tw-px-4"
+          className="tw-flex tw-flex-row tw-gh-tabs-container"
           data-testid="tabs">
           <button
             className={`tw-pb-2 tw-px-4 tw-gh-tabs ${getActiveTabClass(1)}`}
@@ -275,18 +309,21 @@ const TeamsPage = () => {
   const fetchLeftPanel = () => {
     return (
       <>
-        <div className="tw-flex tw-justify-between tw-items-baseline tw-mb-3 tw-border-b">
-          <h6 className="tw-heading">Teams</h6>
+        <div className="tw-flex tw-justify-between tw-items-center tw-mb-3 tw-border-b">
+          <h6 className="tw-heading tw-text-base">Teams</h6>
           <NonAdminAction position="bottom" title={TITLE_FOR_NON_ADMIN_ACTION}>
             <Button
-              className={classNames('tw-h-7 tw-px-2', {
+              className={classNames('tw-h-7 tw-px-2 tw-mb-4', {
                 'tw-opacity-40': !isAdminUser && !isAuthDisabled,
               })}
               data-testid="add-teams"
               size="small"
               theme="primary"
               variant="contained"
-              onClick={() => setIsAddingTeam(true)}>
+              onClick={() => {
+                setErrorData(undefined);
+                setIsAddingTeam(true);
+              }}>
               <i aria-hidden="true" className="fa fa-plus" />
             </Button>
           </NonAdminAction>
@@ -294,14 +331,15 @@ const TeamsPage = () => {
         {teams &&
           teams.map((team: Team) => (
             <div
-              className={`tw-group tw-text-grey-body tw-cursor-pointer tw-text-body tw-mb-3 tw-flex tw-justify-between ${getCurrentTeamClass(
-                team.name
+              className={`tw-group tw-text-grey-body tw-cursor-pointer tw-text-body tw-mb-3 tw-flex tw-justify-between ${getActiveCatClass(
+                team.name,
+                currentTeam?.name
               )}`}
               key={team.name}
               onClick={() => {
                 changeCurrentTeam(team.name);
               }}>
-              <p className="tw-text-center tag-category tw-self-center">
+              <p className="tw-text-center tag-category label-category tw-self-center">
                 {team.displayName}
               </p>
             </div>
@@ -372,92 +410,96 @@ const TeamsPage = () => {
       {error ? (
         <ErrorPlaceHolder />
       ) : (
-        <PageContainer leftPanelContent={fetchLeftPanel()}>
-          {isLoading ? (
-            <Loader />
-          ) : (
-            <div
-              className="container-fluid tw-pt-1 tw-pb-3"
-              data-testid="team-container">
-              {teams.length > 0 ? (
-                <>
-                  <div
-                    className="tw-flex tw-justify-between tw-pl-1"
-                    data-testid="header">
-                    <div className="tw-heading tw-text-link tw-text-base">
-                      {currentTeam?.displayName}
+        <PageContainerV1 className="tw-py-4">
+          <PageLayout leftPanel={fetchLeftPanel()}>
+            {isLoading ? (
+              <Loader />
+            ) : (
+              <div className="tw-pb-3" data-testid="team-container">
+                {teams.length > 0 ? (
+                  <>
+                    <div
+                      className="tw-flex tw-justify-between tw-items-center"
+                      data-testid="header">
+                      <div className="tw-heading tw-text-link tw-text-base">
+                        {currentTeam?.displayName}
+                      </div>
+                      <NonAdminAction
+                        position="bottom"
+                        title={TITLE_FOR_NON_ADMIN_ACTION}>
+                        <Button
+                          className={classNames('tw-h-8 tw-rounded tw-mb-3', {
+                            'tw-opacity-40': !isAdminUser && !isAuthDisabled,
+                          })}
+                          data-testid="add-new-user-button"
+                          size="small"
+                          theme="primary"
+                          variant="contained"
+                          onClick={() => setIsAddingUsers(true)}>
+                          Add new user
+                        </Button>
+                      </NonAdminAction>
                     </div>
-                    <NonAdminAction
-                      position="bottom"
-                      title={TITLE_FOR_NON_ADMIN_ACTION}>
-                      <Button
-                        className={classNames('tw-h-8 tw-rounded tw-mb-2', {
-                          'tw-opacity-40': !isAdminUser && !isAuthDisabled,
-                        })}
-                        data-testid="add-new-user-button"
-                        size="small"
-                        theme="primary"
-                        variant="contained"
-                        onClick={() => setIsAddingUsers(true)}>
-                        Add new user
-                      </Button>
-                    </NonAdminAction>
-                  </div>
-                  <div className="tw-mb-3" data-testid="description-container">
-                    <Description
-                      description={currentTeam?.description || ''}
-                      entityName={currentTeam?.displayName}
-                      isEdit={isEditable}
-                      onCancel={onCancel}
-                      onDescriptionEdit={onDescriptionEdit}
-                      onDescriptionUpdate={onDescriptionUpdate}
-                    />
-                  </div>
+                    <div
+                      className="tw-mb-3 tw--ml-5"
+                      data-testid="description-container">
+                      <Description
+                        description={currentTeam?.description || ''}
+                        entityName={currentTeam?.displayName}
+                        isEdit={isEditable}
+                        onCancel={onCancel}
+                        onDescriptionEdit={onDescriptionEdit}
+                        onDescriptionUpdate={onDescriptionUpdate}
+                      />
+                    </div>
 
-                  {getTabs()}
+                    {getTabs()}
 
-                  {currentTab === 1 && getUserCards()}
+                    {currentTab === 1 && getUserCards()}
 
-                  {currentTab === 2 && getDatasetCards()}
-                  {isAddingUsers && (
-                    <AddUsersModal
-                      header={`Adding new users to ${currentTeam?.name}`}
-                      list={getUniqueUserList()}
-                      onCancel={() => setIsAddingUsers(false)}
-                      onSave={(data) => createUsers(data)}
-                    />
-                  )}
-                </>
-              ) : (
-                <ErrorPlaceHolder>
-                  <p className="w-text-lg tw-text-center">No Teams Added.</p>
-                  <p className="w-text-lg tw-text-center">
-                    <button
-                      className="link-text tw-underline"
-                      onClick={() => setIsAddingTeam(true)}>
-                      Click here
-                    </button>
-                    {' to add new Team'}
-                  </p>
-                </ErrorPlaceHolder>
-              )}
+                    {currentTab === 2 && getDatasetCards()}
+                    {isAddingUsers && (
+                      <AddUsersModal
+                        header={`Adding new users to ${currentTeam?.name}`}
+                        list={getUniqueUserList()}
+                        onCancel={() => setIsAddingUsers(false)}
+                        onSave={(data) => createUsers(data)}
+                      />
+                    )}
+                  </>
+                ) : (
+                  <ErrorPlaceHolder>
+                    <p className="w-text-lg tw-text-center">No Teams Added.</p>
+                    <p className="w-text-lg tw-text-center">
+                      <button
+                        className="link-text tw-underline"
+                        onClick={() => setIsAddingTeam(true)}>
+                        Click here
+                      </button>
+                      {' to add new Team'}
+                    </p>
+                  </ErrorPlaceHolder>
+                )}
 
-              {isAddingTeam && (
-                <FormModal
-                  form={Form}
-                  header="Adding new team"
-                  initialData={{
-                    name: '',
-                    description: '',
-                    displayName: '',
-                  }}
-                  onCancel={() => setIsAddingTeam(false)}
-                  onSave={(data) => createNewTeam(data as Team)}
-                />
-              )}
-            </div>
-          )}
-        </PageContainer>
+                {isAddingTeam && (
+                  <FormModal
+                    errorData={errorData}
+                    form={Form}
+                    header="Adding new team"
+                    initialData={{
+                      name: '',
+                      description: '',
+                      displayName: '',
+                    }}
+                    onCancel={() => setIsAddingTeam(false)}
+                    onChange={(data) => onNewDataChange(data as Team)}
+                    onSave={(data) => createNewTeam(data as Team)}
+                  />
+                )}
+              </div>
+            )}
+          </PageLayout>
+        </PageContainerV1>
       )}
     </>
   );

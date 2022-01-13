@@ -14,14 +14,14 @@
 import React, { useState } from 'react';
 import { Button } from '../../components/buttons/Button/Button';
 import Searchbar from '../../components/common/searchbar/Searchbar';
-import { UserTeam } from '../../interface/team.interface';
+import { EntityReference as UserTeams } from '../../generated/entity/teams/user';
 import UserCard from './UserCard';
 
 type Props = {
   header: string;
-  list: Array<UserTeam>;
+  list: Array<UserTeams>;
   onCancel: () => void;
-  onSave: (data: Array<UserTeam>) => void;
+  onSave: (data: Array<UserTeams>) => void;
 };
 
 const AddUsersModal = ({ header, list, onCancel, onSave }: Props) => {

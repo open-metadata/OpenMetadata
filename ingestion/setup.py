@@ -61,7 +61,7 @@ base_plugins = {
 plugins: Dict[str, Set[str]] = {
     "amundsen": {"neo4j~=4.4.0"},
     "athena": {"PyAthena[SQLAlchemy]"},
-    "bigquery": {"openmetadata-sqlalchemy-bigquery==0.2.2"},
+    "bigquery": {"sqlalchemy-bigquery==1.2.2"},
     "bigquery-usage": {"google-cloud-logging", "cachetools"},
     "docker": {"docker==5.0.3"},
     "dbt": {},
@@ -69,10 +69,11 @@ plugins: Dict[str, Set[str]] = {
     "elasticsearch": {"elasticsearch~=7.13.1"},
     "glue": {"boto3~=1.19.12"},
     "hive": {
-        "openmetadata-sqlalchemy-hive==0.2.0",
+        "pyhive~=0.6.3",
         "thrift~=0.13.0",
         "sasl==0.3.1",
         "thrift-sasl==0.4.3",
+        "presto-types-parser==0.0.2"
     },
     "kafka": {"confluent_kafka>=1.5.0", "fastavro>=1.2.0"},
     "ldap-users": {"ldap3==2.9.1"},
@@ -86,12 +87,12 @@ plugins: Dict[str, Set[str]] = {
     "postgres": {"pymysql>=1.0.2", "psycopg2-binary", "GeoAlchemy2"},
     "redash": {"redash-toolbelt==0.1.4"},
     "redshift": {
-        "openmetadata-sqlalchemy-redshift==0.2.1",
+        "sqlalchemy-redshift==0.8.9",
         "psycopg2-binary",
         "GeoAlchemy2",
     },
     "redshift-usage": {
-        "openmetadata-sqlalchemy-redshift==0.2.1",
+        "sqlalchemy-redshift==0.8.9",
         "psycopg2-binary",
         "GeoAlchemy2",
     },
@@ -107,6 +108,28 @@ plugins: Dict[str, Set[str]] = {
     "salesforce": {"simple_salesforce~=1.11.4"},
     "okta": {"okta~=2.3.0"},
     "mlflow": {"mlflow-skinny~=1.22.0"},
+    "sklearn": {"scikit-learn==1.0.2"},
+}
+dev = {
+    "boto3==1.20.14",
+    "botocore==1.23.14",
+    "datamodel-code-generator==0.11.14",
+    "docker",
+    "google-cloud-storage==1.43.0",
+    "twine",
+}
+test = {
+    "black",
+    "isort",
+    "pre-commit",
+    "pylint",
+    "pytest",
+    "pytest-cov",
+    "faker",
+    "coverage",
+    # sklearn integration
+    "scikit-learn==1.0.2",
+    "pandas==1.3.5",
 }
 
 build_options = {"includes": ["_cffi_backend"]}
@@ -138,6 +161,8 @@ setup(
     install_requires=list(base_requirements),
     extras_require={
         "base": list(base_requirements),
+        "dev": list(dev),
+        "test": list(test),
         **{plugin: list(dependencies) for (plugin, dependencies) in plugins.items()},
         "all": list(
             base_requirements.union(

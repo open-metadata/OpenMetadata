@@ -12,7 +12,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
-import javax.ws.rs.core.Response;
 import lombok.Builder;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -36,6 +35,7 @@ import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.entity.data.Topic;
 import org.openmetadata.catalog.type.Column;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.EventType;
 import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.type.Task;
@@ -205,6 +205,7 @@ class ElasticSearchIndex {
 
   String fqdn;
   String service;
+  Boolean deleted = false;
 
   @JsonProperty("service_type")
   String serviceType;
@@ -320,7 +321,7 @@ class TableESIndex extends ElasticSearchIndex {
   @JsonProperty("daily_percentile_rank")
   Integer dailyPercentileRank;
 
-  public static TableESIndexBuilder builder(Table table, int responseCode) {
+  public static TableESIndexBuilder builder(Table table, EventType eventType) {
     String tableId = table.getId().toString();
     String tableName = table.getName();
     String description = table.getDescription() != null ? table.getDescription() : "";
@@ -353,6 +354,7 @@ class TableESIndex extends ElasticSearchIndex {
     TableESIndexBuilder tableESIndexBuilder =
         internalBuilder()
             .tableId(tableId)
+            .deleted(table.getDeleted())
             .name(tableName)
             .displayName(tableName)
             .description(description)
@@ -394,7 +396,7 @@ class TableESIndex extends ElasticSearchIndex {
     if (table.getFollowers() != null) {
       tableESIndexBuilder.followers(
           table.getFollowers().stream().map(item -> item.getId().toString()).collect(Collectors.toList()));
-    } else if (responseCode == Response.Status.CREATED.getStatusCode()) {
+    } else if (eventType == EventType.ENTITY_CREATED) {
       tableESIndexBuilder.followers(Collections.emptyList());
     }
 
@@ -410,7 +412,7 @@ class TableESIndex extends ElasticSearchIndex {
       esChangeDescription.setFieldsAdded(table.getChangeDescription().getFieldsAdded());
       esChangeDescription.setFieldsDeleted(table.getChangeDescription().getFieldsDeleted());
       esChangeDescription.setFieldsUpdated(table.getChangeDescription().getFieldsUpdated());
-    } else if (responseCode == Response.Status.CREATED.getStatusCode()) {
+    } else if (eventType == EventType.ENTITY_CREATED) {
       esChangeDescription =
           ESChangeDescription.builder()
               .updatedAt(updatedTimestamp)
@@ -460,7 +462,7 @@ class TopicESIndex extends ElasticSearchIndex {
   @JsonProperty("topic_id")
   String topicId;
 
-  public static TopicESIndexBuilder builder(Topic topic, int responseCode) {
+  public static TopicESIndexBuilder builder(Topic topic, EventType eventType) {
     List<String> tags = new ArrayList<>();
     List<ElasticSearchSuggest> suggest = new ArrayList<>();
     suggest.add(ElasticSearchSuggest.builder().input(topic.getFullyQualifiedName()).weight(5).build());
@@ -476,6 +478,7 @@ class TopicESIndex extends ElasticSearchIndex {
     TopicESIndexBuilder topicESIndexBuilder =
         internalBuilder()
             .topicId(topic.getId().toString())
+            .deleted(topic.getDeleted())
             .name(topic.getName())
             .displayName(displayName)
             .description(description)
@@ -492,7 +495,7 @@ class TopicESIndex extends ElasticSearchIndex {
     if (topic.getFollowers() != null) {
       topicESIndexBuilder.followers(
           topic.getFollowers().stream().map(item -> item.getId().toString()).collect(Collectors.toList()));
-    } else if (responseCode == Response.Status.CREATED.getStatusCode()) {
+    } else if (eventType == EventType.ENTITY_CREATED) {
       topicESIndexBuilder.followers(Collections.emptyList());
     }
 
@@ -508,7 +511,7 @@ class TopicESIndex extends ElasticSearchIndex {
       esChangeDescription.setFieldsAdded(topic.getChangeDescription().getFieldsAdded());
       esChangeDescription.setFieldsDeleted(topic.getChangeDescription().getFieldsDeleted());
       esChangeDescription.setFieldsUpdated(topic.getChangeDescription().getFieldsUpdated());
-    } else if (responseCode == Response.Status.CREATED.getStatusCode()) {
+    } else if (eventType == EventType.ENTITY_CREATED) {
       esChangeDescription =
           ESChangeDescription.builder().updatedAt(updatedTimestamp).updatedBy(topic.getUpdatedBy()).build();
     }
@@ -552,7 +555,7 @@ class DashboardESIndex extends ElasticSearchIndex {
   @JsonProperty("daily_percentile_rank")
   Integer dailyPercentileRank;
 
-  public static DashboardESIndexBuilder builder(Dashboard dashboard, int responseCode) {
+  public static DashboardESIndexBuilder builder(Dashboard dashboard, EventType eventType) {
     List<String> tags = new ArrayList<>();
     List<String> chartNames = new ArrayList<>();
     List<String> chartDescriptions = new ArrayList<>();
@@ -574,6 +577,7 @@ class DashboardESIndex extends ElasticSearchIndex {
     DashboardESIndexBuilder dashboardESIndexBuilder =
         internalBuilder()
             .dashboardId(dashboard.getId().toString())
+            .deleted(dashboard.getDeleted())
             .name(dashboard.getDisplayName())
             .displayName(displayName)
             .description(description)
@@ -602,7 +606,7 @@ class DashboardESIndex extends ElasticSearchIndex {
     if (dashboard.getFollowers() != null) {
       dashboardESIndexBuilder.followers(
           dashboard.getFollowers().stream().map(item -> item.getId().toString()).collect(Collectors.toList()));
-    } else if (responseCode == Response.Status.CREATED.getStatusCode()) {
+    } else if (eventType == EventType.ENTITY_CREATED) {
       dashboardESIndexBuilder.followers(Collections.emptyList());
     }
     if (dashboard.getOwner() != null) {
@@ -615,7 +619,7 @@ class DashboardESIndex extends ElasticSearchIndex {
       esChangeDescription.setFieldsAdded(dashboard.getChangeDescription().getFieldsAdded());
       esChangeDescription.setFieldsDeleted(dashboard.getChangeDescription().getFieldsDeleted());
       esChangeDescription.setFieldsUpdated(dashboard.getChangeDescription().getFieldsUpdated());
-    } else if (responseCode == Response.Status.CREATED.getStatusCode()) {
+    } else if (eventType == EventType.ENTITY_CREATED) {
       esChangeDescription =
           ESChangeDescription.builder().updatedAt(updatedTimestamp).updatedBy(dashboard.getUpdatedBy()).build();
     }
@@ -639,7 +643,7 @@ class PipelineESIndex extends ElasticSearchIndex {
   @JsonProperty("task_descriptions")
   List<String> taskDescriptions;
 
-  public static PipelineESIndexBuilder builder(Pipeline pipeline, int responseCode) {
+  public static PipelineESIndexBuilder builder(Pipeline pipeline, EventType eventType) {
     List<String> tags = new ArrayList<>();
     List<String> taskNames = new ArrayList<>();
     List<String> taskDescriptions = new ArrayList<>();
@@ -662,6 +666,7 @@ class PipelineESIndex extends ElasticSearchIndex {
     PipelineESIndexBuilder pipelineESIndexBuilder =
         internalBuilder()
             .pipelineId(pipeline.getId().toString())
+            .deleted(pipeline.getDeleted())
             .name(pipeline.getDisplayName())
             .displayName(description)
             .description(displayName)
@@ -680,7 +685,7 @@ class PipelineESIndex extends ElasticSearchIndex {
     if (pipeline.getFollowers() != null) {
       pipelineESIndexBuilder.followers(
           pipeline.getFollowers().stream().map(item -> item.getId().toString()).collect(Collectors.toList()));
-    } else if (responseCode == Response.Status.CREATED.getStatusCode()) {
+    } else if (eventType == EventType.ENTITY_CREATED) {
       pipelineESIndexBuilder.followers(Collections.emptyList());
     }
 
@@ -695,7 +700,7 @@ class PipelineESIndex extends ElasticSearchIndex {
       esChangeDescription.setFieldsAdded(pipeline.getChangeDescription().getFieldsAdded());
       esChangeDescription.setFieldsDeleted(pipeline.getChangeDescription().getFieldsDeleted());
       esChangeDescription.setFieldsUpdated(pipeline.getChangeDescription().getFieldsUpdated());
-    } else if (responseCode == Response.Status.CREATED.getStatusCode()) {
+    } else if (eventType == EventType.ENTITY_CREATED) {
       esChangeDescription =
           ESChangeDescription.builder().updatedAt(updatedTimestamp).updatedBy(pipeline.getUpdatedBy()).build();
     }

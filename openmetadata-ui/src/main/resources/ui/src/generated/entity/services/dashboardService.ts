@@ -25,6 +25,10 @@ export interface DashboardService {
    */
   dashboardUrl: string;
   /**
+   * When `true` indicates the entity has been soft deleted.
+   */
+  deleted?: boolean;
+  /**
    * Description of a dashboard service instance.
    */
   description?: string;
@@ -139,6 +143,7 @@ export interface Schedule {
  */
 export enum DashboardServiceType {
   Looker = 'Looker',
+  Metabase = 'Metabase',
   Redash = 'Redash',
   Superset = 'Superset',
   Tableau = 'Tableau',

@@ -13,7 +13,6 @@
 
 package org.openmetadata.catalog.resources.teams;
 
-import com.google.inject.Inject;
 import io.dropwizard.jersey.PATCH;
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
@@ -92,7 +91,6 @@ public class UserResource {
     return user;
   }
 
-  @Inject
   public UserResource(CollectionDAO dao, Authorizer authorizer) {
     Objects.requireNonNull(dao, "UserRepository must not be null");
     this.dao = new UserRepository(dao);

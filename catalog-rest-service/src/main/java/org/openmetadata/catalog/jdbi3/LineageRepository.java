@@ -65,6 +65,25 @@ public class LineageRepository {
             Relationship.UPSTREAM.ordinal());
   }
 
+  @Transaction
+  public boolean deleteLineage(String fromEntity, String fromId, String toEntity, String toId) throws IOException {
+    // Validate from entity
+    EntityReference from = Entity.getEntityReference(fromEntity, UUID.fromString(fromId));
+
+    // Validate to entity
+    EntityReference to = Entity.getEntityReference(toEntity, UUID.fromString(toId));
+
+    // Finally, delete lineage relationship
+    return dao.relationshipDAO()
+            .delete(
+                from.getId().toString(),
+                from.getType(),
+                to.getId().toString(),
+                to.getType(),
+                Relationship.UPSTREAM.ordinal())
+        > 0;
+  }
+
   private EntityLineage getLineage(EntityReference primary, int upstreamDepth, int downstreamDepth) throws IOException {
     List<EntityReference> entities = new ArrayList<>();
     EntityLineage lineage =

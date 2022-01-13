@@ -49,6 +49,10 @@
       "description": "Identifier of entity that was modified by the operation.",
       "$ref": "basic.json#/definitions/uuid"
     },
+    "entityFullyQualifiedName": {
+      "description": "Fully Qualified Name of entity that was modified by the operation.",
+      "type": "string"
+    },
     "previousVersion" : {
       "description" : "Version of the entity before this change. Note that not all changes result in entity version change. When entity version is not changed, `previousVersion` is same as `currentVersion`.",
       "$ref" : "entityHistory.json#/definitions/entityVersion"

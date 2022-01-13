@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import PropTypes from 'prop-types';
+import { FormErrorData } from 'Models';
 import React, {
   forwardRef,
   useEffect,
@@ -21,6 +21,7 @@ import React, {
 } from 'react';
 import MarkdownWithPreview from '../../components/common/editor/MarkdownWithPreview';
 import { CreateTagCategory } from '../../generated/api/tags/createTagCategory';
+import { errorMsg } from '../../utils/CommonUtils';
 
 type CustomTagCategory = {
   categoryType: string;
@@ -31,18 +32,22 @@ type CustomTagCategory = {
 type FormProp = {
   saveData: (value: CreateTagCategory) => void;
   initialData: CustomTagCategory;
+  errorData?: FormErrorData;
 };
 type EditorContentRef = {
   getEditorContent: () => string;
 };
 const Form: React.FC<FormProp> = forwardRef(
-  ({ saveData, initialData }, ref): JSX.Element => {
+  ({ saveData, initialData, errorData }: FormProp, ref): JSX.Element => {
     const [data, setData] = useState<CustomTagCategory>({
       name: initialData.name,
       description: initialData.description,
       categoryType: initialData.categoryType,
     });
+
+    const isMounting = useRef<boolean>(true);
     const markdownRef = useRef<EditorContentRef>();
+
     const onChangeHadler = (
       e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
     ) => {
@@ -62,10 +67,17 @@ const Form: React.FC<FormProp> = forwardRef(
     }));
 
     useEffect(() => {
-      saveData({
-        ...(data as CreateTagCategory),
-      });
+      if (!isMounting.current) {
+        saveData({
+          ...(data as CreateTagCategory),
+        });
+      }
     }, [data]);
+
+    // alwyas Keep this useEffect at the end...
+    useEffect(() => {
+      isMounting.current = false;
+    }, []);
 
     return (
       <div className="tw-w-full tw-flex ">
@@ -92,7 +104,6 @@ const Form: React.FC<FormProp> = forwardRef(
             <div className="tw-mb-4">
               <label className="tw-form-label required-field">Name</label>
               <input
-                required
                 autoComplete="off"
                 className="tw-text-sm tw-appearance-none tw-border tw-border-main
                 tw-rounded tw-w-full tw-py-2 tw-px-3 tw-text-grey-body  tw-leading-tight
@@ -103,6 +114,7 @@ const Form: React.FC<FormProp> = forwardRef(
                 value={data.name}
                 onChange={onChangeHadler}
               />
+              {errorData?.name && errorMsg(errorData.name)}
             </div>
             <div>
               <label className="tw-form-label required-field">
@@ -116,14 +128,5 @@ const Form: React.FC<FormProp> = forwardRef(
     );
   }
 );
-
-Form.propTypes = {
-  saveData: PropTypes.func.isRequired,
-  initialData: PropTypes.shape({
-    name: PropTypes.string.isRequired,
-    description: PropTypes.string.isRequired,
-    categoryType: PropTypes.string.isRequired,
-  }).isRequired,
-};
 
 export default Form;

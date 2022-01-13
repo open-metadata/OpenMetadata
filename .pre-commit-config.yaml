@@ -1,0 +1,31 @@
+repos:
+  - repo: https://github.com/ambv/black
+    rev: 21.12b0
+    hooks:
+      - id: black
+        language_version: python3.8
+        exclude: ingestion/src/metadata/generated
+  - repo: https://github.com/timothycrosley/isort
+    rev: 5.9.3
+    hooks:
+      - id: isort
+        args: ["--profile", "black"]
+        exclude: ingestion/src/metadata/generated
+  - repo: local
+    hooks:
+      - id: google-style-java
+        name: Google Java Code Style for Java
+        description: Formats code in Google's Java codestyle with 120 line length.
+        entry: scripts/format-code.sh
+        language: script
+        files: \.java$
+        require_serial: true
+  - repo: local
+    hooks:
+      - id: lint-staged
+        name: lint-staged
+        description: Formats TS and JS code.
+        entry: scripts/lint-staged.sh
+        language: script
+        files: \.(js|jsx|ts|tsx)$
+        require_serial: true

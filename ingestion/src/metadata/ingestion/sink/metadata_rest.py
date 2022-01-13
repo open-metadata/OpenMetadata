@@ -36,12 +36,14 @@ from metadata.generated.schema.api.lineage.addLineage import AddLineage
 from metadata.generated.schema.api.policies.createPolicy import (
     CreatePolicyEntityRequest,
 )
+from metadata.generated.schema.api.teams.createRole import CreateRoleEntityRequest
 from metadata.generated.schema.api.teams.createTeam import CreateTeamEntityRequest
 from metadata.generated.schema.api.teams.createUser import CreateUserEntityRequest
 from metadata.generated.schema.entity.data.chart import ChartType
 from metadata.generated.schema.entity.data.location import Location
 from metadata.generated.schema.entity.data.mlmodel import MlModel
 from metadata.generated.schema.entity.data.pipeline import Pipeline
+from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.policies.policy import Policy
 from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.type.entityReference import EntityReference
@@ -49,7 +51,7 @@ from metadata.ingestion.api.common import Entity, WorkflowContext
 from metadata.ingestion.api.sink import Sink, SinkStatus
 from metadata.ingestion.models.ometa_policy import OMetaPolicy
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
-from metadata.ingestion.models.table_metadata import Chart, Dashboard
+from metadata.ingestion.models.table_metadata import Chart, Dashboard, DeleteTable
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
@@ -96,6 +98,7 @@ class MetadataRestSink(Sink[Entity]):
         self.charts_dict = {}
         self.metadata = OpenMetadata(self.metadata_config)
         self.api_client = self.metadata.client
+        self.role_entities = {}
         self.team_entities = {}
         self._bootstrap_entities()
 
@@ -128,6 +131,8 @@ class MetadataRestSink(Sink[Entity]):
             self.write_users(record)
         elif isinstance(record, CreateMlModelEntityRequest):
             self.write_ml_model(record)
+        elif isinstance(record, DeleteTable):
+            self.delete_table(record)
         else:
             logging.info(
                 f"Ignoring the record due to unknown Record type {type(record)}"
@@ -384,6 +389,22 @@ class MetadataRestSink(Sink[Entity]):
         team_response = self.api_client.get("/teams")
         for team in team_response["data"]:
             self.team_entities[team["name"]] = team["id"]
+        role_response = self.api_client.get("/roles")
+        for role in role_response["data"]:
+            self.role_entities[role["name"]] = role["id"]
+
+    def _create_role(self, role: EntityReference) -> None:
+        metadata_role = CreateRoleEntityRequest(
+            name=role.name, displayName=role.name, description=role.description
+        )
+        try:
+            r = self.metadata.create_or_update(metadata_role)
+            instance_id = str(r.id.__root__)
+            self.role_entities[role.name] = instance_id
+        except Exception as err:
+            logger.debug(traceback.format_exc())
+            logger.debug(traceback.print_exc())
+            logger.error(err)
 
     def _create_team(self, team: EntityReference) -> None:
         metadata_team = CreateTeamEntityRequest(
@@ -394,11 +415,16 @@ class MetadataRestSink(Sink[Entity]):
             instance_id = str(r.id.__root__)
             self.team_entities[team.name] = instance_id
         except Exception as err:
-            logger.error(traceback.format_exc())
-            logger.error(traceback.print_exc())
+            logger.debug(traceback.format_exc())
+            logger.debug(traceback.print_exc())
             logger.error(err)
 
     def write_users(self, record: User):
+        roles = []
+        for role in record.roles.__root__:
+            if role.name not in self.role_entities:
+                self._create_role(role)
+            roles.append(self.role_entities[role.name])
         teams = []
         for team in record.teams.__root__:
             if team.name not in self.team_entities:
@@ -409,6 +435,7 @@ class MetadataRestSink(Sink[Entity]):
             name=record.name.__root__,
             displayName=record.displayName,
             email=record.email,
+            roles=roles,
             teams=teams,
         )
         try:
@@ -416,8 +443,19 @@ class MetadataRestSink(Sink[Entity]):
             self.status.records_written(record.displayName)
             logger.info("Sink: {}".format(record.displayName))
         except Exception as err:
-            logger.error(traceback.format_exc())
-            logger.error(traceback.print_exc())
+            logger.debug(traceback.format_exc())
+            logger.debug(traceback.print_exc())
+            logger.error(err)
+
+    def delete_table(self, record: DeleteTable):
+        try:
+            self.metadata.delete(entity=Table, entity_id=record.table.id)
+            logger.info(
+                f"{record.table.name} doesn't exist in source state, marking it as deleted"
+            )
+        except Exception as err:
+            logger.debug(traceback.format_exc())
+            logger.debug(traceback.print_exc())
             logger.error(err)
 
     def get_status(self):
