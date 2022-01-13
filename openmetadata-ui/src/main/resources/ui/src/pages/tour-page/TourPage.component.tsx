@@ -52,6 +52,10 @@ const TourPage = () => {
     setExplorePageCounts(exploreCount);
   };
 
+  const mockPromiseFunction = (): Promise<void> => {
+    return new Promise<void>((resolve) => resolve());
+  };
+
   useEffect(() => {
     handleIsTourOpen(true);
     AppState.currentTourPage = CurrentTourPageType.MY_DATA_PAGE;
@@ -121,7 +125,7 @@ const TourPage = () => {
         return (
           <DatasetDetails
             activeTab={datasetActiveTab}
-            addLineageHandler={handleCountChange}
+            addLineageHandler={mockPromiseFunction}
             columns={mockDatasetData.columns as unknown as Table['columns']}
             columnsUpdateHandler={handleCountChange}
             datasetFQN={mockDatasetData.datasetFQN}

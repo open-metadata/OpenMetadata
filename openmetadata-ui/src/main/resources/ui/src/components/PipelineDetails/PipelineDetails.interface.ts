@@ -57,6 +57,6 @@ export interface PipeLineDetailsProp {
   taskUpdateHandler: (patch: Array<Operation>) => void;
   loadNodeHandler: (node: EntityReference, pos: LineagePos) => void;
   versionHandler: () => void;
-  addLineageHandler: (edge: Edge) => void;
+  addLineageHandler: (edge: Edge) => Promise<void>;
   removeLineageHandler: (data: EdgeData) => void;
 }

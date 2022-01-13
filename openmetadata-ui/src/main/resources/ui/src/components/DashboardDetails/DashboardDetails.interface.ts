@@ -69,6 +69,6 @@ export interface DashboardDetailsProps {
   tagUpdateHandler: (updatedDashboard: Dashboard) => void;
   loadNodeHandler: (node: EntityReference, pos: LineagePos) => void;
   versionHandler: () => void;
-  addLineageHandler: (edge: Edge) => void;
+  addLineageHandler: (edge: Edge) => Promise<void>;
   removeLineageHandler: (data: EdgeData) => void;
 }

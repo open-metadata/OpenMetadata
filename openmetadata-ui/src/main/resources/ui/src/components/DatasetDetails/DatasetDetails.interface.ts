@@ -59,6 +59,6 @@ export interface DatasetDetailsProps {
   descriptionUpdateHandler: (updatedTable: Table) => void;
   versionHandler: () => void;
   loadNodeHandler: (node: EntityReference, pos: LineagePos) => void;
-  addLineageHandler: (edge: Edge) => void;
+  addLineageHandler: (edge: Edge) => Promise<void>;
   removeLineageHandler: (data: EdgeData) => void;
 }

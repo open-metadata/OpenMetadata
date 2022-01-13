@@ -228,27 +228,32 @@ const DatasetDetailsPage: FunctionComponent = () => {
     });
   };
 
-  const addLineageHandler = (edge: Edge) => {
-    addLineage(edge)
-      .then(() => {
-        getLineageByFQN(tableFQN, EntityType.TABLE)
-          .then((res: AxiosResponse) => {
-            setEntityLineage(res.data);
-          })
-          .catch(() => {
-            showToast({
-              variant: 'error',
-              body: `Error while getting entity lineage`,
+  const addLineageHandler = (edge: Edge): Promise<void> => {
+    return new Promise<void>((resolve, reject) => {
+      addLineage(edge)
+        .then(() => {
+          getLineageByFQN(tableFQN, EntityType.TABLE)
+            .then((res: AxiosResponse) => {
+              setEntityLineage(res.data);
+            })
+            .catch(() => {
+              showToast({
+                variant: 'error',
+                body: `Error while getting entity lineage`,
+              });
             });
+          resolve();
+        })
+        .catch(() => {
+          showToast({
+            variant: 'error',
+            body: `Error while adding adding new edge`,
           });
-      })
-      .catch(() => {
-        showToast({
-          variant: 'error',
-          body: `Error while adding adding new edge`,
+          reject();
         });
-      });
+    });
   };
+
   const removeLineageHandler = (data: EdgeData) => {
     deleteLineageEdge(data.fromEntity, data.fromId, data.toEntity, data.toId)
       .then(() => {

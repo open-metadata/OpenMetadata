@@ -55,6 +55,7 @@ import {
 import SVGIcons from '../../utils/SvgUtils';
 import { getEntityIcon } from '../../utils/TableUtils';
 import EntityInfoDrawer from '../EntityInfoDrawer/EntityInfoDrawer.component';
+import Loader from '../Loader/Loader';
 import ConfirmationModal from '../Modals/ConfirmationModal/ConfirmationModal';
 import CustomControls, { ControlButton } from './CustomControls.component';
 import { CustomEdge } from './CustomEdge.component';
@@ -104,6 +105,11 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
 
   const [selectedEdge, setSelectedEdge] = useState<SelectedEdge>(
     {} as SelectedEdge
+  );
+
+  const [loading, setLoading] = useState<boolean>(false);
+  const [status, setStatus] = useState<'initial' | 'waiting' | 'success'>(
+    'initial'
   );
 
   const selectedEntityHandler = (entity: EntityReference) => {
@@ -228,10 +234,13 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
     });
     setSelectedNode({} as SelectedNode);
   };
+
   const onElementsRemove = (elementsToRemove: Elements) =>
     setElements((els) => removeElements(elementsToRemove, els));
 
   const onConnect = (params: Edge | Connection) => {
+    setStatus('waiting');
+    setLoading(true);
     const { target, source } = params;
     let targetNode = entityLineage.nodes?.find((n) => target?.includes(n.id));
 
@@ -261,13 +270,28 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
       },
     };
 
-    addLineageHandler(newEdge);
-
-    setElements((els) =>
-      addEdge({ ...params, arrowHeadType: ArrowHeadType.ArrowClosed }, els)
-    );
-    setNewAddedNode({} as FlowElement);
-    setSelectedEntity({} as EntityReference);
+    setTimeout(() => {
+      addLineageHandler(newEdge)
+        .then(() => {
+          setStatus('success');
+          setLoading(false);
+          setTimeout(() => {
+            setElements((els) =>
+              addEdge(
+                { ...params, arrowHeadType: ArrowHeadType.ArrowClosed },
+                els
+              )
+            );
+            setNewAddedNode({} as FlowElement);
+            setSelectedEntity({} as EntityReference);
+            setStatus('initial');
+          }, 1000);
+        })
+        .catch(() => {
+          setStatus('initial');
+          setLoading(false);
+        });
+    }, 500);
   };
 
   const onElementClick = (el: FlowElement) => {
@@ -517,16 +541,25 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
                       setIsDrawerOpen(false);
                       setNewAddedNode({} as FlowElement);
                     }}>
-                    <SVGIcons
-                      alt="icon-edit-lineag"
-                      className="tw--mt-1"
-                      icon={
-                        !isEditMode
-                          ? 'icon-edit-lineage-color'
-                          : 'icon-edit-lineage'
-                      }
-                      width="14"
-                    />
+                    {loading ? (
+                      <Loader size="small" type="white" />
+                    ) : status === 'success' ? (
+                      <i
+                        aria-hidden="true"
+                        className="fa fa-check tw-text-white"
+                      />
+                    ) : (
+                      <SVGIcons
+                        alt="icon-edit-lineag"
+                        className="tw--mt-1"
+                        icon={
+                          !isEditMode
+                            ? 'icon-edit-lineage-color'
+                            : 'icon-edit-lineage'
+                        }
+                        width="14"
+                      />
+                    )}
                   </ControlButton>
                 </CustomControls>
                 {isEditMode ? (
