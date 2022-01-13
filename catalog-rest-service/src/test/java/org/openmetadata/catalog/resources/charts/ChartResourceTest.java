@@ -183,7 +183,7 @@ public class ChartResourceTest extends EntityResourceTest<Chart> {
     String fields = "owner";
     chart =
         byName
-            ? getEntityByName(chart.getFullyQualifiedName(), fields, adminAuthHeaders())
+            ? getEntityByName(chart.getFullyQualifiedName(), null, fields, adminAuthHeaders())
             : getEntity(chart.getId(), fields, adminAuthHeaders());
     assertListNotNull(chart.getOwner(), chart.getService(), chart.getServiceType());
   }

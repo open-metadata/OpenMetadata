@@ -13,8 +13,10 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import static org.openmetadata.catalog.type.Include.DELETED;
 import static org.openmetadata.catalog.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.catalog.util.EntityUtil.objectMatch;
+import static org.openmetadata.catalog.util.EntityUtil.toBoolean;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
@@ -46,6 +48,7 @@ import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.EventType;
 import org.openmetadata.catalog.type.FieldChange;
+import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
@@ -203,23 +206,41 @@ public abstract class EntityRepository<T> {
   }
 
   @Transaction
+  public final T get(UriInfo uriInfo, String id, Fields fields, Include include) throws IOException, ParseException {
+    return withHref(uriInfo, setFields(dao.findEntityById(UUID.fromString(id), include), fields));
+  }
+
+  @Transaction
   public final T getByName(UriInfo uriInfo, String fqn, Fields fields) throws IOException, ParseException {
     return withHref(uriInfo, setFields(dao.findEntityByName(fqn), fields));
   }
 
   @Transaction
+  public final T getByName(UriInfo uriInfo, String fqn, Fields fields, Include include)
+      throws IOException, ParseException {
+    return withHref(uriInfo, setFields(dao.findEntityByName(fqn, include), fields));
+  }
+
+  @Transaction
   public final ResultList<T> listAfter(UriInfo uriInfo, Fields fields, String fqnPrefix, int limitParam, String after)
+      throws GeneralSecurityException, IOException, ParseException {
+    return listAfter(uriInfo, fields, fqnPrefix, limitParam, after, Include.NON_DELETED);
+  }
+
+  @Transaction
+  public final ResultList<T> listAfter(
+      UriInfo uriInfo, Fields fields, String fqnPrefix, int limitParam, String after, Include include)
       throws GeneralSecurityException, IOException, ParseException {
     // forward scrolling, if after == null then first page is being asked
     List<String> jsons =
-        dao.listAfter(fqnPrefix, limitParam + 1, after == null ? "" : CipherText.instance().decrypt(after));
+        dao.listAfter(fqnPrefix, limitParam + 1, after == null ? "" : CipherText.instance().decrypt(after), include);
 
     List<T> entities = new ArrayList<>();
     for (String json : jsons) {
       T entity = withHref(uriInfo, setFields(JsonUtils.readValue(json, entityClass), fields));
       entities.add(entity);
     }
-    int total = dao.listCount(fqnPrefix);
+    int total = dao.listCount(fqnPrefix, include);
 
     String beforeCursor;
     String afterCursor = null;
@@ -234,15 +255,22 @@ public abstract class EntityRepository<T> {
   @Transaction
   public final ResultList<T> listBefore(UriInfo uriInfo, Fields fields, String fqnPrefix, int limitParam, String before)
       throws IOException, GeneralSecurityException, ParseException {
+    return listBefore(uriInfo, fields, fqnPrefix, limitParam, before, Include.NON_DELETED);
+  }
+
+  @Transaction
+  public final ResultList<T> listBefore(
+      UriInfo uriInfo, Fields fields, String fqnPrefix, int limitParam, String before, Include include)
+      throws IOException, GeneralSecurityException, ParseException {
     // Reverse scrolling - Get one extra result used for computing before cursor
-    List<String> jsons = dao.listBefore(fqnPrefix, limitParam + 1, CipherText.instance().decrypt(before));
+    List<String> jsons = dao.listBefore(fqnPrefix, limitParam + 1, CipherText.instance().decrypt(before), include);
 
     List<T> entities = new ArrayList<>();
     for (String json : jsons) {
       T entity = withHref(uriInfo, setFields(JsonUtils.readValue(json, entityClass), fields));
       entities.add(entity);
     }
-    int total = dao.listCount(fqnPrefix);
+    int total = dao.listCount(fqnPrefix, include);
 
     String beforeCursor = null;
     String afterCursor;
@@ -301,15 +329,15 @@ public abstract class EntityRepository<T> {
   public final PutResponse<T> createOrUpdate(UriInfo uriInfo, T updated) throws IOException, ParseException {
     prepare(updated);
     // Check if there is any original, deleted or not
-    T original = JsonUtils.readValue(dao.findDeletedOrExists(getFullyQualifiedName(updated)), entityClass);
+    T original = JsonUtils.readValue(dao.findJsonByFqn(getFullyQualifiedName(updated), Include.ALL), entityClass);
     if (original == null) {
       return new PutResponse<>(Status.CREATED, withHref(uriInfo, createNewEntity(updated)), RestUtil.ENTITY_CREATED);
     }
 
-    // Recover relationships if original was deleted before setFields
-    recoverDeletedRelationships(original);
     // Get all the fields in the original entity that can be updated during PUT operation
     setFields(original, putFields);
+    // Recover relationships if original was deleted before setFields
+    recoverDeletedRelationships(original);
 
     // Update the attributes and relationships of an entity
     EntityUpdater entityUpdater = getUpdater(original, updated, false);
@@ -381,7 +409,9 @@ public abstract class EntityRepository<T> {
   public final void delete(UUID id, boolean recursive) throws IOException {
     // If an entity being deleted contains other children entities, it can't be deleted
     List<EntityReference> contains =
-        daoCollection.relationshipDAO().findTo(id.toString(), entityName, Relationship.CONTAINS.ordinal());
+        daoCollection
+            .relationshipDAO()
+            .findTo(id.toString(), entityName, Relationship.CONTAINS.ordinal(), toBoolean(Include.NON_DELETED));
 
     if (!contains.isEmpty()) {
       if (!recursive) {
@@ -502,7 +532,7 @@ public abstract class EntityRepository<T> {
     return !supportsFollower || entity == null
         ? null
         : EntityUtil.getFollowers(
-            entityInterface.getId(), entityName, daoCollection.relationshipDAO(), daoCollection.userDAO());
+            entityInterface, entityName, daoCollection.relationshipDAO(), daoCollection.userDAO());
   }
 
   public T withHref(UriInfo uriInfo, T entity) {
@@ -511,6 +541,11 @@ public abstract class EntityRepository<T> {
     }
     EntityInterface<T> entityInterface = getEntityInterface(entity);
     return entityInterface.withHref(getHref(uriInfo, entityInterface.getId()));
+  }
+
+  public Include toInclude(T entity) {
+    EntityInterface<T> entityInterface = getEntityInterface(entity);
+    return entityInterface.isDeleted() ? DELETED : Include.NON_DELETED;
   }
 
   public URI getHref(UriInfo uriInfo, UUID id) {

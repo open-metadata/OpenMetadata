@@ -13,6 +13,9 @@
 
 package org.openmetadata.catalog.util;
 
+import static org.openmetadata.catalog.type.Include.ALL;
+import static org.openmetadata.catalog.type.Include.DELETED;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -46,6 +49,7 @@ import org.openmetadata.catalog.type.Column;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.FailureDetails;
 import org.openmetadata.catalog.type.FieldChange;
+import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.MlFeature;
 import org.openmetadata.catalog.type.MlHyperParameter;
 import org.openmetadata.catalog.type.Schedule;
@@ -153,10 +157,20 @@ public final class EntityUtil {
   }
 
   public static EntityReference getService(EntityRelationshipDAO dao, String entityType, UUID entityId) {
-    List<EntityReference> refs = dao.findFrom(entityId.toString(), entityType, Relationship.CONTAINS.ordinal());
+    List<EntityReference> refs =
+        dao.findFrom(entityId.toString(), entityType, Relationship.CONTAINS.ordinal(), toBoolean(Include.NON_DELETED));
     if (refs.size() > 1) {
       LOG.warn("Possible database issues - multiple services found for entity {}", entityId);
-      return refs.get(0);
+    }
+    return refs.isEmpty() ? null : refs.get(0);
+  }
+
+  public static EntityReference getService(
+      EntityRelationshipDAO dao, String entityType, UUID entityId, Include include) {
+    List<EntityReference> refs =
+        dao.findFrom(entityId.toString(), entityType, Relationship.CONTAINS.ordinal(), toBoolean(include));
+    if (refs.size() > 1) {
+      LOG.warn("Possible database issues - multiple services found for entity {}", entityId);
     }
     return refs.isEmpty() ? null : refs.get(0);
   }
@@ -164,10 +178,25 @@ public final class EntityUtil {
   public static EntityReference getService(
       EntityRelationshipDAO dao, String entityType, UUID entityId, String serviceType) {
     List<EntityReference> refs =
-        dao.findFromEntity(entityId.toString(), entityType, Relationship.CONTAINS.ordinal(), serviceType);
+        dao.findFromEntity(
+            entityId.toString(),
+            entityType,
+            Relationship.CONTAINS.ordinal(),
+            serviceType,
+            toBoolean(Include.NON_DELETED));
     if (refs.size() > 1) {
       LOG.warn("Possible database issues - multiple services found for entity {}", entityId);
-      return refs.get(0);
+    }
+    return refs.isEmpty() ? null : refs.get(0);
+  }
+
+  public static EntityReference getService(
+      EntityRelationshipDAO dao, String entityType, UUID entityId, String serviceType, Include include) {
+    List<EntityReference> refs =
+        dao.findFromEntity(
+            entityId.toString(), entityType, Relationship.CONTAINS.ordinal(), serviceType, toBoolean(include));
+    if (refs.size() > 1) {
+      LOG.warn("Possible database issues - multiple services found for entity {}", entityId);
     }
     return refs.isEmpty() ? null : refs.get(0);
   }
@@ -182,7 +211,9 @@ public final class EntityUtil {
   public static EntityReference populateOwner(
       UUID id, String entityType, EntityRelationshipDAO entityRelationshipDAO, UserDAO userDAO, TeamDAO teamDAO)
       throws IOException {
-    List<EntityReference> ids = entityRelationshipDAO.findFrom(id.toString(), entityType, Relationship.OWNS.ordinal());
+    List<EntityReference> ids =
+        entityRelationshipDAO.findFrom(
+            id.toString(), entityType, Relationship.OWNS.ordinal(), toBoolean(Include.NON_DELETED));
     if (ids.size() > 1) {
       LOG.warn("Possible database issues - multiple owners {} found for entity {}", ids, id);
     }
@@ -384,15 +415,24 @@ public final class EntityUtil {
   }
 
   public static List<EntityReference> getFollowers(
-      UUID followedEntityId, String entityName, EntityRelationshipDAO entityRelationshipDAO, UserDAO userDAO)
+      EntityInterface followedEntityInterface,
+      String entityName,
+      EntityRelationshipDAO entityRelationshipDAO,
+      UserDAO userDAO)
       throws IOException {
     List<String> followerIds =
         entityRelationshipDAO.findFrom(
-            followedEntityId.toString(), entityName, Relationship.FOLLOWS.ordinal(), Entity.USER);
+            followedEntityInterface.getId().toString(),
+            entityName,
+            Relationship.FOLLOWS.ordinal(),
+            Entity.USER,
+            toBoolean(ALL));
     List<EntityReference> followers = new ArrayList<>();
     for (String followerId : followerIds) {
-      User user = userDAO.findEntityById(UUID.fromString(followerId));
-      followers.add(new EntityReference().withName(user.getName()).withId(user.getId()).withType("user"));
+      User user = userDAO.findEntityById(UUID.fromString(followerId), ALL);
+      if (followedEntityInterface.isDeleted() || !user.getDeleted()) {
+        followers.add(new EntityReference().withName(user.getName()).withId(user.getId()).withType("user"));
+      }
     }
     return followers;
   }
@@ -451,5 +491,15 @@ public final class EntityUtil {
     }
     localColumnName.append(s[s.length - 1]);
     return localColumnName.toString();
+  }
+
+  public static Boolean toBoolean(Include include) {
+    if (include.equals(DELETED)) {
+      return Boolean.TRUE;
+    } else if (include.equals(ALL)) {
+      return null;
+    } else { // "non-deleted"
+      return Boolean.FALSE;
+    }
   }
 }

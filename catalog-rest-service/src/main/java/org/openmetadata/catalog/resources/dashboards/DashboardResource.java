@@ -62,6 +62,7 @@ import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
+import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.RestUtil.PatchResponse;
@@ -151,16 +152,23 @@ public class DashboardResource {
           String before,
       @Parameter(description = "Returns list of dashboards after this cursor", schema = @Schema(type = "string"))
           @QueryParam("after")
-          String after)
+          String after,
+      @Parameter(
+              description = "Include all, deleted, or non-deleted entities.",
+              schema = @Schema(implementation = Include.class))
+          @QueryParam("include")
+          @DefaultValue("non-deleted")
+          Include include)
       throws IOException, GeneralSecurityException, ParseException {
     RestUtil.validateCursors(before, after);
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
 
     ResultList<Dashboard> dashboards;
     if (before != null) { // Reverse paging
-      dashboards = dao.listBefore(uriInfo, fields, serviceParam, limitParam, before); // Ask for one extra entry
+      dashboards =
+          dao.listBefore(uriInfo, fields, serviceParam, limitParam, before, include); // Ask for one extra entry
     } else { // Forward paging or first page
-      dashboards = dao.listAfter(uriInfo, fields, serviceParam, limitParam, after);
+      dashboards = dao.listAfter(uriInfo, fields, serviceParam, limitParam, after, include);
     }
     return addHref(uriInfo, dashboards);
   }
@@ -206,10 +214,16 @@ public class DashboardResource {
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
-          String fieldsParam)
+          String fieldsParam,
+      @Parameter(
+              description = "Include all, deleted, or non-deleted entities.",
+              schema = @Schema(implementation = Include.class))
+          @QueryParam("include")
+          @DefaultValue("non-deleted")
+          Include include)
       throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
-    return addHref(uriInfo, dao.get(uriInfo, id, fields));
+    return addHref(uriInfo, dao.get(uriInfo, id, fields, include));
   }
 
   @GET
@@ -233,10 +247,16 @@ public class DashboardResource {
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
-          String fieldsParam)
+          String fieldsParam,
+      @Parameter(
+              description = "Include all, deleted, or non-deleted entities.",
+              schema = @Schema(implementation = Include.class))
+          @QueryParam("include")
+          @DefaultValue("non-deleted")
+          Include include)
       throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
-    Dashboard dashboard = dao.getByName(uriInfo, fqn, fields);
+    Dashboard dashboard = dao.getByName(uriInfo, fqn, fields, include);
     return addHref(uriInfo, dashboard);
   }
 

@@ -354,7 +354,7 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
     String fields = "";
     service =
         byName
-            ? getEntityByName(service.getName(), fields, adminAuthHeaders())
+            ? getEntityByName(service.getName(), null, fields, adminAuthHeaders())
             : getEntity(service.getId(), fields, adminAuthHeaders());
     TestUtils.assertListNotNull(
         service.getHref(),

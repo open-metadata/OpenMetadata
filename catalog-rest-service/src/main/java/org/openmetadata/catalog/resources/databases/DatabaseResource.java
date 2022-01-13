@@ -63,6 +63,7 @@ import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.RestUtil.PatchResponse;
@@ -158,7 +159,13 @@ public class DatabaseResource {
           String before,
       @Parameter(description = "Returns list of tables after this cursor", schema = @Schema(type = "string"))
           @QueryParam("after")
-          String after)
+          String after,
+      @Parameter(
+              description = "Include all, deleted, or non-deleted entities.",
+              schema = @Schema(implementation = Include.class))
+          @QueryParam("include")
+          @DefaultValue("non-deleted")
+          Include include)
       throws IOException, GeneralSecurityException, ParseException {
     RestUtil.validateCursors(before, after);
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
@@ -169,9 +176,9 @@ public class DatabaseResource {
     // scrolling afterCursor is not null. Similarly, if the extra entry exists, then in reverse scrolling,
     // beforeCursor is not null. Remove the extra entry before returning results.
     if (before != null) { // Reverse paging
-      databases = dao.listBefore(uriInfo, fields, serviceParam, limitParam, before); // Ask for one extra entry
+      databases = dao.listBefore(uriInfo, fields, serviceParam, limitParam, before, include); // Ask for one extra entry
     } else { // Forward paging or first page
-      databases = dao.listAfter(uriInfo, fields, serviceParam, limitParam, after);
+      databases = dao.listAfter(uriInfo, fields, serviceParam, limitParam, after, include);
     }
     return addHref(uriInfo, databases);
   }
@@ -217,10 +224,16 @@ public class DatabaseResource {
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
-          String fieldsParam)
+          String fieldsParam,
+      @Parameter(
+              description = "Include all, deleted, or non-deleted entities.",
+              schema = @Schema(implementation = Include.class))
+          @QueryParam("include")
+          @DefaultValue("non-deleted")
+          Include include)
       throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
-    Database database = dao.get(uriInfo, id, fields);
+    Database database = dao.get(uriInfo, id, fields, include);
     addHref(uriInfo, database);
     return Response.ok(database).build();
   }
@@ -246,10 +259,16 @@ public class DatabaseResource {
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
-          String fieldsParam)
+          String fieldsParam,
+      @Parameter(
+              description = "Include all, deleted, or non-deleted entities.",
+              schema = @Schema(implementation = Include.class))
+          @QueryParam("include")
+          @DefaultValue("non-deleted")
+          Include include)
       throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
-    Database database = dao.getByName(uriInfo, fqn, fields);
+    Database database = dao.getByName(uriInfo, fqn, fields, include);
     addHref(uriInfo, database);
     return Response.ok(database).build();
   }
