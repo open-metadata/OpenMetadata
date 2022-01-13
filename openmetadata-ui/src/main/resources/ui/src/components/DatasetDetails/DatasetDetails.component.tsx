@@ -457,11 +457,6 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
             )}
             {activeTab === 3 && (
               <div>
-                <SampleDataTable sampleData={getSampleDataWithType()} />
-              </div>
-            )}
-            {activeTab === 3 && (
-              <div>
                 <TableProfiler
                   columns={columns.map((col) => ({
                     constraint: col.constraint as string,
