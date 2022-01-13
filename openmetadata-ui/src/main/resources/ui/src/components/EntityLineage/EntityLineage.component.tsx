@@ -500,8 +500,6 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
                 </CustomControls>
                 {isEditMode ? (
                   <Background
-                    className="tw-text-grey-muted-lite tw-bg-body-hover"
-                    color="#ffffff"
                     gap={12}
                     size={1}
                     variant={BackgroundVariant.Lines}
