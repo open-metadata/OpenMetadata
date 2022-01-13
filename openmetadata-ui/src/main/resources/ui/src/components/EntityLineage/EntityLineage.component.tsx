@@ -306,10 +306,10 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
                 els
               )
             );
-            setNewAddedNode({} as FlowElement);
-            setSelectedEntity({} as EntityReference);
             setStatus('initial');
           }, 1000);
+          setNewAddedNode({} as FlowElement);
+          setSelectedEntity({} as EntityReference);
         })
         .catch(() => {
           setStatus('initial');
@@ -624,7 +624,15 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
           {showdeleteModal ? (
             <ConfirmationModal
               bodyText={getModalBodyText()}
-              cancelText="Cancel"
+              cancelText={
+                <span
+                  className={classNames({
+                    'tw-pointer-events-none tw-opacity-70':
+                      deletionState.loading,
+                  })}>
+                  Cancel
+                </span>
+              }
               confirmText={
                 deletionState.loading ? (
                   <Loader size="small" type="white" />
