@@ -27,7 +27,6 @@ import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
 import java.util.Arrays;
-import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -483,6 +482,6 @@ public class LocationResource {
         .withTags(create.getTags())
         .withUpdatedBy(securityContext.getUserPrincipal().getName())
         .withOwner(create.getOwner())
-        .withUpdatedAt(new Date());
+        .withUpdatedAt(System.currentTimeMillis());
   }
 }

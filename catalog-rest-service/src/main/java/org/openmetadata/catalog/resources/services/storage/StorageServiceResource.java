@@ -23,7 +23,6 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
-import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -309,6 +308,6 @@ public class StorageServiceResource {
         .withDescription(create.getDescription())
         .withServiceType(create.getServiceType())
         .withUpdatedBy(securityContext.getUserPrincipal().getName())
-        .withUpdatedAt(new Date());
+        .withUpdatedAt(System.currentTimeMillis());
   }
 }

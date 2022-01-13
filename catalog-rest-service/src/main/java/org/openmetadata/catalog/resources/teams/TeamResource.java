@@ -28,7 +28,6 @@ import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
 import java.util.Arrays;
-import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -369,7 +368,7 @@ public class TeamResource {
         .withDisplayName(ct.getDisplayName())
         .withProfile(ct.getProfile())
         .withUpdatedBy(securityContext.getUserPrincipal().getName())
-        .withUpdatedAt(new Date())
+        .withUpdatedAt(System.currentTimeMillis())
         .withUsers(dao.getUsers(ct.getUsers()));
   }
 }

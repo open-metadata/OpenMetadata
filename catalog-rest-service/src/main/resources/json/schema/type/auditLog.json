@@ -36,9 +36,9 @@
       "description": "Type of Entity that is modified by the operation.",
       "type": "string"
     },
-    "dateTime": {
-      "description": "Date when the API call is made.",
-      "$ref": "basic.json#/definitions/dateTime"
+    "timestamp": {
+      "description": "Timestamp when the API call is made in Unix epoch time milliseconds in Unix epoch time milliseconds.",
+      "$ref": "basic.json#/definitions/timestamp"
     }
   },
   "required": ["method", "responseCode", "path", "userName", "entityId", "entityType"],

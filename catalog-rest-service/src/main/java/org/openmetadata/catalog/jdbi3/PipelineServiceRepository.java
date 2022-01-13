@@ -15,7 +15,6 @@ package org.openmetadata.catalog.jdbi3;
 
 import java.io.IOException;
 import java.net.URI;
-import java.util.Date;
 import java.util.UUID;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.services.PipelineService;
@@ -124,7 +123,7 @@ public class PipelineServiceRepository extends EntityRepository<PipelineService>
     }
 
     @Override
-    public Date getUpdatedAt() {
+    public long getUpdatedAt() {
       return entity.getUpdatedAt();
     }
 
@@ -169,7 +168,7 @@ public class PipelineServiceRepository extends EntityRepository<PipelineService>
     }
 
     @Override
-    public void setUpdateDetails(String updatedBy, Date updatedAt) {
+    public void setUpdateDetails(String updatedBy, long updatedAt) {
       entity.setUpdatedBy(updatedBy);
       entity.setUpdatedAt(updatedAt);
     }

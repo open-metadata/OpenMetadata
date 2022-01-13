@@ -29,7 +29,6 @@ import java.security.GeneralSecurityException;
 import java.text.ParseException;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -414,7 +413,7 @@ public class UserResource {
         .withProfile(create.getProfile())
         .withTimezone(create.getTimezone())
         .withUpdatedBy(securityContext.getUserPrincipal().getName())
-        .withUpdatedAt(new Date())
+        .withUpdatedAt(System.currentTimeMillis())
         .withTeams(dao.validateTeams(create.getTeams()))
         .withRoles(dao.validateRoles(create.getRoles()));
   }

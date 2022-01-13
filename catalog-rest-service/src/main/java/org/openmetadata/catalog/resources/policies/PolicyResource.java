@@ -28,7 +28,6 @@ import java.security.GeneralSecurityException;
 import java.text.ParseException;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -379,7 +378,7 @@ public class PolicyResource {
             .withPolicyUrl(create.getPolicyUrl())
             .withPolicyType(create.getPolicyType())
             .withUpdatedBy(securityContext.getUserPrincipal().getName())
-            .withUpdatedAt(new Date())
+            .withUpdatedAt(System.currentTimeMillis())
             .withRules(create.getRules());
     if (create.getLocation() != null) {
       policy = policy.withLocation(new EntityReference().withId(create.getLocation()));

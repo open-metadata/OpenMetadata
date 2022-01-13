@@ -27,7 +27,6 @@ import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
 import java.util.Arrays;
-import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 import javax.json.JsonPatch;
@@ -554,7 +553,7 @@ public class TableResource {
         .withViewDefinition(create.getViewDefinition())
         .withUpdatedBy(securityContext.getUserPrincipal().getName())
         .withOwner(create.getOwner())
-        .withUpdatedAt(new Date())
+        .withUpdatedAt(System.currentTimeMillis())
         .withDatabase(new EntityReference().withId(create.getDatabase()));
   }
 }

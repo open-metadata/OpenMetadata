@@ -757,7 +757,7 @@ public class TableRepository extends EntityRepository<Table> {
     }
 
     @Override
-    public Date getUpdatedAt() {
+    public long getUpdatedAt() {
       return entity.getUpdatedAt();
     }
 
@@ -812,7 +812,7 @@ public class TableRepository extends EntityRepository<Table> {
     }
 
     @Override
-    public void setUpdateDetails(String updatedBy, Date updatedAt) {
+    public void setUpdateDetails(String updatedBy, long updatedAt) {
       entity.setUpdatedBy(updatedBy);
       entity.setUpdatedAt(updatedAt);
     }

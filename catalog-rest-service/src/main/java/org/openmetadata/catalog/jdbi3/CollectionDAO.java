@@ -1203,29 +1203,29 @@ public interface CollectionDAO {
     @SqlUpdate("INSERT INTO change_event (json) VALUES (:json)")
     void insert(@Bind("json") String json);
 
-    default List<String> list(String eventType, List<String> entityTypes, String dateTime) {
+    default List<String> list(String eventType, List<String> entityTypes, long timestamp) {
       if (entityTypes == null) {
         return Collections.emptyList();
       }
       if (entityTypes.get(0).equals("*")) {
-        return listWithoutEntityFilter(eventType, dateTime);
+        return listWithoutEntityFilter(eventType, timestamp);
       }
-      return listWithEntityFilter(eventType, entityTypes, dateTime);
+      return listWithEntityFilter(eventType, entityTypes, timestamp);
     }
 
     @SqlQuery(
         "SELECT json FROM change_event WHERE "
-            + "eventType = :eventType AND (entityType IN (<entityTypes>)) AND dateTime >= :dateTime "
-            + "ORDER BY dateTime ASC")
+            + "eventType = :eventType AND (entityType IN (<entityTypes>)) AND eventTime >= :timestamp "
+            + "ORDER BY eventTime ASC")
     List<String> listWithEntityFilter(
         @Bind("eventType") String eventType,
         @BindList("entityTypes") List<String> entityTypes,
-        @Bind("dateTime") String dateTime);
+        @Bind("timestamp") long timestamp);
 
     @SqlQuery(
         "SELECT json FROM change_event WHERE "
-            + "eventType = :eventType AND dateTime >= :dateTime "
-            + "ORDER BY dateTime ASC")
-    List<String> listWithoutEntityFilter(@Bind("eventType") String eventType, @Bind("dateTime") String dateTime);
+            + "eventType = :eventType AND eventTime >= :timestamp "
+            + "ORDER BY eventTime ASC")
+    List<String> listWithoutEntityFilter(@Bind("eventType") String eventType, @Bind("timestamp") long timestamp);
   }
 }

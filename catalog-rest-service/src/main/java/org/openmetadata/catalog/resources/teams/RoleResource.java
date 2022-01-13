@@ -28,7 +28,6 @@ import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -343,6 +342,6 @@ public class RoleResource {
         .withDescription(ct.getDescription())
         .withDisplayName(ct.getDisplayName())
         .withUpdatedBy(securityContext.getUserPrincipal().getName())
-        .withUpdatedAt(new Date());
+        .withUpdatedAt(System.currentTimeMillis());
   }
 }

@@ -44,7 +44,7 @@ public class ChangeEventHandler implements EventHandler {
       if (changeEvent != null) {
         LOG.info(
             "Recording change event {}:{}:{}:{}",
-            changeEvent.getDateTime().getTime(),
+            changeEvent.getTimestamp(),
             changeEvent.getEntityId(),
             changeEvent.getEventType(),
             changeEvent.getEntityType());
@@ -122,7 +122,7 @@ public class ChangeEventHandler implements EventHandler {
         .withEntityId(entityInterface.getId())
         .withEntityType(entityType)
         .withUserName(entityInterface.getUpdatedBy())
-        .withDateTime(entityInterface.getUpdatedAt())
+        .withTimestamp(entityInterface.getUpdatedAt())
         .withChangeDescription(entityInterface.getChangeDescription())
         .withCurrentVersion(entityInterface.getVersion());
   }
@@ -133,7 +133,7 @@ public class ChangeEventHandler implements EventHandler {
         .withEntityId(changeEvent.getEntityId())
         .withEntityType(changeEvent.getEntityType())
         .withUserName(changeEvent.getUserName())
-        .withDateTime(changeEvent.getDateTime())
+        .withTimestamp(changeEvent.getTimestamp())
         .withChangeDescription(changeEvent.getChangeDescription())
         .withCurrentVersion(changeEvent.getCurrentVersion());
   }
