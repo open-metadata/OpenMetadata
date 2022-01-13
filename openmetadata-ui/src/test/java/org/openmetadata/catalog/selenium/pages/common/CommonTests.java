@@ -58,11 +58,11 @@ public class CommonTests {
 
   @BeforeEach
   public void openMetadataWindow() {
-    System.setProperty("webdriver.chrome.driver", "src/test/resources/drivers/linux/chromedriver");
+    System.setProperty("webdriver.chrome.driver", "src/test/resources/drivers/macM1/chromedriver");
     ChromeOptions options = new ChromeOptions();
     options.addArguments("--headless");
     options.addArguments("--window-size=1280,800");
-    webDriver = new ChromeDriver(options);
+    webDriver = new ChromeDriver();
     actions = new Actions(webDriver);
     wait = new WebDriverWait(webDriver, Duration.ofSeconds(30));
     webDriver.manage().window().maximize();
@@ -164,6 +164,28 @@ public class CommonTests {
     } catch (TimeoutException exception) {
       LOG.info("Success");
     }
+  }
+
+  @Test
+  @Order(5)
+  public void addMultipleTagsCheck() throws InterruptedException {
+    Events.click(webDriver, By.cssSelector("[data-testid='closeWhatsNew']")); // Close What's new
+    Thread.sleep(waitTime);
+    Events.sendKeys(webDriver, By.cssSelector("[data-testid='searchBox']"), "raw_product_catalog");
+    Events.click(webDriver, By.cssSelector("[data-testid='data-name'][id='bigquery_gcpshopifyraw_product_catalog']"));
+    Events.click(webDriver, By.xpath("//div[@data-testid='tag-conatiner']//span"));
+    Events.click(webDriver, By.cssSelector("[data-testid='associatedTagName']"));
+    for (int i = 0; i <= 10; i++) {
+      Events.sendKeys(webDriver, By.cssSelector("[data-testid='associatedTagName']"), "P");
+      Events.click(webDriver, By.cssSelector("[data-testid='list-item']"));
+      Thread.sleep(waitTime);
+    }
+    Events.click(webDriver, By.cssSelector("[data-testid='saveAssociatedTag']"));
+    webDriver.navigate().refresh();
+    Thread.sleep(2000);
+    Object tagCount =
+        webDriver.findElements(By.xpath("//div[@data-testid='tag-conatiner']/div/div")).size();
+    Assert.assertEquals(tagCount, 11);
   }
 
   @AfterEach
