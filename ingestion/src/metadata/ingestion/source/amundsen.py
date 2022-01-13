@@ -40,7 +40,11 @@ from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.source.neo4j_helper import Neo4JConfig, Neo4jHelper
 from metadata.utils.column_helpers import check_column_complex_type, get_column_type
 from metadata.utils.helpers import get_dashboard_service_or_create
-from metadata.utils.sql_queries import NEO4J_AMUNDSEN_DASHBOARD_QUERY,NEO4J_AMUNDSEN_TABLE_QUERY,NEO4J_AMUNDSEN_USER_QUERY
+from metadata.utils.sql_queries import (
+    NEO4J_AMUNDSEN_DASHBOARD_QUERY,
+    NEO4J_AMUNDSEN_TABLE_QUERY,
+    NEO4J_AMUNDSEN_USER_QUERY,
+)
 
 logger: logging.Logger = logging.getLogger(__name__)
 
@@ -55,7 +59,6 @@ class AmundsenConfig(ConfigModel):
 
 
 PRIMITIVE_TYPES = ["int", "char", "varchar"]
-
 
 
 @dataclass

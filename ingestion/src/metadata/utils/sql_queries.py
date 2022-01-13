@@ -47,8 +47,7 @@ REDSHIFT_GET_ALL_RELATION_INFO = """
         """
 
 
-
-REDSHIFT_GET_SCHEMA_COLUMN_INFO ="""
+REDSHIFT_GET_SCHEMA_COLUMN_INFO = """
             SELECT
               n.nspname as "schema",
               c.relname as "table_name",
@@ -135,7 +134,7 @@ REDSHIFT_GET_SCHEMA_COLUMN_INFO ="""
                null AS "table_oid"
             FROM svv_external_columns
             ORDER BY "schema", "table_name", "attnum";
-            """ 
+            """
 
 SNOWFLAKE_SQL_STATEMENT = """
         select query_type,query_text,user_name,database_name,
