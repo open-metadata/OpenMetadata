@@ -70,7 +70,7 @@ import {
   SelectedNode,
 } from './EntityLineage.interface';
 import EntityLineageSidebar from './EntityLineageSidebar.component';
-import EntitySuggestions from './EntitySuggestions.component';
+import NodeSuggestions from './NodeSuggestions.component';
 
 const Entitylineage: FunctionComponent<EntityLineageProp> = ({
   entityLineage,
@@ -429,7 +429,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
                 icon={`${lowerCase(lable)}-grey`}
                 width="16px"
               />
-              <EntitySuggestions
+              <NodeSuggestions
                 entityType={upperCase(lable)}
                 onSelectHandler={selectedEntityHandler}
               />
