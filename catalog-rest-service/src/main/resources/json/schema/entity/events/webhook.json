@@ -56,8 +56,8 @@
       "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
     },
     "updatedAt": {
-      "description": "Last update time corresponding to the new version of the entity.",
-      "$ref": "../../type/basic.json#/definitions/dateTime"
+      "description": "Last update time corresponding to the new version of the entity in Unix epoch time milliseconds.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
     },
     "updatedBy": {
       "description": "User who made the update.",
@@ -95,8 +95,8 @@
           "type": "string"
         },
         "nextAttempt": {
-          "description": "Next retry will be done at this time. Only valid is `status` is `awaitingRetry`.",
-          "$ref": "../../type/basic.json#/definitions/dateTime"
+          "description": "Next retry will be done at this time in Unix epoch time milliseconds. Only valid is `status` is `awaitingRetry`.",
+          "$ref": "../../type/basic.json#/definitions/timestamp"
         }
       },
       "additionalProperties": false

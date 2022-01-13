@@ -48,11 +48,11 @@ public class WebhookCallbackResource {
       @Context SecurityContext securityContext,
       @HeaderParam(RestUtil.SIGNATURE_HEADER) String signature,
       @PathParam("testName") String testName,
-      String payload)
+      ChangeEventList events)
       throws IOException {
+    String payload = JsonUtils.pojoToJson(events);
     String computedSignature = "sha256=" + CommonUtil.calculateHMAC("webhookTest", payload);
     assertEquals(computedSignature, signature);
-    ChangeEventList events = JsonUtils.readValue(payload, ChangeEventList.class);
     addEventDetails(testName, events);
     return Response.ok().build();
   }
@@ -140,11 +140,11 @@ public class WebhookCallbackResource {
     EventDetails details = eventMap.get(endpoint); // Default endpoint
     if (details == null) {
       details = new EventDetails();
-      details.setFirstEventTime(events.getData().get(0).getDateTime().getTime());
+      details.setFirstEventTime(events.getData().get(0).getTimestamp());
       eventMap.put(endpoint, details);
     }
     details.getEvents().addAll(events.getData());
-    details.setLatestEventTime(events.getData().get(events.getData().size() - 1).getDateTime().getTime());
+    details.setLatestEventTime(events.getData().get(events.getData().size() - 1).getTimestamp());
     LOG.info("Event received {}, total count {}", endpoint, details.getEvents().size());
   }
 

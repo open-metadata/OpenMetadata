@@ -50,8 +50,8 @@ import org.slf4j.LoggerFactory;
 
 public class ElasticSearchEventPublisher extends AbstractEventPublisher {
   private static final Logger LOG = LoggerFactory.getLogger(ElasticSearchEventPublisher.class);
-  private RestHighLevelClient client;
-  private ElasticSearchIndexDefinition esIndexDefinition;
+  private final RestHighLevelClient client;
+  private final ElasticSearchIndexDefinition esIndexDefinition;
 
   public ElasticSearchEventPublisher(ElasticSearchConfiguration esConfig) {
     super(esConfig.getBatchSize(), new ArrayList<>());
@@ -125,7 +125,7 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
     Map<String, Object> fieldAddParams = new HashMap<>();
     ESChangeDescription esChangeDescription =
         ESChangeDescription.builder()
-            .updatedAt(event.getDateTime().getTime())
+            .updatedAt(event.getTimestamp())
             .updatedBy(event.getUserName())
             .fieldsAdded(changeDescription.getFieldsAdded())
             .fieldsUpdated(changeDescription.getFieldsUpdated())
@@ -133,7 +133,7 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
             .build();
     Map<String, Object> esChangeDescriptionDoc = JsonUtils.getMap(esChangeDescription);
     fieldAddParams.put("change_description", esChangeDescriptionDoc);
-    fieldAddParams.put("last_updated_timestamp", event.getDateTime().getTime());
+    fieldAddParams.put("last_updated_timestamp", event.getTimestamp());
     scriptTxt.append("ctx._source.change_descriptions.add(params.change_description); ");
     scriptTxt.append("ctx._source.last_updated_timestamp=params.last_updated_timestamp;");
     for (FieldChange fieldChange : fieldsAdded) {

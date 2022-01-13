@@ -65,9 +65,9 @@
       "description": "Name of the user whose activity resulted in the change.",
       "type": "string"
     },
-    "dateTime": {
-      "description": "Date and time when the change was made.",
-      "$ref": "basic.json#/definitions/dateTime"
+    "timestamp": {
+      "description": "Timestamp when the change was made in Unix epoch time milliseconds.",
+      "$ref": "basic.json#/definitions/timestamp"
     },
     "changeDescription" : {
       "description": "For `eventType` `entityUpdated` this field captures details about what fields were added/updated/deleted. For `eventType` `entityCreated` or `entityDeleted` this field is null.",
@@ -77,6 +77,6 @@
       "description": "For `eventType` `entityCreated`, this field captures JSON coded string of the entity using the schema corresponding to `entityType`."
     }
   },
-  "required": ["eventType", "entityType", "entityId", "dateTime"],
+  "required": ["eventType", "entityType", "entityId", "timestamp"],
   "additionalProperties": false
 }

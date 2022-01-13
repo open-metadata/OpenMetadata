@@ -22,7 +22,6 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
-import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 import javax.validation.constraints.Max;
@@ -138,7 +137,9 @@ public class BotsResource {
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, Bots bot)
       throws IOException {
     SecurityUtil.checkAdminRole(authorizer, securityContext);
-    bot.withId(UUID.randomUUID()).withUpdatedBy(securityContext.getUserPrincipal().getName()).withUpdatedAt(new Date());
+    bot.withId(UUID.randomUUID())
+        .withUpdatedBy(securityContext.getUserPrincipal().getName())
+        .withUpdatedAt(System.currentTimeMillis());
     dao.create(uriInfo, bot);
     return Response.created(bot.getHref()).entity(bot).build();
   }

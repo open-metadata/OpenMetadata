@@ -14,7 +14,6 @@
 package org.openmetadata.catalog.resources.feeds;
 
 import java.util.Collections;
-import java.util.Date;
 import org.openmetadata.catalog.entity.feed.Thread;
 import org.openmetadata.catalog.type.Post;
 
@@ -29,7 +28,7 @@ public final class FeedUtil {
       thread.setPosts(Collections.singletonList(post));
     } else {
       // Add new post to the thread
-      post.setPostTs(new Date());
+      post.setPostTs(System.currentTimeMillis());
       thread.getPosts().add(post);
     }
   }

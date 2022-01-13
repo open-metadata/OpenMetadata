@@ -17,7 +17,6 @@ import static org.openmetadata.catalog.resources.teams.UserResource.FIELD_LIST;
 
 import java.io.IOException;
 import java.text.ParseException;
-import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -82,7 +81,7 @@ public class DefaultAuthorizer implements Authorizer {
                 .withEmail(adminUser + "@" + principalDomain)
                 .withIsAdmin(true)
                 .withUpdatedBy(adminUser)
-                .withUpdatedAt(new Date());
+                .withUpdatedAt(System.currentTimeMillis());
         addOrUpdateAdmin(user);
       } catch (IOException | ParseException e) {
         LOG.error("Failed to create admin user {}", adminUser, e);
@@ -108,7 +107,7 @@ public class DefaultAuthorizer implements Authorizer {
                 .withEmail(botUser + "@" + principalDomain)
                 .withIsBot(true)
                 .withUpdatedBy(botUser)
-                .withUpdatedAt(new Date());
+                .withUpdatedAt(System.currentTimeMillis());
         addOrUpdateAdmin(user);
       } catch (IOException | ParseException e) {
         LOG.error("Failed to create admin user {}", botUser, e);
