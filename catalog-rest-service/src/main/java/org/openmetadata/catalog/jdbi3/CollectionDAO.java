@@ -72,6 +72,7 @@ import org.openmetadata.catalog.jdbi3.UserRepository.UserEntityInterface;
 import org.openmetadata.catalog.jdbi3.WebhookRepository.WebhookEntityInterface;
 import org.openmetadata.catalog.operations.workflows.Ingestion;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.type.UsageDetails;
 import org.openmetadata.catalog.type.UsageStats;
@@ -1131,17 +1132,17 @@ public interface CollectionDAO {
     @SqlQuery("SELECT json FROM user_entity WHERE email = :email")
     String findByEmail(@Bind("email") String email);
 
-    default int listCount(String team) {
+    default int listCount(String team, Include include) {
       return listCount(getTableName(), getNameColumn(), team, Relationship.HAS.ordinal());
     }
 
     @Override
-    default List<String> listBefore(String team, int limit, String before) {
+    default List<String> listBefore(String team, int limit, String before, Include include) {
       return listBefore(getTableName(), getNameColumn(), team, limit, before, Relationship.HAS.ordinal());
     }
 
     @Override
-    default List<String> listAfter(String team, int limit, String after) {
+    default List<String> listAfter(String team, int limit, String after, Include include) {
       return listAfter(getTableName(), getNameColumn(), team, limit, after, Relationship.HAS.ordinal());
     }
 

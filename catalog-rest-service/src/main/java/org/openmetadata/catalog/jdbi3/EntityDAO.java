@@ -60,12 +60,6 @@ public interface EntityDAO<T> {
 
   @SqlQuery(
       "SELECT count(*) FROM <table> WHERE "
-          + "(<nameColumn> LIKE CONCAT(:fqnPrefix, '.%') OR :fqnPrefix IS NULL) AND deleted IS NOT TRUE")
-  int listCount(
-      @Define("table") String table, @Define("nameColumn") String nameColumn, @Bind("fqnPrefix") String fqnPrefix);
-
-  @SqlQuery(
-      "SELECT count(*) FROM <table> WHERE "
           + "(<nameColumn> LIKE CONCAT(:fqnPrefix, '.%') OR :fqnPrefix IS NULL) AND "
           + "(deleted = :deleted OR :deleted IS NULL)")
   int listCount(
@@ -209,24 +203,12 @@ public interface EntityDAO<T> {
     return findByName(getTableName(), getNameColumn(), fqn, toBoolean(include));
   }
 
-  default int listCount(String databaseFQN) {
-    return listCount(getTableName(), getNameColumn(), databaseFQN);
-  }
-
   default int listCount(String databaseFQN, Include include) {
     return listCount(getTableName(), getNameColumn(), databaseFQN, toBoolean(include));
   }
 
-  default List<String> listBefore(String parentFQN, int limit, String before) {
-    return listBefore(getTableName(), getNameColumn(), parentFQN, limit, before);
-  }
-
   default List<String> listBefore(String parentFQN, int limit, String before, Include include) {
     return listBefore(getTableName(), getNameColumn(), parentFQN, limit, before, toBoolean(include));
-  }
-
-  default List<String> listAfter(String databaseFQN, int limit, String after) {
-    return listAfter(getTableName(), getNameColumn(), databaseFQN, limit, after);
   }
 
   default List<String> listAfter(String databaseFQN, int limit, String after, Include include) {
