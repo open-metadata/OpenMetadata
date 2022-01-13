@@ -11,11 +11,12 @@
  *  limitations under the License.
  */
 
-package org.openmetadata.catalog;
+package org.openmetadata.catalog.elasticsearch;
 
 import javax.validation.constraints.NotEmpty;
 
 public class ElasticSearchConfiguration {
+
   @NotEmpty private String host;
 
   @NotEmpty private Integer port;
@@ -33,6 +34,8 @@ public class ElasticSearchConfiguration {
   private Integer connectionTimeoutSecs = 5;
 
   private Integer socketTimeoutSecs = 60;
+
+  private Integer batchSize = 10;
 
   public String getHost() {
     return host;
@@ -104,6 +107,14 @@ public class ElasticSearchConfiguration {
 
   public void setSocketTimeoutSecs(Integer socketTimeoutSecs) {
     this.socketTimeoutSecs = socketTimeoutSecs;
+  }
+
+  public Integer getBatchSize() {
+    return batchSize;
+  }
+
+  public void setBatchSize(Integer batchSize) {
+    this.batchSize = batchSize;
   }
 
   @Override

@@ -437,6 +437,22 @@ class OpenMetadata(
         after = resp["paging"]["after"] if "after" in resp["paging"] else None
         return EntityList(entities=entities, total=total, after=after)
 
+    def list_versions(
+        self, entity_id: Union[str, basic.Uuid], entity: Type[T]
+    ) -> EntityVersionHistory:
+        """
+        Version history of an entity
+        """
+
+        suffix = self.get_suffix(entity)
+        path = f"/{uuid_to_str(entity_id)}/versions"
+        resp = self.client.get(f"{suffix}{path}")
+
+        if self._use_raw_data:
+            return resp
+        else:
+            return EntityVersionHistory(**resp)
+
     def list_services(self, entity: Type[T]) -> List[EntityList[T]]:
         """
         Service listing does not implement paging
