@@ -172,31 +172,11 @@ public interface EntityDAO<T> {
   }
 
   default T findEntityById(UUID id) throws IOException {
-    Class<T> clz = getEntityClass();
-    String json = findById(getTableName(), id.toString(), toBoolean(Include.NON_DELETED));
-    T entity = null;
-    if (json != null) {
-      entity = JsonUtils.readValue(json, clz);
-    }
-    if (entity == null) {
-      String entityName = Entity.getEntityNameFromClass(clz);
-      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(entityName, id));
-    }
-    return entity;
+    return findEntityById(id, Include.NON_DELETED);
   }
 
   default T findEntityByName(String fqn) throws IOException {
-    Class<T> clz = getEntityClass();
-    String json = findByName(getTableName(), getNameColumn(), fqn, toBoolean(Include.NON_DELETED));
-    T entity = null;
-    if (json != null) {
-      entity = JsonUtils.readValue(json, clz);
-    }
-    if (entity == null) {
-      String entityName = Entity.getEntityNameFromClass(clz);
-      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(entityName, fqn));
-    }
-    return entity;
+    return findEntityByName(fqn, Include.NON_DELETED);
   }
 
   default T findEntityByName(String fqn, Include include) throws IOException {
