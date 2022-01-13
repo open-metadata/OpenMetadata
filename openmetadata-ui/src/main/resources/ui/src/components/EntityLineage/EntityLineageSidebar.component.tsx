@@ -44,10 +44,10 @@ const EntityNode: FC<EntityNodeProps> = ({ type, label, draggable }) => {
   };
 
   return (
-    <div className="tw-flex tw-flex-col tw-mb-3 tw-items-center">
+    <div className="tw-flex tw-flex-col tw-mb-5 tw-items-center">
       <div
         className={classNames(
-          'tw-border tw-p-2 tw-border-main tw-flex tw-justify-between tw-w-16 tw-rounded',
+          'tw-border tw-p-2 tw-border-main tw-flex tw-justify-between tw-w-16 tw-rounded tw-shadow-lg tw-bg-body-hover',
           {
             'tw-cursor-not-allowed tw-opacity-50': !draggable,
           }
@@ -66,7 +66,7 @@ const EntityNode: FC<EntityNodeProps> = ({ type, label, draggable }) => {
           <i className="fas fa-grip-vertical" style={{ color: '#7147E8' }} />
         </span>
       </div>
-      <p className="tw-text-grey-body tw-text-center">
+      <p className="tw-text-grey-body tw-text-center tw-text-xs tw-pt-1.5">
         {capitalize(`${label}s`)}
       </p>
     </div>

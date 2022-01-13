@@ -19,7 +19,7 @@ import React, { FunctionComponent, useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import AppState from '../../AppState';
 import { getLineageByFQN } from '../../axiosAPIs/lineageAPI';
-import { addLineage } from '../../axiosAPIs/miscAPI';
+import { addLineage, deleteLineageEdge } from '../../axiosAPIs/miscAPI';
 import {
   addFollower,
   getTableDetailsByFQN,
@@ -28,7 +28,10 @@ import {
 } from '../../axiosAPIs/tableAPI';
 import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
 import DatasetDetails from '../../components/DatasetDetails/DatasetDetails.component';
-import { Edge } from '../../components/EntityLineage/EntityLineage.interface';
+import {
+  Edge,
+  EdgeData,
+} from '../../components/EntityLineage/EntityLineage.interface';
 import Loader from '../../components/Loader/Loader';
 import {
   getDatabaseDetailsPath,
@@ -246,6 +249,27 @@ const DatasetDetailsPage: FunctionComponent = () => {
         });
       });
   };
+  const removeLineageHandler = (data: EdgeData) => {
+    deleteLineageEdge(data.fromEntity, data.fromId, data.toEntity, data.toId)
+      .then(() => {
+        getLineageByFQN(tableFQN, EntityType.TABLE)
+          .then((res: AxiosResponse) => {
+            setEntityLineage(res.data);
+          })
+          .catch(() => {
+            showToast({
+              variant: 'error',
+              body: `Error while getting entity lineage`,
+            });
+          });
+      })
+      .catch(() => {
+        showToast({
+          variant: 'error',
+          body: `Error while removing edge`,
+        });
+      });
+  };
 
   useEffect(() => {
     setIsLoading(true);
@@ -360,6 +384,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
           lineageLeafNodes={leafNodes}
           loadNodeHandler={loadNodeHandler}
           owner={owner as Table['owner'] & { displayName: string }}
+          removeLineageHandler={removeLineageHandler}
           sampleData={sampleData}
           setActiveTabHandler={activeTabHandler}
           settingsUpdateHandler={settingsUpdateHandler}

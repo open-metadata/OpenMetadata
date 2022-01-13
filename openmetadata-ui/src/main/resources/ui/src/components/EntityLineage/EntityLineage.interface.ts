@@ -30,6 +30,7 @@ export interface EntityLineageProp {
   entityLineage: EntityLineage;
   loadNodeHandler: (node: EntityReference, pos: LineagePos) => void;
   addLineageHandler: (edge: Edge) => void;
+  removeLineageHandler: (data: EdgeData) => void;
 }
 
 export interface Edge {
@@ -43,4 +44,25 @@ export interface Edge {
       type: string;
     };
   };
+}
+
+export interface EdgeData {
+  fromEntity: string;
+  fromId: string;
+  toEntity: string;
+  toId: string;
+}
+
+export interface CustomEdgeData {
+  id: string;
+  source: string;
+  target: string;
+  sourceType: string;
+  targetType: string;
+}
+
+export interface SelectedEdge {
+  id: string;
+  source: EntityReference;
+  target: EntityReference;
 }

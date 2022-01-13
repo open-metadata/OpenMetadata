@@ -31,10 +31,13 @@ import {
   removeFollower,
 } from '../../axiosAPIs/dashboardAPI';
 import { getLineageByFQN } from '../../axiosAPIs/lineageAPI';
-import { addLineage } from '../../axiosAPIs/miscAPI';
+import { addLineage, deleteLineageEdge } from '../../axiosAPIs/miscAPI';
 import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
 import DashboardDetails from '../../components/DashboardDetails/DashboardDetails.component';
-import { Edge } from '../../components/EntityLineage/EntityLineage.interface';
+import {
+  Edge,
+  EdgeData,
+} from '../../components/EntityLineage/EntityLineage.interface';
 import Loader from '../../components/Loader/Loader';
 import {
   getDashboardDetailsPath,
@@ -381,6 +384,28 @@ const DashboardDetailsPage = () => {
       });
   };
 
+  const removeLineageHandler = (data: EdgeData) => {
+    deleteLineageEdge(data.fromEntity, data.fromId, data.toEntity, data.toId)
+      .then(() => {
+        getLineageByFQN(dashboardFQN, EntityType.DASHBOARD)
+          .then((res: AxiosResponse) => {
+            setEntityLineage(res.data);
+          })
+          .catch(() => {
+            showToast({
+              variant: 'error',
+              body: `Error while getting entity lineage`,
+            });
+          });
+      })
+      .catch(() => {
+        showToast({
+          variant: 'error',
+          body: `Error while removing edge`,
+        });
+      });
+  };
+
   useEffect(() => {
     fetchDashboardDetail(dashboardFQN);
   }, [dashboardFQN]);
@@ -413,6 +438,7 @@ const DashboardDetailsPage = () => {
           lineageLeafNodes={leafNodes}
           loadNodeHandler={loadNodeHandler}
           owner={owner}
+          removeLineageHandler={removeLineageHandler}
           serviceType={serviceType}
           setActiveTabHandler={activeTabHandler}
           settingsUpdateHandler={settingsUpdateHandler}

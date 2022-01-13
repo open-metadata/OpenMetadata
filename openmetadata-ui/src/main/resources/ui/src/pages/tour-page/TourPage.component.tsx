@@ -139,6 +139,7 @@ const TourPage = () => {
             lineageLeafNodes={{} as LeafNodes}
             loadNodeHandler={handleCountChange}
             owner={undefined as unknown as DatasetOwner}
+            removeLineageHandler={handleCountChange}
             sampleData={mockDatasetData.sampleData}
             setActiveTabHandler={(tab) => setdatasetActiveTab(tab)}
             settingsUpdateHandler={() => Promise.resolve()}

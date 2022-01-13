@@ -72,6 +72,7 @@ const DashboardDetails = ({
   versionHandler,
   version,
   addLineageHandler,
+  removeLineageHandler,
 }: DashboardDetailsProps) => {
   const { isAuthDisabled } = useAuth();
   const [isEdit, setIsEdit] = useState(false);
@@ -492,6 +493,7 @@ const DashboardDetails = ({
                     isNodeLoading={isNodeLoading}
                     lineageLeafNodes={lineageLeafNodes}
                     loadNodeHandler={loadNodeHandler}
+                    removeLineageHandler={removeLineageHandler}
                   />
                 </div>
               )}

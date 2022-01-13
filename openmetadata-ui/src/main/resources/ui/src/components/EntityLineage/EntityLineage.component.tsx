@@ -16,6 +16,7 @@ import classNames from 'classnames';
 import { isEmpty, isUndefined, lowerCase, uniqueId, upperCase } from 'lodash';
 import React, {
   DragEvent,
+  Fragment,
   FunctionComponent,
   useEffect,
   useRef,
@@ -38,6 +39,7 @@ import { getTableDetails } from '../../axiosAPIs/tableAPI';
 import { Column } from '../../generated/entity/data/table';
 import { EntityReference } from '../../generated/type/entityReference';
 import useToastContext from '../../hooks/useToastContext';
+import { getPartialNameFromFQN } from '../../utils/CommonUtils';
 import {
   dragHandle,
   getDataLabel,
@@ -53,11 +55,16 @@ import {
 import SVGIcons from '../../utils/SvgUtils';
 import { getEntityIcon } from '../../utils/TableUtils';
 import EntityInfoDrawer from '../EntityInfoDrawer/EntityInfoDrawer.component';
+import ConfirmationModal from '../Modals/ConfirmationModal/ConfirmationModal';
 import CustomControls, { ControlButton } from './CustomControls.component';
+import { CustomEdge } from './CustomEdge.component';
 import CustomNode from './CustomNode.component';
 import {
+  CustomEdgeData,
   Edge as NewEdge,
+  EdgeData,
   EntityLineageProp,
+  SelectedEdge,
   SelectedNode,
 } from './EntityLineage.interface';
 import EntityLineageSidebar from './EntityLineageSidebar.component';
@@ -69,6 +76,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
   lineageLeafNodes,
   isNodeLoading,
   addLineageHandler,
+  removeLineageHandler,
 }: EntityLineageProp) => {
   const showToast = useToastContext();
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
@@ -90,6 +98,14 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
   const [selectedEntity, setSelectedEntity] = useState<EntityReference>(
     {} as EntityReference
   );
+  const [confirmDelete, setConfirmDelete] = useState<boolean>(false);
+
+  const [showdeleteModal, setShowDeleteModal] = useState<boolean>(false);
+
+  const [selectedEdge, setSelectedEdge] = useState<SelectedEdge>(
+    {} as SelectedEdge
+  );
+
   const selectedEntityHandler = (entity: EntityReference) => {
     setSelectedEntity(entity);
   };
@@ -126,6 +142,51 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
     );
   };
 
+  const removeEdgeHandler = (data: SelectedEdge, confirmDelete: boolean) => {
+    if (confirmDelete) {
+      const edgeData: EdgeData = {
+        fromEntity: data.source.type,
+        fromId: data.source.id,
+        toEntity: data.target.type,
+        toId: data.target.id,
+      };
+
+      removeLineageHandler(edgeData);
+      // eslint-disable-next-line @typescript-eslint/no-use-before-define
+      setElements((es) => es.filter((e) => e.id !== data.id));
+    }
+  };
+
+  const onEdgeClick = (
+    evt: React.MouseEvent<HTMLButtonElement>,
+    data: CustomEdgeData
+  ) => {
+    setShowDeleteModal(true);
+    evt.stopPropagation();
+    setSelectedEdge(() => {
+      let targetNode = entityLineage.nodes?.find((n) =>
+        data.target?.includes(n.id)
+      );
+
+      let sourceNode = entityLineage.nodes?.find((n) =>
+        data.source?.includes(n.id)
+      );
+
+      if (isUndefined(targetNode)) {
+        targetNode = isEmpty(selectedEntity)
+          ? entityLineage.entity
+          : selectedEntity;
+      }
+      if (isUndefined(sourceNode)) {
+        sourceNode = isEmpty(selectedEntity)
+          ? entityLineage.entity
+          : selectedEntity;
+      }
+
+      return { id: data.id, source: sourceNode, target: targetNode };
+    });
+  };
+
   const setElementsHandle = () => {
     return getLineageData(
       entityLineage,
@@ -134,7 +195,9 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
       lineageLeafNodes,
       isNodeLoading,
       getNodeLable,
-      isEditMode
+      isEditMode,
+      'buttonedge',
+      onEdgeClick
     ) as Elements;
   };
 
@@ -164,10 +227,14 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
     let sourceNode = entityLineage.nodes?.find((n) => source?.includes(n.id));
 
     if (isUndefined(targetNode)) {
-      targetNode = selectedEntity;
+      targetNode = target?.includes(entityLineage.entity.id)
+        ? entityLineage.entity
+        : selectedEntity;
     }
     if (isUndefined(sourceNode)) {
-      sourceNode = selectedEntity;
+      sourceNode = source?.includes(entityLineage.entity.id)
+        ? entityLineage.entity
+        : selectedEntity;
     }
 
     const newEdge: NewEdge = {
@@ -289,7 +356,11 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
               onClick={() => {
                 removeNodeHandler(newNode as FlowElement);
               }}>
-              <SVGIcons alt="plus" icon="icon-times-circle" width="16px" />
+              <SVGIcons
+                alt="times-circle"
+                icon="icon-times-circle"
+                width="16px"
+              />
             </button>
             <div className="tw-flex">
               <SVGIcons
@@ -316,6 +387,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
     setElements(getLayoutedElements(setElementsHandle()));
     setExpandNode(undefined);
     setTableColumns([]);
+    setConfirmDelete(false);
   }, [entityLineage, isNodeLoading, isEditMode]);
 
   useEffect(() => {
@@ -354,95 +426,124 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
     }
   }, [selectedEntity]);
 
+  useEffect(() => {
+    removeEdgeHandler(selectedEdge, confirmDelete);
+  }, [selectedEdge, confirmDelete]);
+
   return (
-    <div className="tw-relative tw-h-full tw--mx-4 tw--mt-4">
-      <div className="tw-w-full tw-h-full" ref={reactFlowWrapper}>
-        {(entityLineage?.downstreamEdges ?? []).length > 0 ||
-        (entityLineage?.upstreamEdges ?? []).length > 0 ? (
-          <ReactFlowProvider>
-            <ReactFlow
-              elements={elements as Elements}
-              elementsSelectable={!isEditMode}
-              maxZoom={2}
-              minZoom={0.5}
-              nodeTypes={{
-                output: CustomNode,
-                input: CustomNode,
-                default: CustomNode,
-              }}
-              nodesConnectable={isEditMode}
-              selectNodesOnDrag={false}
-              zoomOnDoubleClick={false}
-              zoomOnPinch={false}
-              zoomOnScroll={false}
-              onConnect={onConnect}
-              onDragOver={onDragOver}
-              onDrop={onDrop}
-              onElementClick={(_e, el) => onElementClick(el)}
-              onElementsRemove={onElementsRemove}
-              onLoad={(reactFlowInstance: OnLoadParams) => {
-                onLoad(reactFlowInstance);
-                setReactFlowInstance(reactFlowInstance);
-              }}
-              onNodeContextMenu={onNodeContextMenu}
-              onNodeDrag={dragHandle}
-              onNodeDragStart={dragHandle}
-              onNodeDragStop={dragHandle}
-              onNodeMouseEnter={onNodeMouseEnter}
-              onNodeMouseLeave={onNodeMouseLeave}
-              onNodeMouseMove={onNodeMouseMove}>
-              <CustomControls
-                className="tw-absolute tw-top-1 tw-right-1 tw-bottom-full tw-ml-4 tw-mt-4"
-                fitViewParams={{ minZoom: 0.5, maxZoom: 2.5 }}>
-                <ControlButton
-                  className={classNames(
-                    'tw-h-9 tw-w-9 tw-rounded-full tw-px-1 tw-shadow-lg tw-cursor-pointer',
-                    {
-                      'tw-bg-primary': isEditMode,
-                      'tw-bg-primary-hover-lite': !isEditMode,
-                    }
-                  )}
-                  onClick={() => {
-                    setEditMode((pre) => !pre);
-                    setSelectedNode({} as SelectedNode);
-                    setIsDrawerOpen(false);
-                    setNewAddedNode({} as FlowElement);
-                  }}>
-                  <SVGIcons
-                    alt="icon-edit-lineag"
-                    className="tw--mt-1"
-                    icon={
-                      !isEditMode
-                        ? 'icon-edit-lineage-color'
-                        : 'icon-edit-lineage'
-                    }
-                    width="14"
+    <Fragment>
+      {(entityLineage?.downstreamEdges ?? []).length > 0 ||
+      (entityLineage?.upstreamEdges ?? []).length > 0 ? (
+        <div className="tw-relative tw-h-full tw--mx-4 tw--mt-4">
+          <div className="tw-w-full tw-h-full" ref={reactFlowWrapper}>
+            <ReactFlowProvider>
+              <ReactFlow
+                edgeTypes={{ buttonedge: CustomEdge }}
+                elements={elements as Elements}
+                elementsSelectable={!isEditMode}
+                maxZoom={2}
+                minZoom={0.5}
+                nodeTypes={{
+                  output: CustomNode,
+                  input: CustomNode,
+                  default: CustomNode,
+                }}
+                nodesConnectable={isEditMode}
+                selectNodesOnDrag={false}
+                zoomOnDoubleClick={false}
+                zoomOnPinch={false}
+                zoomOnScroll={false}
+                onConnect={onConnect}
+                onDragOver={onDragOver}
+                onDrop={onDrop}
+                onElementClick={(_e, el) => onElementClick(el)}
+                onElementsRemove={onElementsRemove}
+                onLoad={(reactFlowInstance: OnLoadParams) => {
+                  onLoad(reactFlowInstance);
+                  setReactFlowInstance(reactFlowInstance);
+                }}
+                onNodeContextMenu={onNodeContextMenu}
+                onNodeDrag={dragHandle}
+                onNodeDragStart={dragHandle}
+                onNodeDragStop={dragHandle}
+                onNodeMouseEnter={onNodeMouseEnter}
+                onNodeMouseLeave={onNodeMouseLeave}
+                onNodeMouseMove={onNodeMouseMove}>
+                <CustomControls
+                  className="tw-absolute tw-top-1 tw-right-1 tw-bottom-full tw-ml-4 tw-mt-4"
+                  fitViewParams={{ minZoom: 0.5, maxZoom: 2.5 }}>
+                  <ControlButton
+                    className={classNames(
+                      'tw-h-9 tw-w-9 tw-rounded-full tw-px-1 tw-shadow-lg tw-cursor-pointer',
+                      {
+                        'tw-bg-primary': isEditMode,
+                        'tw-bg-primary-hover-lite': !isEditMode,
+                      }
+                    )}
+                    onClick={() => {
+                      setEditMode((pre) => !pre);
+                      setSelectedNode({} as SelectedNode);
+                      setIsDrawerOpen(false);
+                      setNewAddedNode({} as FlowElement);
+                    }}>
+                    <SVGIcons
+                      alt="icon-edit-lineag"
+                      className="tw--mt-1"
+                      icon={
+                        !isEditMode
+                          ? 'icon-edit-lineage-color'
+                          : 'icon-edit-lineage'
+                      }
+                      width="14"
+                    />
+                  </ControlButton>
+                </CustomControls>
+                {isEditMode ? (
+                  <Background
+                    className="tw-text-grey-muted-lite tw-bg-body-hover"
+                    color="#ffffff"
+                    gap={12}
+                    size={1}
+                    variant={BackgroundVariant.Lines}
                   />
-                </ControlButton>
-              </CustomControls>
-              {isEditMode ? (
-                <Background
-                  className="tw-text-grey-muted-lite tw-bg-body-main"
-                  color="#ffffff"
-                  gap={12}
-                  size={1}
-                  variant={BackgroundVariant.Lines}
-                />
-              ) : null}
-            </ReactFlow>
-          </ReactFlowProvider>
-        ) : (
-          getNoLineageDataPlaceholder()
-        )}
-      </div>
-      <EntityInfoDrawer
-        isMainNode={selectedNode.name === entityLineage.entity.name}
-        selectedNode={selectedNode}
-        show={isDrawerOpen && !isEditMode}
-        onCancel={closeDrawer}
-      />
-      <EntityLineageSidebar newAddedNode={newAddedNode} show={isEditMode} />
-    </div>
+                ) : null}
+              </ReactFlow>
+            </ReactFlowProvider>
+            :
+          </div>
+          <EntityInfoDrawer
+            isMainNode={selectedNode.name === entityLineage.entity.name}
+            selectedNode={selectedNode}
+            show={isDrawerOpen && !isEditMode}
+            onCancel={closeDrawer}
+          />
+          <EntityLineageSidebar newAddedNode={newAddedNode} show={isEditMode} />
+          {showdeleteModal ? (
+            <ConfirmationModal
+              bodyText={`Are you sure you want to remove the edge between "${getPartialNameFromFQN(
+                selectedEdge.source.name as string,
+                selectedEdge.source.type === 'table' ? ['table'] : ['database']
+              )} and ${getPartialNameFromFQN(
+                selectedEdge.target.name as string,
+                selectedEdge.target.type === 'table' ? ['table'] : ['database']
+              )}"?`}
+              cancelText="Cancel"
+              confirmText="Confirm"
+              header="Remove lineage edge"
+              onCancel={() => {
+                setShowDeleteModal(false);
+              }}
+              onConfirm={() => {
+                setShowDeleteModal(false);
+                setConfirmDelete(true);
+              }}
+            />
+          ) : null}
+        </div>
+      ) : (
+        getNoLineageDataPlaceholder()
+      )}
+    </Fragment>
   );
 };
 

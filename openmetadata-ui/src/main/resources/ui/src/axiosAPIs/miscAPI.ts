@@ -72,3 +72,14 @@ export const getVersion: Function = () => {
 export const addLineage: Function = (data: Edge): Promise<AxiosResponse> => {
   return APIClient.put(`/lineage`, data);
 };
+
+export const deleteLineageEdge: Function = (
+  fromEntity: string,
+  fromId: string,
+  toEntity: string,
+  toId: string
+): Promise<AxiosResponse> => {
+  return APIClient.delete(
+    `/lineage/${fromEntity}/${fromId}/${toEntity}/${toId}`
+  );
+};

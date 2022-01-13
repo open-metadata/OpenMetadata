@@ -25,7 +25,10 @@ import {
   Position,
 } from 'react-flow-renderer';
 import { Link } from 'react-router-dom';
-import { SelectedNode } from '../components/EntityLineage/EntityLineage.interface';
+import {
+  CustomEdgeData,
+  SelectedNode,
+} from '../components/EntityLineage/EntityLineage.interface';
 import Loader from '../components/Loader/Loader';
 import {
   nodeHeight,
@@ -103,7 +106,12 @@ export const getLineageData = (
   lineageLeafNodes: LeafNodes,
   isNodeLoading: LoadingNodeState,
   getNodeLable: (node: EntityReference) => React.ReactNode,
-  isEditMode: boolean
+  isEditMode: boolean,
+  edgeType: string,
+  onEdgeClick: (
+    evt: React.MouseEvent<HTMLButtonElement>,
+    data: CustomEdgeData
+  ) => void
 ) => {
   const [x, y] = [0, 0];
   const nodes = entityLineage['nodes'];
@@ -137,6 +145,7 @@ export const getLineageData = (
       className: 'leaf-node',
       data: {
         label: getNodeLable(node),
+        entityType: node.type,
       },
       position: {
         x: pos === 'from' ? -xVal : xVal,
@@ -165,8 +174,16 @@ export const getLineageData = (
               id: `edge-${up.fromEntity}-${id}-${depth}`,
               source: `node-${node.id}-${depth}`,
               target: edg ? edg.id : `node-${id}-${depth}`,
-              type: 'custom',
+              type: isEditMode ? edgeType : 'custom',
               arrowHeadType: ArrowHeadType.ArrowClosed,
+              data: {
+                id: `edge-${up.fromEntity}-${id}-${depth}`,
+                source: `node-${node.id}-${depth}`,
+                target: edg ? edg.id : `node-${id}-${depth}`,
+                sourceType: node.type,
+                targetType: edg?.data?.entityType,
+                onEdgeClick,
+              },
             });
           }
           upDepth += 1;
@@ -199,8 +216,16 @@ export const getLineageData = (
               id: `edge-${id}-${down.toEntity}`,
               source: edg ? edg.id : `node-${id}-${depth}`,
               target: `node-${node.id}-${depth}`,
-              type: 'custom',
+              type: isEditMode ? edgeType : 'custom',
               arrowHeadType: ArrowHeadType.ArrowClosed,
+              data: {
+                id: `edge-${id}-${down.toEntity}`,
+                source: edg ? edg.id : `node-${id}-${depth}`,
+                target: `node-${node.id}-${depth}`,
+                sourceType: edg?.data?.entityType,
+                targetType: node.type,
+                onEdgeClick,
+              },
             });
           }
           downDepth += 1;
@@ -277,7 +302,7 @@ export const getLineageData = (
             ? 'default'
             : 'output'
           : 'input',
-      className: 'leaf-node core',
+      className: `leaf-node ${!isEditMode ? 'core' : ''}`,
       data: {
         label: getNodeLable(mainNode),
       },

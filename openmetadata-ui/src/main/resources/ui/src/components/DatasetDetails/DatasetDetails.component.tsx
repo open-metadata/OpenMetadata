@@ -80,6 +80,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   isNodeLoading,
   dataModel,
   addLineageHandler,
+  removeLineageHandler,
 }: DatasetDetailsProps) => {
   const { isAuthDisabled } = useAuth();
   const [isEdit, setIsEdit] = useState(false);
@@ -481,6 +482,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                   isNodeLoading={isNodeLoading}
                   lineageLeafNodes={lineageLeafNodes}
                   loadNodeHandler={loadNodeHandler}
+                  removeLineageHandler={removeLineageHandler}
                 />
               </div>
             )}

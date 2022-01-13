@@ -67,6 +67,7 @@ const PipelineDetails = ({
   version,
   versionHandler,
   addLineageHandler,
+  removeLineageHandler,
 }: PipeLineDetailsProp) => {
   const { isAuthDisabled } = useAuth();
   const [isEdit, setIsEdit] = useState(false);
@@ -389,6 +390,7 @@ const PipelineDetails = ({
                     isNodeLoading={isNodeLoading}
                     lineageLeafNodes={lineageLeafNodes}
                     loadNodeHandler={loadNodeHandler}
+                    removeLineageHandler={removeLineageHandler}
                   />
                 </div>
               )}

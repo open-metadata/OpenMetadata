@@ -25,7 +25,7 @@ import React, { useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import AppState from '../../AppState';
 import { getLineageByFQN } from '../../axiosAPIs/lineageAPI';
-import { addLineage } from '../../axiosAPIs/miscAPI';
+import { addLineage, deleteLineageEdge } from '../../axiosAPIs/miscAPI';
 import {
   addFollower,
   getPipelineByFqn,
@@ -33,7 +33,10 @@ import {
   removeFollower,
 } from '../../axiosAPIs/pipelineAPI';
 import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
-import { Edge } from '../../components/EntityLineage/EntityLineage.interface';
+import {
+  Edge,
+  EdgeData,
+} from '../../components/EntityLineage/EntityLineage.interface';
 import Loader from '../../components/Loader/Loader';
 import PipelineDetails from '../../components/PipelineDetails/PipelineDetails.component';
 import {
@@ -312,6 +315,28 @@ const PipelineDetailsPage = () => {
       });
   };
 
+  const removeLineageHandler = (data: EdgeData) => {
+    deleteLineageEdge(data.fromEntity, data.fromId, data.toEntity, data.toId)
+      .then(() => {
+        getLineageByFQN(pipelineFQN, EntityType.PIPELINE)
+          .then((res: AxiosResponse) => {
+            setEntityLineage(res.data);
+          })
+          .catch(() => {
+            showToast({
+              variant: 'error',
+              body: `Error while getting entity lineage`,
+            });
+          });
+      })
+      .catch(() => {
+        showToast({
+          variant: 'error',
+          body: `Error while removing edge`,
+        });
+      });
+  };
+
   useEffect(() => {
     fetchPipelineDetail(pipelineFQN);
     setActiveTab(getCurrentPipelineTab(tab));
@@ -349,6 +374,7 @@ const PipelineDetailsPage = () => {
           pipelineDetails={pipelineDetails}
           pipelineTags={tags}
           pipelineUrl={pipelineUrl}
+          removeLineageHandler={removeLineageHandler}
           serviceType={serviceType}
           setActiveTabHandler={activeTabHandler}
           settingsUpdateHandler={settingsUpdateHandler}
