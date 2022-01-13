@@ -188,7 +188,9 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
   };
 
   const setElementsHandle = () => {
-    return getLineageData(
+    const flag: { [x: string]: boolean } = {};
+    const uniqueElements: Elements = [];
+    const graphElements = getLineageData(
       entityLineage,
       selectNodeHandler,
       loadNodeHandler,
@@ -199,6 +201,15 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
       'buttonedge',
       onEdgeClick
     ) as Elements;
+
+    graphElements.forEach((elem) => {
+      if (!flag[elem.id]) {
+        flag[elem.id] = true;
+        uniqueElements.push(elem);
+      }
+    });
+
+    return uniqueElements;
   };
 
   const [elements, setElements] = useState<Elements>(
@@ -352,7 +363,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
         label: (
           <div className="tw-relative">
             <button
-              className="tw-absolute tw--top-5 tw--right-6 tw-cursor-pointer tw-z-9999 tw-bg-white"
+              className="tw-absolute tw--top-4 tw--right-6 tw-cursor-pointer tw-z-9999 tw-bg-body-hover tw-rounded-full"
               onClick={() => {
                 removeNodeHandler(newNode as FlowElement);
               }}>
@@ -416,7 +427,27 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
               ...el,
               connectable: true,
               id: selectedEntity.id,
-              data: { label: getNodeLable(selectedEntity) },
+              data: {
+                label: (
+                  <Fragment>
+                    {getNodeLable(selectedEntity)}
+                    <button
+                      className="tw-absolute tw--top-5 tw--right-4 tw-cursor-pointer tw-z-9999 tw-bg-body-hover tw-rounded-full"
+                      onClick={() => {
+                        removeNodeHandler({
+                          ...el,
+                          id: selectedEntity.id,
+                        } as FlowElement);
+                      }}>
+                      <SVGIcons
+                        alt="times-circle"
+                        icon="icon-times-circle"
+                        width="16px"
+                      />
+                    </button>
+                  </Fragment>
+                ),
+              },
             };
           } else {
             return el;
