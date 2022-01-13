@@ -80,7 +80,7 @@ ingestion-core/src/metadata/generated/**
 ingestion/src/metadata/generated/**
 ingestion/requirements.txt
 ingestion/.python-version
-ingestion-core/src/**
+
 # MLFlow
 mlruns/
 /ingestion/tests/integration/source/mlflow/tests/db/
