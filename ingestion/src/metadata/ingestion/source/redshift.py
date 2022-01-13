@@ -27,6 +27,10 @@ from sqlalchemy_redshift.dialect import RedshiftDialectMixin, RelationKey
 from metadata.ingestion.api.source import SourceStatus
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.source.sql_source import SQLConnectionConfig, SQLSource
+from metadata.utils.sql_queries import (
+    REDSHIFT_GET_ALL_RELATION_INFO,
+    REDSHIFT_GET_SCHEMA_COLUMN_INFO,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -82,30 +86,7 @@ def _get_column_info(self, *args, **kwargs):
 
 @reflection.cache
 def _get_all_relation_info(self, connection, **kw):
-    result = connection.execute(
-        """
-        SELECT
-          c.relkind,
-          n.oid as "schema_oid",
-          n.nspname as "schema",
-          c.oid as "rel_oid",
-          c.relname,
-          CASE c.reldiststyle
-            WHEN 0 THEN 'EVEN' WHEN 1 THEN 'KEY' WHEN 8 THEN 'ALL' END
-            AS "diststyle",
-          c.relowner AS "owner_id",
-          u.usename AS "owner_name",
-          TRIM(TRAILING ';' FROM pg_catalog.pg_get_viewdef(c.oid, true))
-            AS "view_definition",
-          pg_catalog.array_to_string(c.relacl, '\n') AS "privileges"
-        FROM pg_catalog.pg_class c
-             LEFT JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
-             JOIN pg_catalog.pg_user u ON u.usesysid = c.relowner
-        WHERE c.relkind IN ('r', 'v', 'm', 'S', 'f')
-          AND n.nspname !~ '^pg_'
-        ORDER BY c.relkind, n.oid, n.nspname;
-        """
-    )
+    result = connection.execute(REDSHIFT_GET_ALL_RELATION_INFO)
     relations = {}
     for rel in result:
         key = RelationKey(rel.relname, rel.schema, connection)
@@ -132,96 +113,7 @@ def _get_schema_column_info(self, connection, schema=None, **kw):
     all_columns = defaultdict(list)
     with connection.connect() as cc:
         result = cc.execute(
-            """
-            SELECT
-              n.nspname as "schema",
-              c.relname as "table_name",
-              att.attname as "name",
-              format_encoding(att.attencodingtype::integer) as "encode",
-              format_type(att.atttypid, att.atttypmod) as "type",
-              att.attisdistkey as "distkey",
-              att.attsortkeyord as "sortkey",
-              att.attnotnull as "notnull",
-              pg_catalog.col_description(att.attrelid, att.attnum)
-                as "comment",
-              adsrc,
-              attnum,
-              pg_catalog.format_type(att.atttypid, att.atttypmod),
-              pg_catalog.pg_get_expr(ad.adbin, ad.adrelid) AS DEFAULT,
-              n.oid as "schema_oid",
-              c.oid as "table_oid"
-            FROM pg_catalog.pg_class c
-            LEFT JOIN pg_catalog.pg_namespace n
-              ON n.oid = c.relnamespace
-            JOIN pg_catalog.pg_attribute att
-              ON att.attrelid = c.oid
-            LEFT JOIN pg_catalog.pg_attrdef ad
-              ON (att.attrelid, att.attnum) = (ad.adrelid, ad.adnum)
-            WHERE n.nspname !~ '^pg_'
-              AND att.attnum > 0
-              AND NOT att.attisdropped
-              {schema_clause}
-            UNION
-            SELECT
-              view_schema as "schema",
-              view_name as "table_name",
-              col_name as "name",
-              null as "encode",
-              col_type as "type",
-              null as "distkey",
-              0 as "sortkey",
-              null as "notnull",
-              null as "comment",
-              null as "adsrc",
-              null as "attnum",
-              col_type as "format_type",
-              null as "default",
-              null as "schema_oid",
-              null as "table_oid"
-            FROM pg_get_late_binding_view_cols() cols(
-              view_schema name,
-              view_name name,
-              col_name name,
-              col_type varchar,
-              col_num int)
-            WHERE 1 {schema_clause}
-            UNION
-            SELECT schemaname AS "schema",
-               tablename AS "table_name",
-               columnname AS "name",
-               null AS "encode",
-               -- Spectrum represents data types differently.
-               -- Standardize, so we can infer types.
-               CASE
-                 WHEN external_type = 'int' THEN 'integer'
-                 ELSE
-                   replace(
-                    replace(external_type, 'decimal', 'numeric'),
-                    'varchar', 'character varying')
-                 END
-                    AS "type",
-               null AS "distkey",
-               0 AS "sortkey",
-               null AS "notnull",
-               null AS "comment",
-               null AS "adsrc",
-               null AS "attnum",
-               CASE
-                 WHEN external_type = 'int' THEN 'integer'
-                 ELSE
-                   replace(
-                    replace(external_type, 'decimal', 'numeric'),
-                    'varchar', 'character varying')
-                 END
-                    AS "format_type",
-               null AS "default",
-               null AS "schema_oid",
-               null AS "table_oid"
-            FROM svv_external_columns
-            ORDER BY "schema", "table_name", "attnum";
-            """.format(
-                schema_clause=schema_clause
-            )
+            REDSHIFT_GET_SCHEMA_COLUMN_INFO.format(schema_clause=schema_clause)
         )
         for col in result:
             key = RelationKey(col.table_name, col.schema, connection)
