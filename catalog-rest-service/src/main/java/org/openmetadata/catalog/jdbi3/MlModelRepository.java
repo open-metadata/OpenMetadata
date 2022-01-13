@@ -31,7 +31,6 @@ import org.openmetadata.catalog.entity.data.MlModel;
 import org.openmetadata.catalog.resources.mlmodels.MlModelResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
-import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.MlFeature;
 import org.openmetadata.catalog.type.MlFeatureSource;
 import org.openmetadata.catalog.type.MlHyperParameter;

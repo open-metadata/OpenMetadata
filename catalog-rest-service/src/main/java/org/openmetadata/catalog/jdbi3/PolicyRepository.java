@@ -196,7 +196,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
 
   private List<Policy> getAccessControlPolicies() throws IOException {
     EntityUtil.Fields fields = new EntityUtil.Fields(List.of("policyType", "rules"));
-    List<String> jsons = daoCollection.policyDAO().listAfter(null, Integer.MAX_VALUE, "");
+    List<String> jsons = daoCollection.policyDAO().listAfter(null, Integer.MAX_VALUE, "", Include.NON_DELETED);
     List<Policy> policies = new ArrayList<>(jsons.size());
     for (String json : jsons) {
       Policy policy = setFields(JsonUtils.readValue(json, Policy.class), fields);
