@@ -14,6 +14,7 @@
 import { AxiosResponse } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isUndefined, lowerCase, uniqueId, upperCase } from 'lodash';
+import { LoadingState } from 'Models';
 import React, {
   DragEvent,
   Fragment,
@@ -108,9 +109,14 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
   );
 
   const [loading, setLoading] = useState<boolean>(false);
-  const [status, setStatus] = useState<'initial' | 'waiting' | 'success'>(
-    'initial'
-  );
+  const [status, setStatus] = useState<LoadingState>('initial');
+  const [deletionState, setDeletionState] = useState<{
+    loading: boolean;
+    status: Exclude<LoadingState, 'waiting'>;
+  }>({
+    loading: false,
+    status: 'initial',
+  });
 
   const selectedEntityHandler = (entity: EntityReference) => {
     setSelectedEntity(entity);
@@ -142,10 +148,28 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
         ) : null}
         <p className="tw-flex">
           <span className="tw-mr-2">{getEntityIcon(node.type)}</span>
-          {getDataLabel(node.name as string)}
+          {getDataLabel(node.displayName, node.name)}
         </p>
       </>
     );
+  };
+
+  const getModalBodyText = () => {
+    return `Are you sure you want to remove the edge between "${
+      selectedEdge.source.displayName
+        ? selectedEdge.source.displayName
+        : getPartialNameFromFQN(
+            selectedEdge.source.name as string,
+            selectedEdge.source.type === 'table' ? ['table'] : ['database']
+          )
+    } and ${
+      selectedEdge.target.displayName
+        ? selectedEdge.target.displayName
+        : getPartialNameFromFQN(
+            selectedEdge.target.name as string,
+            selectedEdge.target.type === 'table' ? ['table'] : ['database']
+          )
+    }"?`;
   };
 
   const removeEdgeHandler = (data: SelectedEdge, confirmDelete: boolean) => {
@@ -348,6 +372,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
           showToast({
             variant: 'error',
             body: `Error while fetching ${getDataLabel(
+              expandNode.displayName,
               expandNode.name,
               '.',
               true
@@ -418,31 +443,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
     setElements((es) => es.concat(newNode as FlowElement));
   };
 
-  useEffect(() => {
-    setElements(getLayoutedElements(setElementsHandle()));
-    setExpandNode(undefined);
-    setTableColumns([]);
-    setConfirmDelete(false);
-  }, [entityLineage, isNodeLoading, isEditMode]);
-
-  useEffect(() => {
-    onNodeExpand();
-    getTableColumns(expandNode);
-  }, [expandNode]);
-
-  useEffect(() => {
-    if (!isEmpty(selectedNode)) {
-      setExpandNode(undefined);
-    }
-  }, [selectedNode]);
-
-  useEffect(() => {
-    if (tableColumns.length) {
-      onNodeExpand(tableColumns);
-    }
-  }, [tableColumns]);
-
-  useEffect(() => {
+  const onEntitySelect = () => {
     if (!isEmpty(selectedEntity)) {
       setElements((es) => {
         return es.map((el) => {
@@ -479,6 +480,46 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
         });
       });
     }
+  };
+
+  const onRemove = () => {
+    setDeletionState({ loading: true, status: 'initial' });
+    setTimeout(() => {
+      setDeletionState({ loading: false, status: 'success' });
+      setTimeout(() => {
+        setShowDeleteModal(false);
+        setConfirmDelete(true);
+        setDeletionState((pre) => ({ ...pre, status: 'initial' }));
+      }, 500);
+    }, 500);
+  };
+
+  useEffect(() => {
+    setElements(getLayoutedElements(setElementsHandle()));
+    setExpandNode(undefined);
+    setTableColumns([]);
+    setConfirmDelete(false);
+  }, [entityLineage, isNodeLoading, isEditMode]);
+
+  useEffect(() => {
+    onNodeExpand();
+    getTableColumns(expandNode);
+  }, [expandNode]);
+
+  useEffect(() => {
+    if (!isEmpty(selectedNode)) {
+      setExpandNode(undefined);
+    }
+  }, [selectedNode]);
+
+  useEffect(() => {
+    if (tableColumns.length) {
+      onNodeExpand(tableColumns);
+    }
+  }, [tableColumns]);
+
+  useEffect(() => {
+    onEntitySelect();
   }, [selectedEntity]);
 
   useEffect(() => {
@@ -582,23 +623,22 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
           <EntityLineageSidebar newAddedNode={newAddedNode} show={isEditMode} />
           {showdeleteModal ? (
             <ConfirmationModal
-              bodyText={`Are you sure you want to remove the edge between "${getPartialNameFromFQN(
-                selectedEdge.source.name as string,
-                selectedEdge.source.type === 'table' ? ['table'] : ['database']
-              )} and ${getPartialNameFromFQN(
-                selectedEdge.target.name as string,
-                selectedEdge.target.type === 'table' ? ['table'] : ['database']
-              )}"?`}
+              bodyText={getModalBodyText()}
               cancelText="Cancel"
-              confirmText="Confirm"
+              confirmText={
+                deletionState.loading ? (
+                  <Loader size="small" type="white" />
+                ) : deletionState.status === 'success' ? (
+                  <i aria-hidden="true" className="fa fa-check tw-text-white" />
+                ) : (
+                  'Confirm'
+                )
+              }
               header="Remove lineage edge"
               onCancel={() => {
                 setShowDeleteModal(false);
               }}
-              onConfirm={() => {
-                setShowDeleteModal(false);
-                setConfirmDelete(true);
-              }}
+              onConfirm={onRemove}
             />
           ) : null}
         </div>

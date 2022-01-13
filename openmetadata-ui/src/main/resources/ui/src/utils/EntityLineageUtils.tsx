@@ -393,17 +393,29 @@ export const getLineageData = (
   return lineageData;
 };
 
-export const getDataLabel = (v = '', separator = '.', isTextOnly = false) => {
-  const length = v.split(separator).length;
+export const getDataLabel = (
+  displayName?: string,
+  name = '',
+  separator = '.',
+  isTextOnly = false
+) => {
+  let label = '';
+  if (displayName) {
+    label = displayName;
+  } else {
+    const length = name.split(separator).length;
+    label = name.split(separator)[length - 1];
+  }
+
   if (isTextOnly) {
-    return v.split(separator)[length - 1];
+    return label;
   }
 
   return (
     <span
       className="tw-break-words description-text tw-self-center"
       data-testid="lineage-entity">
-      {v.split(separator)[length - 1]}
+      {label}
     </span>
   );
 };
