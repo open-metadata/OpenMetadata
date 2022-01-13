@@ -13,6 +13,8 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import static org.openmetadata.catalog.util.EntityUtil.toBoolean;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.net.URI;
@@ -97,7 +99,11 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
   private EntityReference getService(Dashboard dashboard) throws IOException {
     EntityReference ref =
         EntityUtil.getService(
-            daoCollection.relationshipDAO(), Entity.DASHBOARD, dashboard.getId(), Entity.DASHBOARD_SERVICE);
+            daoCollection.relationshipDAO(),
+            Entity.DASHBOARD,
+            dashboard.getId(),
+            Entity.DASHBOARD_SERVICE,
+            toInclude(dashboard));
     if (ref != null) {
       DashboardService service = getService(ref.getId(), ref.getType());
       ref.setName(service.getName());
@@ -190,7 +196,14 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     }
     String dashboardId = dashboard.getId().toString();
     List<String> chartIds =
-        daoCollection.relationshipDAO().findTo(dashboardId, Entity.DASHBOARD, Relationship.HAS.ordinal(), Entity.CHART);
+        daoCollection
+            .relationshipDAO()
+            .findTo(
+                dashboardId,
+                Entity.DASHBOARD,
+                Relationship.HAS.ordinal(),
+                Entity.CHART,
+                toBoolean(toInclude(dashboard)));
     List<EntityReference> charts = new ArrayList<>();
     for (String chartId : chartIds) {
       charts.add(daoCollection.chartDAO().findEntityReferenceById(UUID.fromString(chartId)));

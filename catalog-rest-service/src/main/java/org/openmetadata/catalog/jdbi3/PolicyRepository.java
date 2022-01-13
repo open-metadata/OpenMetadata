@@ -13,6 +13,8 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import static org.openmetadata.catalog.util.EntityUtil.toBoolean;
+
 import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
@@ -29,6 +31,7 @@ import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.resources.policies.PolicyResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.PolicyType;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
@@ -67,11 +70,16 @@ public class PolicyRepository extends EntityRepository<Policy> {
 
   /** Find the location to which this policy applies to. * */
   @Transaction
-  private EntityReference getLocationForPolicy(UUID policyId) throws IOException {
+  private EntityReference getLocationForPolicy(Policy policy) throws IOException {
     List<String> result =
         daoCollection
             .relationshipDAO()
-            .findTo(policyId.toString(), Entity.POLICY, Relationship.APPLIED_TO.ordinal(), Entity.LOCATION);
+            .findTo(
+                policy.getId().toString(),
+                Entity.POLICY,
+                Relationship.APPLIED_TO.ordinal(),
+                Entity.LOCATION,
+                toBoolean(toInclude(policy)));
     // There is at most one location for a policy.
     return result.size() == 1
         ? daoCollection.locationDAO().findEntityReferenceById(UUID.fromString(result.get(0)))
@@ -86,7 +94,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
     policy.setPolicyUrl(fields.contains("policyUrl") ? policy.getPolicyUrl() : null);
     policy.setEnabled(fields.contains("enabled") ? policy.getEnabled() : null);
     policy.setRules(fields.contains("rules") ? policy.getRules() : null);
-    policy.setLocation(fields.contains("location") ? getLocationForPolicy(policy.getId()) : null);
+    policy.setLocation(fields.contains("location") ? getLocationForPolicy(policy) : null);
     return policy;
   }
 
@@ -188,7 +196,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
 
   private List<Policy> getAccessControlPolicies() throws IOException {
     EntityUtil.Fields fields = new EntityUtil.Fields(List.of("policyType", "rules"));
-    List<String> jsons = daoCollection.policyDAO().listAfter(null, Integer.MAX_VALUE, "");
+    List<String> jsons = daoCollection.policyDAO().listAfter(null, Integer.MAX_VALUE, "", Include.NON_DELETED);
     List<Policy> policies = new ArrayList<>(jsons.size());
     for (String json : jsons) {
       Policy policy = setFields(JsonUtils.readValue(json, Policy.class), fields);

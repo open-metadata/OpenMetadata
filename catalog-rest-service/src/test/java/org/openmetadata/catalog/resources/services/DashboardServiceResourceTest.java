@@ -327,7 +327,7 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
     String fields = "";
     service =
         byName
-            ? getEntityByName(service.getName(), fields, adminAuthHeaders())
+            ? getEntityByName(service.getName(), null, fields, adminAuthHeaders())
             : getEntity(service.getId(), fields, adminAuthHeaders());
     TestUtils.assertListNotNull(
         service.getHref(),

@@ -148,7 +148,11 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   private EntityReference getService(Pipeline pipeline) throws IOException {
     EntityReference ref =
         EntityUtil.getService(
-            daoCollection.relationshipDAO(), Entity.PIPELINE, pipeline.getId(), Entity.PIPELINE_SERVICE);
+            daoCollection.relationshipDAO(),
+            Entity.PIPELINE,
+            pipeline.getId(),
+            Entity.PIPELINE_SERVICE,
+            toInclude(pipeline));
     PipelineService service = getService(ref.getId(), ref.getType());
     ref.setName(service.getName());
     ref.setDescription(service.getDescription());

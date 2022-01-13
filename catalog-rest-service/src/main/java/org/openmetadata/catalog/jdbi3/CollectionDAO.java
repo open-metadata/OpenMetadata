@@ -72,6 +72,7 @@ import org.openmetadata.catalog.jdbi3.UserRepository.UserEntityInterface;
 import org.openmetadata.catalog.jdbi3.WebhookRepository.WebhookEntityInterface;
 import org.openmetadata.catalog.operations.workflows.Ingestion;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.type.UsageDetails;
 import org.openmetadata.catalog.type.UsageStats;
@@ -341,65 +342,80 @@ public interface CollectionDAO {
     //
     @SqlQuery(
         "SELECT toId, toEntity FROM entity_relationship "
-            + "WHERE fromId = :fromId AND fromEntity = :fromEntity AND relation = :relation AND deleted = false "
+            + "WHERE fromId = :fromId AND fromEntity = :fromEntity AND relation = :relation "
+            + "AND (deleted = :deleted OR :deleted IS NULL) "
             + "ORDER BY toId")
     @RegisterRowMapper(ToEntityReferenceMapper.class)
     List<EntityReference> findTo(
-        @Bind("fromId") String fromId, @Bind("fromEntity") String fromEntity, @Bind("relation") int relation);
+        @Bind("fromId") String fromId,
+        @Bind("fromEntity") String fromEntity,
+        @Bind("relation") int relation,
+        @Bind("deleted") Boolean deleted);
 
     @SqlQuery(
         "SELECT toId FROM entity_relationship "
-            + "WHERE fromId = :fromId AND fromEntity = :fromEntity AND relation = :relation AND toEntity = :toEntity AND deleted = false "
+            + "WHERE fromId = :fromId AND fromEntity = :fromEntity AND relation = :relation AND toEntity = :toEntity "
+            + "AND (deleted = :deleted OR :deleted IS NULL) "
             + "ORDER BY toId")
     List<String> findTo(
         @Bind("fromId") String fromId,
         @Bind("fromEntity") String fromEntity,
         @Bind("relation") int relation,
-        @Bind("toEntity") String toEntity);
+        @Bind("toEntity") String toEntity,
+        @Bind("deleted") Boolean deleted);
 
     @SqlQuery(
         "SELECT count(*) FROM entity_relationship "
             + "WHERE fromId = :fromId AND fromEntity = :fromEntity AND relation = :relation "
             + "AND (toEntity = :toEntity || :toEntity IS NULL) "
-            + "AND deleted = false "
+            + "AND (deleted = :deleted OR :deleted IS NULL) "
             + "ORDER BY fromId")
     int findToCount(
         @Bind("fromId") String fromId,
         @Bind("fromEntity") String fromEntity,
         @Bind("relation") int relation,
-        @Bind("toEntity") String toEntity);
+        @Bind("toEntity") String toEntity,
+        @Bind("deleted") Boolean deleted);
 
     //
     // Find from operations
     //
     @SqlQuery(
         "SELECT fromId FROM entity_relationship "
-            + "WHERE toId = :toId AND toEntity = :toEntity AND relation = :relation AND fromEntity = :fromEntity AND deleted = false "
+            + "WHERE toId = :toId AND toEntity = :toEntity AND relation = :relation AND fromEntity = :fromEntity "
+            + "AND (deleted = :deleted OR :deleted IS NULL) "
             + "ORDER BY fromId")
     List<String> findFrom(
         @Bind("toId") String toId,
         @Bind("toEntity") String toEntity,
         @Bind("relation") int relation,
-        @Bind("fromEntity") String fromEntity);
+        @Bind("fromEntity") String fromEntity,
+        @Bind("deleted") Boolean deleted);
 
     @SqlQuery(
         "SELECT fromId, fromEntity FROM entity_relationship "
-            + "WHERE toId = :toId AND toEntity = :toEntity AND relation = :relation AND deleted =  false "
+            + "WHERE toId = :toId AND toEntity = :toEntity AND relation = :relation "
+            + "AND (deleted = :deleted OR :deleted IS NULL) "
             + "ORDER BY fromId")
     @RegisterRowMapper(FromEntityReferenceMapper.class)
     List<EntityReference> findFrom(
-        @Bind("toId") String toId, @Bind("toEntity") String toEntity, @Bind("relation") int relation);
+        @Bind("toId") String toId,
+        @Bind("toEntity") String toEntity,
+        @Bind("relation") int relation,
+        @Bind("deleted") Boolean deleted);
 
     @SqlQuery(
         "SELECT fromId, fromEntity FROM entity_relationship "
-            + "WHERE toId = :toId AND toEntity = :toEntity AND relation = :relation AND fromEntity = :fromEntity AND deleted = false "
+            + "WHERE toId = :toId AND toEntity = :toEntity AND relation = :relation AND fromEntity = :fromEntity "
+            + "AND (deleted = :deleted OR :deleted IS NULL) "
             + "ORDER BY fromId")
     @RegisterRowMapper(FromEntityReferenceMapper.class)
     List<EntityReference> findFromEntity(
         @Bind("toId") String toId,
         @Bind("toEntity") String toEntity,
         @Bind("relation") int relation,
-        @Bind("fromEntity") String fromEntity);
+        @Bind("fromEntity") String fromEntity,
+        @Bind("deleted") Boolean deleted);
 
     //
     // Delete Operations
@@ -1116,17 +1132,17 @@ public interface CollectionDAO {
     @SqlQuery("SELECT json FROM user_entity WHERE email = :email")
     String findByEmail(@Bind("email") String email);
 
-    default int listCount(String team) {
+    default int listCount(String team, Include include) {
       return listCount(getTableName(), getNameColumn(), team, Relationship.HAS.ordinal());
     }
 
     @Override
-    default List<String> listBefore(String team, int limit, String before) {
+    default List<String> listBefore(String team, int limit, String before, Include include) {
       return listBefore(getTableName(), getNameColumn(), team, limit, before, Relationship.HAS.ordinal());
     }
 
     @Override
-    default List<String> listAfter(String team, int limit, String after) {
+    default List<String> listAfter(String team, int limit, String after, Include include) {
       return listAfter(getTableName(), getNameColumn(), team, limit, after, Relationship.HAS.ordinal());
     }
 

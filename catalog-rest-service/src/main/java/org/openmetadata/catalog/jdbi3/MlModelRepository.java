@@ -16,6 +16,7 @@ package org.openmetadata.catalog.jdbi3;
 import static org.openmetadata.catalog.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.catalog.util.EntityUtil.mlFeatureMatch;
 import static org.openmetadata.catalog.util.EntityUtil.mlHyperParameterMatch;
+import static org.openmetadata.catalog.util.EntityUtil.toBoolean;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
@@ -205,7 +206,11 @@ public class MlModelRepository extends EntityRepository<MlModel> {
       List<EntityReference> ids =
           daoCollection
               .relationshipDAO()
-              .findTo(mlModel.getId().toString(), Entity.MLMODEL, Relationship.USES.ordinal());
+              .findTo(
+                  mlModel.getId().toString(),
+                  Entity.MLMODEL,
+                  Relationship.USES.ordinal(),
+                  toBoolean(toInclude(mlModel)));
       if (ids.size() > 1) {
         LOG.warn("Possible database issues - multiple dashboards {} found for model {}", ids, mlModel.getId());
       }

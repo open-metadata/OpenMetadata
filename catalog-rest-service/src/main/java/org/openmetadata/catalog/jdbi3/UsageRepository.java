@@ -13,6 +13,8 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import static org.openmetadata.catalog.util.EntityUtil.toBoolean;
+
 import java.io.IOException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -25,6 +27,7 @@ import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.type.DailyCount;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.EntityUsage;
+import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.UsageDetails;
 import org.openmetadata.catalog.type.UsageStats;
 import org.slf4j.Logger;
@@ -78,7 +81,13 @@ public class UsageRepository {
     // If table usage was reported, add the usage count to database
     if (entityType.equalsIgnoreCase(Entity.TABLE)) {
       List<String> databaseIds =
-          dao.relationshipDAO().findFrom(entityId, entityType, Relationship.CONTAINS.ordinal(), Entity.DATABASE);
+          dao.relationshipDAO()
+              .findFrom(
+                  entityId,
+                  entityType,
+                  Relationship.CONTAINS.ordinal(),
+                  Entity.DATABASE,
+                  toBoolean(Include.NON_DELETED));
       dao.usageDAO().insertOrUpdateCount(usage.getDate(), databaseIds.get(0), Entity.DATABASE, usage.getCount());
     }
   }

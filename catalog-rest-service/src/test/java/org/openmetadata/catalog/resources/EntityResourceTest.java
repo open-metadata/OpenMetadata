@@ -19,6 +19,7 @@ import static javax.ws.rs.core.Response.Status.CREATED;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -56,6 +57,7 @@ import java.util.Optional;
 import java.util.Random;
 import java.util.UUID;
 import java.util.function.BiConsumer;
+import java.util.function.Predicate;
 import javax.json.JsonPatch;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response.Status;
@@ -326,53 +328,99 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
       createEntity(createRequest(getEntityName(test, i), null, null, null), adminAuthHeaders());
     }
 
-    // List all entities and use it for checking pagination
-    ResultList<T> allEntities = listEntities(null, 1000000, null, null, adminAuthHeaders());
-    int totalRecords = allEntities.getData().size();
-    printEntities(allEntities);
+    T entity = createEntity(createRequest(getEntityName(test, -1), null, null, null), adminAuthHeaders());
+    EntityInterface<T> deleted = getEntityInterface(entity);
+    deleteEntity(deleted.getId(), adminAuthHeaders());
 
-    // List entity with limit set from 1 to maxTables size
-    // Each time compare the returned list with allTables list to make sure right results are
-    // returned
-    for (int limit = 1; limit < maxEntities; limit++) {
-      String after = null;
-      String before;
-      int pageCount = 0;
-      int indexInAllTables = 0;
-      ResultList<T> forwardPage;
-      ResultList<T> backwardPage;
-      do { // For each limit (or page size) - forward scroll till the end
-        LOG.info("Limit {} forward scrollCount {} afterCursor {}", limit, pageCount, after);
-        forwardPage = listEntities(null, limit, null, after, adminAuthHeaders());
-        after = forwardPage.getPaging().getAfter();
-        before = forwardPage.getPaging().getBefore();
-        assertEntityPagination(allEntities.getData(), forwardPage, limit, indexInAllTables);
+    Predicate<T> matchDeleted =
+        e -> {
+          EntityInterface<T> entityInterface = getEntityInterface(e);
+          return entityInterface.getId().equals(deleted.getId());
+        };
 
-        if (pageCount == 0) { // CASE 0 - First page is being returned. There is no before-cursor
-          assertNull(before);
-        } else {
-          // Make sure scrolling back based on before cursor returns the correct result
-          backwardPage = listEntities(null, limit, before, null, adminAuthHeaders());
-          assertEntityPagination(allEntities.getData(), backwardPage, limit, (indexInAllTables - limit));
+    for (String include : List.of("non-deleted", "all", "deleted")) {
+
+      Map<String, String> queryParams =
+          new HashMap<>() {
+            {
+              put("include", include);
+            }
+          };
+      // List all entities and use it for checking pagination
+      ResultList<T> allEntities = listEntities(queryParams, 1000000, null, null, adminAuthHeaders());
+      int totalRecords = allEntities.getData().size();
+      printEntities(allEntities);
+
+      // List entity with limit set from 1 to maxTables size
+      // Each time compare the returned list with allTables list to make sure right results are
+      // returned
+      for (int limit = 1; limit < maxEntities; limit++) {
+        String after = null;
+        String before;
+        int pageCount = 0;
+        int indexInAllTables = 0;
+        ResultList<T> forwardPage;
+        ResultList<T> backwardPage;
+        Boolean foundDeleted = false;
+        do { // For each limit (or page size) - forward scroll till the end
+          LOG.info("Limit {} forward scrollCount {} afterCursor {}", limit, pageCount, after);
+          forwardPage = listEntities(queryParams, limit, null, after, adminAuthHeaders());
+          foundDeleted = forwardPage.getData().stream().anyMatch(matchDeleted) ? true : foundDeleted;
+          after = forwardPage.getPaging().getAfter();
+          before = forwardPage.getPaging().getBefore();
+          assertEntityPagination(allEntities.getData(), forwardPage, limit, indexInAllTables);
+
+          if (pageCount == 0) { // CASE 0 - First page is being returned. There is no before-cursor
+            assertNull(before);
+          } else {
+            // Make sure scrolling back based on before cursor returns the correct result
+            backwardPage = listEntities(queryParams, limit, before, null, adminAuthHeaders());
+            assertEntityPagination(allEntities.getData(), backwardPage, limit, (indexInAllTables - limit));
+          }
+
+          printEntities(forwardPage);
+          indexInAllTables += forwardPage.getData().size();
+          pageCount++;
+        } while (after != null);
+
+        if ("all".equals(include) || "deleted".equals(include)) {
+          assertTrue(foundDeleted);
+        } else { // non-delete
+          assertFalse(foundDeleted);
         }
 
-        printEntities(forwardPage);
-        indexInAllTables += forwardPage.getData().size();
-        pageCount++;
-      } while (after != null);
+        // We have now reached the last page - test backward scroll till the beginning
+        pageCount = 0;
+        indexInAllTables = totalRecords - limit - forwardPage.getData().size();
+        foundDeleted = false;
+        do {
+          LOG.info("Limit {} backward scrollCount {} beforeCursor {}", limit, pageCount, before);
+          forwardPage = listEntities(queryParams, limit, before, null, adminAuthHeaders());
+          foundDeleted = forwardPage.getData().stream().anyMatch(matchDeleted) ? true : foundDeleted;
+          printEntities(forwardPage);
+          before = forwardPage.getPaging().getBefore();
+          assertEntityPagination(allEntities.getData(), forwardPage, limit, indexInAllTables);
+          pageCount++;
+          indexInAllTables -= forwardPage.getData().size();
+        } while (before != null);
 
-      // We have now reached the last page - test backward scroll till the beginning
-      pageCount = 0;
-      indexInAllTables = totalRecords - limit - forwardPage.getData().size();
-      do {
-        LOG.info("Limit {} backward scrollCount {} beforeCursor {}", limit, pageCount, before);
-        forwardPage = listEntities(null, limit, before, null, adminAuthHeaders());
-        printEntities(forwardPage);
-        before = forwardPage.getPaging().getBefore();
-        assertEntityPagination(allEntities.getData(), forwardPage, limit, indexInAllTables);
-        pageCount++;
-        indexInAllTables -= forwardPage.getData().size();
-      } while (before != null);
+        if ("all".equals(include) || "deleted".equals(include)) {
+          assertTrue(foundDeleted);
+        } else { // non-delete
+          assertFalse(foundDeleted);
+        }
+      }
+
+      // before running "deleted" delete all entries
+      if ("all".equals(include)) {
+        // delete all entries
+        for (T e : allEntities.getData()) {
+          EntityInterface<T> toBeDeleted = getEntityInterface(e);
+          if (!toBeDeleted.isDeleted()) {
+            deleteEntity(toBeDeleted.getId(), adminAuthHeaders());
+          }
+        }
+      }
     }
   }
 
@@ -430,6 +478,59 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     T entity = createAndCheckEntity(create, adminAuthHeaders());
     validateGetWithDifferentFields(entity, false);
     validateGetWithDifferentFields(entity, true);
+  }
+
+  @Test
+  void get_entityIncludeDeleted_200(TestInfo test) throws HttpResponseException, URISyntaxException {
+    Object create = createRequest(getEntityName(test), "", "", null);
+    EntityReference container = getContainer(create);
+    // Create first time using POST
+    T entity = createEntity(create, adminAuthHeaders());
+    EntityInterface<T> entityInterface = getEntityInterface(entity);
+    // delete it
+    deleteEntity(entityInterface.getId(), adminAuthHeaders());
+    assertResponse(
+        () -> getEntity(entityInterface.getId(), Collections.emptyMap(), null, adminAuthHeaders()),
+        NOT_FOUND,
+        entityNotFound(entityName, entityInterface.getId()));
+    assertResponse(
+        () ->
+            getEntityByName(entityInterface.getFullyQualifiedName(), Collections.emptyMap(), null, adminAuthHeaders()),
+        NOT_FOUND,
+        entityNotFound(entityName, entityInterface.getFullyQualifiedName()));
+
+    Map<String, String> queryParams =
+        new HashMap<>() {
+          {
+            put("include", "deleted");
+          }
+        };
+    checkContainer(container, getEntity(entityInterface.getId(), queryParams, null, adminAuthHeaders()));
+    checkContainer(
+        container, getEntityByName(entityInterface.getFullyQualifiedName(), queryParams, null, adminAuthHeaders()));
+
+    queryParams.put("include", "all");
+    checkContainer(container, getEntity(entityInterface.getId(), queryParams, null, adminAuthHeaders()));
+    checkContainer(
+        container, getEntityByName(entityInterface.getFullyQualifiedName(), queryParams, null, adminAuthHeaders()));
+
+    queryParams.put("include", "non-deleted");
+    assertResponse(
+        () -> getEntity(entityInterface.getId(), queryParams, null, adminAuthHeaders()),
+        NOT_FOUND,
+        entityNotFound(entityName, entityInterface.getId()));
+    assertResponse(
+        () -> getEntityByName(entityInterface.getFullyQualifiedName(), queryParams, null, adminAuthHeaders()),
+        NOT_FOUND,
+        entityNotFound(entityName, entityInterface.getFullyQualifiedName()));
+  }
+
+  protected void checkContainer(EntityReference container, T entity) {
+    EntityInterface<T> entityInterface = getEntityInterface(entity);
+    if (container != null) {
+      assertNotNull(entityInterface.getContainer(), "Container is null");
+      assertEquals(container.getId(), entityInterface.getContainer().getId(), "Containers are different");
+    }
   }
 
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -646,6 +747,33 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
   }
 
   @Test
+  void put_addFollowerDeleteEntity_200(TestInfo test) throws IOException, URISyntaxException {
+    if (!supportsFollowers) {
+      return; // Entity does not support following
+    }
+    Object request = createRequest(getEntityName(test), "description", "displayName", null);
+    T entity = createAndCheckEntity(request, adminAuthHeaders());
+    UUID entityId = getEntityInterface(entity).getId();
+
+    // Add follower to the entity
+    UserResourceTest userResourceTest = new UserResourceTest();
+    User user1 = UserResourceTest.createUser(userResourceTest.create(test, 1), userAuthHeaders());
+    addAndCheckFollower(entityId, user1.getId(), CREATED, 1, userAuthHeaders());
+
+    deleteEntity(entityId, adminAuthHeaders());
+
+    Map<String, String> queryParams =
+        new HashMap<>() {
+          {
+            put("include", "deleted");
+          }
+        };
+    EntityInterface<T> entityInterface =
+        getEntityInterface(getEntity(entityId, queryParams, "followers", adminAuthHeaders()));
+    TestUtils.existsInEntityReferenceList(entityInterface.getFollowers(), user1.getId(), true);
+  }
+
+  @Test
   void put_addDeleteInvalidFollower_200(TestInfo test) throws IOException, URISyntaxException {
     if (!supportsFollowers) {
       return; // Entity does not support following
@@ -843,10 +971,24 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     return TestUtils.get(target, entityClass, authHeaders);
   }
 
-  protected final T getEntityByName(String name, String fields, Map<String, String> authHeaders)
+  public final T getEntity(UUID id, Map<String, String> queryParams, String fields, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    WebTarget target = getResource(id);
+    target = fields != null ? target.queryParam("fields", fields) : target;
+    for (Entry<String, String> entry : Optional.ofNullable(queryParams).orElse(Collections.emptyMap()).entrySet()) {
+      target = target.queryParam(entry.getKey(), entry.getValue());
+    }
+    return TestUtils.get(target, entityClass, authHeaders);
+  }
+
+  protected final T getEntityByName(
+      String name, Map<String, String> queryParams, String fields, Map<String, String> authHeaders)
       throws HttpResponseException {
     WebTarget target = getResourceByName(name);
-    target = target.queryParam("fields", fields);
+    target = fields != null ? target.queryParam("fields", fields) : target;
+    for (Entry<String, String> entry : Optional.ofNullable(queryParams).orElse(Collections.emptyMap()).entrySet()) {
+      target = target.queryParam(entry.getKey(), entry.getValue());
+    }
     return TestUtils.get(target, entityClass, authHeaders);
   }
 
