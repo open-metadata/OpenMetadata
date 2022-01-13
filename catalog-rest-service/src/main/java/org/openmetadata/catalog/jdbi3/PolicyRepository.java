@@ -70,16 +70,16 @@ public class PolicyRepository extends EntityRepository<Policy> {
 
   /** Find the location to which this policy applies to. * */
   @Transaction
-  private EntityReference getLocationForPolicy(UUID policyId) throws IOException {
+  private EntityReference getLocationForPolicy(Policy policy) throws IOException {
     List<String> result =
         daoCollection
             .relationshipDAO()
             .findTo(
-                policyId.toString(),
+                policy.getId().toString(),
                 Entity.POLICY,
                 Relationship.APPLIED_TO.ordinal(),
                 Entity.LOCATION,
-                toBoolean(Include.NON_DELETED));
+                toBoolean(toInclude(policy)));
     // There is at most one location for a policy.
     return result.size() == 1
         ? daoCollection.locationDAO().findEntityReferenceById(UUID.fromString(result.get(0)))
@@ -94,7 +94,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
     policy.setPolicyUrl(fields.contains("policyUrl") ? policy.getPolicyUrl() : null);
     policy.setEnabled(fields.contains("enabled") ? policy.getEnabled() : null);
     policy.setRules(fields.contains("rules") ? policy.getRules() : null);
-    policy.setLocation(fields.contains("location") ? getLocationForPolicy(policy.getId()) : null);
+    policy.setLocation(fields.contains("location") ? getLocationForPolicy(policy) : null);
     return policy;
   }
 

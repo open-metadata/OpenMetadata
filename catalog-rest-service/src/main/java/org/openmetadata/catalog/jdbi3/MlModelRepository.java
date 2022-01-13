@@ -211,7 +211,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
                   mlModel.getId().toString(),
                   Entity.MLMODEL,
                   Relationship.USES.ordinal(),
-                  toBoolean(Include.NON_DELETED));
+                  toBoolean(toInclude(mlModel)));
       if (ids.size() > 1) {
         LOG.warn("Possible database issues - multiple dashboards {} found for model {}", ids, mlModel.getId());
       }

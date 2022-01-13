@@ -121,7 +121,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
                 Entity.DATABASE,
                 Relationship.CONTAINS.ordinal(),
                 Entity.TABLE,
-                toBoolean(Include.NON_DELETED));
+                toBoolean(toInclude(database)));
     List<EntityReference> tables = new ArrayList<>();
     for (String tableId : tableIds) {
       tables.add(daoCollection.tableDAO().findEntityReferenceById(UUID.fromString(tableId)));
@@ -167,7 +167,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
                 Entity.DATABASE,
                 Relationship.HAS.ordinal(),
                 Entity.LOCATION,
-                toBoolean(Include.NON_DELETED));
+                toBoolean(toInclude(database)));
     if (result.size() == 1) {
       String locationId = result.get(0);
       return daoCollection.locationDAO().findEntityReferenceById(UUID.fromString(locationId));

@@ -33,7 +33,6 @@ import org.openmetadata.catalog.jdbi3.DashboardServiceRepository.DashboardServic
 import org.openmetadata.catalog.resources.dashboards.DashboardResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
-import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
@@ -204,7 +203,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
                 Entity.DASHBOARD,
                 Relationship.HAS.ordinal(),
                 Entity.CHART,
-                toBoolean(Include.NON_DELETED));
+                toBoolean(toInclude(dashboard)));
     List<EntityReference> charts = new ArrayList<>();
     for (String chartId : chartIds) {
       charts.add(daoCollection.chartDAO().findEntityReferenceById(UUID.fromString(chartId)));

@@ -118,7 +118,7 @@ public class UserRepository extends EntityRepository<User> {
     List<EntityReference> ownedEntities =
         daoCollection
             .relationshipDAO()
-            .findTo(user.getId().toString(), Entity.USER, OWNS.ordinal(), toBoolean(Include.NON_DELETED));
+            .findTo(user.getId().toString(), Entity.USER, OWNS.ordinal(), toBoolean(toInclude(user)));
 
     // Compile entities owned by the team the user belongs to
     List<EntityReference> teams = user.getTeams() == null ? getTeams(user) : user.getTeams();
@@ -136,7 +136,7 @@ public class UserRepository extends EntityRepository<User> {
     return EntityUtil.populateEntityReferences(
         daoCollection
             .relationshipDAO()
-            .findTo(user.getId().toString(), Entity.USER, FOLLOWS.ordinal(), toBoolean(Include.NON_DELETED)));
+            .findTo(user.getId().toString(), Entity.USER, FOLLOWS.ordinal(), toBoolean(toInclude(user))));
   }
 
   public List<EntityReference> validateRoles(List<UUID> roleIds) throws IOException {
@@ -166,7 +166,7 @@ public class UserRepository extends EntityRepository<User> {
     List<String> roleIds =
         daoCollection
             .relationshipDAO()
-            .findTo(user.getId().toString(), Entity.USER, HAS.ordinal(), Entity.ROLE, toBoolean(Include.NON_DELETED));
+            .findTo(user.getId().toString(), Entity.USER, HAS.ordinal(), Entity.ROLE, toBoolean(toInclude(user)));
     List<EntityReference> roles = new ArrayList<>(roleIds.size());
     for (String roleId : roleIds) {
       roles.add(daoCollection.roleDAO().findEntityReferenceById(UUID.fromString(roleId)));
@@ -179,7 +179,7 @@ public class UserRepository extends EntityRepository<User> {
     List<String> teamIds =
         daoCollection
             .relationshipDAO()
-            .findFrom(user.getId().toString(), Entity.USER, HAS.ordinal(), Entity.TEAM, toBoolean(Include.NON_DELETED));
+            .findFrom(user.getId().toString(), Entity.USER, HAS.ordinal(), Entity.TEAM, toBoolean(toInclude(user)));
     List<EntityReference> teams = new ArrayList<>();
     for (String teamId : teamIds) {
       teams.add(daoCollection.teamDAO().findEntityReferenceById(UUID.fromString(teamId)));
