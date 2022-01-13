@@ -18,12 +18,15 @@ import io.dropwizard.Configuration;
 import io.dropwizard.db.DataSourceFactory;
 import io.dropwizard.health.conf.HealthConfiguration;
 import io.federecio.dropwizard.swagger.SwaggerBundleConfiguration;
+import java.util.List;
 import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
+import org.openmetadata.catalog.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.catalog.events.EventHandlerConfiguration;
 import org.openmetadata.catalog.ingestion.AirflowConfiguration;
 import org.openmetadata.catalog.security.AuthenticationConfiguration;
 import org.openmetadata.catalog.security.AuthorizerConfiguration;
+import org.openmetadata.catalog.slack.SlackPublisherConfiguration;
 
 public class CatalogApplicationConfig extends Configuration {
   @Valid
@@ -49,6 +52,9 @@ public class CatalogApplicationConfig extends Configuration {
   @NotNull
   @JsonProperty("airflowConfiguration")
   private AirflowConfiguration airflowConfiguration;
+
+  @JsonProperty("slackEventPublishers")
+  private List<SlackPublisherConfiguration> slackEventPublishers;
 
   public DataSourceFactory getDataSourceFactory() {
     return dataSourceFactory;
@@ -96,6 +102,14 @@ public class CatalogApplicationConfig extends Configuration {
 
   public void setAirflowConfiguration(AirflowConfiguration airflowConfiguration) {
     this.airflowConfiguration = airflowConfiguration;
+  }
+
+  public List<SlackPublisherConfiguration> getSlackEventPublishers() {
+    return slackEventPublishers;
+  }
+
+  public void setSlackEventPublishers(List<SlackPublisherConfiguration> slackEventPublishers) {
+    this.slackEventPublishers = slackEventPublishers;
   }
 
   @Valid

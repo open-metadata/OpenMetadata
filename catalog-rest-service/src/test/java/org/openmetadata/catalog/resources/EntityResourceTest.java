@@ -1117,7 +1117,6 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
       compareEntities(
           entityInterface.getEntity(), JsonUtils.readValue((String) changeEvent.getEntity(), entityClass), authHeaders);
     } else if (expectedEventType == EventType.ENTITY_UPDATED) {
-      assertNull(changeEvent.getEntity());
       assertChangeDescription(expectedChangeDescription, changeEvent.getChangeDescription());
     } else if (expectedEventType == EventType.ENTITY_DELETED) {
       assertListNull(changeEvent.getEntity(), changeEvent.getChangeDescription());

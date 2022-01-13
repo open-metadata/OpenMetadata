@@ -25,6 +25,9 @@ TABLE_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
             "owner": {
               "type": "text"
             },
+            "deleted": {
+              "type": "boolean"
+            },
             "followers": {
               "type": "keyword"
             },
@@ -130,6 +133,9 @@ TOPIC_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
             "owner": {
               "type": "text"
             },
+            "deleted": {
+              "type": "boolean"
+            },
             "followers": {
               "type": "keyword"
             },
@@ -207,6 +213,9 @@ DASHBOARD_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
             },
             "owner": {
               "type": "keyword"
+            },
+            "deleted": {
+              "type": "boolean"
             },
             "fqdn": {
               "type": "keyword"
@@ -312,6 +321,9 @@ PIPELINE_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
             },
             "owner": {
               "type": "keyword"
+            },
+            "deleted": {
+              "type": "boolean"
             },
             "followers": {
               "type": "keyword"

@@ -7,13 +7,10 @@
         <sourceOutputDir name="target/generated-sources/annotations" />
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
-        <module name="common" />
         <module name="catalog-rest-service" />
+        <module name="common" />
         <module name="openmetadata-ui" />
       </profile>
     </annotationProcessing>
-    <bytecodeTargetLevel>
-      <module name="catalog-bin" target="1.5" />
-    </bytecodeTargetLevel>
   </component>
 </project>
