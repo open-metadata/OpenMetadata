@@ -17,47 +17,34 @@ import { isEmpty } from 'lodash';
 import { observer } from 'mobx-react';
 import { Match } from 'Models';
 import React, { useEffect, useState } from 'react';
-import {
-  Link,
-  NavLink,
-  useHistory,
-  useLocation,
-  useRouteMatch,
-} from 'react-router-dom';
+import { useHistory, useLocation, useRouteMatch } from 'react-router-dom';
 import appState from '../../AppState';
 import { getVersion } from '../../axiosAPIs/miscAPI';
 import {
   getExplorePathWithSearch,
   navLinkSettings,
   ROUTES,
-  TOUR_SEARCH_TERM,
 } from '../../constants/constants';
 import { urlGitbookDocs, urlJoinSlack } from '../../constants/url.const';
-import { CurrentTourPageType } from '../../enums/tour.enum';
 import { useAuth } from '../../hooks/authHooks';
 import { userSignOut } from '../../utils/AuthUtils';
 import { addToRecentSearched } from '../../utils/CommonUtils';
-import {
-  inPageSearchOptions,
-  isInPageSearchAllowed,
-} from '../../utils/RouterUtils';
-import { activeLink, normalLink } from '../../utils/styleconstant';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
-import PopOver from '../common/popover/PopOver';
-import DropDown from '../dropdown/DropDown';
-import { WhatsNewModal } from '../Modals/WhatsNewModal';
 import { COOKIE_VERSION } from '../Modals/WhatsNewModal/whatsNewData';
-import { ReactComponent as IconDefaultUserProfile } from './../../assets/svg/ic-default-profile.svg';
-import SearchOptions from './SearchOptions';
-import Suggestions from './Suggestions';
+import NavBar from '../nav-bar/NavBar';
 
 const cookieStorage = new CookieStorage();
 
 const Appbar: React.FC = (): JSX.Element => {
   const location = useLocation();
   const history = useHistory();
-  const { isAuthenticatedRoute, isSignedIn, isFirstTimeUser, isAuthDisabled } =
-    useAuth(location.pathname);
+  const {
+    isAuthenticatedRoute,
+    isSignedIn,
+    isFirstTimeUser,
+    isAuthDisabled,
+    isTourRoute,
+  } = useAuth(location.pathname);
   const match: Match | null = useRouteMatch({
     path: ROUTES.EXPLORE_WITH_SEARCH,
   });
@@ -65,18 +52,15 @@ const Appbar: React.FC = (): JSX.Element => {
   const [searchValue, setSearchValue] = useState(searchQuery);
   const [isOpen, setIsOpen] = useState<boolean>(true);
   const [isFeatureModalOpen, setIsFeatureModalOpen] = useState<boolean>(false);
-  const [searchIcon, setSearchIcon] = useState<string>('icon-searchv1');
 
   const [version, setVersion] = useState<string>('');
 
-  const navStyle = (value: boolean) => {
-    if (value) return { color: activeLink };
-
-    return { color: normalLink };
+  const handleFeatureModal = (value: boolean) => {
+    setIsFeatureModalOpen(value);
   };
 
-  const openModal = () => {
-    setIsFeatureModalOpen(true);
+  const handleSearchChange = (value: string) => {
+    setSearchValue(value);
   };
 
   const supportLinks = [
@@ -156,6 +140,40 @@ const Appbar: React.FC = (): JSX.Element => {
     );
   };
 
+  const profileDropdown = [
+    {
+      name: getUserDisplayName(),
+      to: '',
+      disabled: false,
+      icon: <></>,
+      isText: true,
+    },
+    {
+      name: 'Logout',
+      to: '#/action-1',
+      disabled: false,
+      method: userSignOut,
+    },
+  ];
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    const target = e.target as HTMLInputElement;
+    if (e.key === 'Enter') {
+      setIsOpen(false);
+
+      addToRecentSearched(target.value);
+      history.push(
+        getExplorePathWithSearch(
+          target.value,
+          // this is for if user is searching from another page
+          location.pathname.startsWith(ROUTES.EXPLORE)
+            ? appState.explorePageTab
+            : 'tables'
+        )
+      );
+    }
+  };
+
   useEffect(() => {
     setSearchValue(searchQuery);
   }, [searchQuery]);
@@ -183,217 +201,20 @@ const Appbar: React.FC = (): JSX.Element => {
 
   return (
     <>
-      {isAuthenticatedRoute && isSignedIn ? (
-        <div className="tw-h-16 tw-py-3 tw-border-b-2 tw-border-separator">
-          <div className="tw-flex tw-items-center tw-flex-row tw-justify-between tw-flex-nowrap tw-px-6 centered-layout">
-            <div className="tw-flex tw-items-center tw-flex-row tw-justify-between tw-flex-nowrap">
-              <NavLink id="openmetadata_logo" to="/">
-                <SVGIcons
-                  alt="OpenMetadata Logo"
-                  icon={Icons.LOGO}
-                  width="90"
-                />
-              </NavLink>
-              <div className="tw-ml-5">
-                <NavLink
-                  className="tw-nav focus:tw-no-underline"
-                  data-testid="appbar-item"
-                  id="explore"
-                  style={navStyle(location.pathname.startsWith('/explore'))}
-                  to={{
-                    pathname: '/explore/tables',
-                  }}>
-                  Explore
-                </NavLink>
-                <DropDown
-                  dropDownList={navLinkSettings}
-                  label="Settings"
-                  type="link"
-                />
-              </div>
-            </div>
-            <div
-              className="tw-flex-none tw-relative tw-justify-items-center tw-ml-auto"
-              data-testid="appbar-item">
-              <SVGIcons
-                alt="icon-search"
-                className="tw-absolute tw-block tw-z-10 tw-w-4 tw-h-4 tw-right-2.5 tw-top-2.5 tw-leading-8 tw-text-center tw-pointer-events-none"
-                icon={searchIcon}
-              />
-              <input
-                autoComplete="off"
-                className="tw-relative search-grey tw-rounded tw-border tw-border-main focus:tw-outline-none tw-pl-2 tw-pt-2 tw-pb-1.5 tw-form-inputs"
-                data-testid="searchBox"
-                id="searchBox"
-                placeholder="Search for Table, Topics, Dashboards and Pipeline"
-                type="text"
-                value={searchValue || ''}
-                onBlur={() => setSearchIcon('icon-searchv1')}
-                onChange={(e) => {
-                  setSearchValue(e.target.value);
-                }}
-                onFocus={() => setSearchIcon('icon-searchv1color')}
-                onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
-                  const target = e.target as HTMLInputElement;
-                  if (e.key === 'Enter') {
-                    setIsOpen(false);
-                    // below code is for tour feature
-                    if (location.pathname.includes(ROUTES.TOUR)) {
-                      if (searchValue === TOUR_SEARCH_TERM) {
-                        appState.currentTourPage =
-                          CurrentTourPageType.EXPLORE_PAGE;
-                        setSearchValue('');
-                      }
-
-                      return;
-                    }
-
-                    addToRecentSearched(target.value);
-                    history.push(
-                      getExplorePathWithSearch(
-                        target.value,
-                        // this is for if user is searching from another page
-                        location.pathname.startsWith(ROUTES.EXPLORE)
-                          ? appState.explorePageTab
-                          : 'tables'
-                      )
-                    );
-                  }
-                }}
-              />
-              {!location.pathname.includes(ROUTES.TOUR) &&
-                searchValue &&
-                (isInPageSearchAllowed(location.pathname) ? (
-                  <SearchOptions
-                    isOpen={isOpen}
-                    options={inPageSearchOptions(location.pathname)}
-                    searchText={searchValue}
-                    selectOption={(text) => {
-                      appState.inPageSearchText = text;
-                    }}
-                    setIsOpen={setIsOpen}
-                  />
-                ) : (
-                  <Suggestions
-                    isOpen={isOpen}
-                    searchText={searchValue}
-                    setIsOpen={setIsOpen}
-                  />
-                ))}
-            </div>
-            <div className="tw-flex tw-ml-auto tw-pl-36">
-              <button
-                className="tw-nav focus:tw-no-underline hover:tw-underline"
-                data-testid="whatsnew-modal"
-                onClick={openModal}>
-                <PopOver
-                  position="bottom"
-                  title="What's new?"
-                  trigger="mouseenter">
-                  <SVGIcons
-                    alt="Doc icon"
-                    className="tw-align-middle tw-mr-1"
-                    icon={Icons.WHATS_NEW}
-                    width="20"
-                  />
-                </PopOver>
-              </button>
-
-              <button
-                className="tw-nav focus:tw-no-underline hover:tw-underline"
-                data-testid="tour">
-                <PopOver
-                  position="bottom"
-                  title="Take a tour"
-                  trigger="mouseenter">
-                  <Link to={ROUTES.TOUR}>
-                    <SVGIcons
-                      alt="tour icon"
-                      className="tw-align-middle tw-mr-0.5"
-                      icon={Icons.TOUR}
-                      width="20"
-                    />
-                  </Link>
-                </PopOver>
-              </button>
-              <div>
-                <DropDown
-                  dropDownList={supportLinks}
-                  icon={
-                    <PopOver
-                      position="bottom"
-                      title="Help"
-                      trigger="mouseenter">
-                      <SVGIcons
-                        alt="Doc icon"
-                        className="tw-align-middle tw-mt-0.5 tw-mr-1"
-                        icon={Icons.HELP_CIRCLE}
-                        width="20"
-                      />
-                    </PopOver>
-                  }
-                  isDropDownIconVisible={false}
-                  isLableVisible={false}
-                  label="Need Help"
-                  type="link"
-                />
-              </div>
-            </div>
-            <div data-testid="dropdown-profile">
-              <DropDown
-                dropDownList={[
-                  {
-                    name: getUserDisplayName(),
-                    to: '',
-                    disabled: false,
-                    icon: <></>,
-                    isText: true,
-                  },
-                  {
-                    name: 'Logout',
-                    to: '#/action-1',
-                    disabled: false,
-                    method: userSignOut,
-                  },
-                ]}
-                icon={
-                  <>
-                    <PopOver
-                      position="bottom"
-                      title="Profile"
-                      trigger="mouseenter">
-                      {appState?.userDetails?.profile?.images?.image512 ? (
-                        <div className="profile-image tw--mr-2">
-                          <img
-                            alt="user"
-                            src={appState.userDetails.profile.images.image512}
-                          />
-                        </div>
-                      ) : (
-                        <IconDefaultUserProfile
-                          className="tw--mr-2"
-                          style={{
-                            height: '22px',
-                            width: '22px',
-                            borderRadius: '50%',
-                          }}
-                        />
-                      )}
-                    </PopOver>
-                  </>
-                }
-                isDropDownIconVisible={false}
-                type="link"
-              />
-            </div>
-          </div>
-          {isFeatureModalOpen && (
-            <WhatsNewModal
-              header="What’s new!"
-              onCancel={() => setIsFeatureModalOpen(false)}
-            />
-          )}
-        </div>
+      {isAuthenticatedRoute && isSignedIn && !isTourRoute ? (
+        <NavBar
+          handleFeatureModal={handleFeatureModal}
+          handleKeyDown={handleKeyDown}
+          handleSearchBoxOpen={setIsOpen}
+          handleSearchChange={handleSearchChange}
+          isFeatureModalOpen={isFeatureModalOpen}
+          isSearchBoxOpen={isOpen}
+          pathname={location.pathname}
+          profileDropdown={profileDropdown}
+          searchValue={searchValue || ''}
+          settingDropdown={navLinkSettings}
+          supportDropdown={supportLinks}
+        />
       ) : null}
     </>
   );

@@ -1,6 +1,20 @@
+/*
+ *  Copyright 2021 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
 import { observer } from 'mobx-react';
 import { LeafNodes, SearchResponse } from 'Models';
 import React, { useEffect, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import AppState from '../../AppState';
 import DatasetDetails from '../../components/DatasetDetails/DatasetDetails.component';
 import { DatasetOwner } from '../../components/DatasetDetails/DatasetDetails.interface';
@@ -8,7 +22,9 @@ import Explore from '../../components/Explore/Explore.component';
 import { ExploreSearchData } from '../../components/Explore/explore.interface';
 import MyData from '../../components/MyData/MyData.component';
 import { MyDataProps } from '../../components/MyData/MyData.interface';
+import NavBar from '../../components/nav-bar/NavBar';
 import Tour from '../../components/tour/Tour';
+import { ROUTES, TOUR_SEARCH_TERM } from '../../constants/constants';
 import {
   mockDatasetData,
   mockFeedData,
@@ -22,6 +38,7 @@ import {
 } from '../../generated/entity/data/table';
 import { TagLabel } from '../../generated/type/tagLabel';
 import { useTour } from '../../hooks/useTour';
+import { getSteps } from '../../utils/TourUtils';
 
 const mockData = {
   data: { hits: { hits: [] } },
@@ -36,6 +53,7 @@ const exploreCount = {
 };
 
 const TourPage = () => {
+  const location = useLocation();
   const { handleIsTourOpen } = useTour();
   const [currentPage, setCurrentPage] = useState<CurrentTourPageType>(
     AppState.currentTourPage
@@ -47,9 +65,27 @@ const TourPage = () => {
     AppState.activeTabforTourDatasetPage
   );
   const [explorePageCounts, setExplorePageCounts] = useState(exploreCount);
+  const [searchValue, setSearchValue] = useState('');
 
   const handleCountChange = () => {
     setExplorePageCounts(exploreCount);
+  };
+
+  const clearSearchTerm = () => {
+    setSearchValue('');
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      if (location.pathname.includes(ROUTES.TOUR)) {
+        if (searchValue === TOUR_SEARCH_TERM) {
+          AppState.currentTourPage = CurrentTourPageType.EXPLORE_PAGE;
+          clearSearchTerm();
+        }
+
+        return;
+      }
+    }
   };
 
   useEffect(() => {
@@ -164,7 +200,21 @@ const TourPage = () => {
 
   return (
     <div>
-      <Tour />
+      <NavBar
+        isTourRoute
+        handleFeatureModal={handleCountChange}
+        handleKeyDown={handleKeyDown}
+        handleSearchBoxOpen={handleCountChange}
+        handleSearchChange={(value) => setSearchValue(value)}
+        isFeatureModalOpen={false}
+        isSearchBoxOpen={false}
+        pathname={location.pathname}
+        profileDropdown={[]}
+        searchValue={searchValue}
+        settingDropdown={[]}
+        supportDropdown={[]}
+      />
+      <Tour steps={getSteps(TOUR_SEARCH_TERM, clearSearchTerm)} />
       {getCurrentPage(currentPage)}
     </div>
   );

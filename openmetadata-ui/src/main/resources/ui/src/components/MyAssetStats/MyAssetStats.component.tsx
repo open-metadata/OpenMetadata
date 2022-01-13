@@ -127,9 +127,7 @@ const MyAssetStats: FunctionComponent<Props> = ({
                 className="tw-font-medium tw-pl-2"
                 data-testid={data.dataTestId}
                 to={data.link}>
-                <button
-                  className="tw-text-grey-body hover:tw-text-primary-hover hover:tw-underline"
-                  disabled={AppState.isTourOpen}>
+                <button className="tw-text-grey-body hover:tw-text-primary-hover hover:tw-underline">
                   {data.data}
                 </button>
               </Link>
