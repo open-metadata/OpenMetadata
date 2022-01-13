@@ -161,7 +161,6 @@ public final class EntityUtil {
         dao.findFrom(entityId.toString(), entityType, Relationship.CONTAINS.ordinal(), toBoolean(Include.NON_DELETED));
     if (refs.size() > 1) {
       LOG.warn("Possible database issues - multiple services found for entity {}", entityId);
-      return refs.get(0);
     }
     return refs.isEmpty() ? null : refs.get(0);
   }
@@ -172,7 +171,6 @@ public final class EntityUtil {
         dao.findFrom(entityId.toString(), entityType, Relationship.CONTAINS.ordinal(), toBoolean(include));
     if (refs.size() > 1) {
       LOG.warn("Possible database issues - multiple services found for entity {}", entityId);
-      return refs.get(0);
     }
     return refs.isEmpty() ? null : refs.get(0);
   }
@@ -188,7 +186,6 @@ public final class EntityUtil {
             toBoolean(Include.NON_DELETED));
     if (refs.size() > 1) {
       LOG.warn("Possible database issues - multiple services found for entity {}", entityId);
-      return refs.get(0);
     }
     return refs.isEmpty() ? null : refs.get(0);
   }
@@ -200,7 +197,6 @@ public final class EntityUtil {
             entityId.toString(), entityType, Relationship.CONTAINS.ordinal(), serviceType, toBoolean(include));
     if (refs.size() > 1) {
       LOG.warn("Possible database issues - multiple services found for entity {}", entityId);
-      return refs.get(0);
     }
     return refs.isEmpty() ? null : refs.get(0);
   }
