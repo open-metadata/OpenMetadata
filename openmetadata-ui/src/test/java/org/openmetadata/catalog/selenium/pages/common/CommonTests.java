@@ -183,8 +183,7 @@ public class CommonTests {
     Events.click(webDriver, By.cssSelector("[data-testid='saveAssociatedTag']"));
     webDriver.navigate().refresh();
     Thread.sleep(2000);
-    Object tagCount =
-        webDriver.findElements(By.xpath("//div[@data-testid='tag-conatiner']/div/div")).size();
+    Object tagCount = webDriver.findElements(By.xpath("//div[@data-testid='tag-conatiner']/div/div")).size();
     Assert.assertEquals(tagCount, 11);
   }
 
