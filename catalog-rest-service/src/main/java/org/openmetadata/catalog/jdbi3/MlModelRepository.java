@@ -16,6 +16,7 @@ package org.openmetadata.catalog.jdbi3;
 import static org.openmetadata.catalog.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.catalog.util.EntityUtil.mlFeatureMatch;
 import static org.openmetadata.catalog.util.EntityUtil.mlHyperParameterMatch;
+import static org.openmetadata.catalog.util.EntityUtil.toBoolean;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
@@ -30,6 +31,7 @@ import org.openmetadata.catalog.entity.data.MlModel;
 import org.openmetadata.catalog.resources.mlmodels.MlModelResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.MlFeature;
 import org.openmetadata.catalog.type.MlFeatureSource;
 import org.openmetadata.catalog.type.MlHyperParameter;
@@ -205,7 +207,11 @@ public class MlModelRepository extends EntityRepository<MlModel> {
       List<EntityReference> ids =
           daoCollection
               .relationshipDAO()
-              .findTo(mlModel.getId().toString(), Entity.MLMODEL, Relationship.USES.ordinal());
+              .findTo(
+                  mlModel.getId().toString(),
+                  Entity.MLMODEL,
+                  Relationship.USES.ordinal(),
+                  toBoolean(Include.NON_DELETED));
       if (ids.size() > 1) {
         LOG.warn("Possible database issues - multiple dashboards {} found for model {}", ids, mlModel.getId());
       }

@@ -13,6 +13,8 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import static org.openmetadata.catalog.util.EntityUtil.toBoolean;
+
 import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
@@ -29,6 +31,7 @@ import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.resources.policies.PolicyResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.PolicyType;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
@@ -71,7 +74,12 @@ public class PolicyRepository extends EntityRepository<Policy> {
     List<String> result =
         daoCollection
             .relationshipDAO()
-            .findTo(policyId.toString(), Entity.POLICY, Relationship.APPLIED_TO.ordinal(), Entity.LOCATION);
+            .findTo(
+                policyId.toString(),
+                Entity.POLICY,
+                Relationship.APPLIED_TO.ordinal(),
+                Entity.LOCATION,
+                toBoolean(Include.NON_DELETED));
     // There is at most one location for a policy.
     return result.size() == 1
         ? daoCollection.locationDAO().findEntityReferenceById(UUID.fromString(result.get(0)))

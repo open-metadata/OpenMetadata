@@ -13,6 +13,8 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import static org.openmetadata.catalog.util.EntityUtil.toBoolean;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.net.URI;
@@ -31,6 +33,7 @@ import org.openmetadata.catalog.jdbi3.DashboardServiceRepository.DashboardServic
 import org.openmetadata.catalog.resources.dashboards.DashboardResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
@@ -194,7 +197,14 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     }
     String dashboardId = dashboard.getId().toString();
     List<String> chartIds =
-        daoCollection.relationshipDAO().findTo(dashboardId, Entity.DASHBOARD, Relationship.HAS.ordinal(), Entity.CHART);
+        daoCollection
+            .relationshipDAO()
+            .findTo(
+                dashboardId,
+                Entity.DASHBOARD,
+                Relationship.HAS.ordinal(),
+                Entity.CHART,
+                toBoolean(Include.NON_DELETED));
     List<EntityReference> charts = new ArrayList<>();
     for (String chartId : chartIds) {
       charts.add(daoCollection.chartDAO().findEntityReferenceById(UUID.fromString(chartId)));

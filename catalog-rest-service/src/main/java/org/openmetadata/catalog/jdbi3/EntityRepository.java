@@ -16,6 +16,7 @@ package org.openmetadata.catalog.jdbi3;
 import static org.openmetadata.catalog.type.Include.DELETED;
 import static org.openmetadata.catalog.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.catalog.util.EntityUtil.objectMatch;
+import static org.openmetadata.catalog.util.EntityUtil.toBoolean;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
@@ -443,7 +444,9 @@ public abstract class EntityRepository<T> {
   public final void delete(UUID id, boolean recursive) throws IOException {
     // If an entity being deleted contains other children entities, it can't be deleted
     List<EntityReference> contains =
-        daoCollection.relationshipDAO().findTo(id.toString(), entityName, Relationship.CONTAINS.ordinal());
+        daoCollection
+            .relationshipDAO()
+            .findTo(id.toString(), entityName, Relationship.CONTAINS.ordinal(), toBoolean(Include.NON_DELETED));
 
     if (!contains.isEmpty()) {
       if (!recursive) {

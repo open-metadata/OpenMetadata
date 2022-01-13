@@ -15,6 +15,7 @@ package org.openmetadata.catalog.jdbi3;
 
 import static org.openmetadata.catalog.jdbi3.Relationship.OWNS;
 import static org.openmetadata.catalog.util.EntityUtil.entityReferenceMatch;
+import static org.openmetadata.catalog.util.EntityUtil.toBoolean;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
@@ -31,6 +32,7 @@ import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.resources.teams.TeamResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
@@ -129,7 +131,10 @@ public class TeamRepository extends EntityRepository<Team> {
   }
 
   private List<EntityReference> getUsers(String id) throws IOException {
-    List<String> userIds = daoCollection.relationshipDAO().findTo(id, Entity.TEAM, Relationship.HAS.ordinal(), "user");
+    List<String> userIds =
+        daoCollection
+            .relationshipDAO()
+            .findTo(id, Entity.TEAM, Relationship.HAS.ordinal(), "user", toBoolean(Include.NON_DELETED));
     List<EntityReference> users = new ArrayList<>();
     for (String userId : userIds) {
       users.add(daoCollection.userDAO().findEntityReferenceById(UUID.fromString(userId)));
@@ -140,7 +145,7 @@ public class TeamRepository extends EntityRepository<Team> {
   private List<EntityReference> getOwns(String teamId) throws IOException {
     // Compile entities owned by the team
     return EntityUtil.populateEntityReferences(
-        daoCollection.relationshipDAO().findTo(teamId, Entity.TEAM, OWNS.ordinal()));
+        daoCollection.relationshipDAO().findTo(teamId, Entity.TEAM, OWNS.ordinal(), toBoolean(Include.NON_DELETED)));
   }
 
   public static class TeamEntityInterface implements EntityInterface<Team> {
