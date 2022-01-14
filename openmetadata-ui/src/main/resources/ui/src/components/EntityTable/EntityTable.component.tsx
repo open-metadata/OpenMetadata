@@ -17,7 +17,7 @@ import { EntityTags } from 'Models';
 import React, { Fragment, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useExpanded, useTable } from 'react-table';
-import { getDatasetDetailsPath } from '../../constants/constants';
+import { getTableDetailsPath } from '../../constants/constants';
 import {
   Column,
   ColumnJoins,
@@ -536,7 +536,7 @@ const EntityTable = ({
                                       )}
                                       <Link
                                         className="link-text"
-                                        to={getDatasetDetailsPath(
+                                        to={getTableDetailsPath(
                                           getTableFQNFromColumnFQN(
                                             columnJoin?.fullyQualifiedName as string
                                           ),
@@ -568,7 +568,7 @@ const EntityTable = ({
                                             <Fragment key={index}>
                                               <a
                                                 className="link-text tw-block tw-py-1"
-                                                href={getDatasetDetailsPath(
+                                                href={getTableDetailsPath(
                                                   getTableFQNFromColumnFQN(
                                                     columnJoin?.fullyQualifiedName as string
                                                   ),

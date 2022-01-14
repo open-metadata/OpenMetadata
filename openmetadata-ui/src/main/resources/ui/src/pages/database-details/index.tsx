@@ -36,9 +36,9 @@ import PageContainer from '../../components/containers/PageContainer';
 import Loader from '../../components/Loader/Loader';
 import Tags from '../../components/tags/tags';
 import {
-  getDatasetDetailsPath,
   getExplorePathWithSearch,
   getServiceDetailsPath,
+  getTableDetailsPath,
   pagingObject,
 } from '../../constants/constants';
 import { ServiceCategory } from '../../enums/service.enum';
@@ -305,7 +305,7 @@ const DatabaseDetails: FunctionComponent = () => {
                                 <Link
                                   to={
                                     table.fullyQualifiedName
-                                      ? getDatasetDetailsPath(
+                                      ? getTableDetailsPath(
                                           table.fullyQualifiedName
                                         )
                                       : ''

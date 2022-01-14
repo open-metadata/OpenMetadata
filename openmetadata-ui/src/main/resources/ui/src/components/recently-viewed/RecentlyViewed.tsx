@@ -43,7 +43,7 @@ const RecentlyViewed: FunctionComponent = () => {
       // const oData = recentlyViewedData[i];
       try {
         switch (oData.entityType) {
-          case EntityType.DATASET: {
+          case EntityType.TABLE: {
             const res = await getTableDetailsByFQN(
               oData.fqn,
               'usageSummary, tags, owner,columns'
