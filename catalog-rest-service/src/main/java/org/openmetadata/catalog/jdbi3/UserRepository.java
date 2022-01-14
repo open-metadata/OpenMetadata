@@ -23,6 +23,7 @@ import static org.openmetadata.catalog.util.EntityUtil.toBoolean;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.net.URI;
+import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -96,13 +97,13 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   @Transaction
-  public User getByEmail(String email, Fields fields) throws IOException {
+  public User getByEmail(String email, Fields fields) throws IOException, ParseException {
     User user = EntityUtil.validate(email, daoCollection.userDAO().findByEmail(email), User.class);
     return setFields(user, fields);
   }
 
   @Override
-  public User setFields(User user, Fields fields) throws IOException {
+  public User setFields(User user, Fields fields) throws IOException, ParseException {
     user.setProfile(fields.contains("profile") ? user.getProfile() : null);
     user.setTeams(fields.contains("teams") ? getTeams(user) : null);
     user.setRoles(fields.contains("roles") ? getRoles(user) : null);
@@ -114,7 +115,7 @@ public class UserRepository extends EntityRepository<User> {
   @Override
   public void restorePatchAttributes(User original, User updated) {}
 
-  private List<EntityReference> getOwns(User user) throws IOException {
+  private List<EntityReference> getOwns(User user) throws IOException, ParseException {
     // Compile entities owned by the user
     List<EntityReference> ownedEntities =
         daoCollection
