@@ -29,6 +29,7 @@ def run_docker(start, stop, pause, resume, clean, file_path):
 
         from metadata.ingestion.ometa.ometa_api import OpenMetadata
         from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
+
         openmetadata_telemetry.set_attribute("cli_command_name", "docker")
 
         docker = DockerClient(compose_project_name="openmetadata", compose_files=[])
@@ -87,10 +88,14 @@ def run_docker(start, stop, pause, resume, clean, file_path):
         if start:
             logger.info("Running docker compose for Open Metadata....")
             if file_path:
-                openmetadata_telemetry.set_attribute("cli_command_option", f"start local")
+                openmetadata_telemetry.set_attribute(
+                    "cli_command_option", f"start local"
+                )
                 docker.compose.up(detach=True, build=True)
             else:
-                openmetadata_telemetry.set_attribute("cli_command_option", f"start release")
+                openmetadata_telemetry.set_attribute(
+                    "cli_command_option", f"start release"
+                )
                 docker.compose.up(detach=True)
 
             logger.info(

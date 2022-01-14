@@ -33,6 +33,7 @@ class OpenMetadataTelemetry:
     """
     Open Telemetry tracing.
     """
+
     __send = True
 
     def __init__(
@@ -65,7 +66,7 @@ class OpenMetadataTelemetry:
                     ResourceAttributes.SERVICE_NAME: "openmetadata",
                     ResourceAttributes.SERVICE_NAMESPACE: "ingestion",
                 }
-            )
+            ),
         )
         console_span_processor = BatchSpanProcessor(ConsoleSpanExporter())
 
