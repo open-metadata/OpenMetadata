@@ -145,11 +145,17 @@ public class WebhookResource {
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = ChangeEvent.class))),
         @ApiResponse(responseCode = "404", description = "Entity for instance {id} is not found")
       })
-  public Webhook getWebhook(
+  public Webhook get(
       @Context UriInfo uriInfo,
-      @Parameter(description = "webhook Id", schema = @Schema(type = "string")) @PathParam("id") String id)
+      @Parameter(description = "webhook Id", schema = @Schema(type = "string")) @PathParam("id") String id,
+      @Parameter(
+              description = "Include all, deleted, or non-deleted entities.",
+              schema = @Schema(implementation = Include.class))
+          @QueryParam("include")
+          @DefaultValue("non-deleted")
+          Include include)
       throws IOException, GeneralSecurityException, ParseException {
-    return dao.get(uriInfo, id, Fields.EMPTY_FIELDS);
+    return dao.get(uriInfo, id, Fields.EMPTY_FIELDS, include);
   }
 
   @GET
@@ -168,9 +174,15 @@ public class WebhookResource {
   public Webhook getByName(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Name of the webhook", schema = @Schema(type = "string")) @PathParam("name") String fqn)
+      @Parameter(description = "Name of the webhook", schema = @Schema(type = "string")) @PathParam("name") String fqn,
+      @Parameter(
+              description = "Include all, deleted, or non-deleted entities.",
+              schema = @Schema(implementation = Include.class))
+          @QueryParam("include")
+          @DefaultValue("non-deleted")
+          Include include)
       throws IOException, ParseException {
-    return dao.getByName(uriInfo, fqn, Fields.EMPTY_FIELDS);
+    return dao.getByName(uriInfo, fqn, Fields.EMPTY_FIELDS, include);
   }
 
   @GET
@@ -287,7 +299,7 @@ public class WebhookResource {
       @Context UriInfo uriInfo,
       @Parameter(description = "webhook Id", schema = @Schema(type = "string")) @PathParam("id") String id)
       throws IOException, GeneralSecurityException, ParseException, InterruptedException {
-    dao.delete(id);
+    dao.delete(UUID.fromString(id), false);
     dao.deleteWebhookPublisher(UUID.fromString(id));
     return Response.ok().build();
   }
