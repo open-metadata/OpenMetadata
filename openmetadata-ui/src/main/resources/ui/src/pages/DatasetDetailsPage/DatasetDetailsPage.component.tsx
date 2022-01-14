@@ -30,9 +30,9 @@ import DatasetDetails from '../../components/DatasetDetails/DatasetDetails.compo
 import Loader from '../../components/Loader/Loader';
 import {
   getDatabaseDetailsPath,
-  getDatasetTabPath,
-  getVersionPath,
   getServiceDetailsPath,
+  getTableTabPath,
+  getVersionPath,
 } from '../../constants/constants';
 import { EntityType } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
@@ -115,7 +115,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
         getCurrentDatasetTab(datasetTableTabs[currentTabIndex].path)
       );
       history.push({
-        pathname: getDatasetTabPath(
+        pathname: getTableTabPath(
           tableFQN,
           datasetTableTabs[currentTabIndex].path
         ),
@@ -276,7 +276,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
         ]);
 
         addToRecentViewed({
-          entityType: EntityType.DATASET,
+          entityType: EntityType.TABLE,
           fqn: fullyQualifiedName,
           serviceType: serviceType,
           timestamp: 0,

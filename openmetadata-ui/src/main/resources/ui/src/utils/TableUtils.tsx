@@ -18,8 +18,8 @@ import AppState from '../AppState';
 import PopOver from '../components/common/popover/PopOver';
 import {
   getDashboardDetailsPath,
-  getDatasetDetailsPath,
   getPipelineDetailsPath,
+  getTableDetailsPath,
   getTopicDetailsPath,
 } from '../constants/constants';
 import { EntityType } from '../enums/entity.enum';
@@ -206,7 +206,7 @@ export const getEntityLink = (
     case SearchIndex.TABLE:
     case EntityType.TABLE:
     default:
-      return getDatasetDetailsPath(fullyQualifiedName);
+      return getTableDetailsPath(fullyQualifiedName);
   }
 };
 
