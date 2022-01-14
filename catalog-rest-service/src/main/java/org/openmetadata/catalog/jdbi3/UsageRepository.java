@@ -24,6 +24,7 @@ import org.jdbi.v3.core.mapper.RowMapper;
 import org.jdbi.v3.core.statement.StatementContext;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
+import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.type.DailyCount;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.EntityUsage;
@@ -74,20 +75,18 @@ public class UsageRepository {
     dao.usageDAO().computePercentile(entityType, date);
   }
 
-  private void addUsage(String entityType, String entityId, DailyCount usage) {
+  private void addUsage(String entityType, String entityId, DailyCount usage) throws IOException {
     // Insert usage record
     dao.usageDAO().insert(usage.getDate(), entityId, entityType, usage.getCount());
 
     // If table usage was reported, add the usage count to database
     if (entityType.equalsIgnoreCase(Entity.TABLE)) {
+      // we accept usage for deleted entities
+      Table table = dao.tableDAO().findEntityById(UUID.fromString(entityId), Include.ALL);
+      Include include = table.getDeleted() ? Include.DELETED : Include.NON_DELETED;
       List<String> databaseIds =
           dao.relationshipDAO()
-              .findFrom(
-                  entityId,
-                  entityType,
-                  Relationship.CONTAINS.ordinal(),
-                  Entity.DATABASE,
-                  toBoolean(Include.NON_DELETED));
+              .findFrom(entityId, entityType, Relationship.CONTAINS.ordinal(), Entity.DATABASE, toBoolean(include));
       dao.usageDAO().insertOrUpdateCount(usage.getDate(), databaseIds.get(0), Entity.DATABASE, usage.getCount());
     }
   }

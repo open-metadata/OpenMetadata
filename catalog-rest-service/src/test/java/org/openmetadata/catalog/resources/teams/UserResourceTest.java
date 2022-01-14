@@ -85,14 +85,6 @@ public class UserResourceTest extends EntityResourceTest<User> {
     super(Entity.USER, User.class, UserList.class, "users", UserResource.FIELDS, false, false, false);
   }
 
-  // FIXME: This test is added to be able to merge the PR. We will open a new PR, fix the bug, and remove this test
-  @Test
-  void get_entityIncludeDeleted_200(TestInfo test) throws HttpResponseException, URISyntaxException {}
-
-  // FIXME: This test is added to be able to merge the PR. We will open a new PR, fix the bug, and remove this test
-  @Test
-  void get_entityListWithPagination_200(TestInfo test) throws HttpResponseException, URISyntaxException {}
-
   @Test
   void post_userWithoutEmail_400_badRequest(TestInfo test) {
     // Create user with mandatory email field null
@@ -546,6 +538,17 @@ public class UserResourceTest extends EntityResourceTest<User> {
   @Override
   public Object createRequest(String name, String description, String displayName, EntityReference owner) {
     return create(name).withDescription(description).withDisplayName(displayName).withProfile(PROFILE);
+  }
+
+  @Override
+  public Object addAllRelationships(TestInfo test, Object create) throws HttpResponseException {
+    TeamResourceTest teamResourceTest = new TeamResourceTest();
+    Team team1 = createTeam(teamResourceTest.create(test), adminAuthHeaders());
+    ((CreateUser) create).setTeams(List.of(team1.getId()));
+    RoleResourceTest roleResourceTest = new RoleResourceTest();
+    Role role1 = createRole(roleResourceTest.create(test), adminAuthHeaders());
+    ((CreateUser) create).setRoles(List.of(role1.getId()));
+    return create;
   }
 
   @Override

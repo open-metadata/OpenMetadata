@@ -31,7 +31,6 @@ import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.resources.teams.TeamResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
-import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
@@ -79,8 +78,8 @@ public class TeamRepository extends EntityRepository<Team> {
     if (!fields.contains("profile")) {
       team.setProfile(null);
     }
-    team.setUsers(fields.contains("users") ? getUsers(team.getId().toString()) : null);
-    team.setOwns(fields.contains("owns") ? getOwns(team.getId().toString()) : null);
+    team.setUsers(fields.contains("users") ? getUsers(team) : null);
+    team.setOwns(fields.contains("owns") ? getOwns(team) : null);
     return team;
   }
 
@@ -128,11 +127,12 @@ public class TeamRepository extends EntityRepository<Team> {
     return new TeamUpdater(original, updated, patchOperation);
   }
 
-  private List<EntityReference> getUsers(String id) throws IOException {
+  private List<EntityReference> getUsers(Team team) throws IOException {
     List<String> userIds =
         daoCollection
             .relationshipDAO()
-            .findTo(id, Entity.TEAM, Relationship.HAS.ordinal(), "user", toBoolean(Include.NON_DELETED));
+            .findTo(
+                team.getId().toString(), Entity.TEAM, Relationship.HAS.ordinal(), "user", toBoolean(toInclude(team)));
     List<EntityReference> users = new ArrayList<>();
     for (String userId : userIds) {
       users.add(daoCollection.userDAO().findEntityReferenceById(UUID.fromString(userId)));
@@ -140,10 +140,12 @@ public class TeamRepository extends EntityRepository<Team> {
     return users;
   }
 
-  private List<EntityReference> getOwns(String teamId) throws IOException {
+  private List<EntityReference> getOwns(Team team) throws IOException {
     // Compile entities owned by the team
     return EntityUtil.populateEntityReferences(
-        daoCollection.relationshipDAO().findTo(teamId, Entity.TEAM, OWNS.ordinal(), toBoolean(Include.NON_DELETED)));
+        daoCollection
+            .relationshipDAO()
+            .findTo(team.getId().toString(), Entity.TEAM, OWNS.ordinal(), toBoolean(toInclude(team))));
   }
 
   public static class TeamEntityInterface implements EntityInterface<Team> {

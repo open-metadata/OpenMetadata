@@ -294,6 +294,7 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard> {
       List<UUID> expectedChartReferences =
           expectedCharts.stream().map(EntityReference::getId).collect(Collectors.toList());
       List<UUID> actualChartReferences = new ArrayList<>();
+      assertNotNull(dashboard.getCharts(), "dashboard should have charts");
       dashboard
           .getCharts()
           .forEach(

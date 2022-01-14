@@ -48,6 +48,7 @@ import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.MetricsRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.Authorizer;
+import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
@@ -106,10 +107,10 @@ public class MetricsResource {
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
 
     if (before != null) { // Reverse paging
-      return dao.listBefore(uriInfo, fields, null, limitParam, before);
+      return dao.listBefore(uriInfo, fields, null, limitParam, before, Include.NON_DELETED);
     }
     // Forward paging or first page
-    return dao.listAfter(uriInfo, fields, null, limitParam, after);
+    return dao.listAfter(uriInfo, fields, null, limitParam, after, Include.NON_DELETED);
   }
 
   @GET

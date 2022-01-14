@@ -221,12 +221,6 @@ public abstract class EntityRepository<T> {
   }
 
   @Transaction
-  public final ResultList<T> listAfter(UriInfo uriInfo, Fields fields, String fqnPrefix, int limitParam, String after)
-      throws GeneralSecurityException, IOException, ParseException {
-    return listAfter(uriInfo, fields, fqnPrefix, limitParam, after, Include.NON_DELETED);
-  }
-
-  @Transaction
   public final ResultList<T> listAfter(
       UriInfo uriInfo, Fields fields, String fqnPrefix, int limitParam, String after, Include include)
       throws GeneralSecurityException, IOException, ParseException {
@@ -249,12 +243,6 @@ public abstract class EntityRepository<T> {
       afterCursor = getFullyQualifiedName(entities.get(limitParam - 1));
     }
     return getResultList(entities, beforeCursor, afterCursor, total);
-  }
-
-  @Transaction
-  public final ResultList<T> listBefore(UriInfo uriInfo, Fields fields, String fqnPrefix, int limitParam, String before)
-      throws IOException, GeneralSecurityException, ParseException {
-    return listBefore(uriInfo, fields, fqnPrefix, limitParam, before, Include.NON_DELETED);
   }
 
   @Transaction
@@ -406,7 +394,7 @@ public abstract class EntityRepository<T> {
 
   @Transaction
   public final void delete(UUID id, boolean recursive) throws IOException {
-    // If an entity being deleted contains other children entities, it can't be deleted
+    // If an entity being deleted contains other **non-deleted** children entities, it can't be deleted
     List<EntityReference> contains =
         daoCollection
             .relationshipDAO()
@@ -496,7 +484,7 @@ public abstract class EntityRepository<T> {
     EntityInterface entityInterface = getEntityInterface(entity);
     return supportsOwner && entity != null
         ? EntityUtil.populateOwner(
-            entityInterface.getId(),
+            entityInterface,
             entityName,
             daoCollection.relationshipDAO(),
             daoCollection.userDAO(),

@@ -351,16 +351,18 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   private void populateService(Table table) throws IOException {
+    Database database = daoCollection.databaseDAO().findEntityById(table.getDatabase().getId(), Include.ALL);
+    Include include = database.getDeleted() ? Include.DELETED : Include.NON_DELETED;
     // Find database service from the database that table is contained in
     String serviceId =
         daoCollection
             .relationshipDAO()
             .findFrom(
-                table.getDatabase().getId().toString(),
+                database.getId().toString(),
                 Entity.DATABASE,
                 Relationship.CONTAINS.ordinal(),
                 Entity.DATABASE_SERVICE,
-                toBoolean(Include.NON_DELETED))
+                toBoolean(include))
             .get(0);
     DatabaseService service = daoCollection.dbServiceDAO().findEntityById(UUID.fromString(serviceId));
     table.setService(new DatabaseServiceEntityInterface(service).getEntityReference());

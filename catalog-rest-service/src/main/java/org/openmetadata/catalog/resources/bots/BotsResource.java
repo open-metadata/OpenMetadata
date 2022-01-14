@@ -45,6 +45,7 @@ import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
+import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.ResultList;
@@ -97,9 +98,9 @@ public class BotsResource {
 
     ResultList<Bots> list;
     if (before != null) { // Reverse paging
-      list = dao.listBefore(uriInfo, null, name, limitParam, before);
+      list = dao.listBefore(uriInfo, null, name, limitParam, before, Include.NON_DELETED);
     } else { // Forward paging or first page
-      list = dao.listAfter(uriInfo, null, name, limitParam, after);
+      list = dao.listAfter(uriInfo, null, name, limitParam, after, Include.NON_DELETED);
     }
     return list;
   }

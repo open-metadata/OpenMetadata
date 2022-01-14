@@ -16,11 +16,14 @@ package org.openmetadata.catalog.jdbi3;
 import static org.openmetadata.catalog.jdbi3.Relationship.FOLLOWS;
 import static org.openmetadata.catalog.jdbi3.Relationship.HAS;
 import static org.openmetadata.catalog.jdbi3.Relationship.OWNS;
+import static org.openmetadata.catalog.type.Include.DELETED;
+import static org.openmetadata.catalog.type.Include.NON_DELETED;
 import static org.openmetadata.catalog.util.EntityUtil.toBoolean;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.net.URI;
+import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -94,13 +97,13 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   @Transaction
-  public User getByEmail(String email, Fields fields) throws IOException {
+  public User getByEmail(String email, Fields fields) throws IOException, ParseException {
     User user = EntityUtil.validate(email, daoCollection.userDAO().findByEmail(email), User.class);
     return setFields(user, fields);
   }
 
   @Override
-  public User setFields(User user, Fields fields) throws IOException {
+  public User setFields(User user, Fields fields) throws IOException, ParseException {
     user.setProfile(fields.contains("profile") ? user.getProfile() : null);
     user.setTeams(fields.contains("teams") ? getTeams(user) : null);
     user.setRoles(fields.contains("roles") ? getRoles(user) : null);
@@ -112,7 +115,7 @@ public class UserRepository extends EntityRepository<User> {
   @Override
   public void restorePatchAttributes(User original, User updated) {}
 
-  private List<EntityReference> getOwns(User user) throws IOException {
+  private List<EntityReference> getOwns(User user) throws IOException, ParseException {
     // Compile entities owned by the user
     List<EntityReference> ownedEntities =
         daoCollection
@@ -122,10 +125,11 @@ public class UserRepository extends EntityRepository<User> {
     // Compile entities owned by the team the user belongs to
     List<EntityReference> teams = user.getTeams() == null ? getTeams(user) : user.getTeams();
     for (EntityReference team : teams) {
+      Include include = Entity.getEntityInterface(team).isDeleted() ? DELETED : NON_DELETED;
       ownedEntities.addAll(
           daoCollection
               .relationshipDAO()
-              .findTo(team.getId().toString(), Entity.TEAM, OWNS.ordinal(), toBoolean(Include.NON_DELETED)));
+              .findTo(team.getId().toString(), Entity.TEAM, OWNS.ordinal(), toBoolean(include)));
     }
     // Populate details in entity reference
     return EntityUtil.populateEntityReferences(ownedEntities);
