@@ -92,10 +92,22 @@ const SearchedData: React.FC<SearchedDataProp> = ({
 
       const matches = table.highlight
         ? Object.entries(table.highlight)
-            .map((d) => ({
-              key: d[0],
-              value: d[1].length,
-            }))
+            .map((d) => {
+              let highlightedTextCount = 0;
+              d[1].forEach((value) => {
+                const currentCount = value.match(
+                  /<span(.*?)>(.*?)<\/span>/g
+                )?.length;
+
+                highlightedTextCount =
+                  highlightedTextCount + (currentCount || 0);
+              });
+
+              return {
+                key: d[0],
+                value: highlightedTextCount,
+              };
+            })
             .filter((d) => !ASSETS_NAME.includes(d.key))
         : [];
 
