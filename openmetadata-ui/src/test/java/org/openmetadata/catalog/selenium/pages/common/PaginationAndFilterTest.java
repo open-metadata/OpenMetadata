@@ -156,7 +156,6 @@ public class PaginationAndFilterTest {
     }
   }
 
-
   @AfterEach
   public void closeTabs() {
     ArrayList<String> tabs = new ArrayList<>(webDriver.getWindowHandles());

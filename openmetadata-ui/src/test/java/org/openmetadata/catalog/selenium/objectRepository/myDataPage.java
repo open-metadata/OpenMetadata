@@ -1,4 +1,3 @@
 package org.openmetadata.catalog.selenium.objectRepository;
 
-public class myDataPage {
-}
+public class myDataPage {}

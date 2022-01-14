@@ -1,2 +1,3 @@
-package org.openmetadata.catalog.selenium.objectRepository;public class ingestionPage {
-}
+package org.openmetadata.catalog.selenium.objectRepository;
+
+public class ingestionPage {}

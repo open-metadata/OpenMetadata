@@ -1,2 +1,3 @@
-package org.openmetadata.catalog.selenium.objectRepository;public class servicesPage {
-}
+package org.openmetadata.catalog.selenium.objectRepository;
+
+public class servicesPage {}
