@@ -16,6 +16,7 @@ package org.openmetadata.catalog.jdbi3;
 import static org.openmetadata.catalog.util.EntityUtil.toBoolean;
 
 import java.io.IOException;
+import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -31,6 +32,7 @@ import org.openmetadata.catalog.resources.feeds.MessageParser.EntityLink.LinkTyp
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.Post;
+import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.JsonUtils;
 
@@ -42,7 +44,7 @@ public class FeedRepository {
   }
 
   @Transaction
-  public Thread create(Thread thread) throws IOException {
+  public Thread create(Thread thread) throws IOException, ParseException {
     // Validate user creating thread
     UUID fromUser = thread.getPosts().get(0).getFrom();
     dao.userDAO().findEntityById(fromUser);
@@ -50,11 +52,12 @@ public class FeedRepository {
     // Validate about data entity is valid
     EntityLink about = EntityLink.parse(thread.getAbout());
     EntityReference aboutRef = EntityUtil.validateEntityLink(about);
+    EntityInterface aboutEntityInterface = Entity.getEntityInterface(aboutRef);
 
     // Get owner for the addressed to Entity
     EntityReference owner =
         EntityUtil.populateOwner(
-            aboutRef.getId(), aboutRef.getType(), dao.relationshipDAO(), dao.userDAO(), dao.teamDAO());
+            aboutEntityInterface, aboutRef.getType(), dao.relationshipDAO(), dao.userDAO(), dao.teamDAO());
 
     // Insert a new thread
     dao.feedDAO().insert(JsonUtils.pojoToJson(thread));

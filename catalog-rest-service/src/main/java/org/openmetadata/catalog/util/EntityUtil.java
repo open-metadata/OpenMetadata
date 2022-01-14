@@ -15,6 +15,7 @@ package org.openmetadata.catalog.util;
 
 import static org.openmetadata.catalog.type.Include.ALL;
 import static org.openmetadata.catalog.type.Include.DELETED;
+import static org.openmetadata.catalog.type.Include.NON_DELETED;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -209,13 +210,18 @@ public final class EntityUtil {
 
   // Get owner for a given entity
   public static EntityReference populateOwner(
-      UUID id, String entityType, EntityRelationshipDAO entityRelationshipDAO, UserDAO userDAO, TeamDAO teamDAO)
+      EntityInterface entityInterface,
+      String entityType,
+      EntityRelationshipDAO entityRelationshipDAO,
+      UserDAO userDAO,
+      TeamDAO teamDAO)
       throws IOException {
+    Include include = entityInterface.isDeleted() ? DELETED : NON_DELETED;
     List<EntityReference> ids =
         entityRelationshipDAO.findFrom(
-            id.toString(), entityType, Relationship.OWNS.ordinal(), toBoolean(Include.NON_DELETED));
+            entityInterface.getId().toString(), entityType, Relationship.OWNS.ordinal(), toBoolean(include));
     if (ids.size() > 1) {
-      LOG.warn("Possible database issues - multiple owners {} found for entity {}", ids, id);
+      LOG.warn("Possible database issues - multiple owners {} found for entity {}", ids, entityInterface.getId());
     }
     return ids.isEmpty() ? null : populateOwner(userDAO, teamDAO, ids.get(0));
   }

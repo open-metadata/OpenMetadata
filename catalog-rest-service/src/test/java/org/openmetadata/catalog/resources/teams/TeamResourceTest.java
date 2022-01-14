@@ -341,6 +341,11 @@ public class TeamResourceTest extends EntityResourceTest<Team> {
   }
 
   @Override
+  public Object addAllRelationships(TestInfo test, Object create) throws HttpResponseException {
+    return ((CreateTeam) create).withUsers(List.of(USER1.getId()));
+  }
+
+  @Override
   public EntityReference getContainer(Object createRequest) throws URISyntaxException {
     return null; // No container entity
   }

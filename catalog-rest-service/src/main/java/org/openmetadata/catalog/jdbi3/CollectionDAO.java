@@ -13,6 +13,8 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import static org.openmetadata.catalog.util.EntityUtil.toBoolean;
+
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Arrays;
@@ -1133,17 +1135,19 @@ public interface CollectionDAO {
     String findByEmail(@Bind("email") String email);
 
     default int listCount(String team, Include include) {
-      return listCount(getTableName(), getNameColumn(), team, Relationship.HAS.ordinal());
+      return listCount(getTableName(), getNameColumn(), team, Relationship.HAS.ordinal(), toBoolean(include));
     }
 
     @Override
     default List<String> listBefore(String team, int limit, String before, Include include) {
-      return listBefore(getTableName(), getNameColumn(), team, limit, before, Relationship.HAS.ordinal());
+      return listBefore(
+          getTableName(), getNameColumn(), team, limit, before, Relationship.HAS.ordinal(), toBoolean(include));
     }
 
     @Override
     default List<String> listAfter(String team, int limit, String after, Include include) {
-      return listAfter(getTableName(), getNameColumn(), team, limit, after, Relationship.HAS.ordinal());
+      return listAfter(
+          getTableName(), getNameColumn(), team, limit, after, Relationship.HAS.ordinal(), toBoolean(include));
     }
 
     @SqlQuery(
@@ -1152,13 +1156,16 @@ public interface CollectionDAO {
             + "FROM user_entity ue "
             + "LEFT JOIN entity_relationship er on ue.id = er.toId "
             + "LEFT JOIN team_entity te on te.id = er.fromId and er.relation = :relation "
-            + "WHERE (ue.deleted = false AND (te.name = :team OR :team IS NULL)) "
+            + "WHERE (te.name = :team OR :team IS NULL) "
+            + "AND (ue.deleted = :deleted OR :deleted IS NULL) "
+            + "AND (er.deleted = :deleted OR :deleted IS NULL OR (:team IS NULL AND er.deleted IS NULL)) "
             + "GROUP BY ue.id) subquery")
     int listCount(
         @Define("table") String table,
         @Define("nameColumn") String nameColumn,
         @Bind("team") String team,
-        @Bind("relation") int relation);
+        @Bind("relation") int relation,
+        @Bind("deleted") Boolean deleted);
 
     @SqlQuery(
         "SELECT json FROM ("
@@ -1166,8 +1173,10 @@ public interface CollectionDAO {
             + "FROM user_entity ue "
             + "LEFT JOIN entity_relationship er on ue.id = er.toId "
             + "LEFT JOIN team_entity te on te.id = er.fromId and er.relation = :relation "
-            + "WHERE (ue.deleted = false AND (te.name = :team OR :team IS NULL)) AND "
-            + "ue.<nameColumn> < :before "
+            + "WHERE (te.name = :team OR :team IS NULL) "
+            + "AND (ue.deleted = :deleted OR :deleted IS NULL) "
+            + "AND (er.deleted = :deleted OR :deleted IS NULL OR (:team IS NULL AND er.deleted IS NULL)) "
+            + "AND ue.<nameColumn> < :before "
             + "GROUP BY ue.<nameColumn>, ue.json "
             + "ORDER BY ue.<nameColumn> DESC "
             + "LIMIT :limit"
@@ -1178,15 +1187,18 @@ public interface CollectionDAO {
         @Bind("team") String team,
         @Bind("limit") int limit,
         @Bind("before") String before,
-        @Bind("relation") int relation);
+        @Bind("relation") int relation,
+        @Bind("deleted") Boolean deleted);
 
     @SqlQuery(
         "SELECT ue.json "
             + "FROM user_entity ue "
             + "LEFT JOIN entity_relationship er on ue.id = er.toId "
             + "LEFT JOIN team_entity te on te.id = er.fromId and er.relation = :relation "
-            + "WHERE (ue.deleted = false AND (te.name = :team OR :team IS NULL)) AND "
-            + "ue.<nameColumn> > :after "
+            + "WHERE (te.name = :team OR :team IS NULL) "
+            + "AND (ue.deleted = :deleted OR :deleted IS NULL) "
+            + "AND (er.deleted = :deleted OR :deleted IS NULL OR (:team IS NULL AND er.deleted IS NULL)) "
+            + "AND ue.<nameColumn> > :after "
             + "GROUP BY ue.json "
             + "ORDER BY ue.<nameColumn> "
             + "LIMIT :limit")
@@ -1196,7 +1208,8 @@ public interface CollectionDAO {
         @Bind("team") String team,
         @Bind("limit") int limit,
         @Bind("after") String after,
-        @Bind("relation") int relation);
+        @Bind("relation") int relation,
+        @Bind("deleted") Boolean deleted);
   }
 
   interface ChangeEventDAO {

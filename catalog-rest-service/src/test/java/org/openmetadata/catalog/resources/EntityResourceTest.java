@@ -287,6 +287,11 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
   public abstract Object createRequest(String name, String description, String displayName, EntityReference owner)
       throws URISyntaxException;
 
+  // Add all possible relationship to check if the entity is missing any of them after deletion
+  public Object addAllRelationships(TestInfo test, Object create) throws HttpResponseException {
+    return create;
+  }
+
   // Get container entity based on create request that has CONTAINS relationship to the entity created with this
   // request has . For table, it is database. For database, it is databaseService. See Relationship.CONTAINS for
   // details.
@@ -322,8 +327,11 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     Random rand = new Random();
     int maxEntities = rand.nextInt(16) + 5;
 
+    List<UUID> createdUUIDs = new ArrayList<>();
     for (int i = 0; i < maxEntities; i++) {
-      createEntity(createRequest(getEntityName(test, i), null, null, null), adminAuthHeaders());
+      createdUUIDs.add(
+          getEntityInterface(createEntity(createRequest(getEntityName(test, i), null, null, null), adminAuthHeaders()))
+              .getId());
     }
 
     T entity = createEntity(createRequest(getEntityName(test, -1), null, null, null), adminAuthHeaders());
@@ -409,12 +417,11 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
         }
       }
 
-      // before running "deleted" delete all entries
+      // before running "deleted" delete all created entries otherwise the test doesn't work with just one element.
       if ("all".equals(include)) {
-        // delete all entries
         for (T e : allEntities.getData()) {
           EntityInterface<T> toBeDeleted = getEntityInterface(e);
-          if (!toBeDeleted.isDeleted()) {
+          if (createdUUIDs.contains(toBeDeleted.getId()) && !toBeDeleted.isDeleted()) {
             deleteEntity(toBeDeleted.getId(), adminAuthHeaders());
           }
         }
@@ -480,8 +487,8 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
 
   @Test
   void get_entityIncludeDeleted_200(TestInfo test) throws HttpResponseException, URISyntaxException {
-    Object create = createRequest(getEntityName(test), "", "", null);
-    EntityReference container = getContainer(create);
+    Object create =
+        addAllRelationships(test, createRequest(getEntityName(test), "description", "displayName", USER_OWNER1));
     // Create first time using POST
     T entity = createEntity(create, adminAuthHeaders());
     EntityInterface<T> entityInterface = getEntityInterface(entity);
@@ -497,20 +504,16 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
         NOT_FOUND,
         entityNotFound(entityName, entityInterface.getFullyQualifiedName()));
 
-    Map<String, String> queryParams =
-        new HashMap<>() {
-          {
-            put("include", "deleted");
-          }
-        };
-    checkContainer(container, getEntity(entityInterface.getId(), queryParams, null, adminAuthHeaders()));
-    checkContainer(
-        container, getEntityByName(entityInterface.getFullyQualifiedName(), queryParams, null, adminAuthHeaders()));
-
-    queryParams.put("include", "all");
-    checkContainer(container, getEntity(entityInterface.getId(), queryParams, null, adminAuthHeaders()));
-    checkContainer(
-        container, getEntityByName(entityInterface.getFullyQualifiedName(), queryParams, null, adminAuthHeaders()));
+    Map<String, String> queryParams = new HashMap<>();
+    for (String include : List.of("deleted", "all")) {
+      queryParams.put("include", include);
+      validateCreatedEntity(
+          getEntity(entityInterface.getId(), queryParams, allFields, adminAuthHeaders()), create, adminAuthHeaders());
+      validateCreatedEntity(
+          getEntityByName(entityInterface.getFullyQualifiedName(), queryParams, allFields, adminAuthHeaders()),
+          create,
+          adminAuthHeaders());
+    }
 
     queryParams.put("include", "non-deleted");
     assertResponse(
@@ -521,14 +524,6 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
         () -> getEntityByName(entityInterface.getFullyQualifiedName(), queryParams, null, adminAuthHeaders()),
         NOT_FOUND,
         entityNotFound(entityName, entityInterface.getFullyQualifiedName()));
-  }
-
-  protected void checkContainer(EntityReference container, T entity) {
-    EntityInterface<T> entityInterface = getEntityInterface(entity);
-    if (container != null) {
-      assertNotNull(entityInterface.getContainer(), "Container is null");
-      assertEquals(container.getId(), entityInterface.getContainer().getId(), "Containers are different");
-    }
   }
 
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////

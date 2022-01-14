@@ -21,6 +21,7 @@ import java.io.IOException;
 import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.UserRepository;
+import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.EntityUtil;
 
 public class CatalogHealthCheck extends HealthCheck {
@@ -36,7 +37,7 @@ public class CatalogHealthCheck extends HealthCheck {
   @Override
   protected Result check() throws Exception {
     try {
-      userRepository.listAfter(null, fields, null, 1, null);
+      userRepository.listAfter(null, fields, null, 1, null, Include.NON_DELETED);
       return Result.healthy();
     } catch (IOException e) {
       LOG.error("Health check error {}", e.getMessage());

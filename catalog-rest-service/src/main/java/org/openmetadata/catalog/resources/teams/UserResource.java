@@ -64,6 +64,7 @@ import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
+import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.RestUtil.PatchResponse;
@@ -146,16 +147,22 @@ public class UserResource {
           String before,
       @Parameter(description = "Returns list of users after this cursor", schema = @Schema(type = "string"))
           @QueryParam("after")
-          String after)
+          String after,
+      @Parameter(
+              description = "Include all, deleted, or non-deleted entities.",
+              schema = @Schema(implementation = Include.class))
+          @QueryParam("include")
+          @DefaultValue("non-deleted")
+          Include include)
       throws IOException, GeneralSecurityException, ParseException {
     RestUtil.validateCursors(before, after);
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
 
     ResultList<User> users;
     if (before != null) { // Reverse paging
-      users = dao.listBefore(uriInfo, fields, teamParam, limitParam, before);
+      users = dao.listBefore(uriInfo, fields, teamParam, limitParam, before, include);
     } else { // Forward paging or first page
-      users = dao.listAfter(uriInfo, fields, teamParam, limitParam, after);
+      users = dao.listAfter(uriInfo, fields, teamParam, limitParam, after, include);
     }
     Optional.ofNullable(users.getData()).orElse(Collections.emptyList()).forEach(u -> addHref(uriInfo, u));
     return users;
@@ -203,10 +210,16 @@ public class UserResource {
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
-          String fieldsParam)
+          String fieldsParam,
+      @Parameter(
+              description = "Include all, deleted, or non-deleted entities.",
+              schema = @Schema(implementation = Include.class))
+          @QueryParam("include")
+          @DefaultValue("non-deleted")
+          Include include)
       throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
-    User user = dao.get(uriInfo, id, fields);
+    User user = dao.get(uriInfo, id, fields, include);
     return addHref(uriInfo, user);
   }
 
@@ -232,10 +245,16 @@ public class UserResource {
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
-          String fieldsParam)
+          String fieldsParam,
+      @Parameter(
+              description = "Include all, deleted, or non-deleted entities.",
+              schema = @Schema(implementation = Include.class))
+          @QueryParam("include")
+          @DefaultValue("non-deleted")
+          Include include)
       throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
-    User user = dao.getByName(uriInfo, name, fields);
+    User user = dao.getByName(uriInfo, name, fields, include);
     return addHref(uriInfo, user);
   }
 
