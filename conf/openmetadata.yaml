@@ -119,7 +119,6 @@ elasticsearch:
 eventHandlerConfiguration:
   eventHandlerClassNames:
     - "org.openmetadata.catalog.events.AuditEventHandler"
-    - "org.openmetadata.catalog.elasticsearch.ElasticSearchEventHandler"
     - "org.openmetadata.catalog.events.ChangeEventHandler"
 
 airflowConfiguration:
@@ -129,6 +128,20 @@ airflowConfiguration:
   metadataApiEndpoint: "http://localhost:8585/api"
   authProvider: "no-auth"
 
+slackEventPublishers:
+  - name: "slack events"
+    webhookUrl: "slackIncomingWebhook"
+    openMetadataUrl: "http://localhost:8585"
+    filters:
+      - eventType: "entityCreated"
+        entities:
+         - "*"
+      - eventType: "entityUpdated"
+        entities:
+         - "*"
+      - eventType: "entityDeleted"
+        entities:
+         - "*"
 health:
   delayedShutdownHandlerEnabled: true
   shutdownWaitPeriod: 1s

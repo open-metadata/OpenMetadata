@@ -27,7 +27,6 @@ import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
 import java.util.Arrays;
-import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 import javax.json.JsonPatch;
@@ -61,6 +60,7 @@ import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.DataModel;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.SQLQuery;
 import org.openmetadata.catalog.type.TableData;
 import org.openmetadata.catalog.type.TableJoins;
@@ -147,16 +147,22 @@ public class TableResource {
           String before,
       @Parameter(description = "Returns list of tables after this cursor", schema = @Schema(type = "string"))
           @QueryParam("after")
-          String after)
+          String after,
+      @Parameter(
+              description = "Include all, deleted, or non-deleted entities.",
+              schema = @Schema(implementation = Include.class))
+          @QueryParam("include")
+          @DefaultValue("non-deleted")
+          Include include)
       throws IOException, ParseException, GeneralSecurityException {
     RestUtil.validateCursors(before, after);
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
 
     ResultList<Table> tables;
     if (before != null) { // Reverse paging
-      tables = dao.listBefore(uriInfo, fields, databaseParam, limitParam, before);
+      tables = dao.listBefore(uriInfo, fields, databaseParam, limitParam, before, include);
     } else { // Forward paging or first page
-      tables = dao.listAfter(uriInfo, fields, databaseParam, limitParam, after);
+      tables = dao.listAfter(uriInfo, fields, databaseParam, limitParam, after, include);
     }
     tables.getData().forEach(t -> addHref(uriInfo, t));
     return tables;
@@ -183,10 +189,16 @@ public class TableResource {
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
-          String fieldsParam)
+          String fieldsParam,
+      @Parameter(
+              description = "Include all, deleted, or non-deleted entities.",
+              schema = @Schema(implementation = Include.class))
+          @QueryParam("include")
+          @DefaultValue("non-deleted")
+          Include include)
       throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
-    return addHref(uriInfo, dao.get(uriInfo, id, fields));
+    return addHref(uriInfo, dao.get(uriInfo, id, fields, include));
   }
 
   @GET
@@ -211,10 +223,16 @@ public class TableResource {
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
-          String fieldsParam)
+          String fieldsParam,
+      @Parameter(
+              description = "Include all, deleted, or non-deleted entities.",
+              schema = @Schema(implementation = Include.class))
+          @QueryParam("include")
+          @DefaultValue("non-deleted")
+          Include include)
       throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
-    return addHref(uriInfo, dao.getByName(uriInfo, fqn, fields));
+    return addHref(uriInfo, dao.getByName(uriInfo, fqn, fields, include));
   }
 
   @GET
@@ -535,7 +553,7 @@ public class TableResource {
         .withViewDefinition(create.getViewDefinition())
         .withUpdatedBy(securityContext.getUserPrincipal().getName())
         .withOwner(create.getOwner())
-        .withUpdatedAt(new Date())
+        .withUpdatedAt(System.currentTimeMillis())
         .withDatabase(new EntityReference().withId(create.getDatabase()));
   }
 }

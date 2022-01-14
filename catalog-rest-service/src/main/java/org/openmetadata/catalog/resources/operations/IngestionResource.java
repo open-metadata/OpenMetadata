@@ -28,7 +28,6 @@ import java.security.GeneralSecurityException;
 import java.text.ParseException;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -65,6 +64,7 @@ import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.RestUtil.PatchResponse;
@@ -162,16 +162,22 @@ public class IngestionResource {
           String before,
       @Parameter(description = "Returns list of ingestion after this cursor", schema = @Schema(type = "string"))
           @QueryParam("after")
-          String after)
+          String after,
+      @Parameter(
+              description = "Include all, deleted, or non-deleted entities.",
+              schema = @Schema(implementation = Include.class))
+          @QueryParam("include")
+          @DefaultValue("non-deleted")
+          Include include)
       throws IOException, GeneralSecurityException, ParseException {
     RestUtil.validateCursors(before, after);
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
 
     ResultList<Ingestion> ingestions;
     if (before != null) { // Reverse paging
-      ingestions = dao.listBefore(uriInfo, fields, null, limitParam, before); // Ask for one extra entry
+      ingestions = dao.listBefore(uriInfo, fields, null, limitParam, before, include); // Ask for one extra entry
     } else { // Forward paging or first page
-      ingestions = dao.listAfter(uriInfo, fields, null, limitParam, after);
+      ingestions = dao.listAfter(uriInfo, fields, null, limitParam, after, include);
     }
     if (fieldsParam != null && fieldsParam.contains("status")) {
       addStatus(ingestions.getData());
@@ -220,10 +226,16 @@ public class IngestionResource {
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
-          String fieldsParam)
+          String fieldsParam,
+      @Parameter(
+              description = "Include all, deleted, or non-deleted entities.",
+              schema = @Schema(implementation = Include.class))
+          @QueryParam("include")
+          @DefaultValue("non-deleted")
+          Include include)
       throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
-    Ingestion ingestion = dao.get(uriInfo, id, fields);
+    Ingestion ingestion = dao.get(uriInfo, id, fields, include);
     if (fieldsParam != null && fieldsParam.contains("status")) {
       ingestion = addStatus(ingestion);
     }
@@ -279,10 +291,16 @@ public class IngestionResource {
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
-          String fieldsParam)
+          String fieldsParam,
+      @Parameter(
+              description = "Include all, deleted, or non-deleted entities.",
+              schema = @Schema(implementation = Include.class))
+          @QueryParam("include")
+          @DefaultValue("non-deleted")
+          Include include)
       throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
-    Ingestion ingestion = dao.getByName(uriInfo, fqn, fields);
+    Ingestion ingestion = dao.getByName(uriInfo, fqn, fields, include);
     if (fieldsParam != null && fieldsParam.contains("status")) {
       ingestion = addStatus(ingestion);
     }
@@ -425,7 +443,7 @@ public class IngestionResource {
         .withOwner(create.getOwner())
         .withService(create.getService())
         .withUpdatedBy(securityContext.getUserPrincipal().getName())
-        .withUpdatedAt(new Date());
+        .withUpdatedAt(System.currentTimeMillis());
   }
 
   private void deploy(Ingestion ingestion) {

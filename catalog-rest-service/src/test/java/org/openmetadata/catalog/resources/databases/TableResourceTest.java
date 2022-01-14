@@ -1212,6 +1212,27 @@ public class TableResourceTest extends EntityResourceTest<Table> {
     deleteAndCheckLocation(table, userAuthHeaders());
   }
 
+  @Test
+  void put_addLocationAndDeleteTable_200(TestInfo test) throws IOException {
+    Table table = createAndCheckEntity(create(test), adminAuthHeaders());
+
+    // Add location to the table
+    CreateLocation create =
+        new CreateLocation().withName(getLocationName(test)).withService(AWS_STORAGE_SERVICE_REFERENCE);
+    Location location = createLocation(create, adminAuthHeaders());
+    addAndCheckLocation(table, location.getId(), OK, userAuthHeaders());
+    deleteEntity(table.getId(), adminAuthHeaders());
+    Map<String, String> queryParams =
+        new HashMap<>() {
+          {
+            put("include", "all");
+          }
+        };
+    table = getEntity(table.getId(), queryParams, "location", adminAuthHeaders());
+    assertNotNull(table.getLocation(), "The location is missing");
+    assertEquals(location.getId(), table.getLocation().getId(), "The locations are different");
+  }
+
   private void deleteAndCheckLocation(Table table, Map<String, String> authHeaders) throws HttpResponseException {
     WebTarget target = CatalogApplicationTest.getResource(String.format("tables/%s/location", table.getId()));
     TestUtils.delete(target, authHeaders);
@@ -1228,7 +1249,7 @@ public class TableResourceTest extends EntityResourceTest<Table> {
     WebTarget target = CatalogApplicationTest.getResource(String.format("tables/%s/location", table.getId()));
     TestUtils.put(target, locationId.toString(), status, authHeaders);
 
-    // GET .../tables/{tableId} returns newly added follower
+    // GET .../tables/{tableId} returns newly added location
     Table getTable = getEntity(table.getId(), "location", authHeaders);
     TestUtils.validateEntityReference(getTable.getLocation());
     assertEquals(
@@ -1282,7 +1303,7 @@ public class TableResourceTest extends EntityResourceTest<Table> {
     // GET .../tables/{id}
     table =
         byName
-            ? getEntityByName(table.getFullyQualifiedName(), null, adminAuthHeaders())
+            ? getEntityByName(table.getFullyQualifiedName(), null, null, adminAuthHeaders())
             : getEntity(table.getId(), null, adminAuthHeaders());
     assertFields(table, null);
 
@@ -1290,7 +1311,7 @@ public class TableResourceTest extends EntityResourceTest<Table> {
     String fields = "columns,tableConstraints";
     table =
         byName
-            ? getEntityByName(table.getFullyQualifiedName(), fields, adminAuthHeaders())
+            ? getEntityByName(table.getFullyQualifiedName(), null, fields, adminAuthHeaders())
             : getEntity(table.getId(), fields, adminAuthHeaders());
     assertFields(table, fields);
 
@@ -1298,7 +1319,7 @@ public class TableResourceTest extends EntityResourceTest<Table> {
     fields = "columns,usageSummary,owner,tags";
     table =
         byName
-            ? getEntityByName(table.getFullyQualifiedName(), fields, adminAuthHeaders())
+            ? getEntityByName(table.getFullyQualifiedName(), null, fields, adminAuthHeaders())
             : getEntity(table.getId(), fields, adminAuthHeaders());
     assertEquals(table.getOwner().getId(), USER_OWNER1.getId());
     assertEquals(table.getOwner().getType(), USER_OWNER1.getType());

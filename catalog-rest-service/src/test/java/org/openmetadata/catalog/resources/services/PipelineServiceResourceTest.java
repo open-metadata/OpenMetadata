@@ -334,7 +334,7 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
     String fields = "";
     service =
         byName
-            ? getEntityByName(service.getName(), fields, adminAuthHeaders())
+            ? getEntityByName(service.getName(), null, fields, adminAuthHeaders())
             : getEntity(service.getId(), fields, adminAuthHeaders());
     TestUtils.assertListNotNull(
         service.getHref(),

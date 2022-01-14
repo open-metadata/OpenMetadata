@@ -16,12 +16,12 @@ package org.openmetadata.catalog.jdbi3;
 import static org.openmetadata.catalog.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.catalog.util.EntityUtil.mlFeatureMatch;
 import static org.openmetadata.catalog.util.EntityUtil.mlHyperParameterMatch;
+import static org.openmetadata.catalog.util.EntityUtil.toBoolean;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
@@ -205,7 +205,11 @@ public class MlModelRepository extends EntityRepository<MlModel> {
       List<EntityReference> ids =
           daoCollection
               .relationshipDAO()
-              .findTo(mlModel.getId().toString(), Entity.MLMODEL, Relationship.USES.ordinal());
+              .findTo(
+                  mlModel.getId().toString(),
+                  Entity.MLMODEL,
+                  Relationship.USES.ordinal(),
+                  toBoolean(toInclude(mlModel)));
       if (ids.size() > 1) {
         LOG.warn("Possible database issues - multiple dashboards {} found for model {}", ids, mlModel.getId());
       }
@@ -289,7 +293,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
     }
 
     @Override
-    public Date getUpdatedAt() {
+    public long getUpdatedAt() {
       return entity.getUpdatedAt();
     }
 
@@ -344,7 +348,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
     }
 
     @Override
-    public void setUpdateDetails(String updatedBy, Date updatedAt) {
+    public void setUpdateDetails(String updatedBy, long updatedAt) {
       entity.setUpdatedBy(updatedBy);
       entity.setUpdatedAt(updatedAt);
     }

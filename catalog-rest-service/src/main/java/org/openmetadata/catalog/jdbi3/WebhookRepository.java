@@ -23,7 +23,6 @@ import java.net.URI;
 import java.net.UnknownHostException;
 import java.text.ParseException;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -34,7 +33,6 @@ import javax.ws.rs.ProcessingException;
 import javax.ws.rs.client.Client;
 import javax.ws.rs.client.ClientBuilder;
 import javax.ws.rs.client.Invocation.Builder;
-import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
@@ -52,6 +50,9 @@ import org.openmetadata.catalog.type.Webhook;
 import org.openmetadata.catalog.type.Webhook.Status;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
+import org.openmetadata.catalog.util.JsonUtils;
+import org.openmetadata.catalog.util.RestUtil;
+import org.openmetadata.common.utils.CommonUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -209,7 +210,7 @@ public class WebhookRepository extends EntityRepository<Webhook> {
     }
 
     @Override
-    public Date getUpdatedAt() {
+    public long getUpdatedAt() {
       return entity.getUpdatedAt();
     }
 
@@ -254,7 +255,7 @@ public class WebhookRepository extends EntityRepository<Webhook> {
     }
 
     @Override
-    public void setUpdateDetails(String updatedBy, Date updatedAt) {
+    public void setUpdateDetails(String updatedBy, long updatedAt) {
       entity.setUpdatedBy(updatedBy);
       entity.setUpdatedAt(updatedAt);
     }
@@ -307,7 +308,6 @@ public class WebhookRepository extends EntityRepository<Webhook> {
     private final List<ChangeEvent> batch = new ArrayList<>();
     private BatchEventProcessor<ChangeEventHolder> processor;
     private Client client;
-    private Builder target;
     private final ConcurrentHashMap<EventType, List<String>> filter = new ConcurrentHashMap<>();
 
     public WebhookPublisher(Webhook webhook) {
@@ -319,10 +319,6 @@ public class WebhookRepository extends EntityRepository<Webhook> {
     public void onStart() {
       createClient();
       webhook.withFailureDetails(new FailureDetails());
-
-      // TODO clean this up
-      Map<String, String> authHeaders = SecurityUtil.authHeaders("admin@open-metadata.org");
-      target = SecurityUtil.addHeaders(client.target(webhook.getEndpoint()), authHeaders);
       LOG.info("Webhook-lifecycle-onStart {}", webhook.getName());
     }
 
@@ -344,7 +340,14 @@ public class WebhookRepository extends EntityRepository<Webhook> {
       ChangeEventList list = new ChangeEventList(batch, null, null, batch.size());
       long attemptTime = System.currentTimeMillis();
       try {
-        Response response = target.post(javax.ws.rs.client.Entity.entity(list, MediaType.APPLICATION_JSON));
+        String json = JsonUtils.pojoToJson(list);
+        Response response;
+        if (webhook.getSecretKey() != null) {
+          String hmac = "sha256=" + CommonUtil.calculateHMAC(webhook.getSecretKey(), json);
+          response = getTarget().header(RestUtil.SIGNATURE_HEADER, hmac).post(javax.ws.rs.client.Entity.json(json));
+        } else {
+          response = getTarget().post(javax.ws.rs.client.Entity.json(json));
+        }
         LOG.info(
             "Webhook {}:{}:{} received response {}",
             webhook.getName(),
@@ -354,7 +357,7 @@ public class WebhookRepository extends EntityRepository<Webhook> {
         // 2xx response means call back is successful
         if (response.getStatus() >= 200 && response.getStatus() < 300) { // All 2xx responses
           batch.clear();
-          webhook.getFailureDetails().setLastSuccessfulAt(changeEventHolder.get().getDateTime().getTime());
+          webhook.getFailureDetails().setLastSuccessfulAt(changeEventHolder.get().getTimestamp());
           if (webhook.getStatus() != Status.STARTED) {
             setStatus(Status.STARTED, null, null, null, null);
           }
@@ -413,11 +416,11 @@ public class WebhookRepository extends EntityRepository<Webhook> {
 
     private void setAwaitingRetry(Long attemptTime, int statusCode, String reason) throws IOException {
       if (!attemptTime.equals(webhook.getFailureDetails().getLastFailedAt())) {
-        setStatus(Status.AWAITING_RETRY, attemptTime, statusCode, reason, new Date(attemptTime + currentBackoffTime));
+        setStatus(Status.AWAITING_RETRY, attemptTime, statusCode, reason, attemptTime + currentBackoffTime);
       }
     }
 
-    private void setStatus(Status status, Long attemptTime, Integer statusCode, String reason, Date date)
+    private void setStatus(Status status, Long attemptTime, Integer statusCode, String reason, Long timestamp)
         throws IOException {
       Webhook stored = daoCollection.webhookDAO().findEntityById(webhook.getId());
       webhook.setStatus(status);
@@ -426,7 +429,7 @@ public class WebhookRepository extends EntityRepository<Webhook> {
           .withLastFailedAt(attemptTime)
           .withLastFailedStatusCode(statusCode)
           .withLastFailedReason(reason)
-          .withNextAttempt(date);
+          .withNextAttempt(timestamp);
       WebhookUpdater updater = new WebhookUpdater(stored, webhook, false);
       updater.update();
     }
@@ -467,6 +470,11 @@ public class WebhookRepository extends EntityRepository<Webhook> {
       } else if (currentBackoffTime == BACKOFF_1_HOUR) {
         currentBackoffTime = BACKOFF_24_HOUR;
       }
+    }
+
+    private Builder getTarget() {
+      Map<String, String> authHeaders = SecurityUtil.authHeaders("admin@open-metadata.org");
+      return SecurityUtil.addHeaders(client.target(webhook.getEndpoint()), authHeaders);
     }
   }
 

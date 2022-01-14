@@ -22,33 +22,15 @@ from metadata.ingestion.source.sql_alchemy_helper import (
     SQLSourceStatus,
 )
 from metadata.utils.helpers import get_start_and_end
+from metadata.utils.sql_queries import REDSHIFT_SQL_STATEMENT
+
 
 logger = logging.getLogger(__name__)
 
 
 class RedshiftUsageSource(Source[TableQuery]):
     # SELECT statement from mysql information_schema to extract table and column metadata
-    SQL_STATEMENT = """
-        SELECT DISTINCT ss.userid,
-            ss.query,
-            sui.usename,
-            ss.tbl,
-            sq.querytxt,
-            sti.database,
-            sti.schema,
-            sti.table,
-            sq.starttime,
-            sq.endtime,
-            sq.aborted
-        FROM stl_scan ss
-            JOIN svv_table_info sti ON ss.tbl = sti.table_id
-            JOIN stl_query sq ON ss.query = sq.query
-            JOIN svl_user_info sui ON sq.userid = sui.usesysid
-        WHERE ss.starttime >= '{start_time}'
-            AND ss.starttime < '{end_time}'
-            AND sq.aborted = 0
-        ORDER BY ss.endtime DESC;
-    """
+    SQL_STATEMENT = REDSHIFT_SQL_STATEMENT
     # CONFIG KEYS
     WHERE_CLAUSE_SUFFIX_KEY = "where_clause"
     CLUSTER_SOURCE = "cluster_source"

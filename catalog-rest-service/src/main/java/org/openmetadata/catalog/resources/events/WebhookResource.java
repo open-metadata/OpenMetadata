@@ -23,7 +23,6 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
-import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -297,6 +296,7 @@ public class WebhookResource {
         .withTimeout(create.getTimeout())
         .withEnabled(create.getEnabled())
         .withUpdatedBy(securityContext.getUserPrincipal().getName())
-        .withUpdatedAt(new Date());
+        .withUpdatedAt(System.currentTimeMillis())
+        .withSecretKey(create.getSecretKey());
   }
 }

@@ -424,6 +424,15 @@ declare module 'Models' {
     showLabel?: boolean;
   };
 
+  export type TourSteps = {
+    content?: string | React.ReactNode;
+    actionType?: string;
+    position?: string | number[];
+    selector?: string;
+    userTypeText?: string;
+    waitTimer?: number;
+  };
+
   export interface FormErrorData {
     [key: string]: string | undefined;
   }

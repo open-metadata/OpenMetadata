@@ -453,7 +453,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
               </div>
             )}
             {activeTab === 2 && (
-              <div>
+              <div id="sampleDataDetails">
                 <SampleDataTable sampleData={getSampleDataWithType()} />
               </div>
             )}

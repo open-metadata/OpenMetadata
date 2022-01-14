@@ -23,7 +23,6 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
-import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 import javax.validation.Valid;
@@ -41,7 +40,6 @@ import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.type.ChangeEvent;
-import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.ResultList;
 
 @Path("/v1/events")
@@ -110,16 +108,15 @@ public class EventResource {
           @QueryParam("entityDeleted")
           String entityDeleted,
       @Parameter(
-              description = "Events starting from this date time in ISO8601 format",
+              description = "Events starting from this unix timestamp in milliseconds",
               required = true,
-              schema = @Schema(type = "string", example = "2021-01-28T10:00:00.000000Z"))
-          @QueryParam("date")
-          String date)
+              schema = @Schema(type = "long", example = "1426349294842"))
+          @QueryParam("timestamp")
+          long timestamp)
       throws IOException, GeneralSecurityException, ParseException {
-    Date parsedDate = RestUtil.DATE_TIME_FORMAT.parse(date);
     List<String> entityCreatedList = EntityList.getEntityList("entityCreated", entityCreated);
     List<String> entityUpdatedList = EntityList.getEntityList("entityUpdated", entityUpdated);
     List<String> entityDeletedList = EntityList.getEntityList("entityDeleted", entityDeleted);
-    return dao.list(parsedDate, entityCreatedList, entityUpdatedList, entityDeletedList);
+    return dao.list(timestamp, entityCreatedList, entityUpdatedList, entityDeletedList);
   }
 }
