@@ -43,9 +43,9 @@ import TopicVersion from '../../components/TopicVersion/TopicVersion.component';
 import {
   getDashboardDetailsPath,
   getDatabaseDetailsPath,
-  getDatasetDetailsPath,
   getPipelineDetailsPath,
   getServiceDetailsPath,
+  getTableDetailsPath,
   getTopicDetailsPath,
   getVersionPath,
 } from '../../constants/constants';
@@ -94,7 +94,7 @@ const EntityVersionPage: FunctionComponent = () => {
   const backHandler = () => {
     switch (entityType) {
       case EntityType.TABLE:
-        history.push(getDatasetDetailsPath(entityFQN));
+        history.push(getTableDetailsPath(entityFQN));
 
         break;
 

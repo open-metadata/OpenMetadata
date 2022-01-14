@@ -849,3 +849,15 @@ body .list-option.rdw-option-active {
   transform: translateX(0);
   display: block;
 }
+
+/* login slider */
+
+.login-slider.slick-dots li.slick-active button:before {
+  color: #fff !important;
+  opacity: 1 !important;
+}
+
+.login-slider.slick-dots li button:before {
+  color: #fff !important;
+  opacity: 0.5 !important;
+}
