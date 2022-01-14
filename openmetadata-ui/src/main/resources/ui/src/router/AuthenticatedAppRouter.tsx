@@ -54,15 +54,11 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <Route exact component={SwaggerPage} path={ROUTES.SWAGGER} />
       <Route exact component={TagsPage} path={ROUTES.TAGS} />
       <Route component={DatabaseDetails} path={ROUTES.DATABASE_DETAILS} />
+      <Route exact component={DatasetDetailsPage} path={ROUTES.TABLE_DETAILS} />
       <Route
         exact
         component={DatasetDetailsPage}
-        path={ROUTES.DATASET_DETAILS}
-      />
-      <Route
-        exact
-        component={DatasetDetailsPage}
-        path={ROUTES.DATASET_DETAILS_WITH_TAB}
+        path={ROUTES.TABLE_DETAILS_WITH_TAB}
       />
       <Route exact component={TopicDetailsPage} path={ROUTES.TOPIC_DETAILS} />
       <Route
