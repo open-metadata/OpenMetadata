@@ -24,6 +24,9 @@ from metadata.ingestion.api.workflow import Workflow
 
 from metadata.utils.docker import run_docker
 
+from metadata.telemetry.openmetadata_tracer import openmetadata_trace
+from metadata.__version__ import get_metadata_version
+
 logger = logging.getLogger(__name__)
 
 logging.getLogger("urllib3").setLevel(logging.WARN)
@@ -44,6 +47,7 @@ def check() -> None:
 @click.option(
     "--debug/--no-debug", default=lambda: os.environ.get("METADATA_DEBUG", False)
 )
+@openmetadata_trace
 def metadata(debug: bool) -> None:
     if debug:
         logging.getLogger().setLevel(logging.INFO)
@@ -61,6 +65,7 @@ def metadata(debug: bool) -> None:
     help="Workflow config",
     required=True,
 )
+@openmetadata_trace
 def ingest(config: str) -> None:
     """Main command for ingesting metadata into Metadata"""
     config_file = pathlib.Path(config)
@@ -87,6 +92,7 @@ def ingest(config: str) -> None:
     help="Workflow config",
     required=True,
 )
+@openmetadata_trace
 def report(config: str) -> None:
     """Report command to generate static pages with metadata"""
     config_file = pathlib.Path(config)
@@ -148,13 +154,18 @@ def report(config: str) -> None:
     type=click.Path(exists=True, dir_okay=False),
     required=False,
 )
-def docker(start, stop, pause, resume, clean, file_path) -> None:
+@click.option("--version", help="Metadata command version", is_flag=True)
+@openmetadata_trace
+def docker(start, stop, pause, resume, clean, version, file_path) -> None:
     """
     Checks Docker Memory Allocation
     Run Latest Release Docker - metadata docker --start
     Run Local Docker - metadata docker --start -f path/to/docker-compose.yml
     """
-    run_docker(start, stop, pause, resume, clean, file_path)
+    if version:
+        click.secho(f"{get_metadata_version()}", fg="bright_magenta")
+    else:
+        run_docker(start, stop, pause, resume, clean, file_path)
 
 
 metadata.add_command(check)

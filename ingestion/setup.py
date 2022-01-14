@@ -43,6 +43,9 @@ base_requirements = {
     "requests~=2.26",
     "cryptography",
     "PyYAML",
+    "opentelemetry-exporter-otlp-proto-http>=1.6.2,<1.7",
+    "opentelemetry-exporter-jaeger",
+    "opentelemetry-sdk-extension-aws",
 }
 
 report_requirements = {

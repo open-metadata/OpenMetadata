@@ -8,6 +8,7 @@ import requests as requests
 import tempfile
 import traceback
 from datetime import timedelta
+from metadata.telemetry.openmetadata_telemetry import openmetadata_telemetry
 
 logger = logging.getLogger(__name__)
 
@@ -28,21 +29,31 @@ def run_docker(start, stop, pause, resume, clean, file_path):
 
         from metadata.ingestion.ometa.ometa_api import OpenMetadata
         from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
+        openmetadata_telemetry.set_attribute("cli_command_name", "docker")
 
         docker = DockerClient(compose_project_name="openmetadata", compose_files=[])
 
         logger.info("Checking if docker compose is installed....")
         if not docker.compose.is_installed():
+            openmetadata_telemetry.set_attribute(
+                "docker_compose_not_installed", f"{docker.compose.is_installed()}"
+            )
             raise Exception("Docker Compose CLI is not installed on the system.")
 
         docker_info = docker.info()
 
         logger.info("Checking if docker service is running....")
         if not docker_info.id:
+            openmetadata_telemetry.set_attribute(
+                "docker_not_started", f"{docker.info.id}"
+            )
             raise Exception("Docker Service is not up and running.")
 
         logger.info("Checking openmetadata memory constraints....")
         if docker_info.mem_total < min_memory_limit:
+            openmetadata_telemetry.set_attribute(
+                "mem_total_error", f"{docker_info.mem_total}"
+            )
             raise MemoryError
 
         # Check for -f <Path>
@@ -76,8 +87,10 @@ def run_docker(start, stop, pause, resume, clean, file_path):
         if start:
             logger.info("Running docker compose for Open Metadata....")
             if file_path:
+                openmetadata_telemetry.set_attribute("cli_command_option", f"start local")
                 docker.compose.up(detach=True, build=True)
             else:
+                openmetadata_telemetry.set_attribute("cli_command_option", f"start release")
                 docker.compose.up(detach=True)
 
             logger.info(
@@ -117,19 +130,27 @@ def run_docker(start, stop, pause, resume, clean, file_path):
                 "Need support? Get in touch on Slack: https://slack.open-metadata.org/",
                 fg="bright_magenta",
             )
-        if pause:
+            openmetadata_telemetry.set_attribute("docker_start", "success")
+        elif pause:
+            openmetadata_telemetry.set_attribute("cli_command_option", "pause")
             logger.info("Pausing docker compose for Open Metadata....")
             docker.compose.pause()
             logger.info("Pausing docker compose for Open Metadata Successful.")
-        if resume:
+            openmetadata_telemetry.set_attribute("docker_pause", "success")
+        elif resume:
+            openmetadata_telemetry.set_attribute("cli_command_option", "resume")
             logger.info("Resuming docker compose for Open Metadata....")
             docker.compose.unpause()
             logger.info("Resuming docker compose for Open Metadata Successful.")
-        if stop:
+            openmetadata_telemetry.set_attribute("docker_resume", "success")
+        elif stop:
+            openmetadata_telemetry.set_attribute("cli_command_option", "stop")
             logger.info("Stopping docker compose for Open Metadata....")
             docker.compose.stop()
             logger.info("docker compose for Open Metadata stopped successfully.")
-        if clean:
+            openmetadata_telemetry.set_attribute("docker_stop", "success")
+        elif clean:
+            openmetadata_telemetry.set_attribute("cli_command_option", "clean")
             logger.info(
                 "Stopping docker compose for Open Metadata and removing images, networks, volumes...."
             )
@@ -139,8 +160,10 @@ def run_docker(start, stop, pause, resume, clean, file_path):
             )
             if file_path is None:
                 docker_compose_file_path.unlink()
+            openmetadata_telemetry.set_attribute("docker_clean", "success")
 
     except MemoryError:
+        openmetadata_telemetry.set_attribute("docker_error", "memory allocation")
         click.secho(
             f"Please Allocate More memory to Docker.\nRecommended: 4GB\nCurrent: "
             f"{round(float(docker_info['MemTotal']) / calc_gb, 2)}",
@@ -149,4 +172,10 @@ def run_docker(start, stop, pause, resume, clean, file_path):
     except Exception as err:
         logger.error(traceback.format_exc())
         logger.error(traceback.print_exc())
+        openmetadata_telemetry.set_attribute(
+            "docker_exception_trace", traceback.format_exc()
+        )
+        openmetadata_telemetry.set_attribute(
+            "docker_exception_print_trace", traceback.print_exc()
+        )
         click.secho(str(err), fg="red")
