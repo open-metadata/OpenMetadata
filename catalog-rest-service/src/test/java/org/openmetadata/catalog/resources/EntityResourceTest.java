@@ -497,20 +497,16 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
         NOT_FOUND,
         entityNotFound(entityName, entityInterface.getFullyQualifiedName()));
 
-    Map<String, String> queryParams =
-        new HashMap<>() {
-          {
-            put("include", "deleted");
-          }
-        };
-    checkContainer(container, getEntity(entityInterface.getId(), queryParams, null, adminAuthHeaders()));
-    checkContainer(
-        container, getEntityByName(entityInterface.getFullyQualifiedName(), queryParams, null, adminAuthHeaders()));
-
-    queryParams.put("include", "all");
-    checkContainer(container, getEntity(entityInterface.getId(), queryParams, null, adminAuthHeaders()));
-    checkContainer(
-        container, getEntityByName(entityInterface.getFullyQualifiedName(), queryParams, null, adminAuthHeaders()));
+    Map<String, String> queryParams = new HashMap<>();
+    for (String include : List.of("deleted", "all")) {
+      queryParams.put("include", include);
+      validateCreatedEntity(
+          getEntity(entityInterface.getId(), queryParams, allFields, adminAuthHeaders()), create, adminAuthHeaders());
+      validateCreatedEntity(
+          getEntityByName(entityInterface.getFullyQualifiedName(), queryParams, allFields, adminAuthHeaders()),
+          create,
+          adminAuthHeaders());
+    }
 
     queryParams.put("include", "non-deleted");
     assertResponse(
@@ -521,14 +517,6 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
         () -> getEntityByName(entityInterface.getFullyQualifiedName(), queryParams, null, adminAuthHeaders()),
         NOT_FOUND,
         entityNotFound(entityName, entityInterface.getFullyQualifiedName()));
-  }
-
-  protected void checkContainer(EntityReference container, T entity) {
-    EntityInterface<T> entityInterface = getEntityInterface(entity);
-    if (container != null) {
-      assertNotNull(entityInterface.getContainer(), "Container is null");
-      assertEquals(container.getId(), entityInterface.getContainer().getId(), "Containers are different");
-    }
   }
 
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
