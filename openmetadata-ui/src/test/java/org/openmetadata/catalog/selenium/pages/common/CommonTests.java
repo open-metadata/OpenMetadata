@@ -166,6 +166,27 @@ public class CommonTests {
     }
   }
 
+  @Test
+  @Order(5)
+  public void addMultipleTagsCheck() throws InterruptedException {
+    Events.click(webDriver, By.cssSelector("[data-testid='closeWhatsNew']")); // Close What's new
+    Thread.sleep(waitTime);
+    Events.sendKeys(webDriver, By.cssSelector("[data-testid='searchBox']"), "raw_product_catalog");
+    Events.click(webDriver, By.cssSelector("[data-testid='data-name'][id='bigquery_gcpshopifyraw_product_catalog']"));
+    Events.click(webDriver, By.xpath("//div[@data-testid='tag-conatiner']//span"));
+    Events.click(webDriver, By.cssSelector("[data-testid='associatedTagName']"));
+    for (int i = 0; i <= 10; i++) {
+      Events.sendKeys(webDriver, By.cssSelector("[data-testid='associatedTagName']"), "P");
+      Events.click(webDriver, By.cssSelector("[data-testid='list-item']"));
+      Thread.sleep(waitTime);
+    }
+    Events.click(webDriver, By.cssSelector("[data-testid='saveAssociatedTag']"));
+    webDriver.navigate().refresh();
+    Thread.sleep(2000);
+    Object tagCount = webDriver.findElements(By.xpath("//div[@data-testid='tag-conatiner']/div/div")).size();
+    Assert.assertEquals(tagCount, 11);
+  }
+
   @AfterEach
   public void closeTabs() {
     ArrayList<String> tabs = new ArrayList<>(webDriver.getWindowHandles());

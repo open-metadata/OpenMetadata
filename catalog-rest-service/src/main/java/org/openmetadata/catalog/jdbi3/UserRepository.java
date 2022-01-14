@@ -16,13 +16,13 @@ package org.openmetadata.catalog.jdbi3;
 import static org.openmetadata.catalog.jdbi3.Relationship.FOLLOWS;
 import static org.openmetadata.catalog.jdbi3.Relationship.HAS;
 import static org.openmetadata.catalog.jdbi3.Relationship.OWNS;
+import static org.openmetadata.catalog.util.EntityUtil.toBoolean;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -33,6 +33,7 @@ import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.resources.teams.UserResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
@@ -114,13 +115,17 @@ public class UserRepository extends EntityRepository<User> {
   private List<EntityReference> getOwns(User user) throws IOException {
     // Compile entities owned by the user
     List<EntityReference> ownedEntities =
-        daoCollection.relationshipDAO().findTo(user.getId().toString(), Entity.USER, OWNS.ordinal());
+        daoCollection
+            .relationshipDAO()
+            .findTo(user.getId().toString(), Entity.USER, OWNS.ordinal(), toBoolean(toInclude(user)));
 
     // Compile entities owned by the team the user belongs to
     List<EntityReference> teams = user.getTeams() == null ? getTeams(user) : user.getTeams();
     for (EntityReference team : teams) {
       ownedEntities.addAll(
-          daoCollection.relationshipDAO().findTo(team.getId().toString(), Entity.TEAM, OWNS.ordinal()));
+          daoCollection
+              .relationshipDAO()
+              .findTo(team.getId().toString(), Entity.TEAM, OWNS.ordinal(), toBoolean(Include.NON_DELETED)));
     }
     // Populate details in entity reference
     return EntityUtil.populateEntityReferences(ownedEntities);
@@ -128,7 +133,9 @@ public class UserRepository extends EntityRepository<User> {
 
   private List<EntityReference> getFollows(User user) throws IOException {
     return EntityUtil.populateEntityReferences(
-        daoCollection.relationshipDAO().findTo(user.getId().toString(), Entity.USER, FOLLOWS.ordinal()));
+        daoCollection
+            .relationshipDAO()
+            .findTo(user.getId().toString(), Entity.USER, FOLLOWS.ordinal(), toBoolean(toInclude(user))));
   }
 
   public List<EntityReference> validateRoles(List<UUID> roleIds) throws IOException {
@@ -156,7 +163,9 @@ public class UserRepository extends EntityRepository<User> {
   /* Add all the roles that user has been assigned, to User entity */
   private List<EntityReference> getRoles(User user) throws IOException {
     List<String> roleIds =
-        daoCollection.relationshipDAO().findTo(user.getId().toString(), Entity.USER, HAS.ordinal(), Entity.ROLE);
+        daoCollection
+            .relationshipDAO()
+            .findTo(user.getId().toString(), Entity.USER, HAS.ordinal(), Entity.ROLE, toBoolean(toInclude(user)));
     List<EntityReference> roles = new ArrayList<>(roleIds.size());
     for (String roleId : roleIds) {
       roles.add(daoCollection.roleDAO().findEntityReferenceById(UUID.fromString(roleId)));
@@ -167,7 +176,9 @@ public class UserRepository extends EntityRepository<User> {
   /* Add all the teams that user belongs to User entity */
   private List<EntityReference> getTeams(User user) throws IOException {
     List<String> teamIds =
-        daoCollection.relationshipDAO().findFrom(user.getId().toString(), Entity.USER, HAS.ordinal(), Entity.TEAM);
+        daoCollection
+            .relationshipDAO()
+            .findFrom(user.getId().toString(), Entity.USER, HAS.ordinal(), Entity.TEAM, toBoolean(toInclude(user)));
     List<EntityReference> teams = new ArrayList<>();
     for (String teamId : teamIds) {
       teams.add(daoCollection.teamDAO().findEntityReferenceById(UUID.fromString(teamId)));
@@ -237,7 +248,7 @@ public class UserRepository extends EntityRepository<User> {
     }
 
     @Override
-    public Date getUpdatedAt() {
+    public long getUpdatedAt() {
       return entity.getUpdatedAt();
     }
 
@@ -278,7 +289,7 @@ public class UserRepository extends EntityRepository<User> {
     }
 
     @Override
-    public void setUpdateDetails(String updatedBy, Date updatedAt) {
+    public void setUpdateDetails(String updatedBy, long updatedAt) {
       entity.setUpdatedBy(updatedBy);
       entity.setUpdatedAt(updatedAt);
     }

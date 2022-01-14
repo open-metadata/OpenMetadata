@@ -38,6 +38,7 @@ public final class RestUtil {
   public static final String ENTITY_FIELDS_CHANGED = "entityFieldsChanged";
   public static final String ENTITY_NO_CHANGE = "entityNoChange";
   public static final String ENTITY_DELETED = "entityDeleted";
+  public static final String SIGNATURE_HEADER = "X-OM-Signature";
 
   public static final DateFormat DATE_TIME_FORMAT;
   public static final DateFormat DATE_FORMAT;

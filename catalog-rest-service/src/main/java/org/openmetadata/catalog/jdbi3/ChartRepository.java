@@ -16,7 +16,6 @@ package org.openmetadata.catalog.jdbi3;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.net.URI;
-import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 import org.openmetadata.catalog.Entity;
@@ -120,7 +119,8 @@ public class ChartRepository extends EntityRepository<Chart> {
 
   private EntityReference getService(Chart chart) throws IOException {
     EntityReference ref =
-        EntityUtil.getService(daoCollection.relationshipDAO(), Entity.CHART, chart.getId(), Entity.DASHBOARD_SERVICE);
+        EntityUtil.getService(
+            daoCollection.relationshipDAO(), Entity.CHART, chart.getId(), Entity.DASHBOARD_SERVICE, toInclude(chart));
     if (ref != null) {
       DashboardService service = getService(ref.getId(), ref.getType());
       ref.setName(service.getName());
@@ -196,7 +196,7 @@ public class ChartRepository extends EntityRepository<Chart> {
     }
 
     @Override
-    public Date getUpdatedAt() {
+    public long getUpdatedAt() {
       return entity.getUpdatedAt();
     }
 
@@ -246,7 +246,7 @@ public class ChartRepository extends EntityRepository<Chart> {
     }
 
     @Override
-    public void setUpdateDetails(String updatedBy, Date updatedAt) {
+    public void setUpdateDetails(String updatedBy, long updatedAt) {
       entity.setUpdatedBy(updatedBy);
       entity.setUpdatedAt(updatedAt);
     }

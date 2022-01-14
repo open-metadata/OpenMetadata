@@ -23,7 +23,6 @@ import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
 import java.util.Arrays;
-import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -182,6 +181,6 @@ public class MetricsResource {
     metrics
         .withId(UUID.randomUUID())
         .withUpdatedBy(securityContext.getUserPrincipal().getName())
-        .withUpdatedAt(new Date());
+        .withUpdatedAt(System.currentTimeMillis());
   }
 }

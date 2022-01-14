@@ -16,7 +16,6 @@ package org.openmetadata.catalog.jdbi3;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.net.URI;
-import java.util.Date;
 import java.util.UUID;
 import javax.ws.rs.core.UriInfo;
 import org.openmetadata.catalog.Entity;
@@ -145,7 +144,7 @@ public class DashboardServiceRepository extends EntityRepository<DashboardServic
     }
 
     @Override
-    public Date getUpdatedAt() {
+    public long getUpdatedAt() {
       return entity.getUpdatedAt();
     }
 
@@ -190,7 +189,7 @@ public class DashboardServiceRepository extends EntityRepository<DashboardServic
     }
 
     @Override
-    public void setUpdateDetails(String updatedBy, Date updatedAt) {
+    public void setUpdateDetails(String updatedBy, long updatedAt) {
       entity.setUpdatedBy(updatedBy);
       entity.setUpdatedAt(updatedAt);
     }
