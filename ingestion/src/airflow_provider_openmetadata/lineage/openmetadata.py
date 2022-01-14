@@ -21,10 +21,6 @@ from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Set, Unio
 
 from airflow.configuration import conf
 from airflow.lineage.backend import LineageBackend
-from airflow.serialization.serialized_objects import (
-    SerializedBaseOperator,
-    SerializedDAG,
-)
 
 from metadata.config.common import ConfigModel
 from metadata.generated.schema.api.data.createPipeline import (
@@ -260,6 +256,12 @@ def parse_lineage_to_openmetadata(
     :param outlets: list of downstream tables
     :param client: OpenMetadata client
     """
+    # Move this import to avoid circular import error when airflow parses the config
+    # pylint: disable=import-outside-toplevel
+    from airflow.serialization.serialized_objects import (
+        SerializedBaseOperator,
+        SerializedDAG,
+    )
 
     operator.log.info("Parsing Lineage for OpenMetadata")
     dag: "DAG" = context["dag"]
