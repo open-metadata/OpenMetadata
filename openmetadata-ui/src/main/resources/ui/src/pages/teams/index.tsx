@@ -76,6 +76,7 @@ const TeamsPage = () => {
           setCurrentTeam(res.data.data[0]);
         }
         setTeams(res.data.data);
+        AppState.updateUserTeam(res.data.data);
       })
       .catch((err: AxiosError) => {
         if (err?.response?.data.code) {
