@@ -20,6 +20,7 @@ import loginBG from '../../assets/img/login-bg.jpeg';
 import { ROUTES } from '../../constants/constants';
 import { AuthTypes } from '../../enums/signin.enum';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
+import LoginCarousel from './LoginCarousel';
 
 const SigninPage = () => {
   const history = useHistory();
@@ -78,13 +79,13 @@ const SigninPage = () => {
         <div className="tw-mt-10">
           <SVGIcons alt="OpenMetadata Logo" icon={Icons.LOGO} width="152" />
         </div>
-        <div className="tw-mt-24">
+        <div className="tw-mt-44">
           <p className="tw-text-3xl tw-font-bold tw-text-grey-muted">Log In</p>
-          <p className="tw-mt-10 tw-text-xl tw-text-grey-muted tw-font-medium tw-w-11/12">
+          <p className="tw-mt-10 tw-text-xl tw-text-grey-muted tw-font-medium tw-w-10/12">
             Centralized Metadata Store, Discover, Collaborate and get your Data
             Right
           </p>
-          <div className="tw-mt-28" onClick={handleSignIn}>
+          <div className="tw-mt-24" onClick={handleSignIn}>
             {getSignInButton()}
           </div>
         </div>
@@ -93,7 +94,11 @@ const SigninPage = () => {
         <div className="tw-absolute tw-inset-0">
           <img alt="bg-image" className="tw-w-full tw-h-screen" src={loginBG} />
         </div>
-        slider
+        <div className="tw-relative">
+          <div className="tw-flex tw-justify-center tw-mt-44">
+            <LoginCarousel />
+          </div>
+        </div>
       </div>
     </div>
   );
