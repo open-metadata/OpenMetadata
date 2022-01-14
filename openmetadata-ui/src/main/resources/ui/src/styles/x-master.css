@@ -724,8 +724,15 @@ body .profiler-graph .recharts-active-dot circle {
 }
 
 /* React flow */
+.react-flow {
+  height: 110%;
+}
 .react-flow__node {
   min-width: max-content;
+}
+.react-flow__background {
+  background-image: url('../assets/img/graph-bg.png');
+  background-repeat: repeat;
 }
 
 .leaf-node .react-flow__handle {

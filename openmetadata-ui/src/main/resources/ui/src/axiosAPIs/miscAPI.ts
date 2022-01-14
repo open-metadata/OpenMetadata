@@ -12,6 +12,7 @@
  */
 
 import { AxiosResponse } from 'axios';
+import { Edge } from '../components/EntityLineage/EntityLineage.interface';
 import { SearchIndex } from '../enums/search.enum';
 import { getCurrentUserId } from '../utils/CommonUtils';
 import { getSearchAPIQuery } from '../utils/SearchUtils';
@@ -52,14 +53,33 @@ export const fetchAuthorizerConfig: Function = (): Promise<AxiosResponse> => {
 };
 
 export const getSuggestions: Function = (
-  queryString: string
+  queryString: string,
+  searchIndex?: string
 ): Promise<AxiosResponse> => {
   return APIClient.get(
-    `/search/suggest?q=${queryString}&index=${SearchIndex.DASHBOARD},${SearchIndex.TABLE},${SearchIndex.TOPIC},${SearchIndex.PIPELINE}
+    `/search/suggest?q=${queryString}&index=${
+      searchIndex ??
+      `${SearchIndex.DASHBOARD},${SearchIndex.TABLE},${SearchIndex.TOPIC},${SearchIndex.PIPELINE}`
+    }
     `
   );
 };
 
 export const getVersion: Function = () => {
   return APIClient.get('/version');
+};
+
+export const addLineage: Function = (data: Edge): Promise<AxiosResponse> => {
+  return APIClient.put(`/lineage`, data);
+};
+
+export const deleteLineageEdge: Function = (
+  fromEntity: string,
+  fromId: string,
+  toEntity: string,
+  toId: string
+): Promise<AxiosResponse> => {
+  return APIClient.delete(
+    `/lineage/${fromEntity}/${fromId}/${toEntity}/${toId}`
+  );
 };

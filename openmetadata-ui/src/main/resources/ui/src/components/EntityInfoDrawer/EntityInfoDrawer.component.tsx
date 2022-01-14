@@ -25,42 +25,14 @@ import { Pipeline } from '../../generated/entity/data/pipeline';
 import { Table } from '../../generated/entity/data/table';
 import { Topic } from '../../generated/entity/data/topic';
 import useToastContext from '../../hooks/useToastContext';
+import { getHeaderLabel } from '../../utils/EntityLineageUtils';
 import { getEntityOverview, getEntityTags } from '../../utils/EntityUtils';
-import { getEntityIcon, getEntityLink } from '../../utils/TableUtils';
+import { getEntityIcon } from '../../utils/TableUtils';
 import { SelectedNode } from '../EntityLineage/EntityLineage.interface';
 import Loader from '../Loader/Loader';
 import Tags from '../tags/tags';
 import { LineageDrawerProps } from './EntityInfoDrawer.interface';
 import './EntityInfoDrawer.style.css';
-
-const getHeaderLabel = (
-  v = '',
-  type: string,
-  isMainNode: boolean,
-  separator = '.'
-) => {
-  const length = v.split(separator).length;
-
-  return (
-    <>
-      {isMainNode ? (
-        <span
-          className="tw-break-words description-text tw-self-center tw-font-medium"
-          data-testid="lineage-entity">
-          {v.split(separator)[length - 1]}
-        </span>
-      ) : (
-        <span
-          className="tw-break-words description-text tw-self-center link-text tw-font-medium"
-          data-testid="lineage-entity">
-          <Link to={getEntityLink(type, v)}>
-            {v.split(separator)[length - 1]}
-          </Link>
-        </span>
-      )}
-    </>
-  );
-};
 
 const EntityInfoDrawer = ({
   show,

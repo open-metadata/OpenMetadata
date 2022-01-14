@@ -25,6 +25,7 @@ import React, { useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import AppState from '../../AppState';
 import { getLineageByFQN } from '../../axiosAPIs/lineageAPI';
+import { addLineage, deleteLineageEdge } from '../../axiosAPIs/miscAPI';
 import {
   addFollower,
   getPipelineByFqn,
@@ -32,6 +33,10 @@ import {
   removeFollower,
 } from '../../axiosAPIs/pipelineAPI';
 import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
+import {
+  Edge,
+  EdgeData,
+} from '../../components/EntityLineage/EntityLineage.interface';
 import Loader from '../../components/Loader/Loader';
 import PipelineDetails from '../../components/PipelineDetails/PipelineDetails.component';
 import {
@@ -49,6 +54,7 @@ import {
 import { User } from '../../generated/entity/teams/user';
 import { EntityLineage } from '../../generated/type/entityLineage';
 import { TagLabel } from '../../generated/type/tagLabel';
+import useToastContext from '../../hooks/useToastContext';
 import { addToRecentViewed, getCurrentUserId } from '../../utils/CommonUtils';
 import { getEntityLineage } from '../../utils/EntityUtils';
 import {
@@ -66,7 +72,7 @@ import { getTagCategories, getTaglist } from '../../utils/TagsUtils';
 const PipelineDetailsPage = () => {
   const USERId = getCurrentUserId();
   const history = useHistory();
-
+  const showToast = useToastContext();
   const [tagList, setTagList] = useState<Array<string>>([]);
   const { pipelineFQN, tab } = useParams() as Record<string, string>;
   const [pipelineDetails, setPipelineDetails] = useState<Pipeline>(
@@ -287,6 +293,54 @@ const PipelineDetailsPage = () => {
     );
   };
 
+  const addLineageHandler = (edge: Edge): Promise<void> => {
+    return new Promise<void>((resolve, reject) => {
+      addLineage(edge)
+        .then(() => {
+          getLineageByFQN(pipelineFQN, EntityType.PIPELINE)
+            .then((res: AxiosResponse) => {
+              setEntityLineage(res.data);
+            })
+            .catch(() => {
+              showToast({
+                variant: 'error',
+                body: `Error while getting entity lineage`,
+              });
+            });
+          resolve();
+        })
+        .catch(() => {
+          showToast({
+            variant: 'error',
+            body: `Error while adding adding new edge`,
+          });
+          reject();
+        });
+    });
+  };
+
+  const removeLineageHandler = (data: EdgeData) => {
+    deleteLineageEdge(data.fromEntity, data.fromId, data.toEntity, data.toId)
+      .then(() => {
+        getLineageByFQN(pipelineFQN, EntityType.PIPELINE)
+          .then((res: AxiosResponse) => {
+            setEntityLineage(res.data);
+          })
+          .catch(() => {
+            showToast({
+              variant: 'error',
+              body: `Error while getting entity lineage`,
+            });
+          });
+      })
+      .catch(() => {
+        showToast({
+          variant: 'error',
+          body: `Error while removing edge`,
+        });
+      });
+  };
+
   useEffect(() => {
     fetchPipelineDetail(pipelineFQN);
     setActiveTab(getCurrentPipelineTab(tab));
@@ -310,6 +364,7 @@ const PipelineDetailsPage = () => {
       ) : (
         <PipelineDetails
           activeTab={activeTab}
+          addLineageHandler={addLineageHandler}
           description={description}
           descriptionUpdateHandler={descriptionUpdateHandler}
           entityLineage={entityLineage}
@@ -323,6 +378,7 @@ const PipelineDetailsPage = () => {
           pipelineDetails={pipelineDetails}
           pipelineTags={tags}
           pipelineUrl={pipelineUrl}
+          removeLineageHandler={removeLineageHandler}
           serviceType={serviceType}
           setActiveTabHandler={activeTabHandler}
           settingsUpdateHandler={settingsUpdateHandler}

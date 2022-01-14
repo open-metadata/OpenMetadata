@@ -71,6 +71,10 @@ const TourPage = () => {
     setExplorePageCounts(exploreCount);
   };
 
+  const mockPromiseFunction = (): Promise<void> => {
+    return new Promise<void>((resolve) => resolve());
+  };
+
   const clearSearchTerm = () => {
     setSearchValue('');
   };
@@ -157,6 +161,7 @@ const TourPage = () => {
         return (
           <DatasetDetails
             activeTab={datasetActiveTab}
+            addLineageHandler={mockPromiseFunction}
             columns={mockDatasetData.columns as unknown as Table['columns']}
             columnsUpdateHandler={handleCountChange}
             datasetFQN={mockDatasetData.datasetFQN}
@@ -174,6 +179,7 @@ const TourPage = () => {
             lineageLeafNodes={{} as LeafNodes}
             loadNodeHandler={handleCountChange}
             owner={undefined as unknown as DatasetOwner}
+            removeLineageHandler={handleCountChange}
             sampleData={mockDatasetData.sampleData}
             setActiveTabHandler={(tab) => setdatasetActiveTab(tab)}
             settingsUpdateHandler={() => Promise.resolve()}

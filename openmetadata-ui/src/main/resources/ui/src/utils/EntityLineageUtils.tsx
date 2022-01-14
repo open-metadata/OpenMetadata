@@ -25,7 +25,11 @@ import {
   Position,
 } from 'react-flow-renderer';
 import { Link } from 'react-router-dom';
-import { SelectedNode } from '../components/EntityLineage/EntityLineage.interface';
+import {
+  CustomEdgeData,
+  SelectedEdge,
+  SelectedNode,
+} from '../components/EntityLineage/EntityLineage.interface';
 import Loader from '../components/Loader/Loader';
 import {
   nodeHeight,
@@ -39,7 +43,38 @@ import {
   EntityLineage,
 } from '../generated/type/entityLineage';
 import { EntityReference } from '../generated/type/entityReference';
+import { getPartialNameFromFQN } from './CommonUtils';
 import { isLeafNode } from './EntityUtils';
+import { getEntityLink } from './TableUtils';
+
+export const getHeaderLabel = (
+  v = '',
+  type: string,
+  isMainNode: boolean,
+  separator = '.'
+) => {
+  const length = v.split(separator).length;
+
+  return (
+    <>
+      {isMainNode ? (
+        <span
+          className="tw-break-words description-text tw-self-center tw-font-medium"
+          data-testid="lineage-entity">
+          {v.split(separator)[length - 1]}
+        </span>
+      ) : (
+        <span
+          className="tw-break-words description-text tw-self-center link-text tw-font-medium"
+          data-testid="lineage-entity">
+          <Link to={getEntityLink(type, v)}>
+            {v.split(separator)[length - 1]}
+          </Link>
+        </span>
+      )}
+    </>
+  );
+};
 
 export const onLoad = (reactFlowInstance: OnLoadParams) => {
   reactFlowInstance.fitView();
@@ -72,7 +107,13 @@ export const getLineageData = (
   loadNodeHandler: (node: EntityReference, pos: LineagePos) => void,
   lineageLeafNodes: LeafNodes,
   isNodeLoading: LoadingNodeState,
-  getNodeLable: (node: EntityReference) => React.ReactNode
+  getNodeLable: (node: EntityReference) => React.ReactNode,
+  isEditMode: boolean,
+  edgeType: string,
+  onEdgeClick: (
+    evt: React.MouseEvent<HTMLButtonElement>,
+    data: CustomEdgeData
+  ) => void
 ) => {
   const [x, y] = [0, 0];
   const nodes = entityLineage['nodes'];
@@ -106,6 +147,7 @@ export const getLineageData = (
       className: 'leaf-node',
       data: {
         label: getNodeLable(node),
+        entityType: node.type,
       },
       position: {
         x: pos === 'from' ? -xVal : xVal,
@@ -134,8 +176,16 @@ export const getLineageData = (
               id: `edge-${up.fromEntity}-${id}-${depth}`,
               source: `node-${node.id}-${depth}`,
               target: edg ? edg.id : `node-${id}-${depth}`,
-              type: 'custom',
+              type: isEditMode ? edgeType : 'custom',
               arrowHeadType: ArrowHeadType.ArrowClosed,
+              data: {
+                id: `edge-${up.fromEntity}-${id}-${depth}`,
+                source: `node-${node.id}-${depth}`,
+                target: edg ? edg.id : `node-${id}-${depth}`,
+                sourceType: node.type,
+                targetType: edg?.data?.entityType,
+                onEdgeClick,
+              },
             });
           }
           upDepth += 1;
@@ -168,8 +218,16 @@ export const getLineageData = (
               id: `edge-${id}-${down.toEntity}`,
               source: edg ? edg.id : `node-${id}-${depth}`,
               target: `node-${node.id}-${depth}`,
-              type: 'custom',
+              type: isEditMode ? edgeType : 'custom',
               arrowHeadType: ArrowHeadType.ArrowClosed,
+              data: {
+                id: `edge-${id}-${down.toEntity}`,
+                source: edg ? edg.id : `node-${id}-${depth}`,
+                target: `node-${node.id}-${depth}`,
+                sourceType: edg?.data?.entityType,
+                targetType: node.type,
+                onEdgeClick,
+              },
             });
           }
           downDepth += 1;
@@ -236,16 +294,17 @@ export const getLineageData = (
       id: `node-${mainNode.id}-1`,
       sourcePosition: 'right',
       targetPosition: 'left',
-      type: lineageEdges.find((ed: FlowElement) =>
-        (ed as Edge).target.includes(mainNode.id)
-      )
-        ? lineageEdges.find((ed: FlowElement) =>
-            (ed as Edge).source.includes(mainNode.id)
-          )
-          ? 'default'
-          : 'output'
-        : 'input',
-      className: 'leaf-node core',
+      type:
+        lineageEdges.find((ed: FlowElement) =>
+          (ed as Edge).target.includes(mainNode.id)
+        ) || isEditMode
+          ? lineageEdges.find((ed: FlowElement) =>
+              (ed as Edge).source.includes(mainNode.id)
+            ) || isEditMode
+            ? 'default'
+            : 'output'
+          : 'input',
+      className: `leaf-node ${!isEditMode ? 'core' : ''}`,
       data: {
         label: getNodeLable(mainNode),
       },
@@ -260,7 +319,7 @@ export const getLineageData = (
         ? up
         : {
             ...up,
-            type: 'input',
+            type: isEditMode ? 'default' : 'input',
             data: {
               label: (
                 <div className="tw-flex">
@@ -301,7 +360,7 @@ export const getLineageData = (
         ? down
         : {
             ...down,
-            type: 'output',
+            type: isEditMode ? 'default' : 'output',
             data: {
               label: (
                 <div className="tw-flex tw-justify-between">
@@ -336,17 +395,29 @@ export const getLineageData = (
   return lineageData;
 };
 
-export const getDataLabel = (v = '', separator = '.', isTextOnly = false) => {
-  const length = v.split(separator).length;
+export const getDataLabel = (
+  displayName?: string,
+  name = '',
+  separator = '.',
+  isTextOnly = false
+) => {
+  let label = '';
+  if (displayName) {
+    label = displayName;
+  } else {
+    const length = name.split(separator).length;
+    label = name.split(separator)[length - 1];
+  }
+
   if (isTextOnly) {
-    return v.split(separator)[length - 1];
+    return label;
   }
 
   return (
     <span
       className="tw-break-words description-text tw-self-center"
       data-testid="lineage-entity">
-      {v.split(separator)[length - 1]}
+      {label}
     </span>
   );
 };
@@ -410,4 +481,22 @@ export const getLayoutedElements = (
 
     return el;
   });
+};
+
+export const getModalBodyText = (selectedEdge: SelectedEdge) => {
+  return `Are you sure you want to remove the edge between "${
+    selectedEdge.source.displayName
+      ? selectedEdge.source.displayName
+      : getPartialNameFromFQN(
+          selectedEdge.source.name as string,
+          selectedEdge.source.type === 'table' ? ['table'] : ['database']
+        )
+  } and ${
+    selectedEdge.target.displayName
+      ? selectedEdge.target.displayName
+      : getPartialNameFromFQN(
+          selectedEdge.target.name as string,
+          selectedEdge.target.type === 'table' ? ['table'] : ['database']
+        )
+  }"?`;
 };
