@@ -406,7 +406,7 @@ public abstract class EntityRepository<T> {
 
   @Transaction
   public final void delete(UUID id, boolean recursive) throws IOException {
-    // If an entity being deleted contains other children entities, it can't be deleted
+    // If an entity being deleted contains other **non-deleted** children entities, it can't be deleted
     List<EntityReference> contains =
         daoCollection
             .relationshipDAO()
