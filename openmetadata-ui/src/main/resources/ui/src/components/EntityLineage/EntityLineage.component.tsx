@@ -441,6 +441,8 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
             )
             .filter((es) => es.id !== newAddedNode.id)
         );
+        setNewAddedNode({} as FlowElement);
+        setSelectedEntity({} as EntityReference);
       } else {
         setElements((es) => {
           return es.map((el) => {
