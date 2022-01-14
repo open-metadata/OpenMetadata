@@ -380,8 +380,8 @@ class OpenMetadata(
             return entity(**resp)
         except APIError as err:
             logger.error(
-                f"Creating new {entity.__class__.__name__} for {path}. "
-                + f"Error {err.status_code}"
+                f"GET {entity.__name__} for {path}. "
+                + f"Error {err.status_code} - {err}"
             )
             return None
 
