@@ -18,10 +18,9 @@ import {
   getEdgeCenter,
   getMarkerEnd,
 } from 'react-flow-renderer';
+import { foreignObjectSize } from '../../constants/Lineage.constants';
 import SVGIcons from '../../utils/SvgUtils';
 import { CustomEdgeData } from './EntityLineage.interface';
-
-const foreignObjectSize = 40;
 
 export const CustomEdge = ({
   id,

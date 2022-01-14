@@ -27,6 +27,7 @@ import {
 import { Link } from 'react-router-dom';
 import {
   CustomEdgeData,
+  SelectedEdge,
   SelectedNode,
 } from '../components/EntityLineage/EntityLineage.interface';
 import Loader from '../components/Loader/Loader';
@@ -42,6 +43,7 @@ import {
   EntityLineage,
 } from '../generated/type/entityLineage';
 import { EntityReference } from '../generated/type/entityReference';
+import { getPartialNameFromFQN } from './CommonUtils';
 import { isLeafNode } from './EntityUtils';
 import { getEntityLink } from './TableUtils';
 
@@ -479,4 +481,22 @@ export const getLayoutedElements = (
 
     return el;
   });
+};
+
+export const getModalBodyText = (selectedEdge: SelectedEdge) => {
+  return `Are you sure you want to remove the edge between "${
+    selectedEdge.source.displayName
+      ? selectedEdge.source.displayName
+      : getPartialNameFromFQN(
+          selectedEdge.source.name as string,
+          selectedEdge.source.type === 'table' ? ['table'] : ['database']
+        )
+  } and ${
+    selectedEdge.target.displayName
+      ? selectedEdge.target.displayName
+      : getPartialNameFromFQN(
+          selectedEdge.target.name as string,
+          selectedEdge.target.type === 'table' ? ['table'] : ['database']
+        )
+  }"?`;
 };

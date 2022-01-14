@@ -40,12 +40,12 @@ import { getTableDetails } from '../../axiosAPIs/tableAPI';
 import { Column } from '../../generated/entity/data/table';
 import { EntityReference } from '../../generated/type/entityReference';
 import useToastContext from '../../hooks/useToastContext';
-import { getPartialNameFromFQN } from '../../utils/CommonUtils';
 import {
   dragHandle,
   getDataLabel,
   getLayoutedElements,
   getLineageData,
+  getModalBodyText,
   getNoLineageDataPlaceholder,
   onLoad,
   onNodeContextMenu,
@@ -152,24 +152,6 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
         </p>
       </>
     );
-  };
-
-  const getModalBodyText = () => {
-    return `Are you sure you want to remove the edge between "${
-      selectedEdge.source.displayName
-        ? selectedEdge.source.displayName
-        : getPartialNameFromFQN(
-            selectedEdge.source.name as string,
-            selectedEdge.source.type === 'table' ? ['table'] : ['database']
-          )
-    } and ${
-      selectedEdge.target.displayName
-        ? selectedEdge.target.displayName
-        : getPartialNameFromFQN(
-            selectedEdge.target.name as string,
-            selectedEdge.target.type === 'table' ? ['table'] : ['database']
-          )
-    }"?`;
   };
 
   const removeEdgeHandler = (data: SelectedEdge, confirmDelete: boolean) => {
@@ -623,7 +605,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
           <EntityLineageSidebar newAddedNode={newAddedNode} show={isEditMode} />
           {showdeleteModal ? (
             <ConfirmationModal
-              bodyText={getModalBodyText()}
+              bodyText={getModalBodyText(selectedEdge)}
               cancelText={
                 <span
                   className={classNames({

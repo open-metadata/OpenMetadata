@@ -15,7 +15,7 @@ import classNames from 'classnames';
 import { capitalize, isEmpty, uniqueId } from 'lodash';
 import React, { FC, HTMLAttributes } from 'react';
 import { FlowElement } from 'react-flow-renderer';
-import { EntityType } from '../../enums/entity.enum';
+import { entityData } from '../../constants/Lineage.constants';
 import SVGIcons from '../../utils/SvgUtils';
 
 interface SidebarProps extends HTMLAttributes<HTMLDivElement> {
@@ -27,15 +27,6 @@ interface EntityNodeProps extends HTMLAttributes<HTMLDivElement> {
   type: string;
   label: string;
 }
-
-const entityData = [
-  {
-    type: EntityType.TABLE,
-    label: capitalize(EntityType.TABLE),
-  },
-  { type: EntityType.PIPELINE, label: capitalize(EntityType.PIPELINE) },
-  { type: EntityType.DASHBOARD, label: capitalize(EntityType.DASHBOARD) },
-];
 
 const EntityNode: FC<EntityNodeProps> = ({ type, label, draggable }) => {
   const onDragStart = (event: React.DragEvent, nodeType: string) => {
