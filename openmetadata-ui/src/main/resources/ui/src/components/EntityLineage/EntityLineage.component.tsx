@@ -418,6 +418,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
             </div>
           </div>
         ),
+        isNewNode: true,
       },
     };
     setNewAddedNode(newNode as FlowElement);
