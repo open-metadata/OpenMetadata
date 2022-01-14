@@ -12,7 +12,8 @@
  */
 
 import AppState from '../AppState';
-import { getTeams, getUsers } from '../axiosAPIs/userAPI';
+import { getTeams } from '../axiosAPIs/teamsAPI';
+import { getUsers } from '../axiosAPIs/userAPI';
 import { API_RES_MAX_SIZE } from '../constants/constants';
 
 // Moving this code here from App.tsx
