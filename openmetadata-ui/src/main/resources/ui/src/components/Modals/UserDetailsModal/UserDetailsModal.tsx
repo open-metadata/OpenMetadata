@@ -81,7 +81,7 @@ const UserDetailsModal = ({
               Role: {userData.isAdmin ? 'Admin' : 'User'}
             </p>
             {userData.teams && <div className="tw-filter-seperator tw-w-5/6" />}
-            <p className="tw-w-4/5 tw-mx-auto">
+            <div className="tw-w-4/5 tw-mx-auto">
               <span className="tw-flex tw-justify-center tw-flex-wrap">
                 {userData.teams && userData.teams.length > 0 ? (
                   userData.teams.map((team, i) => (
@@ -95,7 +95,7 @@ const UserDetailsModal = ({
                   <p>This user is not a part of any team!</p>
                 )}
               </span>
-            </p>
+            </div>
           </div>
         </div>
         <div className="tw-modal-footer" data-testid="cta-container">
