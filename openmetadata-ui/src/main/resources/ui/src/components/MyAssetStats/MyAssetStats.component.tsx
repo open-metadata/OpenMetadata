@@ -17,8 +17,14 @@ import { EntityCounts } from 'Models';
 import React, { FunctionComponent, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import AppState from '../../AppState';
+import {
+  getExplorePathWithSearch,
+  ROUTES,
+  TITLE_FOR_NON_ADMIN_ACTION,
+} from '../../constants/constants';
 import { getCountBadge } from '../../utils/CommonUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
+import NonAdminAction from '../common/non-admin-action/NonAdminAction';
 
 type Props = {
   countServices: number;
@@ -31,6 +37,7 @@ type Summary = {
   count?: number;
   link?: string;
   dataTestId?: string;
+  adminOnly?: boolean;
 };
 
 const MyAssetStats: FunctionComponent<Props> = ({
@@ -47,56 +54,57 @@ const MyAssetStats: FunctionComponent<Props> = ({
         icon: Icons.TABLE_GREY,
         data: 'Tables',
         count: entityCounts.tableCount,
-        link: `/explore/tables`,
+        link: getExplorePathWithSearch(undefined, 'tables'),
         dataTestId: 'tables',
       },
       topics: {
         icon: Icons.TOPIC_GREY,
         data: 'Topics',
         count: entityCounts.topicCount,
-        link: `/explore/topics`,
+        link: getExplorePathWithSearch(undefined, 'topics'),
         dataTestId: 'topics',
       },
       dashboards: {
         icon: Icons.DASHBOARD_GREY,
         data: 'Dashboards',
         count: entityCounts.dashboardCount,
-        link: `/explore/dashboards`,
+        link: getExplorePathWithSearch(undefined, 'dashboards'),
         dataTestId: 'dashboards',
       },
       pipelines: {
         icon: Icons.PIPELINE_GREY,
         data: 'Pipelines',
         count: entityCounts.pipelineCount,
-        link: `/explore/pipelines`,
+        link: getExplorePathWithSearch(undefined, 'pipelines'),
         dataTestId: 'pipelines',
       },
       service: {
         icon: Icons.SERVICE,
         data: 'Services',
         count: countServices,
-        link: `/services`,
+        link: ROUTES.SERVICES,
         dataTestId: 'service',
       },
       ingestion: {
         icon: Icons.INGESTION,
         data: 'Ingestion',
         count: ingestionCount,
-        link: `/ingestion`,
+        link: ROUTES.INGESTION,
         dataTestId: 'ingestion',
       },
       user: {
         icon: Icons.USERS,
         data: 'Users',
         count: users.length,
-        link: `/teams`,
+        link: ROUTES.USER_LIST,
         dataTestId: 'user',
+        adminOnly: true,
       },
-      terms: {
-        icon: Icons.TERMS,
+      teams: {
+        icon: Icons.TEAMS_GREY,
         data: 'Teams',
         count: userTeams.length,
-        link: `/teams`,
+        link: ROUTES.TEAMS,
         dataTestId: 'terms',
       },
     };
@@ -123,14 +131,29 @@ const MyAssetStats: FunctionComponent<Props> = ({
               icon={data.icon}
             />
             {data.link ? (
-              <Link
-                className="tw-font-medium tw-pl-2"
-                data-testid={data.dataTestId}
-                to={data.link}>
-                <button className="tw-text-grey-body hover:tw-text-primary-hover hover:tw-underline">
-                  {data.data}
-                </button>
-              </Link>
+              data.adminOnly ? (
+                <NonAdminAction
+                  position="bottom"
+                  title={TITLE_FOR_NON_ADMIN_ACTION}>
+                  <Link
+                    className="tw-font-medium tw-pl-2"
+                    data-testid={data.dataTestId}
+                    to={data.link}>
+                    <button className="tw-text-grey-body hover:tw-text-primary-hover hover:tw-underline">
+                      {data.data}
+                    </button>
+                  </Link>
+                </NonAdminAction>
+              ) : (
+                <Link
+                  className="tw-font-medium tw-pl-2"
+                  data-testid={data.dataTestId}
+                  to={data.link}>
+                  <button className="tw-text-grey-body hover:tw-text-primary-hover hover:tw-underline">
+                    {data.data}
+                  </button>
+                </Link>
+              )
             ) : (
               <p className="tw-font-medium tw-pl-2">{data.data}</p>
             )}

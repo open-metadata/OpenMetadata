@@ -326,7 +326,9 @@ const DatabaseDetails: FunctionComponent = () => {
                               </td>
                               <td className="tableBody-cell">
                                 <p>
-                                  {getOwnerFromId(table?.owner?.id)?.name ||
+                                  {getOwnerFromId(table?.owner?.id)
+                                    ?.displayName ||
+                                    getOwnerFromId(table?.owner?.id)?.name ||
                                     '--'}
                                 </p>
                               </td>
