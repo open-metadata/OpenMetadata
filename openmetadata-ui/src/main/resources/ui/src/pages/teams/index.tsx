@@ -341,7 +341,7 @@ const TeamsPage = () => {
                 changeCurrentTeam(team.name);
               }}>
               <p
-                className="tw-text-center tag-category label-category tw-self-center tw-truncate"
+                className="tag-category label-category tw-self-center tw-truncate tw-w-52"
                 title={team.displayName}>
                 {team.displayName}
               </p>
