@@ -76,6 +76,7 @@ const TeamsPage = () => {
           setCurrentTeam(res.data.data[0]);
         }
         setTeams(res.data.data);
+        AppState.updateUserTeam(res.data.data);
       })
       .catch((err: AxiosError) => {
         if (err?.response?.data.code) {
@@ -339,7 +340,9 @@ const TeamsPage = () => {
               onClick={() => {
                 changeCurrentTeam(team.name);
               }}>
-              <p className="tw-text-center tag-category label-category tw-self-center">
+              <p
+                className="tw-text-center tag-category label-category tw-self-center tw-truncate"
+                title={team.displayName}>
                 {team.displayName}
               </p>
             </div>

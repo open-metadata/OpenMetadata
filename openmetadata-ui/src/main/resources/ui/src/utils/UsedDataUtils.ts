@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { AxiosResponse } from 'axios';
 import AppState from '../AppState';
 import { getTeams } from '../axiosAPIs/teamsAPI';
 import { getUsers } from '../axiosAPIs/userAPI';
@@ -24,7 +25,7 @@ const getAllUsersList = (arrQueryFields = ''): void => {
 };
 
 const getAllTeams = (): void => {
-  getTeams().then((res) => {
+  getTeams().then((res: AxiosResponse) => {
     AppState.userTeams = res.data.data;
   });
 };
