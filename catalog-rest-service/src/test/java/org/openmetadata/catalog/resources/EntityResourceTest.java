@@ -487,7 +487,8 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
 
   @Test
   void get_entityIncludeDeleted_200(TestInfo test) throws HttpResponseException, URISyntaxException {
-    Object create = addAllRelationships(test, createRequest(getEntityName(test), "", "", null));
+    Object create =
+        addAllRelationships(test, createRequest(getEntityName(test), "description", "displayName", USER_OWNER1));
     // Create first time using POST
     T entity = createEntity(create, adminAuthHeaders());
     EntityInterface<T> entityInterface = getEntityInterface(entity);
