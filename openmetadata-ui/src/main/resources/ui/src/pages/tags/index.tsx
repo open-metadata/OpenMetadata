@@ -113,6 +113,8 @@ const TagsPage = () => {
         )
       ) {
         errData['name'] = 'Name already exists';
+      } else if (data.name.length < 2 || data.name.length > 25) {
+        errData['name'] = 'Name size must be between 2 and 25';
       }
       setErrorDataCategory(errData);
 
