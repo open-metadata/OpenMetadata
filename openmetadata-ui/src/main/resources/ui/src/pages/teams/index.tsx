@@ -339,7 +339,9 @@ const TeamsPage = () => {
               onClick={() => {
                 changeCurrentTeam(team.name);
               }}>
-              <p className="tw-text-center tag-category label-category tw-self-center">
+              <p
+                className="tag-category label-category tw-self-center tw-truncate tw-w-52"
+                title={team.displayName}>
                 {team.displayName}
               </p>
             </div>
