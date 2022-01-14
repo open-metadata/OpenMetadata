@@ -249,7 +249,9 @@ const UserList: FunctionComponent<Props> = ({
                 className={`tw-group tw-text-grey-body tw-text-body tw-flex tw-justify-between ${getCurrentTeamClass(
                   team.name
                 )}`}>
-                <p className="tw-text-center tag-category tw-self-center">
+                <p
+                  className="tag-category tw-self-center tw-truncate tw-w-48"
+                  title={team.displayName}>
                   {team.displayName}
                 </p>
               </div>
