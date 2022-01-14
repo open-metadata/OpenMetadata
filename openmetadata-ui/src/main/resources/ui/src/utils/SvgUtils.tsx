@@ -94,6 +94,7 @@ import IconTableGrey from '../assets/svg/table-grey.svg';
 import IconTable from '../assets/svg/table.svg';
 import IconTagGrey from '../assets/svg/tag-grey.svg';
 import IconTag from '../assets/svg/tag.svg';
+import IconTeamsGrey from '../assets/svg/teams-grey.svg';
 import IconTerns from '../assets/svg/terms.svg';
 import IconTier from '../assets/svg/tier.svg';
 import IconTopicGrey from '../assets/svg/topic-grey.svg';
@@ -125,6 +126,7 @@ export const Icons = {
   SETTINGS: 'icon-settings',
   SQL_BUILDER: 'icon-sql-builder',
   TEAMS: 'icon-teams',
+  TEAMS_GREY: 'icon-teams-grey',
   WORKFLOWS: 'icon-workflows',
   MENU: 'icon-menu',
   FEED: 'icon-feed',
@@ -243,6 +245,10 @@ const SVGIcons: FunctionComponent<Props> = ({
       break;
     case Icons.TEAMS:
       IconComponent = IconTeams;
+
+      break;
+    case Icons.TEAMS_GREY:
+      IconComponent = IconTeamsGrey;
 
       break;
     case Icons.SETTINGS:

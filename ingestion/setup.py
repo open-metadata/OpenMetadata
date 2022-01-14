@@ -63,7 +63,8 @@ plugins: Dict[str, Set[str]] = {
     "athena": {"PyAthena[SQLAlchemy]"},
     "bigquery": {"sqlalchemy-bigquery==1.2.2"},
     "bigquery-usage": {"google-cloud-logging", "cachetools"},
-    "docker": {"docker==5.0.3"},
+    # "docker": {"docker==5.0.3"},
+    "docker": {"python_on_whales==0.34.0"},
     "dbt": {},
     "druid": {"pydruid>=0.6.2"},
     "elasticsearch": {"elasticsearch~=7.13.1"},
@@ -135,7 +136,7 @@ test = {
 build_options = {"includes": ["_cffi_backend"]}
 setup(
     name="openmetadata-ingestion",
-    version="0.6.0.dev1",
+    version="0.6.1.dev0",
     url="https://open-metadata.org/",
     author="OpenMetadata Committers",
     license="Apache License 2.0",
