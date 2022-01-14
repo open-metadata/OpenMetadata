@@ -427,40 +427,55 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
 
   const onEntitySelect = () => {
     if (!isEmpty(selectedEntity)) {
-      setElements((es) => {
-        return es.map((el) => {
-          if (el.id === newAddedNode.id) {
-            return {
-              ...el,
-              connectable: true,
-              id: selectedEntity.id,
-              data: {
-                label: (
-                  <Fragment>
-                    {getNodeLable(selectedEntity)}
-                    <button
-                      className="tw-absolute tw--top-5 tw--right-4 tw-cursor-pointer tw-z-9999 tw-bg-body-hover tw-rounded-full"
-                      onClick={() => {
-                        removeNodeHandler({
-                          ...el,
-                          id: selectedEntity.id,
-                        } as FlowElement);
-                      }}>
-                      <SVGIcons
-                        alt="times-circle"
-                        icon="icon-times-circle"
-                        width="16px"
-                      />
-                    </button>
-                  </Fragment>
-                ),
-              },
-            };
-          } else {
-            return el;
-          }
+      const isExistingNode = elements.some((n) =>
+        n.id.includes(selectedEntity.id)
+      );
+      if (isExistingNode) {
+        setElements((es) =>
+          es
+            .map((n) =>
+              n.id.includes(selectedEntity.id)
+                ? { ...n, className: `${n.className} selected-node` }
+                : n
+            )
+            .filter((es) => es.id !== newAddedNode.id)
+        );
+      } else {
+        setElements((es) => {
+          return es.map((el) => {
+            if (el.id === newAddedNode.id) {
+              return {
+                ...el,
+                connectable: true,
+                id: selectedEntity.id,
+                data: {
+                  label: (
+                    <Fragment>
+                      {getNodeLable(selectedEntity)}
+                      <button
+                        className="tw-absolute tw--top-5 tw--right-4 tw-cursor-pointer tw-z-9999 tw-bg-body-hover tw-rounded-full"
+                        onClick={() => {
+                          removeNodeHandler({
+                            ...el,
+                            id: selectedEntity.id,
+                          } as FlowElement);
+                        }}>
+                        <SVGIcons
+                          alt="times-circle"
+                          icon="icon-times-circle"
+                          width="16px"
+                        />
+                      </button>
+                    </Fragment>
+                  ),
+                },
+              };
+            } else {
+              return el;
+            }
+          });
         });
-      });
+      }
     }
   };
 
