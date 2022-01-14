@@ -12,26 +12,21 @@
 import logging
 import os
 import pathlib
-import subprocess
 import sys
-import tempfile
-import time
-import traceback
-from datetime import timedelta
 
 import click
-import requests as requests
+
 from pydantic import ValidationError
 
 from metadata.__version__ import get_metadata_version
 from metadata.config.common import load_config_file
 from metadata.ingestion.api.workflow import Workflow
 
+from metadata.utils.docker import run_docker
+
 logger = logging.getLogger(__name__)
 
 logging.getLogger("urllib3").setLevel(logging.WARN)
-min_memory_limit = 3 * 1024 * 1024 * 1000
-calc_gb = 1024 * 1024 * 1000
 # Configure logger.
 BASE_LOGGING_FORMAT = (
     "[%(asctime)s] %(levelname)-8s {%(name)s:%(lineno)d} - %(message)s"
@@ -131,153 +126,35 @@ def report(config: str) -> None:
 
 
 @metadata.command()
-@click.option("--start", help="Start release Docker containers", is_flag=True)
-@click.option("--stop", help="Stop Docker containers (local and release)", is_flag=True)
+@click.option("--start", help="Start release docker containers", is_flag=True)
+@click.option(
+    "--stop",
+    help="Stops openmetadata docker containers",
+    is_flag=True,
+)
+@click.option("--pause", help="Pause openmetadata docker containers", is_flag=True)
+@click.option(
+    "--resume", help="Resume/Unpause openmetadata docker containers", is_flag=True
+)
 @click.option(
     "--clean",
-    help="Prune unused containers, images, volumes and networks",
+    help="Stops and remove openmetadata docker containers along with images, volumes, networks associated",
     is_flag=True,
 )
 @click.option(
-    "-t",
-    "--type",
-    help="'local' - local type will start local build of OpenMetadata docker",
-    default="release",
-    required=False,
-)
-@click.option(
-    "-p",
-    "--path",
+    "-f",
+    "--file-path",
     help="Path to Local docker-compose.yml",
     type=click.Path(exists=True, dir_okay=False),
     required=False,
 )
-def docker(start, stop, clean, type, path) -> None:
+def docker(start, stop, pause, resume, clean, file_path) -> None:
     """
     Checks Docker Memory Allocation
     Run Latest Release Docker - metadata docker --start
-    Run Local Docker - metadata docker --start -t local -p path/to/docker-compose.yml
+    Run Local Docker - metadata docker --start -f path/to/docker-compose.yml
     """
-
-    try:
-        import docker as sys_docker
-
-        from metadata.ingestion.ometa.ometa_api import OpenMetadata
-        from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
-
-        client = sys_docker.from_env()
-        docker_info = client.info()
-
-        if docker_info["MemTotal"] < min_memory_limit:
-            raise MemoryError
-        if start:
-            if type == "local":
-                logger.info("Running Local Docker")
-                if path == "":
-                    raise ValueError(
-                        "Please Provide Path to local docker-compose.yml file"
-                    )
-                start_time = time.time()
-                subprocess.run(
-                    f"docker-compose -f {path} up --build -d",
-                    shell=True,
-                )
-                elapsed = time.time() - start_time
-                logger.info(
-                    f"Time took to get containers running: {str(timedelta(seconds=elapsed))}"
-                )
-            else:
-                logger.info("Running Latest Release Docker")
-
-                r = requests.get(
-                    "https://raw.githubusercontent.com/open-metadata/OpenMetadata/main/docker/metadata/docker-compose.yml"
-                )
-
-                docker_compose_file_path = (
-                    pathlib.Path(tempfile.gettempdir()) / "docker-compose.yml"
-                )
-                with open(docker_compose_file_path, "wb") as docker_compose_file_handle:
-                    docker_compose_file_handle.write(r.content)
-
-                start_time = time.time()
-
-                logger.info(f"docker-compose -f {docker_compose_file_path} up -d")
-                subprocess.run(
-                    f"docker-compose -f {docker_compose_file_path} up -d", shell=True
-                )
-                elapsed = time.time() - start_time
-                logger.info(
-                    f"Time took to get containers running: {str(timedelta(seconds=elapsed))}"
-                )
-
-                docker_compose_file_path.unlink(missing_ok=True)
-
-            metadata_config = MetadataServerConfig.parse_obj(
-                {
-                    "api_endpoint": "http://localhost:8585/api",
-                    "auth_provider_type": "no-auth",
-                }
-            )
-
-            ometa_client = OpenMetadata(metadata_config).client
-            while True:
-                try:
-                    ometa_client.get(f"/tables/name/bigquery_gcp.shopify.dim_customer")
-                    break
-                except Exception as err:
-                    sys.stdout.write(".")
-                    sys.stdout.flush()
-                    time.sleep(5)
-            elapsed = time.time() - start_time
-            logger.info(
-                f"Time took to get OpenMetadata running: {str(timedelta(seconds=elapsed))}"
-            )
-            click.secho(
-                "\n✔ OpenMetadata is up and running",
-                fg="bright_green",
-            )
-            click.secho(
-                """\nHead to http://localhost:8585 to play around with OpenMetadata UI.
-                \nTo checkout Ingestion via Airflow, go to http://localhost:8080 \n(username: admin, password: admin)
-                """,
-                fg="bright_blue",
-            )
-            click.secho(
-                "Need support? Get in touch on Slack: https://slack.open-metadata.org/",
-                fg="bright_magenta",
-            )
-        elif stop:
-            for container in client.containers.list():
-                if "openmetadata_" in container.name:
-                    logger.info(f"Stopping {container.name}")
-                    container.stop()
-        elif clean:
-            logger.info("Removing Containers")
-
-            for container in client.containers.list({all: True}):
-                if "openmetadata_" in container.name:
-                    container.remove(v=True, force=True)
-            logger.info("Removing Networks")
-            for network in client.networks.list():
-                if "app_net" in network.name:
-                    network.remove()
-    except (ImportError, ModuleNotFoundError):
-        click.secho(
-            "Docker package not found, can you try `pip install 'openmetadata-ingestion[docker]'`",
-            fg="yellow",
-        )
-    except MemoryError:
-        click.secho(
-            f"Please Allocate More memory to Docker.\nRecommended: 4GB\nCurrent: "
-            f"{round(float(docker_info['MemTotal']) / calc_gb, 2)}",
-            fg="red",
-        )
-    except sys_docker.errors.DockerException as err:
-        click.secho(f"Error: Docker service is not up and running. {err}", fg="red")
-    except Exception as err:
-        logger.error(traceback.format_exc())
-        logger.error(traceback.print_exc())
-        click.secho(str(err), fg="red")
+    run_docker(start, stop, pause, resume, clean, file_path)
 
 
 metadata.add_command(check)
