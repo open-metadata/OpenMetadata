@@ -19,6 +19,7 @@ import React, { FunctionComponent, useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import AppState from '../../AppState';
 import { getLineageByFQN } from '../../axiosAPIs/lineageAPI';
+import { addLineage, deleteLineageEdge } from '../../axiosAPIs/miscAPI';
 import {
   addFollower,
   getTableDetailsByFQN,
@@ -27,6 +28,10 @@ import {
 } from '../../axiosAPIs/tableAPI';
 import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
 import DatasetDetails from '../../components/DatasetDetails/DatasetDetails.component';
+import {
+  Edge,
+  EdgeData,
+} from '../../components/EntityLineage/EntityLineage.interface';
 import Loader from '../../components/Loader/Loader';
 import {
   getDatabaseDetailsPath,
@@ -46,6 +51,7 @@ import {
 import { User } from '../../generated/entity/teams/user';
 import { EntityLineage } from '../../generated/type/entityLineage';
 import { TagLabel } from '../../generated/type/tagLabel';
+import useToastContext from '../../hooks/useToastContext';
 import {
   addToRecentViewed,
   getCurrentUserId,
@@ -62,6 +68,7 @@ import { getTableTags } from '../../utils/TagsUtils';
 
 const DatasetDetailsPage: FunctionComponent = () => {
   const history = useHistory();
+  const showToast = useToastContext();
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isLineageLoading, setIsLineageLoading] = useState<boolean>(true);
   const USERId = getCurrentUserId();
@@ -221,6 +228,54 @@ const DatasetDetailsPage: FunctionComponent = () => {
     });
   };
 
+  const addLineageHandler = (edge: Edge): Promise<void> => {
+    return new Promise<void>((resolve, reject) => {
+      addLineage(edge)
+        .then(() => {
+          getLineageByFQN(tableFQN, EntityType.TABLE)
+            .then((res: AxiosResponse) => {
+              setEntityLineage(res.data);
+            })
+            .catch(() => {
+              showToast({
+                variant: 'error',
+                body: `Error while getting entity lineage`,
+              });
+            });
+          resolve();
+        })
+        .catch(() => {
+          showToast({
+            variant: 'error',
+            body: `Error while adding adding new edge`,
+          });
+          reject();
+        });
+    });
+  };
+
+  const removeLineageHandler = (data: EdgeData) => {
+    deleteLineageEdge(data.fromEntity, data.fromId, data.toEntity, data.toId)
+      .then(() => {
+        getLineageByFQN(tableFQN, EntityType.TABLE)
+          .then((res: AxiosResponse) => {
+            setEntityLineage(res.data);
+          })
+          .catch(() => {
+            showToast({
+              variant: 'error',
+              body: `Error while getting entity lineage`,
+            });
+          });
+      })
+      .catch(() => {
+        showToast({
+          variant: 'error',
+          body: `Error while removing edge`,
+        });
+      });
+  };
+
   useEffect(() => {
     setIsLoading(true);
     getTableDetailsByFQN(
@@ -318,6 +373,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
       ) : (
         <DatasetDetails
           activeTab={activeTab}
+          addLineageHandler={addLineageHandler}
           columns={columns}
           columnsUpdateHandler={columnsUpdateHandler}
           dataModel={tableDetails.dataModel}
@@ -333,6 +389,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
           lineageLeafNodes={leafNodes}
           loadNodeHandler={loadNodeHandler}
           owner={owner as Table['owner'] & { displayName: string }}
+          removeLineageHandler={removeLineageHandler}
           sampleData={sampleData}
           setActiveTabHandler={activeTabHandler}
           settingsUpdateHandler={settingsUpdateHandler}

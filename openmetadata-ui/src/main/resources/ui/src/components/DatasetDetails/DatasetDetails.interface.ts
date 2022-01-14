@@ -23,6 +23,7 @@ import { User } from '../../generated/entity/teams/user';
 import { EntityLineage } from '../../generated/type/entityLineage';
 import { TagLabel } from '../../generated/type/tagLabel';
 import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
+import { Edge, EdgeData } from '../EntityLineage/EntityLineage.interface';
 
 export interface DatasetOwner extends EntityReference {
   displayName?: string;
@@ -58,4 +59,6 @@ export interface DatasetDetailsProps {
   descriptionUpdateHandler: (updatedTable: Table) => void;
   versionHandler: () => void;
   loadNodeHandler: (node: EntityReference, pos: LineagePos) => void;
+  addLineageHandler: (edge: Edge) => Promise<void>;
+  removeLineageHandler: (data: EdgeData) => void;
 }

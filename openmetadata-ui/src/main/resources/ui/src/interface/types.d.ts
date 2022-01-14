@@ -204,6 +204,7 @@ declare module 'Models' {
     };
     index: string;
     database?: string;
+    entityType?: string;
   };
 
   export type NewUser = {
