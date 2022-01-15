@@ -551,7 +551,9 @@ public class UserResourceTest extends EntityResourceTest<User> {
     LocationResourceTest locationResourceTest = new LocationResourceTest();
     EntityReference userRef = new EntityReference().withId(user.getId()).withType("user");
     locationResourceTest.createEntity(
-        locationResourceTest.createRequest(getEntityName(test), null, null, userRef), adminAuthHeaders());
+        locationResourceTest.createRequest(getEntityName(test, 0), null, null, userRef), adminAuthHeaders());
+    locationResourceTest.createEntity(
+        locationResourceTest.createRequest(getEntityName(test, 1), null, null, TEAM_OWNER1), adminAuthHeaders());
     return user;
   }
 
