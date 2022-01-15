@@ -1448,6 +1448,16 @@ public class TableResourceTest extends EntityResourceTest<Table> {
   }
 
   @Override
+  public Table beforeDeletion(TestInfo test, Table table) throws HttpResponseException {
+    // Add location to the table
+    CreateLocation create =
+        new CreateLocation().withName(getLocationName(test)).withService(AWS_STORAGE_SERVICE_REFERENCE);
+    Location location = createLocation(create, adminAuthHeaders());
+    addAndCheckLocation(table, location.getId(), OK, userAuthHeaders());
+    return table;
+  }
+
+  @Override
   public EntityReference getContainer(Object createRequest) throws URISyntaxException {
     return Entity.getEntityReference(DATABASE); // TODO clean this up
   }
@@ -1476,6 +1486,15 @@ public class TableResourceTest extends EntityResourceTest<Table> {
   public void validateUpdatedEntity(Table updated, Object request, Map<String, String> authHeaders)
       throws HttpResponseException {
     validateCreatedEntity(updated, request, authHeaders);
+  }
+
+  @Override
+  protected void validateDeletedEntity(
+      Object create, Table entityBeforeDeletion, Table entityAfterDeletion, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    super.validateDeletedEntity(create, entityBeforeDeletion, entityAfterDeletion, authHeaders);
+
+    assertReference(entityBeforeDeletion.getLocation(), entityAfterDeletion.getLocation());
   }
 
   @Override
