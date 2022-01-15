@@ -25,6 +25,7 @@ from airflow.lineage.backend import LineageBackend
 from airflow_provider_openmetadata.lineage.config import (
     OpenMetadataLineageConfig,
     get_lineage_config,
+    get_metadata_config,
 )
 from airflow_provider_openmetadata.lineage.utils import (
     ALLOWED_FLOW_KEYS,
@@ -91,13 +92,7 @@ class OpenMetadataLineageBackend(LineageBackend):
 
         try:
             config = get_lineage_config()
-            metadata_config = MetadataServerConfig.parse_obj(
-                {
-                    "api_endpoint": config.api_endpoint,
-                    "auth_provider_type": config.auth_provider_type,
-                    "secret_key": config.secret_key,
-                }
-            )
+            metadata_config = get_metadata_config(config)
             client = OpenMetadata(metadata_config)
 
             op_inlets = get_xlets(operator, "_inlets")
