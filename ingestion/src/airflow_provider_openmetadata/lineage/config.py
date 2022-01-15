@@ -18,6 +18,7 @@ import os
 from airflow.configuration import conf
 
 from metadata.config.common import ConfigModel
+from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 
 
 class OpenMetadataLineageConfig(ConfigModel):
@@ -60,5 +61,20 @@ def get_lineage_config() -> OpenMetadataLineageConfig:
             "airflow_service_name": "airflow",
             "api_endpoint": "http://localhost:8585/api",
             "auth_provider_type": "no-auth",
+        }
+    )
+
+
+def get_metadata_config(config: OpenMetadataLineageConfig) -> MetadataServerConfig:
+    """
+    Return MetadataServerConfig to interact with the API.
+    :param config: get_lineage_config()
+    """
+
+    return MetadataServerConfig.parse_obj(
+        {
+            "api_endpoint": config.api_endpoint,
+            "auth_provider_type": config.auth_provider_type,
+            "secret_key": config.secret_key,
         }
     )
