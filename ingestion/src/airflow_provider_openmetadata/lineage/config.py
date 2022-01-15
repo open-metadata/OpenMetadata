@@ -14,6 +14,7 @@ OpenMetadata Airflow Lineage Backend
 """
 import json
 import os
+from typing import Optional
 
 from airflow.configuration import conf
 
@@ -25,7 +26,7 @@ class OpenMetadataLineageConfig(ConfigModel):
     airflow_service_name: str = "airflow"
     api_endpoint: str = "http://localhost:8585"
     auth_provider_type: str = "no-auth"
-    secret_key: str = None
+    secret_key: Optional[str] = None
 
 
 def get_lineage_config() -> OpenMetadataLineageConfig:
