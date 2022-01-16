@@ -2,10 +2,10 @@ profiler:
   type: redshift
   config:
     sql_connection:
-      host_port: host:port
-      username: username
-      password: password
-      database: warehouse
+      host_port: test-openmetadata.cguov9p1stxq.us-east-2.redshift.amazonaws.com:5439
+      username: openmetadata
+      password: nXdg8n96HX7zWnFJ
+      database: dev
       db_schema: public
       service_name: redshift
     table_name: sales
