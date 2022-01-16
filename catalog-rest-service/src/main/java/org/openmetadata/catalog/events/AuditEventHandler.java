@@ -20,12 +20,12 @@ import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.type.AuditLog;
 import org.openmetadata.catalog.type.EntityReference;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
 
 public class AuditEventHandler implements EventHandler {
-  private static final Logger LOG = LoggerFactory.getLogger(AuditEventHandler.class);
-
+ 
   public void init(CatalogApplicationConfig config, Jdbi jdbi) {
     // Nothing to do
   }

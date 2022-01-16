@@ -48,6 +48,9 @@ import org.openmetadata.catalog.jdbi3.LineageRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.type.EntityLineage;
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
 
 @Path("/v1/lineage")
 @Api(value = "Lineage resource", tags = "Lineage resource")
@@ -55,6 +58,7 @@ import org.openmetadata.catalog.type.EntityLineage;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "lineage")
 public class LineageResource {
+  
   private final LineageRepository dao;
 
   public LineageResource(CollectionDAO dao, Authorizer authorizer) {

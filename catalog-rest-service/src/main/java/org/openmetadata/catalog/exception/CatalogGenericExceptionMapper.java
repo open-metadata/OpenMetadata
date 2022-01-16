@@ -32,12 +32,12 @@ import javax.ws.rs.ext.ExceptionMapper;
 import org.jdbi.v3.core.statement.UnableToExecuteStatementException;
 import org.openmetadata.catalog.security.AuthenticationException;
 import org.openmetadata.catalog.security.AuthorizationException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
 
 public class CatalogGenericExceptionMapper implements ExceptionMapper<Throwable> {
-  private static final Logger LOG = LoggerFactory.getLogger(CatalogGenericExceptionMapper.class);
-
+  
   @Override
   public Response toResponse(Throwable ex) {
     if (ex instanceof ProcessingException || ex instanceof IllegalArgumentException) {

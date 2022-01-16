@@ -22,12 +22,12 @@ import org.apache.http.ssl.SSLContexts;
 import org.elasticsearch.client.RestClient;
 import org.elasticsearch.client.RestClientBuilder;
 import org.elasticsearch.client.RestHighLevelClient;
-import org.openmetadata.catalog.elasticsearch.ElasticSearchConfiguration;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.openmetadata.catalog.ElasticSearchConfiguration;
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
 
 public final class ElasticSearchClientUtils {
-  private static final Logger LOG = LoggerFactory.getLogger(ElasticSearchClientUtils.class);
 
   private ElasticSearchClientUtils() {}
 

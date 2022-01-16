@@ -31,11 +31,11 @@ import org.openmetadata.catalog.type.EntityUsage;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.UsageDetails;
 import org.openmetadata.catalog.type.UsageStats;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
 
 public class UsageRepository {
-  private static final Logger LOG = LoggerFactory.getLogger(UsageRepository.class);
   private final CollectionDAO dao;
 
   public UsageRepository(CollectionDAO dao) {
