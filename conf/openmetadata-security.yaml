@@ -123,12 +123,12 @@ authorizerConfiguration:
     - "ingestion-bot"
   principalDomain: "open-metadata.org"
 
-authenticationConfiguration:
-  provider: "google"
-  publicKey: "https://www.googleapis.com/oauth2/v3/certs"
-  authority: "https://accounts.google.com"
-  clientId: "261867039324-neb92r2147i6upchb78tv29idk079bps.apps.googleusercontent.com"
-  callbackUrl: "http://localhost:8585/callback"
+#authenticationConfiguration:
+#  provider: "google"
+#  publicKey: "https://www.googleapis.com/oauth2/v3/certs"
+#  authority: "https://accounts.google.com"
+#  clientId: "261867039324-neb92r2147i6upchb78tv29idk079bps.apps.googleusercontent.com"
+#  callbackUrl: "http://localhost:8585/callback"
 
 elasticsearch:
   host: localhost
@@ -159,3 +159,26 @@ health:
         downtimeInterval: 10s
         failureAttempts: 2
         successAttempts: 1
+
+pac4j:
+  # those protect the whole application at Jersey level
+#  globalFilters:
+#    - matchers: excludeConfigAuth
+#      authorizers: isAuthenticated
+#  matchers:
+#    excludeConfigAuth:
+#      class: org.pac4j.core.matching.matcher.PathMatcher
+#      excludedPaths:
+#      - /api/v1/config/auth
+  callbackUrl: http://localhost:8585/api/v1/callback
+  ajaxRequestResolver:
+    class: org.pac4j.core.http.ajax.DefaultAjaxRequestResolver
+  clientsProperties:
+#    google.id: "709849217090-n7s8oc4cvpffubraoi5vbr1s0qfboqvv.apps.googleusercontent.com"
+#    google.secret: ""
+#    google.scope: "profile"
+    oidc.id: "0oa3frevpijciknS35d7"
+    oidc.secret: ""
+    oidc.scope: "openid"
+    oidc.discoveryUri: "https://dev-55640135.okta.com/oauth2/default/.well-known/openid-configuration"
+

@@ -30,6 +30,7 @@ import java.text.ParseException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -64,13 +65,20 @@ import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.RestUtil.PatchResponse;
 import org.openmetadata.catalog.util.ResultList;
+import org.pac4j.core.profile.CommonProfile;
+import org.pac4j.jax.rs.annotations.Pac4JProfile;
+import org.pac4j.jax.rs.annotations.Pac4JSecurity;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Path("/v1/teams")
 @Api(value = "Teams collection", tags = "Teams collection")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "teams")
+@Pac4JSecurity(authorizers = "isAuthenticated")
 public class TeamResource {
+  public static final Logger LOG = LoggerFactory.getLogger(TeamResource.class);
   public static final String COLLECTION_PATH = "/v1/teams/";
   private final TeamRepository dao;
   private final Authorizer authorizer;
@@ -135,6 +143,7 @@ public class TeamResource {
       @Parameter(description = "Returns list of tables after this cursor", schema = @Schema(type = "string"))
           @QueryParam("after")
           String after,
+      @Pac4JProfile Optional<CommonProfile> profile,
       @Parameter(
               description = "Include all, deleted, or non-deleted entities.",
               schema = @Schema(implementation = Include.class))
@@ -142,6 +151,10 @@ public class TeamResource {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, GeneralSecurityException, ParseException {
+    if (profile.isPresent()) {
+      CommonProfile profile1 = profile.get();
+      LOG.info("Profile for " + profile1.getId() + " " + profile1.getDisplayName());
+    }
     RestUtil.validateCursors(before, after);
     EntityUtil.Fields fields = new EntityUtil.Fields(FIELD_LIST, fieldsParam);
 

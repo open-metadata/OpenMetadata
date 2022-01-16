@@ -40,6 +40,8 @@
     <jackson.version>2.13.1</jackson.version>
     <dropwizard.version>2.0.28</dropwizard.version>
     <dropwizard-jdbi3.version>2.0.28</dropwizard-jdbi3.version>
+    <dropwizard-pac4j.version>5.0.0</dropwizard-pac4j.version>
+    <pac4j.version>4.5.0</pac4j.version>
     <jersey-media-multipart.version>2.33</jersey-media-multipart.version>
     <jersey-client.version>2.33</jersey-client.version>
     <jersey-media-json-jackson.version>2.33</jersey-media-json-jackson.version>
@@ -145,6 +147,41 @@
         <groupId>io.dropwizard</groupId>
         <artifactId>dropwizard-jdbi3</artifactId>
         <version>${dropwizard-jdbi3.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.pac4j</groupId>
+        <artifactId>dropwizard-pac4j</artifactId>
+        <version>${dropwizard-pac4j.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.pac4j</groupId>
+        <artifactId>pac4j-oauth</artifactId>
+        <version>${pac4j.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.pac4j</groupId>
+        <artifactId>pac4j-oidc</artifactId>
+        <version>${pac4j.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.pac4j</groupId>
+        <artifactId>pac4j-ldap</artifactId>
+        <version>${pac4j.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.pac4j</groupId>
+        <artifactId>pac4j-http</artifactId>
+        <version>${pac4j.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.pac4j</groupId>
+        <artifactId>pac4j-core</artifactId>
+        <version>${pac4j.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.pac4j</groupId>
+        <artifactId>pac4j-jwt</artifactId>
+        <version>${pac4j.version}</version>
       </dependency>
       <dependency>
         <groupId>org.jdbi</groupId>

@@ -27,8 +27,13 @@ import org.openmetadata.catalog.ingestion.AirflowConfiguration;
 import org.openmetadata.catalog.security.AuthenticationConfiguration;
 import org.openmetadata.catalog.security.AuthorizerConfiguration;
 import org.openmetadata.catalog.slack.SlackPublisherConfiguration;
+import org.pac4j.dropwizard.Pac4jFactory;
 
 public class CatalogApplicationConfig extends Configuration {
+  @NotNull
+  @JsonProperty("pac4j")
+  private Pac4jFactory pac4jFactory = new Pac4jFactory();
+
   @Valid
   @NotNull
   @JsonProperty("database")
@@ -135,5 +140,13 @@ public class CatalogApplicationConfig extends Configuration {
         + ", authorizerConfiguration="
         + authorizerConfiguration
         + '}';
+  }
+
+  public Pac4jFactory getPac4jFactory() {
+    return pac4jFactory;
+  }
+
+  public void setPac4jFactory(Pac4jFactory pac4jFactory) {
+    this.pac4jFactory = pac4jFactory;
   }
 }

@@ -60,6 +60,8 @@ import org.openmetadata.catalog.security.NoopFilter;
 import org.openmetadata.catalog.security.auth.CatalogSecurityContextRequestFilter;
 import org.openmetadata.catalog.slack.SlackPublisherConfiguration;
 import org.openmetadata.catalog.slack.SlackWebhookEventPublisher;
+import org.pac4j.dropwizard.Pac4jBundle;
+import org.pac4j.dropwizard.Pac4jFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -67,6 +69,15 @@ import org.slf4j.LoggerFactory;
 public class CatalogApplication extends Application<CatalogApplicationConfig> {
   public static final Logger LOG = LoggerFactory.getLogger(CatalogApplication.class);
   private Authorizer authorizer;
+  final Pac4jBundle<CatalogApplicationConfig> pac4jBundle =
+      new Pac4jBundle<CatalogApplicationConfig>() {
+        @Override
+        public Pac4jFactory getPac4jFactory(CatalogApplicationConfig catalogApplicationConfig) {
+          return catalogApplicationConfig.getPac4jFactory();
+        }
+      };
+
+  public CatalogApplication() {}
 
   @Override
   public void run(CatalogApplicationConfig catalogConfig, Environment environment)
@@ -144,6 +155,7 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
             return configuration.getHealthConfiguration();
           }
         });
+    bootstrap.addBundle(pac4jBundle);
     // bootstrap.addBundle(new CatalogJdbiExceptionsBundle());
     super.initialize(bootstrap);
   }
