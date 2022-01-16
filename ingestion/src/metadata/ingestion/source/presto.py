@@ -33,7 +33,6 @@ class PrestoConfig(SQLConnectionConfig):
         url += f"/{self.catalog}"
         if self.database:
             url += f"?schema={quote_plus(self.database)}"
-        print(url)
         return url
 
 
