@@ -112,7 +112,7 @@ Note: The `source.config` field in the configuration JSON will include the major
     "config": {
       "service_name": "local_presto",
       "host_port": "192.168.1.32:8080",
-      "database": "presto_db"
+      "catalog": "tpcds"
     }
   },
   "sink": {
