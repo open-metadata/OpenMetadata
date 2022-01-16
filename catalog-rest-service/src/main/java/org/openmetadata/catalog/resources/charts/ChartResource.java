@@ -55,7 +55,6 @@ import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.data.CreateChart;
 import org.openmetadata.catalog.entity.data.Chart;
 import org.openmetadata.catalog.jdbi3.ChartRepository;
-import org.openmetadata.catalog.jdbi3.ChartRepository.ChartEntityInterface;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.Authorizer;
@@ -328,7 +327,8 @@ public class ChartResource {
     Fields fields = new Fields(FIELD_LIST, FIELDS);
     Chart chart = dao.get(uriInfo, id, fields);
     SecurityUtil.checkAdminRoleOrPermissions(
-        authorizer, securityContext, new ChartEntityInterface(chart).getEntityReference());
+        authorizer, securityContext, dao.getEntityInterface(chart).getEntityReference(), patch);
+
     PatchResponse<Chart> response =
         dao.patch(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
     addHref(uriInfo, response.getEntity());

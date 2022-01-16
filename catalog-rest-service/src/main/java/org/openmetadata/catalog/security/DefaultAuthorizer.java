@@ -21,6 +21,9 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.catalog.Entity;
@@ -44,9 +47,15 @@ public class DefaultAuthorizer implements Authorizer {
   private Set<String> botUsers;
 
   private String principalDomain;
+  private CollectionDAO collectionDAO;
   private UserRepository userRepository;
-  private PolicyEvaluator policyEvaluator;
+
+  // policyEvaluator has to be thread-safe. A background thread will be updating the value.
+  private volatile PolicyEvaluator policyEvaluator;
   private static final String fieldsParam = "roles,teams";
+
+  public static final int POLICY_LOADER_INITIAL_DELAY = 5; // seconds.
+  private static final int POLICY_LOADER_SCHEDULE_INTERVAL = 300; // seconds.
 
   @Override
   public void init(AuthorizerConfiguration config, Jdbi dbi) throws IOException {
@@ -55,12 +64,28 @@ public class DefaultAuthorizer implements Authorizer {
     this.botUsers = new HashSet<>(config.getBotPrincipals());
     this.principalDomain = config.getPrincipalDomain();
     LOG.debug("Admin users: {}", adminUsers);
-    CollectionDAO collectionDAO = dbi.onDemand(CollectionDAO.class);
+    this.collectionDAO = dbi.onDemand(CollectionDAO.class);
     this.userRepository = new UserRepository(collectionDAO);
     mayBeAddAdminUsers();
     mayBeAddBotUsers();
-    // Load all rules from access control policies at once during init.
-    this.policyEvaluator = new PolicyEvaluator(new PolicyRepository(collectionDAO).getAccessControlPolicyRules());
+
+    // Use a 15-min schedule to refresh policies. This should be replaced by a better solution which can load policies
+    // only when a policy change event occurs.
+    ScheduledExecutorService scheduleService = Executors.newSingleThreadScheduledExecutor();
+    scheduleService.scheduleWithFixedDelay(
+        new PolicyLoader(), POLICY_LOADER_INITIAL_DELAY, POLICY_LOADER_SCHEDULE_INTERVAL, TimeUnit.SECONDS);
+  }
+
+  private class PolicyLoader implements Runnable {
+    @Override
+    public void run() {
+      LOG.info("Loading access control policies for DefaultAuthorizer Policy Evaluator");
+      try {
+        policyEvaluator = new PolicyEvaluator(new PolicyRepository(collectionDAO).getAccessControlPolicyRules());
+      } catch (IOException e) {
+        LOG.warn("Could not update access control policies for DefaultAuthorizer Policy Evaluator: {}", e.getMessage());
+      }
+    }
   }
 
   private void mayBeAddAdminUsers() {
@@ -124,16 +149,7 @@ public class DefaultAuthorizer implements Authorizer {
     }
     try {
       User user = getUserFromAuthenticationContext(ctx);
-      if (owner.getType().equals(Entity.TEAM)) {
-        for (EntityReference team : user.getTeams()) {
-          if (team.getName().equals(owner.getName())) {
-            return true;
-          }
-        }
-      } else if (owner.getType().equals(Entity.USER)) {
-        return user.getName().equals(owner.getName());
-      }
-      return false;
+      return isOwnedByUser(user, owner);
     } catch (IOException | EntityNotFoundException | ParseException ex) {
       return false;
     }
@@ -144,13 +160,38 @@ public class DefaultAuthorizer implements Authorizer {
       AuthenticationContext ctx, EntityReference entityReference, MetadataOperation operation) {
     validateAuthenticationContext(ctx);
     try {
-      return policyEvaluator.hasPermission(
-          getUserFromAuthenticationContext(ctx),
-          Entity.getEntity(entityReference, new EntityUtil.Fields(List.of("tags"))),
-          operation);
+      Object entity = Entity.getEntity(entityReference, new EntityUtil.Fields(List.of("tags", "owner")));
+      EntityReference owner = Entity.getEntityInterface(entity).getOwner();
+      if (owner == null) {
+        // Entity does not have an owner.
+        return true;
+      }
+      User user = getUserFromAuthenticationContext(ctx);
+      if (isOwnedByUser(user, owner)) {
+        // Entity is owned by the user.
+        return true;
+      }
+      return policyEvaluator.hasPermission(user, entity, operation);
     } catch (IOException | EntityNotFoundException | ParseException ex) {
       return false;
     }
+  }
+
+  /** Checks if the user is same as owner or part of the team that is the owner. */
+  private boolean isOwnedByUser(User user, EntityReference owner) {
+    if (owner.getType().equals(Entity.USER) && owner.getName().equals(user.getName())) {
+      // Owner is same as user.
+      return true;
+    }
+    if (owner.getType().equals(Entity.TEAM)) {
+      for (EntityReference userTeam : user.getTeams()) {
+        if (userTeam.getName().equals(owner.getName())) {
+          // Owner is a team, and the user is part of this team.
+          return true;
+        }
+      }
+    }
+    return false;
   }
 
   @Override

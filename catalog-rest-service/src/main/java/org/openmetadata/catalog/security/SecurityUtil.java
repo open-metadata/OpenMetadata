@@ -15,18 +15,17 @@ package org.openmetadata.catalog.security;
 
 import java.security.Principal;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import javax.json.JsonPatch;
 import javax.ws.rs.client.Invocation;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.SecurityContext;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.MetadataOperation;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.openmetadata.catalog.util.JsonPatchUtils;
 
 public final class SecurityUtil {
-  private static final Logger LOG = LoggerFactory.getLogger(SecurityUtil.class);
-
   private SecurityUtil() {}
 
   public static void checkAdminRole(Authorizer authorizer, SecurityContext securityContext) {
@@ -56,17 +55,24 @@ public final class SecurityUtil {
     }
   }
 
+  /**
+   * Most REST API requests should yield in a single metadata operation. There are cases where the JSON patch request
+   * may yield multiple metadata operations. This helper function checks if user has permission to perform the given set
+   * of metadata operations.
+   */
   public static void checkAdminRoleOrPermissions(
-      Authorizer authorizer,
-      SecurityContext securityContext,
-      EntityReference entityReference,
-      MetadataOperation metadataOperation) {
+      Authorizer authorizer, SecurityContext securityContext, EntityReference entityReference, JsonPatch patch) {
     Principal principal = securityContext.getUserPrincipal();
     AuthenticationContext authenticationCtx = SecurityUtil.getAuthenticationContext(principal);
-    if (!authorizer.isAdmin(authenticationCtx)
-        && !authorizer.isBot(authenticationCtx)
-        && !authorizer.hasPermissions(authenticationCtx, entityReference, metadataOperation)) {
-      throw new AuthorizationException("Principal: " + principal + " does not have permissions");
+
+    if (authorizer.isAdmin(authenticationCtx) || authorizer.isBot(authenticationCtx)) return;
+
+    List<MetadataOperation> metadataOperations = JsonPatchUtils.getMetadataOperations(patch);
+    for (MetadataOperation metadataOperation : metadataOperations) {
+      if (!authorizer.hasPermissions(authenticationCtx, entityReference, metadataOperation)) {
+        throw new AuthorizationException(
+            "Principal: " + principal + " does not have permission to " + metadataOperation);
+      }
     }
   }
 
