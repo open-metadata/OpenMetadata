@@ -610,6 +610,62 @@ public abstract class EntityRepository<T> {
     }
 
     /**
+     * Validate the owner before creating a resource. Owner must exist and must be either User or Team.
+     *
+     * @return
+     */
+    public EntityReference validateOwner() {
+      EntityReference entityReference = validateField("owner");
+      if (entityReference == null) {
+        return null;
+      } else if (!List.of(Entity.USER, Entity.TEAM).contains(entityReference.getType())) {
+        throw new IllegalArgumentException(String.format("Invalid ownerType %s", entityReference.getType()));
+      }
+      return entityReference;
+    }
+
+    /**
+     * Validate a field containing a EntityReference. The entity must exist and not deleted.
+     *
+     * @param fieldName
+     * @return
+     */
+    @SneakyThrows
+    public EntityReference validateField(String fieldName) {
+      Method method = entity.getClass().getMethod("get" + StringUtils.capitalize(fieldName));
+      EntityReference entityReference = (EntityReference) method.invoke(entity);
+      if (entityReference == null) {
+        return null;
+      }
+      Object entity = Entity.getEntity(entityReference, Fields.EMPTY_FIELDS, isDeleted);
+      return h(entity).toEntityReference();
+    }
+
+    /**
+     * Find the owner in MySQL and validate the type.
+     *
+     * @return
+     */
+    @SneakyThrows
+    public EntityReference getOwnerOrNull() {
+      List<EntityReference> refs =
+          daoCollection
+              .relationshipDAO()
+              .findFrom(
+                  entityInterface.getId().toString(), entityName, Relationship.OWNS.ordinal(), toBoolean(isDeleted));
+      if (refs.isEmpty()) {
+        return null;
+      } else if (refs.size() > 1) {
+        LOG.warn("Possible database issues - multiple relationships found for entity {}", entityInterface.getId());
+      }
+      if (!List.of(Entity.USER, Entity.TEAM).contains(refs.get(0).getType())) {
+        throw new IllegalArgumentException(String.format("Invalid ownerType %s", refs.get(0).getType()));
+      } else {
+        return h(Entity.getEntity(refs.get(0), Fields.EMPTY_FIELDS, Include.ALL)).toEntityReference();
+      }
+    }
+
+    /**
      * An entity could have (HAS) another entity like in for table and location.
      *
      * @param leftEntityName the entity name of the target of HAS.

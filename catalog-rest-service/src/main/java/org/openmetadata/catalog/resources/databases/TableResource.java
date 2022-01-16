@@ -13,6 +13,8 @@
 
 package org.openmetadata.catalog.resources.databases;
 
+import static org.openmetadata.catalog.Entity.h;
+
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -319,7 +321,7 @@ public class TableResource {
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTable create)
       throws IOException, ParseException {
     Table table = getTable(securityContext, create);
-    SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, dao.getOwnerReference(table));
+    SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, h(table).validateOwner());
     PutResponse<Table> response = dao.createOrUpdate(uriInfo, validateNewTable(table));
     addHref(uriInfo, response.getEntity());
     return response.toResponse();

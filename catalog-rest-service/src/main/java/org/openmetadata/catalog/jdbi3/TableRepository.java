@@ -95,7 +95,7 @@ public class TableRepository extends EntityRepository<Table> {
     table.setDatabase(getDatabase(table));
     table.setService(getService(table));
     table.setTableConstraints(fields.contains("tableConstraints") ? table.getTableConstraints() : null);
-    table.setOwner(fields.contains("owner") ? getOwner(table) : null);
+    table.setOwner(fields.contains("owner") ? getOwner2(table) : null);
     table.setFollowers(fields.contains("followers") ? getFollowers(table) : null);
     table.setUsageSummary(
         fields.contains("usageSummary") ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), table.getId()) : null);
@@ -332,6 +332,10 @@ public class TableRepository extends EntityRepository<Table> {
     Database database = h(table).findEntity("database");
     DatabaseService databaseService = h(database).findEntity("service");
     return h(databaseService).toEntityReference();
+  }
+
+  private EntityReference getOwner2(Table table) {
+    return h(table).getOwnerOrNull();
   }
 
   private EntityReference getLocation(Table table) {
