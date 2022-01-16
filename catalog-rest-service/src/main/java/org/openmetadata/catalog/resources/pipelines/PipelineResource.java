@@ -59,11 +59,9 @@ import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.PipelineRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.Authorizer;
-import org.openmetadata.catalog.security.JsonPatchMetadataOperationMapper;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.Include;
-import org.openmetadata.catalog.type.MetadataOperation;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.RestUtil.PatchResponse;
@@ -334,9 +332,8 @@ public class PipelineResource {
       throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, FIELDS);
     Pipeline pipeline = dao.get(uriInfo, id, fields);
-    List<MetadataOperation> metadataOperations = JsonPatchMetadataOperationMapper.getMetadataOperations(patch);
     SecurityUtil.checkAdminRoleOrPermissions(
-        authorizer, securityContext, dao.getEntityInterface(pipeline).getEntityReference(), metadataOperations);
+        authorizer, securityContext, dao.getEntityInterface(pipeline).getEntityReference(), patch);
 
     PatchResponse<Pipeline> response =
         dao.patch(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);

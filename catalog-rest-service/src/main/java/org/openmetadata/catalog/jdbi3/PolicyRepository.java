@@ -44,6 +44,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
       new Fields(PolicyResource.FIELD_LIST, "displayName,description,owner,policyUrl,enabled,rules,location");
   private static final Fields POLICY_PATCH_FIELDS =
       new Fields(PolicyResource.FIELD_LIST, "displayName,description,owner,policyUrl,enabled,rules,location");
+  public static final String ENABLED = "enabled";
 
   public PolicyRepository(CollectionDAO dao) {
     super(
@@ -92,7 +93,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
     policy.setDescription(fields.contains("description") ? policy.getDescription() : null);
     policy.setOwner(fields.contains("owner") ? getOwner(policy) : null);
     policy.setPolicyUrl(fields.contains("policyUrl") ? policy.getPolicyUrl() : null);
-    policy.setEnabled(fields.contains("enabled") ? policy.getEnabled() : null);
+    policy.setEnabled(fields.contains(ENABLED) ? policy.getEnabled() : null);
     policy.setRules(fields.contains("rules") ? policy.getRules() : null);
     policy.setLocation(fields.contains("location") ? getLocationForPolicy(policy) : null);
     return policy;
@@ -195,7 +196,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
   }
 
   private List<Policy> getAccessControlPolicies() throws IOException {
-    EntityUtil.Fields fields = new EntityUtil.Fields(List.of("policyType", "rules", "enabled"));
+    EntityUtil.Fields fields = new EntityUtil.Fields(List.of("policyType", "rules", ENABLED));
     List<String> jsons = daoCollection.policyDAO().listAfter(null, Integer.MAX_VALUE, "", Include.NON_DELETED);
     List<Policy> policies = new ArrayList<>(jsons.size());
     for (String json : jsons) {
@@ -215,7 +216,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
     List<Policy> policies = getAccessControlPolicies();
     List<Rule> rules = new ArrayList<>();
     for (Policy policy : policies) {
-      if (!policy.getEnabled()) {
+      if (!Boolean.TRUE.equals(policy.getEnabled())) {
         // Skip if policy is not enabled.
         continue;
       }
@@ -229,7 +230,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
   }
 
   public static List<Object> getRuleObjects(List<Rule> rules) {
-    return rules.stream().map(rule -> (Object) rule).collect(Collectors.toList());
+    return rules.stream().map(Object.class::cast).collect(Collectors.toList());
   }
 
   private void setLocation(Policy policy, EntityReference location) {
@@ -387,7 +388,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
         throw new IllegalArgumentException(CatalogExceptionMessage.readOnlyAttribute(Entity.POLICY, "policyType"));
       }
       recordChange("policyUrl", original.getEntity().getPolicyUrl(), updated.getEntity().getPolicyUrl());
-      recordChange("enabled", original.getEntity().getEnabled(), updated.getEntity().getEnabled());
+      recordChange(ENABLED, original.getEntity().getEnabled(), updated.getEntity().getEnabled());
       recordChange("rules", original.getEntity().getRules(), updated.getEntity().getRules());
       updateLocation(original.getEntity(), updated.getEntity());
     }

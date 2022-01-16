@@ -1,4 +1,4 @@
-package org.openmetadata.catalog.security;
+package org.openmetadata.catalog.util;
 
 import java.util.List;
 import java.util.Map;
@@ -6,13 +6,13 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 import javax.json.JsonPatch;
 import org.openmetadata.catalog.type.MetadataOperation;
-import org.openmetadata.catalog.util.JsonUtils;
 
-public class JsonPatchMetadataOperationMapper {
+public class JsonPatchUtils {
+  private JsonPatchUtils() {}
 
   public static List<MetadataOperation> getMetadataOperations(JsonPatch jsonPatch) {
     return jsonPatch.toJsonArray().stream()
-        .map(JsonPatchMetadataOperationMapper::getMetadataOperation)
+        .map(JsonPatchUtils::getMetadataOperation)
         .filter(Objects::nonNull)
         .collect(Collectors.toList());
   }
