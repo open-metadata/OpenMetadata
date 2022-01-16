@@ -58,7 +58,7 @@ public class ChartResourceTest extends EntityResourceTest<Chart> {
   public static EntityReference LOOKER_REFERENCE;
 
   public ChartResourceTest() {
-    super(Entity.CHART, Chart.class, ChartList.class, "charts", ChartResource.FIELDS, true, true, true);
+    super(Entity.CHART, Chart.class, ChartList.class, "charts", ChartResource.FIELDS, true, true, true, true);
   }
 
   @BeforeAll

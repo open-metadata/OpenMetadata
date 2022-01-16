@@ -49,7 +49,7 @@ import org.openmetadata.catalog.util.TestUtils;
 public class RoleResourceTest extends EntityResourceTest<Role> {
 
   public RoleResourceTest() {
-    super(Entity.ROLE, Role.class, RoleList.class, "roles", null, false, false, false);
+    super(Entity.ROLE, Role.class, RoleList.class, "roles", null, false, false, false, false);
   }
 
   @Test

@@ -11,46 +11,22 @@
           "name": "update-description",
           "userRoleAttr": "DataSteward",
           "operation": "UpdateDescription",
-          "allow": true
+          "allow": true,
+          "enabled": true
+        },
+        {
+          "name": "update-tags",
+          "userRoleAttr": "DataSteward",
+          "operation": "UpdateOwner",
+          "allow": true,
+          "enabled": true
         },
         {
           "name": "update-tags",
           "userRoleAttr": "DataSteward",
           "operation": "UpdateTags",
-          "allow": true
-        }
-      ]
-    },
-    {
-      "name": "data-consumer-role",
-      "displayName": "Data Consumer Role Policy",
-      "description": "Policy for Data Consumer Role to perform operations on metadata entities",
-      "policyType": "AccessControl",
-      "enabled": true,
-      "rules": [
-        {
-          "name": "suggest-description",
-          "userRoleAttr": "DataConsumer",
-          "operation": "SuggestDescription",
-          "allow": true
-        },
-        {
-          "name": "suggest-tags",
-          "userRoleAttr": "DataConsumer",
-          "operation": "SuggestTags",
-          "allow": true
-        },
-        {
-          "name": "update-description",
-          "userRoleAttr": "DataConsumer",
-          "operation": "UpdateDescription",
-          "allow": false
-        },
-        {
-          "name": "update-tags",
-          "userRoleAttr": "DataConsumer",
-          "operation": "UpdateTags",
-          "allow": false
+          "allow": true,
+          "enabled": true
         }
       ]
     }

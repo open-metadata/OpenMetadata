@@ -272,7 +272,9 @@ public class MlModelResource {
       throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, FIELDS);
     MlModel mlModel = dao.get(uriInfo, id, fields);
-    SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, dao.getOwnerReference(mlModel));
+    SecurityUtil.checkAdminRoleOrPermissions(
+        authorizer, securityContext, dao.getEntityInterface(mlModel).getEntityReference(), patch);
+
     PatchResponse<MlModel> response =
         dao.patch(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
     addHref(uriInfo, response.getEntity());

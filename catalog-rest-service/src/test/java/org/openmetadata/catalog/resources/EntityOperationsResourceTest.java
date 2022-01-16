@@ -25,7 +25,8 @@ public abstract class EntityOperationsResourceTest<T> extends EntityResourceTest
       String fields,
       boolean supportsFollowers,
       boolean supportsOwner,
-      boolean supportsTags) {
+      boolean supportsTags,
+      boolean supportsAuthorizedMetadataOperations) {
     super(
         entityName,
         entityClass,
@@ -34,7 +35,8 @@ public abstract class EntityOperationsResourceTest<T> extends EntityResourceTest
         fields,
         supportsFollowers,
         supportsOwner,
-        supportsTags);
+        supportsTags,
+        supportsAuthorizedMetadataOperations);
   }
 
   // Override the resource path name of regular entities api/v1/<entities> to api/operations/v1/<operations>

@@ -58,6 +58,7 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
         "",
         false,
         false,
+        false,
         false);
     this.supportsPatch = false;
   }

@@ -82,7 +82,7 @@ public class UserResourceTest extends EntityResourceTest<User> {
   final Profile PROFILE = new Profile().withImages(new ImageList().withImage(URI.create("http://image.com")));
 
   public UserResourceTest() {
-    super(Entity.USER, User.class, UserList.class, "users", UserResource.FIELDS, false, false, false);
+    super(Entity.USER, User.class, UserList.class, "users", UserResource.FIELDS, false, false, false, false);
   }
 
   @Test
