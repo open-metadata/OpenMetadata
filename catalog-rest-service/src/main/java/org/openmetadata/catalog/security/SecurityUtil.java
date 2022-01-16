@@ -71,8 +71,7 @@ public final class SecurityUtil {
     Principal principal = securityContext.getUserPrincipal();
     AuthenticationContext authenticationCtx = SecurityUtil.getAuthenticationContext(principal);
 
-    if (authorizer.isAdmin(authenticationCtx)) return;
-    if (authorizer.isBot(authenticationCtx)) return;
+    if (authorizer.isAdmin(authenticationCtx) || authorizer.isBot(authenticationCtx)) return;
 
     for (MetadataOperation metadataOperation : metadataOperations) {
       if (!authorizer.hasPermissions(authenticationCtx, entityReference, metadataOperation)) {

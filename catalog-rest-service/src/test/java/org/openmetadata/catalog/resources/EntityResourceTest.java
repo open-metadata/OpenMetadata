@@ -16,6 +16,7 @@ package org.openmetadata.catalog.resources;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.CONFLICT;
 import static javax.ws.rs.core.Response.Status.CREATED;
+import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -25,6 +26,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.ENTITY_ALREADY_EXISTS;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.catalog.security.SecurityUtil.authHeaders;
@@ -76,7 +78,6 @@ import org.openmetadata.catalog.api.services.CreateMessagingService.MessagingSer
 import org.openmetadata.catalog.api.services.CreatePipelineService;
 import org.openmetadata.catalog.api.services.CreatePipelineService.PipelineServiceType;
 import org.openmetadata.catalog.api.services.CreateStorageService;
-import org.openmetadata.catalog.entity.policies.Policy;
 import org.openmetadata.catalog.entity.policies.accessControl.Rule;
 import org.openmetadata.catalog.entity.services.DatabaseService;
 import org.openmetadata.catalog.entity.services.MessagingService;
@@ -131,6 +132,7 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
   private final boolean supportsOwner;
   private final boolean supportsTags;
   protected boolean supportsPatch = true;
+  private boolean supportsAuthorizedMetadataOperations;
 
   public static final String DATA_STEWARD_ROLE_NAME = "DataSteward";
   public static final String DATA_CONSUMER_ROLE_NAME = "DataConsumer";
@@ -174,7 +176,8 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
       String fields,
       boolean supportsFollowers,
       boolean supportsOwner,
-      boolean supportsTags) {
+      boolean supportsTags,
+      boolean supportsAuthorizedMetadataOperations) {
     this.entityName = entityName;
     this.entityClass = entityClass;
     this.entityListClass = entityListClass;
@@ -183,6 +186,7 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     this.supportsFollowers = supportsFollowers;
     this.supportsOwner = supportsOwner;
     this.supportsTags = supportsTags;
+    this.supportsAuthorizedMetadataOperations = supportsAuthorizedMetadataOperations;
     ENTITY_RESOURCE_TEST_MAP.put(entityName, this);
   }
 
@@ -217,8 +221,13 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     TEAM1 = TeamResourceTest.createTeam(teamResourceTest.create(test), adminAuthHeaders());
     TEAM_OWNER1 = new EntityReference().withId(TEAM1.getId()).withType("team");
 
-    Policy policy = PolicyResourceTest.createPolicy(createAccessControlPolicies(), adminAuthHeaders());
-    assertTrue(policy.getEnabled());
+    PolicyResourceTest.createPolicy(createAccessControlPolicies(), adminAuthHeaders());
+    // Ensure that DefaultAuthorizer gets enough time to load policies before running tests.
+    try {
+      Thread.sleep(8000);
+    } catch (InterruptedException e) {
+      fail();
+    }
 
     // Create snowflake database service
     DatabaseServiceResourceTest databaseServiceResourceTest = new DatabaseServiceResourceTest();
@@ -587,7 +596,7 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
   }
 
   @Test
-  void post_chartWithInvalidOwnerType_4xx(TestInfo test) throws URISyntaxException {
+  void post_entityWithInvalidOwnerType_4xx(TestInfo test) throws URISyntaxException {
     if (!supportsOwner) {
       return;
     }
@@ -831,6 +840,47 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // Common entity tests for PATCH operations
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  @Test
+  void patch_entityDescriptionAndTestAuthorizer(TestInfo test) throws IOException, URISyntaxException {
+    if (!supportsPatch || !supportsAuthorizedMetadataOperations) {
+      return;
+    }
+
+    T entity = createEntity(createRequest(getEntityName(test), "description", null, null), adminAuthHeaders());
+
+    // Anyone can update description on unowned entity.
+    entity = patchEntityAndCheckAuthorization(getEntityInterface(entity), TestUtils.ADMIN_USER_NAME, false);
+    entity = patchEntityAndCheckAuthorization(getEntityInterface(entity), USER1.getName(), false);
+    entity = patchEntityAndCheckAuthorization(getEntityInterface(entity), USER_WITH_DATA_STEWARD_ROLE.getName(), false);
+    entity =
+        patchEntityAndCheckAuthorization(getEntityInterface(entity), USER_WITH_DATA_CONSUMER_ROLE.getName(), false);
+
+    EntityInterface<T> entityInterface = getEntityInterface(entity);
+
+    if (!supportsOwner) {
+      return;
+    }
+
+    // Set the owner for the table.
+    String originalJson = JsonUtils.pojoToJson(entity);
+    ChangeDescription change = getChangeDescription(entityInterface.getVersion());
+    change.getFieldsAdded().add(new FieldChange().withName("owner").withNewValue(USER_OWNER1));
+    entityInterface.setOwner(USER_OWNER1);
+    entity =
+        patchEntityAndCheck(
+            entityInterface.getEntity(),
+            originalJson,
+            authHeaders(USER1.getName() + "@open-metadata.org"),
+            MINOR_UPDATE,
+            change);
+
+    // Admin, owner (USER1) and user with DataSteward role can update description on entity owned by USER1.
+    entity = patchEntityAndCheckAuthorization(getEntityInterface(entity), TestUtils.ADMIN_USER_NAME, false);
+    entity = patchEntityAndCheckAuthorization(getEntityInterface(entity), USER1.getName(), false);
+    entity = patchEntityAndCheckAuthorization(getEntityInterface(entity), USER_WITH_DATA_STEWARD_ROLE.getName(), false);
+    patchEntityAndCheckAuthorization(getEntityInterface(entity), USER_WITH_DATA_CONSUMER_ROLE.getName(), true);
+  }
+
   @Test
   void patch_entityAttributes_200_ok(TestInfo test) throws IOException, URISyntaxException {
     if (!supportsPatch) {
@@ -1174,6 +1224,40 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     return returned;
   }
 
+  T patchEntityAndCheckAuthorization(EntityInterface<T> entityInterface, String userName, boolean shouldThrowException)
+      throws IOException {
+    T entity = entityInterface.getEntity();
+    String originalJson = JsonUtils.pojoToJson(entity);
+
+    String originalDescription = entityInterface.getDescription();
+    String newDescription = String.format("Description added by %s", userName);
+    ChangeDescription change = getChangeDescription(entityInterface.getVersion());
+    change
+        .getFieldsUpdated()
+        .add(new FieldChange().withName("description").withOldValue(originalDescription).withNewValue(newDescription));
+
+    entityInterface.setDescription(newDescription);
+
+    if (shouldThrowException) {
+      HttpResponseException exception =
+          assertThrows(
+              HttpResponseException.class,
+              () ->
+                  patchEntity(
+                      entityInterface.getId(), originalJson, entity, authHeaders(userName + "@open-metadata.org")));
+      assertResponse(
+          exception,
+          FORBIDDEN,
+          String.format(
+              "Principal: CatalogPrincipal{name='%s'} does not have permission to UpdateDescription", userName));
+      // Revert to original.
+      entityInterface.setDescription(originalDescription);
+      return entityInterface.getEntity();
+    }
+    return patchEntityAndCheck(
+        entity, originalJson, authHeaders(userName + "@open-metadata.org"), MINOR_UPDATE, change);
+  }
+
   protected final void validateCommonEntityFields(
       EntityInterface<T> entity,
       String expectedDescription,
@@ -1487,11 +1571,17 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     return String.format("%s_%d_%s", entityName, index, test.getDisplayName());
   }
 
-  private CreatePolicy createAccessControlPolicies() {
+  private <T> CreatePolicy createAccessControlPolicies() {
     List<Rule> rules = new ArrayList<>();
     rules.add(
         PolicyUtils.accessControlRule(
-            null, Entity.TABLE, DATA_STEWARD_ROLE_NAME, MetadataOperation.UpdateDescription, true, 1, true));
+            null,
+            Entity.getEntityNameFromClass(entityClass),
+            DATA_STEWARD_ROLE_NAME,
+            MetadataOperation.UpdateDescription,
+            true,
+            1,
+            true));
 
     return new CreatePolicy()
         .withName("test-acp")

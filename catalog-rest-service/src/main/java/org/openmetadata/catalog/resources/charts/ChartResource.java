@@ -55,13 +55,14 @@ import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.data.CreateChart;
 import org.openmetadata.catalog.entity.data.Chart;
 import org.openmetadata.catalog.jdbi3.ChartRepository;
-import org.openmetadata.catalog.jdbi3.ChartRepository.ChartEntityInterface;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.Authorizer;
+import org.openmetadata.catalog.security.JsonPatchMetadataOperationMapper;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.Include;
+import org.openmetadata.catalog.type.MetadataOperation;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.RestUtil.PatchResponse;
@@ -327,8 +328,10 @@ public class ChartResource {
       throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, FIELDS);
     Chart chart = dao.get(uriInfo, id, fields);
+    List<MetadataOperation> metadataOperations = JsonPatchMetadataOperationMapper.getMetadataOperations(patch);
     SecurityUtil.checkAdminRoleOrPermissions(
-        authorizer, securityContext, new ChartEntityInterface(chart).getEntityReference());
+        authorizer, securityContext, dao.getEntityInterface(chart).getEntityReference(), metadataOperations);
+
     PatchResponse<Chart> response =
         dao.patch(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
     addHref(uriInfo, response.getEntity());

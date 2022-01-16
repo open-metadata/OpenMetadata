@@ -54,6 +54,9 @@ public class DefaultAuthorizer implements Authorizer {
   private volatile PolicyEvaluator policyEvaluator;
   private static final String fieldsParam = "roles,teams";
 
+  public static final int POLICY_LOADER_INITIAL_DELAY = 5; // seconds.
+  private static final int POLICY_LOADER_SCHEDULE_INTERVAL = 300; // seconds.
+
   @Override
   public void init(AuthorizerConfiguration config, Jdbi dbi) throws IOException {
     LOG.debug("Initializing DefaultAuthorizer with config {}", config);
@@ -69,7 +72,8 @@ public class DefaultAuthorizer implements Authorizer {
     // Use a 15-min schedule to refresh policies. This should be replaced by a better solution which can load policies
     // only when a policy change event occurs.
     ScheduledExecutorService scheduleService = Executors.newSingleThreadScheduledExecutor();
-    scheduleService.scheduleWithFixedDelay(new PolicyLoader(), 3, 3, TimeUnit.SECONDS);
+    scheduleService.scheduleWithFixedDelay(
+        new PolicyLoader(), POLICY_LOADER_INITIAL_DELAY, POLICY_LOADER_SCHEDULE_INTERVAL, TimeUnit.SECONDS);
   }
 
   private class PolicyLoader implements Runnable {

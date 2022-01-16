@@ -17,6 +17,13 @@
         {
           "name": "update-tags",
           "userRoleAttr": "DataSteward",
+          "operation": "UpdateOwner",
+          "allow": true,
+          "enabled": true
+        },
+        {
+          "name": "update-tags",
+          "userRoleAttr": "DataSteward",
           "operation": "UpdateTags",
           "allow": true,
           "enabled": true

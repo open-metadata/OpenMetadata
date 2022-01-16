@@ -120,7 +120,7 @@ public class TableResourceTest extends EntityResourceTest<Table> {
           getColumn("c3", BIGINT, USER_BANK_ACCOUNT_TAG_LABEL));
 
   public TableResourceTest() {
-    super(Entity.TABLE, Table.class, TableList.class, "tables", TableResource.FIELDS, true, true, true);
+    super(Entity.TABLE, Table.class, TableList.class, "tables", TableResource.FIELDS, true, true, true, true);
   }
 
   @BeforeAll
@@ -1052,67 +1052,6 @@ public class TableResourceTest extends EntityResourceTest<Table> {
         assertThrows(
             HttpResponseException.class, () -> deleteEntity(table.getId(), authHeaders("test@open-metadata.org")));
     assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
-  }
-
-  Table patchAuthorizedAndCheck(Table table, String userName, boolean shouldThrowException) throws IOException {
-    String originalJson = JsonUtils.pojoToJson(table);
-
-    String originalDescription = table.getDescription();
-    String newDescription = String.format("Description added by %s", userName);
-    ChangeDescription change = getChangeDescription(table.getVersion());
-    change
-        .getFieldsUpdated()
-        .add(new FieldChange().withName("description").withOldValue(originalDescription).withNewValue(newDescription));
-
-    table.setDescription(newDescription);
-
-    if (shouldThrowException) {
-      HttpResponseException exception =
-          assertThrows(
-              HttpResponseException.class,
-              () -> patchEntity(table.getId(), originalJson, table, authHeaders(userName + "@open-metadata.org")));
-      assertResponse(
-          exception,
-          FORBIDDEN,
-          String.format(
-              "Principal: CatalogPrincipal{name='%s'} does not have permission to UpdateDescription", userName));
-      // Revert to original.
-      table.setDescription(originalDescription);
-      return table;
-    }
-    return patchEntityAndCheck(table, originalJson, authHeaders(userName + "@open-metadata.org"), MINOR_UPDATE, change);
-  }
-
-  @Test
-  void patch_tableAttributes_with_rbac(TestInfo test) throws IOException {
-    try {
-      Thread.sleep(7000);
-    } catch (InterruptedException e) {
-      e.printStackTrace();
-    }
-
-    Table table = createEntity(create(test).withDescription("description"), adminAuthHeaders());
-
-    // Anyone can update description on unowned table.
-    table = patchAuthorizedAndCheck(table, TestUtils.ADMIN_USER_NAME, false);
-    table = patchAuthorizedAndCheck(table, USER1.getName(), false);
-    table = patchAuthorizedAndCheck(table, USER_WITH_DATA_STEWARD_ROLE.getName(), false);
-    table = patchAuthorizedAndCheck(table, USER_WITH_DATA_CONSUMER_ROLE.getName(), false);
-
-    // Set the owner for the table.
-    String originalJson = JsonUtils.pojoToJson(table);
-    ChangeDescription change = getChangeDescription(table.getVersion());
-    change.getFieldsAdded().add(new FieldChange().withName("owner").withNewValue(USER_OWNER1));
-    table.setOwner(USER_OWNER1);
-    table =
-        patchEntityAndCheck(
-            table, originalJson, authHeaders(USER1.getName() + "@open-metadata.org"), MINOR_UPDATE, change);
-
-    // Admin, owner (USER1) and user with DataSteward role can update description on table owned by USER1.
-    table = patchAuthorizedAndCheck(table, TestUtils.ADMIN_USER_NAME, false);
-    table = patchAuthorizedAndCheck(table, USER1.getName(), false);
-    table = patchAuthorizedAndCheck(table, USER_WITH_DATA_STEWARD_ROLE.getName(), false);
-    patchAuthorizedAndCheck(table, USER_WITH_DATA_CONSUMER_ROLE.getName(), true);
   }
 
   /**

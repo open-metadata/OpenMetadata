@@ -350,8 +350,8 @@ public class TableResource {
           JsonPatch patch)
       throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, FIELDS);
-    List<MetadataOperation> metadataOperations = JsonPatchMetadataOperationMapper.getMetadataOperations(patch);
     Table table = dao.get(uriInfo, id, fields);
+    List<MetadataOperation> metadataOperations = JsonPatchMetadataOperationMapper.getMetadataOperations(patch);
     SecurityUtil.checkAdminRoleOrPermissions(
         authorizer, securityContext, dao.getEntityInterface(table).getEntityReference(), metadataOperations);
 

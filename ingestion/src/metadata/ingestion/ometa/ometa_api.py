@@ -129,10 +129,8 @@ class OpenMetadata(
         client_config: ClientConfig = ClientConfig(
             base_url=self.config.api_endpoint,
             api_version=self.config.api_version,
-            # auth_header="X-Catalog-Source",
-            # auth_token=self._auth_provider.auth_token(),
-            auth_header="X-Auth-Params-Email",
-            auth_token="admin@open-metdata.org"
+            auth_header="X-Catalog-Source",
+            auth_token=self._auth_provider.auth_token(),
         )
         self.client = REST(client_config)
         self._use_raw_data = raw_data
