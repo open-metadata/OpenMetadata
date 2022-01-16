@@ -41,6 +41,10 @@ public final class CatalogExceptionMessage {
     return String.format("Entity type %s not found", entity);
   }
 
+  public static String fieldIsNull(String entity) {
+    return String.format("Field %s is null", entity);
+  }
+
   public static String deactivatedUser(UUID id) {
     return String.format("User %s is deactivated", id);
   }

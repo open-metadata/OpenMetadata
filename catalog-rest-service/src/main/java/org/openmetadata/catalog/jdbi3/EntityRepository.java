@@ -13,6 +13,7 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import static org.openmetadata.catalog.Entity.h;
 import static org.openmetadata.catalog.type.Include.DELETED;
 import static org.openmetadata.catalog.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.catalog.util.EntityUtil.objectMatch;
@@ -21,6 +22,7 @@ import static org.openmetadata.catalog.util.EntityUtil.toBoolean;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
+import java.lang.reflect.Method;
 import java.net.URI;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
@@ -35,6 +37,8 @@ import java.util.regex.Pattern;
 import javax.json.JsonPatch;
 import javax.ws.rs.core.Response.Status;
 import javax.ws.rs.core.UriInfo;
+import lombok.SneakyThrows;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.maven.shared.utils.io.IOUtil;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
@@ -42,6 +46,7 @@ import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
+import org.openmetadata.catalog.exception.UnhandledServerException;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.EntityVersionPair;
 import org.openmetadata.catalog.jdbi3.TableRepository.TableUpdater;
 import org.openmetadata.catalog.type.ChangeDescription;
@@ -135,7 +140,7 @@ public abstract class EntityRepository<T> {
     this.supportsTags = supportsTags;
     this.supportsOwner = supportsOwner;
     this.supportsFollower = supportsFollower;
-    Entity.registerEntity(entityName, dao, this);
+    Entity.registerEntity(entityClass, entityName, dao, this);
   }
 
   /** Entity related operations that should be implemented or overridden by entities */
@@ -588,6 +593,97 @@ public abstract class EntityRepository<T> {
     }
   }
 
+  /** Decorator class for Entity. */
+  public class EntityHandler {
+    private final Include isDeleted;
+    protected final EntityInterface<T> entityInterface;
+    private final T entity;
+
+    public EntityHandler(T entity) {
+      this.entityInterface = getEntityInterface(entity);
+      this.entity = entity;
+      this.isDeleted = entityInterface.isDeleted() ? DELETED : Include.NON_DELETED;
+    }
+
+    EntityReference toEntityReference() {
+      return entityInterface.getEntityReference();
+    }
+
+    /**
+     * An entity could have (HAS) another entity like in for table and location.
+     *
+     * @param leftEntityName the entity name of the target of HAS.
+     * @return
+     */
+    @SneakyThrows
+    public EntityReference getHasOrNull(String leftEntityName) {
+      List<EntityReference> refs =
+          daoCollection
+              .relationshipDAO()
+              .findToReference(
+                  entityInterface.getId().toString(),
+                  entityName,
+                  Relationship.HAS.ordinal(),
+                  leftEntityName,
+                  toBoolean(isDeleted));
+      if (refs.isEmpty()) {
+        return null;
+      } else if (refs.size() > 1) {
+        LOG.warn("Possible database issues - multiple relationships found for entity {}", entityInterface.getId());
+      }
+      return h(Entity.getEntity(refs.get(0), Fields.EMPTY_FIELDS, Include.ALL)).toEntityReference();
+    }
+
+    /**
+     * Some entities like table must have a container
+     *
+     * @param containerEntityName entity name of the container. database for table, databaseService for database, and so
+     *     on.
+     * @return
+     */
+    @SneakyThrows
+    public EntityReference getContainer(String containerEntityName) {
+      List<EntityReference> refs =
+          daoCollection
+              .relationshipDAO()
+              .findFromEntity(
+                  entityInterface.getId().toString(),
+                  entityName,
+                  Relationship.CONTAINS.ordinal(),
+                  // FIXME: containerEntityName should be a property of the entity decorated.
+                  containerEntityName,
+                  toBoolean(isDeleted));
+      if (refs.isEmpty()) {
+        throw new UnhandledServerException(CatalogExceptionMessage.entityTypeNotFound(containerEntityName));
+      } else if (refs.size() > 1) {
+        LOG.warn("Possible database issues - multiple containers found for entity {}", entityInterface.getId());
+      }
+      return h(Entity.getEntity(refs.get(0), Fields.EMPTY_FIELDS, Include.ALL)).toEntityReference();
+    }
+
+    /**
+     * Find the entity whose EntityReference is stored in the field with name fieldName. It must include deleted and
+     * non-deleted because if a field are set by setFields and setFields checks if the relationships are still valid
+     * before storing the EntityReferences.
+     *
+     * @param fieldName the name of the field
+     * @param <S> the class of the entity
+     * @return
+     */
+    @SneakyThrows
+    public <S> S findEntity(String fieldName) {
+      Method method = entity.getClass().getMethod("get" + StringUtils.capitalize(fieldName));
+      EntityReference entityReference = (EntityReference) method.invoke(entity);
+      if (entityReference == null) {
+        throw new UnhandledServerException(CatalogExceptionMessage.fieldIsNull(fieldName));
+      }
+      return Entity.getEntity(entityReference, Fields.EMPTY_FIELDS, Include.ALL);
+    }
+  }
+
+  public EntityHandler getEntityHandler(T entity) {
+    return new EntityHandler(entity);
+  }
   /**
    * Class that performs PUT and PATCH update operation. It takes an <i>updated</i> entity and <i>original</i> entity.
    * Performs comparison between then and updates the stored entity and also updates all the relationships. This class

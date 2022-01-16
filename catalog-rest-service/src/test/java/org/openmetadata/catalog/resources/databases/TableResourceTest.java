@@ -81,6 +81,7 @@ import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.jdbi3.TableRepository.TableEntityInterface;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.databases.TableResource.TableList;
+import org.openmetadata.catalog.resources.locations.LocationResourceTest;
 import org.openmetadata.catalog.resources.services.DatabaseServiceResourceTest;
 import org.openmetadata.catalog.resources.tags.TagResourceTest;
 import org.openmetadata.catalog.type.ChangeDescription;
@@ -928,6 +929,35 @@ public class TableResourceTest extends EntityResourceTest<Table> {
     assertEquals(expected.getSql(), actual.getSql());
     assertEquals(expected.getModelType(), actual.getModelType());
     assertEquals(expected.getGeneratedAt(), actual.getGeneratedAt());
+  }
+
+  @Test
+  void get_deletedTableWithDeleteLocation(TestInfo test) throws HttpResponseException {
+    Object create = createRequest(getEntityName(test), "description", "displayName", USER_OWNER1);
+    // Create first time using POST
+    Table table = beforeDeletion(test, createEntity(create, adminAuthHeaders()));
+    Table tableBeforeDeletion = getEntity(table.getId(), null, TableResource.FIELDS, adminAuthHeaders());
+    // delete both
+    deleteEntity(tableBeforeDeletion.getId(), adminAuthHeaders());
+    new LocationResourceTest().deleteEntity(tableBeforeDeletion.getLocation().getId(), adminAuthHeaders());
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("include", "deleted");
+    Table tableAfterDeletion = getEntity(table.getId(), queryParams, TableResource.FIELDS, adminAuthHeaders());
+    validateDeletedEntity(create, tableBeforeDeletion, tableAfterDeletion, adminAuthHeaders());
+  }
+
+  @Test
+  void get_TableWithDeleteLocation(TestInfo test) throws HttpResponseException {
+    Object create = createRequest(getEntityName(test), "description", "displayName", USER_OWNER1);
+    // Create first time using POST
+    Table table = beforeDeletion(test, createEntity(create, adminAuthHeaders()));
+    Table tableBeforeDeletion = getEntity(table.getId(), null, TableResource.FIELDS, adminAuthHeaders());
+    // delete both
+    new LocationResourceTest().deleteEntity(tableBeforeDeletion.getLocation().getId(), adminAuthHeaders());
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("include", "all");
+    Table tableAfterDeletion = getEntity(table.getId(), queryParams, TableResource.FIELDS, adminAuthHeaders());
+    assertNull(tableAfterDeletion.getLocation());
   }
 
   @Test
