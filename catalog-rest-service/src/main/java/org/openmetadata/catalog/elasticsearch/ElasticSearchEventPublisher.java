@@ -293,7 +293,7 @@ public class ElasticSearchEventHandler implements EventHandler {
     try {
       this.client.close();
     } catch (Exception e) {
-      log.error("Failed to close elastic search", e);
+      LOG.error("Failed to close elastic search", e);
     }
   }
 }

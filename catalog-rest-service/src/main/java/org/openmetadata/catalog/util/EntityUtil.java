@@ -196,7 +196,12 @@ public final class EntityUtil {
         dao.findFromEntity(
             entityId.toString(), entityType, Relationship.CONTAINS.ordinal(), serviceType, toBoolean(include));
     if (refs.size() > 1) {
+<<<<<<< HEAD
       LOG.warn("Possible database issues - multiple services found for entity {}", entityId);
+=======
+      log.warn("Possible database issues - multiple services found for entity {}", entityId);
+      return refs.get(0);
+>>>>>>> origin/branch-1
     }
     return refs.isEmpty() ? null : refs.get(0);
   }
@@ -220,7 +225,11 @@ public final class EntityUtil {
         entityRelationshipDAO.findFrom(
             entityInterface.getId().toString(), entityType, Relationship.OWNS.ordinal(), toBoolean(include));
     if (ids.size() > 1) {
+<<<<<<< HEAD
       LOG.warn("Possible database issues - multiple owners {} found for entity {}", ids, entityInterface.getId());
+=======
+      log.warn("Possible database issues - multiple owners {} found for entity {}", ids, id);
+>>>>>>> origin/branch-1
     }
     return ids.isEmpty() ? null : populateOwner(userDAO, teamDAO, ids.get(0));
   }

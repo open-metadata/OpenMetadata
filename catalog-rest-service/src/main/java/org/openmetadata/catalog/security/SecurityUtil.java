@@ -19,6 +19,7 @@ import java.util.Map;
 import javax.ws.rs.client.Invocation;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.SecurityContext;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.MetadataOperation;
 import lombok.extern.slf4j.Slf4j;
