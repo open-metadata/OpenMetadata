@@ -479,6 +479,7 @@ const Explore: React.FC<ExploreProps> = ({
   useEffect(() => {
     forceSetAgg.current = true;
     if (!isMounting.current) {
+      resetFilters();
       fetchTableData();
     }
   }, [searchText, searchIndex]);
