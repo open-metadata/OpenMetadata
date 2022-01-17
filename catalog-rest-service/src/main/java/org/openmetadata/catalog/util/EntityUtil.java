@@ -157,51 +157,6 @@ public final class EntityUtil {
     return entity;
   }
 
-  public static EntityReference getService(EntityRelationshipDAO dao, String entityType, UUID entityId) {
-    List<EntityReference> refs =
-        dao.findFrom(entityId.toString(), entityType, Relationship.CONTAINS.ordinal(), toBoolean(Include.NON_DELETED));
-    if (refs.size() > 1) {
-      LOG.warn("Possible database issues - multiple services found for entity {}", entityId);
-    }
-    return refs.isEmpty() ? null : refs.get(0);
-  }
-
-  public static EntityReference getService(
-      EntityRelationshipDAO dao, String entityType, UUID entityId, Include include) {
-    List<EntityReference> refs =
-        dao.findFrom(entityId.toString(), entityType, Relationship.CONTAINS.ordinal(), toBoolean(include));
-    if (refs.size() > 1) {
-      LOG.warn("Possible database issues - multiple services found for entity {}", entityId);
-    }
-    return refs.isEmpty() ? null : refs.get(0);
-  }
-
-  public static EntityReference getService(
-      EntityRelationshipDAO dao, String entityType, UUID entityId, String serviceType) {
-    List<EntityReference> refs =
-        dao.findFromEntity(
-            entityId.toString(),
-            entityType,
-            Relationship.CONTAINS.ordinal(),
-            serviceType,
-            toBoolean(Include.NON_DELETED));
-    if (refs.size() > 1) {
-      LOG.warn("Possible database issues - multiple services found for entity {}", entityId);
-    }
-    return refs.isEmpty() ? null : refs.get(0);
-  }
-
-  public static EntityReference getService(
-      EntityRelationshipDAO dao, String entityType, UUID entityId, String serviceType, Include include) {
-    List<EntityReference> refs =
-        dao.findFromEntity(
-            entityId.toString(), entityType, Relationship.CONTAINS.ordinal(), serviceType, toBoolean(include));
-    if (refs.size() > 1) {
-      LOG.warn("Possible database issues - multiple services found for entity {}", entityId);
-    }
-    return refs.isEmpty() ? null : refs.get(0);
-  }
-
   public static void validateUser(UserDAO userDAO, UUID userId) {
     if (!userDAO.exists(userId)) {
       throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(Entity.USER, userId));
