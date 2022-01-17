@@ -13,10 +13,12 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import static org.openmetadata.catalog.Entity.DASHBOARD_SERVICE;
+import static org.openmetadata.catalog.Entity.h;
+
 import java.io.IOException;
 import java.net.URI;
 import java.util.List;
-import java.util.Objects;
 import java.util.UUID;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Metrics;
@@ -108,10 +110,7 @@ public class MetricsRepository extends EntityRepository<Metrics> {
   }
 
   private EntityReference getService(Metrics metrics) throws IOException { // Get service by metrics ID
-    EntityReference ref =
-        EntityUtil.getService(
-            daoCollection.relationshipDAO(), Entity.METRICS, metrics.getId(), Entity.DASHBOARD_SERVICE);
-    return getService(Objects.requireNonNull(ref));
+    return h(metrics).getContainer(DASHBOARD_SERVICE);
   }
 
   private EntityReference getService(EntityReference service) throws IOException { // Get service by service ID

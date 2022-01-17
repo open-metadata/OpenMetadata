@@ -14,6 +14,8 @@
 package org.openmetadata.catalog.jdbi3;
 
 import static javax.ws.rs.core.Response.Status.CREATED;
+import static org.openmetadata.catalog.Entity.DATABASE_SERVICE;
+import static org.openmetadata.catalog.Entity.h;
 import static org.openmetadata.catalog.util.EntityUtil.toBoolean;
 
 import java.io.IOException;
@@ -175,19 +177,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
   }
 
   private EntityReference getService(Database database) throws IOException {
-    EntityReference ref =
-        EntityUtil.getService(
-            daoCollection.relationshipDAO(),
-            Entity.DATABASE,
-            database.getId(),
-            Entity.DATABASE_SERVICE,
-            toInclude(database));
-    if (ref != null) {
-      DatabaseService service = getService(ref.getId(), ref.getType());
-      ref.setName(service.getName());
-      ref.setDescription(service.getDescription());
-    }
-    return ref;
+    return h(database).getContainer(DATABASE_SERVICE);
   }
 
   private void populateService(Database database) throws IOException {

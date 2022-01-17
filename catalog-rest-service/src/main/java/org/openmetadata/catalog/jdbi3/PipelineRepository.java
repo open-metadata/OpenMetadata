@@ -13,6 +13,9 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import static org.openmetadata.catalog.Entity.PIPELINE_SERVICE;
+import static org.openmetadata.catalog.Entity.h;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.net.URI;
@@ -145,17 +148,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   }
 
   private EntityReference getService(Pipeline pipeline) throws IOException {
-    EntityReference ref =
-        EntityUtil.getService(
-            daoCollection.relationshipDAO(),
-            Entity.PIPELINE,
-            pipeline.getId(),
-            Entity.PIPELINE_SERVICE,
-            toInclude(pipeline));
-    PipelineService service = getService(ref.getId(), ref.getType());
-    ref.setName(service.getName());
-    ref.setDescription(service.getDescription());
-    return ref;
+    return h(pipeline).getContainer(PIPELINE_SERVICE);
   }
 
   private void populateService(Pipeline pipeline) throws IOException {

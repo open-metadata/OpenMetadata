@@ -13,12 +13,14 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import static org.openmetadata.catalog.Entity.STORAGE_SERVICE;
+import static org.openmetadata.catalog.Entity.h;
+
 import java.io.IOException;
 import java.net.URI;
 import java.security.GeneralSecurityException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import java.util.UUID;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
@@ -218,14 +220,7 @@ public class LocationRepository extends EntityRepository<Location> {
   }
 
   private EntityReference getService(Location location) throws IOException {
-    EntityReference ref =
-        EntityUtil.getService(
-            daoCollection.relationshipDAO(),
-            Entity.LOCATION,
-            location.getId(),
-            Entity.STORAGE_SERVICE,
-            toInclude(location));
-    return getService(Objects.requireNonNull(ref));
+    return h(location).getContainer(STORAGE_SERVICE);
   }
 
   private EntityReference getService(EntityReference service) throws IOException {
