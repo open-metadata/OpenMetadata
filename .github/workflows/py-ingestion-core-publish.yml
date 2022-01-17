@@ -24,7 +24,7 @@ on:
       - 'catalog-rest-service/src/main/resources/json/**'
 
 jobs:
-  build-and-push:
+  py-core-build-and-push:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
