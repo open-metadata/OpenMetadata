@@ -32,16 +32,8 @@ from metadata.generated.schema.entity.data.table import (
     TableData,
     TableProfile,
 )
-from metadata.generated.schema.entity.services.databaseService import (
-    DatabaseServiceType,
-)
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.api.common import (
-    ConfigModel,
-    Entity,
-    IncludeFilterPattern,
-    WorkflowContext,
-)
+from metadata.ingestion.api.common import Entity, WorkflowContext
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.models.table_metadata import DeleteTable
@@ -564,10 +556,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         """
         dataset_name = f"{schema}.{table}"
         self.status.scanned(f"profile of {dataset_name}")
-        logger.info(
-            f"Running Profiling for {dataset_name}. "
-            f"If you haven't configured offset and limit this process can take longer"
-        )
+        logger.info(f"Running Profiling for {dataset_name}. ")
         if self.config.scheme == "bigquery":
             table = dataset_name
         profile = self.data_profiler.run_profiler(
