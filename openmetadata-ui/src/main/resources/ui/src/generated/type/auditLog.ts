@@ -18,10 +18,6 @@
  */
 export interface AuditLog {
   /**
-   * Date when the API call is made.
-   */
-  dateTime?: Date;
-  /**
    * Identifier of entity that was modified by the operation.
    */
   entityId: string;
@@ -41,6 +37,11 @@ export interface AuditLog {
    * HTTP response code for the api requested.
    */
   responseCode: number;
+  /**
+   * Timestamp when the API call is made in Unix epoch time milliseconds in Unix epoch time
+   * milliseconds.
+   */
+  timestamp?: number;
   /**
    * Name of the user who made the API request.
    */

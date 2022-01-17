@@ -34,14 +34,14 @@ export interface ChangeEvent {
    */
   currentVersion?: number;
   /**
-   * Date and time when the change was made.
-   */
-  dateTime: Date;
-  /**
    * For `eventType` `entityCreated`, this field captures JSON coded string of the entity
    * using the schema corresponding to `entityType`.
    */
   entity?: any;
+  /**
+   * Fully Qualified Name of entity that was modified by the operation.
+   */
+  entityFullyQualifiedName?: string;
   /**
    * Identifier of entity that was modified by the operation.
    */
@@ -57,6 +57,10 @@ export interface ChangeEvent {
    * `currentVersion`.
    */
   previousVersion?: number;
+  /**
+   * Timestamp when the change was made in Unix epoch time milliseconds.
+   */
+  timestamp: number;
   /**
    * Name of the user whose activity resulted in the change.
    */
