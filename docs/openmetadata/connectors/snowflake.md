@@ -98,15 +98,21 @@ pip3 install 'openmetadata-ingestion[snowflake]'
 
 Create a new file called `snowflake.json` in the current directory. Note that the current directory should be the `openmetadata` directory you created in Step 1.&#x20;
 
-To create a configuration file for Snowflake, you’ll need to consider one of the three options for templates. The choice of a template depends on how your Snowflake user will be authenticated. Snowflake SQLAlchemy supports Single Sign-On (SSO) with and without a password parameter. Please refer to [this link](https://github.com/snowflakedb/snowflake-sqlalchemy/issues/115) for more information
+To create a configuration file for Snowflake, you’ll need to select one of the three options below and then customize the appropriate template to match your environment.
+
+* SSO without Password
+* SSO with Password
+* Non-SSO
+
+The choice of a template depends on how your Snowflake user will be authenticated.&#x20;
 
 Please select the form of authentication you will use for Snowflake and select the template below that matches your use case. Then, copy and paste the configuration template into the `snowflake.json` file you created.
 
 {% hint style="info" %}
-Note: The `source.config` field in the configuration JSON will include the majority of the settings for your connector. In the steps below we describe how to customize the key-value pairs in the `source.config` field to meet your needs.&#x20;
+Note: The `source.config` field in the configuration JSON will include the majority of the settings for your connector. In the steps below we describe how to customize the key-value pairs in the `source.config` field to meet your needs.
 {% endhint %}
 
-#### Non-SSO
+#### SSO without Password
 
 ```json
 {
@@ -114,13 +120,16 @@ Note: The `source.config` field in the configuration JSON will include the major
     "type": "snowflake",
     "config": {
       "host_port": "account.region.service.snowflakecomputing.com",
-      "username": "username",
-      "password": "strong_password",
+      "username": "email",
       "warehouse": "DEMO",
       "database": "SNOWFLAKE_SAMPLE_DATA",
       "account": "account_name",
       "service_name": "snowflake",
       "data_profiler_enabled": "false",
+      "role": "Optional - Role",
+      "connect_args":{
+        "authenticator": "externalbrowser"
+      },
       "table_filter_pattern": {
         "excludes": [
           "tpcds_.*temp"
@@ -147,7 +156,7 @@ Note: The `source.config` field in the configuration JSON will include the major
 }
 ```
 
-#### SSO With Password
+#### SSO with Password
 
 ```json
 {
@@ -192,7 +201,7 @@ Note: The `source.config` field in the configuration JSON will include the major
 }
 ```
 
-#### SSO Without Password
+#### Non-SSO
 
 ```json
 {
@@ -200,16 +209,13 @@ Note: The `source.config` field in the configuration JSON will include the major
     "type": "snowflake",
     "config": {
       "host_port": "account.region.service.snowflakecomputing.com",
-      "username": "email",
+      "username": "username",
+      "password": "strong_password",
       "warehouse": "DEMO",
       "database": "SNOWFLAKE_SAMPLE_DATA",
       "account": "account_name",
       "service_name": "snowflake",
       "data_profiler_enabled": "false",
-      "role": "Optional - Role",
-      "connect_args":{
-        "authenticator": "externalbrowser"
-      },
       "table_filter_pattern": {
         "excludes": [
           "tpcds_.*temp"
