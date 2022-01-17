@@ -41,21 +41,11 @@ jobs:
           python3 -m venv env
           source env/bin/activate
           make generate
-      - name: Bump Version
-        working-directory: ingestion-core
-        run: |
-          source env/bin/activate
-          make bump-version-dev
-      - name: Publish PyPi packages
+      - name: Publish Test PyPi packages
         working-directory: ingestion-core
         env:
-          TWINE_USERNAME: ${{ secrets.TWINE_USERNAME }}
-          TWINE_PASSWORD: ${{ secrets.TWINE_PASSWORD }}
+          TWINE_USERNAME: ${{ secrets.TWINE_USERNAME_TEST }}
+          TWINE_PASSWORD: ${{ secrets.TWINE_PASSWORD_TEST }}
         run: |
           source env/bin/activate
           make publish
-      - name: Commit and Push New Version
-        uses: EndBug/add-and-commit@v7
-        with:
-          message: openmetadata-ingestion-core version bumped
-          add: ./ingestion-core/src/metadata/_version.py
