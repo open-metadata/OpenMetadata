@@ -13,19 +13,11 @@
  */
 
 /**
- * Catalog application software version
+ * GET entity by id, GET entity by name, and LIST entities can include deleted or
+ * non-deleted entities using the parameter include
  */
-export interface CatalogVersion {
-  /**
-   * Software revision of the catalog
-   */
-  revision?: string;
-  /**
-   * Build timestamp
-   */
-  timestamp?: number;
-  /**
-   * Software version of the catalog
-   */
-  version?: string;
+export enum Include {
+  All = 'all',
+  Deleted = 'deleted',
+  NonDeleted = 'non-deleted',
 }
