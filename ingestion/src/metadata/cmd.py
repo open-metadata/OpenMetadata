@@ -148,7 +148,7 @@ def profiler(config: str) -> None:
         logger.info(f"Running Profiler for  {profiler_runner.config.profiler.type} ...")
         profile_results = profiler_runner.run_profiler()
         logger.info(f"Profiler Results")
-        logger.info(f"{profile_results.json()}")
+        logger.info(f"{profile_results}")
 
     except Exception as e:
         logger.exception(f"Scan failed: {str(e)}")

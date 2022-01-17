@@ -61,8 +61,10 @@ class Profiler:
         try:
             logger.info(f"profiling  table {self.schema_name}.{self.table.name}")
             self.database.table_column_metadata(self.table.name, self.schema_name)
-            logger.debug(str(len(self.database.columns)) + " columns:")
-            self.profiler_result.table_result.col_count = len(self.database.columns)
+            logger.info(str(len(self.database.orig_columns)) + " columns:")
+            self.profiler_result.table_result.col_count = len(
+                self.database.orig_columns
+            )
             self._profile_aggregations()
             self._query_group_by_value()
             self._query_histograms()
@@ -70,7 +72,8 @@ class Profiler:
                 f"Executed {self.queries_executed} queries in {(datetime.now() - self.start_time)}"
             )
         except Exception as e:
-            logger.exception("Exception during scan")
+            logger.exception(f"Exception during scan due to {e}")
+            raise e
         finally:
             self.database.clear()
 
@@ -267,7 +270,7 @@ class Profiler:
                 column_name = column.name
                 group_by_cte = get_group_by_cte(
                     self.database.qualify_column_name(column.name),
-                    self.database.qualify_table_name(self.table.name, self.schema_name),
+                    self.qualified_table_name,
                 )
                 ## Compute Distinct, Unique, Unique_Count, Duplicate_count
                 sql = (

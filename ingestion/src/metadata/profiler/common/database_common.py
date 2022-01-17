@@ -213,6 +213,7 @@ class DatabaseCommon(Database):
     config: SQLConnectionConfig = None
     sql_exprs: SQLExpressions = SQLExpressions()
     columns: List[Column] = []
+    orig_columns: List = []
 
     def __init__(self, config: SQLConnectionConfig):
         self.config = config
@@ -226,6 +227,8 @@ class DatabaseCommon(Database):
         pass
 
     def qualify_table_name(self, table_name: str, schema_name: str) -> str:
+        if schema_name:
+            return f"{schema_name}.{table_name}"
         return table_name
 
     def qualify_column_name(self, column_name: str):
@@ -250,7 +253,6 @@ class DatabaseCommon(Database):
         return False
 
     def table_column_metadata(self, table: str, schema: str):
-        table = self.qualify_table_name(table, schema)
         pk_constraints = self.inspector.get_pk_constraint(table, schema)
         pk_columns = (
             pk_constraints["column_constraints"]
@@ -267,16 +269,15 @@ class DatabaseCommon(Database):
             if "column_names" in constraint.keys():
                 unique_columns = constraint["column_names"]
         columns = self.inspector.get_columns(
-            self.qualify_table_name(table, schema), schema
+            self.qualify_table_name(table, None), schema
         )
-
+        self.orig_columns = columns
         for column in columns:
             name = column["name"]
             data_type = column["type"]
             nullable = True
             if not column["nullable"] or column["name"] in pk_columns:
                 nullable = False
-
             if self.is_number(data_type):
                 logical_type = SupportedDataType.NUMERIC
             elif self.is_time(data_type):
@@ -330,6 +331,7 @@ class DatabaseCommon(Database):
 
     def clear(self):
         self.columns.clear()
+        self.orig_columns.clear()
 
     def close(self):
         if self.connection:

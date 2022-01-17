@@ -11,15 +11,12 @@
 
 import importlib
 import logging
-import sys
 import traceback
 from datetime import datetime, timezone
 from typing import Type, TypeVar
 
-from sqlalchemy import inspect
-
 from metadata.config.common import ConfigModel, DynamicTypedConfig
-from metadata.ingestion.source.sql_source import SQLSourceStatus
+from metadata.ingestion.source.sql_source_common import SQLSourceStatus
 from metadata.profiler.common.database import Database
 from metadata.profiler.profiler import Profiler
 from metadata.profiler.profiler_metadata import ProfileResult
@@ -81,6 +78,7 @@ class ProfilerRunner:
                 self.status.filter(schema, "Schema pattern not allowed")
                 continue
             tables = self.database.inspector.get_table_names(schema)
+
             for table_name in tables:
                 try:
                     if not self.sql_config.table_filter_pattern.included(table_name):
@@ -89,14 +87,13 @@ class ProfilerRunner:
                             "Table pattern not allowed",
                         )
                         continue
+                    logger.info(f"profiling {schema}.{table_name}")
                     profile_result = self.execute(
-                        self.database,
                         schema,
                         table_name,
                         datetime.now(tz=timezone.utc).isoformat(timespec="seconds"),
                     )
                     results.append(profile_result)
-                    return results
                 except Exception as err:
                     logger.debug(traceback.print_exc())
                     logger.error(err)
@@ -104,13 +101,12 @@ class ProfilerRunner:
                         "{}.{}".format(self.sql_config.service_name, table_name)
                     )
                     continue
+        return results
 
-    def execute(
-        self, database: Database, schema: str, table_name: str, profile_date: str
-    ):
+    def execute(self, schema: str, table_name: str, profile_date: str):
         try:
             profiler = Profiler(
-                database=database,
+                database=self.database,
                 schema_name=schema,
                 table_name=table_name,
                 profile_time=profile_date,
@@ -119,5 +115,4 @@ class ProfilerRunner:
             return profile_result
         except Exception as e:
             logger.exception(f"Profiler failed: {str(e)}")
-            logger.info(f"Exiting with code 1")
-            sys.exit(1)
+            raise e

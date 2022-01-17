@@ -765,10 +765,9 @@ public class TableResourceTest extends EntityResourceTest<Table> {
   @Test
   void put_tableProfile_200(TestInfo test) throws IOException {
     Table table = createAndCheckEntity(create(test), adminAuthHeaders());
-    ColumnProfile c1Profile =
-        new ColumnProfile().withName("c1").withMax("100.0").withMin("10.0").withUniqueCount(100.0);
-    ColumnProfile c2Profile = new ColumnProfile().withName("c2").withMax("99.0").withMin("20.0").withUniqueCount(89.0);
-    ColumnProfile c3Profile = new ColumnProfile().withName("c3").withMax("75.0").withMin("25.0").withUniqueCount(77.0);
+    ColumnProfile c1Profile = new ColumnProfile().withName("c1").withMax(100.0).withMin(10.0).withUniqueCount(100.0);
+    ColumnProfile c2Profile = new ColumnProfile().withName("c2").withMax(99.0).withMin(20.0).withUniqueCount(89.0);
+    ColumnProfile c3Profile = new ColumnProfile().withName("c3").withMax(75.0).withMin(25.0).withUniqueCount(77.0);
     // Add column profiles
     List<ColumnProfile> columnProfiles = List.of(c1Profile, c2Profile, c3Profile);
     TableProfile tableProfile =
@@ -817,10 +816,10 @@ public class TableResourceTest extends EntityResourceTest<Table> {
   void put_tableInvalidTableProfileData_4xx(TestInfo test) throws IOException {
     Table table = createAndCheckEntity(create(test), adminAuthHeaders());
 
-    ColumnProfile c1Profile = new ColumnProfile().withName("c1").withMax("100").withMin("10.0").withUniqueCount(100.0);
-    ColumnProfile c2Profile = new ColumnProfile().withName("c2").withMax("99.0").withMin("20.0").withUniqueCount(89.0);
+    ColumnProfile c1Profile = new ColumnProfile().withName("c1").withMax(100.0).withMin(10.0).withUniqueCount(100.0);
+    ColumnProfile c2Profile = new ColumnProfile().withName("c2").withMax(99.0).withMin(20.0).withUniqueCount(89.0);
     ColumnProfile c3Profile =
-        new ColumnProfile().withName("invalidColumn").withMax("75").withMin("25").withUniqueCount(77.0);
+        new ColumnProfile().withName("invalidColumn").withMax(75.0).withMin(25.0).withUniqueCount(77.0);
     List<ColumnProfile> columnProfiles = List.of(c1Profile, c2Profile, c3Profile);
     TableProfile tableProfile =
         new TableProfile()

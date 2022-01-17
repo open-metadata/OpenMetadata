@@ -24,6 +24,7 @@ class OracleConfig(SQLConnectionConfig):
     scheme = "oracle+cx_oracle"
     oracle_service_name: Optional[str] = None
     query: Optional[str] = "select * from {}.{} where ROWNUM <= 50"
+    service_type = "Oracle"
 
     @pydantic.validator("oracle_service_name")
     def check_oracle_service_name(cls, v, values):

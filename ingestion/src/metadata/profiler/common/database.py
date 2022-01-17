@@ -34,6 +34,11 @@ class Database(Closeable, metaclass=ABCMeta):
 
     @property
     @abstractmethod
+    def orig_columns(self):
+        pass
+
+    @property
+    @abstractmethod
     def sql_exprs(self):
         pass
 

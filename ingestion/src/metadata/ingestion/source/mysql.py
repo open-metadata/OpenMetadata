@@ -17,6 +17,7 @@ class MySQLConfig(SQLConnectionConfig):
     host_port = "localhost:3306"
     scheme = "mysql+pymysql"
     service_type = "MySQL"
+    connector_type = "mysql"
 
     def get_connection_url(self):
         return super().get_connection_url()

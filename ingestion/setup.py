@@ -23,7 +23,7 @@ def get_long_description():
 
 
 base_requirements = {
-    "openmetadata-ingestion-core==0.6.0.dev0",
+    "openmetadata-ingestion-core==0.8.0.dev0",
     "commonregex",
     "idna<3,>=2.5",
     "click>=7.1.1",
@@ -88,12 +88,7 @@ plugins: Dict[str, Set[str]] = {
     "trino": {"sqlalchemy-trino"},
     "postgres": {"pymysql>=1.0.2", "psycopg2-binary", "GeoAlchemy2"},
     "redash": {"redash-toolbelt==0.1.4"},
-    "redshift": {
-        "sqlalchemy-redshift==0.8.9",
-        "psycopg2-binary",
-        "GeoAlchemy2",
-        "openmetadata-data-profiler[redshift]",
-    },
+    "redshift": {"sqlalchemy-redshift==0.8.9", "psycopg2-binary", "GeoAlchemy2"},
     "redshift-usage": {
         "sqlalchemy-redshift==0.8.9",
         "psycopg2-binary",
