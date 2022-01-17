@@ -13,6 +13,7 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import static org.openmetadata.catalog.Entity.h;
 import static org.openmetadata.catalog.util.EntityUtil.toBoolean;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -96,19 +97,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
   }
 
   private EntityReference getService(Dashboard dashboard) throws IOException {
-    EntityReference ref =
-        EntityUtil.getService(
-            daoCollection.relationshipDAO(),
-            Entity.DASHBOARD,
-            dashboard.getId(),
-            Entity.DASHBOARD_SERVICE,
-            toInclude(dashboard));
-    if (ref != null) {
-      DashboardService service = getService(ref.getId(), ref.getType());
-      ref.setName(service.getName());
-      ref.setDescription(service.getDescription());
-    }
-    return ref;
+    return h(dashboard).getContainer(Entity.DASHBOARD_SERVICE);
   }
 
   private void populateService(Dashboard dashboard) throws IOException {

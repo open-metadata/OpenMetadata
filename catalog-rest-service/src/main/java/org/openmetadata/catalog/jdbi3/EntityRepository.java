@@ -714,10 +714,36 @@ public abstract class EntityRepository<T> {
       return h(Entity.getEntity(refs.get(0), Fields.EMPTY_FIELDS, Include.ALL)).toEntityReference();
     }
 
+    @SneakyThrows
+    public EntityReference getContainer(List<String> containerEntityNames) {
+      List<EntityReference> refs =
+          daoCollection
+              .relationshipDAO()
+              .findFrom(
+                  entityInterface.getId().toString(),
+                  entityName,
+                  Relationship.CONTAINS.ordinal(),
+                  toBoolean(isDeleted));
+      if (refs.isEmpty()) {
+        throw new UnhandledServerException(
+            CatalogExceptionMessage.entityTypeNotFound(String.join(" or ", containerEntityNames)));
+      } else if (refs.size() > 1) {
+        LOG.warn("Possible database issues - multiple containers found for entity {}", entityInterface.getId());
+      }
+      if (!containerEntityNames.contains(refs.get(0).getType())) {
+        throw new IllegalArgumentException(String.format("Invalid type %s", refs.get(0).getType()));
+      }
+      return h(Entity.getEntity(refs.get(0), Fields.EMPTY_FIELDS, Include.ALL)).toEntityReference();
+    }
+
     public <S> S findEntity(String fieldName, String entityName) {
+      return findEntity(fieldName, List.of(entityName));
+    }
+
+    public <S> S findEntity(String fieldName, List<String> entityNames) {
       S entity = findEntity(fieldName);
       EntityReference entityReference = Entity.getEntityReference(entity);
-      if (!entityName.equals(entityReference.getType())) {
+      if (!entityNames.contains(entityReference.getType())) {
         throw new IllegalArgumentException(String.format("Invalid type %s", entityReference.getType()));
       }
       return entity;

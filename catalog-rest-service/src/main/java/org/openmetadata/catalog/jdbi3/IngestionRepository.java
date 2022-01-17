@@ -13,14 +13,16 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import static org.openmetadata.catalog.Entity.DASHBOARD_SERVICE;
+import static org.openmetadata.catalog.Entity.DATABASE_SERVICE;
+import static org.openmetadata.catalog.Entity.h;
+
 import java.io.IOException;
 import java.net.URI;
 import java.util.List;
-import java.util.Objects;
 import java.util.UUID;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
-import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.operations.workflows.Ingestion;
 import org.openmetadata.catalog.resources.operations.IngestionResource;
 import org.openmetadata.catalog.type.ChangeDescription;
@@ -80,10 +82,11 @@ public class IngestionRepository extends EntityRepository<Ingestion> {
 
   @Override
   public void prepare(Ingestion ingestion) throws IOException {
-    ingestion.setService(getService(ingestion.getService()));
+    EntityReference entityReference =
+        h(h(ingestion).findEntity("service", List.of(DATABASE_SERVICE, DASHBOARD_SERVICE))).toEntityReference();
+    ingestion.setService(entityReference);
     ingestion.setFullyQualifiedName(getFQN(ingestion));
-    EntityUtil.populateOwner(daoCollection.userDAO(), daoCollection.teamDAO(), ingestion.getOwner()); // Validate owner
-    getService(ingestion.getService());
+    ingestion.setOwner(h(ingestion).validateOwnerOrNull());
     ingestion.setTags(EntityUtil.addDerivedTags(daoCollection.tagDAO(), ingestion.getTags()));
   }
 
@@ -124,20 +127,7 @@ public class IngestionRepository extends EntityRepository<Ingestion> {
   }
 
   private EntityReference getService(Ingestion ingestion) throws IOException {
-    EntityReference ref =
-        EntityUtil.getService(
-            daoCollection.relationshipDAO(), Entity.INGESTION, ingestion.getId(), toInclude(ingestion));
-    return getService(Objects.requireNonNull(ref));
-  }
-
-  private EntityReference getService(EntityReference service) throws IOException {
-    if (service.getType().equalsIgnoreCase(Entity.DATABASE_SERVICE)) {
-      return daoCollection.dbServiceDAO().findEntityReferenceById(service.getId());
-    } else if (service.getType().equalsIgnoreCase(Entity.DASHBOARD_SERVICE)) {
-      return daoCollection.dashboardServiceDAO().findEntityReferenceById(service.getId());
-    }
-    throw new IllegalArgumentException(
-        CatalogExceptionMessage.invalidServiceEntity(service.getType(), Entity.INGESTION));
+    return h(ingestion).getContainer(List.of(Entity.DATABASE_SERVICE, Entity.DASHBOARD_SERVICE));
   }
 
   public static class IngestionEntityInterface implements EntityInterface<Ingestion> {
