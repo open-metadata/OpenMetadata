@@ -1,3 +1,6 @@
+install_dev:
+	python -m pip install ".[dev]"
+
 generate:
 	mkdir -p src/metadata/generated
 	python3 -m pip install --upgrade pip setuptools
