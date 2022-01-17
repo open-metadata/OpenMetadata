@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Team } from 'Models';
+import { FormErrorData, Team } from 'Models';
 import React, {
   forwardRef,
   useEffect,
@@ -20,16 +20,18 @@ import React, {
   useState,
 } from 'react';
 import MarkdownWithPreview from '../../components/common/editor/MarkdownWithPreview';
+import { errorMsg } from '../../utils/CommonUtils';
 
 type FormProp = {
   saveData: (value: {}) => void;
   initialData: Team;
+  errorData?: FormErrorData;
 };
 type EditorContentRef = {
   getEditorContent: () => string;
 };
 const Form: React.FC<FormProp> = forwardRef(
-  ({ saveData, initialData }: FormProp, ref): JSX.Element => {
+  ({ saveData, initialData, errorData }: FormProp, ref): JSX.Element => {
     const [data, setData] = useState<Team>({
       name: initialData.name,
       description: initialData.description,
@@ -40,6 +42,7 @@ const Form: React.FC<FormProp> = forwardRef(
       users: initialData.users || [],
     });
 
+    const isMounting = useRef<boolean>(true);
     const markdownRef = useRef<EditorContentRef>();
 
     const onChangeHadler = (
@@ -60,10 +63,20 @@ const Form: React.FC<FormProp> = forwardRef(
     }));
 
     useEffect(() => {
-      saveData({
-        ...data,
-      });
+      if (!isMounting.current) {
+        saveData({
+          ...data,
+          name: data.name.trim(),
+          displayName: data.displayName.trim(),
+          description: data.description.trim(),
+        });
+      }
     }, [data]);
+
+    // alwyas Keep this useEffect at the end...
+    useEffect(() => {
+      isMounting.current = false;
+    }, []);
 
     return (
       <div className="tw-w-full tw-flex ">
@@ -72,7 +85,6 @@ const Form: React.FC<FormProp> = forwardRef(
             <div className="tw-mb-4">
               <label className="tw-form-label required-field">Name</label>
               <input
-                required
                 autoComplete="off"
                 className="tw-form-inputs tw-px-3 tw-py-1"
                 name="name"
@@ -81,13 +93,13 @@ const Form: React.FC<FormProp> = forwardRef(
                 value={data.name}
                 onChange={onChangeHadler}
               />
+              {errorData?.name && errorMsg(errorData.name)}
             </div>
             <div className="tw-mb-4">
               <label className="tw-form-label required-field">
                 Display name
               </label>
               <input
-                required
                 autoComplete="off"
                 className="tw-form-inputs tw-px-3 tw-py-1"
                 name="displayName"
@@ -96,11 +108,10 @@ const Form: React.FC<FormProp> = forwardRef(
                 value={data.displayName}
                 onChange={onChangeHadler}
               />
+              {errorData?.displayName && errorMsg(errorData.displayName)}
             </div>
             <div>
-              <label className="tw-form-label required-field">
-                Description
-              </label>
+              <label className="tw-form-label">Description</label>
               <MarkdownWithPreview ref={markdownRef} value={data.description} />
             </div>
           </div>

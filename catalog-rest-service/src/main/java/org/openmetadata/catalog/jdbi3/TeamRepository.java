@@ -15,13 +15,13 @@ package org.openmetadata.catalog.jdbi3;
 
 import static org.openmetadata.catalog.jdbi3.Relationship.OWNS;
 import static org.openmetadata.catalog.util.EntityUtil.entityReferenceMatch;
+import static org.openmetadata.catalog.util.EntityUtil.toBoolean;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -78,8 +78,8 @@ public class TeamRepository extends EntityRepository<Team> {
     if (!fields.contains("profile")) {
       team.setProfile(null);
     }
-    team.setUsers(fields.contains("users") ? getUsers(team.getId().toString()) : null);
-    team.setOwns(fields.contains("owns") ? getOwns(team.getId().toString()) : null);
+    team.setUsers(fields.contains("users") ? getUsers(team) : null);
+    team.setOwns(fields.contains("owns") ? getOwns(team) : null);
     return team;
   }
 
@@ -119,7 +119,6 @@ public class TeamRepository extends EntityRepository<Team> {
       daoCollection
           .relationshipDAO()
           .insert(team.getId().toString(), user.getId().toString(), "team", "user", Relationship.HAS.ordinal());
-      System.out.println("Team " + team.getName() + " has user " + user.getName());
     }
   }
 
@@ -128,8 +127,12 @@ public class TeamRepository extends EntityRepository<Team> {
     return new TeamUpdater(original, updated, patchOperation);
   }
 
-  private List<EntityReference> getUsers(String id) throws IOException {
-    List<String> userIds = daoCollection.relationshipDAO().findTo(id, Entity.TEAM, Relationship.HAS.ordinal(), "user");
+  private List<EntityReference> getUsers(Team team) throws IOException {
+    List<String> userIds =
+        daoCollection
+            .relationshipDAO()
+            .findTo(
+                team.getId().toString(), Entity.TEAM, Relationship.HAS.ordinal(), "user", toBoolean(toInclude(team)));
     List<EntityReference> users = new ArrayList<>();
     for (String userId : userIds) {
       users.add(daoCollection.userDAO().findEntityReferenceById(UUID.fromString(userId)));
@@ -137,10 +140,12 @@ public class TeamRepository extends EntityRepository<Team> {
     return users;
   }
 
-  private List<EntityReference> getOwns(String teamId) throws IOException {
+  private List<EntityReference> getOwns(Team team) throws IOException {
     // Compile entities owned by the team
     return EntityUtil.populateEntityReferences(
-        daoCollection.relationshipDAO().findTo(teamId, Entity.TEAM, OWNS.ordinal()));
+        daoCollection
+            .relationshipDAO()
+            .findTo(team.getId().toString(), Entity.TEAM, OWNS.ordinal(), toBoolean(toInclude(team))));
   }
 
   public static class TeamEntityInterface implements EntityInterface<Team> {
@@ -186,7 +191,7 @@ public class TeamRepository extends EntityRepository<Team> {
     }
 
     @Override
-    public Date getUpdatedAt() {
+    public long getUpdatedAt() {
       return entity.getUpdatedAt();
     }
 
@@ -227,7 +232,7 @@ public class TeamRepository extends EntityRepository<Team> {
     }
 
     @Override
-    public void setUpdateDetails(String updatedBy, Date updatedAt) {
+    public void setUpdateDetails(String updatedBy, long updatedAt) {
       entity.setUpdatedBy(updatedBy);
       entity.setUpdatedAt(updatedAt);
     }

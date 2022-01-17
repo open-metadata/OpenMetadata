@@ -72,6 +72,8 @@ export interface CreateMlModel {
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
  *
+ * Description of the Data Source (e.g., a Table)
+ *
  * Owner of this database
  */
 export interface EntityReference {
@@ -145,6 +147,10 @@ export enum FeatureType {
  * This schema defines the sources of a ML Feature.
  */
 export interface FeatureSource {
+  /**
+   * Description of the Data Source (e.g., a Table)
+   */
+  dataSource?: EntityReference;
   /**
    * Data type of the source (int, date etc.).
    */

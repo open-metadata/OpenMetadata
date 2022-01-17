@@ -388,7 +388,7 @@ export const feedSummaryFromatter = (
         );
       summary = (
         <p key={uniqueId()}>
-          {`Assigned Ownership to`}
+          {`Assigned ownership to`}
           {ownerText}
         </p>
       );
@@ -416,7 +416,7 @@ export const feedSummaryFromatter = (
     case fieldChange?.name === 'followers': {
       summary = (
         <p key={uniqueId()}>{`${
-          fieldChange?.newValue ? 'Started Following' : 'Unfollowed'
+          fieldChange?.newValue ? 'Started following' : 'Unfollowed'
         } ${_entityName}`}</p>
       );
 
@@ -443,6 +443,21 @@ export const getFeedSummary = (
 
   return (
     <Fragment>
+      {fieldsDeleted?.length ? (
+        <div className="tw-mb-2">
+          {fieldsDeleted?.map((d) => (
+            <Fragment key={uniqueId()}>
+              {feedSummaryFromatter(
+                d,
+                ChangeType.REMOVED,
+                entityName,
+                entityType,
+                entityFQN
+              )}
+            </Fragment>
+          ))}
+        </div>
+      ) : null}
       {fieldsAdded?.length > 0 ? (
         <div className="tw-mb-2">
           {fieldsAdded?.map((a) => (
@@ -465,21 +480,6 @@ export const getFeedSummary = (
               {feedSummaryFromatter(
                 u,
                 ChangeType.UPDATED,
-                entityName,
-                entityType,
-                entityFQN
-              )}
-            </Fragment>
-          ))}
-        </div>
-      ) : null}
-      {fieldsDeleted?.length ? (
-        <div className="tw-mb-2">
-          {fieldsDeleted?.map((d) => (
-            <Fragment key={uniqueId()}>
-              {feedSummaryFromatter(
-                d,
-                ChangeType.REMOVED,
                 entityName,
                 entityType,
                 entityFQN

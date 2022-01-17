@@ -33,6 +33,7 @@ import static org.openmetadata.catalog.type.ColumnDataType.CHAR;
 import static org.openmetadata.catalog.type.ColumnDataType.FLOAT;
 import static org.openmetadata.catalog.type.ColumnDataType.INT;
 import static org.openmetadata.catalog.type.ColumnDataType.STRUCT;
+import static org.openmetadata.catalog.util.EntityUtil.tagLabelMatch;
 import static org.openmetadata.catalog.util.RestUtil.DATE_FORMAT;
 import static org.openmetadata.catalog.util.TestUtils.NON_EXISTENT_ENTITY;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType;
@@ -101,6 +102,7 @@ import org.openmetadata.catalog.type.TableJoins;
 import org.openmetadata.catalog.type.TableProfile;
 import org.openmetadata.catalog.type.TableType;
 import org.openmetadata.catalog.type.TagLabel;
+import org.openmetadata.catalog.type.TagLabel.LabelType;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil;
@@ -118,7 +120,7 @@ public class TableResourceTest extends EntityResourceTest<Table> {
           getColumn("c3", BIGINT, USER_BANK_ACCOUNT_TAG_LABEL));
 
   public TableResourceTest() {
-    super(Entity.TABLE, Table.class, TableList.class, "tables", TableResource.FIELDS, true, true, true);
+    super(Entity.TABLE, Table.class, TableList.class, "tables", TableResource.FIELDS, true, true, true, true);
   }
 
   @BeforeAll
@@ -1053,8 +1055,8 @@ public class TableResourceTest extends EntityResourceTest<Table> {
   }
 
   /**
-   * @see EntityResourceTest#patch_entityAttributes_200_ok(TestInfo) for other patch related tests for patching display,
-   *     description, owner, and tags
+   * See EntityResourceTest#patch_entityAttributes_200_ok(TestInfo) for other patch related tests for patching display,
+   * description, owner, and tags
    */
   @Test
   void patch_tableAttributes_200_ok(TestInfo test) throws IOException {
@@ -1067,9 +1069,6 @@ public class TableResourceTest extends EntityResourceTest<Table> {
                 .withConstraintType(ConstraintType.UNIQUE)
                 .withColumns(List.of(COLUMNS.get(0).getName())));
 
-    //
-    // Add description, tableType, and tableConstraints when previously they were null
-    //
     String originalJson = JsonUtils.pojoToJson(table);
     ChangeDescription change = getChangeDescription(table.getVersion());
 
@@ -1166,6 +1165,38 @@ public class TableResourceTest extends EntityResourceTest<Table> {
   }
 
   @Test
+  void patch_tableColumnTags_200_ok(TestInfo test) throws IOException {
+    Column c1 = getColumn("c1", INT, null);
+    CreateTable create = create(test).withColumns(List.of(c1));
+    Table table = createAndCheckEntity(create, adminAuthHeaders());
+
+    // Add a primary tag and derived tag both. The tag list must include derived tags only once.
+    String json = JsonUtils.pojoToJson(table);
+    table.getColumns().get(0).withTags(List.of(PERSONAL_DATA_TAG_LABEL, USER_ADDRESS_TAG_LABEL));
+    Table updatedTable = patchEntity(table.getId(), json, table, adminAuthHeaders());
+
+    // Ensure only three tag labels are found - Manual tags PersonalData.Personal, User.Address
+    // and a derived tag PII.Sensitive
+    List<TagLabel> updateTags = updatedTable.getColumns().get(0).getTags();
+    assertEquals(3, updateTags.size());
+
+    TagLabel userAddress =
+        updateTags.stream().filter(t -> tagLabelMatch.test(t, USER_ADDRESS_TAG_LABEL)).findAny().orElse(null);
+    assertNotNull(userAddress);
+    assertEquals(LabelType.MANUAL, userAddress.getLabelType());
+
+    TagLabel personData =
+        updateTags.stream().filter(t -> tagLabelMatch.test(t, PERSONAL_DATA_TAG_LABEL)).findAny().orElse(null);
+    assertNotNull(personData);
+    assertEquals(LabelType.MANUAL, personData.getLabelType());
+
+    TagLabel piiSensitive =
+        updateTags.stream().filter(t -> tagLabelMatch.test(t, PII_SENSITIVE_TAG_LABEL)).findAny().orElse(null);
+    assertNotNull(piiSensitive);
+    assertEquals(LabelType.DERIVED, piiSensitive.getLabelType());
+  }
+
+  @Test
   void put_addDeleteLocation_200(TestInfo test) throws IOException {
     Table table = createAndCheckEntity(create(test), adminAuthHeaders());
 
@@ -1176,6 +1207,27 @@ public class TableResourceTest extends EntityResourceTest<Table> {
     addAndCheckLocation(table, location.getId(), OK, userAuthHeaders());
     // Delete location and make sure it is deleted
     deleteAndCheckLocation(table, userAuthHeaders());
+  }
+
+  @Test
+  void put_addLocationAndDeleteTable_200(TestInfo test) throws IOException {
+    Table table = createAndCheckEntity(create(test), adminAuthHeaders());
+
+    // Add location to the table
+    CreateLocation create =
+        new CreateLocation().withName(getLocationName(test)).withService(AWS_STORAGE_SERVICE_REFERENCE);
+    Location location = createLocation(create, adminAuthHeaders());
+    addAndCheckLocation(table, location.getId(), OK, userAuthHeaders());
+    deleteEntity(table.getId(), adminAuthHeaders());
+    Map<String, String> queryParams =
+        new HashMap<>() {
+          {
+            put("include", "all");
+          }
+        };
+    table = getEntity(table.getId(), queryParams, "location", adminAuthHeaders());
+    assertNotNull(table.getLocation(), "The location is missing");
+    assertEquals(location.getId(), table.getLocation().getId(), "The locations are different");
   }
 
   private void deleteAndCheckLocation(Table table, Map<String, String> authHeaders) throws HttpResponseException {
@@ -1194,7 +1246,7 @@ public class TableResourceTest extends EntityResourceTest<Table> {
     WebTarget target = CatalogApplicationTest.getResource(String.format("tables/%s/location", table.getId()));
     TestUtils.put(target, locationId.toString(), status, authHeaders);
 
-    // GET .../tables/{tableId} returns newly added follower
+    // GET .../tables/{tableId} returns newly added location
     Table getTable = getEntity(table.getId(), "location", authHeaders);
     TestUtils.validateEntityReference(getTable.getLocation());
     assertEquals(
@@ -1248,7 +1300,7 @@ public class TableResourceTest extends EntityResourceTest<Table> {
     // GET .../tables/{id}
     table =
         byName
-            ? getEntityByName(table.getFullyQualifiedName(), null, adminAuthHeaders())
+            ? getEntityByName(table.getFullyQualifiedName(), null, null, adminAuthHeaders())
             : getEntity(table.getId(), null, adminAuthHeaders());
     assertFields(table, null);
 
@@ -1256,7 +1308,7 @@ public class TableResourceTest extends EntityResourceTest<Table> {
     String fields = "columns,tableConstraints";
     table =
         byName
-            ? getEntityByName(table.getFullyQualifiedName(), fields, adminAuthHeaders())
+            ? getEntityByName(table.getFullyQualifiedName(), null, fields, adminAuthHeaders())
             : getEntity(table.getId(), fields, adminAuthHeaders());
     assertFields(table, fields);
 
@@ -1264,7 +1316,7 @@ public class TableResourceTest extends EntityResourceTest<Table> {
     fields = "columns,usageSummary,owner,tags";
     table =
         byName
-            ? getEntityByName(table.getFullyQualifiedName(), fields, adminAuthHeaders())
+            ? getEntityByName(table.getFullyQualifiedName(), null, fields, adminAuthHeaders())
             : getEntity(table.getId(), fields, adminAuthHeaders());
     assertEquals(table.getOwner().getId(), USER_OWNER1.getId());
     assertEquals(table.getOwner().getType(), USER_OWNER1.getType());

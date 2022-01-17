@@ -147,6 +147,17 @@ public final class Entity {
     return entityRepository.getEntityInterface(entity);
   }
 
+  public static <T> EntityInterface<T> getEntityInterface(EntityReference entityReference)
+      throws IOException, ParseException {
+    if (entityReference == null) {
+      return null;
+    }
+    String entityName = entityReference.getType();
+    EntityRepository<T> entityRepository = getEntityRepository(entityName);
+    T entity = entityRepository.get(null, entityReference.getId().toString(), EntityUtil.Fields.EMPTY_FIELDS);
+    return entityRepository.getEntityInterface(entity);
+  }
+
   /**
    * Retrieve the entity using id from given entity reference and fields
    *

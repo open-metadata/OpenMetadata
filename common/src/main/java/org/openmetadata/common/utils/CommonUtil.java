@@ -15,12 +15,14 @@ package org.openmetadata.common.utils;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.Calendar;
 import java.util.Collection;
 import java.util.Date;
@@ -31,6 +33,8 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -123,11 +127,29 @@ public final class CommonUtil {
     return givenDate.after(startDate) && givenDate.before(endDate);
   }
 
+  /** Parse a date using given DataFormat */
   public static Date parseDate(String date, DateFormat dateFormat) {
     try {
       return dateFormat.parse(date);
     } catch (ParseException e) {
       throw new RuntimeException(e);
+    }
+  }
+
+  public static final String HMAC_SHA256_ALGORITHM = "HmacSHA256";
+
+  /** Get SHA256 Hash-based Message Authentication Code */
+  public static String calculateHMAC(String secretKey, String message) {
+    //    return message;
+    try {
+      Mac mac = Mac.getInstance(HMAC_SHA256_ALGORITHM);
+      SecretKeySpec secretKeySpec =
+          new SecretKeySpec(secretKey.getBytes(StandardCharsets.UTF_8), HMAC_SHA256_ALGORITHM);
+      mac.init(secretKeySpec);
+      byte[] hmacSha256 = mac.doFinal(message.getBytes(StandardCharsets.UTF_8));
+      return Base64.getEncoder().encodeToString(hmacSha256);
+    } catch (Exception e) {
+      throw new RuntimeException("Failed to calculate " + HMAC_SHA256_ALGORITHM, e);
     }
   }
 }

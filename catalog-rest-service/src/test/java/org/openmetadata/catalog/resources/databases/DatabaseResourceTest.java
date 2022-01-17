@@ -53,7 +53,15 @@ import org.openmetadata.catalog.util.TestUtils;
 public class DatabaseResourceTest extends EntityResourceTest<Database> {
   public DatabaseResourceTest() {
     super(
-        Entity.DATABASE, Database.class, DatabaseList.class, "databases", DatabaseResource.FIELDS, false, true, false);
+        Entity.DATABASE,
+        Database.class,
+        DatabaseList.class,
+        "databases",
+        DatabaseResource.FIELDS,
+        false,
+        true,
+        false,
+        true);
   }
 
   @BeforeAll
@@ -173,7 +181,7 @@ public class DatabaseResourceTest extends EntityResourceTest<Database> {
     String fields = "owner";
     database =
         byName
-            ? getEntityByName(database.getFullyQualifiedName(), fields, adminAuthHeaders())
+            ? getEntityByName(database.getFullyQualifiedName(), null, fields, adminAuthHeaders())
             : getEntity(database.getId(), fields, adminAuthHeaders());
     assertListNotNull(database.getOwner(), database.getService(), database.getServiceType());
     assertListNull(database.getTables(), database.getUsageSummary());
@@ -182,7 +190,7 @@ public class DatabaseResourceTest extends EntityResourceTest<Database> {
     fields = "owner,tables,usageSummary";
     database =
         byName
-            ? getEntityByName(database.getFullyQualifiedName(), fields, adminAuthHeaders())
+            ? getEntityByName(database.getFullyQualifiedName(), null, fields, adminAuthHeaders())
             : getEntity(database.getId(), fields, adminAuthHeaders());
     assertListNotNull(
         database.getOwner(),

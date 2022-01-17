@@ -61,18 +61,20 @@ base_plugins = {
 plugins: Dict[str, Set[str]] = {
     "amundsen": {"neo4j~=4.4.0"},
     "athena": {"PyAthena[SQLAlchemy]"},
-    "bigquery": {"openmetadata-sqlalchemy-bigquery==0.2.2"},
+    "bigquery": {"sqlalchemy-bigquery==1.2.2"},
     "bigquery-usage": {"google-cloud-logging", "cachetools"},
-    "docker": {"docker==5.0.3"},
+    # "docker": {"docker==5.0.3"},
+    "docker": {"python_on_whales==0.34.0"},
     "dbt": {},
     "druid": {"pydruid>=0.6.2"},
     "elasticsearch": {"elasticsearch~=7.13.1"},
     "glue": {"boto3~=1.19.12"},
     "hive": {
-        "openmetadata-sqlalchemy-hive==0.2.0",
+        "pyhive~=0.6.3",
         "thrift~=0.13.0",
         "sasl==0.3.1",
         "thrift-sasl==0.4.3",
+        "presto-types-parser==0.0.2"
     },
     "kafka": {"confluent_kafka>=1.5.0", "fastavro>=1.2.0"},
     "ldap-users": {"ldap3==2.9.1"},
@@ -86,12 +88,12 @@ plugins: Dict[str, Set[str]] = {
     "postgres": {"pymysql>=1.0.2", "psycopg2-binary", "GeoAlchemy2"},
     "redash": {"redash-toolbelt==0.1.4"},
     "redshift": {
-        "openmetadata-sqlalchemy-redshift==0.2.1",
+        "sqlalchemy-redshift==0.8.9",
         "psycopg2-binary",
         "GeoAlchemy2",
     },
     "redshift-usage": {
-        "openmetadata-sqlalchemy-redshift==0.2.1",
+        "sqlalchemy-redshift==0.8.9",
         "psycopg2-binary",
         "GeoAlchemy2",
     },
@@ -134,7 +136,7 @@ test = {
 build_options = {"includes": ["_cffi_backend"]}
 setup(
     name="openmetadata-ingestion",
-    version="0.6.0.dev1",
+    version="0.6.1.dev0",
     url="https://open-metadata.org/",
     author="OpenMetadata Committers",
     license="Apache License 2.0",

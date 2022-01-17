@@ -82,7 +82,7 @@ public class UserResourceTest extends EntityResourceTest<User> {
   final Profile PROFILE = new Profile().withImages(new ImageList().withImage(URI.create("http://image.com")));
 
   public UserResourceTest() {
-    super(Entity.USER, User.class, UserList.class, "users", UserResource.FIELDS, false, false, false);
+    super(Entity.USER, User.class, UserList.class, "users", UserResource.FIELDS, false, false, false, false);
   }
 
   @Test
@@ -521,7 +521,7 @@ public class UserResourceTest extends EntityResourceTest<User> {
     String fields = "profile";
     user =
         byName
-            ? getEntityByName(user.getName(), fields, adminAuthHeaders())
+            ? getEntityByName(user.getName(), null, fields, adminAuthHeaders())
             : getEntity(user.getId(), fields, adminAuthHeaders());
     assertNotNull(user.getProfile());
     assertNull(user.getTeams());
@@ -530,7 +530,7 @@ public class UserResourceTest extends EntityResourceTest<User> {
     fields = "profile, teams";
     user =
         byName
-            ? getEntityByName(user.getName(), fields, adminAuthHeaders())
+            ? getEntityByName(user.getName(), null, fields, adminAuthHeaders())
             : getEntity(user.getId(), fields, adminAuthHeaders());
     assertListNotNull(user.getProfile(), user.getTeams());
   }
@@ -538,6 +538,17 @@ public class UserResourceTest extends EntityResourceTest<User> {
   @Override
   public Object createRequest(String name, String description, String displayName, EntityReference owner) {
     return create(name).withDescription(description).withDisplayName(displayName).withProfile(PROFILE);
+  }
+
+  @Override
+  public Object addAllRelationships(TestInfo test, Object create) throws HttpResponseException {
+    TeamResourceTest teamResourceTest = new TeamResourceTest();
+    Team team1 = createTeam(teamResourceTest.create(test), adminAuthHeaders());
+    ((CreateUser) create).setTeams(List.of(team1.getId()));
+    RoleResourceTest roleResourceTest = new RoleResourceTest();
+    Role role1 = createRole(roleResourceTest.create(test), adminAuthHeaders());
+    ((CreateUser) create).setRoles(List.of(role1.getId()));
+    return create;
   }
 
   @Override

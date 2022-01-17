@@ -58,6 +58,7 @@ public class IngestionResourceTest extends EntityOperationsResourceTest<Ingestio
         IngestionResource.FIELDS,
         false,
         true,
+        true,
         true);
   }
 
@@ -260,7 +261,7 @@ public class IngestionResourceTest extends EntityOperationsResourceTest<Ingestio
     String fields = "owner";
     ingestion =
         byName
-            ? getEntityByName(ingestion.getFullyQualifiedName(), fields, adminAuthHeaders())
+            ? getEntityByName(ingestion.getFullyQualifiedName(), null, fields, adminAuthHeaders())
             : getEntity(ingestion.getId(), fields, adminAuthHeaders());
     assertListNotNull(ingestion.getOwner(), ingestion.getService());
   }

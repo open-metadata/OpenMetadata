@@ -13,12 +13,14 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import static org.openmetadata.catalog.util.EntityUtil.toBoolean;
+
 import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
@@ -29,6 +31,7 @@ import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.resources.policies.PolicyResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.PolicyType;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
@@ -41,6 +44,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
       new Fields(PolicyResource.FIELD_LIST, "displayName,description,owner,policyUrl,enabled,rules,location");
   private static final Fields POLICY_PATCH_FIELDS =
       new Fields(PolicyResource.FIELD_LIST, "displayName,description,owner,policyUrl,enabled,rules,location");
+  public static final String ENABLED = "enabled";
 
   public PolicyRepository(CollectionDAO dao) {
     super(
@@ -67,11 +71,16 @@ public class PolicyRepository extends EntityRepository<Policy> {
 
   /** Find the location to which this policy applies to. * */
   @Transaction
-  private EntityReference getLocationForPolicy(UUID policyId) throws IOException {
+  private EntityReference getLocationForPolicy(Policy policy) throws IOException {
     List<String> result =
         daoCollection
             .relationshipDAO()
-            .findTo(policyId.toString(), Entity.POLICY, Relationship.APPLIED_TO.ordinal(), Entity.LOCATION);
+            .findTo(
+                policy.getId().toString(),
+                Entity.POLICY,
+                Relationship.APPLIED_TO.ordinal(),
+                Entity.LOCATION,
+                toBoolean(toInclude(policy)));
     // There is at most one location for a policy.
     return result.size() == 1
         ? daoCollection.locationDAO().findEntityReferenceById(UUID.fromString(result.get(0)))
@@ -84,9 +93,9 @@ public class PolicyRepository extends EntityRepository<Policy> {
     policy.setDescription(fields.contains("description") ? policy.getDescription() : null);
     policy.setOwner(fields.contains("owner") ? getOwner(policy) : null);
     policy.setPolicyUrl(fields.contains("policyUrl") ? policy.getPolicyUrl() : null);
-    policy.setEnabled(fields.contains("enabled") ? policy.getEnabled() : null);
+    policy.setEnabled(fields.contains(ENABLED) ? policy.getEnabled() : null);
     policy.setRules(fields.contains("rules") ? policy.getRules() : null);
-    policy.setLocation(fields.contains("location") ? getLocationForPolicy(policy.getId()) : null);
+    policy.setLocation(fields.contains("location") ? getLocationForPolicy(policy) : null);
     return policy;
   }
 
@@ -129,6 +138,10 @@ public class PolicyRepository extends EntityRepository<Policy> {
     EntityReference owner = policy.getOwner();
     EntityReference location = policy.getLocation();
     URI href = policy.getHref();
+
+    if (policy.getFullyQualifiedName() == null) {
+      policy.setFullyQualifiedName(getFQN(policy));
+    }
 
     // Don't store owner, location and href as JSON. Build it on the fly based on relationships
     policy.withOwner(null).withLocation(null).withHref(null);
@@ -187,12 +200,12 @@ public class PolicyRepository extends EntityRepository<Policy> {
   }
 
   private List<Policy> getAccessControlPolicies() throws IOException {
-    EntityUtil.Fields fields = new EntityUtil.Fields(List.of("policyType", "rules"));
-    List<String> jsons = daoCollection.policyDAO().listAfter(null, Integer.MAX_VALUE, "");
+    EntityUtil.Fields fields = new EntityUtil.Fields(List.of("policyType", "rules", ENABLED));
+    List<String> jsons = daoCollection.policyDAO().listAfter(null, Integer.MAX_VALUE, "", Include.NON_DELETED);
     List<Policy> policies = new ArrayList<>(jsons.size());
     for (String json : jsons) {
       Policy policy = setFields(JsonUtils.readValue(json, Policy.class), fields);
-      if (policy.getPolicyType() != PolicyType.AccessControl) {
+      if (!policy.getPolicyType().equals(PolicyType.AccessControl)) {
         continue;
       }
       policies.add(policy);
@@ -200,10 +213,17 @@ public class PolicyRepository extends EntityRepository<Policy> {
     return policies;
   }
 
+  /**
+   * Helper method to get Access Control Policies Rules. This method returns only rules for policies that are enabled.
+   */
   public List<Rule> getAccessControlPolicyRules() throws IOException {
     List<Policy> policies = getAccessControlPolicies();
     List<Rule> rules = new ArrayList<>();
     for (Policy policy : policies) {
+      if (!Boolean.TRUE.equals(policy.getEnabled())) {
+        // Skip if policy is not enabled.
+        continue;
+      }
       List<Object> ruleObjects = policy.getRules();
       for (Object ruleObject : ruleObjects) {
         Rule rule = JsonUtils.readValue(JsonUtils.getJsonStructure(ruleObject).toString(), Rule.class);
@@ -211,6 +231,10 @@ public class PolicyRepository extends EntityRepository<Policy> {
       }
     }
     return rules;
+  }
+
+  public static List<Object> getRuleObjects(List<Rule> rules) {
+    return rules.stream().map(Object.class::cast).collect(Collectors.toList());
   }
 
   private void setLocation(Policy policy, EntityReference location) {
@@ -279,7 +303,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
     }
 
     @Override
-    public Date getUpdatedAt() {
+    public long getUpdatedAt() {
       return entity.getUpdatedAt();
     }
 
@@ -319,7 +343,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
     }
 
     @Override
-    public void setUpdateDetails(String updatedBy, Date updatedAt) {
+    public void setUpdateDetails(String updatedBy, long updatedAt) {
       entity.setUpdatedBy(updatedBy);
       entity.setUpdatedAt(updatedAt);
     }
@@ -368,7 +392,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
         throw new IllegalArgumentException(CatalogExceptionMessage.readOnlyAttribute(Entity.POLICY, "policyType"));
       }
       recordChange("policyUrl", original.getEntity().getPolicyUrl(), updated.getEntity().getPolicyUrl());
-      recordChange("enabled", original.getEntity().getEnabled(), updated.getEntity().getEnabled());
+      recordChange(ENABLED, original.getEntity().getEnabled(), updated.getEntity().getEnabled());
       recordChange("rules", original.getEntity().getRules(), updated.getEntity().getRules());
       updateLocation(original.getEntity(), updated.getEntity());
     }

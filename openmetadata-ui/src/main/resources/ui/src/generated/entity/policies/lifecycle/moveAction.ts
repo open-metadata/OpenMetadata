@@ -28,7 +28,7 @@ export interface MoveAction {
   /**
    * Location where this entity needs to be moved to.
    */
-  destination: Destination;
+  destination?: Destination;
 }
 
 /**
@@ -60,6 +60,10 @@ export interface Location {
    * Change that lead to this version of the entity.
    */
   changeDescription?: ChangeDescription;
+  /**
+   * When `true` indicates the entity has been soft deleted.
+   */
+  deleted?: boolean;
   /**
    * Description of a location.
    */
@@ -107,9 +111,10 @@ export interface Location {
    */
   tags?: TagLabel[];
   /**
-   * Last update time corresponding to the new version of the entity.
+   * Last update time corresponding to the new version of the entity in Unix epoch time
+   * milliseconds.
    */
-  updatedAt?: Date;
+  updatedAt?: number;
   /**
    * User who made the update.
    */
@@ -338,6 +343,10 @@ export interface StorageService {
    */
   changeDescription?: ChangeDescription;
   /**
+   * When `true` indicates the entity has been soft deleted.
+   */
+  deleted?: boolean;
+  /**
    * Description of a storage service instance.
    */
   description?: string;
@@ -362,9 +371,10 @@ export interface StorageService {
    */
   serviceType: StorageServiceType;
   /**
-   * Last update time corresponding to the new version of the entity.
+   * Last update time corresponding to the new version of the entity in Unix epoch time
+   * milliseconds.
    */
-  updatedAt?: Date;
+  updatedAt?: number;
   /**
    * User who made the update.
    */

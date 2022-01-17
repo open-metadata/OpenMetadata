@@ -54,7 +54,16 @@ import org.openmetadata.catalog.util.TestUtils;
 
 public class LocationResourceTest extends EntityResourceTest<Location> {
   public LocationResourceTest() {
-    super(Entity.LOCATION, Location.class, LocationList.class, "locations", LocationResource.FIELDS, true, true, true);
+    super(
+        Entity.LOCATION,
+        Location.class,
+        LocationList.class,
+        "locations",
+        LocationResource.FIELDS,
+        true,
+        true,
+        true,
+        true);
   }
 
   @BeforeAll
@@ -283,7 +292,7 @@ public class LocationResourceTest extends EntityResourceTest<Location> {
     String fields = "owner";
     location =
         byName
-            ? getEntityByName(location.getFullyQualifiedName(), fields, adminAuthHeaders())
+            ? getEntityByName(location.getFullyQualifiedName(), null, fields, adminAuthHeaders())
             : getEntity(location.getId(), fields, adminAuthHeaders());
     assertListNotNull(location.getOwner(), location.getService(), location.getServiceType());
     // TODO add other fields

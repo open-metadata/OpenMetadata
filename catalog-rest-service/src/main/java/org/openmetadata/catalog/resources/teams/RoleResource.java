@@ -28,7 +28,6 @@ import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -51,6 +50,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
+import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.api.teams.CreateRole;
 import org.openmetadata.catalog.entity.teams.Role;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
@@ -59,6 +59,7 @@ import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
+import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.RestUtil.PatchResponse;
@@ -78,6 +79,11 @@ public class RoleResource {
     Objects.requireNonNull(dao, "RoleRepository must not be null");
     this.dao = new RoleRepository(dao);
     this.authorizer = authorizer;
+  }
+
+  @SuppressWarnings("unused") // Method used for reflection
+  public void initialize(CatalogApplicationConfig config) throws IOException {
+    dao.initSeedDataFromResources();
   }
 
   public static class RoleList extends ResultList<Role> {
@@ -121,16 +127,22 @@ public class RoleResource {
           String before,
       @Parameter(description = "Returns list of tables after this cursor", schema = @Schema(type = "string"))
           @QueryParam("after")
-          String after)
+          String after,
+      @Parameter(
+              description = "Include all, deleted, or non-deleted entities.",
+              schema = @Schema(implementation = Include.class))
+          @QueryParam("include")
+          @DefaultValue("non-deleted")
+          Include include)
       throws IOException, GeneralSecurityException, ParseException {
     RestUtil.validateCursors(before, after);
     EntityUtil.Fields fields = new EntityUtil.Fields(FIELD_LIST, null);
 
     ResultList<Role> roles;
     if (before != null) { // Reverse paging
-      roles = dao.listBefore(uriInfo, fields, null, limitParam, before); // Ask for one extra entry
+      roles = dao.listBefore(uriInfo, fields, null, limitParam, before, include); // Ask for one extra entry
     } else { // Forward paging or first page
-      roles = dao.listAfter(uriInfo, fields, null, limitParam, after);
+      roles = dao.listAfter(uriInfo, fields, null, limitParam, after, include);
     }
     return roles;
   }
@@ -169,10 +181,19 @@ public class RoleResource {
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Role.class))),
         @ApiResponse(responseCode = "404", description = "Role for instance {id} is not found")
       })
-  public Role get(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("id") String id)
+  public Role get(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @PathParam("id") String id,
+      @Parameter(
+              description = "Include all, deleted, or non-deleted entities.",
+              schema = @Schema(implementation = Include.class))
+          @QueryParam("include")
+          @DefaultValue("non-deleted")
+          Include include)
       throws IOException, ParseException {
     EntityUtil.Fields fields = new EntityUtil.Fields(FIELD_LIST, null);
-    return dao.get(uriInfo, id, fields);
+    return dao.get(uriInfo, id, fields, include);
   }
 
   @GET
@@ -190,10 +211,18 @@ public class RoleResource {
         @ApiResponse(responseCode = "404", description = "Role for instance {name} is not found")
       })
   public Role getByName(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("name") String name)
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @PathParam("name") String name,
+      @Parameter(
+              description = "Include all, deleted, or non-deleted entities.",
+              schema = @Schema(implementation = Include.class))
+          @QueryParam("include")
+          @DefaultValue("non-deleted")
+          Include include)
       throws IOException, ParseException {
     EntityUtil.Fields fields = new EntityUtil.Fields(FIELD_LIST, null);
-    return dao.getByName(uriInfo, name, fields);
+    return dao.getByName(uriInfo, name, fields, include);
   }
 
   @GET
@@ -319,6 +348,6 @@ public class RoleResource {
         .withDescription(ct.getDescription())
         .withDisplayName(ct.getDisplayName())
         .withUpdatedBy(securityContext.getUserPrincipal().getName())
-        .withUpdatedAt(new Date());
+        .withUpdatedAt(System.currentTimeMillis());
   }
 }

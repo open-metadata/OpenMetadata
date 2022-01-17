@@ -16,10 +16,11 @@ import { observer } from 'mobx-react';
 import React from 'react';
 import { useHistory } from 'react-router-dom';
 import appState from '../../AppState';
-import PageContainer from '../../components/containers/PageContainer';
+import loginBG from '../../assets/img/login-bg.jpeg';
 import { ROUTES } from '../../constants/constants';
 import { AuthTypes } from '../../enums/signin.enum';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
+import LoginCarousel from './LoginCarousel';
 
 const SigninPage = () => {
   const history = useHistory();
@@ -58,8 +59,10 @@ const SigninPage = () => {
 
     return ssoBrandName ? (
       <button className="tw-signin-button">
-        <SVGIcons alt={`${ssoBrandName} Logo`} icon={ssoBrandLogo} width="22" />
-        <span className="tw-ml-3">Sign in with {ssoBrandName}</span>
+        <SVGIcons alt={`${ssoBrandName} Logo`} icon={ssoBrandLogo} width="30" />
+        <span className="tw-ml-3 tw-font-medium tw-text-grey-muted tw-text-xl">
+          Sign in with {ssoBrandName}
+        </span>
       </button>
     ) : (
       <></>
@@ -71,33 +74,33 @@ const SigninPage = () => {
   }
 
   return (
-    <PageContainer>
-      <div
-        className="tw-w-screen tw-h-screen tw-flex tw-justify-center"
-        data-testid="signin-page">
-        <div className="tw-flex tw-flex-col tw-items-center signin-box">
-          <div className="tw-flex tw-justify-center tw-items-center tw-mb-7 tw-mt-20">
-            <SVGIcons
-              alt="OpenMetadata Logo"
-              icon={Icons.LOGO_SMALL}
-              width="50"
-            />
-          </div>
-          <div className="tw-mb-7">
-            <h4 className="tw-font-semibold">
-              Welcome to <span className="tw-text-primary">OpenMetadata</span>
-            </h4>
-          </div>
-          <div className="tw-text-grey-muted tw-font-light tw-mb-7">
-            <h6 className="tw-mb-px">Centralized Metadata Store, Discover,</h6>
-            <h6 className="tw-mb-px">Collaborate and get your Data Right</h6>
-          </div>
-          <div className="tw-mt-4" onClick={handleSignIn}>
+    <div className="tw-flex tw-bg-body-main tw-h-screen">
+      <div className="tw-w-5/12 tw-ml-14">
+        <div className="tw-mt-10">
+          <SVGIcons alt="OpenMetadata Logo" icon={Icons.LOGO} width="152" />
+        </div>
+        <div className="tw-mt-44">
+          <p className="tw-text-3xl tw-font-bold tw-text-grey-muted">Log In</p>
+          <p className="tw-mt-10 tw-text-xl tw-text-grey-muted tw-font-medium tw-w-10/12">
+            Centralized Metadata Store, Discover, Collaborate and get your Data
+            Right
+          </p>
+          <div className="tw-mt-24" onClick={handleSignIn}>
             {getSignInButton()}
           </div>
         </div>
       </div>
-    </PageContainer>
+      <div className="tw-w-7/12 tw-relative">
+        <div className="tw-absolute tw-inset-0">
+          <img alt="bg-image" className="tw-w-full tw-h-screen" src={loginBG} />
+        </div>
+        <div className="tw-relative">
+          <div className="tw-flex tw-justify-center tw-mt-44">
+            <LoginCarousel />
+          </div>
+        </div>
+      </div>
+    </div>
   );
 };
 

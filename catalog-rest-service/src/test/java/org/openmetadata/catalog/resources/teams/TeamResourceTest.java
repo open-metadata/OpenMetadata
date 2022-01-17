@@ -64,7 +64,7 @@ public class TeamResourceTest extends EntityResourceTest<Team> {
   final Profile PROFILE = new Profile().withImages(new ImageList().withImage(URI.create("http://image.com")));
 
   public TeamResourceTest() {
-    super(Entity.TEAM, Team.class, TeamList.class, "teams", TeamResource.FIELDS, false, false, false);
+    super(Entity.TEAM, Team.class, TeamList.class, "teams", TeamResource.FIELDS, false, false, false, false);
   }
 
   @Test
@@ -338,6 +338,11 @@ public class TeamResourceTest extends EntityResourceTest<Team> {
   @Override
   public Object createRequest(String name, String description, String displayName, EntityReference owner) {
     return create(name).withDescription(description).withDisplayName(displayName).withProfile(PROFILE);
+  }
+
+  @Override
+  public Object addAllRelationships(TestInfo test, Object create) throws HttpResponseException {
+    return ((CreateTeam) create).withUsers(List.of(USER1.getId()));
   }
 
   @Override

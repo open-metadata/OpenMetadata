@@ -21,6 +21,7 @@ export const useAuth = (pathname = '') => {
     pathname !== ROUTES.SIGNUP &&
     pathname !== ROUTES.SIGNIN &&
     pathname !== ROUTES.CALLBACK;
+  const isTourRoute = pathname === ROUTES.TOUR;
 
   return {
     isSigningIn: authProvider.signingIn,
@@ -31,9 +32,10 @@ export const useAuth = (pathname = '') => {
       !authProvider.signingIn &&
       isEmpty(userDetails) &&
       isEmpty(newUser),
-    isAuthenticatedRoute: isAuthenticatedRoute,
+    isAuthenticatedRoute,
     isAuthDisabled: authDisabled,
     isAdminUser: userDetails?.isAdmin,
     isFirstTimeUser: !isEmpty(userDetails) && !isEmpty(newUser),
+    isTourRoute,
   };
 };

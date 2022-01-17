@@ -37,6 +37,7 @@ public class PolicyEvaluator {
   public PolicyEvaluator(List<org.openmetadata.catalog.entity.policies.accessControl.Rule> rules) {
     this.rules = new Rules();
     rules.stream()
+        // Add rules only if they are enabled.
         .filter(org.openmetadata.catalog.entity.policies.accessControl.Rule::getEnabled)
         .map(this::convertRule)
         .forEach(this.rules::register);

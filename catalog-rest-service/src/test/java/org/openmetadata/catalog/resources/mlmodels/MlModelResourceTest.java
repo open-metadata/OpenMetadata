@@ -116,7 +116,7 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
           new MlHyperParameter().withName("random").withValue("hello"));
 
   public MlModelResourceTest() {
-    super(Entity.MLMODEL, MlModel.class, MlModelList.class, "mlmodels", MlModelResource.FIELDS, true, true, true);
+    super(Entity.MLMODEL, MlModel.class, MlModelList.class, "mlmodels", MlModelResource.FIELDS, true, true, true, true);
   }
 
   @BeforeAll
@@ -432,7 +432,7 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
     String fields = "owner";
     model =
         byName
-            ? getEntityByName(model.getFullyQualifiedName(), fields, adminAuthHeaders())
+            ? getEntityByName(model.getFullyQualifiedName(), null, fields, adminAuthHeaders())
             : getEntity(model.getId(), fields, adminAuthHeaders());
     assertNotNull(model.getOwner(), model.getAlgorithm());
     assertNull(model.getDashboard());
@@ -441,7 +441,7 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
     fields = "mlFeatures,mlHyperParameters";
     model =
         byName
-            ? getEntityByName(model.getFullyQualifiedName(), fields, adminAuthHeaders())
+            ? getEntityByName(model.getFullyQualifiedName(), null, fields, adminAuthHeaders())
             : getEntity(model.getId(), fields, adminAuthHeaders());
     assertListNotNull(model.getAlgorithm(), model.getMlFeatures(), model.getMlHyperParameters());
     assertNull(model.getDashboard());
@@ -450,7 +450,7 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
     fields = "owner,algorithm";
     model =
         byName
-            ? getEntityByName(model.getFullyQualifiedName(), fields, adminAuthHeaders())
+            ? getEntityByName(model.getFullyQualifiedName(), null, fields, adminAuthHeaders())
             : getEntity(model.getId(), fields, adminAuthHeaders());
     assertListNotNull(model.getOwner(), model.getAlgorithm());
     assertNull(model.getDashboard());
@@ -459,7 +459,7 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
     fields = "owner,algorithm,dashboard";
     model =
         byName
-            ? getEntityByName(model.getFullyQualifiedName(), fields, adminAuthHeaders())
+            ? getEntityByName(model.getFullyQualifiedName(), null, fields, adminAuthHeaders())
             : getEntity(model.getId(), fields, adminAuthHeaders());
     assertListNotNull(model.getOwner(), model.getAlgorithm(), model.getDashboard());
     TestUtils.validateEntityReference(model.getDashboard());

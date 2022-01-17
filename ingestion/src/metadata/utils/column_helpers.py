@@ -1,20 +1,24 @@
 import re
 from typing import Any, Dict, Optional, Set, Type
 
-from sqlalchemy.sql import sqltypes as types
-
 from metadata.ingestion.api.source import SourceStatus
-
-
-def register_custom_type(tp: Type[types.TypeEngine], output: str = None) -> None:
-    if output:
-        _column_type_mapping[tp] = output
-    else:
-        _known_unknown_column_types.add(tp)
+from sqlalchemy.sql import sqltypes as types
+from sqlalchemy.types import TypeEngine
 
 
 def register_custom_str_type(tp: str, output: str) -> None:
     _column_string_mapping[tp] = output
+
+
+def create_sqlalchemy_type(name: str):
+    sqlalchemy_type = type(
+        name,
+        (TypeEngine,),
+        {
+            "__repr__": lambda self: f"{name}()",
+        },
+    )
+    return sqlalchemy_type
 
 
 _column_type_mapping: Dict[Type[types.TypeEngine], str] = {
@@ -123,6 +127,8 @@ _column_string_mapping = {
     "XML": "BINARY",
     "XMLTYPE": "BINARY",
     "CURSOR": "BINARY",
+    "TIMESTAMP_LTZ": "TIMESTAMP",
+    "TIMESTAMP_TZ": "TIMESTAMP",
 }
 
 _known_unknown_column_types: Set[Type[types.TypeEngine]] = {

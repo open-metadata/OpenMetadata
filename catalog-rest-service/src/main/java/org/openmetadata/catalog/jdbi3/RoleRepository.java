@@ -15,7 +15,6 @@ package org.openmetadata.catalog.jdbi3;
 
 import java.io.IOException;
 import java.net.URI;
-import java.util.Date;
 import java.util.UUID;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.teams.Role;
@@ -126,7 +125,7 @@ public class RoleRepository extends EntityRepository<Role> {
     }
 
     @Override
-    public Date getUpdatedAt() {
+    public long getUpdatedAt() {
       return entity.getUpdatedAt();
     }
 
@@ -167,7 +166,7 @@ public class RoleRepository extends EntityRepository<Role> {
     }
 
     @Override
-    public void setUpdateDetails(String updatedBy, Date updatedAt) {
+    public void setUpdateDetails(String updatedBy, long updatedAt) {
       entity.setUpdatedBy(updatedBy);
       entity.setUpdatedAt(updatedAt);
     }

@@ -23,7 +23,6 @@ import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
 import java.util.Arrays;
-import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -46,6 +45,7 @@ import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.ReportRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.Authorizer;
+import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
@@ -93,7 +93,7 @@ public class ReportResource {
           String fieldsParam)
       throws IOException, GeneralSecurityException, ParseException {
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
-    return dao.listAfter(uriInfo, fields, null, 10000, null);
+    return dao.listAfter(uriInfo, fields, null, 10000, null, Include.NON_DELETED);
   }
 
   @GET
@@ -165,6 +165,6 @@ public class ReportResource {
     report
         .withId(UUID.randomUUID())
         .withUpdatedBy(securityContext.getUserPrincipal().getName())
-        .withUpdatedAt(new Date());
+        .withUpdatedAt(System.currentTimeMillis());
   }
 }

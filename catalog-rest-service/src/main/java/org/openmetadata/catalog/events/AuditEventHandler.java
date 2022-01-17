@@ -13,7 +13,6 @@
 
 package org.openmetadata.catalog.events;
 
-import java.util.Date;
 import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.container.ContainerResponseContext;
 import org.jdbi.v3.core.Jdbi;
@@ -37,14 +36,12 @@ public class AuditEventHandler implements EventHandler {
     if (responseContext.getEntity() != null) {
       String path = requestContext.getUriInfo().getPath();
       String username = requestContext.getSecurityContext().getUserPrincipal().getName();
-      Date nowAsISO = new Date();
-
       try {
         EntityReference entityReference = Entity.getEntityReference(responseContext.getEntity());
         AuditLog auditLog =
             new AuditLog()
                 .withPath(path)
-                .withDateTime(nowAsISO)
+                .withTimestamp(System.currentTimeMillis())
                 .withEntityId(entityReference.getId())
                 .withEntityType(entityReference.getType())
                 .withMethod(AuditLog.Method.fromValue(method))

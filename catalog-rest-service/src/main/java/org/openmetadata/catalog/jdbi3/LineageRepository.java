@@ -13,6 +13,8 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import static org.openmetadata.catalog.util.EntityUtil.toBoolean;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -24,6 +26,7 @@ import org.openmetadata.catalog.api.lineage.AddLineage;
 import org.openmetadata.catalog.type.Edge;
 import org.openmetadata.catalog.type.EntityLineage;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.Include;
 
 public class LineageRepository {
   private final CollectionDAO dao;
@@ -65,6 +68,25 @@ public class LineageRepository {
             Relationship.UPSTREAM.ordinal());
   }
 
+  @Transaction
+  public boolean deleteLineage(String fromEntity, String fromId, String toEntity, String toId) throws IOException {
+    // Validate from entity
+    EntityReference from = Entity.getEntityReference(fromEntity, UUID.fromString(fromId));
+
+    // Validate to entity
+    EntityReference to = Entity.getEntityReference(toEntity, UUID.fromString(toId));
+
+    // Finally, delete lineage relationship
+    return dao.relationshipDAO()
+            .delete(
+                from.getId().toString(),
+                from.getType(),
+                to.getId().toString(),
+                to.getType(),
+                Relationship.UPSTREAM.ordinal())
+        > 0;
+  }
+
   private EntityLineage getLineage(EntityReference primary, int upstreamDepth, int downstreamDepth) throws IOException {
     List<EntityReference> entities = new ArrayList<>();
     EntityLineage lineage =
@@ -94,7 +116,8 @@ public class LineageRepository {
     }
     // from this id ---> find other ids
     List<EntityReference> upstreamEntities =
-        dao.relationshipDAO().findFrom(id.toString(), entityType, Relationship.UPSTREAM.ordinal());
+        dao.relationshipDAO()
+            .findFrom(id.toString(), entityType, Relationship.UPSTREAM.ordinal(), toBoolean(Include.NON_DELETED));
     lineage.getNodes().addAll(upstreamEntities);
 
     upstreamDepth--;
@@ -114,7 +137,8 @@ public class LineageRepository {
     }
     // from other ids ---> to this id
     List<EntityReference> downStreamEntities =
-        dao.relationshipDAO().findTo(id.toString(), entityType, Relationship.UPSTREAM.ordinal());
+        dao.relationshipDAO()
+            .findTo(id.toString(), entityType, Relationship.UPSTREAM.ordinal(), toBoolean(Include.NON_DELETED));
     lineage.getNodes().addAll(downStreamEntities);
 
     downstreamDepth--;

@@ -36,6 +36,10 @@ export interface CreateUser {
   name: string;
   profile?: Profile;
   /**
+   * Roles that the user has been assigned
+   */
+  roles?: string[];
+  /**
    * Teams that the user belongs to
    */
   teams?: string[];

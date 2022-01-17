@@ -204,6 +204,7 @@ declare module 'Models' {
     };
     index: string;
     database?: string;
+    entityType?: string;
   };
 
   export type NewUser = {
@@ -386,7 +387,7 @@ declare module 'Models' {
   // topic interface end
 
   interface RecentlyViewedData {
-    entityType: 'dataset' | 'topic' | 'dashboard' | 'pipeline';
+    entityType: 'table' | 'topic' | 'dashboard' | 'pipeline';
     fqn: string;
     serviceType?: string;
     timestamp: number;
@@ -422,4 +423,17 @@ declare module 'Models' {
     openInNewTab?: boolean;
     showLabel?: boolean;
   };
+
+  export type TourSteps = {
+    content?: string | React.ReactNode;
+    actionType?: string;
+    position?: string | number[];
+    selector?: string;
+    userTypeText?: string;
+    waitTimer?: number;
+  };
+
+  export interface FormErrorData {
+    [key: string]: string | undefined;
+  }
 }

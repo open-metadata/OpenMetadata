@@ -28,7 +28,6 @@ import java.security.GeneralSecurityException;
 import java.text.ParseException;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -53,6 +52,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
+import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.policies.CreatePolicy;
 import org.openmetadata.catalog.entity.policies.Policy;
@@ -63,6 +63,7 @@ import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.RestUtil.PatchResponse;
@@ -93,6 +94,11 @@ public class PolicyResource {
     Objects.requireNonNull(dao, "PolicyRepository must not be null");
     this.dao = new PolicyRepository(dao);
     this.authorizer = authorizer;
+  }
+
+  @SuppressWarnings("unused") // Method used for reflection
+  public void initialize(CatalogApplicationConfig config) throws IOException {
+    dao.initSeedDataFromResources();
   }
 
   public static class PolicyList extends ResultList<Policy> {
@@ -144,16 +150,22 @@ public class PolicyResource {
           String before,
       @Parameter(description = "Returns list of policies after this cursor", schema = @Schema(type = "string"))
           @QueryParam("after")
-          String after)
+          String after,
+      @Parameter(
+              description = "Include all, deleted, or non-deleted entities.",
+              schema = @Schema(implementation = Include.class))
+          @QueryParam("include")
+          @DefaultValue("non-deleted")
+          Include include)
       throws IOException, GeneralSecurityException, ParseException {
     RestUtil.validateCursors(before, after);
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
 
     ResultList<Policy> policies;
     if (before != null) { // Reverse paging
-      policies = dao.listBefore(uriInfo, fields, null, limitParam, before); // Ask for one extra entry
+      policies = dao.listBefore(uriInfo, fields, null, limitParam, before, include); // Ask for one extra entry
     } else { // Forward paging or first page
-      policies = dao.listAfter(uriInfo, fields, null, limitParam, after);
+      policies = dao.listAfter(uriInfo, fields, null, limitParam, after, include);
     }
     return addHref(uriInfo, policies);
   }
@@ -179,10 +191,16 @@ public class PolicyResource {
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
-          String fieldsParam)
+          String fieldsParam,
+      @Parameter(
+              description = "Include all, deleted, or non-deleted entities.",
+              schema = @Schema(implementation = Include.class))
+          @QueryParam("include")
+          @DefaultValue("non-deleted")
+          Include include)
       throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
-    return addHref(uriInfo, dao.get(uriInfo, id, fields));
+    return addHref(uriInfo, dao.get(uriInfo, id, fields, include));
   }
 
   @GET
@@ -206,10 +224,16 @@ public class PolicyResource {
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
-          String fieldsParam)
+          String fieldsParam,
+      @Parameter(
+              description = "Include all, deleted, or non-deleted entities.",
+              schema = @Schema(implementation = Include.class))
+          @QueryParam("include")
+          @DefaultValue("non-deleted")
+          Include include)
       throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
-    Policy policy = dao.getByName(uriInfo, fqn, fields);
+    Policy policy = dao.getByName(uriInfo, fqn, fields, include);
     return addHref(uriInfo, policy);
   }
 
@@ -360,8 +384,9 @@ public class PolicyResource {
             .withPolicyUrl(create.getPolicyUrl())
             .withPolicyType(create.getPolicyType())
             .withUpdatedBy(securityContext.getUserPrincipal().getName())
-            .withUpdatedAt(new Date())
-            .withRules(create.getRules());
+            .withUpdatedAt(System.currentTimeMillis())
+            .withRules(create.getRules())
+            .withEnabled(create.getEnabled());
     if (create.getLocation() != null) {
       policy = policy.withLocation(new EntityReference().withId(create.getLocation()));
     }

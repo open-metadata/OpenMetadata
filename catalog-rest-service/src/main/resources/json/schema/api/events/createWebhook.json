@@ -41,6 +41,10 @@
       "description": "When set to `true`, the webhook event notification is enabled. Set it to `false` to disable the subscription. (Default `true`)",
       "type": "boolean",
       "default": true
+    },
+    "secretKey" : {
+      "description" : "Secret set by the webhook client used for computing HMAC SHA256 signature of webhook payload and sent in `X-OM-Signature` header in POST requests to publish the events.",
+      "type" : "string"
     }
   },
   "required": [

@@ -43,15 +43,7 @@ const ManageTab: FunctionComponent<Props> = ({
   onSave,
   hasEditAccess,
 }: Props) => {
-  const [loading, setLoading] = useState<boolean>(false);
-  const [status, setStatus] = useState<'initial' | 'waiting' | 'success'>(
-    'initial'
-  );
-  const [activeTier, setActiveTier] = useState(currentTier);
-  const [listVisible, setListVisible] = useState(false);
-
-  const [tierData, setTierData] = useState<Array<CardWithListItems>>([]);
-  const [listOwners] = useState(() => {
+  const getOwnerList = () => {
     const user = !isEmpty(appState.userDetails)
       ? appState.userDetails
       : appState.users.length
@@ -103,7 +95,16 @@ const ManageTab: FunctionComponent<Props> = ({
           ]
         : teams;
     }
-  });
+  };
+  const [loading, setLoading] = useState<boolean>(false);
+  const [status, setStatus] = useState<'initial' | 'waiting' | 'success'>(
+    'initial'
+  );
+  const [activeTier, setActiveTier] = useState(currentTier);
+  const [listVisible, setListVisible] = useState(false);
+
+  const [tierData, setTierData] = useState<Array<CardWithListItems>>([]);
+  const [listOwners, setListOwners] = useState(getOwnerList());
   const [owner, setOwner] = useState(currentUser);
   const [isLoadingTierData, setIsLoadingTierData] = useState<boolean>(false);
 
@@ -203,6 +204,10 @@ const ManageTab: FunctionComponent<Props> = ({
       }, 3000);
     }
   }, [currentTier, currentUser]);
+
+  useEffect(() => {
+    setListOwners(getOwnerList());
+  }, [appState.users, appState.userDetails, appState.userTeams]);
 
   return (
     <div

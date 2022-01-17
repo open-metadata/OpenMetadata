@@ -13,7 +13,8 @@
 
 import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
-import { EntityTags } from 'Models';
+import { isUndefined, toLower } from 'lodash';
+import { EntityTags, FormErrorData } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
@@ -64,6 +65,8 @@ const TagsPage = () => {
   const [editTag, setEditTag] = useState<TagClass>();
   const [error, setError] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [errorDataCategory, setErrorDataCategory] = useState<FormErrorData>();
+  const [errorDataTag, setErrorDataTag] = useState<FormErrorData>();
 
   const fetchCategories = () => {
     setIsLoading(true);
@@ -97,13 +100,40 @@ const TagsPage = () => {
     }
   };
 
-  const createCategory = (data: CreateTagCategory) => {
-    createTagCategory(data).then((res: AxiosResponse) => {
-      if (res.data) {
-        fetchCategories();
+  const onNewCategoryChange = (data: CreateTagCategory, forceSet = false) => {
+    if (errorDataCategory || forceSet) {
+      const errData: { [key: string]: string } = {};
+      if (!data.name.trim()) {
+        errData['name'] = 'Name is required';
+      } else if (/\s/g.test(data.name)) {
+        errData['name'] = 'Name with space is not allowed';
+      } else if (
+        !isUndefined(
+          categories.find((item) => toLower(item.name) === toLower(data.name))
+        )
+      ) {
+        errData['name'] = 'Name already exists';
+      } else if (data.name.length < 2 || data.name.length > 25) {
+        errData['name'] = 'Name size must be between 2 and 25';
       }
-    });
-    setIsAddingCategory(false);
+      setErrorDataCategory(errData);
+
+      return errData;
+    }
+
+    return {};
+  };
+
+  const createCategory = (data: CreateTagCategory) => {
+    const errData = onNewCategoryChange(data, true);
+    if (!Object.values(errData).length) {
+      createTagCategory(data).then((res: AxiosResponse) => {
+        if (res.data) {
+          fetchCategories();
+        }
+      });
+      setIsAddingCategory(false);
+    }
   };
 
   const UpdateCategory = (updatedHTML: string) => {
@@ -119,16 +149,45 @@ const TagsPage = () => {
     setIsEditCategory(false);
   };
 
-  const createPrimaryTag = (data: TagCategory) => {
-    createTag(currentCategory?.name, {
-      name: data.name,
-      description: data.description,
-    }).then((res: AxiosResponse) => {
-      if (res.data) {
-        fetchCurrentCategory(currentCategory?.name as string, true);
+  const onNewTagChange = (data: TagCategory, forceSet = false) => {
+    if (errorDataTag || forceSet) {
+      const errData: { [key: string]: string } = {};
+      if (!data.name.trim()) {
+        errData['name'] = 'Name is required';
+      } else if (/\s/g.test(data.name)) {
+        errData['name'] = 'Name with space is not allowed';
+      } else if (
+        !isUndefined(
+          currentCategory?.children?.find(
+            (item) => toLower((item as TagClass)?.name) === toLower(data.name)
+          )
+        )
+      ) {
+        errData['name'] = 'Name already exists';
+      } else if (data.name.length < 2 || data.name.length > 25) {
+        errData['name'] = 'Name size must be between 2 and 25';
       }
-    });
-    setIsAddingTag(false);
+      setErrorDataTag(errData);
+
+      return errData;
+    }
+
+    return {};
+  };
+
+  const createPrimaryTag = (data: TagCategory) => {
+    const errData = onNewTagChange(data, true);
+    if (!Object.values(errData).length) {
+      createTag(currentCategory?.name, {
+        name: data.name,
+        description: data.description,
+      }).then((res: AxiosResponse) => {
+        if (res.data) {
+          fetchCurrentCategory(currentCategory?.name as string, true);
+        }
+      });
+      setIsAddingTag(false);
+    }
   };
   const updatePrimaryTag = (updatedHTML: string) => {
     updateTag(currentCategory?.name, editTag?.name, {
@@ -187,7 +246,10 @@ const TagsPage = () => {
               size="small"
               theme="primary"
               variant="contained"
-              onClick={() => setIsAddingCategory((prevState) => !prevState)}>
+              onClick={() => {
+                setIsAddingCategory((prevState) => !prevState);
+                setErrorDataCategory(undefined);
+              }}>
               <i aria-hidden="true" className="fa fa-plus" />
             </Button>
           </NonAdminAction>
@@ -209,7 +271,9 @@ const TagsPage = () => {
               </p>
 
               {getCountBadge(
-                category.children?.length || 0,
+                currentCategory?.name === category.name
+                  ? currentCategory.children?.length
+                  : category.children?.length || 0,
                 'tw-self-center',
                 currentCategory?.name === category.name
               )}
@@ -250,9 +314,10 @@ const TagsPage = () => {
                         size="small"
                         theme="primary"
                         variant="contained"
-                        onClick={() =>
-                          setIsAddingTag((prevState) => !prevState)
-                        }>
+                        onClick={() => {
+                          setIsAddingTag((prevState) => !prevState);
+                          setErrorDataTag(undefined);
+                        }}>
                         Add new tag
                       </Button>
                     </NonAdminAction>
@@ -305,28 +370,28 @@ const TagsPage = () => {
                               <td className="tableBody-cell">
                                 <p>{tag.name}</p>
                               </td>
-                              <td
-                                className="tw-group tableBody-cell"
-                                onClick={() => {
-                                  setIsEditTag(true);
-                                  setEditTag(tag);
-                                }}>
-                                <NonAdminAction
-                                  position="left"
-                                  title={TITLE_FOR_NON_ADMIN_ACTION}>
-                                  <div className="tw-cursor-pointer hover:tw-underline tw-flex">
-                                    <div>
-                                      {tag.description ? (
-                                        <RichTextEditorPreviewer
-                                          markdown={tag.description}
-                                        />
-                                      ) : (
-                                        <span className="tw-no-description">
-                                          No description added
-                                        </span>
-                                      )}
-                                    </div>
-                                    <button className="tw-self-start tw-w-8 tw-h-auto tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none">
+                              <td className="tw-group tableBody-cell">
+                                <div className="tw-cursor-pointer tw-flex">
+                                  <div>
+                                    {tag.description ? (
+                                      <RichTextEditorPreviewer
+                                        markdown={tag.description}
+                                      />
+                                    ) : (
+                                      <span className="tw-no-description">
+                                        No description added
+                                      </span>
+                                    )}
+                                  </div>
+                                  <NonAdminAction
+                                    position="left"
+                                    title={TITLE_FOR_NON_ADMIN_ACTION}>
+                                    <button
+                                      className="tw-self-start tw-w-8 tw-h-auto tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none"
+                                      onClick={() => {
+                                        setIsEditTag(true);
+                                        setEditTag(tag);
+                                      }}>
                                       <SVGIcons
                                         alt="edit"
                                         data-testid="editTagDescription"
@@ -335,8 +400,8 @@ const TagsPage = () => {
                                         width="10px"
                                       />
                                     </button>
-                                  </div>
-                                </NonAdminAction>
+                                  </NonAdminAction>
+                                </div>
                                 <div className="tw-mt-1">
                                   <span className="tw-text-grey-muted tw-mr-1">
                                     Usage:
@@ -394,9 +459,8 @@ const TagsPage = () => {
                                         />
                                       </button>
                                     ) : (
-                                      <span className="tw-opacity-0 group-hover:tw-opacity-100">
+                                      <span className="tw-opacity-60 group-hover:tw-opacity-100 tw-text-grey-muted group-hover:tw-text-primary">
                                         <Tags
-                                          className="tw-border-main"
                                           startWith="+ "
                                           tag="Add tag"
                                           type="outlined"
@@ -427,6 +491,7 @@ const TagsPage = () => {
                 )}
                 {isAddingCategory && (
                   <FormModal
+                    errorData={errorDataCategory}
                     form={Form}
                     header="Adding new category"
                     initialData={{
@@ -435,11 +500,15 @@ const TagsPage = () => {
                       categoryType: TagCategoryType.Descriptive,
                     }}
                     onCancel={() => setIsAddingCategory(false)}
+                    onChange={(data) =>
+                      onNewCategoryChange(data as TagCategory)
+                    }
                     onSave={(data) => createCategory(data as TagCategory)}
                   />
                 )}
                 {isAddingTag && (
                   <FormModal
+                    errorData={errorDataTag}
                     form={Form}
                     header={`Adding new tag on ${currentCategory?.name}`}
                     initialData={{
@@ -448,6 +517,7 @@ const TagsPage = () => {
                       categoryType: '',
                     }}
                     onCancel={() => setIsAddingTag(false)}
+                    onChange={(data) => onNewTagChange(data as TagCategory)}
                     onSave={(data) => createPrimaryTag(data as TagCategory)}
                   />
                 )}

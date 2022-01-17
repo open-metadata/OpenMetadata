@@ -24,6 +24,7 @@ import {
 import { DatabaseService } from '../../../generated/entity/services/databaseService';
 import { MessagingService } from '../../../generated/entity/services/messagingService';
 import { PipelineService } from '../../../generated/entity/services/pipelineService';
+import { errorMsg } from '../../../utils/CommonUtils';
 // import { fromISOString } from '../../../utils/ServiceUtils';
 import { Button } from '../../buttons/Button/Button';
 import MarkdownWithPreview from '../../common/editor/MarkdownWithPreview';
@@ -159,14 +160,6 @@ const seprateUrl = (url?: string) => {
   }
 
   return {};
-};
-
-const errorMsg = (value: string) => {
-  return (
-    <div className="tw-mt-1">
-      <strong className="tw-text-red-500 tw-text-xs tw-italic">{value}</strong>
-    </div>
-  );
 };
 
 export const AddServiceModal: FunctionComponent<Props> = ({
@@ -338,7 +331,7 @@ export const AddServiceModal: FunctionComponent<Props> = ({
   const handleSave = () => {
     let setMsg: ErrorMsg = {
       selectService: !selectService,
-      name: !name,
+      name: !name.trim(),
     };
     switch (serviceName) {
       case ServiceCategory.DATABASE_SERVICES:

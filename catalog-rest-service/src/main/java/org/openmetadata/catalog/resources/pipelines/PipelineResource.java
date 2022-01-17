@@ -28,7 +28,6 @@ import java.security.GeneralSecurityException;
 import java.text.ParseException;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -62,6 +61,7 @@ import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
+import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.RestUtil.PatchResponse;
@@ -151,16 +151,22 @@ public class PipelineResource {
           String before,
       @Parameter(description = "Returns list of pipelines after this cursor", schema = @Schema(type = "string"))
           @QueryParam("after")
-          String after)
+          String after,
+      @Parameter(
+              description = "Include all, deleted, or non-deleted entities.",
+              schema = @Schema(implementation = Include.class))
+          @QueryParam("include")
+          @DefaultValue("non-deleted")
+          Include include)
       throws IOException, GeneralSecurityException, ParseException {
     RestUtil.validateCursors(before, after);
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
 
     ResultList<Pipeline> pipelines;
     if (before != null) { // Reverse paging
-      pipelines = dao.listBefore(uriInfo, fields, serviceParam, limitParam, before); // Ask for one extra entry
+      pipelines = dao.listBefore(uriInfo, fields, serviceParam, limitParam, before, include); // Ask for one extra entry
     } else { // Forward paging or first page
-      pipelines = dao.listAfter(uriInfo, fields, serviceParam, limitParam, after);
+      pipelines = dao.listAfter(uriInfo, fields, serviceParam, limitParam, after, include);
     }
     return addHref(uriInfo, pipelines);
   }
@@ -206,10 +212,16 @@ public class PipelineResource {
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
-          String fieldsParam)
+          String fieldsParam,
+      @Parameter(
+              description = "Include all, deleted, or non-deleted entities.",
+              schema = @Schema(implementation = Include.class))
+          @QueryParam("include")
+          @DefaultValue("non-deleted")
+          Include include)
       throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
-    return addHref(uriInfo, dao.get(uriInfo, id, fields));
+    return addHref(uriInfo, dao.get(uriInfo, id, fields, include));
   }
 
   @GET
@@ -233,10 +245,16 @@ public class PipelineResource {
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
-          String fieldsParam)
+          String fieldsParam,
+      @Parameter(
+              description = "Include all, deleted, or non-deleted entities.",
+              schema = @Schema(implementation = Include.class))
+          @QueryParam("include")
+          @DefaultValue("non-deleted")
+          Include include)
       throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
-    Pipeline pipeline = dao.getByName(uriInfo, fqn, fields);
+    Pipeline pipeline = dao.getByName(uriInfo, fqn, fields, include);
     return addHref(uriInfo, pipeline);
   }
 
@@ -314,7 +332,9 @@ public class PipelineResource {
       throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, FIELDS);
     Pipeline pipeline = dao.get(uriInfo, id, fields);
-    SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, dao.getOwnerReference(pipeline));
+    SecurityUtil.checkAdminRoleOrPermissions(
+        authorizer, securityContext, dao.getEntityInterface(pipeline).getEntityReference(), patch);
+
     PatchResponse<Pipeline> response =
         dao.patch(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
     addHref(uriInfo, response.getEntity());
@@ -413,6 +433,6 @@ public class PipelineResource {
         .withPipelineLocation(create.getPipelineLocation())
         .withOwner(create.getOwner())
         .withUpdatedBy(securityContext.getUserPrincipal().getName())
-        .withUpdatedAt(new Date());
+        .withUpdatedAt(System.currentTimeMillis());
   }
 }
