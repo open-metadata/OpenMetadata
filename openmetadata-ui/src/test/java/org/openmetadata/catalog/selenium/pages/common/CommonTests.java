@@ -69,11 +69,15 @@ public class CommonTests {
     webDriver.get(url);
   }
 
+  public void openHomePage() throws InterruptedException {
+    Events.click(webDriver, By.cssSelector("[data-testid='closeWhatsNew']")); // Close What's new
+    Thread.sleep(waitTime);
+  }
+
   @Test
   @Order(1)
   public void tagDuplicationCheck() throws InterruptedException {
-    Events.click(webDriver, By.cssSelector("[data-testid='closeWhatsNew']")); // Close What's new
-    Thread.sleep(waitTime);
+    openHomePage();
     Events.click(webDriver, By.cssSelector("[data-testid='tables']")); // Tables
     Events.sendKeys(webDriver, By.cssSelector("[data-testid='searchBox']"), "dim_location");
     Events.click(webDriver, By.cssSelector("[data-testid='data-name']"));
@@ -95,8 +99,7 @@ public class CommonTests {
   @Test
   @Order(2)
   public void addTagWithSpaceCheck() throws InterruptedException, IOException {
-    Events.click(webDriver, By.cssSelector("[data-testid='closeWhatsNew']")); // Close What's new
-    Thread.sleep(waitTime);
+    openHomePage();
     Events.click(webDriver, By.cssSelector("[data-testid='menu-button'][id='menu-button-Settings']")); // Setting
     Events.click(webDriver, By.cssSelector("[data-testid='menu-item-Tags']")); // Setting/Tags
     Events.click(webDriver, By.cssSelector("[data-testid='add-category']"));
@@ -121,8 +124,7 @@ public class CommonTests {
   @Test
   @Order(3)
   public void addTagCategoryWithSpaceCheck() throws InterruptedException, IOException {
-    Events.click(webDriver, By.cssSelector("[data-testid='closeWhatsNew']")); // Close What's new
-    Thread.sleep(waitTime);
+    openHomePage();
     Events.click(webDriver, By.cssSelector("[data-testid='menu-button'][id='menu-button-Settings']")); // Setting
     Events.click(webDriver, By.cssSelector("[data-testid='menu-item-Tags']")); // Setting/Tags
     Events.click(webDriver, By.cssSelector("[data-testid='add-category']"));
@@ -141,8 +143,7 @@ public class CommonTests {
   @Test
   @Order(4)
   public void onlySpaceAsNameForServiceCheck() throws InterruptedException {
-    Events.click(webDriver, By.cssSelector("[data-testid='closeWhatsNew']")); // Close What's new
-    Thread.sleep(waitTime);
+    openHomePage();
     Events.click(webDriver, By.cssSelector("[data-testid='service']")); // Service
     Thread.sleep(2000);
     List<WebElement> webElementList = webDriver.findElements(By.cssSelector("[data-testid='add-new-user-button']"));
@@ -169,8 +170,7 @@ public class CommonTests {
   @Test
   @Order(5)
   public void addMultipleTagsCheck() throws InterruptedException {
-    Events.click(webDriver, By.cssSelector("[data-testid='closeWhatsNew']")); // Close What's new
-    Thread.sleep(waitTime);
+    openHomePage();
     Events.sendKeys(webDriver, By.cssSelector("[data-testid='searchBox']"), "raw_product_catalog");
     Events.click(webDriver, By.cssSelector("[data-testid='data-name'][id='bigquery_gcpshopifyraw_product_catalog']"));
     Events.click(webDriver, By.xpath("//div[@data-testid='tag-conatiner']//span"));
@@ -185,6 +185,111 @@ public class CommonTests {
     Thread.sleep(2000);
     Object tagCount = webDriver.findElements(By.xpath("//div[@data-testid='tag-conatiner']/div/div")).size();
     Assert.assertEquals(tagCount, 11);
+  }
+
+  @Test
+  @Order(6)
+  public void sameNameTagCategoryUIMessageCheck() throws InterruptedException {
+    openHomePage();
+    Events.click(webDriver, By.cssSelector("[data-testid='menu-button'][id='menu-button-Settings']")); // Setting
+    Events.click(webDriver, By.cssSelector("[data-testid='menu-item-Tags']")); // Setting/Tags
+    Events.click(webDriver, By.cssSelector("[data-testid='add-category']"));
+    wait.until(ExpectedConditions.elementToBeClickable(By.name("name")));
+    Events.sendKeys(webDriver, By.name("name"), "personalData");
+    Events.sendKeys(webDriver, By.xpath(enterDescription), faker.address().toString());
+    Events.click(webDriver, By.cssSelector("[data-testid='saveButton']"));
+    String errorMessage =
+        webDriver.findElement(By.cssSelector("[data-testid='error-message']")).getAttribute("innerHTML");
+    Thread.sleep(2000);
+    Assert.assertEquals(errorMessage, "Name already exists");
+  }
+
+  @Test
+  @Order(7)
+  public void sameNameTagUIMessageCheck() throws InterruptedException {
+    openHomePage();
+    Events.click(webDriver, By.cssSelector("[data-testid='menu-button'][id='menu-button-Settings']")); // Setting
+    Events.click(webDriver, By.cssSelector("[data-testid='menu-item-Tags']")); // Setting/Tags
+    Events.click(webDriver, By.xpath("//*[text()[contains(.,'" + "PersonalData" + "')]] "));
+    Events.click(webDriver, By.cssSelector("[data-testid='add-new-tag-button']"));
+    wait.until(ExpectedConditions.elementToBeClickable(By.name("name")));
+    Events.sendKeys(webDriver, By.name("name"), "personal");
+    Events.sendKeys(webDriver, By.xpath(enterDescription), faker.address().toString());
+    Events.click(webDriver, By.cssSelector("[data-testid='saveButton']"));
+    String errorMessage =
+        webDriver.findElement(By.cssSelector("[data-testid='error-message']")).getAttribute("innerHTML");
+    Thread.sleep(2000);
+    Assert.assertEquals(errorMessage, "Name already exists");
+  }
+
+  @Test
+  @Order(8)
+  public void shortTagCategoryNameUIMessageCheck() throws InterruptedException {
+    openHomePage();
+    Events.click(webDriver, By.cssSelector("[data-testid='menu-button'][id='menu-button-Settings']")); // Setting
+    Events.click(webDriver, By.cssSelector("[data-testid='menu-item-Tags']")); // Setting/Tags
+    Events.click(webDriver, By.cssSelector("[data-testid='add-category']"));
+    wait.until(ExpectedConditions.elementToBeClickable(By.name("name")));
+    Events.sendKeys(webDriver, By.name("name"), "P");
+    Events.sendKeys(webDriver, By.xpath(enterDescription), faker.address().toString());
+    Events.click(webDriver, By.cssSelector("[data-testid='saveButton']"));
+    String errorMessage =
+        webDriver.findElement(By.cssSelector("[data-testid='error-message']")).getAttribute("innerHTML");
+    Thread.sleep(2000);
+    Assert.assertEquals(errorMessage, "Name size must be between 2 and 25");
+  }
+
+  @Test
+  @Order(9)
+  public void longTagCategoryNameUIMessageCheck() throws InterruptedException {
+    openHomePage();
+    Events.click(webDriver, By.cssSelector("[data-testid='menu-button'][id='menu-button-Settings']")); // Setting
+    Events.click(webDriver, By.cssSelector("[data-testid='menu-item-Tags']")); // Setting/Tags
+    Events.click(webDriver, By.cssSelector("[data-testid='add-category']"));
+    wait.until(ExpectedConditions.elementToBeClickable(By.name("name")));
+    Events.sendKeys(webDriver, By.name("name"), "PersonalData-DataPlatform-PersonalData");
+    Events.sendKeys(webDriver, By.xpath(enterDescription), faker.address().toString());
+    Events.click(webDriver, By.cssSelector("[data-testid='saveButton']"));
+    String errorMessage =
+        webDriver.findElement(By.cssSelector("[data-testid='error-message']")).getAttribute("innerHTML");
+    Thread.sleep(2000);
+    Assert.assertEquals(errorMessage, "Name size must be between 2 and 25");
+  }
+
+  @Test
+  @Order(10)
+  public void shortTagNameUIMessageCheck() throws InterruptedException {
+    openHomePage();
+    Events.click(webDriver, By.cssSelector("[data-testid='menu-button'][id='menu-button-Settings']")); // Setting
+    Events.click(webDriver, By.cssSelector("[data-testid='menu-item-Tags']")); // Setting/Tags
+    Events.click(webDriver, By.xpath("//*[text()[contains(.,'" + "PersonalData" + "')]] "));
+    Events.click(webDriver, By.cssSelector("[data-testid='add-new-tag-button']"));
+    wait.until(ExpectedConditions.elementToBeClickable(By.name("name")));
+    Events.sendKeys(webDriver, By.name("name"), "P");
+    Events.sendKeys(webDriver, By.xpath(enterDescription), faker.address().toString());
+    Events.click(webDriver, By.cssSelector("[data-testid='saveButton']"));
+    String errorMessage =
+        webDriver.findElement(By.cssSelector("[data-testid='error-message']")).getAttribute("innerHTML");
+    Thread.sleep(2000);
+    Assert.assertEquals(errorMessage, "Name size must be between 2 and 25");
+  }
+
+  @Test
+  @Order(11)
+  public void longTagNameUIMessageCheck() throws InterruptedException {
+    openHomePage();
+    Events.click(webDriver, By.cssSelector("[data-testid='menu-button'][id='menu-button-Settings']")); // Setting
+    Events.click(webDriver, By.cssSelector("[data-testid='menu-item-Tags']")); // Setting/Tags
+    Events.click(webDriver, By.xpath("//*[text()[contains(.,'" + "PersonalData" + "')]] "));
+    Events.click(webDriver, By.cssSelector("[data-testid='add-new-tag-button']"));
+    wait.until(ExpectedConditions.elementToBeClickable(By.name("name")));
+    Events.sendKeys(webDriver, By.name("name"), "P");
+    Events.sendKeys(webDriver, By.xpath(enterDescription), faker.address().toString());
+    Events.click(webDriver, By.cssSelector("[data-testid='saveButton']"));
+    String errorMessage =
+        webDriver.findElement(By.cssSelector("[data-testid='error-message']")).getAttribute("innerHTML");
+    Thread.sleep(2000);
+    Assert.assertEquals(errorMessage, "Name size must be between 2 and 25");
   }
 
   @AfterEach
