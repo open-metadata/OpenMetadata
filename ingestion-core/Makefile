@@ -15,4 +15,4 @@ bump-version-dev:
 publish: clean generate
 	python setup.py install sdist bdist_wheel
 	twine check dist/*
-	twine upload dist/*
+	twine upload -r testpypi dist/*
