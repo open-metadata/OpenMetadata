@@ -9,10 +9,15 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+# When a new push happens to the main branch that
+# modifies the JSON Schemas, we are going to
+# generate the updated pydantic models and
+# publish a new version of openmetadata-core
+
 name: Publish openmetadata-ingestion-core packages
 
 on:
-  pull_request:
+  push:
     branches:
       - main
     paths:
