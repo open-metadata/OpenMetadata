@@ -13,6 +13,9 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import static org.openmetadata.catalog.Entity.MESSAGING_SERVICE;
+import static org.openmetadata.catalog.Entity.h;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.net.URI;
@@ -23,8 +26,6 @@ import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Topic;
 import org.openmetadata.catalog.entity.services.MessagingService;
-import org.openmetadata.catalog.exception.CatalogExceptionMessage;
-import org.openmetadata.catalog.jdbi3.MessagingServiceRepository.MessagingServiceEntityInterface;
 import org.openmetadata.catalog.resources.topics.TopicResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
@@ -63,11 +64,11 @@ public class TopicRepository extends EntityRepository<Topic> {
 
   @Override
   public void prepare(Topic topic) throws IOException {
-    MessagingService messagingService = getService(topic.getService().getId(), topic.getService().getType());
-    topic.setService(new MessagingServiceEntityInterface(messagingService).getEntityReference());
+    MessagingService messagingService = h(topic).findEntity("service", MESSAGING_SERVICE);
+    topic.setService(h(messagingService).toEntityReference());
     topic.setServiceType(messagingService.getServiceType());
     topic.setFullyQualifiedName(getFQN(topic));
-    EntityUtil.populateOwner(daoCollection.userDAO(), daoCollection.teamDAO(), topic.getOwner()); // Validate owner
+    topic.setOwner(h(topic).validateOwnerOrNull());
     topic.setTags(EntityUtil.addDerivedTags(daoCollection.tagDAO(), topic.getTags()));
   }
 
@@ -119,20 +120,7 @@ public class TopicRepository extends EntityRepository<Topic> {
   }
 
   private EntityReference getService(Topic topic) throws IOException {
-    if (topic == null) {
-      return null;
-    }
-    // Find service by topic Id
-    EntityReference service =
-        EntityUtil.getService(daoCollection.relationshipDAO(), Entity.TOPIC, topic.getId(), toInclude(topic));
-    return new MessagingServiceEntityInterface(getService(service.getId(), service.getType())).getEntityReference();
-  }
-
-  private MessagingService getService(UUID serviceId, String entityType) throws IOException {
-    if (entityType.equalsIgnoreCase(Entity.MESSAGING_SERVICE)) {
-      return daoCollection.messagingServiceDAO().findEntityById(serviceId);
-    }
-    throw new IllegalArgumentException(CatalogExceptionMessage.invalidServiceEntity(entityType, Entity.TOPIC));
+    return h(topic).getContainer(MESSAGING_SERVICE);
   }
 
   public void setService(Topic topic, EntityReference service) {
