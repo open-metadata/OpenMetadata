@@ -13,6 +13,8 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import static org.openmetadata.catalog.Entity.h;
+
 import java.io.IOException;
 import java.net.URI;
 import java.util.List;
@@ -63,9 +65,8 @@ public class ReportRepository extends EntityRepository<Report> {
 
   @Override
   public void prepare(Report report) throws IOException {
-    setService(report, report.getService());
-    setOwner(report, report.getOwner());
-    EntityUtil.populateOwner(daoCollection.userDAO(), daoCollection.teamDAO(), report.getOwner()); // Validate owner
+    report.setService(h(h(report).findEntity("service")).toEntityReference());
+    report.setOwner(h(report).validateOwnerOrNull());
   }
 
   @Override
@@ -75,34 +76,23 @@ public class ReportRepository extends EntityRepository<Report> {
   }
 
   @Override
-  public void storeRelationships(Report entity) {
-    // TODO
+  public void storeRelationships(Report report) {
+    EntityReference service = report.getService();
+    daoCollection
+        .relationshipDAO()
+        .insert(
+            service.getId().toString(),
+            report.getId().toString(),
+            service.getType(),
+            Entity.CHART,
+            Relationship.CONTAINS.ordinal());
+    setOwner(report, report.getOwner());
+    applyTags(report);
   }
 
   private EntityReference getService(Report report) {
-    return report == null
-        ? null
-        : getService(EntityUtil.getService(daoCollection.relationshipDAO(), Entity.REPORT, report.getId()));
-  }
-
-  private EntityReference getService(EntityReference service) {
     // TODO What are the report services?
-    return service;
-  }
-
-  public void setService(Report report, EntityReference service) {
-    if (service != null && report != null) {
-      getService(service); // Populate service details
-      daoCollection
-          .relationshipDAO()
-          .insert(
-              service.getId().toString(),
-              report.getId().toString(),
-              service.getType(),
-              Entity.REPORT,
-              Relationship.CONTAINS.ordinal());
-      report.setService(service);
-    }
+    return h(report).getContainer();
   }
 
   public static class ReportEntityInterface implements EntityInterface<Report> {

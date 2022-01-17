@@ -715,6 +715,11 @@ public abstract class EntityRepository<T> {
     }
 
     @SneakyThrows
+    public EntityReference getContainer() {
+      return getContainer(Collections.emptyList());
+    }
+
+    @SneakyThrows
     public EntityReference getContainer(List<String> containerEntityNames) {
       List<EntityReference> refs =
           daoCollection
@@ -730,7 +735,7 @@ public abstract class EntityRepository<T> {
       } else if (refs.size() > 1) {
         LOG.warn("Possible database issues - multiple containers found for entity {}", entityInterface.getId());
       }
-      if (!containerEntityNames.contains(refs.get(0).getType())) {
+      if (containerEntityNames.size() > 0 && !containerEntityNames.contains(refs.get(0).getType())) {
         throw new IllegalArgumentException(String.format("Invalid type %s", refs.get(0).getType()));
       }
       return h(Entity.getEntity(refs.get(0), Fields.EMPTY_FIELDS, Include.ALL)).toEntityReference();
@@ -743,7 +748,7 @@ public abstract class EntityRepository<T> {
     public <S> S findEntity(String fieldName, List<String> entityNames) {
       S entity = findEntity(fieldName);
       EntityReference entityReference = Entity.getEntityReference(entity);
-      if (!entityNames.contains(entityReference.getType())) {
+      if (entityNames.size() > 0 && !entityNames.contains(entityReference.getType())) {
         throw new IllegalArgumentException(String.format("Invalid type %s", entityReference.getType()));
       }
       return entity;
