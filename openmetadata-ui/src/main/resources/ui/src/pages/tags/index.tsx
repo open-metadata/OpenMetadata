@@ -366,28 +366,28 @@ const TagsPage = () => {
                               <td className="tableBody-cell">
                                 <p>{tag.name}</p>
                               </td>
-                              <td
-                                className="tw-group tableBody-cell"
-                                onClick={() => {
-                                  setIsEditTag(true);
-                                  setEditTag(tag);
-                                }}>
-                                <NonAdminAction
-                                  position="left"
-                                  title={TITLE_FOR_NON_ADMIN_ACTION}>
-                                  <div className="tw-cursor-pointer hover:tw-underline tw-flex">
-                                    <div>
-                                      {tag.description ? (
-                                        <RichTextEditorPreviewer
-                                          markdown={tag.description}
-                                        />
-                                      ) : (
-                                        <span className="tw-no-description">
-                                          No description added
-                                        </span>
-                                      )}
-                                    </div>
-                                    <button className="tw-self-start tw-w-8 tw-h-auto tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none">
+                              <td className="tw-group tableBody-cell">
+                                <div className="tw-cursor-pointer tw-flex">
+                                  <div>
+                                    {tag.description ? (
+                                      <RichTextEditorPreviewer
+                                        markdown={tag.description}
+                                      />
+                                    ) : (
+                                      <span className="tw-no-description">
+                                        No description added
+                                      </span>
+                                    )}
+                                  </div>
+                                  <NonAdminAction
+                                    position="left"
+                                    title={TITLE_FOR_NON_ADMIN_ACTION}>
+                                    <button
+                                      className="tw-self-start tw-w-8 tw-h-auto tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none"
+                                      onClick={() => {
+                                        setIsEditTag(true);
+                                        setEditTag(tag);
+                                      }}>
                                       <SVGIcons
                                         alt="edit"
                                         data-testid="editTagDescription"
@@ -396,8 +396,8 @@ const TagsPage = () => {
                                         width="10px"
                                       />
                                     </button>
-                                  </div>
-                                </NonAdminAction>
+                                  </NonAdminAction>
+                                </div>
                                 <div className="tw-mt-1">
                                   <span className="tw-text-grey-muted tw-mr-1">
                                     Usage:
