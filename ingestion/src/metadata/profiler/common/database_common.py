@@ -13,52 +13,20 @@ from __future__ import annotations
 
 import logging
 import re
-from abc import abstractmethod
 from datetime import date, datetime
 from numbers import Number
-from typing import List, Optional, Type
-from urllib.parse import quote_plus
+from typing import List, Type
 
-from openmetadata.common.config import ConfigModel, IncludeFilterPattern
-from openmetadata.common.database import Database
-from openmetadata.profiler.profiler_metadata import Column, SupportedDataType
 from pydantic import BaseModel
 from sqlalchemy import create_engine
-from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.inspection import inspect
 from sqlalchemy.sql import sqltypes as types
 
+from metadata.ingestion.source.sql_source import SQLConnectionConfig
+from metadata.profiler.common.database import Database
+from metadata.profiler.profiler_metadata import Column, SupportedDataType
+
 logger = logging.getLogger(__name__)
-
-
-class SQLConnectionConfig(ConfigModel):
-    username: Optional[str] = None
-    password: Optional[str] = None
-    host_port: str
-    database: Optional[str] = None
-    db_schema: Optional[str] = None
-    scheme: str
-    service_name: str
-    service_type: str
-    options: dict = {}
-    profiler_date: Optional[str] = datetime.now().strftime("%Y-%m-%d")
-    profiler_offset: Optional[int] = 0
-    profiler_limit: Optional[int] = 50000
-    filter_pattern: IncludeFilterPattern = IncludeFilterPattern.allow_all()
-
-    @abstractmethod
-    def get_connection_url(self):
-        url = f"{self.scheme}://"
-        if self.username is not None:
-            url += f"{quote_plus(self.username)}"
-            if self.password is not None:
-                url += f":{quote_plus(self.password)}"
-            url += "@"
-        url += f"{self.host_port}"
-        if self.database:
-            url += f"/{self.database}"
-        logger.info(url)
-        return url
 
 
 _numeric_types = [
@@ -257,7 +225,7 @@ class DatabaseCommon(Database):
     def create(cls, config_dict: dict):
         pass
 
-    def qualify_table_name(self, table_name: str) -> str:
+    def qualify_table_name(self, table_name: str, schema_name: str) -> str:
         return table_name
 
     def qualify_column_name(self, column_name: str):
@@ -282,7 +250,7 @@ class DatabaseCommon(Database):
         return False
 
     def table_column_metadata(self, table: str, schema: str):
-        table = self.qualify_table_name(table)
+        table = self.qualify_table_name(table, schema)
         pk_constraints = self.inspector.get_pk_constraint(table, schema)
         pk_columns = (
             pk_constraints["column_constraints"]
@@ -298,7 +266,10 @@ class DatabaseCommon(Database):
         for constraint in unique_constraints:
             if "column_names" in constraint.keys():
                 unique_columns = constraint["column_names"]
-        columns = self.inspector.get_columns(self.qualify_table_name(table))
+        columns = self.inspector.get_columns(
+            self.qualify_table_name(table, schema), schema
+        )
+
         for column in columns:
             name = column["name"]
             data_type = column["type"]
@@ -356,6 +327,9 @@ class DatabaseCommon(Database):
             return rows, cursor.description
         finally:
             cursor.close()
+
+    def clear(self):
+        self.columns.clear()
 
     def close(self):
         if self.connection:

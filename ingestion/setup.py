@@ -42,6 +42,7 @@ base_requirements = {
     "sql-metadata~=2.0.0",
     "requests~=2.26",
     "cryptography",
+    "Jinja2>=2.11.3, <3.0",
     "PyYAML",
 }
 
@@ -74,7 +75,7 @@ plugins: Dict[str, Set[str]] = {
         "thrift~=0.13.0",
         "sasl==0.3.1",
         "thrift-sasl==0.4.3",
-        "presto-types-parser==0.0.2"
+        "presto-types-parser==0.0.2",
     },
     "kafka": {"confluent_kafka>=1.5.0", "fastavro>=1.2.0"},
     "ldap-users": {"ldap3==2.9.1"},
@@ -91,6 +92,7 @@ plugins: Dict[str, Set[str]] = {
         "sqlalchemy-redshift==0.8.9",
         "psycopg2-binary",
         "GeoAlchemy2",
+        "openmetadata-data-profiler[redshift]",
     },
     "redshift-usage": {
         "sqlalchemy-redshift==0.8.9",

@@ -2,9 +2,9 @@
   "source": {
     "type": "redshift",
     "config": {
-      "host_port": "test-openmetadata.cguov9p1stxq.us-east-2.redshift.amazonaws.com:5439",
-      "username": "openmetadata",
-      "password": "nXdg8n96HX7zWnFJ",
+      "host_port": "cluster.name.region.redshift.amazonaws.com:5439",
+      "username": "username",
+      "password": "strong_password",
       "database": "dev",
       "service_name": "aws_redshift",
       "table_filter_pattern": {

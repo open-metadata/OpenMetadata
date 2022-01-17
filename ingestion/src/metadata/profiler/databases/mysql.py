@@ -9,22 +9,9 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from typing import Optional
 
-from openmetadata.common.database_common import (
-    DatabaseCommon,
-    SQLConnectionConfig,
-    SQLExpressions,
-)
-
-
-class MySQLConnectionConfig(SQLConnectionConfig):
-    host_port = "localhost:3306"
-    scheme = "mysql+pymysql"
-    service_type = "MySQL"
-
-    def get_connection_url(self):
-        return super().get_connection_url()
+from metadata.ingestion.source.mysql import MySQLConfig
+from metadata.profiler.common.database_common import DatabaseCommon, SQLExpressions
 
 
 class MySQLExpressions(SQLExpressions):
@@ -33,7 +20,7 @@ class MySQLExpressions(SQLExpressions):
 
 
 class MySQL(DatabaseCommon):
-    config: MySQLConnectionConfig = None
+    config: MySQLConfig = None
     sql_exprs: MySQLExpressions = MySQLExpressions()
 
     def __init__(self, config):
@@ -42,5 +29,5 @@ class MySQL(DatabaseCommon):
 
     @classmethod
     def create(cls, config_dict):
-        config = MySQLConnectionConfig.parse_obj(config_dict)
+        config = MySQLConfig.parse_obj(config_dict)
         return cls(config)

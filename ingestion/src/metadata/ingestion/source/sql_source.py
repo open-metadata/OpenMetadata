@@ -22,6 +22,11 @@ from datetime import datetime
 from typing import Dict, Iterable, List, Optional, Tuple
 from urllib.parse import quote_plus
 
+from pydantic import SecretStr
+from sqlalchemy import create_engine
+from sqlalchemy.engine.reflection import Inspector
+from sqlalchemy.inspection import inspect
+
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import (
     Column,
@@ -49,10 +54,6 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.utils.column_helpers import check_column_complex_type, get_column_type
 from metadata.utils.helpers import get_database_service_or_create
-from pydantic import SecretStr
-from sqlalchemy import create_engine
-from sqlalchemy.engine.reflection import Inspector
-from sqlalchemy.inspection import inspect
 
 logger: logging.Logger = logging.getLogger(__name__)
 
@@ -119,6 +120,7 @@ class SQLConnectionConfig(ConfigModel):
     username: Optional[str] = None
     password: Optional[SecretStr] = None
     host_port: str
+    db_schema: Optional[str] = None
     database: Optional[str] = None
     scheme: str
     service_name: str

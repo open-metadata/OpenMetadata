@@ -24,7 +24,7 @@ from metadata.ingestion.source.sql_source import SQLConnectionConfig, SQLSource
 TableKey = namedtuple("TableKey", ["schema", "table_name"])
 
 
-class PostgresSourceConfig(SQLConnectionConfig):
+class PostgresConfig(SQLConnectionConfig):
     # defaults
     scheme = "postgresql+psycopg2"
     service_name = "postgres"
@@ -44,7 +44,7 @@ class PostgresSource(SQLSource):
 
     @classmethod
     def create(cls, config_dict, metadata_config_dict, ctx):
-        config = PostgresSourceConfig.parse_obj(config_dict)
+        config = PostgresConfig.parse_obj(config_dict)
         metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
         return cls(config, metadata_config, ctx)
 
