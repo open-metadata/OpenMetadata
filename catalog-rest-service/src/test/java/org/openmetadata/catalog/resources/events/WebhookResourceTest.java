@@ -240,14 +240,16 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook> {
   public void startWebhookEntitySubscriptions(String entity) throws IOException, URISyntaxException {
     String baseUri = "http://localhost:" + APP.getLocalPort() + "/api/v1/test/webhook/filterBased";
 
-    // Create webhook with endpoint api/v1/test/webhook/entityCreated/<entity> to receive entityCreated events
+    // Create webhook with endpoint api/v1/test/webhook/entityCreated/<entity> to receive
+    // entityCreated events
     String name = EventType.ENTITY_CREATED + ":" + entity;
     String uri = baseUri + "/" + EventType.ENTITY_CREATED + "/" + entity;
     List<EventFilter> filters =
         List.of(new EventFilter().withEventType(EventType.ENTITY_CREATED).withEntities(List.of(entity)));
     createWebhook(name, uri, filters);
 
-    // Create webhook with endpoint api/v1/test/webhook/entityUpdated/<entity> to receive entityUpdated events
+    // Create webhook with endpoint api/v1/test/webhook/entityUpdated/<entity> to receive
+    // entityUpdated events
     name = EventType.ENTITY_UPDATED + ":" + entity;
     uri = baseUri + "/" + EventType.ENTITY_UPDATED + "/" + entity;
     filters = List.of(new EventFilter().withEventType(EventType.ENTITY_UPDATED).withEntities(List.of(entity)));

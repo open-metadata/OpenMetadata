@@ -220,11 +220,7 @@ public final class EntityUtil {
         entityRelationshipDAO.findFrom(
             entityInterface.getId().toString(), entityType, Relationship.OWNS.ordinal(), toBoolean(include));
     if (ids.size() > 1) {
-<<<<<<< HEAD
       LOG.warn("Possible database issues - multiple owners {} found for entity {}", ids, entityInterface.getId());
-=======
-      log.warn("Possible database issues - multiple owners {} found for entity {}", ids, id);
->>>>>>> origin/branch-1
     }
     return ids.isEmpty() ? null : populateOwner(userDAO, teamDAO, ids.get(0));
   }

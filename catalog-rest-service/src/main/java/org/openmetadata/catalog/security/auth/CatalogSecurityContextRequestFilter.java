@@ -34,7 +34,7 @@ public class CatalogSecurityContextRequestFilter implements ContainerRequestFilt
     Principal principal = httpRequest.getUserPrincipal();
     String scheme = requestContext.getUriInfo().getRequestUri().getScheme();
 
-    log.debug(
+    LOG.debug(
         "Method: {}, AuthType: {}, RemoteUser: {}, UserPrincipal: {}, Scheme: {}",
         httpRequest.getMethod(),
         httpRequest.getAuthType(),

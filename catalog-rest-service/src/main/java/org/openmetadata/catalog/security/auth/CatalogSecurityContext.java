@@ -46,7 +46,7 @@ public class CatalogSecurityContext implements SecurityContext {
 
   @Override
   public boolean isUserInRole(String role) {
-    log.debug("isUserInRole user: {}, role: {}", principal, role);
+    LOG.debug("isUserInRole user: {}, role: {}", principal, role);
     return false;
   }
 

@@ -488,7 +488,8 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
     assertListProperty(expected.getMlFeatures(), updated.getMlFeatures(), assertMlFeature);
     assertListProperty(expected.getMlHyperParameters(), updated.getMlHyperParameters(), assertMlHyperParam);
 
-    // assertListProperty on MlFeatures already validates size, so we can directly iterate on sources
+    // assertListProperty on MlFeatures already validates size, so we can directly iterate on
+    // sources
     validateMlFeatureSources(expected.getMlFeatures(), updated.getMlFeatures());
 
     TestUtils.validateTags(expected.getTags(), updated.getTags());
@@ -553,7 +554,8 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
     assertListProperty(createRequest.getMlFeatures(), createdEntity.getMlFeatures(), assertMlFeature);
     assertListProperty(createRequest.getMlHyperParameters(), createdEntity.getMlHyperParameters(), assertMlHyperParam);
 
-    // assertListProperty on MlFeatures already validates size, so we can directly iterate on sources
+    // assertListProperty on MlFeatures already validates size, so we can directly iterate on
+    // sources
     validateMlFeatureSources(createRequest.getMlFeatures(), createdEntity.getMlFeatures());
 
     TestUtils.validateTags(createRequest.getTags(), createdEntity.getTags());

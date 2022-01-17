@@ -284,7 +284,8 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline> {
     // TODO update this once task removal is figured out
     // remove a task
     // TASKS.remove(0);
-    // change = getChangeDescription(pipeline.getVersion()).withFieldsUpdated(singletonList("tasks"));
+    // change =
+    // getChangeDescription(pipeline.getVersion()).withFieldsUpdated(singletonList("tasks"));
     // updateAndCheckEntity(request.withTasks(TASKS), OK, adminAuthHeaders(), MINOR_UPDATE, change);
   }
 

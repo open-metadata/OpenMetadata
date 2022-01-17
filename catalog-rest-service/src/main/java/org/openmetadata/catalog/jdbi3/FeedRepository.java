@@ -76,7 +76,8 @@ public class FeedRepository {
             about.getFullyQualifiedFieldType(),
             Relationship.IS_ABOUT.ordinal());
 
-    // Add the owner also as addressedTo as the entity he owns when addressed, the owner is actually being addressed
+    // Add the owner also as addressedTo as the entity he owns when addressed, the owner is actually
+    // being addressed
     if (owner != null) {
       dao.relationshipDAO()
           .insert(
@@ -200,7 +201,8 @@ public class FeedRepository {
     List<Thread> threads = new ArrayList<>();
     Set<String> uniqueValues = new HashSet<>();
     for (String t : threadIds) {
-      // If an entity has multiple relationships (created, mentioned, repliedTo etc.) to the same thread
+      // If an entity has multiple relationships (created, mentioned, repliedTo etc.) to the same
+      // thread
       // Don't sent duplicated copies of the thread in response
       if (uniqueValues.add(t)) {
         threads.add(EntityUtil.validate(t, dao.feedDAO().findById(t), Thread.class));

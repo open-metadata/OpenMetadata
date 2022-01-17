@@ -135,7 +135,8 @@ public class FeedResource {
     Thread thread =
         new Thread().withId(UUID.randomUUID()).withThreadTs(System.currentTimeMillis()).withAbout(cr.getAbout());
     // For now redundantly storing everything in json (that includes fromEntity, addressedTo entity)
-    // TODO - This needs cleanup later if this information is too much or inconsistent in relationship table
+    // TODO - This needs cleanup later if this information is too much or inconsistent in
+    // relationship table
     FeedUtil.addPost(thread, new Post().withMessage(cr.getMessage()).withFrom(cr.getFrom()));
     addHref(uriInfo, dao.create(thread));
     return Response.created(thread.getHref()).entity(thread).build();

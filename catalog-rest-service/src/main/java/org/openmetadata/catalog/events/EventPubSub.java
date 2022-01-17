@@ -106,18 +106,18 @@ public class EventPubSub {
   public static class DefaultExceptionHandler implements ExceptionHandler<ChangeEventHolder> {
     @Override
     public void handleEventException(Throwable throwable, long l, ChangeEventHolder changeEventHolder) {
-      log.warn("Disruptor error in onEvent {}", throwable.getMessage());
+      LOG.warn("Disruptor error in onEvent {}", throwable.getMessage());
       throw new RuntimeException(throwable.getMessage()); // Throw runtime exception to stop the event handler thread
     }
 
     @Override
     public void handleOnStartException(Throwable throwable) {
-      log.warn("Disruptor error in onStart {}", throwable.getMessage());
+      LOG.warn("Disruptor error in onStart {}", throwable.getMessage());
     }
 
     @Override
     public void handleOnShutdownException(Throwable throwable) {
-      log.warn("Disruptor error on onShutdown {}", throwable.getMessage());
+      LOG.warn("Disruptor error on onShutdown {}", throwable.getMessage());
     }
   }
 }

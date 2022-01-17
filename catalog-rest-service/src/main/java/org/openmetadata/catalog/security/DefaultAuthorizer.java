@@ -50,11 +50,11 @@ public class DefaultAuthorizer implements Authorizer {
 
   @Override
   public void init(AuthorizerConfiguration config, Jdbi dbi) throws IOException {
-    log.debug("Initializing DefaultAuthorizer with config {}", config);
+    LOG.debug("Initializing DefaultAuthorizer with config {}", config);
     this.adminUsers = new HashSet<>(config.getAdminPrincipals());
     this.botUsers = new HashSet<>(config.getBotPrincipals());
     this.principalDomain = config.getPrincipalDomain();
-    log.debug("Admin users: {}", adminUsers);
+    LOG.debug("Admin users: {}", adminUsers);
     CollectionDAO collectionDAO = dbi.onDemand(CollectionDAO.class);
     this.userRepository = new UserRepository(collectionDAO);
     mayBeAddAdminUsers();
@@ -64,9 +64,8 @@ public class DefaultAuthorizer implements Authorizer {
   }
 
   private void mayBeAddAdminUsers() {
-    log.debug("Checking user entries for admin users");
+    LOG.debug("Checking user entries for admin users");
     EntityUtil.Fields fields = new EntityUtil.Fields(FIELD_LIST, fieldsParam);
-<<<<<<< HEAD
     for (String adminUser : adminUsers) {
       try {
         User user = userRepository.getByName(null, adminUser, fields);
@@ -88,27 +87,10 @@ public class DefaultAuthorizer implements Authorizer {
         LOG.error("Failed to create admin user {}", adminUser, e);
       }
     }
-=======
-    adminUsers.stream()
-        .filter(
-            name -> {
-              try {
-                User user = userRepository.getByName(null, name, fields);
-                if (user != null) {
-                  log.debug("Entry for user '{}' already exists", name);
-                  return false;
-                }
-                return true;
-              } catch (IOException | EntityNotFoundException | ParseException ex) {
-                return true;
-              }
-            })
-        .forEach(this::addAdmin);
->>>>>>> origin/branch-1
   }
 
   private void mayBeAddBotUsers() {
-    log.debug("Checking user entries for bot users");
+    LOG.debug("Checking user entries for bot users");
     EntityUtil.Fields fields = new EntityUtil.Fields(FIELD_LIST, fieldsParam);
 <<<<<<< HEAD
     for (String botUser : botUsers) {
@@ -139,7 +121,7 @@ public class DefaultAuthorizer implements Authorizer {
               try {
                 User user = userRepository.getByName(null, name, fields);
                 if (user != null) {
-                  log.debug("Entry for user '{}' already exists", name);
+                  LOG.debug("Entry for user '{}' already exists", name);
                   return false;
                 }
                 return true;
@@ -241,12 +223,12 @@ public class DefaultAuthorizer implements Authorizer {
     } catch (IOException | ParseException exception) {
 =======
       User addedUser = userRepository.create(null, user);
-      log.debug("Added admin user entry: {}", addedUser);
+      LOG.debug("Added admin user entry: {}", addedUser);
     } catch (DuplicateEntityException | IOException exception) {
 >>>>>>> origin/branch-1
       // In HA set up the other server may have already added the user.
-      log.debug("Caught exception: {}", ExceptionUtils.getStackTrace(exception));
-      log.debug("Admin user entry: {} already exists.", user);
+      LOG.debug("Caught exception: {}", ExceptionUtils.getStackTrace(exception));
+      LOG.debug("Admin user entry: {} already exists.", user);
     }
   }
 
@@ -258,12 +240,12 @@ public class DefaultAuthorizer implements Authorizer {
     } catch (IOException | ParseException exception) {
 =======
       User addedUser = userRepository.create(null, user);
-      log.debug("Added bot user entry: {}", addedUser);
+      LOG.debug("Added bot user entry: {}", addedUser);
     } catch (DuplicateEntityException | IOException exception) {
 >>>>>>> origin/branch-1
       // In HA se tup the other server may have already added the user.
-      log.debug("Caught exception: {}", ExceptionUtils.getStackTrace(exception));
-      log.debug("Bot user entry: {} already exists.", user);
+      LOG.debug("Caught exception: {}", ExceptionUtils.getStackTrace(exception));
+      LOG.debug("Bot user entry: {} already exists.", user);
     }
   }
 }

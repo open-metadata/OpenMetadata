@@ -111,7 +111,8 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     List<TagLabel> tags = pipeline.getTags();
     EntityReference service = pipeline.getService();
 
-    // Don't store owner, database, href and tags as JSON. Build it on the fly based on relationships
+    // Don't store owner, database, href and tags as JSON. Build it on the fly based on
+    // relationships
     pipeline.withOwner(null).withService(null).withHref(null).withTags(null);
 
     store(pipeline.getId(), pipeline, update);
@@ -329,9 +330,12 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     }
 
     private void updateTasks(Pipeline origPipeline, Pipeline updatedPipeline) throws JsonProcessingException {
-      // Airflow lineage backend gets executed per task in a DAG. This means we will not a get full picture of the
-      // pipeline in each call. Hence, we may create a pipeline and add a single task when one task finishes in a
-      // pipeline in the next task run we may have to update. To take care of this we will merge the tasks
+      // Airflow lineage backend gets executed per task in a DAG. This means we will not a get full
+      // picture of the
+      // pipeline in each call. Hence, we may create a pipeline and add a single task when one task
+      // finishes in a
+      // pipeline in the next task run we may have to update. To take care of this we will merge the
+      // tasks
       List<Task> updatedTasks = Optional.ofNullable(updatedPipeline.getTasks()).orElse(Collections.emptyList());
       List<Task> origTasks = Optional.ofNullable(origPipeline.getTasks()).orElse(Collections.emptyList());
 

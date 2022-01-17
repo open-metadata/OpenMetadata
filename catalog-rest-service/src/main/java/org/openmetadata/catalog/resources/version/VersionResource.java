@@ -47,7 +47,7 @@ public class VersionResource {
       Long timestamp = timestampAsString != null ? Long.valueOf(timestampAsString) : null;
       CATALOG_VERSION.setTimestamp(timestamp);
     } catch (Exception ie) {
-      log.warn("Failed to read catalog version file");
+      LOG.warn("Failed to read catalog version file");
     }
   }
 

@@ -104,7 +104,8 @@ public class ChangeEventHandler implements EventHandler {
           .withEntityFullyQualifiedName(entityFQN);
     }
 
-    // Entity field was updated by PUT .../entities/{id}/fieldName - Example PUT ../tables/{id}/follower
+    // Entity field was updated by PUT .../entities/{id}/fieldName - Example PUT
+    // ../tables/{id}/follower
     if (changeType.equals(RestUtil.ENTITY_FIELDS_CHANGED)) {
       return (ChangeEvent) entity;
     }

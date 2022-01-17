@@ -190,19 +190,25 @@ public class TeamResourceTest extends EntityResourceTest<Team> {
   //    assertNull(team.getDeleted());
   //    assertNull(team.getUsers());
   //
-  //    User user1 = createUser(UserResourceTest.create(test, 1), authHeaders("test@open-metadata.org"));
-  //    User user2 = createUser(UserResourceTest.create(test, 2), authHeaders("test@open-metadata.org"));
-  //    User user3 = createUser(UserResourceTest.create(test, 3), authHeaders("test@open-metadata.org"));
+  //    User user1 = createUser(UserResourceTest.create(test, 1),
+  // authHeaders("test@open-metadata.org"));
+  //    User user2 = createUser(UserResourceTest.create(test, 2),
+  // authHeaders("test@open-metadata.org"));
+  //    User user3 = createUser(UserResourceTest.create(test, 3),
+  // authHeaders("test@open-metadata.org"));
   //
-  //    List<EntityReference> users = Arrays.asList(new UserEntityInterface(user1).getEntityReference(),
+  //    List<EntityReference> users = Arrays.asList(new
+  // UserEntityInterface(user1).getEntityReference(),
   //            new UserEntityInterface(user2).getEntityReference());
-  //    Profile profile = new Profile().withImages(new ImageList().withImage(URI.create("http://image.com")));
+  //    Profile profile = new Profile().withImages(new
+  // ImageList().withImage(URI.create("http://image.com")));
   //
   //    //
   //    // Add previously absent attributes
   //    //
   //    String originalJson = JsonUtils.pojoToJson(team);
-  //    team.withDisplayName("displayName").withDescription("description").withProfile(profile).withUsers(users);
+  //
+  // team.withDisplayName("displayName").withDescription("description").withProfile(profile).withUsers(users);
   //    ChangeDescription change = getChangeDescription(team.getVersion())
   //            .withFieldsAdded(Arrays.asList("displayName", "description", "profile", "users"));
   //    team = patchEntityAndCheck(team, originalJson, adminAuthHeaders(), MINOR_UPDATE, change);
@@ -211,11 +217,14 @@ public class TeamResourceTest extends EntityResourceTest<Team> {
   //    // Replace the attributes
   //    //
   //    users = Arrays.asList(new UserEntityInterface(user1).getEntityReference(),
-  //            new UserEntityInterface(user3).getEntityReference()); // user2 dropped and user3 is added
-  //    profile = new Profile().withImages(new ImageList().withImage(URI.create("http://image1.com")));
+  //            new UserEntityInterface(user3).getEntityReference()); // user2 dropped and user3 is
+  // added
+  //    profile = new Profile().withImages(new
+  // ImageList().withImage(URI.create("http://image1.com")));
   //
   //    originalJson = JsonUtils.pojoToJson(team);
-  //    team.withDisplayName("displayName1").withDescription("description1").withProfile(profile).withUsers(users);
+  //
+  // team.withDisplayName("displayName1").withDescription("description1").withProfile(profile).withUsers(users);
   //    change = getChangeDescription(team.getVersion())
   //            .withFieldsUpdated(Arrays.asList("displayName", "description", "profile", "users"));
   //    team = patchEntityAndCheck(team, originalJson, adminAuthHeaders(), MINOR_UPDATE, change);

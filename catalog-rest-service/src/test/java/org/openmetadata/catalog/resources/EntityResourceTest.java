@@ -292,8 +292,10 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     return create;
   }
 
-  // Get container entity based on create request that has CONTAINS relationship to the entity created with this
-  // request has . For table, it is database. For database, it is databaseService. See Relationship.CONTAINS for
+  // Get container entity based on create request that has CONTAINS relationship to the entity
+  // created with this
+  // request has . For table, it is database. For database, it is databaseService. See
+  // Relationship.CONTAINS for
   // details.
   public abstract EntityReference getContainer(Object createRequest) throws URISyntaxException;
 
@@ -417,7 +419,8 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
         }
       }
 
-      // before running "deleted" delete all created entries otherwise the test doesn't work with just one element.
+      // before running "deleted" delete all created entries otherwise the test doesn't work with
+      // just one element.
       if ("all".equals(include)) {
         for (T e : allEntities.getData()) {
           EntityInterface<T> toBeDeleted = getEntityInterface(e);
