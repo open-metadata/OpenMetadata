@@ -4,7 +4,7 @@ install_dev:
 generate:
 	mkdir -p src/metadata/generated
 	python3 -m pip install --upgrade pip setuptools
-	python3 -m pip install --upgrade -r requirements-dev.txt
+	make install_dev
 	datamodel-codegen --input ../catalog-rest-service/src/main/resources/json --input-file-type jsonschema --output src/metadata/generated
 
 clean:
