@@ -9,17 +9,22 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+# When a new push happens to the main branch that
+# modifies the JSON Schemas, we are going to
+# generate the updated pydantic models and
+# publish a new version of openmetadata-core
+
 name: Publish openmetadata-ingestion-core packages
 
 on:
-  pull_request:
+  push:
     branches:
       - main
     paths:
       - 'catalog-rest-service/src/main/resources/json/**'
 
 jobs:
-  build-and-push:
+  py-core-build-and-push:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -36,21 +41,11 @@ jobs:
           python3 -m venv env
           source env/bin/activate
           make generate
-      - name: Bump Version
-        working-directory: ingestion-core
-        run: |
-          source env/bin/activate
-          make bump-version-dev
-      - name: Publish PyPi packages
+      - name: Publish Test PyPi packages
         working-directory: ingestion-core
         env:
-          TWINE_USERNAME: ${{ secrets.TWINE_USERNAME }}
-          TWINE_PASSWORD: ${{ secrets.TWINE_PASSWORD }}
+          TWINE_USERNAME: ${{ secrets.TWINE_USERNAME_TEST }}
+          TWINE_PASSWORD: ${{ secrets.TWINE_PASSWORD_TEST }}
         run: |
           source env/bin/activate
           make publish
-      - name: Commit and Push New Version
-        uses: EndBug/add-and-commit@v7
-        with:
-          message: openmetadata-ingestion-core version bumped
-          add: ./ingestion-core/src/metadata/_version.py
