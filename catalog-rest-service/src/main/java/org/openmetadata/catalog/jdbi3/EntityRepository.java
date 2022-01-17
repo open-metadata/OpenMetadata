@@ -526,15 +526,7 @@ public abstract class EntityRepository<T> {
   }
 
   protected EntityReference getOwner(T entity) throws IOException {
-    EntityInterface entityInterface = getEntityInterface(entity);
-    return supportsOwner && entity != null
-        ? EntityUtil.populateOwner(
-            entityInterface,
-            entityName,
-            daoCollection.relationshipDAO(),
-            daoCollection.userDAO(),
-            daoCollection.teamDAO())
-        : null;
+    return h(entity).getOwnerOrNull();
   }
 
   protected void setOwner(T entity, EntityReference owner) {
@@ -610,39 +602,44 @@ public abstract class EntityRepository<T> {
     }
 
     /**
-     * Validate the owner before creating a resource. Owner must exist and must be either User or Team.
+     * Validate the owner if not null before creating this resource. Owner must exist, not being deleted, and must be
+     * either User or Team.
      *
      * @return
      */
-    public EntityReference validateOwner() {
-      EntityReference entityReference = validateField("owner");
+    public EntityReference validateOwnerOrNull() {
+      EntityReference entityReference = validateFieldOrNull("owner");
       if (entityReference == null) {
         return null;
       } else if (!List.of(Entity.USER, Entity.TEAM).contains(entityReference.getType())) {
-        throw new IllegalArgumentException(String.format("Invalid ownerType %s", entityReference.getType()));
+        throw new IllegalArgumentException(String.format("Invalid type %s", entityReference.getType()));
       }
       return entityReference;
     }
 
     /**
-     * Validate a field containing a EntityReference. The entity must exist and not deleted.
+     * Validate a field containing a EntityReference if not null before creating this resource. The target entity must
+     * exist and not deleted.
      *
      * @param fieldName
      * @return
      */
     @SneakyThrows
-    public EntityReference validateField(String fieldName) {
+    public EntityReference validateFieldOrNull(String fieldName) {
       Method method = entity.getClass().getMethod("get" + StringUtils.capitalize(fieldName));
       EntityReference entityReference = (EntityReference) method.invoke(entity);
       if (entityReference == null) {
         return null;
       }
+      // this could be changed to Include.NON_DELETED because we validate only when creating entities linked to
+      // non-deleted entities.
       Object entity = Entity.getEntity(entityReference, Fields.EMPTY_FIELDS, isDeleted);
       return h(entity).toEntityReference();
     }
 
     /**
-     * Find the owner in MySQL and validate the type.
+     * When listing and getting resources, we need to get entities using the relationships. If the relationship exists
+     * then the entity must exist.
      *
      * @return
      */
@@ -715,6 +712,15 @@ public abstract class EntityRepository<T> {
         LOG.warn("Possible database issues - multiple containers found for entity {}", entityInterface.getId());
       }
       return h(Entity.getEntity(refs.get(0), Fields.EMPTY_FIELDS, Include.ALL)).toEntityReference();
+    }
+
+    public <S> S findEntity(String fieldName, String entityName) {
+      S entity = findEntity(fieldName);
+      EntityReference entityReference = Entity.getEntityReference(entity);
+      if (!entityName.equals(entityReference.getType())) {
+        throw new IllegalArgumentException(String.format("Invalid type %s", entityReference.getType()));
+      }
+      return entity;
     }
 
     /**

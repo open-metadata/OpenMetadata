@@ -15,7 +15,6 @@ package org.openmetadata.catalog.jdbi3;
 
 import static org.openmetadata.catalog.Entity.*;
 import static org.openmetadata.catalog.jdbi3.Relationship.JOINED_WITH;
-import static org.openmetadata.catalog.util.EntityUtil.toBoolean;
 import static org.openmetadata.common.utils.CommonUtil.parseDate;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -42,7 +41,6 @@ import org.openmetadata.catalog.entity.data.Database;
 import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.entity.services.DatabaseService;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
-import org.openmetadata.catalog.jdbi3.DatabaseServiceRepository.DatabaseServiceEntityInterface;
 import org.openmetadata.catalog.resources.databases.TableResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.Column;
@@ -51,7 +49,6 @@ import org.openmetadata.catalog.type.ColumnProfile;
 import org.openmetadata.catalog.type.DailyCount;
 import org.openmetadata.catalog.type.DataModel;
 import org.openmetadata.catalog.type.EntityReference;
-import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.JoinedWith;
 import org.openmetadata.catalog.type.SQLQuery;
 import org.openmetadata.catalog.type.TableConstraint;
@@ -95,7 +92,7 @@ public class TableRepository extends EntityRepository<Table> {
     table.setDatabase(getDatabase(table));
     table.setService(getService(table));
     table.setTableConstraints(fields.contains("tableConstraints") ? table.getTableConstraints() : null);
-    table.setOwner(fields.contains("owner") ? getOwner2(table) : null);
+    table.setOwner(fields.contains("owner") ? getOwner(table) : null);
     table.setFollowers(fields.contains("followers") ? getFollowers(table) : null);
     table.setUsageSummary(
         fields.contains("usageSummary") ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), table.getId()) : null);
@@ -275,11 +272,6 @@ public class TableRepository extends EntityRepository<Table> {
     daoCollection.relationshipDAO().deleteFrom(tableId, TABLE, Relationship.HAS.ordinal(), LOCATION);
   }
 
-  @Transaction
-  public EntityReference getOwnerReference(Table table) throws IOException {
-    return EntityUtil.populateOwner(daoCollection.userDAO(), daoCollection.teamDAO(), table.getOwner());
-  }
-
   private void setColumnFQN(String parentFQN, List<Column> columns) {
     columns.forEach(
         c -> {
@@ -306,15 +298,18 @@ public class TableRepository extends EntityRepository<Table> {
 
   @Override
   public void prepare(Table table) throws IOException {
-    table.setDatabase(daoCollection.databaseDAO().findEntityReferenceById(table.getDatabase().getId()));
-    populateService(table);
+    Database database = h(table).findEntity("database", DATABASE);
+    table.setDatabase(h(database).toEntityReference());
+    DatabaseService databaseService = h(database).findEntity("service", DATABASE_SERVICE);
+    table.setService(h(databaseService).toEntityReference());
+    table.setServiceType(databaseService.getServiceType());
 
     // Set data in table entity based on database relationship
     table.setFullyQualifiedName(getFQN(table));
     setColumnFQN(table.getFullyQualifiedName(), table.getColumns());
 
     // Check if owner is valid and set the relationship
-    table.setOwner(EntityUtil.populateOwner(daoCollection.userDAO(), daoCollection.teamDAO(), table.getOwner()));
+    table.setOwner(h(table).validateOwnerOrNull());
 
     // Validate table tags and add derived tags to the list
     table.setTags(EntityUtil.addDerivedTags(daoCollection.tagDAO(), table.getTags()));
@@ -334,31 +329,8 @@ public class TableRepository extends EntityRepository<Table> {
     return h(databaseService).toEntityReference();
   }
 
-  private EntityReference getOwner2(Table table) {
-    return h(table).getOwnerOrNull();
-  }
-
   private EntityReference getLocation(Table table) {
     return h(table).getHasOrNull(LOCATION);
-  }
-
-  private void populateService(Table table) throws IOException {
-    Database database = daoCollection.databaseDAO().findEntityById(table.getDatabase().getId(), Include.ALL);
-    Include include = database.getDeleted() ? Include.DELETED : Include.NON_DELETED;
-    // Find database service from the database that table is contained in
-    String serviceId =
-        daoCollection
-            .relationshipDAO()
-            .findFrom(
-                database.getId().toString(),
-                DATABASE,
-                Relationship.CONTAINS.ordinal(),
-                DATABASE_SERVICE,
-                toBoolean(include))
-            .get(0);
-    DatabaseService service = daoCollection.dbServiceDAO().findEntityById(UUID.fromString(serviceId));
-    table.setService(new DatabaseServiceEntityInterface(service).getEntityReference());
-    table.setServiceType(service.getServiceType());
   }
 
   @Override

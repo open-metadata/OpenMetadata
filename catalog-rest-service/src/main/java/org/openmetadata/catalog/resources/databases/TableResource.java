@@ -321,7 +321,7 @@ public class TableResource {
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTable create)
       throws IOException, ParseException {
     Table table = getTable(securityContext, create);
-    SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, h(table).validateOwner());
+    SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, h(table).validateOwnerOrNull());
     PutResponse<Table> response = dao.createOrUpdate(uriInfo, validateNewTable(table));
     addHref(uriInfo, response.getEntity());
     return response.toResponse();
@@ -558,6 +558,6 @@ public class TableResource {
         .withUpdatedBy(securityContext.getUserPrincipal().getName())
         .withOwner(create.getOwner())
         .withUpdatedAt(System.currentTimeMillis())
-        .withDatabase(new EntityReference().withId(create.getDatabase()));
+        .withDatabase(new EntityReference().withId(create.getDatabase()).withType(Entity.DATABASE));
   }
 }
