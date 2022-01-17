@@ -229,7 +229,7 @@ public class PolicyResourceTest extends EntityResourceTest<Policy> {
       PolicyList forwardPage;
       PolicyList backwardPage;
       do { // For each limit (or page size) - forward scroll till the end
-        log.info("Limit {} forward scrollCount {} afterCursor {}", limit, pageCount, after);
+        LOG.info("Limit {} forward scrollCount {} afterCursor {}", limit, pageCount, after);
         forwardPage = listPolicies(null, limit, null, after, adminAuthHeaders());
         printPolicies(forwardPage);
         after = forwardPage.getPaging().getAfter();
@@ -252,7 +252,7 @@ public class PolicyResourceTest extends EntityResourceTest<Policy> {
       pageCount = 0;
       indexInAllPolicies = totalRecords - limit - forwardPage.getData().size();
       do {
-        log.info("Limit {} backward scrollCount {} beforeCursor {}", limit, pageCount, before);
+        LOG.info("Limit {} backward scrollCount {} beforeCursor {}", limit, pageCount, before);
         forwardPage = listPolicies(null, limit, before, null, adminAuthHeaders());
         printPolicies(forwardPage);
         before = forwardPage.getPaging().getBefore();
@@ -264,8 +264,8 @@ public class PolicyResourceTest extends EntityResourceTest<Policy> {
   }
 
   private void printPolicies(PolicyList list) {
-    list.getData().forEach(Policy -> log.info("DB {}", Policy.getFullyQualifiedName()));
-    log.info("before {} after {} ", list.getPaging().getBefore(), list.getPaging().getAfter());
+    list.getData().forEach(Policy -> LOG.info("DB {}", Policy.getFullyQualifiedName()));
+    LOG.info("before {} after {} ", list.getPaging().getBefore(), list.getPaging().getAfter());
   }
 
   @Test

@@ -29,7 +29,7 @@ public final class ParallelStreamUtil {
 
   public static <T> T execute(Supplier<T> supplier, Executor executor) {
     Stopwatch stopwatch = Stopwatch.createStarted();
-    log.debug("execute start");
+    LOG.debug("execute start");
 
     try {
       CompletableFuture<T> resultFuture = CompletableFuture.supplyAsync(supplier, executor);
@@ -41,14 +41,14 @@ public final class ParallelStreamUtil {
       // shouldn't reach here
       throw new IllegalStateException("Shouldn't reach here");
     } finally {
-      log.debug("execute complete - elapsed: {} ms", stopwatch.elapsed(TimeUnit.MILLISECONDS));
+      LOG.debug("execute complete - elapsed: {} ms", stopwatch.elapsed(TimeUnit.MILLISECONDS));
       stopwatch.stop();
     }
   }
 
   public static <T> T executeWithTimeout(int timeoutInSeconds, Supplier<T> supplier, Executor executor) {
     Stopwatch stopwatch = Stopwatch.createStarted();
-    log.debug("execute start");
+    LOG.debug("execute start");
 
     try {
       CompletableFuture<T> resultFuture = CompletableFuture.supplyAsync(supplier, executor);
@@ -60,14 +60,14 @@ public final class ParallelStreamUtil {
     } catch (Exception e) {
       throw new RuntimeException(e);
     } finally {
-      log.debug("execute complete - elapsed: {} ms", stopwatch.elapsed(TimeUnit.MILLISECONDS));
+      LOG.debug("execute complete - elapsed: {} ms", stopwatch.elapsed(TimeUnit.MILLISECONDS));
       stopwatch.stop();
     }
   }
 
   public static void runAsync(Callable<Void> callable, Executor executor) {
     Stopwatch stopwatch = Stopwatch.createStarted();
-    log.debug("runAsync start");
+    LOG.debug("runAsync start");
     CompletableFuture<Void> res =
         CompletableFuture.supplyAsync(
             () -> {
@@ -83,9 +83,9 @@ public final class ParallelStreamUtil {
         (r, th) -> {
           // LOG any exceptions
           if (th != null) {
-            log.error("Got exception while running async task", th.getCause());
+            LOG.error("Got exception while running async task", th.getCause());
           }
-          log.debug("runAsync complete - elapsed: {} ms", stopwatch.elapsed(TimeUnit.MILLISECONDS));
+          LOG.debug("runAsync complete - elapsed: {} ms", stopwatch.elapsed(TimeUnit.MILLISECONDS));
           stopwatch.stop();
         });
   }

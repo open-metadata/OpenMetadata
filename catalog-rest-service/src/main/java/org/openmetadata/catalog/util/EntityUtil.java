@@ -196,12 +196,7 @@ public final class EntityUtil {
         dao.findFromEntity(
             entityId.toString(), entityType, Relationship.CONTAINS.ordinal(), serviceType, toBoolean(include));
     if (refs.size() > 1) {
-<<<<<<< HEAD
       LOG.warn("Possible database issues - multiple services found for entity {}", entityId);
-=======
-      log.warn("Possible database issues - multiple services found for entity {}", entityId);
-      return refs.get(0);
->>>>>>> origin/branch-1
     }
     return refs.isEmpty() ? null : refs.get(0);
   }
@@ -260,7 +255,7 @@ public final class EntityUtil {
       EntityRelationshipDAO dao, UUID ownedEntityId, String ownedEntityType, EntityReference owner) {
     // Add relationship owner --- owns ---> ownedEntity
     if (owner != null) {
-      log.info("Adding owner {}:{} for entity {}:{}", owner.getType(), owner.getId(), ownedEntityType, ownedEntityId);
+      LOG.info("Adding owner {}:{} for entity {}:{}", owner.getType(), owner.getId(), ownedEntityType, ownedEntityId);
       dao.insert(
           owner.getId().toString(),
           ownedEntityId.toString(),
@@ -274,7 +269,7 @@ public final class EntityUtil {
   public static void unassignOwner(
       EntityRelationshipDAO dao, EntityReference owner, String ownedEntityId, String ownedEntityType) {
     if (owner != null && owner.getId() != null) {
-      log.info("Removing owner {}:{} for entity {}", owner.getType(), owner.getId(), ownedEntityId);
+      LOG.info("Removing owner {}:{} for entity {}", owner.getType(), owner.getId(), ownedEntityId);
       dao.delete(
           owner.getId().toString(), owner.getType(), ownedEntityId, ownedEntityType, Relationship.OWNS.ordinal());
     }
@@ -312,10 +307,10 @@ public final class EntityUtil {
   }
 
   public static UsageDetails getLatestUsage(UsageDAO usageDAO, UUID entityId) {
-    log.debug("Getting latest usage for {}", entityId);
+    LOG.debug("Getting latest usage for {}", entityId);
     UsageDetails details = usageDAO.getLatestUsage(entityId.toString());
     if (details == null) {
-      log.debug("Usage details not found. Sending default usage");
+      LOG.debug("Usage details not found. Sending default usage");
       UsageStats stats = new UsageStats().withCount(0).withPercentileRank(0.0);
       details =
           new UsageDetails()

@@ -41,7 +41,7 @@ public class EventPubSub {
       disruptor.setDefaultExceptionHandler(new DefaultExceptionHandler());
       executor = Executors.newCachedThreadPool(DaemonThreadFactory.INSTANCE);
       ringBuffer = disruptor.start();
-      log.info("Disruptor started");
+      LOG.info("Disruptor started");
       started = true;
     }
   }
@@ -55,7 +55,7 @@ public class EventPubSub {
       disruptor = null;
       ringBuffer = null;
       started = false;
-      log.info("Disruptor stopped");
+      LOG.info("Disruptor stopped");
     }
   }
 
@@ -92,13 +92,13 @@ public class EventPubSub {
     processor.setExceptionHandler(new DefaultExceptionHandler());
     ringBuffer.addGatingSequences(processor.getSequence());
     executor.execute(processor);
-    log.info("Processor added for {}", processor);
+    LOG.info("Processor added for {}", processor);
     return processor;
   }
 
   public static void removeProcessor(BatchEventProcessor<ChangeEventHolder> processor) {
     ringBuffer.removeGatingSequence(processor.getSequence());
-    log.info("Processor removed for {}", processor);
+    LOG.info("Processor removed for {}", processor);
   }
 
   public void close() {}

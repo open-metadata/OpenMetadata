@@ -46,9 +46,9 @@ public class AuditEventHandler implements EventHandler {
                 .withMethod(AuditLog.Method.fromValue(method))
                 .withUserName(username)
                 .withResponseCode(responseCode);
-        log.info("Added audit log entry: {}", auditLog);
+        LOG.info("Added audit log entry: {}", auditLog);
       } catch (Exception e) {
-        log.error("Failed to capture audit log for {} and method {} due to {}", path, method, e.getMessage());
+        LOG.error("Failed to capture audit log for {} and method {} due to {}", path, method, e.getMessage());
       }
     }
     return null;

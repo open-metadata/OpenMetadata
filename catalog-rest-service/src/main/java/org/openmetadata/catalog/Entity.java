@@ -1,10 +1,10 @@
-/*
+/*may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  U
  *  Copyright 2021 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
- *  You may obtain a copy of the License at
- *  http://www.apache.org/licenses/LICENSE-2.0
- *  Unless required by applicable law or agreed to in writing, software
+ *  You nless required by applicable law or agreed to in writing, software
  *  distributed under the License is distributed on an "AS IS" BASIS,
  *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  *  See the License for the specific language governing permissions and
@@ -91,7 +91,7 @@ public final class Entity {
     DAO_MAP.put(entity, dao);
     ENTITY_REPOSITORY_MAP.put(entity, entityRepository);
     CANONICAL_ENTITY_NAME_MAP.put(entity.toLowerCase(Locale.ROOT), entity);
-    log.info("Registering entity {}", entity);
+    LOG.info("Registering entity {}", entity);
   }
 
   public static EntityReference getEntityReference(String entity, UUID id) throws IOException {

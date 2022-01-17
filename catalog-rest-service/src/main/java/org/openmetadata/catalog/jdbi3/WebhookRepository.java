@@ -124,7 +124,7 @@ public class WebhookRepository extends EntityRepository<Webhook> {
     BatchEventProcessor<ChangeEventHolder> processor = EventPubSub.addEventHandler(publisher);
     publisher.setProcessor(processor);
     webhookPublisherMap.put(webhook.getId(), publisher);
-    log.info("Webhook subscription started for {}", webhook.getName());
+    LOG.info("Webhook subscription started for {}", webhook.getName());
   }
 
   public void updateWebhookPublisher(Webhook webhook) throws InterruptedException {
@@ -144,7 +144,7 @@ public class WebhookRepository extends EntityRepository<Webhook> {
         // Restart the previously stopped publisher (in states notStarted, error, retryLimitReached)
         BatchEventProcessor<ChangeEventHolder> processor = EventPubSub.addEventHandler(previousPublisher);
         previousPublisher.setProcessor(processor);
-        log.info("Webhook publisher restarted for {}", webhook.getName());
+        LOG.info("Webhook publisher restarted for {}", webhook.getName());
       }
     } else {
       // Remove the webhook publisher
@@ -158,7 +158,7 @@ public class WebhookRepository extends EntityRepository<Webhook> {
       publisher.getProcessor().halt();
       publisher.awaitShutdown();
       EventPubSub.removeProcessor(publisher.getProcessor());
-      log.info("Webhook publisher deleted for {}", publisher.getWebhook().getName());
+      LOG.info("Webhook publisher deleted for {}", publisher.getWebhook().getName());
     }
     webhookPublisherMap.remove(id);
   }
@@ -327,7 +327,7 @@ public class WebhookRepository extends EntityRepository<Webhook> {
       // TODO clean this up
       Map<String, String> authHeaders = SecurityUtil.authHeaders("admin@open-metadata.org");
       target = SecurityUtil.addHeaders(client.target(webhook.getEndpoint()), authHeaders);
-      log.info("Webhook-lifecycle-onStart {}", webhook.getName());
+      LOG.info("Webhook-lifecycle-onStart {}", webhook.getName());
 >>>>>>> origin/branch-1
     }
 
@@ -361,7 +361,7 @@ public class WebhookRepository extends EntityRepository<Webhook> {
         LOG.info(
 =======
         Response response = target.post(javax.ws.rs.client.Entity.entity(list, MediaType.APPLICATION_JSON));
-        log.info(
+        LOG.info(
 >>>>>>> origin/branch-1
             "Webhook {}:{}:{} received response {}",
             webhook.getName(),
@@ -387,7 +387,7 @@ public class WebhookRepository extends EntityRepository<Webhook> {
       } catch (ProcessingException ex) {
         Throwable cause = ex.getCause();
         if (cause.getClass() == UnknownHostException.class) {
-          log.warn("Invalid webhook {} endpoint {}", webhook.getName(), webhook.getEndpoint());
+          LOG.warn("Invalid webhook {} endpoint {}", webhook.getName(), webhook.getEndpoint());
           setErrorStatus(attemptTime, null, "UnknownHostException");
         }
       }
@@ -399,7 +399,7 @@ public class WebhookRepository extends EntityRepository<Webhook> {
       client.close();
       client = null;
       shutdownLatch.countDown();
-      log.info("Webhook-lifecycle-onShutdown {}", webhook.getName());
+      LOG.info("Webhook-lifecycle-onShutdown {}", webhook.getName());
     }
 
     public synchronized Webhook getWebhook() {
@@ -460,7 +460,7 @@ public class WebhookRepository extends EntityRepository<Webhook> {
     }
 
     private void awaitShutdown() throws InterruptedException {
-      log.info("Awaiting shutdown webhook-lifecycle {}", webhook.getName());
+      LOG.info("Awaiting shutdown webhook-lifecycle {}", webhook.getName());
       shutdownLatch.await();
     }
 

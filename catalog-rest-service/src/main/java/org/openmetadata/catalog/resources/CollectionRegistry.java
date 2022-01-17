@@ -128,16 +128,16 @@ public final class CollectionRegistry {
         Objects.requireNonNull(daoObject, "CollectionDAO must not be null");
         Object resource = createResource(daoObject, resourceClass, config, authorizer);
         environment.jersey().register(resource);
-        log.info("Registering {}", resourceClass);
+        LOG.info("Registering {}", resourceClass);
       } catch (Exception ex) {
-        log.warn("Failed to create resource for class {} {}", resourceClass, ex);
+        LOG.warn("Failed to create resource for class {} {}", resourceClass, ex);
       }
     }
 
     // Now add test resources
     testResources.forEach(
         object -> {
-          log.info("Registering test resource {}", object);
+          LOG.info("Registering test resource {}", object);
           environment.jersey().register(object);
         });
   }
@@ -218,7 +218,7 @@ public final class CollectionRegistry {
 
     public void addChildCollection(CollectionDetails child) {
       CollectionInfo collectionInfo = child.cd.getCollection();
-      log.info(
+      LOG.info(
           "Adding child collection {} to parent collection {}", collectionInfo.getName(), cd.getCollection().getName());
       childCollections.add(child.cd);
     }

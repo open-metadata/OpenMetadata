@@ -43,7 +43,7 @@ public class EmbeddedMySqlSupport implements BeforeAllCallback, AfterAllCallback
       SchemaConfig schemaConfig = SchemaConfig.aSchemaConfig("openmetadata_test_db").build();
 
       embeddedMysql = EmbeddedMysql.anEmbeddedMysql(config).addSchema(schemaConfig).start();
-      log.info("Embedded MySQL is started");
+      LOG.info("Embedded MySQL is started");
 
       Flyway flyway =
           Flyway.configure()
@@ -54,16 +54,16 @@ public class EmbeddedMySqlSupport implements BeforeAllCallback, AfterAllCallback
               .load();
       flyway.clean();
       flyway.migrate();
-      log.info("Flyway migration is complete");
+      LOG.info("Flyway migration is complete");
     } else {
-      log.info("Embedded MySQL is already running");
+      LOG.info("Embedded MySQL is already running");
     }
   }
 
   @Override
   public void afterAll(ExtensionContext extensionContext) {
     if (embeddedMysql != null) {
-      log.info("Stopping the embedded db");
+      LOG.info("Stopping the embedded db");
       embeddedMysql.stop();
       embeddedMysql = null;
     }

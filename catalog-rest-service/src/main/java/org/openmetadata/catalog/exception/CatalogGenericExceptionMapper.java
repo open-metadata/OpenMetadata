@@ -89,7 +89,7 @@ public class CatalogGenericExceptionMapper implements ExceptionMapper<Throwable>
           .build();
     }
 
-    log.info("exception ", ex);
+    LOG.info("exception ", ex);
     logUnhandledException(ex);
     return new UnhandledServerException(ex.getMessage()).getResponse();
   }
@@ -108,7 +108,7 @@ public class CatalogGenericExceptionMapper implements ExceptionMapper<Throwable>
     }
 
     Logger log = getEffectiveLogger(resourceClassName);
-    log.error(errMessage, ex);
+    LOG.error(errMessage, ex);
   }
 
   protected void throwException(Throwable exception) {
@@ -117,7 +117,7 @@ public class CatalogGenericExceptionMapper implements ExceptionMapper<Throwable>
   }
 
   protected void throwException(long id, Throwable exception) {
-    log.error(formatLogMessage(id), exception);
+    LOG.error(formatLogMessage(id), exception);
   }
 
   protected String formatLogMessage(long id) {
