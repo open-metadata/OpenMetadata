@@ -443,7 +443,7 @@ const Explore: React.FC<ExploreProps> = ({
 
   const getData = () => {
     if (!isMounting.current && previsouIndex === getCurrentIndex(tab)) {
-      forceSetAgg.current = false;
+      forceSetAgg.current = !isFilterSelected;
       fetchTableData();
     }
   };
