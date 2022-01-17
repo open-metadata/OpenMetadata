@@ -63,7 +63,16 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline> {
   public static List<Task> TASKS;
 
   public PipelineResourceTest() {
-    super(Entity.PIPELINE, Pipeline.class, PipelineList.class, "pipelines", PipelineResource.FIELDS, true, true, true);
+    super(
+        Entity.PIPELINE,
+        Pipeline.class,
+        PipelineList.class,
+        "pipelines",
+        PipelineResource.FIELDS,
+        true,
+        true,
+        true,
+        true);
   }
 
   @BeforeAll

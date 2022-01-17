@@ -91,8 +91,9 @@ public class TagResource {
     tagFiles.forEach(
         tagFile -> {
           try {
-            log.info("Loading tag definitions from file {}", tagFile);
-            String tagJson = IOUtil.toString(getClass().getClassLoader().getResourceAsStream(tagFile));
+            LOG.info("Loading tag definitions from file {}", tagFile);
+            String tagJson =
+                IOUtil.toString(Objects.requireNonNull(getClass().getClassLoader().getResourceAsStream(tagFile)));
             TagCategory tagCategory = JsonUtils.readValue(tagJson, TagCategory.class);
             // TODO hack for now
             long now = System.currentTimeMillis();
@@ -112,8 +113,7 @@ public class TagResource {
   }
 
   public static List<String> getTagDefinitions() throws IOException {
-    // Find tags and initialize
-    Pattern pattern = Pattern.compile(".*Tags\\.json$");
+    Pattern pattern = Pattern.compile(".*json/data/tags/.*\\.json$");
     return CommonUtil.getResources(pattern);
   }
 

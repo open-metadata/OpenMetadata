@@ -116,7 +116,7 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
           new MlHyperParameter().withName("random").withValue("hello"));
 
   public MlModelResourceTest() {
-    super(Entity.MLMODEL, MlModel.class, MlModelList.class, "mlmodels", MlModelResource.FIELDS, true, true, true);
+    super(Entity.MLMODEL, MlModel.class, MlModelList.class, "mlmodels", MlModelResource.FIELDS, true, true, true, true);
   }
 
   @BeforeAll

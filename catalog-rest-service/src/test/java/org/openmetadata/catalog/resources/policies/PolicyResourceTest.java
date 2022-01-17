@@ -72,7 +72,7 @@ public class PolicyResourceTest extends EntityResourceTest<Policy> {
   private static Location location;
 
   public PolicyResourceTest() {
-    super(Entity.POLICY, Policy.class, PolicyList.class, "policies", PolicyResource.FIELDS, false, true, false);
+    super(Entity.POLICY, Policy.class, PolicyList.class, "policies", PolicyResource.FIELDS, false, true, false, false);
   }
 
   @BeforeAll
