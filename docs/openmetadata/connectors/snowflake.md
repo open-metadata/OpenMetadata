@@ -98,11 +98,11 @@ pip3 install 'openmetadata-ingestion[snowflake]'
 
 Create a new file called `snowflake.json` in the current directory. Note that the current directory should be the `openmetadata` directory you created in Step 1.&#x20;
 
-To create a configuration file for Snowflake, you’ll need to select one of the three options below and then customize the appropriate template to match your environment.
+To create a configuration file for Snowflake, you’ll need to select one of the three options below and then customize the appropriate template to match your needs.
 
-* SSO without Password
-* SSO with Password
-* Non-SSO
+* Authenticate with SSO using an External Browser Popup
+* Authenticate with SSO Specifying Provider, Username, and Password
+* Authenticate with Username and Password
 
 The choice of a template depends on how your Snowflake user will be authenticated.&#x20;
 
@@ -112,7 +112,9 @@ Please select the form of authentication you will use for Snowflake and select t
 Note: The `source.config` field in the configuration JSON will include the majority of the settings for your connector. In the steps below we describe how to customize the key-value pairs in the `source.config` field to meet your needs.
 {% endhint %}
 
-#### SSO without Password
+#### Authenticate with SSO using an External Browser Popup
+
+Use this method to test metadata ingestion on a Snowflake instance to which you authenticate using single-sign-on (SSO). This method will pop up a browser window to enable you to authenticate using your SSO method.&#x20;
 
 ```json
 {
@@ -156,7 +158,9 @@ Note: The `source.config` field in the configuration JSON will include the major
 }
 ```
 
-#### SSO with Password
+#### Authenticate with SSO Specifying Provider, Username, and Password
+
+Use this method to test metadata ingestion on a Snowflake instance to which you authenticate using single-sign-on (SSO). Using this method, you will specify a url for your authentication provider and a username and password that will authenticate against this provider. &#x20;
 
 ```json
 {
@@ -201,7 +205,9 @@ Note: The `source.config` field in the configuration JSON will include the major
 }
 ```
 
-#### Non-SSO
+#### Authenticate with Username and Password
+
+Use this method in production OpenMetadata deployments in which you plan to configure scheduled metadata ingestion. For this method your Snowflake instance must support authentication using username and password.&#x20;
 
 ```json
 {
