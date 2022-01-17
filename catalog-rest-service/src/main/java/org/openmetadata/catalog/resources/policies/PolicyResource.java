@@ -52,6 +52,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
+import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.policies.CreatePolicy;
 import org.openmetadata.catalog.entity.policies.Policy;
@@ -93,6 +94,11 @@ public class PolicyResource {
     Objects.requireNonNull(dao, "PolicyRepository must not be null");
     this.dao = new PolicyRepository(dao);
     this.authorizer = authorizer;
+  }
+
+  @SuppressWarnings("unused") // Method used for reflection
+  public void initialize(CatalogApplicationConfig config) throws IOException {
+    dao.initSeedDataFromResources();
   }
 
   public static class PolicyList extends ResultList<Policy> {
