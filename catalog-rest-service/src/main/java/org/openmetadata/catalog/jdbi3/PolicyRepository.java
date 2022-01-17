@@ -139,6 +139,10 @@ public class PolicyRepository extends EntityRepository<Policy> {
     EntityReference location = policy.getLocation();
     URI href = policy.getHref();
 
+    if (policy.getFullyQualifiedName() == null) {
+      policy.setFullyQualifiedName(getFQN(policy));
+    }
+
     // Don't store owner, location and href as JSON. Build it on the fly based on relationships
     policy.withOwner(null).withLocation(null).withHref(null);
 

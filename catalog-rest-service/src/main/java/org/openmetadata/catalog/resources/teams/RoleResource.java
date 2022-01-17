@@ -50,6 +50,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
+import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.api.teams.CreateRole;
 import org.openmetadata.catalog.entity.teams.Role;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
@@ -78,6 +79,11 @@ public class RoleResource {
     Objects.requireNonNull(dao, "RoleRepository must not be null");
     this.dao = new RoleRepository(dao);
     this.authorizer = authorizer;
+  }
+
+  @SuppressWarnings("unused") // Method used for reflection
+  public void initialize(CatalogApplicationConfig config) throws IOException {
+    dao.initSeedDataFromResources();
   }
 
   public static class RoleList extends ResultList<Role> {

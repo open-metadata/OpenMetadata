@@ -65,8 +65,8 @@ USAGE: $0 [create|migrate|info|validate|drop|drop-create|es-drop|es-create|drop-
    drop-create-all  : Drops and recreates all the tables in the database. Drops and creates all the indexes in ElasticSearch
    migrate-all      : Migrates the database to the latest version and migrates the indexes in ElasticSearch
    repair           : Repairs the DATABASE_CHANGE_LOG table which is used to track all the migrations on the target database
-                      This involves removing entries for the failed migrations and update the checksum of migrations already applied on the target databsase
-   check-connection : Checks if a connection can be sucessfully obtained for the target database
+                      This involves removing entries for the failed migrations and update the checksum of migrations already applied on the target database
+   check-connection : Checks if a connection can be successfully obtained for the target database
 EOF
 }
 

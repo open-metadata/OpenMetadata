@@ -70,7 +70,6 @@ import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestInstance;
 import org.openmetadata.catalog.CatalogApplicationTest;
 import org.openmetadata.catalog.Entity;
-import org.openmetadata.catalog.api.policies.CreatePolicy;
 import org.openmetadata.catalog.api.services.CreateDatabaseService;
 import org.openmetadata.catalog.api.services.CreateDatabaseService.DatabaseServiceType;
 import org.openmetadata.catalog.api.services.CreateMessagingService;
@@ -78,7 +77,6 @@ import org.openmetadata.catalog.api.services.CreateMessagingService.MessagingSer
 import org.openmetadata.catalog.api.services.CreatePipelineService;
 import org.openmetadata.catalog.api.services.CreatePipelineService.PipelineServiceType;
 import org.openmetadata.catalog.api.services.CreateStorageService;
-import org.openmetadata.catalog.entity.policies.accessControl.Rule;
 import org.openmetadata.catalog.entity.services.DatabaseService;
 import org.openmetadata.catalog.entity.services.MessagingService;
 import org.openmetadata.catalog.entity.services.PipelineService;
@@ -90,10 +88,8 @@ import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.jdbi3.DatabaseServiceRepository.DatabaseServiceEntityInterface;
 import org.openmetadata.catalog.jdbi3.MessagingServiceRepository.MessagingServiceEntityInterface;
 import org.openmetadata.catalog.jdbi3.PipelineServiceRepository.PipelineServiceEntityInterface;
-import org.openmetadata.catalog.jdbi3.PolicyRepository;
 import org.openmetadata.catalog.resources.events.EventResource.ChangeEventList;
 import org.openmetadata.catalog.resources.events.WebhookResourceTest;
-import org.openmetadata.catalog.resources.policies.PolicyResourceTest;
 import org.openmetadata.catalog.resources.services.DatabaseServiceResourceTest;
 import org.openmetadata.catalog.resources.services.MessagingServiceResourceTest;
 import org.openmetadata.catalog.resources.services.PipelineServiceResourceTest;
@@ -108,15 +104,12 @@ import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.EventType;
 import org.openmetadata.catalog.type.FieldChange;
-import org.openmetadata.catalog.type.MetadataOperation;
-import org.openmetadata.catalog.type.PolicyType;
 import org.openmetadata.catalog.type.StorageServiceType;
 import org.openmetadata.catalog.type.Tag;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.JsonUtils;
-import org.openmetadata.catalog.util.PolicyUtils;
 import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.TestUtils;
 
@@ -201,16 +194,13 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     USER1 = UserResourceTest.createUser(userResourceTest.create(test), adminAuthHeaders());
     USER_OWNER1 = new EntityReference().withId(USER1.getId()).withType("user");
 
-    RoleResourceTest roleResourceTest = new RoleResourceTest();
-    DATA_STEWARD_ROLE =
-        RoleResourceTest.createRole(roleResourceTest.create(DATA_STEWARD_ROLE_NAME), adminAuthHeaders());
+    DATA_STEWARD_ROLE = RoleResourceTest.getRoleByName(DATA_STEWARD_ROLE_NAME, "", adminAuthHeaders());
     DATA_STEWARD_ROLE_REFERENCE = new EntityReference().withId(DATA_STEWARD_ROLE.getId()).withType("role");
     USER_WITH_DATA_STEWARD_ROLE =
         UserResourceTest.createUser(
             userResourceTest.create("user-data-steward").withRoles(List.of(DATA_STEWARD_ROLE.getId())),
             adminAuthHeaders());
-    DATA_CONSUMER_ROLE =
-        RoleResourceTest.createRole(roleResourceTest.create(DATA_CONSUMER_ROLE_NAME), adminAuthHeaders());
+    DATA_CONSUMER_ROLE = RoleResourceTest.getRoleByName(DATA_CONSUMER_ROLE_NAME, "", adminAuthHeaders());
     DATA_CONSUMER_ROLE_REFERENCE = new EntityReference().withId(DATA_CONSUMER_ROLE.getId()).withType("role");
     USER_WITH_DATA_CONSUMER_ROLE =
         UserResourceTest.createUser(
@@ -221,7 +211,6 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     TEAM1 = TeamResourceTest.createTeam(teamResourceTest.create(test), adminAuthHeaders());
     TEAM_OWNER1 = new EntityReference().withId(TEAM1.getId()).withType("team");
 
-    PolicyResourceTest.createPolicy(createAccessControlPolicies(), adminAuthHeaders());
     // Ensure that DefaultAuthorizer gets enough time to load policies before running tests.
     try {
       Thread.sleep(8000);
@@ -1569,25 +1558,5 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
 
   public final String getEntityName(TestInfo test, int index) {
     return String.format("%s_%d_%s", entityName, index, test.getDisplayName());
-  }
-
-  private <T> CreatePolicy createAccessControlPolicies() {
-    List<Rule> rules = new ArrayList<>();
-    rules.add(
-        PolicyUtils.accessControlRule(
-            null,
-            Entity.getEntityNameFromClass(entityClass),
-            DATA_STEWARD_ROLE_NAME,
-            MetadataOperation.UpdateDescription,
-            true,
-            1,
-            true));
-
-    return new CreatePolicy()
-        .withName("test-acp")
-        .withDescription("description")
-        .withPolicyType(PolicyType.AccessControl)
-        .withRules(PolicyRepository.getRuleObjects(rules))
-        .withOwner(USER_OWNER1);
   }
 }
