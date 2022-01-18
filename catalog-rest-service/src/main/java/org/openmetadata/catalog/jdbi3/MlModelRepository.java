@@ -44,9 +44,12 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   private static final Logger LOG = LoggerFactory.getLogger(MlModelRepository.class);
   private static final Fields MODEL_UPDATE_FIELDS =
       new Fields(
-          MlModelResource.FIELD_LIST, "owner,algorithm,dashboard,mlHyperParameters,mlFeatures,mlStore,server,tags");
+          MlModelResource.FIELD_LIST,
+          "owner,algorithm,dashboard,mlHyperParameters,mlFeatures,mlStore,server,target,tags");
   private static final Fields MODEL_PATCH_FIELDS =
-      new Fields(MlModelResource.FIELD_LIST, "owner,algorithm,dashboard,mlHyperParameters,mlFeatures,tags");
+      new Fields(
+          MlModelResource.FIELD_LIST,
+          "owner,algorithm,dashboard,mlHyperParameters,mlFeatures,mlStore,server,target,tags");
 
   public MlModelRepository(CollectionDAO dao) {
     super(
@@ -77,6 +80,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
     mlModel.setOwner(fields.contains("owner") ? getOwner(mlModel) : null);
     mlModel.setDashboard(fields.contains("dashboard") ? getDashboard(mlModel) : null);
     mlModel.setMlFeatures(fields.contains("mlFeatures") ? mlModel.getMlFeatures() : null);
+    mlModel.setTarget(fields.contains("target") ? mlModel.getTarget() : null);
     mlModel.setMlHyperParameters(fields.contains("mlHyperParameters") ? mlModel.getMlHyperParameters() : null);
     mlModel.setMlStore(fields.contains("mlStore") ? mlModel.getMlStore() : null);
     mlModel.setServer(fields.contains("server") ? mlModel.getServer() : null);
@@ -396,6 +400,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
       updateMlHyperParameters(origMlModel, updatedMlModel);
       updateMlStore(origMlModel, updatedMlModel);
       updateServer(origMlModel, updatedMlModel);
+      updateTarget(origMlModel, updatedMlModel);
     }
 
     private void updateAlgorithm(MlModel origModel, MlModel updatedModel) throws JsonProcessingException {
@@ -438,6 +443,13 @@ public class MlModelRepository extends EntityRepository<MlModel> {
       // Updating the server can break current integrations to the ML services or enable new integrations
       if (recordChange("server", origModel.getServer(), updatedModel.getServer())) {
         // Mark the EntityUpdater version change to major
+        majorVersionChange = true;
+      }
+    }
+
+    private void updateTarget(MlModel origModel, MlModel updatedModel) throws JsonProcessingException {
+      // Updating the target changes the model response
+      if (recordChange("target", origModel.getTarget(), updatedModel.getTarget())) {
         majorVersionChange = true;
       }
     }
