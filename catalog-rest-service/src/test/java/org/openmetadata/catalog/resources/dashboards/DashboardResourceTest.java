@@ -81,6 +81,7 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard> {
         DashboardResource.FIELDS,
         true,
         true,
+        true,
         true);
   }
 

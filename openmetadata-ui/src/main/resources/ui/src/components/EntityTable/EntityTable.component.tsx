@@ -476,36 +476,36 @@ const EntityTable = ({
                       )}
                       {cell.column.id === 'description' && (
                         <div>
-                          <NonAdminAction
-                            html={getHtmlForNonAdminAction(Boolean(owner))}
-                            isOwner={hasEditAccess}
-                            position="top">
-                            <div className="tw-inline-block">
-                              <div
-                                className={classNames('tw-flex', {
-                                  'tw-cursor-pointer hover:tw-underline':
-                                    !isReadOnly,
-                                })}
-                                data-testid="description"
-                                id={`column-description-${index}`}
-                                onClick={() => {
-                                  if (!isReadOnly) {
-                                    handleEditColumn(row.original, row.id);
-                                  }
-                                }}>
-                                <div>
-                                  {cell.value ? (
-                                    <RichTextEditorPreviewer
-                                      markdown={cell.value}
-                                    />
-                                  ) : (
-                                    <span className="tw-no-description">
-                                      No description added
-                                    </span>
+                          <div className="tw-inline-block">
+                            <div
+                              className="tw-flex"
+                              data-testid="description"
+                              id={`column-description-${index}`}>
+                              <div>
+                                {cell.value ? (
+                                  <RichTextEditorPreviewer
+                                    markdown={cell.value}
+                                  />
+                                ) : (
+                                  <span className="tw-no-description">
+                                    No description added
+                                  </span>
+                                )}
+                              </div>
+                              {!isReadOnly ? (
+                                <NonAdminAction
+                                  html={getHtmlForNonAdminAction(
+                                    Boolean(owner)
                                   )}
-                                </div>
-                                {!isReadOnly ? (
-                                  <button className="tw-self-start tw-w-8 tw-h-auto tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none">
+                                  isOwner={hasEditAccess}
+                                  position="top">
+                                  <button
+                                    className="tw-self-start tw-w-8 tw-h-auto tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none"
+                                    onClick={() => {
+                                      if (!isReadOnly) {
+                                        handleEditColumn(row.original, row.id);
+                                      }
+                                    }}>
                                     <SVGIcons
                                       alt="edit"
                                       icon="icon-edit"
@@ -513,10 +513,10 @@ const EntityTable = ({
                                       width="10px"
                                     />
                                   </button>
-                                ) : null}
-                              </div>
+                                </NonAdminAction>
+                              ) : null}
                             </div>
-                          </NonAdminAction>
+                          </div>
                           {checkIfJoinsAvailable(row.original.name) && (
                             <div
                               className="tw-mt-3"

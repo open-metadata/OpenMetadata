@@ -1,0 +1,40 @@
+#  Copyright 2021 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+name: OpenMetadata Ingestion Core Version Check Comment
+
+# read-write repo token
+# access to secrets
+on:
+  pull_request_target:
+    branches: [ main ]
+    types: [ opened ]
+    paths:
+    - 'catalog-rest-service/src/main/resources/json/**'
+
+jobs:
+  py-ingestion-core-comment:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Create a comment in the PR with the instructions
+        uses: peter-evans/create-or-update-comment@v1
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+            **Schema Change Detected. Needs py-ingestion-core version bump**
+
+            Please run `make bump-version-dev` in the ingestion-core folder of your repository and commit the changes to _version.py in this PR. Please ignore if this has been handled already.

@@ -56,7 +56,6 @@ import org.openmetadata.catalog.api.data.CreateDatabase;
 import org.openmetadata.catalog.entity.data.Database;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.DatabaseRepository;
-import org.openmetadata.catalog.jdbi3.DatabaseRepository.DatabaseEntityInterface;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
@@ -344,10 +343,13 @@ public class DatabaseResource {
                       }))
           JsonPatch patch)
       throws IOException, ParseException {
+    Fields fields = new Fields(FIELD_LIST, FIELDS);
+    Database database = dao.get(uriInfo, id, fields);
+    SecurityUtil.checkAdminRoleOrPermissions(
+        authorizer, securityContext, dao.getEntityInterface(database).getEntityReference(), patch);
+
     PatchResponse<Database> response =
         dao.patch(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
-    SecurityUtil.checkAdminRoleOrPermissions(
-        authorizer, securityContext, new DatabaseEntityInterface(response.getEntity()).getEntityReference());
     addHref(uriInfo, response.getEntity());
     return response.toResponse();
   }

@@ -21,7 +21,7 @@ on:
     paths:
       - ingestion/**
 jobs:
-  run_tests:
+  py-run-tests:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout

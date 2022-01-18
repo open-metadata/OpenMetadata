@@ -32,6 +32,11 @@
     "rules": {
       "$ref": "../../entity/policies/policy.json#/definitions/rules"
     },
+    "enabled": {
+      "description": "Is the policy enabled.",
+      "type": "boolean",
+      "default": true
+    },
     "location" : {
       "description": "UUID of Location where this policy is applied",
       "$ref": "../../type/basic.json#/definitions/uuid",

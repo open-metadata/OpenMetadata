@@ -23,7 +23,7 @@ export interface CatalogVersion {
   /**
    * Build timestamp
    */
-  timestamp?: string;
+  timestamp?: number;
   /**
    * Software version of the catalog
    */

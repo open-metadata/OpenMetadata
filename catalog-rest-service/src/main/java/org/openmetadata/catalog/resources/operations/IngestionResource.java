@@ -355,7 +355,9 @@ public class IngestionResource {
       throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, FIELDS);
     Ingestion ingestion = dao.get(uriInfo, id, fields);
-    SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, dao.getOwnerReference(ingestion));
+    SecurityUtil.checkAdminRoleOrPermissions(
+        authorizer, securityContext, dao.getEntityInterface(ingestion).getEntityReference(), patch);
+
     PatchResponse<Ingestion> response =
         dao.patch(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
     addHref(uriInfo, response.getEntity());

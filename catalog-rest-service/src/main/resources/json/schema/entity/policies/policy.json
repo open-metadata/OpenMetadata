@@ -49,14 +49,12 @@
       "$ref": "../../type/basic.json#/definitions/uuid"
     },
     "name": {
-      "description": "Name that identifies this Policy.",
+      "description": "Name that uniquely identifies this Policy.",
       "$ref": "#/definitions/policyName"
     },
     "fullyQualifiedName": {
       "description": "Name that uniquely identifies a Policy.",
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 256
+      "$ref": "#/definitions/policyName"
     },
     "displayName": {
       "description": "Title for this Policy.",

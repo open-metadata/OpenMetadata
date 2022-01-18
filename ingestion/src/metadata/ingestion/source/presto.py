@@ -28,6 +28,7 @@ class PrestoConfig(SQLConnectionConfig):
             url += f"{quote_plus(self.username)}"
             if self.password:
                 url += f":{quote_plus(self.password.get_secret_value())}"
+            url += "@"
         url += f"{self.host_port}"
         url += f"/{self.catalog}"
         if self.database:

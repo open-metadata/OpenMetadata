@@ -27,12 +27,15 @@ import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.BiPredicate;
+import java.util.regex.Pattern;
 import javax.json.JsonPatch;
 import javax.ws.rs.core.Response.Status;
 import javax.ws.rs.core.UriInfo;
+import org.apache.maven.shared.utils.io.IOUtil;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Table;
@@ -58,6 +61,7 @@ import org.openmetadata.catalog.util.RestUtil.PatchResponse;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.common.utils.CipherText;
+import org.openmetadata.common.utils.CommonUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -194,6 +198,42 @@ public abstract class EntityRepository<T> {
    * stored in the original entity.
    */
   public abstract void restorePatchAttributes(T original, T updated);
+
+  /**
+   * Initialize data from json files if seed data does not exist in corresponding tables. Seed data is stored under
+   * catalog-rest-service/src/main/resources/json/data/{entityName}
+   */
+  public void initSeedDataFromResources() throws IOException {
+    Pattern pattern = Pattern.compile(String.format(".*json/data/%s/.*\\.json$", entityName));
+    List<String> jsonDataFiles = CommonUtil.getResources(pattern);
+    jsonDataFiles.forEach(
+        jsonDataFile -> {
+          try {
+            String json =
+                IOUtil.toString(Objects.requireNonNull(getClass().getClassLoader().getResourceAsStream(jsonDataFile)));
+            initSeedData(JsonUtils.readValue(json, entityClass));
+          } catch (IOException e) {
+            LOG.warn("Failed to initialize the {} from file {}: {}", entityName, jsonDataFile, e.getMessage());
+          }
+        });
+  }
+
+  /** Initialize a given entity if it does not exist. */
+  @Transaction
+  public void initSeedData(T entity) throws IOException {
+    EntityInterface<T> entityInterface = Entity.getEntityInterface(entity);
+    String existingJson = dao.findJsonByFqn(entityInterface.getFullyQualifiedName(), Include.ALL);
+    if (existingJson != null) {
+      LOG.info("{} {} is already initialized", entityName, entityInterface.getFullyQualifiedName());
+      return;
+    }
+
+    LOG.info("{} {} is not initialized", entityName, entityInterface.getFullyQualifiedName());
+    entityInterface.setUpdateDetails("admin", System.currentTimeMillis());
+    entityInterface.setId(UUID.randomUUID());
+    storeEntity(entityInterface.getEntity(), false);
+    LOG.info("Created a new {} {}", entityName, entityInterface.getFullyQualifiedName());
+  }
 
   public EntityUpdater getUpdater(T original, T updated, boolean patchOperation) {
     return new EntityUpdater(original, updated, patchOperation);

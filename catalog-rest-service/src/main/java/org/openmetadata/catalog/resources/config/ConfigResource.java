@@ -29,6 +29,7 @@ import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.AuthenticationConfiguration;
 import org.pac4j.jax.rs.annotations.Pac4JSecurity;
+import org.openmetadata.catalog.security.AuthorizerConfiguration;
 
 @Path("/v1/config")
 @Api(value = "Get configuration")
@@ -62,5 +63,28 @@ public class ConfigResource {
       authenticationConfiguration = catalogApplicationConfig.getAuthenticationConfiguration();
     }
     return authenticationConfiguration;
+  }
+
+  @GET
+  @Path(("/authorizer"))
+  @Operation(
+      summary = "Get authorizer configuration",
+      tags = "general",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Authorizer configuration",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = AuthorizerConfiguration.class)))
+      })
+  public AuthorizerConfiguration getAuthorizerConfig(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+    AuthorizerConfiguration authorizerConfiguration = new AuthorizerConfiguration();
+    if (catalogApplicationConfig.getAuthorizerConfiguration() != null) {
+      authorizerConfiguration = catalogApplicationConfig.getAuthorizerConfiguration();
+    }
+    return authorizerConfiguration;
   }
 }

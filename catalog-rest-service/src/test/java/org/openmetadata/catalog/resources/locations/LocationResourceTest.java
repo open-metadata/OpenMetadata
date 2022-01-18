@@ -54,7 +54,16 @@ import org.openmetadata.catalog.util.TestUtils;
 
 public class LocationResourceTest extends EntityResourceTest<Location> {
   public LocationResourceTest() {
-    super(Entity.LOCATION, Location.class, LocationList.class, "locations", LocationResource.FIELDS, true, true, true);
+    super(
+        Entity.LOCATION,
+        Location.class,
+        LocationList.class,
+        "locations",
+        LocationResource.FIELDS,
+        true,
+        true,
+        true,
+        true);
   }
 
   @BeforeAll

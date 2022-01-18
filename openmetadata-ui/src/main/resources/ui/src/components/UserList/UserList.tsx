@@ -12,7 +12,7 @@
  */
 
 import { compare, Operation } from 'fast-json-patch';
-import { isUndefined, lowerCase } from 'lodash';
+import { isUndefined, toLower } from 'lodash';
 import React, { FunctionComponent, useEffect, useState } from 'react';
 import PageLayout from '../../components/containers/PageLayout';
 import Loader from '../../components/Loader/Loader';
@@ -51,7 +51,7 @@ const UserList: FunctionComponent<Props> = ({
   };
 
   const isIncludes = (name: string) => {
-    return lowerCase(name).includes(searchText);
+    return toLower(name).includes(toLower(searchText));
   };
 
   const setCurrentTabList = (tab: number) => {

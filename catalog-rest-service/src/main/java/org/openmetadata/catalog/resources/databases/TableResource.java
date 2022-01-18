@@ -349,7 +349,9 @@ public class TableResource {
       throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, FIELDS);
     Table table = dao.get(uriInfo, id, fields);
-    SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, dao.getOwnerReference(table));
+    SecurityUtil.checkAdminRoleOrPermissions(
+        authorizer, securityContext, dao.getEntityInterface(table).getEntityReference(), patch);
+
     PatchResponse<Table> response =
         dao.patch(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
     addHref(uriInfo, response.getEntity());

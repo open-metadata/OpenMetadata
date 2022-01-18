@@ -222,6 +222,10 @@
       },
       "default": null
     },
+    "target": {
+      "description": "For supervised ML Models, the value to estimate.",
+      "$ref": "#/definitions/featureName"
+    },
     "dashboard" : {
       "description": "Performance Dashboard URL to track metric evolution.",
       "$ref" : "../../type/entityReference.json"

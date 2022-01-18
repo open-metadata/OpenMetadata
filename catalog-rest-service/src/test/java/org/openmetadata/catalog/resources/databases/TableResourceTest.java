@@ -120,7 +120,7 @@ public class TableResourceTest extends EntityResourceTest<Table> {
           getColumn("c3", BIGINT, USER_BANK_ACCOUNT_TAG_LABEL));
 
   public TableResourceTest() {
-    super(Entity.TABLE, Table.class, TableList.class, "tables", TableResource.FIELDS, true, true, true);
+    super(Entity.TABLE, Table.class, TableList.class, "tables", TableResource.FIELDS, true, true, true, true);
   }
 
   @BeforeAll
@@ -1069,9 +1069,6 @@ public class TableResourceTest extends EntityResourceTest<Table> {
                 .withConstraintType(ConstraintType.UNIQUE)
                 .withColumns(List.of(COLUMNS.get(0).getName())));
 
-    //
-    // Add description, tableType, and tableConstraints when previously they were null
-    //
     String originalJson = JsonUtils.pojoToJson(table);
     ChangeDescription change = getChangeDescription(table.getVersion());
 

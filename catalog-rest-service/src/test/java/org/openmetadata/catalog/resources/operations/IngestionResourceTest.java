@@ -58,6 +58,7 @@ public class IngestionResourceTest extends EntityOperationsResourceTest<Ingestio
         IngestionResource.FIELDS,
         false,
         true,
+        true,
         true);
   }
 
