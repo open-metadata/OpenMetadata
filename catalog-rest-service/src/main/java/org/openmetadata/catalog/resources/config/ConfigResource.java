@@ -28,8 +28,8 @@ import javax.ws.rs.core.UriInfo;
 import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.AuthenticationConfiguration;
-import org.pac4j.jax.rs.annotations.Pac4JSecurity;
 import org.openmetadata.catalog.security.AuthorizerConfiguration;
+import org.pac4j.jax.rs.annotations.Pac4JSecurity;
 
 @Path("/v1/config")
 @Api(value = "Get configuration")
