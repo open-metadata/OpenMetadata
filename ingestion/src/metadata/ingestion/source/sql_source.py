@@ -46,7 +46,7 @@ from metadata.ingestion.api.common import (
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
-from metadata.utils.column_helpers import check_column_complex_type, get_column_type
+from metadata.utils.column_helpers import parse_struct_children, get_column_type, get_last_index
 from metadata.utils.helpers import get_database_service_or_create
 
 logger: logging.Logger = logging.getLogger(__name__)
@@ -430,7 +430,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
             ccolumn = ccolumns[key]
             try:
                 ctype = ccolumn["type"]
-                col_type = get_column_type(self.status, model_name, ctype)
+                col_type = get_column_type(ctype)
                 description = manifest_columns.get(key.lower(), {}).get(
                     "description", None
                 )
@@ -493,20 +493,23 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                     column["raw_data_type"] = self.parse_raw_data_type(
                         column["raw_data_type"]
                     )
-                    (
-                        col_type,
-                        data_type_display,
-                        arr_data_type,
-                        children,
-                    ) = check_column_complex_type(
-                        self.status,
-                        dataset_name,
-                        column["raw_data_type"],
-                        column["name"],
-                    )
+                    if column['raw_data_type'].startswith('struct<'):
+                        col_type = "STRUCT"
+                        struct_end_index = get_last_index(column['raw_data_type'])
+                        struct_str = column['raw_data_type'][:struct_end_index]
+                        data_type_display = struct_str
+                        col_parse = parse_struct_children(f"{column['name']}:{struct_str}")
+                        children = col_parse[0]['children']
+                    elif column['raw_data_type'].startswith('array<'):
+                        col_type = "ARRAY"
+                        arr_data_type = column['raw_data_Type']
+                        data_type_display = column['raw_data_Type']
+                    else:
+                        col_type = get_column_type(column['raw_data_type'])
+
                 else:
                     col_type = get_column_type(
-                        self.status, dataset_name, column["type"]
+                        column["type"]
                     )
                     if col_type == "ARRAY":
                         if re.match(r"(?:\w*)(?:\()(\w*)(?:.*)", str(column["type"])):
@@ -541,7 +544,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                             f"Unknown type {column['type']} mapped to VARCHAR: {column['name']}"
                         )
                     om_column = Column(
-                        name=column["name"],
+                        name=column["name"][:64],
                         description=column.get("comment", None),
                         dataType=col_type,
                         dataTypeDisplay="{}({})".format(col_type, col_data_length)
@@ -562,6 +565,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                 row_order = row_order + 1
             return table_columns
         except Exception as err:
+            print(traceback.print_exc())
             logger.error("{}: {} {}".format(repr(err), table, err))
 
     def run_data_profiler(self, table: str, schema: str) -> TableProfile:
