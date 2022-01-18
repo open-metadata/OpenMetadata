@@ -585,19 +585,34 @@ public abstract class EntityRepository<T> {
     }
   }
 
-  /** Decorator class for Entity. */
+  /**
+   * Builder method for EntityHandler
+   *
+   * @param entity
+   * @return
+   */
+  public EntityHandler getEntityHandler(T entity) {
+    return new EntityHandler(entity);
+  }
+
+  /**
+   * Decorator class for Entity.
+   *
+   * @see Entity#h(Object) to create a handler from an Entity
+   * @see Entity#r(EntityReference) to create a handler from an EntityReference
+   */
   public class EntityHandler {
     private final Include isDeleted;
     protected final EntityInterface<T> entityInterface;
     private final T entity;
 
-    public EntityHandler(T entity) {
+    private EntityHandler(T entity) {
       this.entityInterface = getEntityInterface(entity);
       this.entity = entity;
       this.isDeleted = entityInterface.isDeleted() ? DELETED : Include.NON_DELETED;
     }
 
-    EntityReference toEntityReference() {
+    public EntityReference toEntityReference() {
       return entityInterface.getEntityReference();
     }
 
@@ -757,10 +772,26 @@ public abstract class EntityRepository<T> {
       return h(Entity.getEntity(refs.get(0), Fields.EMPTY_FIELDS, Include.ALL)).toEntityReference();
     }
 
+    /**
+     * Validate the type of the entity pointed by the field and return it.
+     *
+     * @param fieldName
+     * @param entityName
+     * @param <S>
+     * @return
+     */
     public <S> S findEntity(String fieldName, String entityName) {
       return findEntity(fieldName, List.of(entityName));
     }
 
+    /**
+     * Validate the type of the entity pointed by the field and return it.
+     *
+     * @param fieldName
+     * @param entityNames
+     * @param <S>
+     * @return
+     */
     public <S> S findEntity(String fieldName, List<String> entityNames) {
       S entity = findEntity(fieldName);
       EntityReference entityReference = Entity.getEntityReference(entity);
@@ -776,7 +807,7 @@ public abstract class EntityRepository<T> {
      * before storing the EntityReferences.
      *
      * @param fieldName the name of the field
-     * @param <S> the class of the entity
+     * @param <S> the class of the entity pointed by the field
      * @return
      */
     @SneakyThrows
@@ -790,9 +821,6 @@ public abstract class EntityRepository<T> {
     }
   }
 
-  public EntityHandler getEntityHandler(T entity) {
-    return new EntityHandler(entity);
-  }
   /**
    * Class that performs PUT and PATCH update operation. It takes an <i>updated</i> entity and <i>original</i> entity.
    * Performs comparison between then and updates the stored entity and also updates all the relationships. This class
