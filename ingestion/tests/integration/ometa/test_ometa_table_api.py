@@ -272,7 +272,7 @@ class OMetaTableTest(TestCase):
                         min=1,
                         max=3,
                         mean=1.5,
-                        median=2,
+                        sum=2,
                         stddev=None,
                     )
                 ],
