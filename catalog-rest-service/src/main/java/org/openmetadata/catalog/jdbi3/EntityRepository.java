@@ -657,7 +657,10 @@ public abstract class EntityRepository<T> {
       if (refs.isEmpty()) {
         return null;
       } else if (refs.size() > 1) {
-        LOG.warn("Possible database issues - multiple relationships found for entity {}", entityInterface.getId());
+        LOG.warn(
+            "Possible database issues - multiple owners found for entity {} with type {}",
+            entityInterface.getId(),
+            entityInterface.getEntityReference().getType());
       }
       if (!List.of(Entity.USER, Entity.TEAM).contains(refs.get(0).getType())) {
         throw new IllegalArgumentException(String.format("Invalid ownerType %s", refs.get(0).getType()));
@@ -686,7 +689,10 @@ public abstract class EntityRepository<T> {
       if (refs.isEmpty()) {
         return null;
       } else if (refs.size() > 1) {
-        LOG.warn("Possible database issues - multiple relationships found for entity {}", entityInterface.getId());
+        LOG.warn(
+            "Possible database issues - multiple HAS relationships found for entity {} with type {}",
+            entityInterface.getId(),
+            entityInterface.getEntityReference().getType());
       }
       return h(Entity.getEntity(refs.get(0), Fields.EMPTY_FIELDS, Include.ALL)).toEntityReference();
     }
@@ -713,7 +719,10 @@ public abstract class EntityRepository<T> {
       if (refs.isEmpty()) {
         throw new UnhandledServerException(CatalogExceptionMessage.entityTypeNotFound(containerEntityName));
       } else if (refs.size() > 1) {
-        LOG.warn("Possible database issues - multiple containers found for entity {}", entityInterface.getId());
+        LOG.warn(
+            "Possible database issues - multiple containers found for entity {} with type {}",
+            entityInterface.getId(),
+            entityInterface.getEntityReference().getType());
       }
       return h(Entity.getEntity(refs.get(0), Fields.EMPTY_FIELDS, Include.ALL)).toEntityReference();
     }
@@ -737,7 +746,10 @@ public abstract class EntityRepository<T> {
         throw new UnhandledServerException(
             CatalogExceptionMessage.entityTypeNotFound(String.join(" or ", containerEntityNames)));
       } else if (refs.size() > 1) {
-        LOG.warn("Possible database issues - multiple containers found for entity {}", entityInterface.getId());
+        LOG.warn(
+            "Possible database issues - multiple containers found for entity {} with type {}",
+            entityInterface.getId(),
+            entityInterface.getEntityReference().getType());
       }
       if (containerEntityNames.size() > 0 && !containerEntityNames.contains(refs.get(0).getType())) {
         throw new IllegalArgumentException(String.format("Invalid type %s", refs.get(0).getType()));
