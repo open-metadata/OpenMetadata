@@ -443,7 +443,7 @@ const Explore: React.FC<ExploreProps> = ({
 
   const getData = () => {
     if (!isMounting.current && previsouIndex === getCurrentIndex(tab)) {
-      forceSetAgg.current = false;
+      forceSetAgg.current = !isFilterSelected;
       fetchTableData();
     }
   };
@@ -479,6 +479,7 @@ const Explore: React.FC<ExploreProps> = ({
   useEffect(() => {
     forceSetAgg.current = true;
     if (!isMounting.current) {
+      resetFilters();
       fetchTableData();
     }
   }, [searchText, searchIndex]);
