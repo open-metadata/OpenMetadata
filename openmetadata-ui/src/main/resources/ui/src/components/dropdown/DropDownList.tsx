@@ -12,7 +12,7 @@
  */
 
 import classNames from 'classnames';
-import { isNil, isUndefined } from 'lodash';
+import { isNil, isUndefined, toLower } from 'lodash';
 import React, { FunctionComponent, useEffect, useRef, useState } from 'react';
 import { useWindowDimensions } from '../../hooks/useWindowDimensions';
 import { getCountBadge } from '../../utils/CommonUtils';
@@ -92,9 +92,7 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
   useEffect(() => {
     setSearchedList(
       dropDownList.filter((item) => {
-        return (item.name as string)
-          .toLowerCase()
-          .includes(searchText.toLowerCase());
+        return toLower(item.name as string).includes(toLower(searchText));
       })
     );
   }, [searchText, dropDownList]);
