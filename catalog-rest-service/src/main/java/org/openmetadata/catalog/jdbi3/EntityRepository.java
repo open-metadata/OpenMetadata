@@ -601,6 +601,10 @@ public abstract class EntityRepository<T> {
       return entityInterface.getEntityReference();
     }
 
+    public Include isDeleted() {
+      return isDeleted;
+    }
+
     /**
      * Validate the owner if not null before creating this resource. Owner must exist, not being deleted, and must be
      * either User or Team.

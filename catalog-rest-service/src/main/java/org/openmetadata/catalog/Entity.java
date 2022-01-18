@@ -29,12 +29,14 @@ import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
+import org.openmetadata.catalog.exception.UnhandledServerException;
 import org.openmetadata.catalog.jdbi3.EntityDAO;
 import org.openmetadata.catalog.jdbi3.EntityRepository;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
+import org.openmetadata.catalog.util.EntityUtil.Fields;
 
 @Slf4j
 public final class Entity {
@@ -151,17 +153,6 @@ public final class Entity {
     return entityRepository.getEntityInterface(entity);
   }
 
-  public static <T> EntityInterface<T> getEntityInterface(EntityReference entityReference)
-      throws IOException, ParseException {
-    if (entityReference == null) {
-      return null;
-    }
-    String entityName = entityReference.getType();
-    EntityRepository<T> entityRepository = getEntityRepository(entityName);
-    T entity = entityRepository.get(null, entityReference.getId().toString(), EntityUtil.Fields.EMPTY_FIELDS);
-    return entityRepository.getEntityInterface(entity);
-  }
-
   /**
    * Retrieve the entity using id from given entity reference and fields
    *
@@ -221,13 +212,39 @@ public final class Entity {
   public static <T> EntityRepository<T> getEntityRepositoryForClass(@NonNull Class<T> clazz) {
     EntityRepository<T> entityRepository = (EntityRepository<T>) CLASS_ENTITY_REPOSITORY_MAP.get(clazz);
     if (entityRepository == null) {
-      throw EntityNotFoundException.byMessage(
-          CatalogExceptionMessage.entityTypeNotFound(getEntityNameFromClass(clazz)));
+      throw new UnhandledServerException(
+          String.format(
+              "Class %s is not an Entity class and it doesn't have a EntityRepository companion",
+              clazz.getSimpleName()));
     }
     return entityRepository;
   }
 
+  /**
+   * Utility method to create the decorator from an Entity class instance. By Entity class we don't mean Entity.java but
+   * the entity classes generated from JSONSchema files like DatabaseService, Database, Table, and so on.
+   *
+   * @param entity must be an Entity class instance with a companion EntityRepository
+   * @param <T> must be the Entity class of this entity or object if multiple results are possible.
+   * @return the decorator
+   */
   public static <T> EntityRepository<T>.EntityHandler h(@NonNull T entity) {
+    EntityRepository<T> entityRepository = (EntityRepository<T>) getEntityRepositoryForClass(entity.getClass());
+    return entityRepository.getEntityHandler(entity);
+  }
+
+  /**
+   * Utility method to create the decorator from an EntityReference instance.
+   *
+   * @param entityReference
+   * @param <T> must be the Entity class of this entityReference
+   * @return
+   * @throws IOException
+   * @throws ParseException
+   */
+  public static <T> EntityRepository<T>.EntityHandler r(@NonNull EntityReference entityReference)
+      throws IOException, ParseException {
+    T entity = getEntity(entityReference, Fields.EMPTY_FIELDS);
     EntityRepository<T> entityRepository = (EntityRepository<T>) getEntityRepositoryForClass(entity.getClass());
     return entityRepository.getEntityHandler(entity);
   }
