@@ -37,6 +37,7 @@ import javax.ws.rs.container.ContainerResponseFilter;
 import javax.ws.rs.core.Response;
 import lombok.SneakyThrows;
 import org.apache.commons.lang3.StringUtils;
+import org.eclipse.jetty.server.session.SessionHandler;
 import org.eclipse.jetty.servlet.ErrorPageErrorHandler;
 import org.glassfish.jersey.media.multipart.MultiPartFeature;
 import org.glassfish.jersey.server.ServerProperties;
@@ -132,6 +133,9 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
     EventPubSub.start();
     // Register Event publishers
     registerEventPublisher(catalogConfig);
+
+    SessionHandler sessionHandler = new SessionHandler();
+    environment.servlets().setSessionHandler(sessionHandler);
   }
 
   @SneakyThrows

@@ -27,7 +27,7 @@ import org.pac4j.jax.rs.annotations.Pac4JSecurity;
 @Pac4JSecurity(ignore = true)
 public class Callback {
   @POST
-  @Pac4JCallback(skipResponse = true, multiProfile = false, renewSession = false)
+  @Pac4JCallback(multiProfile = true, renewSession = false)
   public void callbackPost() {
     // nothing to do here, pac4j handles everything
     // note that in jax-rs, you can't have two different http method on the
@@ -35,7 +35,7 @@ public class Callback {
   }
 
   @GET
-  @Pac4JCallback(skipResponse = true, multiProfile = false, renewSession = false)
+  @Pac4JCallback(multiProfile = true, renewSession = false)
   public void callbackGet() {
     // nothing to do here, pac4j handles everything
     // note that in jax-rs, you can't have two different http method on the

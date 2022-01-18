@@ -76,7 +76,6 @@ import org.slf4j.LoggerFactory;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "teams")
-@Pac4JSecurity(authorizers = "isAuthenticated")
 public class TeamResource {
   public static final Logger LOG = LoggerFactory.getLogger(TeamResource.class);
   public static final String COLLECTION_PATH = "/v1/teams/";
@@ -110,6 +109,7 @@ public class TeamResource {
 
   @GET
   @Valid
+  @Pac4JSecurity(authorizers = "isAuthenticated")
   @Operation(
       summary = "List teams",
       tags = "teams",

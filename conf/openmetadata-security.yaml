@@ -170,15 +170,15 @@ pac4j:
 #      class: org.pac4j.core.matching.matcher.PathMatcher
 #      excludedPaths:
 #      - /api/v1/config/auth
-  callbackUrl: http://localhost:8585/api/v1/callback
-  ajaxRequestResolver:
-    class: org.pac4j.core.http.ajax.DefaultAjaxRequestResolver
-  clientsProperties:
+#  callbackUrl: /v1/callback
+#  ajaxRequestResolver:
+#    class: org.pac4j.core.http.ajax.DefaultAjaxRequestResolver
+#  clientsProperties:
 #    google.id: "709849217090-n7s8oc4cvpffubraoi5vbr1s0qfboqvv.apps.googleusercontent.com"
 #    google.secret: ""
-#    google.scope: "profile"
-    oidc.id: "0oa3frevpijciknS35d7"
-    oidc.secret: ""
-    oidc.scope: "openid"
-    oidc.discoveryUri: "https://dev-55640135.okta.com/oauth2/default/.well-known/openid-configuration"
+#    google.scope: "email_and_profile"
+#    oidc.id: "0oa3frevpijciknS35d7"
+#    oidc.secret: ""
+#    oidc.scope: "openid"
+#    oidc.discoveryUri: "https://dev-55640135.okta.com/oauth2/default/.well-known/openid-configuration"
 
