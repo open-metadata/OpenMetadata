@@ -140,7 +140,7 @@ const TableDataCard: FunctionComponent<Props> = ({
         />
       </div>
       {matches && matches.length > 0 ? (
-        <div className="tw-pt-2">
+        <div className="tw-pt-2" data-testid="matches-stats">
           <span className="tw-text-grey-muted">Matches :</span>
           {matches.map((data, i) => (
             <span className="tw-ml-2" key={uniqueId()}>
