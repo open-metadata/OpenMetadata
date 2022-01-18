@@ -13,7 +13,11 @@
 
 package org.openmetadata.catalog.jdbi3;
 
-import static org.openmetadata.catalog.Entity.*;
+import static org.openmetadata.catalog.Entity.DATABASE;
+import static org.openmetadata.catalog.Entity.DATABASE_SERVICE;
+import static org.openmetadata.catalog.Entity.LOCATION;
+import static org.openmetadata.catalog.Entity.TABLE;
+import static org.openmetadata.catalog.Entity.h;
 import static org.openmetadata.catalog.jdbi3.Relationship.JOINED_WITH;
 import static org.openmetadata.common.utils.CommonUtil.parseDate;
 
