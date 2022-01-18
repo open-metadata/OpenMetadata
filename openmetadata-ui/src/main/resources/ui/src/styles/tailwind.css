@@ -57,7 +57,7 @@
     @apply tw-border;
   }
   .tw-table-responsive {
-    @apply tw-block tw-w-full tw-overflow-x-auto;
+    @apply tw-block tw-w-full;
   }
   .tw-table-responsive > .tw-table-bordered {
     @apply tw-border-none;
