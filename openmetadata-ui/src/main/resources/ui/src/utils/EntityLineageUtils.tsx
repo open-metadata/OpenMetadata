@@ -140,7 +140,7 @@ export const getLineageData = (
     const [xVal, yVal] = [positionX * 2 * depth, y + positionY * posDepth];
 
     return {
-      id: `node-${node.id}-${depth}`,
+      id: `${node.id}`,
       sourcePosition: Position.Right,
       targetPosition: Position.Left,
       type: 'default',
@@ -174,14 +174,14 @@ export const getLineageData = (
             UPStreamNodes.push(makeNode(node, 'from', depth, upDepth));
             lineageEdges.push({
               id: `edge-${up.fromEntity}-${id}-${depth}`,
-              source: `node-${node.id}-${depth}`,
-              target: edg ? edg.id : `node-${id}-${depth}`,
+              source: `${node.id}`,
+              target: edg ? edg.id : `${id}`,
               type: isEditMode ? edgeType : 'custom',
               arrowHeadType: ArrowHeadType.ArrowClosed,
               data: {
                 id: `edge-${up.fromEntity}-${id}-${depth}`,
-                source: `node-${node.id}-${depth}`,
-                target: edg ? edg.id : `node-${id}-${depth}`,
+                source: `${node.id}`,
+                target: edg ? edg.id : `${id}`,
                 sourceType: node.type,
                 targetType: edg?.data?.entityType,
                 onEdgeClick,
@@ -216,14 +216,14 @@ export const getLineageData = (
             DOWNStreamNodes.push(makeNode(node, 'to', depth, downDepth));
             lineageEdges.push({
               id: `edge-${id}-${down.toEntity}`,
-              source: edg ? edg.id : `node-${id}-${depth}`,
-              target: `node-${node.id}-${depth}`,
+              source: edg ? edg.id : `${id}`,
+              target: `${node.id}`,
               type: isEditMode ? edgeType : 'custom',
               arrowHeadType: ArrowHeadType.ArrowClosed,
               data: {
                 id: `edge-${id}-${down.toEntity}`,
-                source: edg ? edg.id : `node-${id}-${depth}`,
-                target: `node-${node.id}-${depth}`,
+                source: edg ? edg.id : `${id}`,
+                target: `${node.id}`,
                 sourceType: edg?.data?.entityType,
                 targetType: node.type,
                 onEdgeClick,
@@ -291,7 +291,7 @@ export const getLineageData = (
 
   const lineageData = [
     {
-      id: `node-${mainNode.id}-1`,
+      id: `${mainNode.id}`,
       sourcePosition: 'right',
       targetPosition: 'left',
       type:
