@@ -292,6 +292,44 @@ public class CommonTests {
     Assert.assertEquals(errorMessage, "Name size must be between 2 and 25");
   }
 
+  @Test
+  @Order(12)
+  public void searchMatchesCountCheck() throws InterruptedException {
+    openHomePage();
+    Events.sendKeys(webDriver, By.cssSelector("[id='searchBox']"), "address"); // Search bar/dim
+    Events.sendEnter(webDriver, By.cssSelector("[id='searchBox']"));
+    Thread.sleep(2000);
+    Object tagCount =
+        webDriver.findElements(By.xpath("(//div[@data-testid='description-text'][1])/div/p/span")).size() - 1;
+    Thread.sleep(2000);
+    String matchesInDescription =
+        webDriver.findElement(By.xpath("(//div[@data-testid='matches-stats'][1])/span[3]")).getAttribute("innerHTML");
+    Assert.assertEquals((tagCount + " in Description,"), matchesInDescription);
+  }
+
+  @Test
+  @Order(13)
+  public void overviewLinksAfterTour() throws InterruptedException {
+    openHomePage();
+    Events.click(webDriver, By.cssSelector("[data-testid='tour']"));
+    webDriver.navigate().back();
+    Events.click(webDriver, By.cssSelector("[data-testid='tables']")); // Tables
+    String tablesUrl = webDriver.getCurrentUrl();
+    Assert.assertEquals(tablesUrl, url + "/explore/tables/");
+  }
+
+  @Test
+  @Order(14)
+  public void tourStepSkippingCheck() throws InterruptedException {
+    openHomePage();
+    Events.click(webDriver, By.cssSelector("[data-testid='tour']"));
+    for (int i = 0; i < 2; i++) {
+      Events.click(webDriver, By.cssSelector("[data-tour-elem='right-arrow']"));
+    }
+    Events.sendKeys(webDriver, By.cssSelector("[id='searchBox']"), "dim_a"); // Search bar/dim
+    Events.sendEnter(webDriver, By.cssSelector("[id='searchBox']"));
+  }
+
   @AfterEach
   public void closeTabs() {
     ArrayList<String> tabs = new ArrayList<>(webDriver.getWindowHandles());

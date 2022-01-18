@@ -60,7 +60,7 @@ const TableDataCardBody: FunctionComponent<Props> = ({
           ) : null
         )}
       </div>
-      <div className="description-text">
+      <div className="description-text" data-testid="description-text">
         {description.trim() ? (
           <RichTextEditorPreviewer markdown={description} />
         ) : (
