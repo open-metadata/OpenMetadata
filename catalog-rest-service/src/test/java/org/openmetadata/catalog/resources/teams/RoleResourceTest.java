@@ -37,10 +37,13 @@ import org.openmetadata.catalog.CatalogApplicationTest;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.teams.CreateRole;
 import org.openmetadata.catalog.api.teams.CreateTeam;
+import org.openmetadata.catalog.entity.policies.Policy;
 import org.openmetadata.catalog.entity.teams.Role;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.jdbi3.RoleRepository.RoleEntityInterface;
 import org.openmetadata.catalog.resources.EntityResourceTest;
+import org.openmetadata.catalog.resources.policies.PolicyResource;
+import org.openmetadata.catalog.resources.policies.PolicyResourceTest;
 import org.openmetadata.catalog.resources.teams.RoleResource.RoleList;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.util.EntityInterface;
@@ -58,16 +61,27 @@ public class RoleResourceTest extends EntityResourceTest<Role> {
   void post_validRoles_as_admin_200_OK(TestInfo test) throws IOException {
     // Create role with different optional fields
     CreateRole create = create(test, 1);
-    createAndCheckEntity(create, adminAuthHeaders());
+    createAndCheckRole(create, adminAuthHeaders());
 
     create = create(test, 2).withDisplayName("displayName");
-    createAndCheckEntity(create, adminAuthHeaders());
+    createAndCheckRole(create, adminAuthHeaders());
 
     create = create(test, 3).withDescription("description");
-    createAndCheckEntity(create, adminAuthHeaders());
+    createAndCheckRole(create, adminAuthHeaders());
 
     create = create(test, 4).withDisplayName("displayName").withDescription("description");
-    createAndCheckEntity(create, adminAuthHeaders());
+    createAndCheckRole(create, adminAuthHeaders());
+  }
+
+  private Role createAndCheckRole(CreateRole create, Map<String, String> authHeaders) throws IOException {
+    Role role = createAndCheckEntity(create, authHeaders);
+    Policy policy = PolicyResourceTest.getPolicy(role.getPolicy().getId(), PolicyResource.FIELDS, adminAuthHeaders());
+    assertEquals(String.format("%sRoleAccessControlPolicy", role.getName()), policy.getName());
+    assertEquals(String.format("%s Role Access Control Policy", role.getDisplayName()), policy.getDisplayName());
+    assertEquals(
+        String.format("Policy for %s Role to perform operations on metadata entities", role.getDisplayName()),
+        policy.getDescription());
+    return role;
   }
 
   @Test
@@ -76,7 +90,7 @@ public class RoleResourceTest extends EntityResourceTest<Role> {
     Map<String, String> authHeaders = authHeaders("test@open-metadata.org");
     CreateRole create = create(test, 1);
     HttpResponseException exception =
-        assertThrows(HttpResponseException.class, () -> createAndCheckEntity(create, authHeaders));
+        assertThrows(HttpResponseException.class, () -> createAndCheckRole(create, authHeaders));
     assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
   }
 
@@ -86,14 +100,14 @@ public class RoleResourceTest extends EntityResourceTest<Role> {
   @Test
   void delete_validRole_200_OK(TestInfo test) throws IOException {
     CreateRole create = create(test);
-    Role role = createAndCheckEntity(create, adminAuthHeaders());
+    Role role = createAndCheckRole(create, adminAuthHeaders());
     deleteEntity(role.getId(), adminAuthHeaders());
   }
 
   @Test
   void delete_validRole_as_non_admin_401(TestInfo test) throws IOException {
     CreateRole create = create(test);
-    Role role = createAndCheckEntity(create, adminAuthHeaders());
+    Role role = createAndCheckRole(create, adminAuthHeaders());
     HttpResponseException exception =
         assertThrows(
             HttpResponseException.class, () -> deleteEntity(role.getId(), authHeaders("test@open-metadata.org")));

@@ -113,7 +113,7 @@ public class PolicyResource {
     }
   }
 
-  static final String FIELDS = "displayName,description,owner,policyUrl,enabled,rules,location";
+  public static final String FIELDS = "displayName,description,owner,policyUrl,enabled,rules,location";
   public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replace(" ", "").split(","));
 
   @GET
