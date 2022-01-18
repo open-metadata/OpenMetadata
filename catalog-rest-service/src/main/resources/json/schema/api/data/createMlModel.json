@@ -31,6 +31,10 @@
       },
       "default" : null
     },
+    "target": {
+      "description": "For supervised ML Models, the value to estimate.",
+      "$ref": "../../entity/data/mlmodel.json#/definitions/featureName"
+    },
     "mlHyperParameters": {
       "description": "Hyper Parameters used to train the ML Model.",
       "type": "array",
