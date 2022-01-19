@@ -155,10 +155,10 @@ def _get_table_description(schema: str, table: str, inspector: Inspector) -> str
 
 class SQLSource(Source[OMetaDatabaseAndTable]):
     def __init__(
-            self,
-            config: SQLConnectionConfig,
-            metadata_config: MetadataServerConfig,
-            ctx: WorkflowContext,
+        self,
+        config: SQLConnectionConfig,
+        metadata_config: MetadataServerConfig,
+        ctx: WorkflowContext,
     ):
         super().__init__(ctx)
         self.config = config
@@ -202,7 +202,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
 
     @classmethod
     def create(
-            cls, config_dict: dict, metadata_config_dict: dict, ctx: WorkflowContext
+        cls, config_dict: dict, metadata_config_dict: dict, ctx: WorkflowContext
     ):
         pass
 
@@ -245,7 +245,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                 yield from self.fetch_views(inspector, schema)
 
     def fetch_tables(
-            self, inspector: Inspector, schema: str
+        self, inspector: Inspector, schema: str
     ) -> Iterable[OMetaDatabaseAndTable]:
         for table_name in inspector.get_table_names(schema):
             try:
@@ -302,7 +302,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                 continue
 
     def fetch_views(
-            self, inspector: Inspector, schema: str
+        self, inspector: Inspector, schema: str
     ) -> Iterable[OMetaDatabaseAndTable]:
         for view_name in inspector.get_view_names(schema):
             try:
@@ -423,7 +423,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         return None
 
     def _parse_data_model_columns(
-            self, model_name: str, mnode: Dict, cnode: Dict
+        self, model_name: str, mnode: Dict, cnode: Dict
     ) -> [Column]:
         columns = []
         ccolumns = cnode.get("columns")
@@ -559,7 +559,6 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                     logger.error(traceback.format_exc())
                     logger.error(traceback.print_exc())
                     logger.error(f"{err} : {column}")
-                    sys.exit()
                     continue
                 table_columns.append(om_column)
                 row_order = row_order + 1
