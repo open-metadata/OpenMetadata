@@ -64,11 +64,11 @@ const EntityTable = ({
   const columns = React.useMemo(
     () => [
       {
-        Header: 'Column Name',
+        Header: 'Name',
         accessor: 'name',
       },
       {
-        Header: 'Data Type',
+        Header: 'Type',
         accessor: 'dataTypeDisplay',
       },
       {
