@@ -16,11 +16,11 @@ import logging
 import re
 import traceback
 import uuid
-from abc import abstractmethod
-from dataclasses import dataclass, field
-from datetime import datetime
 from typing import Dict, Iterable, List, Optional, Tuple
-from urllib.parse import quote_plus
+
+from sqlalchemy import create_engine
+from sqlalchemy.engine.reflection import Inspector
+from sqlalchemy.inspection import inspect
 
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import (
@@ -32,129 +32,21 @@ from metadata.generated.schema.entity.data.table import (
     TableData,
     TableProfile,
 )
-from metadata.generated.schema.entity.services.databaseService import (
-    DatabaseServiceType,
-)
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.api.common import (
-    ConfigModel,
-    Entity,
-    IncludeFilterPattern,
-    WorkflowContext,
-)
+from metadata.ingestion.api.common import Entity, WorkflowContext
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.models.table_metadata import DeleteTable
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
+from metadata.ingestion.source.sql_source_common import (
+    SQLConnectionConfig,
+    SQLSourceStatus,
+)
 from metadata.utils.column_helpers import check_column_complex_type, get_column_type
 from metadata.utils.helpers import get_database_service_or_create
-from pydantic import SecretStr
-from sqlalchemy import create_engine
-from sqlalchemy.engine.reflection import Inspector
-from sqlalchemy.inspection import inspect
 
 logger: logging.Logger = logging.getLogger(__name__)
-
-
-@dataclass
-class SQLSourceStatus(SourceStatus):
-    """
-    Reports the source status after ingestion
-    """
-
-    success: List[str] = field(default_factory=list)
-    failures: List[str] = field(default_factory=list)
-    warnings: List[str] = field(default_factory=list)
-    filtered: List[str] = field(default_factory=list)
-
-    def scanned(self, record: str) -> None:
-        self.success.append(record)
-        logger.info(f"Table Scanned: {record}")
-
-    def filter(self, record: str, err: str) -> None:
-        self.filtered.append(record)
-        logger.warning(f"Dropped Table {record} due to {err}")
-
-
-def build_sql_source_connection_url(
-    host_port: str,
-    scheme: str,
-    username: Optional[str] = None,
-    password: Optional[SecretStr] = None,
-    database: Optional[str] = None,
-    options: Optional[dict] = None,
-) -> str:
-    """
-    Helper function to prepare the db URL
-    """
-
-    url = f"{scheme}://"
-    if username is not None:
-        url += f"{username}"
-        if password is not None:
-            url += f":{quote_plus(password.get_secret_value())}"
-        url += "@"
-    url += f"{host_port}"
-    if database:
-        url += f"/{database}"
-
-    if options is not None:
-        if database is None:
-            url += "/"
-        params = "&".join(
-            f"{key}={quote_plus(value)}" for (key, value) in options.items() if value
-        )
-        url = f"{url}?{params}"
-    return url
-
-
-class SQLConnectionConfig(ConfigModel):
-    """
-    Config class containing all supported
-    configurations for an SQL source, including
-    data profiling and DBT generated information.
-    """
-
-    username: Optional[str] = None
-    password: Optional[SecretStr] = None
-    host_port: str
-    database: Optional[str] = None
-    scheme: str
-    service_name: str
-    service_type: str
-    query: Optional[str] = "select * from {}.{} limit 50"
-    options: dict = {}
-    connect_args: dict = {}
-    include_views: Optional[bool] = True
-    include_tables: Optional[bool] = True
-    generate_sample_data: Optional[bool] = True
-    data_profiler_enabled: Optional[bool] = False
-    data_profiler_date: Optional[str] = datetime.now().strftime("%Y-%m-%d")
-    data_profiler_offset: Optional[int] = 0
-    data_profiler_limit: Optional[int] = 50000
-    table_filter_pattern: IncludeFilterPattern = IncludeFilterPattern.allow_all()
-    schema_filter_pattern: IncludeFilterPattern = IncludeFilterPattern.allow_all()
-    dbt_manifest_file: Optional[str] = None
-    dbt_catalog_file: Optional[str] = None
-    mark_deleted_tables_as_deleted: Optional[bool] = True
-
-    @abstractmethod
-    def get_connection_url(self):
-        return build_sql_source_connection_url(
-            host_port=self.host_port,
-            scheme=self.scheme,
-            username=self.username,
-            password=self.password,
-            database=self.database,
-            options=self.options,
-        )
-
-    def get_service_type(self) -> DatabaseServiceType:
-        return DatabaseServiceType[self.service_type]
-
-    def get_service_name(self) -> str:
-        return self.service_name
 
 
 def _get_table_description(schema: str, table: str, inspector: Inspector) -> str:
@@ -221,7 +113,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                     # pylint: enable=import-outside-toplevel
 
                     self.data_profiler = DataProfiler(
-                        status=self.status, connection_str=self.connection_string
+                        status=self.status, config=self.config
                     )
                 return True
         # Catch any errors during profiling init and continue ingestion
@@ -664,10 +556,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         """
         dataset_name = f"{schema}.{table}"
         self.status.scanned(f"profile of {dataset_name}")
-        logger.info(
-            f"Running Profiling for {dataset_name}. "
-            f"If you haven't configured offset and limit this process can take longer"
-        )
+        logger.info(f"Running Profiling for {dataset_name}. ")
         if self.config.scheme == "bigquery":
             table = dataset_name
         profile = self.data_profiler.run_profiler(
@@ -675,11 +564,6 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
             profile_date=self.sql_config.data_profiler_date,
             schema=schema,
             table=table,
-            limit=self.sql_config.data_profiler_limit,
-            offset=self.sql_config.data_profiler_offset,
-            project_id=self.config.project_id
-            if self.config.scheme == "bigquery"
-            else None,
         )
         logger.debug(f"Finished profiling {dataset_name}")
         return profile
@@ -692,7 +576,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         tables = []
         while True:
             table_entities = self.metadata.list_entities(
-                entity=Table, after=after, limit=10, params={"database": schema_fqdn}
+                entity=Table, after=after, limit=100, params={"database": schema_fqdn}
             )
             tables.extend(table_entities.entities)
             if table_entities.after is None:

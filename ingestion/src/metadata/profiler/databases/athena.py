@@ -9,43 +9,10 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-import os
 from datetime import date
-from typing import Optional, Tuple
-from urllib.parse import quote_plus
 
-from openmetadata.common.database_common import (
-    DatabaseCommon,
-    SQLConnectionConfig,
-    SQLExpressions,
-)
-
-
-class AthenaConfig(SQLConnectionConfig):
-    scheme: str = "awsathena+rest"
-    username: Optional[str] = None
-    password: Optional[str] = None
-    database: Optional[str] = None
-    aws_region: str
-    s3_staging_dir: str
-    work_group: str
-    service_type = "BigQuery"
-
-    def get_connection_url(self):
-        url = f"{self.scheme}://"
-        if self.username:
-            url += f"{quote_plus(self.username)}"
-            if self.password:
-                url += f":{quote_plus(self.password)}"
-        else:
-            url += ":"
-        url += f"@athena.{self.aws_region}.amazonaws.com:443/"
-        if self.database:
-            url += f"{self.database}"
-        url += f"?s3_staging_dir={quote_plus(self.s3_staging_dir)}"
-        url += f"&work_group={self.work_group}"
-
-        return url
+from metadata.ingestion.source.athena import AthenaConfig
+from metadata.profiler.common.database_common import DatabaseCommon, SQLExpressions
 
 
 class AthenaSQLExpressions(SQLExpressions):
@@ -70,5 +37,5 @@ class Athena(DatabaseCommon):
         config = AthenaConfig.parse_obj(config_dict)
         return cls(config)
 
-    def qualify_table_name(self, table_name: str) -> str:
+    def qualify_table_name(self, table_name: str, schema_name: str) -> str:
         return f"`{self.config.database}.{table_name}`"

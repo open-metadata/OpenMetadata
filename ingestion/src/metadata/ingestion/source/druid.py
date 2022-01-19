@@ -14,7 +14,8 @@ from typing import Optional
 import pydruid
 
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
-from metadata.ingestion.source.sql_source import SQLConnectionConfig, SQLSource
+from metadata.ingestion.source.sql_source import SQLSource
+from metadata.ingestion.source.sql_source_common import SQLConnectionConfig
 
 
 class DruidConfig(SQLConnectionConfig):

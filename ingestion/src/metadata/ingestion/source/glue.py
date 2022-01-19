@@ -27,7 +27,7 @@ from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
-from metadata.ingestion.source.sql_source import SQLSourceStatus
+from metadata.ingestion.source.sql_source_common import SQLSourceStatus
 from metadata.utils.aws_client import AWSClient, AWSClientConfigModel
 from metadata.utils.column_helpers import check_column_complex_type
 from metadata.utils.helpers import (

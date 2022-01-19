@@ -12,15 +12,17 @@
 import os
 from typing import Optional, Tuple
 
-from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
-from metadata.ingestion.source.sql_source import SQLConnectionConfig, SQLSource
-from metadata.utils.column_helpers import create_sqlalchemy_type
 from sqlalchemy_bigquery import _types
 from sqlalchemy_bigquery._struct import STRUCT
 from sqlalchemy_bigquery._types import (
     _get_sqla_column_type,
     _get_transitive_schema_fields,
 )
+
+from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
+from metadata.ingestion.source.sql_source import SQLSource
+from metadata.ingestion.source.sql_source_common import SQLConnectionConfig
+from metadata.utils.column_helpers import create_sqlalchemy_type
 
 GEOGRAPHY = create_sqlalchemy_type("GEOGRAPHY")
 _types._type_map["GEOGRAPHY"] = GEOGRAPHY
@@ -50,7 +52,7 @@ def get_columns(bq_schema):
 _types.get_columns = get_columns
 
 
-class BigQueryConfig(SQLConnectionConfig, SQLSource):
+class BigQueryConfig(SQLConnectionConfig):
     scheme = "bigquery"
     project_id: Optional[str] = None
     duration: int = 1

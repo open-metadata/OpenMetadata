@@ -11,15 +11,15 @@
 
 import importlib
 import logging
-import sys
+import traceback
 from datetime import datetime, timezone
 from typing import Type, TypeVar
 
-from openmetadata.common.config import ConfigModel, DynamicTypedConfig
-from openmetadata.common.database import Database
-from openmetadata.common.database_common import SQLConnectionConfig
-from openmetadata.profiler.profiler import Profiler
-from openmetadata.profiler.profiler_metadata import ProfileResult
+from metadata.config.common import ConfigModel, DynamicTypedConfig
+from metadata.ingestion.source.sql_source_common import SQLSourceStatus
+from metadata.profiler.common.database import Database
+from metadata.profiler.profiler import Profiler
+from metadata.profiler.profiler_metadata import ProfileResult
 
 logger = logging.getLogger(__name__)
 
@@ -54,16 +54,14 @@ class ProfilerRunner:
         self.config = config
         database_type = self.config.profiler.type
         database_class = get_clazz(
-            "openmetadata.databases.{}.{}".format(
+            "metadata.profiler.databases.{}.{}".format(
                 type_class_fetch(database_type, True),
                 type_class_fetch(database_type, False),
             )
         )
-        self.profiler_config = self.config.profiler.dict().get("config", {})
-        self.database: Database = database_class.create(
-            self.profiler_config.get("sql_connection", {})
-        )
-        self.table_name = self.profiler_config.get("table_name")
+        self.database: Database = database_class.create(self.config.profiler.config)
+        self.sql_config = self.database.config
+        self.status = SQLSourceStatus()
         self.variables: dict = {}
         self.time = datetime.now(tz=timezone.utc).isoformat(timespec="seconds")
 
@@ -72,16 +70,49 @@ class ProfilerRunner:
         config = ProfilerConfig.parse_obj(config_dict)
         return cls(config)
 
-    def execute(self):
+    def run_profiler(self):
+        schema_names = self.database.inspector.get_schema_names()
+        results = []
+        for schema in schema_names:
+            if not self.sql_config.schema_filter_pattern.included(schema):
+                self.status.filter(schema, "Schema pattern not allowed")
+                continue
+            tables = self.database.inspector.get_table_names(schema)
+
+            for table_name in tables:
+                try:
+                    if not self.sql_config.table_filter_pattern.included(table_name):
+                        self.status.filter(
+                            f"{self.sql_config.get_service_name()}.{table_name}",
+                            "Table pattern not allowed",
+                        )
+                        continue
+                    logger.info(f"profiling {schema}.{table_name}")
+                    profile_result = self.execute(
+                        schema,
+                        table_name,
+                        datetime.now(tz=timezone.utc).isoformat(timespec="seconds"),
+                    )
+                    results.append(profile_result)
+                except Exception as err:
+                    logger.debug(traceback.print_exc())
+                    logger.error(err)
+                    self.status.failures.append(
+                        "{}.{}".format(self.sql_config.service_name, table_name)
+                    )
+                    continue
+        return results
+
+    def execute(self, schema: str, table_name: str, profile_date: str):
         try:
             profiler = Profiler(
                 database=self.database,
-                table_name=self.table_name,
-                profile_time=self.time,
+                schema_name=schema,
+                table_name=table_name,
+                profile_time=profile_date,
             )
             profile_result: ProfileResult = profiler.execute()
             return profile_result
         except Exception as e:
             logger.exception(f"Profiler failed: {str(e)}")
-            logger.info(f"Exiting with code 1")
-            sys.exit(1)
+            raise e

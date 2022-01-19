@@ -278,6 +278,30 @@
           "description": "Column Name.",
           "type": "string"
         },
+        "valuesCount": {
+          "description": "Total count of the values in this column.",
+          "type": "number"
+        },
+        "valuesPercentage": {
+          "description": "Percentage of values in this column with respect to rowcount.",
+          "type": "number"
+        },
+        "validCount": {
+          "description": "Total count of valid values in this column.",
+          "type": "number"
+        },
+        "duplicateCount": {
+          "description": "No.of Rows that contain duplicates in a column.",
+          "type": "number"
+        },
+        "missingPercentage": {
+          "description": "Missing Percentage is calculated by taking percentage of validCount/valuesCount.",
+          "type": "number"
+        },
+        "missingCount": {
+          "description": "Missing count is calculated by subtracting valuesCount - validCount.",
+          "type": "number"
+        },
         "uniqueCount": {
           "description": "No. of unique values in the column.",
           "type": "number"
@@ -286,33 +310,46 @@
           "description": "Proportion of number of unique values in a column.",
           "type": "number"
         },
-        "nullCount": {
-          "description": "No.of null values in a column.",
-          "type": "number"
-        },
-        "nullProportion": {
-          "description": "No.of null value proportion in columns.",
+        "distinctCount" : {
+          "description": "Number of values that contain distinct values.",
           "type": "number"
         },
         "min": {
           "description": "Minimum value in a column.",
-          "type": "string"
+          "type": "number"
         },
         "max": {
           "description": "Maximum value in a column.",
-          "type": "string"
+          "type": "number"
         },
         "mean": {
           "description": "Avg value in a column.",
-          "type": "string"
+          "type": "number"
         },
-        "median": {
+        "sum": {
           "description": "Median value in a column.",
-          "type": "string"
+          "type": "number"
         },
         "stddev": {
           "description": "Standard deviation of a column.",
           "type": "number"
+        },
+        "variance": {
+          "description": "Variance of a column",
+          "type": "number"
+        },
+        "histogram": {
+          "description": "Histogram of a column",
+          "properties": {
+            "boundaries": {
+              "description": "Boundaries of Histogram",
+              "type": "array"
+            },
+            "frequencies": {
+              "description": "Frequencies of Histogram",
+              "type": "array"
+            }
+          }
         }
       },
       "additionalProperties": false

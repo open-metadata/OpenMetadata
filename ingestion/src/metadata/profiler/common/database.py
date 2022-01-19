@@ -34,6 +34,11 @@ class Database(Closeable, metaclass=ABCMeta):
 
     @property
     @abstractmethod
+    def orig_columns(self):
+        pass
+
+    @property
+    @abstractmethod
     def sql_exprs(self):
         pass
 
@@ -42,7 +47,9 @@ class Database(Closeable, metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def qualify_table_name(self, table_name: str) -> str:
+    def qualify_table_name(self, table_name: str, schema_name: str) -> str:
+        if schema_name:
+            return f"{schema_name}.{table_name}"
         return table_name
 
     @abstractmethod
@@ -75,4 +82,8 @@ class Database(Closeable, metaclass=ABCMeta):
 
     @abstractmethod
     def execute_query_all_columns(self, sql) -> tuple:
+        pass
+
+    @abstractmethod
+    def clear(self):
         pass

@@ -14,9 +14,9 @@ from datetime import datetime
 from math import ceil, floor
 from typing import List
 
-from openmetadata.common.database import Database
-from openmetadata.common.metric import Metric
-from openmetadata.profiler.profiler_metadata import (
+from metadata.profiler.common.database import Database
+from metadata.profiler.common.metric import Metric
+from metadata.profiler.profiler_metadata import (
     ColumnProfileResult,
     MetricMeasurement,
     ProfileResult,
@@ -34,15 +34,19 @@ class Profiler:
     def __init__(
         self,
         database: Database,
+        schema_name: str,
         table_name: str,
         excluded_columns: List[str] = [],
         profile_time: str = None,
     ):
         self.database = database
         self.table = Table(name=table_name)
+        self.schema_name = schema_name
         self.excluded_columns = excluded_columns
         self.time = profile_time
-        self.qualified_table_name = self.database.qualify_table_name(table_name)
+        self.qualified_table_name = self.database.qualify_table_name(
+            table_name, schema_name
+        )
         self.scan_reference = None
         self.start_time = None
         self.queries_executed = 0
@@ -54,11 +58,13 @@ class Profiler:
 
     def execute(self) -> ProfileResult:
         self.start_time = datetime.now()
-
         try:
-            self.database.table_column_metadata(self.table.name, None)
-            logger.debug(str(len(self.database.columns)) + " columns:")
-            self.profiler_result.table_result.col_count = len(self.database.columns)
+            logger.info(f"profiling  table {self.schema_name}.{self.table.name}")
+            self.database.table_column_metadata(self.table.name, self.schema_name)
+            logger.info(str(len(self.database.orig_columns)) + " columns:")
+            self.profiler_result.table_result.col_count = len(
+                self.database.orig_columns
+            )
             self._profile_aggregations()
             self._query_group_by_value()
             self._query_histograms()
@@ -66,10 +72,10 @@ class Profiler:
                 f"Executed {self.queries_executed} queries in {(datetime.now() - self.start_time)}"
             )
         except Exception as e:
-            logger.exception("Exception during scan")
-
+            logger.exception(f"Exception during scan due to {e}")
+            raise e
         finally:
-            self.database.close()
+            self.database.clear()
 
         return self.profiler_result
 
@@ -264,7 +270,7 @@ class Profiler:
                 column_name = column.name
                 group_by_cte = get_group_by_cte(
                     self.database.qualify_column_name(column.name),
-                    self.database.qualify_table_name(self.table.name),
+                    self.qualified_table_name,
                 )
                 ## Compute Distinct, Unique, Unique_Count, Duplicate_count
                 sql = (
