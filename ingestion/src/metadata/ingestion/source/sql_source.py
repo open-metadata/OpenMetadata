@@ -16,13 +16,8 @@ import uuid
 from abc import abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Dict, Iterable, List, Optional, Set, Tuple, Type
+from typing import Dict, Iterable, List, Optional, Tuple
 from urllib.parse import quote_plus
-
-from pydantic import SecretStr
-from sqlalchemy import create_engine
-from sqlalchemy.engine.reflection import Inspector
-from sqlalchemy.inspection import inspect
 
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import (
@@ -46,8 +41,13 @@ from metadata.ingestion.api.common import (
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
-from metadata.utils.column_helpers import check_column_complex_type, get_column_type
+from metadata.utils.column_helpers import get_column_type
+from metadata.utils.column_type_parser import ColumnTypeParser
 from metadata.utils.helpers import get_database_service_or_create
+from pydantic import SecretStr
+from sqlalchemy import create_engine
+from sqlalchemy.engine.reflection import Inspector
+from sqlalchemy.inspection import inspect
 
 logger: logging.Logger = logging.getLogger(__name__)
 
@@ -78,7 +78,6 @@ def build_sql_source_connection_url(
     database: Optional[str] = None,
     options: dict = {},
 ) -> str:
-
     url = f"{scheme}://"
     if username is not None:
         url += f"{username}"
@@ -430,7 +429,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
             ccolumn = ccolumns[key]
             try:
                 ctype = ccolumn["type"]
-                col_type = get_column_type(self.status, model_name, ctype)
+                col_type = get_column_type(ctype)
                 description = manifest_columns.get(key.lower(), {}).get(
                     "description", None
                 )
@@ -489,75 +488,95 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                 data_type_display = None
                 col_data_length = None
                 arr_data_type = None
+                parsed_string = None
                 if "raw_data_type" in column and column["raw_data_type"] is not None:
                     column["raw_data_type"] = self.parse_raw_data_type(
                         column["raw_data_type"]
                     )
-                    (
-                        col_type,
-                        data_type_display,
-                        arr_data_type,
-                        children,
-                    ) = check_column_complex_type(
-                        self.status,
-                        dataset_name,
-                        column["raw_data_type"],
-                        column["name"],
+                    parsed_string = ColumnTypeParser._parse_datatype_string(
+                        column["raw_data_type"]
                     )
+                    parsed_string["name"] = column["name"]
                 else:
-                    col_type = get_column_type(
-                        self.status, dataset_name, column["type"]
-                    )
+                    col_type = get_column_type(column["type"])
                     if col_type == "ARRAY":
                         if re.match(r"(?:\w*)(?:\()(\w*)(?:.*)", str(column["type"])):
                             arr_data_type = re.match(
                                 r"(?:\w*)(?:[(]*)(\w*)(?:.*)", str(column["type"])
                             ).groups()
                             data_type_display = column["type"]
-                col_constraint = None
-                if column["nullable"]:
-                    col_constraint = Constraint.NULL
-                elif not column["nullable"]:
-                    col_constraint = Constraint.NOT_NULL
-                if column["name"] in pk_columns:
-                    col_constraint = Constraint.PRIMARY_KEY
-                elif column["name"] in unique_columns:
-                    col_constraint = Constraint.UNIQUE
-                if col_type.upper() in ["CHAR", "VARCHAR", "BINARY", "VARBINARY"]:
-                    col_data_length = column["type"].length
-                if col_data_length is None:
-                    col_data_length = 1
-                try:
-                    if col_type == "NULL":
-                        col_type = self.type_of_column_name(
-                            col_type,
-                            column_name=column["name"],
-                            table_name=dataset_name,
+                if parsed_string is None:
+                    col_constraint = None
+                    if column["nullable"]:
+                        col_constraint = Constraint.NULL
+                    elif not column["nullable"]:
+                        col_constraint = Constraint.NOT_NULL
+                    if column["name"] in pk_columns:
+                        col_constraint = Constraint.PRIMARY_KEY
+                    elif column["name"] in unique_columns:
+                        col_constraint = Constraint.UNIQUE
+                    if col_type.upper() in ["CHAR", "VARCHAR", "BINARY", "VARBINARY"]:
+                        col_data_length = column["type"].length
+                    if col_data_length is None:
+                        col_data_length = 1
+                    try:
+                        if col_type == "NULL":
+                            col_type = self.type_of_column_name(
+                                col_type,
+                                column_name=column["name"],
+                                table_name=dataset_name,
+                            )
+                        if col_type == "NULL":
+                            col_type = "VARCHAR"
+                            data_type_display = "varchar"
+                            logger.warning(
+                                f"Unknown type {column['type']} mapped to VARCHAR: {column['name']}"
+                            )
+                        om_column = Column(
+                            name=column["name"],
+                            description=column.get("comment", None),
+                            dataType=col_type,
+                            dataTypeDisplay="{}({})".format(col_type, col_data_length)
+                            if data_type_display is None
+                            else f"{data_type_display}",
+                            dataLength=col_data_length,
+                            constraint=col_constraint,
+                            ordinalPosition=row_order,
+                            children=children if children is not None else None,
+                            arrayDataType=arr_data_type,
                         )
-                    if col_type == "NULL":
-                        col_type = "VARCHAR"
-                        data_type_display = "varchar"
-                        logger.warning(
-                            f"Unknown type {column['type']} mapped to VARCHAR: {column['name']}"
+                    except Exception as err:
+                        logger.error(traceback.format_exc())
+                        logger.error(traceback.print_exc())
+                        logger.error(f"{err} : {column}")
+                        continue
+                else:
+                    if parsed_string["dataType"].upper() in {
+                        "CHAR",
+                        "VARCHAR",
+                        "BINARY",
+                        "VARBINARY",
+                    }:
+                        parsed_string["dataLength"] = (
+                            1
+                            if column["type"].length is None
+                            else column["type"].length
                         )
-                    om_column = Column(
-                        name=column["name"],
-                        description=column.get("comment", None),
-                        dataType=col_type,
-                        dataTypeDisplay="{}({})".format(col_type, col_data_length)
-                        if data_type_display is None
-                        else f"{data_type_display}",
-                        dataLength=col_data_length,
-                        constraint=col_constraint,
-                        ordinalPosition=row_order,
-                        children=children if children is not None else None,
-                        arrayDataType=arr_data_type,
-                    )
-                except Exception as err:
-                    logger.error(traceback.format_exc())
-                    logger.error(traceback.print_exc())
-                    logger.error(f"{err} : {column}")
-                    continue
+                    elif (
+                        "arrayDataType" in column
+                        and column["arrayDataType"] is not None
+                    ):
+                        parsed_string["arrayDataType"] = get_column_type(
+                            column["arrayDataType"]
+                        )
+                        parsed_string[
+                            "dataTypeDisplay"
+                        ] = f"{repr(column['type']).replace('(', '<').replace(')', '>').lower()}"
+                    if parsed_string["dataType"].upper() == "ARRAY":
+                        parsed_string["arrayDataType"] = "BYTES"
+                        parsed_string["dataTypeDisplay"] = "array<BYTES>"
+                    col_dict = Column(**parsed_string)
+                    om_column = col_dict
                 table_columns.append(om_column)
                 row_order = row_order + 1
             return table_columns
