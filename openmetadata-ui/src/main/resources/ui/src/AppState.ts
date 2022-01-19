@@ -43,6 +43,9 @@ class AppState {
     makeAutoObservable(this, {
       updateUserDetails: action,
       updateUserTeam: action,
+      updateNewUser: action,
+      updateAuthProvide: action,
+      updateAuthState: action,
     });
   }
 
