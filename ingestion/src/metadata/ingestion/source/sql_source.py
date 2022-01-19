@@ -673,8 +673,10 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                                 "dataTypeDisplay"
                             ] = f"{repr(column['type']).replace('(','<').replace(')','>').lower()}"
                         if "arrayDataType" in column:
-                            parsed_string["arrayDataType"] = column['arrayDataType']
-                            parsed_string["dataTypeDisplay"] = f"array<{parsed_string["arrayDataType"]}>"
+                            parsed_string["arrayDataType"] = column["arrayDataType"]
+                            parsed_string[
+                                "dataTypeDisplay"
+                            ] = f"array<{parsed_string['arrayDataType']}>"
                         col_dict = Column(**parsed_string)
                         om_column = col_dict
                 except Exception as err:
