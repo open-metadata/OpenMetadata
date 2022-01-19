@@ -85,9 +85,10 @@ const DropDown: React.FC<DropDownProp> = ({
                       if (selectedItems?.includes(item.value as string)) {
                         return (
                           <p
-                            className="tw-bg-gray-200 tw-rounded tw-px-1 tw-text-grey-body"
+                            className="tw-bg-gray-200 tw-rounded tw-px-1 tw-text-grey-body tw-truncate tw-w-52 tw-align-middle"
                             key={item.value}
-                            style={{ margin: '2px' }}>
+                            style={{ margin: '2px' }}
+                            title={item.name as string}>
                             {item.name}
                           </p>
                         );

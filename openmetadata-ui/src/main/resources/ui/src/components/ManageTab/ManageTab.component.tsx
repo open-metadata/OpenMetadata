@@ -12,6 +12,7 @@
  */
 
 import { AxiosResponse } from 'axios';
+import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { observer } from 'mobx-react';
 import { TableDetail } from 'Models';
@@ -181,6 +182,8 @@ const ManageTab: FunctionComponent<Props> = ({
     });
   };
 
+  const ownerName = getOwnerById();
+
   useEffect(() => {
     getTierData();
   }, []);
@@ -225,7 +228,17 @@ const ManageTab: FunctionComponent<Props> = ({
             theme="primary"
             variant="link"
             onClick={() => setListVisible((visible) => !visible)}>
-            {getOwnerById() || 'Select Owner'}
+            {ownerName ? (
+              <span
+                className={classNames('tw-truncate', {
+                  'tw-w-52': ownerName.length > 32,
+                })}
+                title={ownerName}>
+                {ownerName}
+              </span>
+            ) : (
+              'Select Owner'
+            )}
             <SVGIcons
               alt="edit"
               className="tw-ml-1"
