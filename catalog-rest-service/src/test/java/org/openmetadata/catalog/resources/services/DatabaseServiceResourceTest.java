@@ -29,6 +29,7 @@ import java.util.Arrays;
 import java.util.Date;
 import java.util.Map;
 import javax.ws.rs.core.Response;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
@@ -48,6 +49,7 @@ import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
 import org.openmetadata.catalog.util.TestUtils.UpdateType;
 
+@Slf4j
 public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseService> {
   public DatabaseServiceResourceTest() {
     super(

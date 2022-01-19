@@ -49,6 +49,7 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Predicate;
 import javax.json.JsonPatch;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
@@ -79,6 +80,7 @@ import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.TestUtils;
 import org.openmetadata.catalog.util.TestUtils.UpdateType;
 
+@Slf4j
 public class UserResourceTest extends EntityResourceTest<User> {
   final Profile PROFILE = new Profile().withImages(new ImageList().withImage(URI.create("http://image.com")));
 
