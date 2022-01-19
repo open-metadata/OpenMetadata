@@ -410,7 +410,7 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
         ResultList<T> backwardPage;
         Boolean foundDeleted = false;
         do { // For each limit (or page size) - forward scroll till the end
-         CatalogApplicationTest.LOG.info("Limit {} forward scrollCount {} afterCursor {}", limit, pageCount, after);
+          CatalogApplicationTest.LOG.info("Limit {} forward scrollCount {} afterCursor {}", limit, pageCount, after);
           forwardPage = listEntities(queryParams, limit, null, after, adminAuthHeaders());
           foundDeleted = forwardPage.getData().stream().anyMatch(matchDeleted) ? true : foundDeleted;
           after = forwardPage.getPaging().getAfter();
