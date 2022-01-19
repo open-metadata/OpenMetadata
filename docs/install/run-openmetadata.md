@@ -36,6 +36,12 @@ Note: You must **allocate at least 4GB of memory to Docker** in order to run Ope
 Preferences -> Resources -> Advanced
 {% endhint %}
 
+### docker-compose (version v1.29.2 or greater)
+
+The docker-compose tool enables you to define and run multi-container Docker applications. The packages you will install in this guide use docker-compose to deploy OpenMetadata.
+
+To install `docker-compose`, please follow the instructions at [Install Docker Compose](https://docs.docker.com/compose/install/).
+
 ## Procedure
 
 ### 1. Create a directory for OpenMetadata
