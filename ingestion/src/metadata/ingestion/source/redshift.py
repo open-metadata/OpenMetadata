@@ -17,6 +17,8 @@ from typing import Optional
 import sqlalchemy as sa
 from packaging.version import Version
 
+from metadata.ingestion.source.sql_source_common import SQLConnectionConfig
+
 sa_version = Version(sa.__version__)
 
 from sqlalchemy import inspect
@@ -26,7 +28,7 @@ from sqlalchemy_redshift.dialect import RedshiftDialectMixin, RelationKey
 
 from metadata.ingestion.api.source import SourceStatus
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
-from metadata.ingestion.source.sql_source import SQLConnectionConfig, SQLSource
+from metadata.ingestion.source.sql_source import SQLSource
 from metadata.utils.sql_queries import (
     REDSHIFT_GET_ALL_RELATION_INFO,
     REDSHIFT_GET_SCHEMA_COLUMN_INFO,

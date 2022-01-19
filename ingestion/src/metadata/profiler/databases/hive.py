@@ -9,36 +9,32 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-import os
-from typing import Optional, Tuple
+from typing import Optional
 
-from openmetadata.common.database_common import (
+from pyhive import hive  # noqa: F401
+from pyhive.sqlalchemy_hive import HiveDate, HiveDecimal, HiveTimestamp
+
+from metadata.ingestion.source.hive import HiveConfig
+from metadata.profiler.common.database_common import (
     DatabaseCommon,
     SQLConnectionConfig,
     SQLExpressions,
+    register_custom_type,
 )
+from metadata.profiler.profiler_metadata import SupportedDataType
+
+register_custom_type([HiveDate, HiveTimestamp], SupportedDataType.TIME)
+register_custom_type([HiveDecimal], SupportedDataType.NUMERIC)
 
 
-class BigqueryConfig(SQLConnectionConfig):
-    scheme = "bigquery"
-    project_id: Optional[str] = None
-    duration: int = 1
-    service_type = "BigQuery"
-
-    def get_connection_url(self):
-        if self.project_id:
-            return f"{self.scheme}://{self.project_id}"
-        return f"{self.scheme}://"
-
-
-class BigquerySQLExpressions(SQLExpressions):
+class HiveSQLExpressions(SQLExpressions):
     stddev_expr = "STDDEV_POP({})"
-    regex_like_pattern_expr = "REGEXP_CONTAINS({expr}, r'{}')"
+    regex_like_pattern_expr = "cast({} as string) rlike '{}'"
 
 
-class Bigquery(DatabaseCommon):
-    config: BigqueryConfig = None
-    sql_exprs: BigquerySQLExpressions = BigquerySQLExpressions()
+class Hive(DatabaseCommon):
+    config: HiveConfig = None
+    sql_exprs: HiveSQLExpressions = HiveSQLExpressions()
 
     def __init__(self, config):
         super().__init__(config)
@@ -46,8 +42,5 @@ class Bigquery(DatabaseCommon):
 
     @classmethod
     def create(cls, config_dict):
-        config = BigqueryConfig.parse_obj(config_dict)
+        config = HiveConfig.parse_obj(config_dict)
         return cls(config)
-
-    def qualify_table_name(self, table_name: str) -> str:
-        return f"`{self.config.database}.{table_name}`"

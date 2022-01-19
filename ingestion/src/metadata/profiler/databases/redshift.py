@@ -11,21 +11,8 @@
 
 from typing import Optional
 
-from openmetadata.common.database_common import (
-    DatabaseCommon,
-    SQLConnectionConfig,
-    SQLExpressions,
-)
-
-
-class RedshiftConnectionConfig(SQLConnectionConfig):
-    scheme = "redshift+psycopg2"
-    where_clause: Optional[str] = None
-    duration: int = 1
-    service_type = "Redshift"
-
-    def get_connection_url(self):
-        return super().get_connection_url()
+from metadata.ingestion.source.redshift import RedshiftConfig
+from metadata.profiler.common.database_common import DatabaseCommon, SQLExpressions
 
 
 class RedshiftSQLExpressions(SQLExpressions):
@@ -35,7 +22,7 @@ class RedshiftSQLExpressions(SQLExpressions):
 
 
 class Redshift(DatabaseCommon):
-    config: RedshiftConnectionConfig = None
+    config: RedshiftConfig = None
     sql_exprs: RedshiftSQLExpressions = RedshiftSQLExpressions()
 
     def __init__(self, config):
@@ -44,5 +31,5 @@ class Redshift(DatabaseCommon):
 
     @classmethod
     def create(cls, config_dict):
-        config = RedshiftConnectionConfig.parse_obj(config_dict)
+        config = RedshiftConfig.parse_obj(config_dict)
         return cls(config)
