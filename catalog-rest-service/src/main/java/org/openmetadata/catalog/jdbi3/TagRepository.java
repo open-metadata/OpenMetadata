@@ -30,11 +30,10 @@ import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 public class TagRepository {
-  public static final Logger LOG = LoggerFactory.getLogger(TagRepository.class);
   private final CollectionDAO dao;
 
   public TagRepository(CollectionDAO dao) {

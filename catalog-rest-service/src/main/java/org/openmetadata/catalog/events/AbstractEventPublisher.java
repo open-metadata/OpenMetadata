@@ -3,13 +3,13 @@ package org.openmetadata.catalog.events;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.events.errors.EventPublisherException;
 import org.openmetadata.catalog.events.errors.RetriableException;
 import org.openmetadata.catalog.resources.events.EventResource.ChangeEventList;
 import org.openmetadata.catalog.type.ChangeEvent;
 import org.openmetadata.catalog.type.EventFilter;
 import org.openmetadata.catalog.type.EventType;
-import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public abstract class AbstractEventPublisher implements EventPublisher {
