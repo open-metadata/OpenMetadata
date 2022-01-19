@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import classNames from 'classnames';
 import { isEmpty, isNil, isString } from 'lodash';
 import { Bucket, ExtraInfo, LeafNodes, LineagePos } from 'Models';
 import React from 'react';
@@ -433,7 +434,9 @@ export const getInfoElements = (data: ExtraInfo) => {
               target={data.openInNewTab ? '_blank' : '_self'}>
               <>
                 <span
-                  className="tw-mr-1 tw-inline-block tw-truncate tw-w-52"
+                  className={classNames('tw-mr-1 tw-inline-block tw-truncate', {
+                    'tw-w-52': (displayVal as string).length > 32,
+                  })}
                   title={displayVal as string}>
                   {displayVal}
                 </span>
@@ -451,7 +454,10 @@ export const getInfoElements = (data: ExtraInfo) => {
             <>
               {data.key === 'Owner' ? (
                 <span
-                  className="tw-mr-1 tw-inline-block tw-truncate tw-w-52 tw-align-text-bottom"
+                  className={classNames(
+                    'tw-mr-1 tw-inline-block tw-truncate tw-align-text-bottom',
+                    { 'tw-w-52': (displayVal as string).length > 32 }
+                  )}
                   title={displayVal as string}>
                   {displayVal}
                 </span>

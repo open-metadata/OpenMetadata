@@ -182,6 +182,8 @@ const ManageTab: FunctionComponent<Props> = ({
     });
   };
 
+  const ownerName = getOwnerById();
+
   useEffect(() => {
     getTierData();
   }, []);
@@ -226,13 +228,13 @@ const ManageTab: FunctionComponent<Props> = ({
             theme="primary"
             variant="link"
             onClick={() => setListVisible((visible) => !visible)}>
-            {getOwnerById() ? (
+            {ownerName ? (
               <span
                 className={classNames('tw-truncate', {
-                  'tw-w-52': getOwnerById().length > 32,
+                  'tw-w-52': ownerName.length > 32,
                 })}
-                title={getOwnerById()}>
-                {getOwnerById()}
+                title={ownerName}>
+                {ownerName}
               </span>
             ) : (
               'Select Owner'
