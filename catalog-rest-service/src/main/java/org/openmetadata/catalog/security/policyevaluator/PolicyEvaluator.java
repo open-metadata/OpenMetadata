@@ -60,7 +60,7 @@ public class PolicyEvaluator {
 
   /** Refresh rules within {@link PolicyEvaluator} to be used by {@link DefaultRulesEngine}. */
   public void refreshRules() throws IOException {
-    log.warn("{} rules are available for Access Control", rules.get().size());
+    LOG.warn("{} rules are available for Access Control", rules.get().size());
     Rules newRules = new Rules();
     policyRepository.getAccessControlPolicyRules().stream()
         // Add rules only if they are enabled.
@@ -69,7 +69,7 @@ public class PolicyEvaluator {
         .forEach(newRules::register);
     // Atomic swap of rules.
     rules.set(newRules);
-    log.warn("Loaded new set of {} rules for Access Control", rules.get().size());
+    LOG.warn("Loaded new set of {} rules for Access Control", rules.get().size());
   }
 
   public boolean hasPermission(User user, Object entity, MetadataOperation operation) {
