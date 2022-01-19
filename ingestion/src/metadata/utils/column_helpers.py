@@ -170,14 +170,14 @@ def check_column_complex_type(
     ):
         col_type = "UNION"
     else:
-        col_type = get_column_type(status, dataset_name, column_raw_type.split("(")[0])
+        col_type = get_column_type(column_raw_type.split("(")[0])
         data_type_display = col_type
     if data_type_display is None:
         data_type_display = column_raw_type
     return col_type, data_type_display, arr_data_type, children
 
 
-def get_column_type(status: SourceStatus, dataset_name: str, column_type: Any) -> str:
+def get_column_type(column_type: Any) -> str:
     type_class: Optional[str] = None
     for sql_type in _column_type_mapping.keys():
         if isinstance(column_type, sql_type):
@@ -194,11 +194,6 @@ def get_column_type(status: SourceStatus, dataset_name: str, column_type: Any) -
                 break
             else:
                 type_class = None
-    if type_class is None or type_class == "NULL":
-        status.warning(
-            dataset_name, f"unable to map type {column_type!r} to metadata schema"
-        )
-        type_class = "NULL"
     return type_class
 
 
@@ -298,8 +293,7 @@ def _handle_complex_data_types(status, dataset_name, raw_type: str, level=0):
         else:
             col["dataLength"] = 1
         col["dataType"] = get_column_type(
-            status,
-            dataset_name,
+
             re.match(r"([\w\s]*)(?:.*)", col_type).groups()[0],
         )
         col["dataTypeDisplay"] = col_type.rstrip(">")

@@ -14,13 +14,14 @@ Generic source to build SQL connectors.
 import json
 import logging
 import re
+import sys
 import traceback
 import uuid
+from abc import abstractmethod
+from dataclasses import dataclass, field
+from datetime import datetime
 from typing import Dict, Iterable, List, Optional, Tuple
-
-from sqlalchemy import create_engine
-from sqlalchemy.engine.reflection import Inspector
-from sqlalchemy.inspection import inspect
+from urllib.parse import quote_plus
 
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import (
@@ -32,21 +33,130 @@ from metadata.generated.schema.entity.data.table import (
     TableData,
     TableProfile,
 )
+from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseServiceType,
+)
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.api.common import Entity, WorkflowContext
+from metadata.ingestion.api.common import (
+    ConfigModel,
+    Entity,
+    IncludeFilterPattern,
+    WorkflowContext,
+)
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.models.table_metadata import DeleteTable
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
-from metadata.ingestion.source.sql_source_common import (
-    SQLConnectionConfig,
-    SQLSourceStatus,
-)
-from metadata.utils.column_helpers import check_column_complex_type, get_column_type
+from metadata.utils.column_helpers import get_column_type
+from metadata.utils.column_type_parser import ColumnTypeParser
 from metadata.utils.helpers import get_database_service_or_create
+from pydantic import SecretStr
+from sqlalchemy import create_engine
+from sqlalchemy.engine.reflection import Inspector
+from sqlalchemy.inspection import inspect
 
 logger: logging.Logger = logging.getLogger(__name__)
+
+
+@dataclass
+class SQLSourceStatus(SourceStatus):
+    """
+    Reports the source status after ingestion
+    """
+
+    success: List[str] = field(default_factory=list)
+    failures: List[str] = field(default_factory=list)
+    warnings: List[str] = field(default_factory=list)
+    filtered: List[str] = field(default_factory=list)
+
+    def scanned(self, record: str) -> None:
+        self.success.append(record)
+        logger.info(f"Table Scanned: {record}")
+
+    def filter(self, record: str, err: str) -> None:
+        self.filtered.append(record)
+        logger.warning(f"Dropped Table {record} due to {err}")
+
+
+def build_sql_source_connection_url(
+        host_port: str,
+        scheme: str,
+        username: Optional[str] = None,
+        password: Optional[SecretStr] = None,
+        database: Optional[str] = None,
+        options: Optional[dict] = None,
+) -> str:
+    """
+    Helper function to prepare the db URL
+    """
+
+    url = f"{scheme}://"
+    if username is not None:
+        url += f"{username}"
+        if password is not None:
+            url += f":{quote_plus(password.get_secret_value())}"
+        url += "@"
+    url += f"{host_port}"
+    if database:
+        url += f"/{database}"
+
+    if options is not None:
+        if database is None:
+            url += "/"
+        params = "&".join(
+            f"{key}={quote_plus(value)}" for (key, value) in options.items() if value
+        )
+        url = f"{url}?{params}"
+    return url
+
+
+class SQLConnectionConfig(ConfigModel):
+    """
+    Config class containing all supported
+    configurations for an SQL source, including
+    data profiling and DBT generated information.
+    """
+
+    username: Optional[str] = None
+    password: Optional[SecretStr] = None
+    host_port: str
+    database: Optional[str] = None
+    scheme: str
+    service_name: str
+    service_type: str
+    query: Optional[str] = "select * from {}.{} limit 50"
+    options: dict = {}
+    connect_args: dict = {}
+    include_views: Optional[bool] = True
+    include_tables: Optional[bool] = True
+    generate_sample_data: Optional[bool] = True
+    data_profiler_enabled: Optional[bool] = False
+    data_profiler_date: Optional[str] = datetime.now().strftime("%Y-%m-%d")
+    data_profiler_offset: Optional[int] = 0
+    data_profiler_limit: Optional[int] = 50000
+    table_filter_pattern: IncludeFilterPattern = IncludeFilterPattern.allow_all()
+    schema_filter_pattern: IncludeFilterPattern = IncludeFilterPattern.allow_all()
+    dbt_manifest_file: Optional[str] = None
+    dbt_catalog_file: Optional[str] = None
+    mark_deleted_tables_as_deleted: Optional[bool] = True
+
+    @abstractmethod
+    def get_connection_url(self):
+        return build_sql_source_connection_url(
+            host_port=self.host_port,
+            scheme=self.scheme,
+            username=self.username,
+            password=self.password,
+            database=self.database,
+            options=self.options,
+        )
+
+    def get_service_type(self) -> DatabaseServiceType:
+        return DatabaseServiceType[self.service_type]
+
+    def get_service_name(self) -> str:
+        return self.service_name
 
 
 def _get_table_description(schema: str, table: str, inspector: Inspector) -> str:
@@ -69,10 +179,10 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
     """
 
     def __init__(
-        self,
-        config: SQLConnectionConfig,
-        metadata_config: MetadataServerConfig,
-        ctx: WorkflowContext,
+            self,
+            config: SQLConnectionConfig,
+            metadata_config: MetadataServerConfig,
+            ctx: WorkflowContext,
     ):
         super().__init__(ctx)
         self.config = config
@@ -113,7 +223,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                     # pylint: enable=import-outside-toplevel
 
                     self.data_profiler = DataProfiler(
-                        status=self.status, config=self.config
+                        status=self.status, connection_str=self.connection_string
                     )
                 return True
         # Catch any errors during profiling init and continue ingestion
@@ -130,7 +240,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
 
     @classmethod
     def create(
-        cls, config_dict: dict, metadata_config_dict: dict, ctx: WorkflowContext
+            cls, config_dict: dict, metadata_config_dict: dict, ctx: WorkflowContext
     ):
         pass
 
@@ -178,7 +288,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                 yield from self.delete_tables(schema_fqdn)
 
     def fetch_tables(
-        self, inspector: Inspector, schema: str
+            self, inspector: Inspector, schema: str
     ) -> Iterable[OMetaDatabaseAndTable]:
         """
         Scrape an SQL schema and prepare Database and Table
@@ -241,7 +351,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                 continue
 
     def fetch_views(
-        self, inspector: Inspector, schema: str
+            self, inspector: Inspector, schema: str
     ) -> Iterable[OMetaDatabaseAndTable]:
         """
         Get all views in the SQL schema and prepare
@@ -280,7 +390,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                     name=view_name.replace(".", "_DOT_"),
                     tableType="View",
                     description=_get_table_description(schema, view_name, inspector)
-                    or "",
+                                or "",
                     # This will be generated in the backend!! #1673
                     fullyQualifiedName=view_name,
                     columns=self._get_columns(schema, view_name, inspector),
@@ -378,7 +488,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         return None
 
     def _parse_data_model_columns(
-        self, model_name: str, mnode: Dict, cnode: Dict
+            self, model_name: str, mnode: Dict, cnode: Dict
     ) -> [Column]:
         columns = []
         ccolumns = cnode.get("columns")
@@ -387,7 +497,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
             ccolumn = ccolumns[key]
             try:
                 ctype = ccolumn["type"]
-                col_type = get_column_type(self.status, model_name, ctype)
+                col_type = get_column_type(ctype)
                 description = manifest_columns.get(key.lower(), {}).get(
                     "description", None
                 )
@@ -414,7 +524,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
 
     @staticmethod
     def _get_column_constraints(
-        column, pk_columns, unique_columns
+            column, pk_columns, unique_columns
     ) -> Optional[Constraint]:
         """
         Prepare column constraints for the Table Entity
@@ -434,7 +544,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         return constraint
 
     def _get_columns(
-        self, schema: str, table: str, inspector: Inspector
+            self, schema: str, table: str, inspector: Inspector
     ) -> Optional[List[Column]]:
         """
         Get columns types and constraints information
@@ -466,6 +576,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         try:
             for row_order, column in enumerate(columns):
                 try:
+                    col_dict = None
                     if "." in column["name"]:
                         logger.info(
                             f"Found '.' in {column['name']}, changing '.' to '_DOT_'"
@@ -475,72 +586,78 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                     data_type_display = None
                     col_data_length = None
                     arr_data_type = None
+
                     if (
-                        "raw_data_type" in column
-                        and column["raw_data_type"] is not None
+                            "raw_data_type" in column
+                            and column["raw_data_type"] is not None
                     ):
                         column["raw_data_type"] = self.parse_raw_data_type(
                             column["raw_data_type"]
                         )
-                        (
-                            col_type,
-                            data_type_display,
-                            arr_data_type,
-                            children,
-                        ) = check_column_complex_type(
-                            self.status,
-                            dataset_name,
-                            column["raw_data_type"],
-                            column["name"],
-                        )
+                        parsed_string = ColumnTypeParser._parse_datatype_string(column["raw_data_type"])
+                        parsed_string['name'] = column['name']
                     else:
                         col_type = get_column_type(
-                            self.status, dataset_name, column["type"]
+                           column["type"]
                         )
                         if col_type == "ARRAY" and re.match(
-                            r"(?:\w*)(?:\()(\w*)(?:.*)", str(column["type"])
+                                r"(?:\w*)(?:\()(\w*)(?:.*)", str(column["type"])
                         ):
                             arr_data_type = re.match(
                                 r"(?:\w*)(?:[(]*)(\w*)(?:.*)", str(column["type"])
                             ).groups()
                             data_type_display = column["type"]
-                    if repr(column["type"]).upper().startswith("ARRAY("):
-                        arr_data_type = "STRUCT"
-                        data_type_display = (
-                            repr(column["type"])
-                            .replace("(", "<")
-                            .replace(")", ">")
-                            .lower()
+                    if parsed_string is None:
+
+                        if repr(column["type"]).upper().startswith("ARRAY("):
+                            arr_data_type = "STRUCT"
+                            data_type_display = (
+                                repr(column["type"])
+                                    .replace("(", "<")
+                                    .replace(")", ">")
+                                    .lower()
+                            )
+                        col_constraint = self._get_column_constraints(
+                            column, pk_columns, unique_columns
                         )
-                    col_constraint = self._get_column_constraints(
-                        column, pk_columns, unique_columns
-                    )
-                    if col_type.upper() in {"CHAR", "VARCHAR", "BINARY", "VARBINARY"}:
-                        col_data_length = column["type"].length
-                    if col_type == "NULL":
-                        col_type = "VARCHAR"
-                        data_type_display = "varchar"
-                        logger.warning(
-                            f"Unknown type {column['type']} mapped to VARCHAR: {column['name']}"
-                        )
-                    om_column = Column(
-                        name=column["name"],
-                        description=column.get("comment", None),
-                        dataType=col_type,
-                        dataTypeDisplay="{}({})".format(
-                            col_type, 1 if col_data_length is None else col_data_length
-                        )
-                        if data_type_display is None
-                        else f"{data_type_display}",
-                        dataLength=1 if col_data_length is None else col_data_length,
-                        constraint=col_constraint,
-                        ordinalPosition=row_order,
-                        children=children if children is not None else None,
-                        arrayDataType=arr_data_type,
-                    )
+                        if col_type.upper() in {"CHAR", "VARCHAR", "BINARY", "VARBINARY"}:
+                            col_data_length = column["type"].length
+                        if col_type == "NULL":
+                            col_type = "VARCHAR"
+                            data_type_display = "varchar"
+                            logger.warning(
+                                f"Unknown type {column['type']} mapped to VARCHAR: {column['name']}"
+                            )
+                            om_column = Column(
+                                name=column["name"],
+                                description=column.get("comment", None),
+                                dataType=col_type,
+                                dataTypeDisplay="{}({})".format(
+                                    col_type, 1 if col_data_length is None else col_data_length
+                                )
+                                if data_type_display is None
+                                else f"{data_type_display}",
+                                dataLength=1 if col_data_length is None else col_data_length,
+                                constraint=col_constraint,
+                                ordinalPosition=row_order,
+                                children=children if children is not None else None,
+                                arrayDataType=arr_data_type,
+                            )
+                    else:
+                        if parsed_string['dataType'].upper() in {"CHAR", "VARCHAR", "BINARY", "VARBINARY"}:
+                            parsed_string['dataLength'] = 1 if column["type"].length is None else column["type"].length
+                        elif 'arrayDataType' in column and column['arrayDataType'] is not None:
+                            parsed_string['arrayDataType'] = get_column_type(column['arrayDataType'])
+                            parsed_string['dataTypeDisplay'] = f"{repr(column['type']).replace('(','<').replace(')','>').lower()}"
+                        if 'arrayDataType' in parsed_string:
+                            parsed_string['arrayDataType'] = "ARRAY"
+                            parsed_string['dataTypeDisplay'] = "array<array>"
+                        col_dict = Column(**parsed_string)
+                        om_column = col_dict
                 except Exception as err:
                     logger.error(traceback.print_exc())
                     logger.error(f"{err} : {column}")
+                    sys.exit()
                     continue
                 table_columns.append(om_column)
             return table_columns
@@ -556,7 +673,10 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         """
         dataset_name = f"{schema}.{table}"
         self.status.scanned(f"profile of {dataset_name}")
-        logger.info(f"Running Profiling for {dataset_name}. ")
+        logger.info(
+            f"Running Profiling for {dataset_name}. "
+            f"If you haven't configured offset and limit this process can take longer"
+        )
         if self.config.scheme == "bigquery":
             table = dataset_name
         profile = self.data_profiler.run_profiler(
@@ -564,6 +684,11 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
             profile_date=self.sql_config.data_profiler_date,
             schema=schema,
             table=table,
+            limit=self.sql_config.data_profiler_limit,
+            offset=self.sql_config.data_profiler_offset,
+            project_id=self.config.project_id
+            if self.config.scheme == "bigquery"
+            else None,
         )
         logger.debug(f"Finished profiling {dataset_name}")
         return profile
@@ -576,7 +701,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         tables = []
         while True:
             table_entities = self.metadata.list_entities(
-                entity=Table, after=after, limit=100, params={"database": schema_fqdn}
+                entity=Table, after=after, limit=10, params={"database": schema_fqdn}
             )
             tables.extend(table_entities.entities)
             if table_entities.after is None:

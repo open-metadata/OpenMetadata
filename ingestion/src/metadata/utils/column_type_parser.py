@@ -2,7 +2,7 @@ import re
 from typing import Any, Dict, List, Union
 
 from metadata.generated.schema.entity.data.table import Column
-
+from metadata.utils.column_helpers import get_column_type
 
 class ColumnTypeParser:
     _BRACKETS = {"(": ")", "[": "]", "{": "}", "<": ">"}
@@ -33,7 +33,7 @@ class ColumnTypeParser:
         "FLOAT4": "FLOAT",
         "FLOAT64": "DOUBLE",
         "FLOAT8": "DOUBLE",
-        "FLOAT": "DOUBLE",
+        "FLOAT": "FLOAT",
         "GEOGRAPHY": "GEOGRAPHY",
         "HYPERLOGLOG": "BINARY",
         "IMAGE": "BINARY",
@@ -59,7 +59,7 @@ class ColumnTypeParser:
         "NTEXT": "TEXT",
         "NULL": "NULL",
         "NUMBER": "NUMBER",
-        "NUMERIC": "NUMBER",
+        "NUMERIC": "NUMERIC",
         "NVARCHAR": "VARCHAR",
         "OBJECT": "JSON",
         "RAW": "BINARY",
@@ -184,18 +184,26 @@ class ColumnTypeParser:
             m = ColumnTypeParser._FIXED_DECIMAL.match(s)
             if m.group(2) is not None:  # type: ignore
                 return {
-                    "dataType": "BYTES",
+                    "dataType": get_column_type(m.group(0)),
                     "dataTypeDisplay": s,
                     "dataLength": int(m.group(3)),  # type: ignore
                 }
             else:
-                return {"dataType": "BYTES", "dataTypeDisplay": s}
+                return {"dataType": get_column_type(m.group(0)), "dataTypeDisplay": s}
         elif s == "date":
             return {"dataType": "DATE", "dataTypeDisplay": s}
         elif s == "timestamp":
             return {"dataType": "TIMESTAMP", "dataTypeDisplay": s}
         else:
-            return {"dataType": "NULL", "dataTypeDisplay": s}
+            dataType =  get_column_type(s)
+            if not dataType:
+                return {"dataType": "NULL", "dataTypeDisplay": s}
+            else:
+                if re.match(".*(\([\w]*\))",s):
+                    dataLength = re.match(".*\(([\w]*)\)",s).groups()[0]
+                return {"dataType": dataType, "dataTypeDisplay": dataType, "dataLength": dataLength if dataLength is not None else 1}
+
+
 
     @staticmethod
     def _ignore_brackets_split(s: str, separator: str) -> List[str]:
