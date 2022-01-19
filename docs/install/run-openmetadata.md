@@ -36,7 +36,7 @@ To check what version of Docker you have, please use the following command.
 docker --version
 ```
 
-If you need to install Docker, please visit [Get Docker](https://docs.docker.com/get-docker/).
+If you need to install Docker, please visit [Get Docker](https://docs.docker.com/get-docker/).  You also need the latest `docker-compose` installed, please visit [Install Docker Compose](https://docs.docker.com/compose/install/).
 
 {% hint style="warning" %}
 Note: You must **allocate at least 4GB of memory to Docker** in order to run OpenMetadata. To change the memory allocation for Docker, please visit:
