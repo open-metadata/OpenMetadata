@@ -345,7 +345,7 @@ public class CommonTests {
       Events.sendKeys(webDriver, By.cssSelector("[data-testid='associatedTagName']"), "P");
       Events.click(webDriver, By.cssSelector("[data-testid='list-item']"));
     }
-    for (int i = 0; i <=5; i++) {
+    for (int i = 0; i <= 5; i++) {
       Events.sendKeys(webDriver, By.cssSelector("[data-testid='associatedTagName']"), "U");
       Events.click(webDriver, By.cssSelector("[data-testid='list-item']"));
     }
