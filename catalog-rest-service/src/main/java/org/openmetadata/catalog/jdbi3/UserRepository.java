@@ -38,11 +38,10 @@ import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 public class UserRepository extends EntityRepository<User> {
-  public static final Logger LOG = LoggerFactory.getLogger(UserRepository.class);
   static final Fields USER_PATCH_FIELDS = new Fields(UserResource.FIELD_LIST, "profile,roles,teams");
   static final Fields USER_UPDATE_FIELDS = new Fields(UserResource.FIELD_LIST, "profile,roles,teams");
 

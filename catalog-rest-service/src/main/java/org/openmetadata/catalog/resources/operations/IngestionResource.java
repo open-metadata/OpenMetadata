@@ -70,17 +70,15 @@ import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.RestUtil.PatchResponse;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Path("operations/v1/ingestion")
 @Api(value = "Ingestion collection", tags = "Ingestion collection")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "ingestion")
 public class IngestionResource {
-  private static final Logger LOG = LoggerFactory.getLogger(IngestionResource.class);
-
   public static final String COLLECTION_PATH = "operations/v1/ingestion/";
   private final IngestionRepository dao;
   private final Authorizer authorizer;

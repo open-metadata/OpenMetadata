@@ -23,8 +23,8 @@ import com.lmax.disruptor.util.DaemonThreadFactory;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import org.openmetadata.catalog.type.ChangeEvent;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.catalog.type.ChangeEvent;
 
 @Slf4j
 /** Change event PubSub built based on LMAX Disruptor. */

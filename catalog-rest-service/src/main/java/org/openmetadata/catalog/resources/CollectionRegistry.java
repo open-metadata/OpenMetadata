@@ -37,16 +37,15 @@ import org.openmetadata.catalog.type.CollectionDescriptor;
 import org.openmetadata.catalog.type.CollectionInfo;
 import org.openmetadata.catalog.util.RestUtil;
 import org.reflections.Reflections;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 /**
  * Collection registry is a registry of all the REST collections in the catalog. It is used for building REST endpoints
  * that anchor all the collections as follows: - .../api/v1 Provides information about all the collections in the
  * catalog - .../api/v1/collection-name provides sub collections or resources in that collection
  */
 public final class CollectionRegistry {
-  private static final Logger LOG = LoggerFactory.getLogger(CollectionRegistry.class);
   private static CollectionRegistry instance = null;
 
   /** Map of collection endpoint path to collection details */
