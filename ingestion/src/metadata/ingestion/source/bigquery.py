@@ -45,7 +45,7 @@ def get_columns(bq_schema):
             "scale": field.scale,
             "max_length": field.max_length,
             "raw_data_type": str(_get_sqla_column_type(field)),
-            "arrayDataType": field.field_type if field.mode == "REPEATED" else None
+            "arrayDataType": field.field_type if field.mode == "REPEATED" else None,
         }
         col_list.append(col_obj)
     return col_list

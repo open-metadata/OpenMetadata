@@ -4,6 +4,7 @@ from typing import Any, Dict, List, Union
 from metadata.generated.schema.entity.data.table import Column
 from metadata.utils.column_helpers import get_column_type
 
+
 class ColumnTypeParser:
     _BRACKETS = {"(": ")", "[": "]", "{": "}", "<": ">"}
 
@@ -195,15 +196,17 @@ class ColumnTypeParser:
         elif s == "timestamp":
             return {"dataType": "TIMESTAMP", "dataTypeDisplay": s}
         else:
-            dataType =  get_column_type(s)
+            dataType = get_column_type(s)
             if not dataType:
                 return {"dataType": "NULL", "dataTypeDisplay": s}
             else:
-                if re.match(".*(\([\w]*\))",s):
-                    dataLength = re.match(".*\(([\w]*)\)",s).groups()[0]
-                return {"dataType": dataType, "dataTypeDisplay": dataType, "dataLength": dataLength if dataLength is not None else 1}
-
-
+                if re.match(".*(\([\w]*\))", s):
+                    dataLength = re.match(".*\(([\w]*)\)", s).groups()[0]
+                return {
+                    "dataType": dataType,
+                    "dataTypeDisplay": dataType,
+                    "dataLength": dataLength if dataLength is not None else 1,
+                }
 
     @staticmethod
     def _ignore_brackets_split(s: str, separator: str) -> List[str]:

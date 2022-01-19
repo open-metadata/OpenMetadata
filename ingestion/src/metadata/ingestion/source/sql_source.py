@@ -80,12 +80,12 @@ class SQLSourceStatus(SourceStatus):
 
 
 def build_sql_source_connection_url(
-        host_port: str,
-        scheme: str,
-        username: Optional[str] = None,
-        password: Optional[SecretStr] = None,
-        database: Optional[str] = None,
-        options: Optional[dict] = None,
+    host_port: str,
+    scheme: str,
+    username: Optional[str] = None,
+    password: Optional[SecretStr] = None,
+    database: Optional[str] = None,
+    options: Optional[dict] = None,
 ) -> str:
     """
     Helper function to prepare the db URL
@@ -179,10 +179,10 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
     """
 
     def __init__(
-            self,
-            config: SQLConnectionConfig,
-            metadata_config: MetadataServerConfig,
-            ctx: WorkflowContext,
+        self,
+        config: SQLConnectionConfig,
+        metadata_config: MetadataServerConfig,
+        ctx: WorkflowContext,
     ):
         super().__init__(ctx)
         self.config = config
@@ -240,7 +240,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
 
     @classmethod
     def create(
-            cls, config_dict: dict, metadata_config_dict: dict, ctx: WorkflowContext
+        cls, config_dict: dict, metadata_config_dict: dict, ctx: WorkflowContext
     ):
         pass
 
@@ -288,7 +288,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                 yield from self.delete_tables(schema_fqdn)
 
     def fetch_tables(
-            self, inspector: Inspector, schema: str
+        self, inspector: Inspector, schema: str
     ) -> Iterable[OMetaDatabaseAndTable]:
         """
         Scrape an SQL schema and prepare Database and Table
@@ -351,7 +351,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                 continue
 
     def fetch_views(
-            self, inspector: Inspector, schema: str
+        self, inspector: Inspector, schema: str
     ) -> Iterable[OMetaDatabaseAndTable]:
         """
         Get all views in the SQL schema and prepare
@@ -390,7 +390,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                     name=view_name.replace(".", "_DOT_"),
                     tableType="View",
                     description=_get_table_description(schema, view_name, inspector)
-                                or "",
+                    or "",
                     # This will be generated in the backend!! #1673
                     fullyQualifiedName=view_name,
                     columns=self._get_columns(schema, view_name, inspector),
@@ -488,7 +488,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         return None
 
     def _parse_data_model_columns(
-            self, model_name: str, mnode: Dict, cnode: Dict
+        self, model_name: str, mnode: Dict, cnode: Dict
     ) -> [Column]:
         columns = []
         ccolumns = cnode.get("columns")
@@ -524,7 +524,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
 
     @staticmethod
     def _get_column_constraints(
-            column, pk_columns, unique_columns
+        column, pk_columns, unique_columns
     ) -> Optional[Constraint]:
         """
         Prepare column constraints for the Table Entity
@@ -544,7 +544,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         return constraint
 
     def _get_columns(
-            self, schema: str, table: str, inspector: Inspector
+        self, schema: str, table: str, inspector: Inspector
     ) -> Optional[List[Column]]:
         """
         Get columns types and constraints information
@@ -588,20 +588,20 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                     arr_data_type = None
 
                     if (
-                            "raw_data_type" in column
-                            and column["raw_data_type"] is not None
+                        "raw_data_type" in column
+                        and column["raw_data_type"] is not None
                     ):
                         column["raw_data_type"] = self.parse_raw_data_type(
                             column["raw_data_type"]
                         )
-                        parsed_string = ColumnTypeParser._parse_datatype_string(column["raw_data_type"])
-                        parsed_string['name'] = column['name']
-                    else:
-                        col_type = get_column_type(
-                           column["type"]
+                        parsed_string = ColumnTypeParser._parse_datatype_string(
+                            column["raw_data_type"]
                         )
+                        parsed_string["name"] = column["name"]
+                    else:
+                        col_type = get_column_type(column["type"])
                         if col_type == "ARRAY" and re.match(
-                                r"(?:\w*)(?:\()(\w*)(?:.*)", str(column["type"])
+                            r"(?:\w*)(?:\()(\w*)(?:.*)", str(column["type"])
                         ):
                             arr_data_type = re.match(
                                 r"(?:\w*)(?:[(]*)(\w*)(?:.*)", str(column["type"])
@@ -613,14 +613,19 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                             arr_data_type = "STRUCT"
                             data_type_display = (
                                 repr(column["type"])
-                                    .replace("(", "<")
-                                    .replace(")", ">")
-                                    .lower()
+                                .replace("(", "<")
+                                .replace(")", ">")
+                                .lower()
                             )
                         col_constraint = self._get_column_constraints(
                             column, pk_columns, unique_columns
                         )
-                        if col_type.upper() in {"CHAR", "VARCHAR", "BINARY", "VARBINARY"}:
+                        if col_type.upper() in {
+                            "CHAR",
+                            "VARCHAR",
+                            "BINARY",
+                            "VARBINARY",
+                        }:
                             col_data_length = column["type"].length
                         if col_type == "NULL":
                             col_type = "VARCHAR"
@@ -633,31 +638,49 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                                 description=column.get("comment", None),
                                 dataType=col_type,
                                 dataTypeDisplay="{}({})".format(
-                                    col_type, 1 if col_data_length is None else col_data_length
+                                    col_type,
+                                    1 if col_data_length is None else col_data_length,
                                 )
                                 if data_type_display is None
                                 else f"{data_type_display}",
-                                dataLength=1 if col_data_length is None else col_data_length,
+                                dataLength=1
+                                if col_data_length is None
+                                else col_data_length,
                                 constraint=col_constraint,
                                 ordinalPosition=row_order,
                                 children=children if children is not None else None,
                                 arrayDataType=arr_data_type,
                             )
                     else:
-                        if parsed_string['dataType'].upper() in {"CHAR", "VARCHAR", "BINARY", "VARBINARY"}:
-                            parsed_string['dataLength'] = 1 if column["type"].length is None else column["type"].length
-                        elif 'arrayDataType' in column and column['arrayDataType'] is not None:
-                            parsed_string['arrayDataType'] = get_column_type(column['arrayDataType'])
-                            parsed_string['dataTypeDisplay'] = f"{repr(column['type']).replace('(','<').replace(')','>').lower()}"
-                        if 'arrayDataType' in parsed_string:
-                            parsed_string['arrayDataType'] = "ARRAY"
-                            parsed_string['dataTypeDisplay'] = "array<array>"
+                        if parsed_string["dataType"].upper() in {
+                            "CHAR",
+                            "VARCHAR",
+                            "BINARY",
+                            "VARBINARY",
+                        }:
+                            parsed_string["dataLength"] = (
+                                1
+                                if column["type"].length is None
+                                else column["type"].length
+                            )
+                        elif (
+                            "arrayDataType" in column
+                            and column["arrayDataType"] is not None
+                        ):
+                            parsed_string["arrayDataType"] = get_column_type(
+                                column["arrayDataType"]
+                            )
+                            parsed_string[
+                                "dataTypeDisplay"
+                            ] = f"{repr(column['type']).replace('(','<').replace(')','>').lower()}"
+                        if "arrayDataType" in parsed_string:
+                            parsed_string["arrayDataType"] = "ARRAY"
+                            parsed_string["dataTypeDisplay"] = "array<array>"
                         col_dict = Column(**parsed_string)
                         om_column = col_dict
                 except Exception as err:
                     logger.error(traceback.print_exc())
                     logger.error(f"{err} : {column}")
-                    sys.exit()
                     continue
                 table_columns.append(om_column)
             return table_columns

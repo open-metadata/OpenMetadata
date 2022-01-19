@@ -101,6 +101,6 @@ class DataTypeTest(TestCase):
         status = SQLSourceStatus()
         for types in SQLTYPES:
             with self.subTest(line=types):
-                col_type = get_column_type(status, "Unit Test", types)
+                col_type = get_column_type(types)
                 col_type = True if col_type != "NULL" else False
                 self.assertTrue(col_type, msg=types)
