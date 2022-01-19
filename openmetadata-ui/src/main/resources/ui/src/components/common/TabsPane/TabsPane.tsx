@@ -16,7 +16,6 @@ import { camelCase, isNil } from 'lodash';
 import React from 'react';
 import { TITLE_FOR_NON_OWNER_ACTION } from '../../../constants/constants';
 import { getCountBadge } from '../../../utils/CommonUtils';
-import SVGIcons from '../../../utils/SvgUtils';
 import NonAdminAction from '../non-admin-action/NonAdminAction';
 type Tab = {
   name: string;
@@ -60,16 +59,6 @@ const TabsPane = ({ activeTab, setActiveTab, tabs, className = '' }: Props) => {
                   data-testid="tab"
                   id={camelCase(tab.name)}
                   onClick={() => setActiveTab?.(tab.position)}>
-                  <SVGIcons
-                    alt={tab.icon.alt}
-                    icon={
-                      tab.position === activeTab
-                        ? tab.icon.selectedName
-                        : tab.icon.name
-                    }
-                    title={tab.icon.title}
-                    width="16"
-                  />{' '}
                   {tab.name}
                 </button>
               </NonAdminAction>
@@ -80,16 +69,6 @@ const TabsPane = ({ activeTab, setActiveTab, tabs, className = '' }: Props) => {
                 id={camelCase(tab.name)}
                 key={tab.position}
                 onClick={() => setActiveTab?.(tab.position)}>
-                <SVGIcons
-                  alt={tab.icon.alt}
-                  icon={
-                    tab.position === activeTab
-                      ? tab.icon.selectedName
-                      : tab.icon.name
-                  }
-                  title={tab.icon.title}
-                  width="16"
-                />{' '}
                 {tab.name}
                 {!isNil(tab.count)
                   ? getCountBadge(tab.count, '', tab.position === activeTab)
