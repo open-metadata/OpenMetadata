@@ -35,17 +35,17 @@ Here’s an overview of the steps in this procedure. Please follow the steps rel
 
 1. [Prepare a Python virtual environment](glue-catalog.md#1.-prepare-a-python-virtual-environment)
 2. [Install the Python module for this connector](glue-catalog.md#2.-install-the-python-module-for-this-connector)&#x20;
-3. [Configure a local AWS profile](glue-catalog.md#3.-configure-a-local-aws-profile)
-4. [Create a configuration file using template JSON](glue-catalog.md#3.-create-a-configuration-file-using-template-json)&#x20;
-5. [Configure service settings](glue-catalog.md#4.-configure-service-settings)&#x20;
-6. [Enable/disable the data profiler](glue-catalog.md#5.-enable-disable-the-data-profiler)&#x20;
-7. [Install the data profiler Python module (optional)](glue-catalog.md#6.-install-the-data-profiler-python-module-optional)&#x20;
-8. [Configure data filters (optional)](glue-catalog.md#7.-configure-data-filters-optional)&#x20;
-9. [Configure sample data (optional)](glue-catalog.md#8.-configure-sample-data-optional)&#x20;
-10. [Configure DBT (optional)](glue-catalog.md#9.-configure-dbt-optional)&#x20;
-11. [Confirm sink settings](glue-catalog.md#10.-confirm-sink-settings)&#x20;
-12. [Confirm metadata\_server settings](glue-catalog.md#11.-confirm-metadata\_server-settings)&#x20;
-13. [Run ingestion workflow](glue-catalog.md#12.-run-ingestion-workflow)
+3. [Configure a local AWS profile](glue-catalog.md#3.-configure-a-local-aws-profile-optional)
+4. [Create a configuration file using template JSON](glue-catalog.md#4.-create-a-configuration-file-using-template-json)&#x20;
+5. [Configure service settings](glue-catalog.md#5.-configure-service-settings)&#x20;
+6. [Enable/disable the data profiler](glue-catalog.md#6.-enable-disable-the-data-profiler)&#x20;
+7. [Install the data profiler Python module (optional)](glue-catalog.md#7.-install-the-data-profiler-python-module-optional)&#x20;
+8. [Configure data filters (optional)](glue-catalog.md#8.-configure-data-filters-optional)&#x20;
+9. [Configure sample data (optional)](glue-catalog.md#9.-configure-sample-data-optional)&#x20;
+10. [Configure DBT (optional)](glue-catalog.md#10.-configure-dbt-optional)&#x20;
+11. [Confirm sink settings](glue-catalog.md#11.-confirm-sink-settings)&#x20;
+12. [Confirm metadata\_server settings](glue-catalog.md#12.-confirm-metadata\_server-settings)&#x20;
+13. [Run ingestion workflow](glue-catalog.md#13.-run-ingestion-workflow)
 
 ### **1. Prepare a Python virtual environment**
 
