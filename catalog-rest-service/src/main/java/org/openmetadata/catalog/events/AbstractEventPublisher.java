@@ -9,11 +9,10 @@ import org.openmetadata.catalog.resources.events.EventResource.ChangeEventList;
 import org.openmetadata.catalog.type.ChangeEvent;
 import org.openmetadata.catalog.type.EventFilter;
 import org.openmetadata.catalog.type.EventType;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 public abstract class AbstractEventPublisher implements EventPublisher {
-  public static final Logger LOG = LoggerFactory.getLogger(AbstractEventPublisher.class);
   // Backoff timeout in seconds. Delivering events is retried 5 times.
   private static final int BACKOFF_NORMAL = 0;
   private static final int BACKOFF_3_SECONDS = 3 * 1000;

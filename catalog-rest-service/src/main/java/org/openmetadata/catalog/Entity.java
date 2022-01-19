@@ -97,7 +97,7 @@ public final class Entity {
     ENTITY_REPOSITORY_MAP.put(entity, entityRepository);
     CANONICAL_ENTITY_NAME_MAP.put(entity.toLowerCase(Locale.ROOT), entity);
     CLASS_ENTITY_REPOSITORY_MAP.put(clazz, entityRepository);
-    log.info("Registering entity {}", entity);
+    LOG.info("Registering entity {}", entity);
   }
 
   public static EntityReference getEntityReference(String entity, UUID id) throws IOException {

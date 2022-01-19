@@ -36,6 +36,7 @@ import javax.ws.rs.container.ContainerRequestFilter;
 import javax.ws.rs.container.ContainerResponseFilter;
 import javax.ws.rs.core.Response;
 import lombok.SneakyThrows;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.eclipse.jetty.servlet.ErrorPageErrorHandler;
 import org.glassfish.jersey.media.multipart.MultiPartFeature;
@@ -60,12 +61,10 @@ import org.openmetadata.catalog.security.NoopFilter;
 import org.openmetadata.catalog.security.auth.CatalogSecurityContextRequestFilter;
 import org.openmetadata.catalog.slack.SlackPublisherConfiguration;
 import org.openmetadata.catalog.slack.SlackWebhookEventPublisher;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /** Main catalog application */
+@Slf4j
 public class CatalogApplication extends Application<CatalogApplicationConfig> {
-  public static final Logger LOG = LoggerFactory.getLogger(CatalogApplication.class);
   private Authorizer authorizer;
 
   @Override

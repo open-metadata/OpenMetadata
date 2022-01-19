@@ -39,13 +39,12 @@ import org.openmetadata.catalog.type.EventType;
 import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.type.Task;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 public class ElasticSearchIndexDefinition {
   final Map<ElasticSearchIndexType, ElasticSearchIndexStatus> elasticSearchIndexes = new HashMap<>();
   private final RestHighLevelClient client;
-  private static final Logger LOG = LoggerFactory.getLogger(ElasticSearchIndexDefinition.class);
 
   public ElasticSearchIndexDefinition(RestHighLevelClient client) {
     this.client = client;

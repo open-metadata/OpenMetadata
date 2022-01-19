@@ -26,11 +26,10 @@ import org.openmetadata.catalog.type.EventType;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 public class ChangeEventHandler implements EventHandler {
-  private static final Logger LOG = LoggerFactory.getLogger(ChangeEventHandler.class);
   private CollectionDAO dao;
 
   public void init(CatalogApplicationConfig config, Jdbi jdbi) {
