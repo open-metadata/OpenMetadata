@@ -13,11 +13,10 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import static org.openmetadata.catalog.Entity.helper;
 import static org.openmetadata.catalog.jdbi3.Relationship.FOLLOWS;
 import static org.openmetadata.catalog.jdbi3.Relationship.HAS;
 import static org.openmetadata.catalog.jdbi3.Relationship.OWNS;
-import static org.openmetadata.catalog.type.Include.DELETED;
-import static org.openmetadata.catalog.type.Include.NON_DELETED;
 import static org.openmetadata.catalog.util.EntityUtil.toBoolean;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -36,7 +35,6 @@ import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.resources.teams.UserResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
-import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
@@ -125,11 +123,10 @@ public class UserRepository extends EntityRepository<User> {
     // Compile entities owned by the team the user belongs to
     List<EntityReference> teams = user.getTeams() == null ? getTeams(user) : user.getTeams();
     for (EntityReference team : teams) {
-      Include include = Entity.getEntityInterface(team).isDeleted() ? DELETED : NON_DELETED;
       ownedEntities.addAll(
           daoCollection
               .relationshipDAO()
-              .findTo(team.getId().toString(), Entity.TEAM, OWNS.ordinal(), toBoolean(include)));
+              .findTo(team.getId().toString(), Entity.TEAM, OWNS.ordinal(), toBoolean(helper(team).isDeleted())));
     }
     // Populate details in entity reference
     return EntityUtil.populateEntityReferences(ownedEntities);

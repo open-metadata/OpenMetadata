@@ -13,12 +13,15 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import static org.openmetadata.catalog.Entity.STORAGE_SERVICE;
+import static org.openmetadata.catalog.Entity.helper;
+
 import java.io.IOException;
 import java.net.URI;
 import java.security.GeneralSecurityException;
+import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import java.util.UUID;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
@@ -57,7 +60,7 @@ public class LocationRepository extends EntityRepository<Location> {
   }
 
   @Override
-  public Location setFields(Location location, Fields fields) throws IOException {
+  public Location setFields(Location location, Fields fields) throws IOException, ParseException {
     location.setService(getService(location));
     location.setOwner(fields.contains("owner") ? getOwner(location) : null);
     location.setFollowers(fields.contains("followers") ? getFollowers(location) : null);
@@ -77,7 +80,7 @@ public class LocationRepository extends EntityRepository<Location> {
 
   @Transaction
   public final ResultList<Location> listPrefixesBefore(Fields fields, String fqn, int limitParam, String before)
-      throws GeneralSecurityException, IOException {
+      throws GeneralSecurityException, IOException, ParseException {
     String service = fqn.split("\\.")[0];
     // Reverse scrolling - Get one extra result used for computing before cursor
     List<String> jsons =
@@ -113,7 +116,7 @@ public class LocationRepository extends EntityRepository<Location> {
 
   @Transaction
   public final ResultList<Location> listPrefixesAfter(Fields fields, String fqn, int limitParam, String after)
-      throws GeneralSecurityException, IOException {
+      throws GeneralSecurityException, IOException, ParseException {
     String service = fqn.split("\\.")[0];
     // forward scrolling, if after == null then first page is being asked
     List<String> jsons =
@@ -217,15 +220,8 @@ public class LocationRepository extends EntityRepository<Location> {
     return new LocationUpdater(original, updated, patchOperation);
   }
 
-  private EntityReference getService(Location location) throws IOException {
-    EntityReference ref =
-        EntityUtil.getService(
-            daoCollection.relationshipDAO(),
-            Entity.LOCATION,
-            location.getId(),
-            Entity.STORAGE_SERVICE,
-            toInclude(location));
-    return getService(Objects.requireNonNull(ref));
+  private EntityReference getService(Location location) throws IOException, ParseException {
+    return helper(location).getContainer(STORAGE_SERVICE);
   }
 
   private EntityReference getService(EntityReference service) throws IOException {

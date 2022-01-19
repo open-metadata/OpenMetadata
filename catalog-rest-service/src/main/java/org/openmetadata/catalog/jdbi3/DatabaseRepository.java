@@ -14,10 +14,13 @@
 package org.openmetadata.catalog.jdbi3;
 
 import static javax.ws.rs.core.Response.Status.CREATED;
+import static org.openmetadata.catalog.Entity.DATABASE_SERVICE;
+import static org.openmetadata.catalog.Entity.helper;
 import static org.openmetadata.catalog.util.EntityUtil.toBoolean;
 
 import java.io.IOException;
 import java.net.URI;
+import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -127,7 +130,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
     return tables;
   }
 
-  public Database setFields(Database database, Fields fields) throws IOException {
+  public Database setFields(Database database, Fields fields) throws IOException, ParseException {
     database.setService(getService(database));
     database.setOwner(fields.contains("owner") ? getOwner(database) : null);
     database.setTables(fields.contains("tables") ? getTables(database) : null);
@@ -174,20 +177,8 @@ public class DatabaseRepository extends EntityRepository<Database> {
     }
   }
 
-  private EntityReference getService(Database database) throws IOException {
-    EntityReference ref =
-        EntityUtil.getService(
-            daoCollection.relationshipDAO(),
-            Entity.DATABASE,
-            database.getId(),
-            Entity.DATABASE_SERVICE,
-            toInclude(database));
-    if (ref != null) {
-      DatabaseService service = getService(ref.getId(), ref.getType());
-      ref.setName(service.getName());
-      ref.setDescription(service.getDescription());
-    }
-    return ref;
+  private EntityReference getService(Database database) throws IOException, ParseException {
+    return helper(database).getContainer(DATABASE_SERVICE);
   }
 
   private void populateService(Database database) throws IOException {

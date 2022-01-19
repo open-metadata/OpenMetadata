@@ -267,7 +267,7 @@ public class RoleResource {
       })
   public Response create(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateRole createRole)
-      throws IOException {
+      throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Role role = getRole(createRole, securityContext);
     role = dao.create(uriInfo, role);

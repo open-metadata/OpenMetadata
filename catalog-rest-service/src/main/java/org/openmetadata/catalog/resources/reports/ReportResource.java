@@ -135,7 +135,7 @@ public class ReportResource {
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid Report report)
-      throws IOException {
+      throws IOException, ParseException {
     addToReport(securityContext, report);
     dao.create(uriInfo, report);
     return Response.created(report.getHref()).entity(report).build();

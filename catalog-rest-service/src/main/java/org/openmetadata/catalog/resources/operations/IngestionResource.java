@@ -322,7 +322,7 @@ public class IngestionResource {
       })
   public Response create(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateIngestion create)
-      throws IOException {
+      throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Ingestion ingestion = getIngestion(securityContext, create);
     deploy(ingestion);

@@ -298,7 +298,7 @@ public class PolicyResource {
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreatePolicy create)
-      throws IOException {
+      throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Policy policy = getPolicy(securityContext, create);
     policy = addHref(uriInfo, dao.create(uriInfo, policy));
