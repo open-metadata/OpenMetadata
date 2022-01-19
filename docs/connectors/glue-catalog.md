@@ -35,16 +35,17 @@ Here’s an overview of the steps in this procedure. Please follow the steps rel
 
 1. [Prepare a Python virtual environment](glue-catalog.md#1.-prepare-a-python-virtual-environment)
 2. [Install the Python module for this connector](glue-catalog.md#2.-install-the-python-module-for-this-connector)&#x20;
-3. [Create a configuration file using template JSON](glue-catalog.md#3.-create-a-configuration-file-using-template-json)&#x20;
-4. [Configure service settings](glue-catalog.md#4.-configure-service-settings)&#x20;
-5. [Enable/disable the data profiler](glue-catalog.md#5.-enable-disable-the-data-profiler)&#x20;
-6. [Install the data profiler Python module (optional)](glue-catalog.md#6.-install-the-data-profiler-python-module-optional)&#x20;
-7. [Configure data filters (optional)](glue-catalog.md#7.-configure-data-filters-optional)&#x20;
-8. [Configure sample data (optional)](glue-catalog.md#8.-configure-sample-data-optional)&#x20;
-9. [Configure DBT (optional)](glue-catalog.md#9.-configure-dbt-optional)&#x20;
-10. [Confirm sink settings](glue-catalog.md#10.-confirm-sink-settings)&#x20;
-11. [Confirm metadata\_server settings](glue-catalog.md#11.-confirm-metadata\_server-settings)&#x20;
-12. [Run ingestion workflow](glue-catalog.md#12.-run-ingestion-workflow)
+3. [Configure a local AWS profile](glue-catalog.md#3.-configure-a-local-aws-profile)
+4. [Create a configuration file using template JSON](glue-catalog.md#3.-create-a-configuration-file-using-template-json)&#x20;
+5. [Configure service settings](glue-catalog.md#4.-configure-service-settings)&#x20;
+6. [Enable/disable the data profiler](glue-catalog.md#5.-enable-disable-the-data-profiler)&#x20;
+7. [Install the data profiler Python module (optional)](glue-catalog.md#6.-install-the-data-profiler-python-module-optional)&#x20;
+8. [Configure data filters (optional)](glue-catalog.md#7.-configure-data-filters-optional)&#x20;
+9. [Configure sample data (optional)](glue-catalog.md#8.-configure-sample-data-optional)&#x20;
+10. [Configure DBT (optional)](glue-catalog.md#9.-configure-dbt-optional)&#x20;
+11. [Confirm sink settings](glue-catalog.md#10.-confirm-sink-settings)&#x20;
+12. [Confirm metadata\_server settings](glue-catalog.md#11.-confirm-metadata\_server-settings)&#x20;
+13. [Run ingestion workflow](glue-catalog.md#12.-run-ingestion-workflow)
 
 ### **1. Prepare a Python virtual environment**
 
@@ -94,7 +95,49 @@ Once the virtual environment is set up and activated as described in Step 1, run
 pip3 install 'openmetadata-ingestion[glue]'
 ```
 
-### **3. Create a configuration file using template JSON**
+### **3. Configure a local AWS profile**
+
+In order to use the Glue Catalog connector, you will need AWS credentials configured and available to the connector. The best way to do this is by configuring a local AWS profile using the AWS Command-Line Interface (CLI). In this step we will install the AWS CLI and then configure an AWS profile.
+
+{% hint style="info" %}
+Note: If you do not have an existing AWS profile and opt not to create one, you will need to supply AWS credentials in your Glue catalog configuration file. We recommend that you use an AWS profile rather than including AWS credentials in your configuration file.
+{% endhint %}
+
+#### 3a. Install the AWS CLI
+
+To install the AWS CLI, follow the installation guide for your operating system from the [AWS documentation](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html).
+
+#### 3b. Configure your AWS profile
+
+With the AWS CLI installed, to configure your AWS profile run the following command.
+
+```bash
+aws configure
+```
+
+Then, enter the appropriate values at the prompts to complete your profile. Your interaction with the aws configure command should look something like the following.
+
+```bash
+$ aws configure
+AWS Access Key ID [None]: <your accesskey>
+AWS Secret Access Key [None]: <your secretkey>
+Default region name [None]: <your region, e.g., us-west-2>
+Default output format [None]:
+```
+
+Please enter your accesskey, secretkey, and region when prompted. The OpenMetadata Glue Catalog connector will use the credentials from your AWS profile to connect to the right endpoint and authenticate for metadata ingestion.
+
+#### 3c. Test access to your Glue catalog
+
+Run the following command to ensure your AWS credentials and region are configured properly.
+
+```
+aws glue list-schemas
+```
+
+In response you will either see a formatted list of schemas defined in your Glue catalog or receive a message indicating that no schemas are defined in your catalog.
+
+### **4. Create a configuration file using template JSON**
 
 Create a new file called `glue.json` in the current directory. Note that the current directory should be the `openmetadata` directory you created in Step 1.
 
@@ -104,9 +147,9 @@ Copy and paste the configuration template below into the `glue.json` file you cr
 Note: The `source.config` field in the configuration JSON will include the majority of the settings for your connector. In the steps below we describe how to customize the key-value pairs in the `source.config` field to meet your needs.
 {% endhint %}
 
-### **4. Configure service settings**
+### **5. Configure service settings**
 
-In this step we will configure the Glue service settings required for this connector. If a session token is provided, then the credentials can be accessed from the AWS session. Please follow the instructions below to ensure that you’ve configured the connector to read from your Glue service as desired.
+In this step we will configure the Glue service settings required for this connector. Please follow the instructions below to ensure that you’ve configured the connector to read from your Glue service as desired.
 
 {% code title="glue.json" %}
 ```javascript
@@ -114,13 +157,14 @@ In this step we will configure the Glue service settings required for this conne
   "source": {
     "type": "glue",
     "config": {
-      "aws_access_key_id": "aws_access_key_id",
-      "aws_secret_access_key": "aws_secret_access_key",
-      "db_service_name": "local_glue_db",
-      "pipeline_service_name": "local_glue_pipeline",
-      "region_name": "region_name",
-      "endpoint_url": "endpoint_url",
-      "service_name": "local_glue"
+      "aws_session_token": "session_token",
+      "aws_access_key_id": "AKIAIOSFODNN7EXAMPLE",
+      "aws_secret_access_key": "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
+      "service_name": "unique_name_to_identify_database_and_table_metadata",
+      "pipeline_service_name": "unique_name_to_identify_pipeline_metadata",
+      "storage_service_name": "unique_name_to_identify_storage_service_metadata",
+      "region_name": "us-east-2",
+      "endpoint_url": "glue.us-east-2.amazonaws.com"
     }
   },
   "sink": {
@@ -138,14 +182,97 @@ In this step we will configure the Glue service settings required for this conne
 ```
 {% endcode %}
 
-* **aws\_access\_key\_id** - Access Key for AWS.
-* **aws\_secret\_access\_key** - Secret Key for AWS.
-* **db\_service\_name** - Service Name for this Glue Database cluster.
-* **pipeline\_service\_name** - Service Name for this Glue Pipeline cluster.
-* **region\_name** - AWS account region.
-* **endpoint\_url** - Service Endpoints from [AWS](https://docs.aws.amazon.com/general/latest/gr/glue.html).
+#### aws\_session\_token (optional)
 
-### **5. Enable/disable the data profiler**
+Edit the value for `source.config.aws_session_token` to specify a session token for your Glue client. This setting is optional.
+
+See [Using temporary credentials with AWS resources](https://docs.aws.amazon.com/IAM/latest/UserGuide/id\_credentials\_temp\_use-resources.html) for documentation on using AWS session tokens.
+
+```json
+"aws_session_token": "session_token"
+```
+
+#### aws\_access\_key\_id (optional)
+
+Edit the value for `source.config.aws_access_key_id` to specify the key id for your AWS user. This setting is optional.
+
+```json
+"aws_access_key_id": "AKIAIOSFODNN7EXAMPLE"
+```
+
+{% hint style="info" %}
+Note: We recommend that you use a local AWS profile containing your access key id and secret access key rather than including these values in your configuration file.&#x20;
+{% endhint %}
+
+#### aws\_secret\_access\_key (optional)
+
+Edit the value for `source.config.aws_secret_access_key` to specify the secret for your AWS user. This setting is optional.
+
+```json
+"aws_secret_access_key": "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+```
+
+{% hint style="info" %}
+Note: We recommend that you use a local AWS profile containing your access key id and secret access key rather than including these values in your configuration file.&#x20;
+{% endhint %}
+
+#### service\_name
+
+OpenMetadata associates each database and table entity with a unique namespace. To ensure your data is well-organized and findable, choose a unique name by which you would like to identify the metadata ingested from database services you are using through AWS Glue.&#x20;
+
+Edit the value for `source.config.service_name` with a name that uniquely identifies this database and table metadata.
+
+```json
+"service_name": "unique_name_to_identify_database_and_table_metadata"
+```
+
+When the metadata has been ingested you will find it in the OpenMetadata UI databases view under the name you have specified.
+
+#### pipeline\_service\_name
+
+OpenMetadata associates each pipeline entity with a unique namespace. To ensure your data is well-organized and findable, choose a unique name by which you would like to identify the metadata for pipelines you are using through AWS Glue.&#x20;
+
+Edit the value for `source.config.pipeline_service_name` with a name that uniquely identifies this pipeline metadata.
+
+```json
+"pipeline_service_name": "unique_name_to_identify_pipeline_metadata"
+```
+
+When this metadata has been ingested you will find it in the OpenMetadata UI pipelines view under the name you have specified.
+
+#### storage\_service\_name (optional)
+
+OpenMetadata associates objects for each object store entity with a unique namespace. To ensure your data is well-organized and findable, choose a unique name by which you would like to identify the metadata for the object stores you are using through AWS Glue.&#x20;
+
+Edit the value for `source.config.storage_service_name` with a name that uniquely identifies this object store metadata.
+
+```json
+"storage_service_name": "unique_name_to_identify_storage_service_metadata"
+```
+
+#### region\_name
+
+Specify the region in which your Glue catalog is located using `source.config.region_name`.&#x20;
+
+```
+"region_name": "region_for_your_glue_catalog"
+```
+
+{% hint style="info" %}
+Note: This setting is required even if you have configured a local AWS profile and included a value for `region_name`.
+{% endhint %}
+
+#### endpoint\_url (optional)
+
+The Glue connector will automatically determine the AWS Glue endpoint url based on the `region_name`.&#x20;
+
+You may specify a value for `source.config.endpoint_url` to override this behavior. The value you specify should be a complete url, including the protocol (i.e. “http" or "https”).
+
+```json
+"endpoint_url": "endpoint_url"
+```
+
+### **6. Enable/disable the data profiler**
 
 The data profiler ingests usage information for tables. This enables you to assess the frequency of use, reliability, and other details.
 
@@ -169,7 +296,7 @@ If you want to enable the data profiler, update your configuration file as follo
 **Note:** The data profiler is enabled by default if no setting is provided for `data_profiler_enabled`
 {% endhint %}
 
-### **6. Install the data profiler Python module (optional)**
+### **7. Install the data profiler Python module (optional)**
 
 If you’ve enabled the data profiler in Step 5, run the following command to install the Python module for the data profiler. You’ll need this to run the ingestion workflow.
 
@@ -179,7 +306,7 @@ pip3 install 'openmetadata-ingestion[data-profiler]'
 
 The data profiler module takes a few minutes to install. While it installs, continue through the remaining steps in this guide.
 
-### **7. Configure data filters (optional)**
+### **8. Configure data filters (optional)**
 
 #### **include\_views (optional)**
 
@@ -253,7 +380,7 @@ Use `source.config.schema_filter_pattern.excludes` and `source.config.schema_fil
 
 The syntax and semantics for `schema_filter_pattern` are the same as for [`table_filter_pattern`](glue-catalog.md#table\_filter\_pattern-optional). Please check that section for details.
 
-### **8. Configure sample data (optional)**
+### **9. Configure sample data (optional)**
 
 #### **generate\_sample\_data (optional)**
 
@@ -279,7 +406,7 @@ You can exclude the collection of sample data by adding the following key-value 
 **Note:** `generate_sample_data` is set to true by default.
 {% endhint %}
 
-### **9. Configure DBT (optional)**
+### **10. Configure DBT (optional)**
 
 DBT provides transformation logic that creates tables and views from raw data. OpenMetadata’s integration for DBT enables you to view the models used to generate a table from that table's details page in the OpenMetadata UI. The image below provides an example.
 
@@ -303,7 +430,7 @@ Use the field `source.config.dbt_catalog_file` to specify the location of your D
 "dbt_catalog_file": "./dbt/catalog.json"
 ```
 
-### **10. Confirm sink settings**
+### **11. Confirm sink settings**
 
 You need not make any changes to the fields defined for `sink` in the template code you copied into `glue.json` in Step 4. This part of your configuration file should be as follows.
 
@@ -314,7 +441,7 @@ You need not make any changes to the fields defined for `sink` in the template c
 },
 ```
 
-### **11. Confirm metadata\_server settings**
+### **12. Confirm metadata\_server settings**
 
 You need not make any changes to the fields defined for `metadata_server` in the template code you copied into `glue.json` in Step 4. This part of your configuration file should be as follows.
 
@@ -328,7 +455,7 @@ You need not make any changes to the fields defined for `metadata_server` in the
 }
 ```
 
-### **12. Run ingestion workflow**
+### **13. Run ingestion workflow**
 
 Your `glue.json` configuration file should now be fully configured and ready to use in an ingestion workflow.
 
