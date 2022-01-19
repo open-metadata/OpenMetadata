@@ -23,6 +23,7 @@ import React from 'react';
 import { reactLocalStorage } from 'reactjs-localstorage';
 import AppState from '../AppState';
 import {
+  imageTypes,
   LOCALSTORAGE_RECENTLY_SEARCHED,
   LOCALSTORAGE_RECENTLY_VIEWED,
   TITLE_FOR_NON_OWNER_ACTION,
@@ -291,4 +292,16 @@ export const errorMsg = (value: string) => {
       </strong>
     </div>
   );
+};
+
+export const getImages = (imageUri: string) => {
+  const imagesObj: typeof imageTypes = imageTypes;
+  for (const type in imageTypes) {
+    imagesObj[type as keyof typeof imageTypes] = imageUri.replace(
+      's96-c',
+      imageTypes[type as keyof typeof imageTypes]
+    );
+  }
+
+  return imagesObj;
 };
