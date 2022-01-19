@@ -221,30 +221,19 @@ public final class Entity {
   }
 
   /**
-   * Utility method to create the decorator from an Entity class instance. By Entity class we don't mean Entity.java but
-   * the entity classes generated from JSONSchema files like DatabaseService, Database, Table, and so on.
+   * Utility method to create the decorator from an Entity or EntityReference instance. By Entity class we don't mean
+   * Entity.java but the entity classes generated from JSONSchema files like DatabaseService, Database, Table, and so
+   * on.
    *
-   * @param entity must be an Entity class instance with a companion EntityRepository
+   * @param object must be an Entity class instance with a companion EntityRepository or an EntityReference
    * @param <T> must be the Entity class of this entity or object if multiple results are possible.
    * @return the decorator
    */
-  public static <T> EntityRepository<T>.EntityHandler h(@NonNull T entity) {
-    EntityRepository<T> entityRepository = (EntityRepository<T>) getEntityRepositoryForClass(entity.getClass());
-    return entityRepository.getEntityHandler(entity);
-  }
-
-  /**
-   * Utility method to create the decorator from an EntityReference instance.
-   *
-   * @param entityReference
-   * @param <T> must be the Entity class of this entityReference
-   * @return
-   * @throws IOException
-   * @throws ParseException
-   */
-  public static <T> EntityRepository<T>.EntityHandler r(@NonNull EntityReference entityReference)
-      throws IOException, ParseException {
-    T entity = getEntity(entityReference, Fields.EMPTY_FIELDS);
+  public static <T> EntityRepository<T>.EntityHelper helper(@NonNull Object object) throws IOException, ParseException {
+    T entity = (T) object;
+    if (object instanceof EntityReference) {
+      entity = getEntity((EntityReference) object, Fields.EMPTY_FIELDS);
+    }
     EntityRepository<T> entityRepository = (EntityRepository<T>) getEntityRepositoryForClass(entity.getClass());
     return entityRepository.getEntityHandler(entity);
   }

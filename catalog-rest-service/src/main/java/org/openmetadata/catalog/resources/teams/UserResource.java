@@ -328,7 +328,8 @@ public class UserResource {
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createUser(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateUser create) throws IOException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateUser create)
+      throws IOException, ParseException {
     if (create.getIsAdmin() != null && create.getIsAdmin()) {
       SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     }

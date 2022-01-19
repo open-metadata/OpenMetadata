@@ -21,6 +21,7 @@ import static org.openmetadata.catalog.util.EntityUtil.toBoolean;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.net.URI;
+import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -75,7 +76,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   }
 
   @Override
-  public MlModel setFields(MlModel mlModel, Fields fields) throws IOException {
+  public MlModel setFields(MlModel mlModel, Fields fields) throws IOException, ParseException {
     mlModel.setDisplayName(mlModel.getDisplayName());
     mlModel.setOwner(fields.contains("owner") ? getOwner(mlModel) : null);
     mlModel.setDashboard(fields.contains("dashboard") ? getDashboard(mlModel) : null);

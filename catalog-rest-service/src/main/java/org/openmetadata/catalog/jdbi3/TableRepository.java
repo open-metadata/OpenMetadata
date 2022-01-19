@@ -17,7 +17,7 @@ import static org.openmetadata.catalog.Entity.DATABASE;
 import static org.openmetadata.catalog.Entity.DATABASE_SERVICE;
 import static org.openmetadata.catalog.Entity.LOCATION;
 import static org.openmetadata.catalog.Entity.TABLE;
-import static org.openmetadata.catalog.Entity.h;
+import static org.openmetadata.catalog.Entity.helper;
 import static org.openmetadata.catalog.jdbi3.Relationship.JOINED_WITH;
 import static org.openmetadata.common.utils.CommonUtil.parseDate;
 
@@ -301,11 +301,11 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   @Override
-  public void prepare(Table table) throws IOException {
-    Database database = h(table).findEntity("database", DATABASE);
-    table.setDatabase(h(database).toEntityReference());
-    DatabaseService databaseService = h(database).findEntity("service", DATABASE_SERVICE);
-    table.setService(h(databaseService).toEntityReference());
+  public void prepare(Table table) throws IOException, ParseException {
+    Database database = helper(table).findEntity("database", DATABASE);
+    table.setDatabase(helper(database).toEntityReference());
+    DatabaseService databaseService = helper(database).findEntity("service", DATABASE_SERVICE);
+    table.setService(helper(databaseService).toEntityReference());
     table.setServiceType(databaseService.getServiceType());
 
     // Set data in table entity based on database relationship
@@ -313,7 +313,7 @@ public class TableRepository extends EntityRepository<Table> {
     setColumnFQN(table.getFullyQualifiedName(), table.getColumns());
 
     // Check if owner is valid and set the relationship
-    table.setOwner(h(table).validateOwnerOrNull());
+    table.setOwner(helper(table).validateOwnerOrNull());
 
     // Validate table tags and add derived tags to the list
     table.setTags(EntityUtil.addDerivedTags(daoCollection.tagDAO(), table.getTags()));
@@ -322,19 +322,19 @@ public class TableRepository extends EntityRepository<Table> {
     addDerivedTags(table.getColumns());
   }
 
-  private EntityReference getDatabase(Table table) throws IOException {
-    return h(table).getContainer(DATABASE);
+  private EntityReference getDatabase(Table table) throws IOException, ParseException {
+    return helper(table).getContainer(DATABASE);
   }
 
   // It must be called after getDatabase.
-  private EntityReference getService(Table table) {
-    Database database = h(table).findEntity("database");
-    DatabaseService databaseService = h(database).findEntity("service");
-    return h(databaseService).toEntityReference();
+  private EntityReference getService(Table table) throws IOException, ParseException {
+    Database database = helper(table).findEntity("database");
+    DatabaseService databaseService = helper(database).findEntity("service");
+    return helper(databaseService).toEntityReference();
   }
 
-  private EntityReference getLocation(Table table) {
-    return h(table).getHasOrNull(LOCATION);
+  private EntityReference getLocation(Table table) throws IOException, ParseException {
+    return helper(table).getHasOrNull(LOCATION);
   }
 
   @Override

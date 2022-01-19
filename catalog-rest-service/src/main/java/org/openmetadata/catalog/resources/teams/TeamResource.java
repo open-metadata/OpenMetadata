@@ -284,7 +284,7 @@ public class TeamResource {
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTeam ct)
-      throws IOException {
+      throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Team team = getTeam(ct, securityContext);
     addHref(uriInfo, dao.create(uriInfo, team));

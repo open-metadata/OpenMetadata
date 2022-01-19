@@ -13,10 +13,11 @@
 
 package org.openmetadata.catalog.jdbi3;
 
-import static org.openmetadata.catalog.Entity.h;
+import static org.openmetadata.catalog.Entity.helper;
 
 import java.io.IOException;
 import java.net.URI;
+import java.text.ParseException;
 import java.util.List;
 import java.util.UUID;
 import org.openmetadata.catalog.Entity;
@@ -47,7 +48,7 @@ public class ReportRepository extends EntityRepository<Report> {
   }
 
   @Override
-  public Report setFields(Report report, Fields fields) throws IOException {
+  public Report setFields(Report report, Fields fields) throws IOException, ParseException {
     report.setService(getService(report)); // service is a default field
     report.setOwner(fields.contains("owner") ? getOwner(report) : null);
     report.setUsageSummary(
@@ -64,9 +65,9 @@ public class ReportRepository extends EntityRepository<Report> {
   }
 
   @Override
-  public void prepare(Report report) throws IOException {
-    report.setService(h(h(report).findEntity("service")).toEntityReference());
-    report.setOwner(h(report).validateOwnerOrNull());
+  public void prepare(Report report) throws IOException, ParseException {
+    report.setService(helper(helper(report).findEntity("service")).toEntityReference());
+    report.setOwner(helper(report).validateOwnerOrNull());
   }
 
   @Override
@@ -90,9 +91,9 @@ public class ReportRepository extends EntityRepository<Report> {
     applyTags(report);
   }
 
-  private EntityReference getService(Report report) {
+  private EntityReference getService(Report report) throws IOException, ParseException {
     // TODO What are the report services?
-    return h(report).getContainer();
+    return helper(report).getContainer();
   }
 
   public static class ReportEntityInterface implements EntityInterface<Report> {

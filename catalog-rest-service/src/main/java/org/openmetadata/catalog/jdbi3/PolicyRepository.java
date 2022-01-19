@@ -17,10 +17,12 @@ import static org.openmetadata.catalog.util.EntityUtil.toBoolean;
 
 import java.io.IOException;
 import java.net.URI;
+import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
@@ -88,7 +90,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
   }
 
   @Override
-  public Policy setFields(Policy policy, Fields fields) throws IOException {
+  public Policy setFields(Policy policy, Fields fields) throws IOException, ParseException {
     policy.setDisplayName(fields.contains("displayName") ? policy.getDisplayName() : null);
     policy.setDescription(fields.contains("description") ? policy.getDescription() : null);
     policy.setOwner(fields.contains("owner") ? getOwner(policy) : null);
@@ -199,7 +201,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
     // No validation errors, if execution reaches here.
   }
 
-  private List<Policy> getAccessControlPolicies() throws IOException {
+  private List<Policy> getAccessControlPolicies() throws IOException, ParseException {
     EntityUtil.Fields fields = new EntityUtil.Fields(List.of("policyType", "rules", ENABLED));
     List<String> jsons = daoCollection.policyDAO().listAfter(null, Integer.MAX_VALUE, "", Include.NON_DELETED);
     List<Policy> policies = new ArrayList<>(jsons.size());
@@ -216,6 +218,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
   /**
    * Helper method to get Access Control Policies Rules. This method returns only rules for policies that are enabled.
    */
+  @SneakyThrows(ParseException.class)
   public List<Rule> getAccessControlPolicyRules() throws IOException {
     List<Policy> policies = getAccessControlPolicies();
     List<Rule> rules = new ArrayList<>();

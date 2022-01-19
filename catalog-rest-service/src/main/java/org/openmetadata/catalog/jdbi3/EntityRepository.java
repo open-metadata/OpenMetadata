@@ -13,7 +13,7 @@
 
 package org.openmetadata.catalog.jdbi3;
 
-import static org.openmetadata.catalog.Entity.h;
+import static org.openmetadata.catalog.Entity.helper;
 import static org.openmetadata.catalog.type.Include.DELETED;
 import static org.openmetadata.catalog.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.catalog.util.EntityUtil.objectMatch;
@@ -174,7 +174,7 @@ public abstract class EntityRepository<T> {
    *
    * @see TableRepository#prepare(Table) for an example implementation
    */
-  public abstract void prepare(T entity) throws IOException;
+  public abstract void prepare(T entity) throws IOException, ParseException;
 
   /**
    * An entity is stored in the backend database as JSON document. The JSON includes some attributes of the entity and
@@ -347,12 +347,12 @@ public abstract class EntityRepository<T> {
     return new EntityHistory().withEntityType(entityName).withVersions(allVersions);
   }
 
-  public final T create(UriInfo uriInfo, T entity) throws IOException {
+  public final T create(UriInfo uriInfo, T entity) throws IOException, ParseException {
     return withHref(uriInfo, createInternal(entity));
   }
 
   @Transaction
-  public final T createInternal(T entity) throws IOException {
+  public final T createInternal(T entity) throws IOException, ParseException {
     prepare(entity);
     return createNewEntity(entity);
   }
@@ -525,8 +525,8 @@ public abstract class EntityRepository<T> {
     }
   }
 
-  protected EntityReference getOwner(T entity) throws IOException {
-    return h(entity).getOwnerOrNull();
+  protected EntityReference getOwner(T entity) throws IOException, ParseException {
+    return helper(entity).getOwnerOrNull();
   }
 
   protected void setOwner(T entity, EntityReference owner) {
@@ -591,22 +591,22 @@ public abstract class EntityRepository<T> {
    * @param entity
    * @return
    */
-  public EntityHandler getEntityHandler(T entity) {
-    return new EntityHandler(entity);
+  public EntityHelper getEntityHandler(T entity) {
+    return new EntityHelper(entity);
   }
 
   /**
    * Decorator class for Entity.
    *
-   * @see Entity#h(Object) to create a handler from an Entity
+   * @see Entity#helper(Object) to create a handler from an Entity
    * @see Entity#r(EntityReference) to create a handler from an EntityReference
    */
-  public class EntityHandler {
+  public class EntityHelper {
     private final Include isDeleted;
     protected final EntityInterface<T> entityInterface;
     private final T entity;
 
-    private EntityHandler(T entity) {
+    private EntityHelper(T entity) {
       this.entityInterface = getEntityInterface(entity);
       this.entity = entity;
       this.isDeleted = entityInterface.isDeleted() ? DELETED : Include.NON_DELETED;
@@ -653,7 +653,7 @@ public abstract class EntityRepository<T> {
       // this could be changed to Include.NON_DELETED because we validate only when creating entities linked to
       // non-deleted entities.
       Object entity = Entity.getEntity(entityReference, Fields.EMPTY_FIELDS, isDeleted);
-      return h(entity).toEntityReference();
+      return helper(entity).toEntityReference();
     }
 
     /**
@@ -680,7 +680,7 @@ public abstract class EntityRepository<T> {
       if (!List.of(Entity.USER, Entity.TEAM).contains(refs.get(0).getType())) {
         throw new IllegalArgumentException(String.format("Invalid ownerType %s", refs.get(0).getType()));
       } else {
-        return h(Entity.getEntity(refs.get(0), Fields.EMPTY_FIELDS, Include.ALL)).toEntityReference();
+        return helper(Entity.getEntity(refs.get(0), Fields.EMPTY_FIELDS, Include.ALL)).toEntityReference();
       }
     }
 
@@ -709,7 +709,7 @@ public abstract class EntityRepository<T> {
             entityInterface.getId(),
             entityInterface.getEntityReference().getType());
       }
-      return h(Entity.getEntity(refs.get(0), Fields.EMPTY_FIELDS, Include.ALL)).toEntityReference();
+      return helper(Entity.getEntity(refs.get(0), Fields.EMPTY_FIELDS, Include.ALL)).toEntityReference();
     }
 
     /**
@@ -739,7 +739,7 @@ public abstract class EntityRepository<T> {
             entityInterface.getId(),
             entityInterface.getEntityReference().getType());
       }
-      return h(Entity.getEntity(refs.get(0), Fields.EMPTY_FIELDS, Include.ALL)).toEntityReference();
+      return helper(Entity.getEntity(refs.get(0), Fields.EMPTY_FIELDS, Include.ALL)).toEntityReference();
     }
 
     @SneakyThrows
@@ -769,7 +769,7 @@ public abstract class EntityRepository<T> {
       if (containerEntityNames.size() > 0 && !containerEntityNames.contains(refs.get(0).getType())) {
         throw new IllegalArgumentException(String.format("Invalid type %s", refs.get(0).getType()));
       }
-      return h(Entity.getEntity(refs.get(0), Fields.EMPTY_FIELDS, Include.ALL)).toEntityReference();
+      return helper(Entity.getEntity(refs.get(0), Fields.EMPTY_FIELDS, Include.ALL)).toEntityReference();
     }
 
     /**

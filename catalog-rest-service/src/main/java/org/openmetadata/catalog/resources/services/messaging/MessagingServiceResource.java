@@ -249,7 +249,7 @@ public class MessagingServiceResource {
       })
   public Response create(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateMessagingService create)
-      throws IOException {
+      throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     MessagingService service = getService(create, securityContext);
     dao.create(uriInfo, service);

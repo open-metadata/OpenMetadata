@@ -13,7 +13,7 @@
 
 package org.openmetadata.catalog.resources.databases;
 
-import static org.openmetadata.catalog.Entity.h;
+import static org.openmetadata.catalog.Entity.helper;
 
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
@@ -298,7 +298,7 @@ public class TableResource {
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTable create)
-      throws IOException {
+      throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Table table = getTable(securityContext, create);
     table = addHref(uriInfo, dao.create(uriInfo, validateNewTable(table)));
@@ -321,7 +321,7 @@ public class TableResource {
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTable create)
       throws IOException, ParseException {
     Table table = getTable(securityContext, create);
-    SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, h(table).validateOwnerOrNull());
+    SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, helper(table).validateOwnerOrNull());
     PutResponse<Table> response = dao.createOrUpdate(uriInfo, validateNewTable(table));
     addHref(uriInfo, response.getEntity());
     return response.toResponse();

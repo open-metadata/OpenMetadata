@@ -136,7 +136,7 @@ public class BotsResource {
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, Bots bot)
-      throws IOException {
+      throws IOException, ParseException {
     SecurityUtil.checkAdminRole(authorizer, securityContext);
     bot.withId(UUID.randomUUID())
         .withUpdatedBy(securityContext.getUserPrincipal().getName())

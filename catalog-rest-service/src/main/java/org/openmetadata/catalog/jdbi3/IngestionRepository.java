@@ -15,10 +15,11 @@ package org.openmetadata.catalog.jdbi3;
 
 import static org.openmetadata.catalog.Entity.DASHBOARD_SERVICE;
 import static org.openmetadata.catalog.Entity.DATABASE_SERVICE;
-import static org.openmetadata.catalog.Entity.h;
+import static org.openmetadata.catalog.Entity.helper;
 
 import java.io.IOException;
 import java.net.URI;
+import java.text.ParseException;
 import java.util.List;
 import java.util.UUID;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
@@ -62,7 +63,7 @@ public class IngestionRepository extends EntityRepository<Ingestion> {
   }
 
   @Override
-  public Ingestion setFields(Ingestion ingestion, Fields fields) throws IOException {
+  public Ingestion setFields(Ingestion ingestion, Fields fields) throws IOException, ParseException {
     ingestion.setDisplayName(ingestion.getDisplayName());
     ingestion.setService(getService(ingestion));
     ingestion.setConnectorConfig(ingestion.getConnectorConfig());
@@ -81,12 +82,13 @@ public class IngestionRepository extends EntityRepository<Ingestion> {
   }
 
   @Override
-  public void prepare(Ingestion ingestion) throws IOException {
+  public void prepare(Ingestion ingestion) throws IOException, ParseException {
     EntityReference entityReference =
-        h(h(ingestion).findEntity("service", List.of(DATABASE_SERVICE, DASHBOARD_SERVICE))).toEntityReference();
+        helper(helper(ingestion).findEntity("service", List.of(DATABASE_SERVICE, DASHBOARD_SERVICE)))
+            .toEntityReference();
     ingestion.setService(entityReference);
     ingestion.setFullyQualifiedName(getFQN(ingestion));
-    ingestion.setOwner(h(ingestion).validateOwnerOrNull());
+    ingestion.setOwner(helper(ingestion).validateOwnerOrNull());
     ingestion.setTags(EntityUtil.addDerivedTags(daoCollection.tagDAO(), ingestion.getTags()));
   }
 
@@ -126,8 +128,8 @@ public class IngestionRepository extends EntityRepository<Ingestion> {
     return new IngestionUpdater(original, updated, patchOperation);
   }
 
-  private EntityReference getService(Ingestion ingestion) throws IOException {
-    return h(ingestion).getContainer(List.of(Entity.DATABASE_SERVICE, Entity.DASHBOARD_SERVICE));
+  private EntityReference getService(Ingestion ingestion) throws IOException, ParseException {
+    return helper(ingestion).getContainer(List.of(Entity.DATABASE_SERVICE, Entity.DASHBOARD_SERVICE));
   }
 
   public static class IngestionEntityInterface implements EntityInterface<Ingestion> {

@@ -255,7 +255,7 @@ public class PipelineServiceResource {
       })
   public Response create(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreatePipelineService create)
-      throws IOException {
+      throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     PipelineService service = getService(create, securityContext);
     dao.create(uriInfo, service);

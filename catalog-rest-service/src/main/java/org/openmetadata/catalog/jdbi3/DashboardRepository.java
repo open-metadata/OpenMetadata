@@ -13,12 +13,13 @@
 
 package org.openmetadata.catalog.jdbi3;
 
-import static org.openmetadata.catalog.Entity.h;
+import static org.openmetadata.catalog.Entity.helper;
 import static org.openmetadata.catalog.util.EntityUtil.toBoolean;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.net.URI;
+import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -71,7 +72,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
   }
 
   @Override
-  public Dashboard setFields(Dashboard dashboard, Fields fields) throws IOException {
+  public Dashboard setFields(Dashboard dashboard, Fields fields) throws IOException, ParseException {
     dashboard.setDisplayName(dashboard.getDisplayName());
     dashboard.setService(getService(dashboard));
     dashboard.setOwner(fields.contains("owner") ? getOwner(dashboard) : null);
@@ -96,8 +97,8 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
         .withId(original.getId());
   }
 
-  private EntityReference getService(Dashboard dashboard) throws IOException {
-    return h(dashboard).getContainer(Entity.DASHBOARD_SERVICE);
+  private EntityReference getService(Dashboard dashboard) throws IOException, ParseException {
+    return helper(dashboard).getContainer(Entity.DASHBOARD_SERVICE);
   }
 
   private void populateService(Dashboard dashboard) throws IOException {

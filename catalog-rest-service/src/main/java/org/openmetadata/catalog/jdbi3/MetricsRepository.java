@@ -14,10 +14,11 @@
 package org.openmetadata.catalog.jdbi3;
 
 import static org.openmetadata.catalog.Entity.DASHBOARD_SERVICE;
-import static org.openmetadata.catalog.Entity.h;
+import static org.openmetadata.catalog.Entity.helper;
 
 import java.io.IOException;
 import java.net.URI;
+import java.text.ParseException;
 import java.util.List;
 import java.util.UUID;
 import org.openmetadata.catalog.Entity;
@@ -53,7 +54,7 @@ public class MetricsRepository extends EntityRepository<Metrics> {
   }
 
   @Override
-  public Metrics setFields(Metrics metrics, Fields fields) throws IOException {
+  public Metrics setFields(Metrics metrics, Fields fields) throws IOException, ParseException {
     metrics.setService(getService(metrics)); // service is a default field
     metrics.setOwner(fields.contains("owner") ? getOwner(metrics) : null);
     metrics.setUsageSummary(
@@ -109,8 +110,8 @@ public class MetricsRepository extends EntityRepository<Metrics> {
     applyTags(metrics);
   }
 
-  private EntityReference getService(Metrics metrics) throws IOException { // Get service by metrics ID
-    return h(metrics).getContainer(DASHBOARD_SERVICE);
+  private EntityReference getService(Metrics metrics) throws IOException, ParseException { // Get service by metrics ID
+    return helper(metrics).getContainer(DASHBOARD_SERVICE);
   }
 
   private EntityReference getService(EntityReference service) throws IOException { // Get service by service ID
