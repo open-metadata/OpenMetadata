@@ -35,7 +35,7 @@ Here’s an overview of the steps in this procedure. Please follow the steps rel
 
 1. [Prepare a Python virtual environment](glue-catalog.md#1.-prepare-a-python-virtual-environment)
 2. [Install the Python module for this connector](glue-catalog.md#2.-install-the-python-module-for-this-connector)&#x20;
-3. [Configure a local AWS profile](glue-catalog.md#3.-configure-a-local-aws-profile-optional)
+3. [Configure your AWS default profile](glue-catalog.md#3.-configure-a-local-aws-profile-optional)
 4. [Create a configuration file using template JSON](glue-catalog.md#4.-create-a-configuration-file-using-template-json)&#x20;
 5. [Configure service settings](glue-catalog.md#5.-configure-service-settings)&#x20;
 6. [Enable/disable the data profiler](glue-catalog.md#6.-enable-disable-the-data-profiler)&#x20;
@@ -95,9 +95,9 @@ Once the virtual environment is set up and activated as described in Step 1, run
 pip3 install 'openmetadata-ingestion[glue]'
 ```
 
-### **3. Configure a local AWS profile (optional)**
+### **3. Configure your AWS default profile (optional)**
 
-In order to use the Glue Catalog connector, you will need AWS credentials configured and available to the connector. The best way to do this is by configuring a local AWS profile using the AWS Command-Line Interface (CLI). In this step we will install the AWS CLI and then configure an AWS profile.
+In order to use the Glue Catalog connector, you will need AWS credentials configured and available to the connector. The best way to do this is by configuring your AWS default profile using the AWS Command-Line Interface (CLI). In this step we will install the AWS CLI and then configure an AWS profile.
 
 {% hint style="info" %}
 Note: If you do not have an existing AWS profile and opt not to create one, you will need to supply AWS credentials in your Glue catalog configuration file. We recommend that you use an AWS profile rather than including AWS credentials in your configuration file.
@@ -107,7 +107,7 @@ Note: If you do not have an existing AWS profile and opt not to create one, you 
 
 To install the AWS CLI, follow the installation guide for your operating system from the [AWS documentation](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html).
 
-#### 3b. Configure your AWS profile
+#### 3b. Configure your AWS default profile
 
 With the AWS CLI installed, to configure your AWS profile run the following command.
 
@@ -191,6 +191,10 @@ See [Using temporary credentials with AWS resources](https://docs.aws.amazon.com
 ```json
 "aws_session_token": "session_token"
 ```
+
+{% hint style="info" %}
+Note: While you cannot configure a session token using the `aws configure` command (see Step 3 above), you can edit the `~/.aws/credentials` file to manually add a session token. See [Configuration and credential file settings](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-files.html) for more details.
+{% endhint %}
 
 #### aws\_access\_key\_id (optional)
 
