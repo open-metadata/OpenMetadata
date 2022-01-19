@@ -67,7 +67,7 @@ const Signup = () => {
     createUser(details).then((res) => {
       if (res.data) {
         setLoading(false);
-        appState.userDetails = res.data;
+        appState.updateUserDetails(res.data);
         fetchAllUsers();
         history.push(ROUTES.HOME);
       } else {
