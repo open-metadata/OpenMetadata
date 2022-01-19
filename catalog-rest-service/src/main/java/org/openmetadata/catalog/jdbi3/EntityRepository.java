@@ -22,6 +22,7 @@ import static org.openmetadata.catalog.util.EntityUtil.toBoolean;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.URI;
 import java.security.GeneralSecurityException;
@@ -626,7 +627,7 @@ public abstract class EntityRepository<T> {
      *
      * @return
      */
-    public EntityReference validateOwnerOrNull() {
+    public EntityReference validateOwnerOrNull() throws IOException, ParseException {
       EntityReference entityReference = validateFieldOrNull("owner");
       if (entityReference == null) {
         return null;
@@ -643,8 +644,8 @@ public abstract class EntityRepository<T> {
      * @param fieldName
      * @return
      */
-    @SneakyThrows
-    public EntityReference validateFieldOrNull(String fieldName) {
+    @SneakyThrows({NoSuchMethodException.class, InvocationTargetException.class, IllegalAccessException.class})
+    public EntityReference validateFieldOrNull(String fieldName) throws IOException, ParseException {
       Method method = entity.getClass().getMethod("get" + StringUtils.capitalize(fieldName));
       EntityReference entityReference = (EntityReference) method.invoke(entity);
       if (entityReference == null) {
@@ -662,8 +663,7 @@ public abstract class EntityRepository<T> {
      *
      * @return
      */
-    @SneakyThrows
-    public EntityReference getOwnerOrNull() {
+    public EntityReference getOwnerOrNull() throws IOException, ParseException {
       List<EntityReference> refs =
           daoCollection
               .relationshipDAO()
@@ -690,8 +690,7 @@ public abstract class EntityRepository<T> {
      * @param leftEntityName the entity name of the target of HAS.
      * @return
      */
-    @SneakyThrows
-    public EntityReference getHasOrNull(String leftEntityName) {
+    public EntityReference getHasOrNull(String leftEntityName) throws IOException, ParseException {
       List<EntityReference> refs =
           daoCollection
               .relationshipDAO()
@@ -719,8 +718,7 @@ public abstract class EntityRepository<T> {
      *     on.
      * @return
      */
-    @SneakyThrows
-    public EntityReference getContainer(String containerEntityName) {
+    public EntityReference getContainer(String containerEntityName) throws IOException, ParseException {
       List<EntityReference> refs =
           daoCollection
               .relationshipDAO()
@@ -742,13 +740,11 @@ public abstract class EntityRepository<T> {
       return helper(Entity.getEntity(refs.get(0), Fields.EMPTY_FIELDS, Include.ALL)).toEntityReference();
     }
 
-    @SneakyThrows
-    public EntityReference getContainer() {
+    public EntityReference getContainer() throws IOException, ParseException {
       return getContainer(Collections.emptyList());
     }
 
-    @SneakyThrows
-    public EntityReference getContainer(List<String> containerEntityNames) {
+    public EntityReference getContainer(List<String> containerEntityNames) throws IOException, ParseException {
       List<EntityReference> refs =
           daoCollection
               .relationshipDAO()
@@ -780,7 +776,7 @@ public abstract class EntityRepository<T> {
      * @param <S>
      * @return
      */
-    public <S> S findEntity(String fieldName, String entityName) {
+    public <S> S findEntity(String fieldName, String entityName) throws IOException, ParseException {
       return findEntity(fieldName, List.of(entityName));
     }
 
@@ -792,7 +788,7 @@ public abstract class EntityRepository<T> {
      * @param <S>
      * @return
      */
-    public <S> S findEntity(String fieldName, List<String> entityNames) {
+    public <S> S findEntity(String fieldName, List<String> entityNames) throws IOException, ParseException {
       S entity = findEntity(fieldName);
       EntityReference entityReference = Entity.getEntityReference(entity);
       if (entityNames.size() > 0 && !entityNames.contains(entityReference.getType())) {
@@ -810,8 +806,8 @@ public abstract class EntityRepository<T> {
      * @param <S> the class of the entity pointed by the field
      * @return
      */
-    @SneakyThrows
-    public <S> S findEntity(String fieldName) {
+    @SneakyThrows({NoSuchMethodException.class, InvocationTargetException.class, IllegalAccessException.class})
+    public <S> S findEntity(String fieldName) throws IOException, ParseException {
       Method method = entity.getClass().getMethod("get" + StringUtils.capitalize(fieldName));
       EntityReference entityReference = (EntityReference) method.invoke(entity);
       if (entityReference == null) {
