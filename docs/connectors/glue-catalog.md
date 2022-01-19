@@ -115,7 +115,7 @@ With the AWS CLI installed, to configure your AWS profile run the following comm
 aws configure
 ```
 
-Then, enter the appropriate values at the prompts to complete your profile. Your interaction with the aws configure command should look something like the following.
+Then enter the appropriate values at the prompts to complete your profile. Your interaction with the `aws configure` command should look something like the following.
 
 ```bash
 $ aws configure
@@ -125,7 +125,7 @@ Default region name [None]: <your region, e.g., us-west-2>
 Default output format [None]:
 ```
 
-Please enter your accesskey, secretkey, and region when prompted. The OpenMetadata Glue Catalog connector will use the credentials from your AWS profile to connect to the right endpoint and authenticate for metadata ingestion.
+Please enter your access key, secret key, and region when prompted. The OpenMetadata Glue Catalog connector will use the credentials from your AWS profile to connect to the right endpoint and authenticate for metadata ingestion.
 
 #### 3c. Test access to your Glue catalog
 
@@ -135,7 +135,7 @@ Run the following command to ensure your AWS credentials and region are configur
 aws glue list-schemas
 ```
 
-In response you will either see a formatted list of schemas defined in your Glue catalog or receive a message indicating that no schemas are defined in your catalog.
+In response you will either see a formatted list of schemas defined in your Glue catalog or receive a message indicating that no schemas are defined.
 
 ### **4. Create a configuration file using template JSON**
 
