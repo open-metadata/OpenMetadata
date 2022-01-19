@@ -191,7 +191,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
     if (!policy.getPolicyType().equals(PolicyType.AccessControl)) {
       return;
     }
-    log.debug("Validating rules for {} policy: {}", PolicyType.AccessControl, policy.getName());
+    LOG.debug("Validating rules for {} policy: {}", PolicyType.AccessControl, policy.getName());
     for (Object ruleObject : policy.getRules()) {
       // Cast to access control policy Rule.
       Rule rule = JsonUtils.readValue(JsonUtils.getJsonStructure(ruleObject).toString(), Rule.class);

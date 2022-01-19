@@ -19,6 +19,7 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.Value;
 import lombok.experimental.SuperBuilder;
+import lombok.extern.slf4j.Slf4j;
 import org.elasticsearch.action.admin.indices.delete.DeleteIndexRequest;
 import org.elasticsearch.action.support.master.AcknowledgedResponse;
 import org.elasticsearch.client.RequestOptions;
@@ -39,13 +40,11 @@ import org.openmetadata.catalog.type.EventType;
 import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.type.Task;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
+@Slf4j
 public class ElasticSearchIndexDefinition {
   final Map<ElasticSearchIndexType, ElasticSearchIndexStatus> elasticSearchIndexes = new HashMap<>();
   private final RestHighLevelClient client;
-  private static final Logger LOG = LoggerFactory.getLogger(ElasticSearchIndexDefinition.class);
 
   public ElasticSearchIndexDefinition(RestHighLevelClient client) {
     this.client = client;

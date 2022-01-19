@@ -37,7 +37,7 @@ class AttributeBasedFacts {
     facts.put(CommonFields.ENTITY_TYPE, getEntityType(entity));
     facts.put(CommonFields.OPERATION, operation);
     facts.put(CommonFields.ALLOW, CommonFields.DEFAULT_ACCESS);
-    log.debug("Generated facts successfully - {}", facts);
+    LOG.debug("Generated facts successfully - {}", facts);
     return facts;
   }
 
@@ -55,7 +55,7 @@ class AttributeBasedFacts {
       EntityInterface<?> entityInterface = Entity.getEntityInterface(entity);
       entityTags = entityInterface.getTags();
     } catch (EntityNotFoundException e) {
-      log.warn("could not obtain tags for the given entity {} - exception: {}", entity, e.toString());
+      LOG.warn("could not obtain tags for the given entity {} - exception: {}", entity, e.toString());
     }
     if (entityTags == null) {
       return Collections.emptyList();
@@ -66,7 +66,7 @@ class AttributeBasedFacts {
   private static String getEntityType(@NonNull Object entity) {
     String entityType = Entity.getEntityNameFromObject(entity);
     if (entityType == null) {
-      log.warn("could not find entity type for the given entity {}", entity);
+      LOG.warn("could not find entity type for the given entity {}", entity);
     }
     return entityType;
   }

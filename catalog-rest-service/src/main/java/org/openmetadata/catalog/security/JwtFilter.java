@@ -20,7 +20,6 @@ import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.fasterxml.jackson.databind.node.TextNode;
 import io.dropwizard.util.Strings;
-import java.lang.invoke.MethodHandles;
 import java.net.URI;
 import java.security.interfaces.RSAPublicKey;
 import java.util.Calendar;
@@ -31,13 +30,12 @@ import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.core.UriInfo;
 import javax.ws.rs.ext.Provider;
 import lombok.SneakyThrows;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.security.auth.CatalogSecurityContext;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
+@Slf4j
 @Provider
 public class JwtFilter implements ContainerRequestFilter {
-  private static final Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
   @Context private UriInfo uriInfo;
 
   public static final String TOKEN_HEADER = "X-Catalog-Source";

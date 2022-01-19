@@ -14,8 +14,10 @@
 package org.openmetadata.catalog.resources;
 
 import javax.ws.rs.client.WebTarget;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.util.ResultList;
 
+@Slf4j
 public abstract class EntityOperationsResourceTest<T> extends EntityResourceTest<T> {
   public EntityOperationsResourceTest(
       String entityName,

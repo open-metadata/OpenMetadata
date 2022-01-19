@@ -39,6 +39,7 @@ import javax.json.JsonPatch;
 import javax.ws.rs.core.Response.Status;
 import javax.ws.rs.core.UriInfo;
 import lombok.SneakyThrows;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.maven.shared.utils.io.IOUtil;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
@@ -68,9 +69,8 @@ import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.common.utils.CipherText;
 import org.openmetadata.common.utils.CommonUtil;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
+@Slf4j
 /**
  * This is the base class used by Entity Resources to perform READ and WRITE operations to the backend database to
  * Create, Retrieve, Update, and Delete entities.
@@ -103,7 +103,6 @@ import org.slf4j.LoggerFactory;
  * information does not become stale.
  */
 public abstract class EntityRepository<T> {
-  public static final Logger LOG = LoggerFactory.getLogger(EntityRepository.class);
   private final String collectionPath;
   private final Class<T> entityClass;
   private final String entityName;

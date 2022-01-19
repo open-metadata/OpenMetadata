@@ -34,6 +34,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.BiConsumer;
 import javax.ws.rs.core.Response.Status;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.MethodOrderer;
@@ -76,6 +77,7 @@ import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
 
+@Slf4j
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class MlModelResourceTest extends EntityResourceTest<MlModel> {
 
