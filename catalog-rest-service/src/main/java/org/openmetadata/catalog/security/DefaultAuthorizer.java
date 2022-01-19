@@ -21,9 +21,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.catalog.Entity;
@@ -47,15 +44,10 @@ public class DefaultAuthorizer implements Authorizer {
   private Set<String> botUsers;
 
   private String principalDomain;
-  private CollectionDAO collectionDAO;
   private UserRepository userRepository;
 
-  // policyEvaluator has to be thread-safe. A background thread will be updating the value.
-  private volatile PolicyEvaluator policyEvaluator;
+  private PolicyEvaluator policyEvaluator;
   private static final String fieldsParam = "roles,teams";
-
-  public static final int POLICY_LOADER_INITIAL_DELAY = 5; // seconds.
-  private static final int POLICY_LOADER_SCHEDULE_INTERVAL = 300; // seconds.
 
   @Override
   public void init(AuthorizerConfiguration config, Jdbi dbi) throws IOException {
@@ -64,28 +56,12 @@ public class DefaultAuthorizer implements Authorizer {
     this.botUsers = new HashSet<>(config.getBotPrincipals());
     this.principalDomain = config.getPrincipalDomain();
     LOG.debug("Admin users: {}", adminUsers);
-    this.collectionDAO = dbi.onDemand(CollectionDAO.class);
+    CollectionDAO collectionDAO = dbi.onDemand(CollectionDAO.class);
     this.userRepository = new UserRepository(collectionDAO);
     mayBeAddAdminUsers();
     mayBeAddBotUsers();
-
-    // Use a 15-min schedule to refresh policies. This should be replaced by a better solution which can load policies
-    // only when a policy change event occurs.
-    ScheduledExecutorService scheduleService = Executors.newSingleThreadScheduledExecutor();
-    scheduleService.scheduleWithFixedDelay(
-        new PolicyLoader(), POLICY_LOADER_INITIAL_DELAY, POLICY_LOADER_SCHEDULE_INTERVAL, TimeUnit.SECONDS);
-  }
-
-  private class PolicyLoader implements Runnable {
-    @Override
-    public void run() {
-      LOG.info("Loading access control policies for DefaultAuthorizer Policy Evaluator");
-      try {
-        policyEvaluator = new PolicyEvaluator(new PolicyRepository(collectionDAO).getAccessControlPolicyRules());
-      } catch (IOException e) {
-        LOG.warn("Could not update access control policies for DefaultAuthorizer Policy Evaluator: {}", e.getMessage());
-      }
-    }
+    policyEvaluator = PolicyEvaluator.getInstance();
+    policyEvaluator.setPolicyRepository(new PolicyRepository(collectionDAO));
   }
 
   private void mayBeAddAdminUsers() {
