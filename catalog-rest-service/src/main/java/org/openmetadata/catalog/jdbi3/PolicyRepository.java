@@ -31,6 +31,7 @@ import org.openmetadata.catalog.entity.policies.Policy;
 import org.openmetadata.catalog.entity.policies.accessControl.Rule;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.resources.policies.PolicyResource;
+import org.openmetadata.catalog.security.policyevaluator.PolicyEvaluator;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Include;
@@ -48,6 +49,8 @@ public class PolicyRepository extends EntityRepository<Policy> {
       new Fields(PolicyResource.FIELD_LIST, "displayName,description,owner,policyUrl,enabled,rules,location");
   public static final String ENABLED = "enabled";
 
+  private PolicyEvaluator policyEvaluator;
+
   public PolicyRepository(CollectionDAO dao) {
     super(
         PolicyResource.COLLECTION_PATH,
@@ -60,6 +63,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
         false,
         true,
         false);
+    policyEvaluator = PolicyEvaluator.getInstance();
   }
 
   public static String getFQN(Policy policy) {
@@ -149,6 +153,10 @@ public class PolicyRepository extends EntityRepository<Policy> {
     policy.withOwner(null).withLocation(null).withHref(null);
 
     store(policy.getId(), policy, update);
+    if (PolicyType.AccessControl.equals(policy.getPolicyType())) {
+      // Refresh rules in PolicyEvaluator right after an Access Control policy has been stored.
+      policyEvaluator.refreshRules();
+    }
 
     // Restore the relationships
     policy.withOwner(owner).withLocation(location).withHref(href);

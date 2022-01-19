@@ -26,7 +26,6 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assertions.fail;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.ENTITY_ALREADY_EXISTS;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.catalog.resources.teams.RoleResourceTest.createRole;
@@ -217,13 +216,6 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     RoleResourceTest roleResourceTest = new RoleResourceTest();
     ROLE1 = createRole(roleResourceTest.create(test), adminAuthHeaders());
     ROLE_REF1 = new EntityReference().withId(ROLE1.getId()).withType("role");
-
-    // Ensure that DefaultAuthorizer gets enough time to load policies before running tests.
-    try {
-      Thread.sleep(8000);
-    } catch (InterruptedException e) {
-      fail();
-    }
 
     // Create snowflake database service
     DatabaseServiceResourceTest databaseServiceResourceTest = new DatabaseServiceResourceTest();

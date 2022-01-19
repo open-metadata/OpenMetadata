@@ -1,6 +1,8 @@
 package org.openmetadata.catalog.security.policyevaluator;
 
-import java.util.List;
+import java.io.IOException;
+import java.util.concurrent.atomic.AtomicReference;
+import lombok.extern.slf4j.Slf4j;
 import org.jeasy.rules.api.Rule;
 import org.jeasy.rules.api.Rules;
 import org.jeasy.rules.api.RulesEngine;
@@ -8,13 +10,14 @@ import org.jeasy.rules.api.RulesEngineParameters;
 import org.jeasy.rules.core.DefaultRulesEngine;
 import org.jeasy.rules.core.RuleBuilder;
 import org.openmetadata.catalog.entity.teams.User;
+import org.openmetadata.catalog.jdbi3.PolicyRepository;
 import org.openmetadata.catalog.type.MetadataOperation;
 
 /**
  * PolicyEvaluator for {@link MetadataOperation metadata operations} based on OpenMetadata's internal {@link
  * org.openmetadata.catalog.entity.policies.Policy} format to make access decisions.
  *
- * <p>This class uses {@link DefaultRulesEngine} provided by <a
+ * <p>This Singleton class uses {@link DefaultRulesEngine} provided by <a
  * href="https://github.com/j-easy/easy-rules">j-easy/easy-rules</a> package.
  *
  * <p>The rules defined as {@link org.openmetadata.catalog.entity.policies.accessControl.Rule} are to be fetched from
@@ -29,21 +32,44 @@ import org.openmetadata.catalog.type.MetadataOperation;
  *
  * <p>- {@link org.openmetadata.catalog.Entity} (object) on which to operate on.
  */
+@Slf4j
 public class PolicyEvaluator {
 
-  private final Rules rules;
-  private final RulesEngine rulesEngine;
+  private PolicyRepository policyRepository;
+  private AtomicReference<Rules> rules;
+  private RulesEngine rulesEngine;
 
-  public PolicyEvaluator(List<org.openmetadata.catalog.entity.policies.accessControl.Rule> rules) {
-    this.rules = new Rules();
-    rules.stream()
+  // Eager initialization of Singleton since PolicyEvaluator is lightweight.
+  private static final PolicyEvaluator policyEvaluator = new PolicyEvaluator();
+
+  private PolicyEvaluator() {
+    RulesEngineParameters parameters =
+        new RulesEngineParameters().skipOnFirstAppliedRule(true); // When first rule applies, stop the matching.
+    rulesEngine = new DefaultRulesEngine(parameters);
+    // Initialize with empty set of rules. If not, the RulesEngine would throw NullPointerException.
+    rules = new AtomicReference<>(new Rules());
+  }
+
+  public static PolicyEvaluator getInstance() {
+    return policyEvaluator;
+  }
+
+  public void setPolicyRepository(PolicyRepository policyRepository) {
+    this.policyRepository = policyRepository;
+  }
+
+  /** Refresh rules within {@link PolicyEvaluator} to be used by {@link DefaultRulesEngine}. */
+  public void refreshRules() throws IOException {
+    log.warn("{} rules are available for Access Control", rules.get().size());
+    Rules newRules = new Rules();
+    policyRepository.getAccessControlPolicyRules().stream()
         // Add rules only if they are enabled.
         .filter(org.openmetadata.catalog.entity.policies.accessControl.Rule::getEnabled)
         .map(this::convertRule)
-        .forEach(this.rules::register);
-    RulesEngineParameters parameters =
-        new RulesEngineParameters().skipOnFirstAppliedRule(true); // When first rule applies, stop the matching.
-    this.rulesEngine = new DefaultRulesEngine(parameters);
+        .forEach(newRules::register);
+    // Atomic swap of rules.
+    rules.set(newRules);
+    log.warn("Loaded new set of {} rules for Access Control", rules.get().size());
   }
 
   public boolean hasPermission(User user, Object entity, MetadataOperation operation) {
@@ -53,7 +79,7 @@ public class PolicyEvaluator {
             .withEntity(entity)
             .withOperation(operation)
             .build();
-    this.rulesEngine.fire(rules, facts.getFacts());
+    rulesEngine.fire(rules.get(), facts.getFacts());
     return facts.hasPermission();
   }
 
