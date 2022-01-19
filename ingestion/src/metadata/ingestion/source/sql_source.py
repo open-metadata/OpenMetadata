@@ -14,7 +14,6 @@ Generic source to build SQL connectors.
 import json
 import logging
 import re
-import sys
 import traceback
 import uuid
 from abc import abstractmethod
