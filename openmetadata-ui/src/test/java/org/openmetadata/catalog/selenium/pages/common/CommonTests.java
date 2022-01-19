@@ -30,6 +30,7 @@ import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.catalog.selenium.events.Events;
 import org.openmetadata.catalog.selenium.properties.Property;
 import org.openqa.selenium.By;
+import org.openqa.selenium.NoSuchElementException;
 import org.openqa.selenium.TimeoutException;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
@@ -55,6 +56,7 @@ public class CommonTests {
   Integer waitTime = Property.getInstance().getSleepTime();
   static String url = Property.getInstance().getURL();
   static String urlTag = "/api/v1/tags/";
+  String tableName = "dim_address";
 
   @BeforeEach
   public void openMetadataWindow() {
@@ -328,6 +330,69 @@ public class CommonTests {
     }
     Events.sendKeys(webDriver, By.cssSelector("[id='searchBox']"), "dim_a"); // Search bar/dim
     Events.sendEnter(webDriver, By.cssSelector("[id='searchBox']"));
+  }
+
+  @Test
+  @Order(15)
+  public void tagFilterCountCheck() throws InterruptedException {
+    Events.sendKeys(webDriver, By.cssSelector("[data-testid='searchBox']"), tableName);
+    Events.click(webDriver, By.cssSelector("[data-testid='data-name']"));
+    Thread.sleep(waitTime);
+    actions.moveToElement(webDriver.findElement(By.xpath("//div[@data-testid='tag-conatiner']//span"))).perform();
+    Events.click(webDriver, By.xpath("//div[@data-testid='tag-conatiner']//span"));
+    Events.click(webDriver, By.cssSelector("[data-testid='associatedTagName']"));
+    for (int i = 0; i <= 8; i++) {
+      Events.sendKeys(webDriver, By.cssSelector("[data-testid='associatedTagName']"), "P");
+      Events.click(webDriver, By.cssSelector("[data-testid='list-item']"));
+    }
+    for (int i = 0; i <= 5; i++) {
+      Events.sendKeys(webDriver, By.cssSelector("[data-testid='associatedTagName']"), "U");
+      Events.click(webDriver, By.cssSelector("[data-testid='list-item']"));
+    }
+    Events.click(webDriver, By.cssSelector("[data-testid='saveAssociatedTag']"));
+    Thread.sleep(2000);
+    Object tagsCount = webDriver.findElements(By.xpath("//div[@data-testid='tag-conatiner']/div/div")).size() - 1;
+    Thread.sleep(2000);
+    webDriver.navigate().back();
+    Thread.sleep(2000);
+    Object tagsFilterCount = webDriver.findElements(By.xpath("//div[@data-testid='filter-containers-2']/div")).size();
+    Assert.assertEquals(tagsFilterCount.toString(), tagsCount.toString());
+  }
+
+  @Test
+  @Order(16)
+  public void differentSearchDifferentResultCheck() throws InterruptedException {
+    openHomePage();
+    Events.sendKeys(webDriver, By.cssSelector("[data-testid='searchBox']"), "!");
+    Events.sendEnter(webDriver, By.cssSelector("[id='searchBox']"));
+    Thread.sleep(2000);
+    String search1 =
+        webDriver.findElement(By.cssSelector("[data-testid='no-search-results']")).getAttribute("innerHTML");
+    Assert.assertEquals(search1, "No matching data assets found for !");
+    webDriver.navigate().back();
+    Events.sendKeys(webDriver, By.cssSelector("[data-testid='searchBox']"), "{");
+    Events.sendEnter(webDriver, By.cssSelector("[id='searchBox']"));
+    Thread.sleep(2000);
+    try {
+      String search2 =
+          webDriver.findElement(By.cssSelector("[data-testid='no-search-results']")).getAttribute("innerHTML");
+      Assert.assertEquals(search2, "No matching data assets found for {");
+    } catch (NoSuchElementException exception) {
+      LOG.info("Search results are not similar for no data found!");
+    }
+  }
+
+  @Test
+  @Order(17)
+  public void missingMatchesForSearchCheck() throws InterruptedException {
+    openHomePage();
+    Events.click(webDriver, By.cssSelector("[data-testid='dashboards']")); // Dashboards
+    Events.sendKeys(webDriver, By.cssSelector("[data-testid='searchBox']"), "sales");
+    Events.sendEnter(webDriver, By.cssSelector("[id='searchBox']"));
+    String resultsCount =
+        webDriver.findElement(By.xpath("//div[@data-testid='search-container']/div")).getAttribute("innerHTML");
+    Object matchesCount = webDriver.findElements(By.cssSelector("[data-testid='matches-stats']")).size();
+    Assert.assertEquals(matchesCount + " results", resultsCount);
   }
 
   @AfterEach
