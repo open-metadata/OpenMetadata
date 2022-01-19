@@ -13,6 +13,8 @@
 
 package org.openmetadata.catalog.resources.databases;
 
+import static org.openmetadata.catalog.Entity.helper;
+
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -296,7 +298,7 @@ public class TableResource {
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTable create)
-      throws IOException {
+      throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Table table = getTable(securityContext, create);
     table = addHref(uriInfo, dao.create(uriInfo, validateNewTable(table)));
@@ -319,7 +321,7 @@ public class TableResource {
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTable create)
       throws IOException, ParseException {
     Table table = getTable(securityContext, create);
-    SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, dao.getOwnerReference(table));
+    SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, helper(table).validateOwnerOrNull());
     PutResponse<Table> response = dao.createOrUpdate(uriInfo, validateNewTable(table));
     addHref(uriInfo, response.getEntity());
     return response.toResponse();
@@ -556,6 +558,6 @@ public class TableResource {
         .withUpdatedBy(securityContext.getUserPrincipal().getName())
         .withOwner(create.getOwner())
         .withUpdatedAt(System.currentTimeMillis())
-        .withDatabase(new EntityReference().withId(create.getDatabase()));
+        .withDatabase(new EntityReference().withId(create.getDatabase()).withType(Entity.DATABASE));
   }
 }

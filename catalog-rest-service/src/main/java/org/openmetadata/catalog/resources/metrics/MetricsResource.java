@@ -152,7 +152,7 @@ public class MetricsResource {
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid Metrics metrics)
-      throws IOException {
+      throws IOException, ParseException {
     addToMetrics(securityContext, metrics);
     dao.create(uriInfo, metrics);
     return Response.created(metrics.getHref()).entity(metrics).build();

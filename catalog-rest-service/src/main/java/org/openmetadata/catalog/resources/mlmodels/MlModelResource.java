@@ -241,7 +241,7 @@ public class MlModelResource {
       })
   public Response create(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateMlModel create)
-      throws IOException {
+      throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     MlModel mlModel = getMlModel(securityContext, create);
     mlModel = addHref(uriInfo, dao.create(uriInfo, mlModel));

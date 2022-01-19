@@ -247,7 +247,7 @@ public class StorageServiceResource {
       })
   public Response create(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateStorageService create)
-      throws IOException {
+      throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     StorageService databaseService = getService(create, securityContext);
     dao.create(uriInfo, databaseService);

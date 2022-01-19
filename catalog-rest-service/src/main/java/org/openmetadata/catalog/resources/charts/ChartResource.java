@@ -295,7 +295,7 @@ public class ChartResource {
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateChart create)
-      throws IOException {
+      throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Chart chart = getChart(securityContext, create);
     chart = addHref(uriInfo, dao.create(uriInfo, chart));
