@@ -356,6 +356,9 @@ export const feedSummaryFromatter = (
     }
 
     case fieldChange?.name === 'owner': {
+      const ownerName =
+        getOwnerName(newValue?.id as string) ||
+        getOwnerName(value?.id as string);
       const ownerText =
         !isEmpty(oldValue) && !isEmpty(newValue) ? (
           <Fragment>
@@ -363,11 +366,11 @@ export const feedSummaryFromatter = (
               <Link
                 className="tw-pl-1"
                 to={getTeamDetailsPath(newValue?.name || '')}>
-                {getOwnerName(newValue?.id as string)}
+                <span title={ownerName}>{ownerName}</span>
               </Link>
             ) : (
-              <span className="tw-pl-1">
-                {getOwnerName(newValue?.id as string)}
+              <span className="tw-pl-1" title={ownerName}>
+                {ownerName}
               </span>
             )}
           </Fragment>
@@ -377,17 +380,21 @@ export const feedSummaryFromatter = (
               <Link
                 className="tw-pl-1"
                 to={getTeamDetailsPath(value?.name || '')}>
-                {getOwnerName(value?.id as string)}
+                <span title={ownerName}>{ownerName}</span>
               </Link>
             ) : (
-              <span className="tw-pl-1">
-                {getOwnerName(value?.id as string)}
+              <span className="tw-pl-1" title={ownerName}>
+                {ownerName}
               </span>
             )}
           </Fragment>
         );
       summary = (
-        <p key={uniqueId()}>
+        <p
+          className={classNames('tw-truncate', {
+            'tw-w-52': ownerName.length > 32,
+          })}
+          key={uniqueId()}>
           {`Assigned ownership to`}
           {ownerText}
         </p>
