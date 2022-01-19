@@ -284,7 +284,11 @@ export const getActiveCatClass = (name: string, activeName = '') => {
 export const errorMsg = (value: string) => {
   return (
     <div className="tw-mt-1">
-      <strong className="tw-text-red-500 tw-text-xs tw-italic">{value}</strong>
+      <strong
+        className="tw-text-red-500 tw-text-xs tw-italic"
+        data-testid="error-message">
+        {value}
+      </strong>
     </div>
   );
 };

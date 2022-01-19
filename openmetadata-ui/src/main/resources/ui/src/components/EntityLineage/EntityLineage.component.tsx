@@ -118,6 +118,14 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
     status: 'initial',
   });
 
+  const getNodeClass = (node: FlowElement) => {
+    return `${
+      node.id.includes(entityLineage.entity.id) && !isEditMode
+        ? 'leaf-node core'
+        : 'leaf-node'
+    }`;
+  };
+
   const selectedEntityHandler = (entity: EntityReference) => {
     setSelectedEntity(entity);
   };
@@ -232,7 +240,10 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
     setElements((prevElements) => {
       return prevElements.map((el) => {
         if (el.id === selectedNode.id) {
-          return { ...el, className: 'leaf-node' };
+          return {
+            ...el,
+            className: getNodeClass(el),
+          };
         } else {
           return el;
         }
@@ -317,7 +328,10 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
           if (preEl.id === el.id) {
             return { ...preEl, className: `${preEl.className} selected-node` };
           } else {
-            return { ...preEl, className: 'leaf-node' };
+            return {
+              ...preEl,
+              className: getNodeClass(preEl),
+            };
           }
         });
       });
@@ -337,7 +351,10 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
             data: { ...preEl.data, columns: tableColumns },
           };
         } else {
-          return { ...preEl, className: 'leaf-node' };
+          return {
+            ...preEl,
+            className: getNodeClass(preEl),
+          };
         }
       })
     );

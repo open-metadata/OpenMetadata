@@ -265,6 +265,7 @@ class OMetaModelTest(TestCase):
                 MlHyperParameter(name="regularisation", value="0.5"),
                 MlHyperParameter(name="random", value="hello"),
             ],
+            target="myTarget",
         )
 
         res = self.metadata.create_or_update(data=model)

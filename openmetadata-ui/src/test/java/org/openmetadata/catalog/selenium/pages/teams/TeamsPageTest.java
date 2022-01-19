@@ -26,11 +26,13 @@ import org.openmetadata.catalog.selenium.events.Events;
 import org.openmetadata.catalog.selenium.properties.Property;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.interactions.Actions;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
+import org.testng.Assert;
 
 @Order(2)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
@@ -131,6 +133,53 @@ public class TeamsPageTest {
     Thread.sleep(waitTime);
     Events.click(webDriver, By.cssSelector("[data-testid='assets']"));
     Events.click(webDriver, By.cssSelector("[data-testid='user-card-container']"));
+  }
+
+  @Test
+  @Order(6)
+  public void ownerNameIsConsistentCheck() throws InterruptedException {
+    openTeamsPage();
+    Events.click(webDriver, By.xpath("//*[text()[contains(.,'" + teamDisplayName + "')]] "));
+    Thread.sleep(waitTime);
+    Events.click(webDriver, By.cssSelector("[data-testid='assets']"));
+    Events.click(webDriver, By.cssSelector("[data-testid='user-card-container']"));
+    Thread.sleep(2000);
+    String ownerName = webDriver.findElement(By.xpath("//a[@data-testid='owner-link']/span")).getAttribute("innerHTML");
+    Events.click(webDriver, By.xpath("(//li[@data-testid='breadcrumb-link'][2])/a"));
+    Thread.sleep(2000);
+    WebElement displayName = webDriver.findElement(By.xpath("//*[text()[contains(.,'" + teamDisplayName + "')]] "));
+    if (displayName.isDisplayed()) {
+      Assert.assertEquals(ownerName, teamDisplayName);
+    } else {
+      Events.click(webDriver, By.cssSelector("[data-testid='next']"));
+      Assert.assertEquals(ownerName, teamDisplayName);
+    }
+  }
+
+  @Test
+  @Order(7)
+  public void checkTeamsFilterCount() throws InterruptedException {
+    openTeamsPage();
+    for (int i = 0; i < 5; i++) {
+      Events.click(webDriver, By.cssSelector("[data-testid='add-teams']")); // add team
+      Events.sendKeys(webDriver, By.name("name"), faker.name().firstName()); // name
+      Events.sendKeys(webDriver, By.name("displayName"), faker.name().lastName()); // displayname
+      Events.sendKeys(webDriver, By.xpath(enterDescription), faker.address().toString());
+      Events.click(webDriver, By.cssSelector("[data-testid='boldButton']"));
+      Events.click(webDriver, By.cssSelector("[data-testid='italicButton']"));
+      Events.click(webDriver, By.cssSelector("[data-testid='linkButton']"));
+      Events.click(webDriver, By.cssSelector("[data-testid='saveButton']"));
+    }
+    Thread.sleep(2000);
+    Object teamsListCount = webDriver.findElements(By.xpath("//div[@id='left-panel']//div")).size() - 1;
+    Thread.sleep(2000);
+    webDriver.navigate().back();
+    Thread.sleep(2000);
+    String teamsFilterCount =
+        webDriver
+            .findElement(By.xpath("//div[@data-testid='terms-summary']//span[@data-testid='filter-count']"))
+            .getAttribute("innerHTML");
+    Assert.assertEquals(teamsFilterCount, teamsListCount.toString());
   }
 
   @AfterEach

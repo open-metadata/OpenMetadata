@@ -427,6 +427,7 @@ export const getInfoElements = (data: ExtraInfo) => {
           {data.isLink ? (
             <a
               className="link-text"
+              data-testid="owner-link"
               href={data.value as string}
               rel="noopener noreferrer"
               target={data.openInNewTab ? '_blank' : '_self'}>

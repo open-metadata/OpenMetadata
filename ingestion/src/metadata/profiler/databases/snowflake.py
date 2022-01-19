@@ -11,13 +11,13 @@
 
 from typing import Optional
 
-from openmetadata.common.database_common import (
+from metadata.ingestion.source.snowflake import SnowflakeConfig
+from metadata.profiler.common.database_common import (
     DatabaseCommon,
-    SQLConnectionConfig,
     SQLExpressions,
     register_custom_type,
 )
-from openmetadata.profiler.profiler_metadata import SupportedDataType
+from metadata.profiler.profiler_metadata import SupportedDataType
 
 register_custom_type(
     ["VARCHAR", "CHAR", "CHARACTER", "STRING", "TEXT"],
@@ -57,35 +57,13 @@ register_custom_type(
 )
 
 
-class SnowflakeConnectionConfig(SQLConnectionConfig):
-    scheme = "snowflake"
-    account: str
-    database: str  # database is required
-    warehouse: Optional[str]
-    role: Optional[str]
-    duration: Optional[int]
-    service_type = "Snowflake"
-
-    def get_connection_url(self):
-        connect_string = super().get_connection_url()
-        options = {
-            "account": self.account,
-            "warehouse": self.warehouse,
-            "role": self.role,
-        }
-        params = "&".join(f"{key}={value}" for (key, value) in options.items() if value)
-        if params:
-            connect_string = f"{connect_string}?{params}"
-        return connect_string
-
-
 class SnowflakeSQLExpressions(SQLExpressions):
     count_conditional_expr = "COUNT(CASE WHEN {} THEN 1 END) AS _"
     regex_like_pattern_expr = "{} regexp '{}'"
 
 
 class Snowflake(DatabaseCommon):
-    config: SnowflakeConnectionConfig = None
+    config: SnowflakeConfig = None
     sql_exprs: SnowflakeSQLExpressions = SnowflakeSQLExpressions()
 
     def __init__(self, config):
@@ -94,5 +72,5 @@ class Snowflake(DatabaseCommon):
 
     @classmethod
     def create(cls, config_dict):
-        config = SnowflakeConnectionConfig.parse_obj(config_dict)
+        config = SnowflakeConfig.parse_obj(config_dict)
         return cls(config)

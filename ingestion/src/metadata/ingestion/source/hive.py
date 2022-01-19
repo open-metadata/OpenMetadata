@@ -12,10 +12,12 @@
 import re
 from typing import Optional
 
-from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
-from metadata.ingestion.source.sql_source import SQLConnectionConfig, SQLSource
 from pyhive.sqlalchemy_hive import HiveDialect, _type_map
 from sqlalchemy import types, util
+
+from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
+from metadata.ingestion.source.sql_source import SQLSource
+from metadata.ingestion.source.sql_source_common import SQLConnectionConfig
 
 complex_data_types = ["struct", "map", "array", "union"]
 

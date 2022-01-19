@@ -10,20 +10,10 @@
 #  limitations under the License.
 import logging
 
-from openmetadata.common.database_common import (
-    DatabaseCommon,
-    SQLConnectionConfig,
-    SQLExpressions,
-)
+from metadata.ingestion.source.postgres import PostgresConfig
+from metadata.profiler.common.database_common import DatabaseCommon, SQLExpressions
 
 logger = logging.getLogger(__name__)
-
-
-class PostgresConnectionConfig(SQLConnectionConfig):
-    scheme = "postgres+psycopg2"
-
-    def get_connection_url(self):
-        return super().get_connection_url()
 
 
 class PostgresSQLExpressions(SQLExpressions):
@@ -31,7 +21,7 @@ class PostgresSQLExpressions(SQLExpressions):
 
 
 class Postgres(DatabaseCommon):
-    config: PostgresConnectionConfig = None
+    config: PostgresConfig = None
     sql_exprs: PostgresSQLExpressions = PostgresSQLExpressions()
 
     def __init__(self, config):
@@ -40,12 +30,12 @@ class Postgres(DatabaseCommon):
 
     @classmethod
     def create(cls, config_dict):
-        config = PostgresConnectionConfig.parse_obj(config_dict)
+        config = PostgresConfig.parse_obj(config_dict)
         return cls(config)
 
-    def qualify_table_name(self, table_name: str) -> str:
-        if self.config.db_schema:
-            return f'"{self.config.db_schema}"."{table_name}"'
+    def qualify_table_name(self, table_name: str, schema_name: str) -> str:
+        if schema_name:
+            return f'"{schema_name}"."{table_name}"'
         return f'"{table_name}"'
 
     def qualify_column_name(self, column_name: str):
