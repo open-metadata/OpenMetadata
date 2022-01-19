@@ -17,13 +17,12 @@ import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.container.ContainerRequestFilter;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.UriInfo;
-import org.openmetadata.catalog.security.auth.CatalogSecurityContext;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.catalog.security.auth.CatalogSecurityContext;
 
 @Slf4j
 public class NoopFilter implements ContainerRequestFilter {
   @Context private UriInfo uriInfo;
-
 
   public void filter(ContainerRequestContext containerRequestContext) {
     CatalogPrincipal catalogPrincipal = new CatalogPrincipal("anonymous");

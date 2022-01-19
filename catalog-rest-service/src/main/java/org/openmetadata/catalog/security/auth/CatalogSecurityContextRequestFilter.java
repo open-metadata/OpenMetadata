@@ -20,11 +20,10 @@ import javax.ws.rs.container.ContainerRequestFilter;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.ext.Provider;
-import org.openmetadata.catalog.security.AuthenticationException;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.catalog.security.AuthenticationException;
 
 @Slf4j
-
 @Provider
 public class CatalogSecurityContextRequestFilter implements ContainerRequestFilter {
 
