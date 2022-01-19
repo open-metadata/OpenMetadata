@@ -64,19 +64,19 @@ class SQLSourceStatus(SourceStatus):
         logger.info("Table Scanned: {}".format(table_name))
 
     def filter(
-            self, table_name: str, err: str, dataset_name: str = None, col_type: str = None
+        self, table_name: str, err: str, dataset_name: str = None, col_type: str = None
     ) -> None:
         self.filtered.append(table_name)
         logger.warning("Dropped Table {} due to {}".format(table_name, err))
 
 
 def build_sql_source_connection_url(
-        host_port: str,
-        scheme: str,
-        username: Optional[str] = None,
-        password: Optional[SecretStr] = None,
-        database: Optional[str] = None,
-        options: dict = {},
+    host_port: str,
+    scheme: str,
+    username: Optional[str] = None,
+    password: Optional[SecretStr] = None,
+    database: Optional[str] = None,
+    options: dict = {},
 ) -> str:
     url = f"{scheme}://"
     if username is not None:
@@ -152,10 +152,10 @@ def _get_table_description(schema: str, table: str, inspector: Inspector) -> str
 
 class SQLSource(Source[OMetaDatabaseAndTable]):
     def __init__(
-            self,
-            config: SQLConnectionConfig,
-            metadata_config: MetadataServerConfig,
-            ctx: WorkflowContext,
+        self,
+        config: SQLConnectionConfig,
+        metadata_config: MetadataServerConfig,
+        ctx: WorkflowContext,
     ):
         super().__init__(ctx)
         self.config = config
@@ -199,7 +199,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
 
     @classmethod
     def create(
-            cls, config_dict: dict, metadata_config_dict: dict, ctx: WorkflowContext
+        cls, config_dict: dict, metadata_config_dict: dict, ctx: WorkflowContext
     ):
         pass
 
@@ -207,7 +207,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         return sa_type
 
     def standardize_schema_table_names(
-            self, schema: str, table: str
+        self, schema: str, table: str
     ) -> Tuple[str, str]:
         return schema, table
 
@@ -242,7 +242,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                 yield from self.fetch_views(inspector, schema)
 
     def fetch_tables(
-            self, inspector: Inspector, schema: str
+        self, inspector: Inspector, schema: str
     ) -> Iterable[OMetaDatabaseAndTable]:
         for table_name in inspector.get_table_names(schema):
             try:
@@ -299,7 +299,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                 continue
 
     def fetch_views(
-            self, inspector: Inspector, schema: str
+        self, inspector: Inspector, schema: str
     ) -> Iterable[OMetaDatabaseAndTable]:
         for view_name in inspector.get_view_names(schema):
             try:
@@ -420,7 +420,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         return None
 
     def _parse_data_model_columns(
-            self, model_name: str, mnode: Dict, cnode: Dict
+        self, model_name: str, mnode: Dict, cnode: Dict
     ) -> [Column]:
         columns = []
         ccolumns = cnode.get("columns")
@@ -458,7 +458,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         return raw_data_type
 
     def _get_columns(
-            self, schema: str, table: str, inspector: Inspector
+        self, schema: str, table: str, inspector: Inspector
     ) -> List[Column]:
         pk_constraints = inspector.get_pk_constraint(table, schema)
         pk_columns = (
@@ -493,12 +493,12 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                     column["raw_data_type"] = self.parse_raw_data_type(
                         column["raw_data_type"]
                     )
-                    parsed_string = ColumnTypeParser._parse_datatype_string(column["raw_data_type"])
+                    parsed_string = ColumnTypeParser._parse_datatype_string(
+                        column["raw_data_type"]
+                    )
                     parsed_string["name"] = column["name"]
                 else:
-                    col_type = get_column_type(
-                        column["type"]
-                    )
+                    col_type = get_column_type(column["type"])
                     if col_type == "ARRAY":
                         if re.match(r"(?:\w*)(?:\()(\w*)(?:.*)", str(column["type"])):
                             arr_data_type = re.match(
@@ -563,8 +563,8 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                             else column["type"].length
                         )
                     elif (
-                            "arrayDataType" in column
-                            and column["arrayDataType"] is not None
+                        "arrayDataType" in column
+                        and column["arrayDataType"] is not None
                     ):
                         parsed_string["arrayDataType"] = get_column_type(
                             column["arrayDataType"]
@@ -572,9 +572,8 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                         parsed_string[
                             "dataTypeDisplay"
                         ] = f"{repr(column['type']).replace('(', '<').replace(')', '>').lower()}"
-                    print(parsed_string)
-                    if parsed_string['dataType'].upper() == "ARRAY":
-                        parsed_string['arrayDataType'] = "BYTES"
+                    if parsed_string["dataType"].upper() == "ARRAY":
+                        parsed_string["arrayDataType"] = "BYTES"
                         parsed_string["dataTypeDisplay"] = "array<BYTES>"
                     col_dict = Column(**parsed_string)
                     om_column = col_dict
