@@ -21,7 +21,6 @@ import com.lmax.disruptor.LifecycleAware;
 import java.io.IOException;
 import java.net.URI;
 import java.net.UnknownHostException;
-import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -79,7 +78,7 @@ public class WebhookRepository extends EntityRepository<Webhook> {
   }
 
   @Override
-  public Webhook setFields(Webhook entity, Fields fields) throws IOException, ParseException {
+  public Webhook setFields(Webhook entity, Fields fields) throws IOException {
     return entity; // No fields to set
   }
 

@@ -13,8 +13,6 @@
 
 package org.openmetadata.catalog.resources.databases;
 
-import static org.openmetadata.catalog.Entity.helper;
-
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -157,7 +155,7 @@ public class TableResource {
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)
-      throws IOException, ParseException, GeneralSecurityException {
+      throws IOException, GeneralSecurityException {
     RestUtil.validateCursors(before, after);
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
 
@@ -199,7 +197,7 @@ public class TableResource {
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)
-      throws IOException, ParseException {
+      throws IOException {
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
     return addHref(uriInfo, dao.get(uriInfo, id, fields, include));
   }
@@ -233,7 +231,7 @@ public class TableResource {
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)
-      throws IOException, ParseException {
+      throws IOException {
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
     return addHref(uriInfo, dao.getByName(uriInfo, fqn, fields, include));
   }
@@ -254,7 +252,7 @@ public class TableResource {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "table Id", schema = @Schema(type = "string")) @PathParam("id") String id)
-      throws IOException, ParseException {
+      throws IOException {
     return dao.listVersions(id);
   }
 
@@ -282,7 +280,7 @@ public class TableResource {
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version)
-      throws IOException, ParseException {
+      throws IOException {
     return dao.getVersion(id, version);
   }
 
@@ -299,7 +297,7 @@ public class TableResource {
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTable create)
-      throws IOException, ParseException {
+      throws IOException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Table table = getTable(securityContext, create);
     table = addHref(uriInfo, dao.create(uriInfo, validateNewTable(table)));
@@ -320,9 +318,9 @@ public class TableResource {
       })
   public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTable create)
-      throws IOException, ParseException {
+      throws IOException {
     Table table = getTable(securityContext, create);
-    SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, helper(table).validateOwnerOrNull());
+    SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, table.getOwner());
     PutResponse<Table> response = dao.createOrUpdate(uriInfo, validateNewTable(table));
     addHref(uriInfo, response.getEntity());
     return response.toResponse();
@@ -349,7 +347,7 @@ public class TableResource {
                         @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
                       }))
           JsonPatch patch)
-      throws IOException, ParseException {
+      throws IOException {
     Fields fields = new Fields(FIELD_LIST, FIELDS);
     Table table = dao.get(uriInfo, id, fields);
     SecurityUtil.checkAdminRoleOrPermissions(
@@ -375,7 +373,7 @@ public class TableResource {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the table", schema = @Schema(type = "string")) @PathParam("id") String id)
-      throws IOException, ParseException {
+      throws IOException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     DeleteResponse<Table> response = dao.delete(securityContext.getUserPrincipal().getName(), id);
     return response.toResponse();
@@ -434,7 +432,7 @@ public class TableResource {
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the table", schema = @Schema(type = "string")) @PathParam("id") String id,
       TableData tableData)
-      throws IOException, ParseException {
+      throws IOException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Table table = dao.addSampleData(UUID.fromString(id), tableData);
     return addHref(uriInfo, table);
@@ -448,7 +446,7 @@ public class TableResource {
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the table", schema = @Schema(type = "string")) @PathParam("id") String id,
       TableProfile tableProfile)
-      throws IOException, ParseException {
+      throws IOException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Table table = dao.addTableProfileData(UUID.fromString(id), tableProfile);
     return addHref(uriInfo, table);
@@ -469,7 +467,7 @@ public class TableResource {
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the table", schema = @Schema(type = "string")) @PathParam("id") String id,
       @Parameter(description = "Id of the location to be added", schema = @Schema(type = "string")) String locationId)
-      throws IOException, ParseException {
+      throws IOException {
     Table table = dao.addLocation(UUID.fromString(id), UUID.fromString(locationId));
     return Response.ok().entity(table).build();
   }
@@ -482,7 +480,7 @@ public class TableResource {
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the table", schema = @Schema(type = "string")) @PathParam("id") String id,
       SQLQuery sqlQuery)
-      throws IOException, ParseException {
+      throws IOException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Table table = dao.addQuery(UUID.fromString(id), sqlQuery);
     return addHref(uriInfo, table);
@@ -499,7 +497,7 @@ public class TableResource {
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the table", schema = @Schema(type = "string")) @PathParam("id") String id,
       DataModel dataModel)
-      throws IOException, ParseException {
+      throws IOException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Table table = dao.addDataModel(UUID.fromString(id), dataModel);
     return addHref(uriInfo, table);
@@ -531,7 +529,7 @@ public class TableResource {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the table", schema = @Schema(type = "string")) @PathParam("id") String id)
-      throws IOException, ParseException {
+      throws IOException {
     Fields fields = new Fields(FIELD_LIST, "location");
     dao.deleteLocation(id);
     Table table = dao.get(uriInfo, id, fields);

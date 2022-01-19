@@ -20,7 +20,6 @@ import static org.openmetadata.catalog.util.EntityUtil.taskMatch;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.net.URI;
-import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -28,7 +27,6 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Pipeline;
 import org.openmetadata.catalog.entity.services.PipelineService;
@@ -65,13 +63,8 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     return (pipeline.getService().getName() + "." + pipeline.getName());
   }
 
-  @Transaction
-  public EntityReference getOwnerReference(Pipeline pipeline) throws IOException {
-    return EntityUtil.populateOwner(daoCollection.userDAO(), daoCollection.teamDAO(), pipeline.getOwner());
-  }
-
   @Override
-  public Pipeline setFields(Pipeline pipeline, Fields fields) throws IOException, ParseException {
+  public Pipeline setFields(Pipeline pipeline, Fields fields) throws IOException {
     pipeline.setDisplayName(pipeline.getDisplayName());
     pipeline.setService(getService(pipeline));
     pipeline.setPipelineUrl(pipeline.getPipelineUrl());
@@ -105,7 +98,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   public void prepare(Pipeline pipeline) throws IOException {
     populateService(pipeline);
     pipeline.setFullyQualifiedName(getFQN(pipeline));
-    EntityUtil.populateOwner(daoCollection.userDAO(), daoCollection.teamDAO(), pipeline.getOwner()); // Validate owner
+    helper(pipeline).populateOwner();
     pipeline.setTags(EntityUtil.addDerivedTags(daoCollection.tagDAO(), pipeline.getTags()));
   }
 
@@ -149,8 +142,8 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     return new PipelineUpdater(original, updated, operation);
   }
 
-  private EntityReference getService(Pipeline pipeline) throws IOException, ParseException {
-    return helper(pipeline).getContainer(PIPELINE_SERVICE);
+  private EntityReference getService(Pipeline pipeline) throws IOException {
+    return helper(pipeline).getContainer(PIPELINE_SERVICE).toEntityReference();
   }
 
   private void populateService(Pipeline pipeline) throws IOException {

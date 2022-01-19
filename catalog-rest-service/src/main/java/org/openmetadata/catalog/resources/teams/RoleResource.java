@@ -26,7 +26,6 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
-import java.text.ParseException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
@@ -147,7 +146,7 @@ public class RoleResource {
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)
-      throws IOException, GeneralSecurityException, ParseException {
+      throws IOException, GeneralSecurityException {
     RestUtil.validateCursors(before, after);
     EntityUtil.Fields fields = new EntityUtil.Fields(FIELD_LIST, fieldsParam);
 
@@ -177,7 +176,7 @@ public class RoleResource {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "role Id", schema = @Schema(type = "string")) @PathParam("id") String id)
-      throws IOException, ParseException {
+      throws IOException {
     return dao.listVersions(id);
   }
 
@@ -210,7 +209,7 @@ public class RoleResource {
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)
-      throws IOException, ParseException {
+      throws IOException {
     EntityUtil.Fields fields = new EntityUtil.Fields(FIELD_LIST, fieldsParam);
     return addHref(uriInfo, dao.get(uriInfo, id, fields, include));
   }
@@ -244,7 +243,7 @@ public class RoleResource {
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)
-      throws IOException, ParseException {
+      throws IOException {
     EntityUtil.Fields fields = new EntityUtil.Fields(FIELD_LIST, fieldsParam);
     return addHref(uriInfo, dao.getByName(uriInfo, name, fields, include));
   }
@@ -273,7 +272,7 @@ public class RoleResource {
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version)
-      throws IOException, ParseException {
+      throws IOException {
     return dao.getVersion(id, version);
   }
 
@@ -291,7 +290,7 @@ public class RoleResource {
       })
   public Response create(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateRole createRole)
-      throws IOException, ParseException {
+      throws IOException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Role role = getRole(createRole, securityContext);
     role = addHref(uriInfo, dao.create(uriInfo, role));
@@ -312,7 +311,7 @@ public class RoleResource {
       })
   public Response createOrUpdateRole(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateRole createRole)
-      throws IOException, ParseException {
+      throws IOException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Role role = getRole(createRole, securityContext);
     RestUtil.PutResponse<Role> response = dao.createOrUpdate(uriInfo, role);
@@ -341,7 +340,7 @@ public class RoleResource {
                         @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
                       }))
           JsonPatch patch)
-      throws IOException, ParseException {
+      throws IOException {
 
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     PatchResponse<Role> response =
@@ -361,7 +360,7 @@ public class RoleResource {
         @ApiResponse(responseCode = "404", description = "Role for instance {id} is not found")
       })
   public Response delete(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("id") String id)
-      throws IOException, ParseException {
+      throws IOException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     // A role has a strong relationship with a policy. Recursively delete the policy that the role contains, to avoid
     // leaving a dangling policy without a role.

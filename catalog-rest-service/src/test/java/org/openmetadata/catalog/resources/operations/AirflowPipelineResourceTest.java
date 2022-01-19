@@ -37,7 +37,6 @@ import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
-import java.text.ParseException;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
@@ -366,7 +365,7 @@ public class AirflowPipelineResourceTest extends EntityOperationsResourceTest<Ai
 
   @Test
   void post_AirflowWithDatabaseServiceMetadata_GeneratedIngestionPipelineConfig_200_ok(TestInfo test)
-      throws IOException, ParseException {
+      throws IOException {
     CreateAirflowPipeline request =
         create(test)
             .withPipelineType(PipelineType.METADATA)
@@ -397,7 +396,7 @@ public class AirflowPipelineResourceTest extends EntityOperationsResourceTest<Ai
     assertEquals(expectedScheduleInterval, ingestion.getScheduleInterval());
     validateGeneratedAirflowPipelineConfig(airflowPipeline);
     // Update and connector orgs and options to database connection
-    DatabaseService databaseService = helper(airflowPipeline).findEntity("service", DATABASE_SERVICE);
+    DatabaseService databaseService = helper(airflowPipeline).getContainer(DATABASE_SERVICE).toEntity();
     DatabaseConnection databaseConnection = databaseService.getDatabaseConnection();
     ConnectionArguments connectionArguments =
         new ConnectionArguments()
@@ -558,10 +557,9 @@ public class AirflowPipelineResourceTest extends EntityOperationsResourceTest<Ai
     }
   }
 
-  private void validateGeneratedAirflowPipelineConfig(AirflowPipeline airflowPipeline)
-      throws IOException, ParseException {
+  private void validateGeneratedAirflowPipelineConfig(AirflowPipeline airflowPipeline) throws IOException {
     IngestionAirflowPipeline ingestionPipeline = AirflowUtils.toIngestionPipeline(airflowPipeline, AIRFLOW_CONFIG);
-    DatabaseService databaseService = helper(airflowPipeline).findEntity("service", DATABASE_SERVICE);
+    DatabaseService databaseService = helper(airflowPipeline).getContainer(DATABASE_SERVICE).toEntity();
     DatabaseConnection databaseConnection = databaseService.getDatabaseConnection();
     DatabaseServiceMetadataPipeline metadataPipeline =
         JsonUtils.convertValue(airflowPipeline.getPipelineConfig(), DatabaseServiceMetadataPipeline.class);
@@ -596,8 +594,8 @@ public class AirflowPipelineResourceTest extends EntityOperationsResourceTest<Ai
     }
   }
 
-  private void listDatabaseServicePipelines(AirflowPipeline airflowPipeline) throws IOException, ParseException {
-    DatabaseService databaseService = helper(airflowPipeline).findEntity("service", DATABASE_SERVICE);
+  private void listDatabaseServicePipelines(AirflowPipeline airflowPipeline) throws IOException {
+    DatabaseService databaseService = helper(airflowPipeline).getContainer(DATABASE_SERVICE).toEntity();
     DatabaseServiceResourceTest.getResource("services/databaseServices");
   }
 }

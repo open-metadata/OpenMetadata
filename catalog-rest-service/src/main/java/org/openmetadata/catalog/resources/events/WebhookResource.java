@@ -22,7 +22,6 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
-import java.text.ParseException;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -121,7 +120,7 @@ public class WebhookResource {
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)
-      throws IOException, ParseException, GeneralSecurityException {
+      throws IOException, GeneralSecurityException {
     RestUtil.validateCursors(before, after);
     ResultList<Webhook> webhooks;
     if (before != null) { // Reverse paging
@@ -156,7 +155,7 @@ public class WebhookResource {
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)
-      throws IOException, GeneralSecurityException, ParseException {
+      throws IOException, GeneralSecurityException {
     return dao.get(uriInfo, id, Fields.EMPTY_FIELDS, include);
   }
 
@@ -183,7 +182,7 @@ public class WebhookResource {
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)
-      throws IOException, ParseException {
+      throws IOException {
     return dao.getByName(uriInfo, fqn, Fields.EMPTY_FIELDS, include);
   }
 
@@ -203,7 +202,7 @@ public class WebhookResource {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "webhook Id", schema = @Schema(type = "string")) @PathParam("id") String id)
-      throws IOException, ParseException {
+      throws IOException {
     return dao.listVersions(id);
   }
 
@@ -231,7 +230,7 @@ public class WebhookResource {
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version)
-      throws IOException, ParseException {
+      throws IOException {
     return dao.getVersion(id, version);
   }
 
@@ -249,7 +248,7 @@ public class WebhookResource {
       })
   public Response createWebhook(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateWebhook create)
-      throws IOException, ParseException {
+      throws IOException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Webhook webhook = getWebhook(securityContext, create);
     webhook.setStatus(Boolean.TRUE.equals(webhook.getEnabled()) ? Status.STARTED : Status.NOT_STARTED);
@@ -272,7 +271,7 @@ public class WebhookResource {
       })
   public Response updateWebhook(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateWebhook create)
-      throws IOException, ParseException, InterruptedException {
+      throws IOException, InterruptedException {
     // TODO
     //    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     //    Table table = getTable(securityContext, create);
@@ -301,7 +300,7 @@ public class WebhookResource {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "webhook Id", schema = @Schema(type = "string")) @PathParam("id") String id)
-      throws IOException, GeneralSecurityException, ParseException, InterruptedException {
+      throws IOException, GeneralSecurityException, InterruptedException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     DeleteResponse<Webhook> response = dao.delete(securityContext.getUserPrincipal().getName(), id);
     dao.deleteWebhookPublisher(UUID.fromString(id));

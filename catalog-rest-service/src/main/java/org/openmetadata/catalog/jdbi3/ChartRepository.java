@@ -19,7 +19,6 @@ import static org.openmetadata.catalog.Entity.helper;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.net.URI;
-import java.text.ParseException;
 import java.util.List;
 import java.util.UUID;
 import org.openmetadata.catalog.Entity;
@@ -56,12 +55,12 @@ public class ChartRepository extends EntityRepository<Chart> {
   }
 
   @Override
-  public void prepare(Chart chart) throws IOException, ParseException {
-    DashboardService dashboardService = helper(chart).findEntity("service", DASHBOARD_SERVICE);
+  public void prepare(Chart chart) throws IOException {
+    DashboardService dashboardService = helper(chart).get("service", DASHBOARD_SERVICE).toEntity();
     chart.setService(helper(dashboardService).toEntityReference());
     chart.setServiceType(dashboardService.getServiceType());
     chart.setFullyQualifiedName(getFQN(chart));
-    chart.setOwner(helper(chart).validateOwnerOrNull());
+    helper(chart).populateOwner();
     chart.setTags(EntityUtil.addDerivedTags(daoCollection.tagDAO(), chart.getTags()));
   }
 
@@ -97,7 +96,7 @@ public class ChartRepository extends EntityRepository<Chart> {
   }
 
   @Override
-  public Chart setFields(Chart chart, Fields fields) throws IOException, ParseException {
+  public Chart setFields(Chart chart, Fields fields) throws IOException {
     chart.setService(getService(chart));
     chart.setOwner(fields.contains("owner") ? getOwner(chart) : null);
     chart.setFollowers(fields.contains("followers") ? getFollowers(chart) : null);
@@ -120,8 +119,8 @@ public class ChartRepository extends EntityRepository<Chart> {
     return new ChartEntityInterface(entity);
   }
 
-  private EntityReference getService(Chart chart) throws IOException, ParseException {
-    return helper(chart).getContainer(DASHBOARD_SERVICE);
+  private EntityReference getService(Chart chart) throws IOException {
+    return helper(chart).getContainer(DASHBOARD_SERVICE).toEntityReference();
   }
 
   public static class ChartEntityInterface implements EntityInterface<Chart> {

@@ -22,7 +22,6 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
-import java.text.ParseException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
@@ -123,7 +122,7 @@ public class DatabaseServiceResource {
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)
-      throws IOException, GeneralSecurityException, ParseException {
+      throws IOException, GeneralSecurityException {
     RestUtil.validateCursors(before, after);
     EntityUtil.Fields fields = new EntityUtil.Fields(FIELD_LIST, fieldsParam);
     if (before != null) {
@@ -161,7 +160,7 @@ public class DatabaseServiceResource {
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)
-      throws IOException, ParseException {
+      throws IOException {
     EntityUtil.Fields fields = new EntityUtil.Fields(FIELD_LIST, fieldsParam);
     return dao.get(uriInfo, id, fields, include);
   }
@@ -195,7 +194,7 @@ public class DatabaseServiceResource {
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)
-      throws IOException, ParseException {
+      throws IOException {
     EntityUtil.Fields fields = new EntityUtil.Fields(FIELD_LIST, fieldsParam);
     return dao.getByName(uriInfo, name, fields, include);
   }
@@ -216,7 +215,7 @@ public class DatabaseServiceResource {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "database service Id", schema = @Schema(type = "string")) @PathParam("id") String id)
-      throws IOException, ParseException {
+      throws IOException {
     return dao.listVersions(id);
   }
 
@@ -245,7 +244,7 @@ public class DatabaseServiceResource {
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version)
-      throws IOException, ParseException {
+      throws IOException {
     return dao.getVersion(id, version);
   }
 
@@ -266,7 +265,7 @@ public class DatabaseServiceResource {
       })
   public Response create(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDatabaseService create)
-      throws IOException, ParseException {
+      throws IOException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     DatabaseService service = getService(create, securityContext);
     dao.create(uriInfo, service);
@@ -290,7 +289,7 @@ public class DatabaseServiceResource {
       })
   public Response update(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDatabaseService update)
-      throws IOException, ParseException {
+      throws IOException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     DatabaseService service = getService(update, securityContext);
     PutResponse<DatabaseService> response = dao.createOrUpdate(uriInfo, service, true);
@@ -317,7 +316,7 @@ public class DatabaseServiceResource {
           boolean recursive,
       @Parameter(description = "Id of the database service", schema = @Schema(type = "string")) @PathParam("id")
           String id)
-      throws IOException, ParseException {
+      throws IOException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     DeleteResponse<DatabaseService> response = dao.delete(securityContext.getUserPrincipal().getName(), id, recursive);
     return response.toResponse();

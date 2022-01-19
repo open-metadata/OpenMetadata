@@ -19,11 +19,9 @@ import static org.openmetadata.catalog.Entity.helper;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.net.URI;
-import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Topic;
 import org.openmetadata.catalog.entity.services.MessagingService;
@@ -58,18 +56,13 @@ public class TopicRepository extends EntityRepository<Topic> {
         true);
   }
 
-  @Transaction
-  public EntityReference getOwnerReference(Topic topic) throws IOException {
-    return EntityUtil.populateOwner(daoCollection.userDAO(), daoCollection.teamDAO(), topic.getOwner());
-  }
-
   @Override
-  public void prepare(Topic topic) throws IOException, ParseException {
-    MessagingService messagingService = helper(topic).findEntity("service", MESSAGING_SERVICE);
+  public void prepare(Topic topic) throws IOException {
+    MessagingService messagingService = helper(topic).get("service", MESSAGING_SERVICE).toEntity();
     topic.setService(helper(messagingService).toEntityReference());
     topic.setServiceType(messagingService.getServiceType());
     topic.setFullyQualifiedName(getFQN(topic));
-    topic.setOwner(helper(topic).validateOwnerOrNull());
+    helper(topic).populateOwner();
     topic.setTags(EntityUtil.addDerivedTags(daoCollection.tagDAO(), topic.getTags()));
   }
 
@@ -97,7 +90,7 @@ public class TopicRepository extends EntityRepository<Topic> {
   }
 
   @Override
-  public Topic setFields(Topic topic, Fields fields) throws IOException, ParseException {
+  public Topic setFields(Topic topic, Fields fields) throws IOException {
     topic.setService(getService(topic));
     topic.setOwner(fields.contains("owner") ? getOwner(topic) : null);
     topic.setFollowers(fields.contains("followers") ? getFollowers(topic) : null);
@@ -120,8 +113,8 @@ public class TopicRepository extends EntityRepository<Topic> {
     return new TopicEntityInterface(entity);
   }
 
-  private EntityReference getService(Topic topic) throws IOException, ParseException {
-    return helper(topic).getContainer(MESSAGING_SERVICE);
+  private EntityReference getService(Topic topic) throws IOException {
+    return helper(topic).getContainer(MESSAGING_SERVICE).toEntityReference();
   }
 
   public void setService(Topic topic, EntityReference service) {

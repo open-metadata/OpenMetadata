@@ -14,6 +14,7 @@
 package org.openmetadata.catalog.jdbi3;
 
 import static org.openmetadata.catalog.Entity.helper;
+import static org.openmetadata.catalog.exception.CatalogExceptionMessage.danglingLink;
 import static org.openmetadata.catalog.jdbi3.Relationship.FOLLOWS;
 import static org.openmetadata.catalog.jdbi3.Relationship.HAS;
 import static org.openmetadata.catalog.jdbi3.Relationship.OWNS;
@@ -22,7 +23,6 @@ import static org.openmetadata.catalog.util.EntityUtil.toBoolean;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.net.URI;
-import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -31,10 +31,14 @@ import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
+import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
+import org.openmetadata.catalog.exception.EntityNotFoundCheckedExeception;
+import org.openmetadata.catalog.exception.EntityTypeNotFoundExeception;
 import org.openmetadata.catalog.resources.teams.UserResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
@@ -93,13 +97,13 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   @Transaction
-  public User getByEmail(String email, Fields fields) throws IOException, ParseException {
+  public User getByEmail(String email, Fields fields) throws IOException {
     User user = EntityUtil.validate(email, daoCollection.userDAO().findByEmail(email), User.class);
     return setFields(user, fields);
   }
 
   @Override
-  public User setFields(User user, Fields fields) throws IOException, ParseException {
+  public User setFields(User user, Fields fields) throws IOException {
     user.setProfile(fields.contains("profile") ? user.getProfile() : null);
     user.setTeams(fields.contains("teams") ? getTeams(user) : null);
     user.setRoles(fields.contains("roles") ? getRoles(user) : null);
@@ -111,20 +115,28 @@ public class UserRepository extends EntityRepository<User> {
   @Override
   public void restorePatchAttributes(User original, User updated) {}
 
-  private List<EntityReference> getOwns(User user) throws IOException, ParseException {
+  private List<EntityReference> getOwns(User user) throws IOException {
     // Compile entities owned by the user
     List<EntityReference> ownedEntities =
         daoCollection
             .relationshipDAO()
-            .findTo(user.getId().toString(), Entity.USER, OWNS.ordinal(), toBoolean(toInclude(user)));
+            .findTo(user.getId().toString(), Entity.USER, OWNS.ordinal(), helper(user).toBoolean());
 
     // Compile entities owned by the team the user belongs to
-    List<EntityReference> teams = user.getTeams() == null ? getTeams(user) : user.getTeams();
-    for (EntityReference team : teams) {
-      ownedEntities.addAll(
-          daoCollection
-              .relationshipDAO()
-              .findTo(team.getId().toString(), Entity.TEAM, OWNS.ordinal(), toBoolean(helper(team).isDeleted())));
+    // A non-deleted user cannot have a deleted team.
+    List<EntityReference> refs = user.getTeams() == null ? getTeams(user) : user.getTeams();
+    for (EntityReference ref : refs) {
+      Team team;
+      try {
+        // A deleted user can belong to a deleted or non-deleted team
+        team = helper(ref, Include.ALL).toEntity();
+        ownedEntities.addAll(
+            daoCollection
+                .relationshipDAO()
+                .findTo(ref.getId().toString(), Entity.TEAM, OWNS.ordinal(), helper(team).toBoolean()));
+      } catch (EntityTypeNotFoundExeception | EntityNotFoundCheckedExeception e) {
+        LOG.error(danglingLink(helper(user).toEntityReference(), ref));
+      }
     }
     // Populate details in entity reference
     return EntityUtil.populateEntityReferences(ownedEntities);

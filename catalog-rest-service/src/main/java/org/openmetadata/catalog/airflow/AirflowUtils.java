@@ -17,7 +17,6 @@ import static org.openmetadata.catalog.Entity.DATABASE_SERVICE;
 import static org.openmetadata.catalog.Entity.helper;
 
 import java.io.IOException;
-import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -61,8 +60,8 @@ public final class AirflowUtils {
   private AirflowUtils() {}
 
   public static OpenMetadataIngestionComponent makeOpenMetadataDatasourceComponent(AirflowPipeline airflowPipeline)
-      throws IOException, ParseException {
-    DatabaseService databaseService = helper(airflowPipeline).findEntity("service", DATABASE_SERVICE);
+      throws IOException {
+    DatabaseService databaseService = helper(airflowPipeline).getContainer(DATABASE_SERVICE).toEntity();
     DatabaseConnection databaseConnection = databaseService.getDatabaseConnection();
     PipelineConfig pipelineConfig = airflowPipeline.getPipelineConfig();
     Map<String, Object> dbConfig = new HashMap<>();
@@ -125,7 +124,7 @@ public final class AirflowUtils {
   }
 
   public static OpenMetadataIngestionConfig buildDatabaseIngestion(
-      AirflowPipeline airflowPipeline, AirflowConfiguration airflowConfiguration) throws IOException, ParseException {
+      AirflowPipeline airflowPipeline, AirflowConfiguration airflowConfiguration) throws IOException {
     return OpenMetadataIngestionConfig.builder()
         .source(makeOpenMetadataDatasourceComponent(airflowPipeline))
         .sink(makeOpenMetadataSinkComponent(airflowPipeline))
@@ -134,7 +133,7 @@ public final class AirflowUtils {
   }
 
   public static IngestionAirflowPipeline toIngestionPipeline(
-      AirflowPipeline airflowPipeline, AirflowConfiguration airflowConfiguration) throws IOException, ParseException {
+      AirflowPipeline airflowPipeline, AirflowConfiguration airflowConfiguration) throws IOException {
     Map<String, Object> taskParams = new HashMap<>();
     taskParams.put("workflow_config", buildDatabaseIngestion(airflowPipeline, airflowConfiguration));
     IngestionTaskConfig taskConfig = IngestionTaskConfig.builder().opKwargs(taskParams).build();

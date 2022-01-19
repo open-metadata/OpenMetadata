@@ -25,7 +25,6 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
-import java.text.ParseException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -159,7 +158,7 @@ public class PipelineResource {
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)
-      throws IOException, GeneralSecurityException, ParseException {
+      throws IOException, GeneralSecurityException {
     RestUtil.validateCursors(before, after);
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
 
@@ -188,7 +187,7 @@ public class PipelineResource {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "pipeline Id", schema = @Schema(type = "string")) @PathParam("id") String id)
-      throws IOException, ParseException {
+      throws IOException {
     return dao.listVersions(id);
   }
 
@@ -220,7 +219,7 @@ public class PipelineResource {
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)
-      throws IOException, ParseException {
+      throws IOException {
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
     return addHref(uriInfo, dao.get(uriInfo, id, fields, include));
   }
@@ -253,7 +252,7 @@ public class PipelineResource {
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)
-      throws IOException, ParseException {
+      throws IOException {
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
     Pipeline pipeline = dao.getByName(uriInfo, fqn, fields, include);
     return addHref(uriInfo, pipeline);
@@ -283,7 +282,7 @@ public class PipelineResource {
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version)
-      throws IOException, ParseException {
+      throws IOException {
     return dao.getVersion(id, version);
   }
 
@@ -302,7 +301,7 @@ public class PipelineResource {
       })
   public Response create(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreatePipeline create)
-      throws IOException, ParseException {
+      throws IOException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Pipeline pipeline = getPipeline(securityContext, create);
     pipeline = addHref(uriInfo, dao.create(uriInfo, pipeline));
@@ -330,7 +329,7 @@ public class PipelineResource {
                         @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
                       }))
           JsonPatch patch)
-      throws IOException, ParseException {
+      throws IOException {
     Fields fields = new Fields(FIELD_LIST, FIELDS);
     Pipeline pipeline = dao.get(uriInfo, id, fields);
     SecurityUtil.checkAdminRoleOrPermissions(
@@ -357,7 +356,7 @@ public class PipelineResource {
       })
   public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreatePipeline create)
-      throws IOException, ParseException {
+      throws IOException {
     Pipeline pipeline = getPipeline(securityContext, create);
     PutResponse<Pipeline> response = dao.createOrUpdate(uriInfo, pipeline);
     addHref(uriInfo, response.getEntity());
@@ -415,7 +414,7 @@ public class PipelineResource {
         @ApiResponse(responseCode = "404", description = "Pipeline for instance {id} is not found")
       })
   public Response delete(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("id") String id)
-      throws IOException, ParseException {
+      throws IOException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     DeleteResponse<Pipeline> response = dao.delete(securityContext.getUserPrincipal().getName(), id);
     return response.toResponse();

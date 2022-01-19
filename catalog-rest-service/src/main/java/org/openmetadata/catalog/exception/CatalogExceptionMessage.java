@@ -14,12 +14,28 @@
 package org.openmetadata.catalog.exception;
 
 import java.util.UUID;
+import org.openmetadata.catalog.type.EntityReference;
 
 public final class CatalogExceptionMessage {
   public static final String ENTITY_ALREADY_EXISTS = "Entity already exists";
   public static final String ENTITY_NAME_EMPTY = "Entity name can't be empty";
 
   private CatalogExceptionMessage() {}
+
+  public static String containerNotFound(EntityReference entityReference) {
+    return String.format("Container for %s %s not found", entityReference.getType(), entityReference.getId());
+  }
+
+  public static String danglingLink(EntityReference source, EntityReference target) {
+    return String.format(
+        "Dead link for %s %s, %s %s not found", source.getType(), source.getId(), target.getType(), target.getId());
+  }
+
+  public static String multipleSomethingFound(String something, EntityReference entityReference) {
+    return String.format(
+        "Consistency problem, multiple %s found for %s %s",
+        something, entityReference.getType(), entityReference.getId());
+  }
 
   public static String entityNotFound(String entityType, String id) {
     return String.format("%s instance for %s not found", entityType, id);
@@ -33,12 +49,26 @@ public final class CatalogExceptionMessage {
     return String.format("%s attribute %s can't be modified", entityType, attribute);
   }
 
+  public static String entityNotFound(EntityReference entityReference) {
+    return entityNotFound(entityReference.getType(), entityReference.getId());
+  }
+
+  public static String entityNotFound(String targetEntityType, String relationship, String sourceEntityType, UUID id) {
+    return String.format(
+        "The %s instance %s doesn't have a %s that `%s` it",
+        sourceEntityType, id.toString(), targetEntityType, relationship);
+  }
+
   public static String invalidField(String field) {
     return String.format("Invalid field name %s", field);
   }
 
   public static String entityTypeNotFound(String entityType) {
     return String.format("Entity type %s not found", entityType);
+  }
+
+  public static String wrongEntityType(String entity) {
+    return String.format("Entity type %s cannot be used here", entity);
   }
 
   public static String fieldIsNull(String field) {

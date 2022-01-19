@@ -331,7 +331,9 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
   public abstract Object createRequest(String name, String description, String displayName, EntityReference owner)
       throws URISyntaxException;
 
-  // Add all possible relationships to check if the entity is missing any of them after deletion
+  // Not all relationships can be created inside createRequest. A soft-deletion should keep those relationships too.
+  // Override this method to add relationships like **Table has location** or **User has Team that has Resources**
+  // You have to override #validateDeletedEntity to check if these relationships are still there after a soft deletion.
   public T beforeDeletion(TestInfo test, T entity) throws HttpResponseException {
     return entity;
   }
@@ -615,7 +617,43 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
   }
 
   @Test
-  void post_entityWithInvalidOwnerType_4xx(TestInfo test) throws URISyntaxException {
+  void post_entityWithWrongOwnerType_400(TestInfo test) throws URISyntaxException {
+    if (!supportsOwner) {
+      return;
+    }
+    Object create = createRequest(getEntityName(test), "", "", REDSHIFT_REFERENCE);
+    HttpResponseException exception =
+        assertThrows(HttpResponseException.class, () -> createEntity(create, adminAuthHeaders()));
+    TestUtils.assertResponseContains(
+        exception, BAD_REQUEST, CatalogExceptionMessage.wrongEntityType(REDSHIFT_REFERENCE.getType()));
+  }
+
+  @Test
+  void post_entityWithNonExistentOwner_400(TestInfo test) throws URISyntaxException {
+    if (!supportsOwner) {
+      return;
+    }
+    EntityReference owner = new EntityReference().withId(NON_EXISTENT_ENTITY).withType("user");
+    Object create = createRequest(getEntityName(test), "", "", owner);
+    HttpResponseException exception =
+        assertThrows(HttpResponseException.class, () -> createEntity(create, adminAuthHeaders()));
+    assertResponse(exception, BAD_REQUEST, CatalogExceptionMessage.entityNotFound(owner));
+  }
+
+  @Test
+  void post_entityWithNonExistentOwnerType_400(TestInfo test) throws URISyntaxException {
+    if (!supportsOwner) {
+      return;
+    }
+    EntityReference owner = new EntityReference().withId(TEAM1.getId()).withType("bogus"); /* No owner type is set */
+    Object create = createRequest(getEntityName(test), "", "", owner);
+    HttpResponseException exception =
+        assertThrows(HttpResponseException.class, () -> createEntity(create, adminAuthHeaders()));
+    TestUtils.assertResponseContains(exception, BAD_REQUEST, CatalogExceptionMessage.wrongEntityType("bogus"));
+  }
+
+  @Test
+  void post_entityWithNullOwnerType_400(TestInfo test) throws URISyntaxException {
     if (!supportsOwner) {
       return;
     }
@@ -624,18 +662,6 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     HttpResponseException exception =
         assertThrows(HttpResponseException.class, () -> createEntity(create, adminAuthHeaders()));
     TestUtils.assertResponseContains(exception, BAD_REQUEST, "type must not be null");
-  }
-
-  @Test
-  void post_entityWithNonExistentOwner_4xx(TestInfo test) throws URISyntaxException {
-    if (!supportsOwner) {
-      return;
-    }
-    EntityReference owner = new EntityReference().withId(NON_EXISTENT_ENTITY).withType("user");
-    Object create = createRequest(getEntityName(test), "", "", owner);
-    HttpResponseException exception =
-        assertThrows(HttpResponseException.class, () -> createEntity(create, adminAuthHeaders()));
-    assertResponse(exception, NOT_FOUND, CatalogExceptionMessage.entityNotFound(Entity.USER, NON_EXISTENT_ENTITY));
   }
 
   @Test
@@ -1203,18 +1229,19 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     }
   }
 
-  public final void deleteEntity(UUID id, Map<String, String> authHeaders) throws HttpResponseException {
-    deleteEntity(id, false, authHeaders);
+  public final T deleteEntity(UUID id, Map<String, String> authHeaders) throws HttpResponseException {
+    return deleteEntity(id, false, authHeaders);
   }
 
-  public final void deleteEntity(UUID id, boolean recursive, Map<String, String> authHeaders)
+  public final T deleteEntity(UUID id, boolean recursive, Map<String, String> authHeaders)
       throws HttpResponseException {
     WebTarget target = getResource(id);
     if (recursive) {
       target = target.queryParam("recursive", true);
     }
-    TestUtils.delete(target, entityClass, authHeaders);
+    T deleted = TestUtils.delete(target, entityClass, authHeaders);
     assertResponse(() -> getEntity(id, authHeaders), NOT_FOUND, entityNotFound(entityType, id));
+    return deleted;
   }
 
   public final T createAndCheckEntity(Object create, Map<String, String> authHeaders) throws IOException {

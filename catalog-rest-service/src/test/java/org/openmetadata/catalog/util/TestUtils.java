@@ -151,7 +151,7 @@ public final class TestUtils {
     assertEquals(expectedCode.getStatusCode(), exception.getStatusCode());
     assertTrue(
         exception.getReasonPhrase().contains(expectedReason),
-        expectedReason + " not in actual " + exception.getReasonPhrase());
+        "`" + expectedReason + "` not in actual `" + exception.getReasonPhrase() + "`");
   }
 
   public static <T> void assertEntityPagination(List<T> allEntities, ResultList<T> actual, int limit, int offset) {

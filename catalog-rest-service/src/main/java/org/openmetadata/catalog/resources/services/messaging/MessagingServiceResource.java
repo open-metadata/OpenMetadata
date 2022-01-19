@@ -22,7 +22,6 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
-import java.text.ParseException;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -119,7 +118,7 @@ public class MessagingServiceResource {
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)
-      throws IOException, ParseException, GeneralSecurityException {
+      throws IOException, GeneralSecurityException {
     RestUtil.validateCursors(before, after);
     if (before != null) { // Reverse paging
       return dao.listBefore(uriInfo, null, null, limitParam, before, include);
@@ -152,7 +151,7 @@ public class MessagingServiceResource {
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)
-      throws IOException, ParseException {
+      throws IOException {
     return dao.get(uriInfo, id, null, include);
   }
 
@@ -180,7 +179,7 @@ public class MessagingServiceResource {
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)
-      throws IOException, ParseException {
+      throws IOException {
     return dao.getByName(uriInfo, name, null, include);
   }
 
@@ -200,7 +199,7 @@ public class MessagingServiceResource {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "messaging service Id", schema = @Schema(type = "string")) @PathParam("id") String id)
-      throws IOException, ParseException {
+      throws IOException {
     return dao.listVersions(id);
   }
 
@@ -229,7 +228,7 @@ public class MessagingServiceResource {
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version)
-      throws IOException, ParseException {
+      throws IOException {
     return dao.getVersion(id, version);
   }
 
@@ -250,7 +249,7 @@ public class MessagingServiceResource {
       })
   public Response create(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateMessagingService create)
-      throws IOException, ParseException {
+      throws IOException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     MessagingService service = getService(create, securityContext);
     dao.create(uriInfo, service);
@@ -278,7 +277,7 @@ public class MessagingServiceResource {
       @Parameter(description = "Id of the messaging service", schema = @Schema(type = "string")) @PathParam("id")
           String id,
       @Valid CreateMessagingService update)
-      throws IOException, ParseException {
+      throws IOException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     MessagingService service = getService(update, securityContext);
     PutResponse<MessagingService> response = dao.createOrUpdate(uriInfo, service, true);
@@ -304,7 +303,7 @@ public class MessagingServiceResource {
           boolean recursive,
       @Parameter(description = "Id of the messaging service", schema = @Schema(type = "string")) @PathParam("id")
           String id)
-      throws IOException, ParseException {
+      throws IOException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     DeleteResponse<MessagingService> response = dao.delete(securityContext.getUserPrincipal().getName(), id, recursive);
     return response.toResponse();

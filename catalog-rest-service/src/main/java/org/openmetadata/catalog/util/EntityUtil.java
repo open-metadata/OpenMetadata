@@ -34,14 +34,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.joda.time.Period;
 import org.joda.time.format.ISOPeriodFormat;
 import org.openmetadata.catalog.Entity;
-import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.EntityRelationshipDAO;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.EntityVersionPair;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.TagDAO;
-import org.openmetadata.catalog.jdbi3.CollectionDAO.TeamDAO;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.UsageDAO;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.UserDAO;
 import org.openmetadata.catalog.jdbi3.Relationship;
@@ -161,28 +159,6 @@ public final class EntityUtil {
     if (!userDAO.exists(userId)) {
       throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(Entity.USER, userId));
     }
-  }
-
-  public static EntityReference populateOwner(UserDAO userDAO, TeamDAO teamDAO, EntityReference owner)
-      throws IOException {
-    if (owner == null) {
-      return null;
-    }
-    UUID id = owner.getId();
-    if (owner.getType().equalsIgnoreCase("user")) {
-      User ownerInstance = userDAO.findEntityById(id);
-      owner.setName(ownerInstance.getName());
-      if (Optional.ofNullable(ownerInstance.getDeleted()).orElse(false)) {
-        throw new IllegalArgumentException(CatalogExceptionMessage.deactivatedUser(id));
-      }
-    } else if (owner.getType().equalsIgnoreCase("team")) {
-      Team ownerInstance = teamDAO.findEntityById(id);
-      owner.setDescription(ownerInstance.getDescription());
-      owner.setName(ownerInstance.getName());
-    } else {
-      throw new IllegalArgumentException(String.format("Invalid ownerType %s", owner.getType()));
-    }
-    return owner;
   }
 
   public static void setOwner(

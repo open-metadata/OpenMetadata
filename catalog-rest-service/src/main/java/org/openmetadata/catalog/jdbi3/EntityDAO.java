@@ -26,6 +26,7 @@ import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
+import org.openmetadata.catalog.exception.DeserializationException;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Include;
@@ -161,6 +162,22 @@ public interface EntityDAO<T> {
     if (entity == null) {
       String entityType = Entity.getEntityTypeFromClass(clz);
       throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(entityType, id));
+    }
+    return entity;
+  }
+
+  /** findEntityById2 is similar to findEntityById but it returns null if not found. */
+  default T findEntityById2(UUID id, Include include) {
+    Class<T> clz = getEntityClass();
+    String json = findById(getTableName(), id.toString(), toBoolean(include));
+    T entity = null;
+    if (json != null) {
+      try {
+        entity = JsonUtils.readValue(json, clz);
+      } catch (IOException e) {
+        throw DeserializationException.message(
+            String.format("Error in deserializing entity %s in table %s with class %s", id, getTableName(), clz), e);
+      }
     }
     return entity;
   }

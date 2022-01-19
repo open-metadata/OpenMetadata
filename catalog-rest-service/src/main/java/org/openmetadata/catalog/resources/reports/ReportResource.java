@@ -21,7 +21,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
-import java.text.ParseException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
@@ -91,7 +90,7 @@ public class ReportResource {
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
           String fieldsParam)
-      throws IOException, GeneralSecurityException, ParseException {
+      throws IOException, GeneralSecurityException {
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
     return dao.listAfter(uriInfo, fields, null, 10000, null, Include.NON_DELETED);
   }
@@ -117,7 +116,7 @@ public class ReportResource {
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
           String fieldsParam)
-      throws IOException, ParseException {
+      throws IOException {
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
     return dao.get(uriInfo, id, fields);
   }
@@ -135,7 +134,7 @@ public class ReportResource {
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid Report report)
-      throws IOException, ParseException {
+      throws IOException {
     addToReport(securityContext, report);
     dao.create(uriInfo, report);
     return Response.created(report.getHref()).entity(report).build();
@@ -154,8 +153,7 @@ public class ReportResource {
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createOrUpdate(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid Report report)
-      throws IOException, ParseException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid Report report) throws IOException {
     addToReport(securityContext, report);
     PutResponse<Report> response = dao.createOrUpdate(uriInfo, report);
     return response.toResponse();

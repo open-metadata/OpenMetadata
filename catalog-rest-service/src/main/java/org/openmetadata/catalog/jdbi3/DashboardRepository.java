@@ -19,13 +19,11 @@ import static org.openmetadata.catalog.util.EntityUtil.toBoolean;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.net.URI;
-import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Dashboard;
 import org.openmetadata.catalog.entity.services.DashboardService;
@@ -66,13 +64,8 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     return new DashboardEntityInterface(entity);
   }
 
-  @Transaction
-  public EntityReference getOwnerReference(Dashboard dashboard) throws IOException {
-    return EntityUtil.populateOwner(daoCollection.userDAO(), daoCollection.teamDAO(), dashboard.getOwner());
-  }
-
   @Override
-  public Dashboard setFields(Dashboard dashboard, Fields fields) throws IOException, ParseException {
+  public Dashboard setFields(Dashboard dashboard, Fields fields) throws IOException {
     dashboard.setDisplayName(dashboard.getDisplayName());
     dashboard.setService(getService(dashboard));
     dashboard.setOwner(fields.contains("owner") ? getOwner(dashboard) : null);
@@ -97,8 +90,8 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
         .withId(original.getId());
   }
 
-  private EntityReference getService(Dashboard dashboard) throws IOException, ParseException {
-    return helper(dashboard).getContainer(Entity.DASHBOARD_SERVICE);
+  private EntityReference getService(Dashboard dashboard) throws IOException {
+    return helper(dashboard).getContainer(Entity.DASHBOARD_SERVICE).toEntityReference();
   }
 
   private void populateService(Dashboard dashboard) throws IOException {
@@ -133,7 +126,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
   public void prepare(Dashboard dashboard) throws IOException {
     populateService(dashboard);
     dashboard.setFullyQualifiedName(getFQN(dashboard));
-    EntityUtil.populateOwner(daoCollection.userDAO(), daoCollection.teamDAO(), dashboard.getOwner()); // Validate owner
+    helper(dashboard).populateOwner();
     dashboard.setTags(EntityUtil.addDerivedTags(daoCollection.tagDAO(), dashboard.getTags()));
     dashboard.setCharts(getCharts(dashboard.getCharts()));
   }

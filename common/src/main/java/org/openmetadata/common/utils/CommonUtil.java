@@ -90,7 +90,7 @@ public final class CommonUtil {
   }
 
   /** Get date after {@code days} from the given date or before i{@code days} when it is negative */
-  public static Date getDateByOffset(Date date, int days) throws ParseException {
+  public static Date getDateByOffset(Date date, int days) {
     Calendar calendar = Calendar.getInstance();
     calendar.setTime(date);
     calendar.add(Calendar.DATE, days);
@@ -98,7 +98,7 @@ public final class CommonUtil {
   }
 
   /** Get date after {@code days} from the given date or before i{@code days} when it is negative */
-  public static Date getDateByOffsetSeconds(Date date, int seconds) throws ParseException {
+  public static Date getDateByOffsetSeconds(Date date, int seconds) {
     Calendar calendar = Calendar.getInstance();
     calendar.setTime(date);
     calendar.add(Calendar.SECOND, seconds);

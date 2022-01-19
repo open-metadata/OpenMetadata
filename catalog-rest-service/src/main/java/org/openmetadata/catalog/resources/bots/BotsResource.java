@@ -21,7 +21,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
-import java.text.ParseException;
 import java.util.List;
 import java.util.UUID;
 import javax.validation.constraints.Max;
@@ -93,7 +92,7 @@ public class BotsResource {
       @Parameter(description = "Returns list of bots after this cursor", schema = @Schema(type = "string"))
           @QueryParam("after")
           String after)
-      throws IOException, GeneralSecurityException, ParseException {
+      throws IOException, GeneralSecurityException {
     RestUtil.validateCursors(before, after);
 
     ResultList<Bots> list;
@@ -119,7 +118,7 @@ public class BotsResource {
         @ApiResponse(responseCode = "404", description = "Bot for instance {id} is not found")
       })
   public Bots get(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("id") String id)
-      throws IOException, ParseException {
+      throws IOException {
     return dao.get(uriInfo, id, Fields.EMPTY_FIELDS);
   }
 
@@ -136,7 +135,7 @@ public class BotsResource {
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, Bots bot)
-      throws IOException, ParseException {
+      throws IOException {
     SecurityUtil.checkAdminRole(authorizer, securityContext);
     bot.withId(UUID.randomUUID())
         .withUpdatedBy(securityContext.getUserPrincipal().getName())

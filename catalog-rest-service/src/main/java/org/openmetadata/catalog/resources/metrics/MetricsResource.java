@@ -21,7 +21,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
-import java.text.ParseException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
@@ -102,7 +101,7 @@ public class MetricsResource {
       @Parameter(description = "Returns list of metrics after this cursor", schema = @Schema(type = "string"))
           @QueryParam("after")
           String after)
-      throws IOException, GeneralSecurityException, ParseException {
+      throws IOException, GeneralSecurityException {
     RestUtil.validateCursors(before, after);
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
 
@@ -134,7 +133,7 @@ public class MetricsResource {
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
           String fieldsParam)
-      throws IOException, ParseException {
+      throws IOException {
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
     return dao.get(uriInfo, id, fields);
   }
@@ -152,7 +151,7 @@ public class MetricsResource {
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid Metrics metrics)
-      throws IOException, ParseException {
+      throws IOException {
     addToMetrics(securityContext, metrics);
     dao.create(uriInfo, metrics);
     return Response.created(metrics.getHref()).entity(metrics).build();
@@ -171,8 +170,7 @@ public class MetricsResource {
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createOrUpdate(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid Metrics metrics)
-      throws IOException, ParseException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid Metrics metrics) throws IOException {
     addToMetrics(securityContext, metrics);
     PutResponse<Metrics> response = dao.createOrUpdate(uriInfo, metrics);
     return response.toResponse();

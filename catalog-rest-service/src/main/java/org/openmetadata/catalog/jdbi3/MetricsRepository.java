@@ -18,7 +18,6 @@ import static org.openmetadata.catalog.Entity.helper;
 
 import java.io.IOException;
 import java.net.URI;
-import java.text.ParseException;
 import java.util.List;
 import java.util.UUID;
 import org.openmetadata.catalog.Entity;
@@ -54,7 +53,7 @@ public class MetricsRepository extends EntityRepository<Metrics> {
   }
 
   @Override
-  public Metrics setFields(Metrics metrics, Fields fields) throws IOException, ParseException {
+  public Metrics setFields(Metrics metrics, Fields fields) throws IOException {
     metrics.setService(getService(metrics)); // service is a default field
     metrics.setOwner(fields.contains("owner") ? getOwner(metrics) : null);
     metrics.setUsageSummary(
@@ -75,7 +74,7 @@ public class MetricsRepository extends EntityRepository<Metrics> {
   @Override
   public void prepare(Metrics metrics) throws IOException {
     metrics.setFullyQualifiedName(getFQN(metrics));
-    EntityUtil.populateOwner(daoCollection.userDAO(), daoCollection.teamDAO(), metrics.getOwner()); // Validate owner
+    helper(metrics).populateOwner();
     metrics.setService(getService(metrics.getService()));
     metrics.setTags(EntityUtil.addDerivedTags(daoCollection.tagDAO(), metrics.getTags()));
   }
@@ -110,8 +109,8 @@ public class MetricsRepository extends EntityRepository<Metrics> {
     applyTags(metrics);
   }
 
-  private EntityReference getService(Metrics metrics) throws IOException, ParseException { // Get service by metrics ID
-    return helper(metrics).getContainer(DASHBOARD_SERVICE);
+  private EntityReference getService(Metrics metrics) throws IOException { // Get service by metrics ID
+    return helper(metrics).getContainer(DASHBOARD_SERVICE).toEntityReference();
   }
 
   private EntityReference getService(EntityReference service) throws IOException { // Get service by service ID

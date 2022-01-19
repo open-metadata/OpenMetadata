@@ -19,7 +19,6 @@ import static org.openmetadata.catalog.Entity.helper;
 import java.io.IOException;
 import java.net.URI;
 import java.security.GeneralSecurityException;
-import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -60,7 +59,7 @@ public class LocationRepository extends EntityRepository<Location> {
   }
 
   @Override
-  public Location setFields(Location location, Fields fields) throws IOException, ParseException {
+  public Location setFields(Location location, Fields fields) throws IOException {
     location.setService(getService(location));
     location.setOwner(fields.contains("owner") ? getOwner(location) : null);
     location.setFollowers(fields.contains("followers") ? getFollowers(location) : null);
@@ -80,7 +79,7 @@ public class LocationRepository extends EntityRepository<Location> {
 
   @Transaction
   public final ResultList<Location> listPrefixesBefore(Fields fields, String fqn, int limitParam, String before)
-      throws GeneralSecurityException, IOException, ParseException {
+      throws GeneralSecurityException, IOException {
     String service = fqn.split("\\.")[0];
     // Reverse scrolling - Get one extra result used for computing before cursor
     List<String> jsons =
@@ -116,7 +115,7 @@ public class LocationRepository extends EntityRepository<Location> {
 
   @Transaction
   public final ResultList<Location> listPrefixesAfter(Fields fields, String fqn, int limitParam, String after)
-      throws GeneralSecurityException, IOException, ParseException {
+      throws GeneralSecurityException, IOException {
     String service = fqn.split("\\.")[0];
     // forward scrolling, if after == null then first page is being asked
     List<String> jsons =
@@ -159,11 +158,6 @@ public class LocationRepository extends EntityRepository<Location> {
     return (location.getService().getName() + "." + location.getName());
   }
 
-  @Transaction
-  public EntityReference getOwnerReference(Location location) throws IOException {
-    return EntityUtil.populateOwner(daoCollection.userDAO(), daoCollection.teamDAO(), location.getOwner());
-  }
-
   private StorageService getService(UUID serviceId, String entityType) throws IOException {
     if (entityType.equalsIgnoreCase(Entity.STORAGE_SERVICE)) {
       return daoCollection.storageServiceDAO().findEntityById(serviceId);
@@ -173,12 +167,11 @@ public class LocationRepository extends EntityRepository<Location> {
 
   @Override
   public void prepare(Location location) throws IOException {
-    StorageService storageService = getService(location.getService().getId(), location.getService().getType());
-    location.setService(
-        new StorageServiceRepository.StorageServiceEntityInterface(storageService).getEntityReference());
+    StorageService storageService = helper(location).get("service", STORAGE_SERVICE).toEntity();
+    location.setService(helper(storageService).toEntityReference());
     location.setServiceType(storageService.getServiceType());
     location.setFullyQualifiedName(getFQN(location));
-    EntityUtil.populateOwner(daoCollection.userDAO(), daoCollection.teamDAO(), location.getOwner()); // Validate owner
+    helper(location).populateOwner();
     location.setTags(EntityUtil.addDerivedTags(daoCollection.tagDAO(), location.getTags()));
   }
 
@@ -220,8 +213,8 @@ public class LocationRepository extends EntityRepository<Location> {
     return new LocationUpdater(original, updated, operation);
   }
 
-  private EntityReference getService(Location location) throws IOException, ParseException {
-    return helper(location).getContainer(STORAGE_SERVICE);
+  private EntityReference getService(Location location) throws IOException {
+    return helper(location).getContainer(STORAGE_SERVICE).toEntityReference();
   }
 
   private EntityReference getService(EntityReference service) throws IOException {

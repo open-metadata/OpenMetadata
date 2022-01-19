@@ -20,7 +20,6 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
-import java.text.ParseException;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -131,7 +130,7 @@ public class FeedResource {
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = CreateThread.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
-  public Response create(@Context UriInfo uriInfo, @Valid CreateThread cr) throws IOException, ParseException {
+  public Response create(@Context UriInfo uriInfo, @Valid CreateThread cr) throws IOException {
     Thread thread =
         new Thread().withId(UUID.randomUUID()).withThreadTs(System.currentTimeMillis()).withAbout(cr.getAbout());
     // For now redundantly storing everything in json (that includes fromEntity, addressedTo entity)

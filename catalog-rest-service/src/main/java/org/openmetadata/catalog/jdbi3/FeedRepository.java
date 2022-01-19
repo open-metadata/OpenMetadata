@@ -17,7 +17,6 @@ import static org.openmetadata.catalog.Entity.helper;
 import static org.openmetadata.catalog.util.EntityUtil.toBoolean;
 
 import java.io.IOException;
-import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -26,6 +25,8 @@ import java.util.UUID;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.feed.Thread;
+import org.openmetadata.catalog.exception.EntityNotFoundCheckedExeception;
+import org.openmetadata.catalog.exception.EntityTypeNotFoundExeception;
 import org.openmetadata.catalog.resources.feeds.FeedUtil;
 import org.openmetadata.catalog.resources.feeds.MessageParser;
 import org.openmetadata.catalog.resources.feeds.MessageParser.EntityLink;
@@ -35,8 +36,11 @@ import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.Post;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.JsonUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class FeedRepository {
+  public static final Logger LOG = LoggerFactory.getLogger(FeedRepository.class);
   private final CollectionDAO dao;
 
   public FeedRepository(CollectionDAO dao) {
@@ -44,7 +48,7 @@ public class FeedRepository {
   }
 
   @Transaction
-  public Thread create(Thread thread) throws IOException, ParseException {
+  public Thread create(Thread thread) throws IOException {
     // Validate user creating thread
     UUID fromUser = thread.getPosts().get(0).getFrom();
     dao.userDAO().findEntityById(fromUser);
@@ -54,7 +58,13 @@ public class FeedRepository {
     EntityReference aboutRef = EntityUtil.validateEntityLink(about);
 
     // Get owner for the addressed to Entity
-    EntityReference owner = helper(aboutRef).getOwnerOrNull();
+    EntityReference owner = null;
+    try {
+      owner = helper(aboutRef, Include.ALL).getOwner().toEntityReference();
+    } catch (EntityTypeNotFoundExeception | EntityNotFoundCheckedExeception e) {
+      // FIXME: verify the catch block
+      LOG.error("Inconsistency in the database", e);
+    }
 
     // Insert a new thread
     dao.feedDAO().insert(JsonUtils.pojoToJson(thread));

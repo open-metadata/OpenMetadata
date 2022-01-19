@@ -17,12 +17,13 @@ import static java.util.Collections.singletonList;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.CREATED;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
-import static javax.ws.rs.core.Response.Status.NOT_FOUND;
+import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.openmetadata.catalog.Entity.helper;
 import static org.openmetadata.catalog.resources.locations.LocationResourceTest.createLocation;
 import static org.openmetadata.catalog.resources.locations.LocationResourceTest.getLocationName;
 import static org.openmetadata.catalog.security.SecurityUtil.authHeaders;
@@ -43,6 +44,7 @@ import static org.openmetadata.catalog.util.TestUtils.UpdateType.NO_CHANGE;
 import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
 import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
+import static org.openmetadata.catalog.util.TestUtils.assertResponseContains;
 import static org.openmetadata.catalog.util.TestUtils.userAuthHeaders;
 import static org.openmetadata.common.utils.CommonUtil.getDateStringByOffset;
 
@@ -62,6 +64,7 @@ import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response.Status;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
+import org.jdbi.v3.core.Jdbi;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
@@ -154,6 +157,14 @@ public class TableResourceTest extends EntityResourceTest<Table> {
       assertResponse(
           exception, BAD_REQUEST, "For column data types char, varchar, binary, varbinary dataLength must not be null");
     }
+  }
+
+  @Test
+  void test_helper(TestInfo test) throws IOException {
+    CreateTable request = create(test).withDatabase(DATABASE.getId()).withDescription("");
+    Table table = createEntity(request, adminAuthHeaders());
+    EntityReference entityReference = helper(table).get("database", Entity.DATABASE).toEntityReference();
+    assertEquals(DATABASE.getId(), entityReference.getId());
   }
 
   @Test
@@ -330,11 +341,12 @@ public class TableResourceTest extends EntityResourceTest<Table> {
   }
 
   @Test
-  void post_tableWithInvalidDatabase_404(TestInfo test) {
+  void post_tableWithInvalidDatabase_400(TestInfo test) {
     CreateTable create = create(test).withDatabase(NON_EXISTENT_ENTITY);
     HttpResponseException exception =
         assertThrows(HttpResponseException.class, () -> createEntity(create, adminAuthHeaders()));
-    assertResponse(exception, NOT_FOUND, CatalogExceptionMessage.entityNotFound(Entity.DATABASE, NON_EXISTENT_ENTITY));
+    assertResponse(
+        exception, BAD_REQUEST, CatalogExceptionMessage.entityNotFound(Entity.DATABASE, NON_EXISTENT_ENTITY));
   }
 
   @Test
@@ -621,7 +633,7 @@ public class TableResourceTest extends EntityResourceTest<Table> {
   }
 
   @Test
-  void put_tableJoinsInvalidColumnName_4xx(TestInfo test) throws IOException, ParseException {
+  void put_tableJoinsInvalidColumnName_4xx(TestInfo test) throws IOException {
     Table table1 = createAndCheckEntity(create(test, 1), adminAuthHeaders());
     Table table2 = createAndCheckEntity(create(test, 2), adminAuthHeaders());
 
@@ -1048,6 +1060,27 @@ public class TableResourceTest extends EntityResourceTest<Table> {
     tableList1 = listEntities(queryParams, adminAuthHeaders());
     assertEquals(tableList.getData().size(), tableList1.getData().size());
     assertFields(tableList1.getData(), fields1);
+  }
+
+  @Test
+  void get_entityWithInvalidJson_500(TestInfo info) throws HttpResponseException {
+    String id = "066c1d7c-89ec-4eca-bedb-58284b49e784";
+    Jdbi jdbi =
+        Jdbi.create("jdbc:mysql://localhost:3307/openmetadata_test_db?useSSL=false&serverTimezone=UTC", "test", "");
+    jdbi.useHandle(
+        handle -> {
+          handle.execute(
+              "insert into table_entity(json) values (?)",
+              "{\n  \"id\": \"066c1d7c-89ec-4eca-bedb-58284b49e784\",\n  \"fullyQualifiedName\": \"bigquery_gcp.shopify.dim_staff\",\n  \"updatedAt\": 0,\n  \"updatedBy\": \"anonymous\",\n  \"deleted\": false\n}");
+        });
+
+    HttpResponseException exception =
+        assertThrows(HttpResponseException.class, () -> getEntity(UUID.fromString(id), adminAuthHeaders()));
+    assertResponseContains(exception, INTERNAL_SERVER_ERROR, id);
+    jdbi.useHandle(
+        handle -> {
+          handle.execute("delete from table_entity where id = ?", "066c1d7c-89ec-4eca-bedb-58284b49e784");
+        });
   }
 
   /**

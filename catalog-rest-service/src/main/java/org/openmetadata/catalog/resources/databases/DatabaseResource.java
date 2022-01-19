@@ -25,7 +25,6 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
-import java.text.ParseException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -165,7 +164,7 @@ public class DatabaseResource {
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)
-      throws IOException, GeneralSecurityException, ParseException {
+      throws IOException, GeneralSecurityException {
     RestUtil.validateCursors(before, after);
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
 
@@ -198,7 +197,7 @@ public class DatabaseResource {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "database Id", schema = @Schema(type = "string")) @PathParam("id") String id)
-      throws IOException, ParseException {
+      throws IOException {
     return dao.listVersions(id);
   }
 
@@ -230,7 +229,7 @@ public class DatabaseResource {
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)
-      throws IOException, ParseException {
+      throws IOException {
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
     Database database = dao.get(uriInfo, id, fields, include);
     addHref(uriInfo, database);
@@ -265,7 +264,7 @@ public class DatabaseResource {
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)
-      throws IOException, ParseException {
+      throws IOException {
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
     Database database = dao.getByName(uriInfo, fqn, fields, include);
     addHref(uriInfo, database);
@@ -296,7 +295,7 @@ public class DatabaseResource {
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version)
-      throws IOException, ParseException {
+      throws IOException {
     return dao.getVersion(id, version);
   }
 
@@ -315,7 +314,7 @@ public class DatabaseResource {
       })
   public Response create(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDatabase create)
-      throws IOException, ParseException {
+      throws IOException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Database database = getDatabase(securityContext, create);
     database = addHref(uriInfo, dao.create(uriInfo, database));
@@ -343,7 +342,7 @@ public class DatabaseResource {
                         @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
                       }))
           JsonPatch patch)
-      throws IOException, ParseException {
+      throws IOException {
     Fields fields = new Fields(FIELD_LIST, FIELDS);
     Database database = dao.get(uriInfo, id, fields);
     SecurityUtil.checkAdminRoleOrPermissions(
@@ -368,7 +367,7 @@ public class DatabaseResource {
       })
   public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDatabase create)
-      throws IOException, ParseException {
+      throws IOException {
     Database database = getDatabase(securityContext, create);
     PutResponse<Database> response = dao.createOrUpdate(uriInfo, database);
     addHref(uriInfo, response.getEntity());
@@ -382,7 +381,7 @@ public class DatabaseResource {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the database", schema = @Schema(type = "string")) @PathParam("id") String id)
-      throws IOException, ParseException {
+      throws IOException {
     Fields fields = new Fields(FIELD_LIST, "location");
     dao.deleteLocation(id);
     Database database = dao.get(uriInfo, id, fields);
@@ -407,7 +406,7 @@ public class DatabaseResource {
           @QueryParam("recursive")
           boolean recursive,
       @PathParam("id") String id)
-      throws IOException, ParseException {
+      throws IOException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     DeleteResponse<Database> response = dao.delete(securityContext.getUserPrincipal().getName(), id, recursive);
     return response.toResponse();

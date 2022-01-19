@@ -39,6 +39,7 @@ import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.BiPredicate;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.binary.Hex;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
@@ -91,9 +92,10 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   @Override
-  public Table setFields(Table table, Fields fields) throws IOException, ParseException {
-    table.setDatabase(getDatabase(table));
-    table.setService(getService(table));
+  public Table setFields(Table table, Fields fields) throws IOException {
+    Database database = helper(table).getContainer(DATABASE).toEntity();
+    table.setDatabase(helper(database).toEntityReference());
+    table.setService(database.getService());
     table.setTableConstraints(fields.contains("tableConstraints") ? table.getTableConstraints() : null);
     table.setOwner(fields.contains("owner") ? getOwner(table) : null);
     table.setFollowers(fields.contains("followers") ? getFollowers(table) : null);
@@ -153,7 +155,7 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   @Transaction
-  public Table addSampleData(UUID tableId, TableData tableData) throws IOException, ParseException {
+  public Table addSampleData(UUID tableId, TableData tableData) throws IOException {
     // Validate the request content
     Table table = daoCollection.tableDAO().findEntityById(tableId);
 
@@ -178,7 +180,7 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   @Transaction
-  public Table addTableProfileData(UUID tableId, TableProfile tableProfile) throws IOException, ParseException {
+  public Table addTableProfileData(UUID tableId, TableProfile tableProfile) throws IOException {
     // Validate the request content
     Table table = daoCollection.tableDAO().findEntityById(tableId);
 
@@ -204,7 +206,7 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   @Transaction
-  public Table addLocation(UUID tableId, UUID locationId) throws IOException, ParseException {
+  public Table addLocation(UUID tableId, UUID locationId) throws IOException {
     Table table = daoCollection.tableDAO().findEntityById(tableId);
     EntityReference location = daoCollection.locationDAO().findEntityReferenceById(locationId);
     // A table has only one location.
@@ -217,7 +219,7 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   @Transaction
-  public Table addQuery(UUID tableId, SQLQuery query) throws IOException, ParseException {
+  public Table addQuery(UUID tableId, SQLQuery query) throws IOException {
     // Validate the request content
     try {
       byte[] checksum = MessageDigest.getInstance("MD5").digest(query.getQuery().getBytes());
@@ -243,7 +245,7 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   @Transaction
-  public Table addDataModel(UUID tableId, DataModel dataModel) throws IOException, ParseException {
+  public Table addDataModel(UUID tableId, DataModel dataModel) throws IOException {
     Table table = daoCollection.tableDAO().findEntityById(tableId);
     table.withDataModel(dataModel);
 
@@ -300,10 +302,10 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   @Override
-  public void prepare(Table table) throws IOException, ParseException {
-    Database database = helper(table).findEntity("database", DATABASE);
+  public void prepare(Table table) throws IOException {
+    Database database = helper(table).get("database", DATABASE).toEntity();
     table.setDatabase(helper(database).toEntityReference());
-    DatabaseService databaseService = helper(database).findEntity("service", DATABASE_SERVICE);
+    DatabaseService databaseService = helper(database).getContainer(DATABASE_SERVICE).toEntity();
     table.setService(helper(databaseService).toEntityReference());
     table.setServiceType(databaseService.getServiceType());
 
@@ -312,7 +314,7 @@ public class TableRepository extends EntityRepository<Table> {
     setColumnFQN(table.getFullyQualifiedName(), table.getColumns());
 
     // Check if owner is valid and set the relationship
-    table.setOwner(helper(table).validateOwnerOrNull());
+    helper(table).populateOwner();
 
     // Validate table tags and add derived tags to the list
     table.setTags(EntityUtil.addDerivedTags(daoCollection.tagDAO(), table.getTags()));
@@ -321,19 +323,8 @@ public class TableRepository extends EntityRepository<Table> {
     addDerivedTags(table.getColumns());
   }
 
-  private EntityReference getDatabase(Table table) throws IOException, ParseException {
-    return helper(table).getContainer(DATABASE);
-  }
-
-  // It must be called after getDatabase.
-  private EntityReference getService(Table table) throws IOException, ParseException {
-    Database database = helper(table).findEntity("database");
-    DatabaseService databaseService = helper(database).findEntity("service");
-    return helper(databaseService).toEntityReference();
-  }
-
-  private EntityReference getLocation(Table table) throws IOException, ParseException {
-    return helper(table).getHasOrNull(LOCATION);
+  private EntityReference getLocation(Table table) throws IOException {
+    return helper(table).has(LOCATION).toEntityReference();
   }
 
   @Override
@@ -558,7 +549,8 @@ public class TableRepository extends EntityRepository<Table> {
     }
   }
 
-  private TableJoins getJoins(Table table) throws ParseException, IOException {
+  @SneakyThrows(ParseException.class)
+  private TableJoins getJoins(Table table) throws IOException {
     String today = RestUtil.DATE_FORMAT.format(new Date()); // today
     String todayMinus30Days = CommonUtil.getDateStringByOffset(RestUtil.DATE_FORMAT, today, -30);
     TableJoins tableJoins =

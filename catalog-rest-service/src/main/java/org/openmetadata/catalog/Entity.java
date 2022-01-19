@@ -13,22 +13,27 @@
 
 package org.openmetadata.catalog;
 
+import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
+import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityTypeNotFound;
+
 import java.io.IOException;
 import java.net.URI;
-import java.text.ParseException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import javax.ws.rs.core.UriInfo;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
+import org.openmetadata.catalog.exception.EntityNotFoundCheckedExeception;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
+import org.openmetadata.catalog.exception.EntityTypeNotFoundExeception;
 import org.openmetadata.catalog.exception.UnhandledServerException;
 import org.openmetadata.catalog.jdbi3.EntityDAO;
 import org.openmetadata.catalog.jdbi3.EntityRepository;
@@ -67,7 +72,9 @@ public final class Entity {
   public static final String TOPIC = "topic";
   public static final String MLMODEL = "mlmodel";
   // Not deleted to ensure the ordinal value of the entities after this remains the same
+  @SuppressWarnings("unused")
   public static final String UNUSED = "unused";
+
   public static final String BOTS = "bots";
   public static final String LOCATION = "location";
 
@@ -92,7 +99,7 @@ public final class Entity {
   private Entity() {}
 
   public static <T> void registerEntity(
-      Class clazz, String entity, EntityDAO<T> dao, EntityRepository<T> entityRepository) {
+      Class<T> clazz, String entity, EntityDAO<T> dao, EntityRepository<T> entityRepository) {
     DAO_MAP.put(entity, dao);
     ENTITY_REPOSITORY_MAP.put(entity, entityRepository);
     CANONICAL_ENTITY_NAME_MAP.put(entity.toLowerCase(Locale.ROOT), entity);
@@ -103,7 +110,7 @@ public final class Entity {
   public static EntityReference getEntityReference(String entity, UUID id) throws IOException {
     EntityDAO<?> dao = DAO_MAP.get(entity);
     if (dao == null) {
-      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entity));
+      throw EntityNotFoundException.byMessage(entityTypeNotFound(entity));
     }
     return dao.findEntityReferenceById(id);
   }
@@ -111,7 +118,7 @@ public final class Entity {
   public static EntityReference getEntityReferenceByName(String entity, String fqn) throws IOException {
     EntityDAO<?> dao = DAO_MAP.get(entity);
     if (dao == null) {
-      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entity));
+      throw EntityNotFoundException.byMessage(entityTypeNotFound(entity));
     }
     return dao.findEntityReferenceByName(fqn);
   }
@@ -122,7 +129,7 @@ public final class Entity {
     @SuppressWarnings("unchecked")
     EntityRepository<T> entityRepository = (EntityRepository<T>) ENTITY_REPOSITORY_MAP.get(entityType);
     if (entityRepository == null) {
-      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entityType));
+      throw EntityNotFoundException.byMessage(entityTypeNotFound(entityType));
     }
     return entityRepository.getEntityInterface(entity).getEntityReference();
   }
@@ -138,7 +145,7 @@ public final class Entity {
     String entityType = ref.getType();
     EntityRepository<?> entityRepository = ENTITY_REPOSITORY_MAP.get(entityType);
     if (entityRepository == null) {
-      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entityType));
+      throw EntityNotFoundException.byMessage(entityTypeNotFound(entityType));
     }
     URI href = entityRepository.getHref(uriInfo, ref.getId());
     return ref.withHref(href);
@@ -159,8 +166,7 @@ public final class Entity {
    * @return entity object eg: {@link org.openmetadata.catalog.entity.data.Table}, {@link
    *     org.openmetadata.catalog.entity.data.Topic}, etc
    */
-  public static <T> T getEntity(EntityReference entityReference, EntityUtil.Fields fields)
-      throws IOException, ParseException {
+  public static <T> T getEntity(EntityReference entityReference, EntityUtil.Fields fields) throws IOException {
     return getEntity(entityReference, fields, Include.NON_DELETED);
   }
 
@@ -171,7 +177,7 @@ public final class Entity {
    *     org.openmetadata.catalog.entity.data.Topic}, etc
    */
   public static <T> T getEntity(EntityReference entityReference, EntityUtil.Fields fields, Include include)
-      throws IOException, ParseException {
+      throws IOException {
     if (entityReference == null) {
       return null;
     }
@@ -196,21 +202,22 @@ public final class Entity {
     @SuppressWarnings("unchecked")
     EntityRepository<T> entityRepository = (EntityRepository<T>) ENTITY_REPOSITORY_MAP.get(entityType);
     if (entityRepository == null) {
-      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entityType));
+      throw EntityNotFoundException.byMessage(entityTypeNotFound(entityType));
     }
     return entityRepository;
   }
 
   public static void deleteEntity(String updatedBy, String entity, UUID entityId, boolean recursive)
-      throws IOException, ParseException {
+      throws IOException {
     EntityRepository<?> dao = ENTITY_REPOSITORY_MAP.get(entity);
     if (dao == null) {
-      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entity));
+      throw EntityNotFoundException.byMessage(entityTypeNotFound(entity));
     }
     dao.delete(updatedBy, entityId.toString(), recursive);
   }
 
   public static <T> EntityRepository<T> getEntityRepositoryForClass(@NonNull Class<T> clazz) {
+    @SuppressWarnings("unchecked")
     EntityRepository<T> entityRepository = (EntityRepository<T>) CLASS_ENTITY_REPOSITORY_MAP.get(clazz);
     if (entityRepository == null) {
       throw new UnhandledServerException(
@@ -222,20 +229,29 @@ public final class Entity {
   }
 
   /**
-   * Utility method to create the decorator from an Entity or EntityReference instance. By Entity class we don't mean
-   * Entity.java but the entity classes generated from JSONSchema files like DatabaseService, Database, Table, and so
-   * on.
-   *
-   * @param object must be an Entity class instance with a companion EntityRepository or an EntityReference
-   * @param <T> must be the Entity class of this entity or object if multiple results are possible.
-   * @return the decorator
+   * Utility method to create an entity helper from an Entity instance. By Entity class we don't mean Entity.java but
+   * the entity classes generated from JSONSchema files like DatabaseService, Database, Table, and so on.
    */
-  public static <T> EntityRepository<T>.EntityHelper helper(@NonNull Object object) throws IOException, ParseException {
-    T entity = (T) object;
-    if (object instanceof EntityReference) {
-      entity = getEntity((EntityReference) object, Fields.EMPTY_FIELDS);
-    }
+  public static <T> EntityRepository<T>.EntityHelper helper(@NonNull T entity) {
+    Objects.requireNonNull(entity);
+    @SuppressWarnings("unchecked")
     EntityRepository<T> entityRepository = (EntityRepository<T>) getEntityRepositoryForClass(entity.getClass());
+    return entityRepository.getEntityHandler(entity);
+  }
+
+  /** Utility method to create an entity helper from a EntityReference instance. */
+  public static <T> EntityRepository<T>.EntityHelper helper(@NonNull EntityReference entityReference, Include include)
+      throws EntityTypeNotFoundExeception, EntityNotFoundCheckedExeception, IOException {
+    Objects.requireNonNull(entityReference);
+    @SuppressWarnings("unchecked")
+    EntityRepository<T> entityRepository = (EntityRepository<T>) ENTITY_REPOSITORY_MAP.get(entityReference.getType());
+    if (entityRepository == null) {
+      throw EntityTypeNotFoundExeception.message(entityTypeNotFound(entityReference.getType()));
+    }
+    T entity = entityRepository.getById(null, entityReference.getId(), Fields.EMPTY_FIELDS, include);
+    if (entity == null) {
+      throw EntityNotFoundCheckedExeception.message(entityNotFound(entityReference));
+    }
     return entityRepository.getEntityHandler(entity);
   }
 

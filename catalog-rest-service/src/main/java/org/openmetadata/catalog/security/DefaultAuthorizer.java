@@ -13,10 +13,10 @@
 
 package org.openmetadata.catalog.security;
 
+import static org.openmetadata.catalog.Entity.helper;
 import static org.openmetadata.catalog.resources.teams.UserResource.FIELD_LIST;
 
 import java.io.IOException;
-import java.text.ParseException;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -26,11 +26,15 @@ import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.teams.User;
+import org.openmetadata.catalog.exception.BadRequestException;
+import org.openmetadata.catalog.exception.EntityNotFoundCheckedExeception;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
+import org.openmetadata.catalog.exception.EntityTypeNotFoundExeception;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.UserRepository;
 import org.openmetadata.catalog.security.policyevaluator.PolicyEvaluator;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.MetadataOperation;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.RestUtil;
@@ -81,7 +85,7 @@ public class DefaultAuthorizer implements Authorizer {
                 .withUpdatedBy(adminUser)
                 .withUpdatedAt(System.currentTimeMillis());
         addOrUpdateAdmin(user);
-      } catch (IOException | ParseException e) {
+      } catch (IOException e) {
         LOG.error("Failed to create admin user {}", adminUser, e);
       }
     }
@@ -107,7 +111,7 @@ public class DefaultAuthorizer implements Authorizer {
                 .withUpdatedBy(botUser)
                 .withUpdatedAt(System.currentTimeMillis());
         addOrUpdateAdmin(user);
-      } catch (IOException | ParseException e) {
+      } catch (IOException e) {
         LOG.error("Failed to create admin user {}", botUser, e);
       }
     }
@@ -123,7 +127,7 @@ public class DefaultAuthorizer implements Authorizer {
     try {
       User user = getUserFromAuthenticationContext(ctx);
       return isOwnedByUser(user, owner);
-    } catch (IOException | EntityNotFoundException | ParseException ex) {
+    } catch (IOException | EntityNotFoundException ex) {
       return false;
     }
   }
@@ -150,13 +154,19 @@ public class DefaultAuthorizer implements Authorizer {
         return true;
       }
       return policyEvaluator.hasPermission(user, entity, operation);
-    } catch (IOException | EntityNotFoundException | ParseException ex) {
+    } catch (IOException | EntityNotFoundException ex) {
       return false;
     }
   }
 
   /** Checks if the user is same as owner or part of the team that is the owner. */
-  private boolean isOwnedByUser(User user, EntityReference owner) {
+  private boolean isOwnedByUser(User user, EntityReference owner) throws IOException {
+    try {
+      // owner must exist, and it must have field name defined.
+      owner = helper(owner, Include.NON_DELETED).toEntityReference();
+    } catch (EntityTypeNotFoundExeception | EntityNotFoundCheckedExeception e) {
+      throw BadRequestException.message(e.getMessage());
+    }
     if (owner.getType().equals(Entity.USER) && owner.getName().equals(user.getName())) {
       // Owner is same as user.
       return true;
@@ -183,7 +193,7 @@ public class DefaultAuthorizer implements Authorizer {
         return false;
       }
       return user.getIsAdmin();
-    } catch (IOException | EntityNotFoundException | ParseException ex) {
+    } catch (IOException | EntityNotFoundException ex) {
       return false;
     }
   }
@@ -199,7 +209,7 @@ public class DefaultAuthorizer implements Authorizer {
         return false;
       }
       return user.getIsBot();
-    } catch (IOException | EntityNotFoundException | ParseException ex) {
+    } catch (IOException | EntityNotFoundException ex) {
       return false;
     }
   }
@@ -210,7 +220,7 @@ public class DefaultAuthorizer implements Authorizer {
     }
   }
 
-  private User getUserFromAuthenticationContext(AuthenticationContext ctx) throws IOException, ParseException {
+  private User getUserFromAuthenticationContext(AuthenticationContext ctx) throws IOException {
     String userName = SecurityUtil.getUserName(ctx);
     EntityUtil.Fields fields = new EntityUtil.Fields(FIELD_LIST, fieldsParam);
     return userRepository.getByName(null, userName, fields);
@@ -220,7 +230,7 @@ public class DefaultAuthorizer implements Authorizer {
     try {
       RestUtil.PutResponse<User> addedUser = userRepository.createOrUpdate(null, user);
       LOG.debug("Added admin user entry: {}", addedUser);
-    } catch (IOException | ParseException exception) {
+    } catch (IOException exception) {
       // In HA set up the other server may have already added the user.
       LOG.debug("Caught exception: {}", ExceptionUtils.getStackTrace(exception));
       LOG.debug("Admin user entry: {} already exists.", user);
@@ -231,7 +241,7 @@ public class DefaultAuthorizer implements Authorizer {
     try {
       RestUtil.PutResponse<User> addedUser = userRepository.createOrUpdate(null, user);
       LOG.debug("Added bot user entry: {}", addedUser);
-    } catch (IOException | ParseException exception) {
+    } catch (IOException exception) {
       // In HA se tup the other server may have already added the user.
       LOG.debug("Caught exception: {}", ExceptionUtils.getStackTrace(exception));
       LOG.debug("Bot user entry: {} already exists.", user);

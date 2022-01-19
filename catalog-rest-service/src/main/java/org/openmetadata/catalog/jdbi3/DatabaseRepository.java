@@ -20,7 +20,6 @@ import static org.openmetadata.catalog.util.EntityUtil.toBoolean;
 
 import java.io.IOException;
 import java.net.URI;
-import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -72,9 +71,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
   public void prepare(Database database) throws IOException {
     populateService(database);
     database.setFullyQualifiedName(getFQN(database));
-    database.setOwner(
-        EntityUtil.populateOwner(
-            daoCollection.userDAO(), daoCollection.teamDAO(), database.getOwner())); // Validate owner
+    helper(database).populateOwner();
   }
 
   @Override
@@ -130,7 +127,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
     return tables;
   }
 
-  public Database setFields(Database database, Fields fields) throws IOException, ParseException {
+  public Database setFields(Database database, Fields fields) throws IOException {
     database.setService(getService(database));
     database.setOwner(fields.contains("owner") ? getOwner(database) : null);
     database.setTables(fields.contains("tables") ? getTables(database) : null);
@@ -177,8 +174,8 @@ public class DatabaseRepository extends EntityRepository<Database> {
     }
   }
 
-  private EntityReference getService(Database database) throws IOException, ParseException {
-    return helper(database).getContainer(DATABASE_SERVICE);
+  private EntityReference getService(Database database) throws IOException {
+    return helper(database).getContainer(DATABASE_SERVICE).toEntityReference();
   }
 
   private void populateService(Database database) throws IOException {

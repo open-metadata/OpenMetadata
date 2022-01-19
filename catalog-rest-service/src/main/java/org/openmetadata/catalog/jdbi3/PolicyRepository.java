@@ -13,17 +13,16 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import static org.openmetadata.catalog.Entity.helper;
 import static org.openmetadata.catalog.util.EntityUtil.toBoolean;
 
 import java.io.IOException;
 import java.net.URI;
-import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
-import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
@@ -72,11 +71,6 @@ public class PolicyRepository extends EntityRepository<Policy> {
     return (policy.getName());
   }
 
-  @Transaction
-  public EntityReference getOwnerReference(Policy policy) throws IOException {
-    return EntityUtil.populateOwner(daoCollection.userDAO(), daoCollection.teamDAO(), policy.getOwner());
-  }
-
   /** Find the location to which this policy applies to. * */
   @Transaction
   private EntityReference getLocationForPolicy(Policy policy) throws IOException {
@@ -96,7 +90,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
   }
 
   @Override
-  public Policy setFields(Policy policy, Fields fields) throws IOException, ParseException {
+  public Policy setFields(Policy policy, Fields fields) throws IOException {
     policy.setDisplayName(fields.contains("displayName") ? policy.getDisplayName() : null);
     policy.setDescription(fields.contains("description") ? policy.getDescription() : null);
     policy.setOwner(fields.contains("owner") ? getOwner(policy) : null);
@@ -136,8 +130,8 @@ public class PolicyRepository extends EntityRepository<Policy> {
     isValid(policy);
     policy.setFullyQualifiedName(getFQN(policy));
     policy.setLocation(getLocationReference(policy));
-    // Check if owner is valid and set the relationship
-    policy.setOwner(EntityUtil.populateOwner(daoCollection.userDAO(), daoCollection.teamDAO(), policy.getOwner()));
+    // Populate the owner
+    helper(policy).populateOwner();
   }
 
   @Override
@@ -225,7 +219,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
     // No validation errors, if execution reaches here.
   }
 
-  private List<Policy> getAccessControlPolicies() throws IOException, ParseException {
+  private List<Policy> getAccessControlPolicies() throws IOException {
     EntityUtil.Fields fields = new EntityUtil.Fields(List.of("policyType", "rules", ENABLED));
     List<String> jsons = daoCollection.policyDAO().listAfter(null, Integer.MAX_VALUE, "", Include.NON_DELETED);
     List<Policy> policies = new ArrayList<>(jsons.size());
@@ -242,7 +236,6 @@ public class PolicyRepository extends EntityRepository<Policy> {
   /**
    * Helper method to get Access Control Policies Rules. This method returns only rules for policies that are enabled.
    */
-  @SneakyThrows(ParseException.class)
   public List<Rule> getAccessControlPolicyRules() throws IOException {
     List<Policy> policies = getAccessControlPolicies();
     List<Rule> rules = new ArrayList<>();

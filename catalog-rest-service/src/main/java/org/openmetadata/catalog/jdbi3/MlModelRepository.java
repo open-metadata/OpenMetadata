@@ -13,6 +13,7 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import static org.openmetadata.catalog.Entity.helper;
 import static org.openmetadata.catalog.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.catalog.util.EntityUtil.mlFeatureMatch;
 import static org.openmetadata.catalog.util.EntityUtil.mlHyperParameterMatch;
@@ -21,12 +22,10 @@ import static org.openmetadata.catalog.util.EntityUtil.toBoolean;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.net.URI;
-import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
-import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.MlModel;
 import org.openmetadata.catalog.resources.mlmodels.MlModelResource;
@@ -69,13 +68,8 @@ public class MlModelRepository extends EntityRepository<MlModel> {
     return (model.getName());
   }
 
-  @Transaction
-  public EntityReference getOwnerReference(MlModel mlModel) throws IOException {
-    return EntityUtil.populateOwner(daoCollection.userDAO(), daoCollection.teamDAO(), mlModel.getOwner());
-  }
-
   @Override
-  public MlModel setFields(MlModel mlModel, Fields fields) throws IOException, ParseException {
+  public MlModel setFields(MlModel mlModel, Fields fields) throws IOException {
     mlModel.setDisplayName(mlModel.getDisplayName());
     mlModel.setOwner(fields.contains("owner") ? getOwner(mlModel) : null);
     mlModel.setDashboard(fields.contains("dashboard") ? getDashboard(mlModel) : null);
@@ -153,8 +147,8 @@ public class MlModelRepository extends EntityRepository<MlModel> {
       setMlFeatureFQN(mlModel.getFullyQualifiedName(), mlModel.getMlFeatures());
     }
 
-    // Check if owner is valid and set the relationship
-    mlModel.setOwner(EntityUtil.populateOwner(daoCollection.userDAO(), daoCollection.teamDAO(), mlModel.getOwner()));
+    // Populate the owner
+    helper(mlModel).populateOwner();
 
     // Check that the dashboard exists
     if (mlModel.getDashboard() != null) {

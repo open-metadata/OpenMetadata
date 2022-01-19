@@ -25,7 +25,6 @@ import static org.openmetadata.catalog.util.TestUtils.getPrincipal;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
-import java.text.ParseException;
 import java.util.Arrays;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
@@ -134,7 +133,7 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
   }
 
   @Test
-  void put_addIngestion_as_admin_2xx(TestInfo test) throws IOException, ParseException {
+  void put_addIngestion_as_admin_2xx(TestInfo test) throws IOException {
     DatabaseService service = createAndCheckEntity(create(test).withDescription(null), adminAuthHeaders());
 
     // Update database description and ingestion service that are null

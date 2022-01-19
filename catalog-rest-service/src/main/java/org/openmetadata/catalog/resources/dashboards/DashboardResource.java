@@ -25,7 +25,6 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
-import java.text.ParseException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -159,7 +158,7 @@ public class DashboardResource {
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)
-      throws IOException, GeneralSecurityException, ParseException {
+      throws IOException, GeneralSecurityException {
     RestUtil.validateCursors(before, after);
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
 
@@ -189,7 +188,7 @@ public class DashboardResource {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Dashboard Id", schema = @Schema(type = "string")) @PathParam("id") String id)
-      throws IOException, ParseException {
+      throws IOException {
     return dao.listVersions(id);
   }
 
@@ -221,7 +220,7 @@ public class DashboardResource {
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)
-      throws IOException, ParseException {
+      throws IOException {
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
     return addHref(uriInfo, dao.get(uriInfo, id, fields, include));
   }
@@ -254,7 +253,7 @@ public class DashboardResource {
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)
-      throws IOException, ParseException {
+      throws IOException {
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
     Dashboard dashboard = dao.getByName(uriInfo, fqn, fields, include);
     return addHref(uriInfo, dashboard);
@@ -284,7 +283,7 @@ public class DashboardResource {
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version)
-      throws IOException, ParseException {
+      throws IOException {
     return dao.getVersion(id, version);
   }
 
@@ -303,7 +302,7 @@ public class DashboardResource {
       })
   public Response create(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDashboard create)
-      throws IOException, ParseException {
+      throws IOException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Dashboard dashboard = getDashboard(securityContext, create);
     dashboard = addHref(uriInfo, dao.create(uriInfo, dashboard));
@@ -331,7 +330,7 @@ public class DashboardResource {
                         @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
                       }))
           JsonPatch patch)
-      throws IOException, ParseException {
+      throws IOException {
     Fields fields = new Fields(FIELD_LIST, FIELDS);
     Dashboard dashboard = dao.get(uriInfo, id, fields);
     SecurityUtil.checkAdminRoleOrPermissions(
@@ -358,7 +357,7 @@ public class DashboardResource {
       })
   public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDashboard create)
-      throws IOException, ParseException {
+      throws IOException {
     Dashboard dashboard = getDashboard(securityContext, create);
     PutResponse<Dashboard> response = dao.createOrUpdate(uriInfo, dashboard);
     addHref(uriInfo, response.getEntity());
@@ -416,7 +415,7 @@ public class DashboardResource {
         @ApiResponse(responseCode = "404", description = "Dashboard for instance {id} is not found")
       })
   public Response delete(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("id") String id)
-      throws IOException, ParseException {
+      throws IOException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     DeleteResponse<Dashboard> response = dao.delete(securityContext.getUserPrincipal().getName(), id);
     return response.toResponse();
