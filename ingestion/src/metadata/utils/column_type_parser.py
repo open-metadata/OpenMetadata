@@ -1,7 +1,5 @@
-import json
 import re
-import uuid
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Union
 
 from metadata.generated.schema.entity.data.table import Column
 
@@ -35,6 +33,7 @@ class ColumnTypeParser:
         "FLOAT4": "FLOAT",
         "FLOAT64": "DOUBLE",
         "FLOAT8": "DOUBLE",
+        "FLOAT": "DOUBLE",
         "GEOGRAPHY": "GEOGRAPHY",
         "HYPERLOGLOG": "BINARY",
         "IMAGE": "BINARY",
@@ -108,7 +107,7 @@ class ColumnTypeParser:
         s = s.strip()
         if s.startswith("array<"):
             if s[-1] != ">":
-                raise ValueError("'>' should be the last char, but got: %s" % s)
+                raise ValueError("expected '>' found: %s" % s)
             return {
                 "dataType": "ARRAY",
                 "arrayDataType": s[0:5].upper(),
@@ -116,7 +115,7 @@ class ColumnTypeParser:
             }
         elif s.startswith("map<"):
             if s[-1] != ">":
-                raise ValueError("'>' should be the last char, but got: %s" % s)
+                raise ValueError("expected '>' found: %s" % s)
             parts = ColumnTypeParser._ignore_brackets_split(s[4:-1], ",")
             if len(parts) != 2:
                 raise ValueError(
@@ -125,44 +124,36 @@ class ColumnTypeParser:
                 )
             kt = ColumnTypeParser._parse_datatype_string(parts[0])
             vt = ColumnTypeParser._parse_datatype_string(parts[1])
-            # keys are assumed to be strings in avro map
             return {"dataType": "MAP", "dataTypeDisplay": s}
         elif s.startswith("uniontype<"):
             if s[-1] != ">":
                 raise ValueError("'>' should be the last char, but got: %s" % s)
             parts = ColumnTypeParser._ignore_brackets_split(s[10:-1], ",")
             t = []
-            ustruct_seqn = 0
             for part in parts:
                 if part.startswith("struct<"):
-                    # ustruct_seqn defines sequence number of struct in union
-                    t.append(
-                        ColumnTypeParser._parse_datatype_string(
-                            part, ustruct_seqn=ustruct_seqn
-                        )
-                    )
-                    ustruct_seqn += 1
+                    t.append(ColumnTypeParser._parse_datatype_string(part))
                 else:
                     t.append(ColumnTypeParser._parse_datatype_string(part))
             return t
         elif s.startswith("struct<"):
             if s[-1] != ">":
-                raise ValueError("'>' should be the last char, but got: %s" % s)
-            return ColumnTypeParser._parse_struct_fields_string(s[7:-1], **kwargs)
+                raise ValueError("expected '>', found: %s" % s)
+            return ColumnTypeParser._parse_struct_fields_string(s[7:-1])
         elif ":" in s:
-            return ColumnTypeParser._parse_struct_fields_string(s, **kwargs)
+            return ColumnTypeParser._parse_struct_fields_string(s)
         else:
-            return ColumnTypeParser._parse_basic_datatype_string(s)
+            return ColumnTypeParser._parse_primitive_datatype_string(s)
 
     @staticmethod
-    def _parse_struct_fields_string(s: str, **kwargs: Any) -> Dict[str, object]:
+    def _parse_struct_fields_string(s: str) -> Dict[str, object]:
         parts = ColumnTypeParser._ignore_brackets_split(s, ",")
         columns = []
         for part in parts:
             name_and_type = ColumnTypeParser._ignore_brackets_split(part, ":")
             if len(name_and_type) != 2:
                 raise ValueError(
-                    "The struct field string format is: 'field_name:field_type', "
+                    "expected format is: 'field_name:field_type', "
                     + "but got: %s" % part
                 )
             field_name = name_and_type[0].strip()
@@ -180,7 +171,7 @@ class ColumnTypeParser:
         }
 
     @staticmethod
-    def _parse_basic_datatype_string(s: str) -> Dict[str, object]:
+    def _parse_primitive_datatype_string(s: str) -> Dict[str, object]:
         if s.upper() in ColumnTypeParser._SOURCE_TYPE_TO_OM_TYPE.keys():
             return {
                 "dataType": ColumnTypeParser._SOURCE_TYPE_TO_OM_TYPE[s.upper()],
@@ -188,7 +179,7 @@ class ColumnTypeParser:
             }
         elif ColumnTypeParser._FIXED_STRING.match(s):
             m = ColumnTypeParser._FIXED_STRING.match(s)
-            return {"type": "string", "dataTypeDisplay": s}
+            return {"type": "STRING", "dataTypeDisplay": s}
         elif ColumnTypeParser._FIXED_DECIMAL.match(s):
             m = ColumnTypeParser._FIXED_DECIMAL.match(s)
             if m.group(2) is not None:  # type: ignore
