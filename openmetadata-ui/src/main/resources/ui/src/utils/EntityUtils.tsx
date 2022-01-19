@@ -432,7 +432,11 @@ export const getInfoElements = (data: ExtraInfo) => {
               rel="noopener noreferrer"
               target={data.openInNewTab ? '_blank' : '_self'}>
               <>
-                <span className="tw-mr-1">{displayVal}</span>
+                <span
+                  className="tw-mr-1 tw-inline-block tw-truncate tw-w-52"
+                  title={displayVal as string}>
+                  {displayVal}
+                </span>
                 {data.openInNewTab && (
                   <SVGIcons
                     alt="external-link"
@@ -444,7 +448,17 @@ export const getInfoElements = (data: ExtraInfo) => {
               </>
             </a>
           ) : (
-            displayVal
+            <>
+              {data.key === 'Owner' ? (
+                <span
+                  className="tw-mr-1 tw-inline-block tw-truncate tw-w-52 tw-align-text-bottom"
+                  title={displayVal as string}>
+                  {displayVal}
+                </span>
+              ) : (
+                <span>{displayVal}</span>
+              )}
+            </>
           )}
         </span>
       ) : null}

@@ -120,9 +120,13 @@ const TeamsPage = () => {
         )
       ) {
         errData['name'] = 'Name already exists';
+      } else if (data.name.length < 1 || data.name.length > 128) {
+        errData['name'] = 'Name size must be between 1 and 128';
       }
       if (!data.displayName?.trim()) {
         errData['displayName'] = 'Display name is required';
+      } else if (data.displayName.length < 1 || data.displayName.length > 128) {
+        errData['displayName'] = 'Display name size must be between 1 and 128';
       }
       setErrorData(errData);
 
@@ -424,7 +428,9 @@ const TeamsPage = () => {
                     <div
                       className="tw-flex tw-justify-between tw-items-center"
                       data-testid="header">
-                      <div className="tw-heading tw-text-link tw-text-base">
+                      <div
+                        className="tw-heading tw-text-link tw-text-base tw-truncate tw-w-52"
+                        title={currentTeam?.displayName}>
                         {currentTeam?.displayName}
                       </div>
                       <NonAdminAction

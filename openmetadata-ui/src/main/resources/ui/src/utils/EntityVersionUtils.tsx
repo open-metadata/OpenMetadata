@@ -363,10 +363,14 @@ export const feedSummaryFromatter = (
               <Link
                 className="tw-pl-1"
                 to={getTeamDetailsPath(newValue?.name || '')}>
-                {getOwnerName(newValue?.id as string)}
+                <span title={getOwnerName(newValue?.id as string)}>
+                  {getOwnerName(newValue?.id as string)}
+                </span>
               </Link>
             ) : (
-              <span className="tw-pl-1">
+              <span
+                className="tw-pl-1"
+                title={getOwnerName(newValue?.id as string)}>
                 {getOwnerName(newValue?.id as string)}
               </span>
             )}
@@ -377,17 +381,21 @@ export const feedSummaryFromatter = (
               <Link
                 className="tw-pl-1"
                 to={getTeamDetailsPath(value?.name || '')}>
-                {getOwnerName(value?.id as string)}
+                <span title={getOwnerName(value?.id as string)}>
+                  {getOwnerName(value?.id as string)}
+                </span>
               </Link>
             ) : (
-              <span className="tw-pl-1">
+              <span
+                className="tw-pl-1"
+                title={getOwnerName(value?.id as string)}>
                 {getOwnerName(value?.id as string)}
               </span>
             )}
           </Fragment>
         );
       summary = (
-        <p key={uniqueId()}>
+        <p className="tw-truncate tw-w-52" key={uniqueId()}>
           {`Assigned ownership to`}
           {ownerText}
         </p>
