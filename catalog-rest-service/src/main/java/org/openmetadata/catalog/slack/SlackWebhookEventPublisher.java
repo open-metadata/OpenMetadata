@@ -19,11 +19,10 @@ import org.openmetadata.catalog.type.ChangeEvent;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.EventType;
 import org.openmetadata.catalog.type.FieldChange;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 public class SlackWebhookEventPublisher extends AbstractEventPublisher {
-  private static final Logger LOG = LoggerFactory.getLogger(SlackWebhookEventPublisher.class);
   private Invocation.Builder target;
   private Client client;
   private String openMetadataUrl;

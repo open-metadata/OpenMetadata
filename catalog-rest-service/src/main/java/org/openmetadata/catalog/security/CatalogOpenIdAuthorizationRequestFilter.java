@@ -14,7 +14,6 @@
 package org.openmetadata.catalog.security;
 
 import com.google.common.base.Strings;
-import java.lang.invoke.MethodHandles;
 import javax.annotation.Priority;
 import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.container.ContainerRequestContext;
@@ -22,8 +21,8 @@ import javax.ws.rs.container.ContainerRequestFilter;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.core.UriInfo;
-import org.openmetadata.catalog.security.auth.CatalogSecurityContext;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.catalog.security.auth.CatalogSecurityContext;
 
 @Slf4j
 @Priority(100)

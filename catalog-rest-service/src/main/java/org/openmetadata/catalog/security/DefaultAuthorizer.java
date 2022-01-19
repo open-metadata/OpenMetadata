@@ -34,7 +34,6 @@ import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.MetadataOperation;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.RestUtil;
-import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class DefaultAuthorizer implements Authorizer {
