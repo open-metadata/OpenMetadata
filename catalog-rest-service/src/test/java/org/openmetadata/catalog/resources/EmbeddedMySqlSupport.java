@@ -20,11 +20,11 @@ import com.wix.mysql.config.MysqldConfig;
 import com.wix.mysql.config.SchemaConfig;
 import java.time.ZoneId;
 import java.util.TimeZone;
+import lombok.extern.slf4j.Slf4j;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.extension.AfterAllCallback;
 import org.junit.jupiter.api.extension.BeforeAllCallback;
 import org.junit.jupiter.api.extension.ExtensionContext;
-import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class EmbeddedMySqlSupport implements BeforeAllCallback, AfterAllCallback {

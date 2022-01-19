@@ -19,13 +19,13 @@ import io.dropwizard.testing.junit5.DropwizardExtensionsSupport;
 import javax.ws.rs.client.Client;
 import javax.ws.rs.client.ClientBuilder;
 import javax.ws.rs.client.WebTarget;
+import lombok.extern.slf4j.Slf4j;
 import org.glassfish.jersey.client.ClientProperties;
 import org.glassfish.jersey.client.HttpUrlConnectorProvider;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.openmetadata.catalog.resources.CollectionRegistry;
 import org.openmetadata.catalog.resources.EmbeddedMySqlSupport;
 import org.openmetadata.catalog.resources.events.WebhookCallbackResource;
-import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @ExtendWith(EmbeddedMySqlSupport.class)
