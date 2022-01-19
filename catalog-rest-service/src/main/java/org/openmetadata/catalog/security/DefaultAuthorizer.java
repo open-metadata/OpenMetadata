@@ -34,11 +34,10 @@ import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.MetadataOperation;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.RestUtil;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 public class DefaultAuthorizer implements Authorizer {
-  private static final Logger LOG = LoggerFactory.getLogger(DefaultAuthorizer.class);
 
   private Set<String> adminUsers;
   private Set<String> botUsers;

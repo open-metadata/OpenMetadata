@@ -24,15 +24,14 @@ import javax.ws.rs.core.MediaType;
 import org.openmetadata.catalog.CatalogApplication;
 import org.openmetadata.catalog.api.CatalogVersion;
 import org.openmetadata.catalog.resources.Collection;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Path("/v1/version")
 @Api(value = "Catalog version", tags = "Catalog version related operations")
 @Produces(MediaType.APPLICATION_JSON)
 @Collection(name = "version")
 public class VersionResource {
-  private static final Logger LOG = LoggerFactory.getLogger(VersionResource.class);
   private static final CatalogVersion CATALOG_VERSION;
 
   static {

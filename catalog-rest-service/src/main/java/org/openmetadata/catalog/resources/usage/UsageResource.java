@@ -44,16 +44,15 @@ import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.type.DailyCount;
 import org.openmetadata.catalog.type.EntityUsage;
 import org.openmetadata.catalog.util.RestUtil;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Path("/v1/usage")
 @Api(value = "Usage resource", tags = "Usage resource")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "usage")
 public class UsageResource {
-  private static final Logger LOG = LoggerFactory.getLogger(UserResource.class);
   private final UsageRepository dao;
 
   @Inject
