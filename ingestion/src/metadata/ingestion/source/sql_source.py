@@ -11,6 +11,7 @@
 import json
 import logging
 import re
+import sys
 import traceback
 import uuid
 from abc import abstractmethod
@@ -46,7 +47,8 @@ from metadata.ingestion.api.common import (
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
-from metadata.utils.column_helpers import check_column_complex_type, get_column_type
+from metadata.utils.column_helpers import get_column_type
+from metadata.utils.column_type_parser import ColumnTypeParser
 from metadata.utils.helpers import get_database_service_or_create
 
 logger: logging.Logger = logging.getLogger(__name__)
@@ -153,10 +155,10 @@ def _get_table_description(schema: str, table: str, inspector: Inspector) -> str
 
 class SQLSource(Source[OMetaDatabaseAndTable]):
     def __init__(
-        self,
-        config: SQLConnectionConfig,
-        metadata_config: MetadataServerConfig,
-        ctx: WorkflowContext,
+            self,
+            config: SQLConnectionConfig,
+            metadata_config: MetadataServerConfig,
+            ctx: WorkflowContext,
     ):
         super().__init__(ctx)
         self.config = config
@@ -200,7 +202,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
 
     @classmethod
     def create(
-        cls, config_dict: dict, metadata_config_dict: dict, ctx: WorkflowContext
+            cls, config_dict: dict, metadata_config_dict: dict, ctx: WorkflowContext
     ):
         pass
 
@@ -243,7 +245,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                 yield from self.fetch_views(inspector, schema)
 
     def fetch_tables(
-        self, inspector: Inspector, schema: str
+            self, inspector: Inspector, schema: str
     ) -> Iterable[OMetaDatabaseAndTable]:
         for table_name in inspector.get_table_names(schema):
             try:
@@ -300,7 +302,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                 continue
 
     def fetch_views(
-        self, inspector: Inspector, schema: str
+            self, inspector: Inspector, schema: str
     ) -> Iterable[OMetaDatabaseAndTable]:
         for view_name in inspector.get_view_names(schema):
             try:
@@ -421,7 +423,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         return None
 
     def _parse_data_model_columns(
-        self, model_name: str, mnode: Dict, cnode: Dict
+            self, model_name: str, mnode: Dict, cnode: Dict
     ) -> [Column]:
         columns = []
         ccolumns = cnode.get("columns")
@@ -430,7 +432,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
             ccolumn = ccolumns[key]
             try:
                 ctype = ccolumn["type"]
-                col_type = get_column_type(self.status, model_name, ctype)
+                col_type = get_column_type(ctype)
                 description = manifest_columns.get(key.lower(), {}).get(
                     "description", None
                 )
@@ -557,6 +559,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                     logger.error(traceback.format_exc())
                     logger.error(traceback.print_exc())
                     logger.error(f"{err} : {column}")
+                    sys.exit()
                     continue
                 table_columns.append(om_column)
                 row_order = row_order + 1

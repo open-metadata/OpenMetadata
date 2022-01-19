@@ -52,4 +52,4 @@ class BigquerySource(SQLSource):
         return segments[0], segments[1]
 
     def parse_raw_data_type(self, raw_data_type):
-        return raw_data_type.replace(", ", ",").replace(" ", ":").lower()
+        return str(raw_data_type).replace(", ", ",").replace(" ", ":").lower()
