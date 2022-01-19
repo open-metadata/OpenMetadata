@@ -95,7 +95,7 @@ Once the virtual environment is set up and activated as described in Step 1, run
 pip3 install 'openmetadata-ingestion[glue]'
 ```
 
-### **3. Configure a local AWS profile**
+### **3. Configure a local AWS profile (optional)**
 
 In order to use the Glue Catalog connector, you will need AWS credentials configured and available to the connector. The best way to do this is by configuring a local AWS profile using the AWS Command-Line Interface (CLI). In this step we will install the AWS CLI and then configure an AWS profile.
 
