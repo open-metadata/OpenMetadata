@@ -29,6 +29,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import javax.ws.rs.client.WebTarget;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.MethodOrderer;
@@ -50,6 +51,7 @@ import org.openmetadata.catalog.type.ColumnDataType;
 import org.openmetadata.catalog.type.Post;
 import org.openmetadata.catalog.util.TestUtils;
 
+@Slf4j
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class FeedResourceTest extends CatalogApplicationTest {
   public static Table TABLE;

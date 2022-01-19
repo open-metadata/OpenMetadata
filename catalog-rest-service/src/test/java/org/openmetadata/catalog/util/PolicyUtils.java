@@ -1,9 +1,11 @@
 package org.openmetadata.catalog.util;
 
 import java.util.Random;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.entity.policies.accessControl.Rule;
 import org.openmetadata.catalog.type.MetadataOperation;
 
+@Slf4j
 public class PolicyUtils {
 
   private static final Random random = new Random();

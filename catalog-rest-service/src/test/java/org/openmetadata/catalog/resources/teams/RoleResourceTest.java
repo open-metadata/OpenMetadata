@@ -29,6 +29,7 @@ import java.util.Map;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.ws.rs.client.WebTarget;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
@@ -46,6 +47,7 @@ import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
 
+@Slf4j
 public class RoleResourceTest extends EntityResourceTest<Role> {
 
   public RoleResourceTest() {

@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import lombok.extern.slf4j.Slf4j;
 import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.action.update.UpdateRequest;
 import org.elasticsearch.client.RequestOptions;
@@ -45,11 +46,9 @@ import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.util.ElasticSearchClientUtils;
 import org.openmetadata.catalog.util.JsonUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
+@Slf4j
 public class ElasticSearchEventPublisher extends AbstractEventPublisher {
-  private static final Logger LOG = LoggerFactory.getLogger(ElasticSearchEventPublisher.class);
   private final RestHighLevelClient client;
   private final ElasticSearchIndexDefinition esIndexDefinition;
 

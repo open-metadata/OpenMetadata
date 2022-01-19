@@ -20,21 +20,20 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.resources.events.EventResource.ChangeEventList;
 import org.openmetadata.catalog.type.ChangeEvent;
 import org.openmetadata.catalog.type.EventType;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.common.utils.CommonUtil;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
+@Slf4j
 /** REST resource used for webhook callback tests. */
 @Path("v1/test/webhook")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 public class WebhookCallbackResource {
-  public static final Logger LOG = LoggerFactory.getLogger(WebhookCallbackResource.class);
   private final ConcurrentHashMap<String, EventDetails> eventMap = new ConcurrentHashMap<>();
   private final ConcurrentHashMap<String, List<ChangeEvent>> entityCallbackMap = new ConcurrentHashMap<>();
 

@@ -29,6 +29,7 @@ import java.net.URISyntaxException;
 import java.util.Date;
 import java.util.Map;
 import javax.ws.rs.core.Response.Status;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.joda.time.DateTime;
 import org.junit.jupiter.api.BeforeAll;
@@ -46,6 +47,7 @@ import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.TestUtils;
 
+@Slf4j
 public class IngestionResourceTest extends EntityOperationsResourceTest<Ingestion> {
   public static ConnectorConfig INGESTION_CONFIG;
 

@@ -9,6 +9,7 @@ import javax.ws.rs.client.ClientBuilder;
 import javax.ws.rs.client.Invocation;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
+import lombok.extern.slf4j.Slf4j;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.openmetadata.catalog.events.AbstractEventPublisher;
@@ -19,11 +20,9 @@ import org.openmetadata.catalog.type.ChangeEvent;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.EventType;
 import org.openmetadata.catalog.type.FieldChange;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
+@Slf4j
 public class SlackWebhookEventPublisher extends AbstractEventPublisher {
-  private static final Logger LOG = LoggerFactory.getLogger(SlackWebhookEventPublisher.class);
   private Invocation.Builder target;
   private Client client;
   private String openMetadataUrl;

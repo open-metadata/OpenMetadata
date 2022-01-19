@@ -13,14 +13,13 @@
 
 package org.openmetadata.catalog.security;
 
+import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.MetadataOperation;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
+@Slf4j
 public class NoopAuthorizer implements Authorizer {
-  private static final Logger LOG = LoggerFactory.getLogger(NoopAuthorizer.class);
 
   @Override
   public void init(AuthorizerConfiguration config, Jdbi jdbi) {

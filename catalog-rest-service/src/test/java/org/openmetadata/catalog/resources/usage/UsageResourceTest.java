@@ -33,6 +33,7 @@ import java.util.Map;
 import java.util.Random;
 import java.util.UUID;
 import javax.ws.rs.client.WebTarget;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
@@ -55,6 +56,7 @@ import org.openmetadata.catalog.type.UsageDetails;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.TestUtils;
 
+@Slf4j
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class UsageResourceTest extends CatalogApplicationTest {
   public static final List<Table> TABLES = new ArrayList<>();
