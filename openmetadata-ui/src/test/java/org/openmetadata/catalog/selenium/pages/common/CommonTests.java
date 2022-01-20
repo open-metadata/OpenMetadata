@@ -395,6 +395,17 @@ public class CommonTests {
     Assert.assertEquals(matchesCount + " results", resultsCount);
   }
 
+  @Test
+  @Order(18)
+  public void sameNodesLineage() throws InterruptedException {
+    openHomePage();
+    Events.sendKeys(webDriver, By.cssSelector("[data-testid='searchBox']"), "dim_product_variant");
+    Events.click(webDriver, By.cssSelector("[data-testid='data-name']"));
+    Thread.sleep(waitTime);
+    Events.click(webDriver, By.xpath("(//button[@data-testid='tab'])[4]"));
+    Events.click(webDriver, By.cssSelector("[data-testid='edit-lineage']"));
+  }
+
   @AfterEach
   public void closeTabs() {
     ArrayList<String> tabs = new ArrayList<>(webDriver.getWindowHandles());
