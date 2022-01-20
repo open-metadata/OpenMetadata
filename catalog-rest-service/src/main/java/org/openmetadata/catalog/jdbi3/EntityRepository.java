@@ -902,7 +902,8 @@ public abstract class EntityRepository<T> {
         throws IOException {
       // Remove current entity tags in the database. It will be added back later from the merged tag list.
       origTags = Optional.ofNullable(origTags).orElse(Collections.emptyList());
-      updatedTags = Optional.ofNullable(updatedTags).orElse(Collections.emptyList());
+      // updatedTags cannot be immutable list, as we are adding the origTags to updatedTags even if its empty.
+      updatedTags = Optional.ofNullable(updatedTags).orElse(new ArrayList<>());
       if (origTags.isEmpty() && updatedTags.isEmpty()) {
         return; // Nothing to update
       }
