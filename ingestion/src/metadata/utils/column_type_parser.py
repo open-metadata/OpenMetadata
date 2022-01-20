@@ -1,12 +1,51 @@
 import re
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, Optional, Type
+from typing import List, Union
 
-from metadata.generated.schema.entity.data.table import Column
-from metadata.utils.column_helpers import get_column_type
+from sqlalchemy.sql import sqltypes as types
+from sqlalchemy.types import TypeEngine
+
+
+def create_sqlalchemy_type(name: str):
+    sqlalchemy_type = type(
+        name,
+        (TypeEngine,),
+        {
+            "__repr__": lambda self: f"{name}()",
+        },
+    )
+    return sqlalchemy_type
 
 
 class ColumnTypeParser:
     _BRACKETS = {"(": ")", "[": "]", "{": "}", "<": ">"}
+
+    _COLUMN_TYPE_MAPPING: Dict[Type[types.TypeEngine], str] = {
+        types.ARRAY: "ARRAY",
+        types.Boolean: "BOOLEAN",
+        types.CHAR: "CHAR",
+        types.CLOB: "BINARY",
+        types.Date: "DATE",
+        types.DATE: "DATE",
+        types.DateTime: "DATETIME",
+        types.DATETIME: "DATETIME",
+        types.DECIMAL: "DECIMAL",
+        types.Enum: "ENUM",
+        types.Interval: "INTERVAL",
+        types.JSON: "JSON",
+        types.LargeBinary: "BYTES",
+        types.NullType: "NULL",
+        types.Numeric: "INT",
+        types.PickleType: "BYTES",
+        types.String: "STRING",
+        types.Time: "TIME",
+        types.TIMESTAMP: "TIMESTAMP",
+        types.VARCHAR: "VARCHAR",
+        types.BINARY: "BINARY",
+        types.INTEGER: "INT",
+        types.Integer: "INT",
+        types.BigInteger: "BIGINT"
+    }
 
     _SOURCE_TYPE_TO_OM_TYPE = {
         "ARRAY": "ARRAY",
@@ -23,6 +62,7 @@ class ColumnTypeParser:
         "BYTES": "BYTES",
         "CHAR": "CHAR",
         "CHARACTER VARYING": "VARCHAR",
+        "CURSOR": "BINARY",
         "DATE": "DATE",
         "DATETIME": "DATETIME",
         "DATETIME2": "DATETIME",
@@ -34,7 +74,6 @@ class ColumnTypeParser:
         "FLOAT4": "FLOAT",
         "FLOAT64": "DOUBLE",
         "FLOAT8": "DOUBLE",
-        "FLOAT": "FLOAT",
         "GEOGRAPHY": "GEOGRAPHY",
         "HYPERLOGLOG": "BINARY",
         "IMAGE": "BINARY",
@@ -81,6 +120,9 @@ class ColumnTypeParser:
         "TIMESTAMP WITHOUT TIME ZONE": "TIMESTAMP",
         "TIMESTAMP": "TIMESTAMP",
         "TIMESTAMPTZ": "TIMESTAMP",
+        "TIMESTAMP_NTZ": "TIMESTAMP",
+        "TIMESTAMP_LTZ": "TIMESTAMP",
+        "TIMESTAMP_TZ": "TIMESTAMP",
         "TIMETZ": "TIMESTAMP",
         "TINYINT": "TINYINT",
         "UNION": "UNION",
@@ -90,9 +132,6 @@ class ColumnTypeParser:
         "VARIANT": "JSON",
         "XML": "BINARY",
         "XMLTYPE": "BINARY",
-        "CURSOR": "BINARY",
-        "TIMESTAMP_LTZ": "TIMESTAMP",
-        "TIMESTAMP_TZ": "TIMESTAMP",
     }
 
     _COMPLEX_TYPE = re.compile("^(struct|map|array|uniontype)")
@@ -102,8 +141,24 @@ class ColumnTypeParser:
     _FIXED_STRING = re.compile(r"(var)?char\(\s*(\d+)\s*\)")
 
     @staticmethod
+    def get_column_type(column_type: Any) -> str:
+        type_class: Optional[str] = None
+        for sql_type in ColumnTypeParser._SOURCE_TYPE_TO_OM_TYPE.keys():
+            if str(column_type) in sql_type:
+                type_class = ColumnTypeParser._SOURCE_TYPE_TO_OM_TYPE[sql_type]
+                break
+        if type_class is None or type_class == "NULL":
+            for col_type in ColumnTypeParser._SOURCE_TYPE_TO_OM_TYPE.keys():
+                if str(column_type).split("(")[0].split("<")[0].upper() in col_type:
+                    type_class = ColumnTypeParser._SOURCE_TYPE_TO_OM_TYPE.get(col_type)
+                    break
+                else:
+                    type_class = None
+        return type_class
+
+    @staticmethod
     def _parse_datatype_string(
-        s: str, **kwargs: Any
+            s: str, **kwargs: Any
     ) -> Union[object, Dict[str, object]]:
         s = s.strip()
         if s.startswith("array<"):
@@ -126,7 +181,7 @@ class ColumnTypeParser:
             kt = ColumnTypeParser._parse_datatype_string(parts[0])
             vt = ColumnTypeParser._parse_datatype_string(parts[1])
             return {"dataType": "MAP", "dataTypeDisplay": s}
-        elif s.startswith("uniontype<"):
+        elif s.startswith("uniontype<") or s.startswith("union<"):
             if s[-1] != ">":
                 raise ValueError("'>' should be the last char, but got: %s" % s)
             parts = ColumnTypeParser._ignore_brackets_split(s[10:-1], ",")
@@ -185,27 +240,28 @@ class ColumnTypeParser:
             m = ColumnTypeParser._FIXED_DECIMAL.match(s)
             if m.group(2) is not None:  # type: ignore
                 return {
-                    "dataType": get_column_type(m.group(0)),
+                    "dataType": ColumnTypeParser.get_column_type(m.group(0)),
                     "dataTypeDisplay": s,
                     "dataLength": int(m.group(3)),  # type: ignore
                 }
             else:
-                return {"dataType": get_column_type(m.group(0)), "dataTypeDisplay": s}
+                return {"dataType": ColumnTypeParser.get_column_type(m.group(0)), "dataTypeDisplay": s}
         elif s == "date":
             return {"dataType": "DATE", "dataTypeDisplay": s}
         elif s == "timestamp":
             return {"dataType": "TIMESTAMP", "dataTypeDisplay": s}
         else:
-            dataType = get_column_type(s)
+            dataType = ColumnTypeParser.get_column_type(s)
             if not dataType:
                 return {"dataType": "NULL", "dataTypeDisplay": s}
             else:
+                dataLength = 1
                 if re.match(".*(\([\w]*\))", s):
                     dataLength = re.match(".*\(([\w]*)\)", s).groups()[0]
                 return {
                     "dataType": dataType,
                     "dataTypeDisplay": dataType,
-                    "dataLength": dataLength if dataLength is not None else 1,
+                    "dataLength": dataLength,
                 }
 
     @staticmethod
