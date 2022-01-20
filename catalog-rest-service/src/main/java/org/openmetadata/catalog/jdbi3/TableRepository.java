@@ -39,6 +39,7 @@ import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.BiPredicate;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.binary.Hex;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.entity.data.Database;
@@ -66,11 +67,9 @@ import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.common.utils.CommonUtil;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
+@Slf4j
 public class TableRepository extends EntityRepository<Table> {
-  static final Logger LOG = LoggerFactory.getLogger(TableRepository.class);
   // Table fields that can be patched in a PATCH request
   static final Fields TABLE_PATCH_FIELDS = new Fields(TableResource.FIELD_LIST, "owner,columns,tags,tableConstraints");
   // Table fields that can be updated in a PUT request

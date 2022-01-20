@@ -14,16 +14,17 @@
 package org.openmetadata.catalog;
 
 import static org.openmetadata.catalog.resources.teams.UserResource.FIELD_LIST;
-import static org.openmetadata.catalog.resources.teams.UserResource.LOG;
 
 import com.codahale.metrics.health.HealthCheck;
 import java.io.IOException;
+import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.UserRepository;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.EntityUtil;
 
+@Slf4j
 public class CatalogHealthCheck extends HealthCheck {
   private final UserRepository userRepository;
   private final EntityUtil.Fields fields = new EntityUtil.Fields(FIELD_LIST, "profile");

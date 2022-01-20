@@ -21,20 +21,18 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.mapper.RowMapper;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
-import org.openmetadata.catalog.resources.tags.TagResource;
 import org.openmetadata.catalog.type.Tag;
 import org.openmetadata.catalog.type.TagCategory;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
+@Slf4j
 public class TagRepository {
-  public static final Logger LOG = LoggerFactory.getLogger(TagRepository.class);
   private final CollectionDAO dao;
 
   public TagRepository(CollectionDAO dao) {
@@ -46,7 +44,7 @@ public class TagRepository {
   public void initCategory(TagCategory category) throws JsonProcessingException {
     String json = dao.tagDAO().findCategory(category.getName());
     if (json == null) {
-      TagResource.LOG.info("Tag category {} is not initialized", category.getName());
+      LOG.info("Tag category {} is not initialized", category.getName());
       createCategoryInternal(category);
 
       // Only two levels of tag allowed under a category
@@ -54,7 +52,7 @@ public class TagRepository {
         createTagInternal(category.getName(), primaryTag);
       }
     } else {
-      TagResource.LOG.info("Tag category {} is already initialized", category.getName());
+      LOG.info("Tag category {} is already initialized", category.getName());
     }
   }
 
@@ -200,13 +198,13 @@ public class TagRepository {
     tag.setFullyQualifiedName(parentFQN + "." + tag.getName());
     dao.tagDAO().insertTag(JsonUtils.pojoToJson(tag));
     tag.setChildren(tags);
-    TagResource.LOG.info("Added tag {}", tag.getFullyQualifiedName());
+    LOG.info("Added tag {}", tag.getFullyQualifiedName());
 
     // Then add the children
     for (Tag children : Optional.ofNullable(tags).orElse(Collections.emptyList())) {
       children.setChildren(null); // No children allowed for the leaf tag
       children.setFullyQualifiedName(children.getFullyQualifiedName() + "." + children.getName());
-      TagResource.LOG.info("Added tag {}", children.getFullyQualifiedName());
+      LOG.info("Added tag {}", children.getFullyQualifiedName());
       dao.tagDAO().insertTag(JsonUtils.pojoToJson(children));
     }
     return tag;

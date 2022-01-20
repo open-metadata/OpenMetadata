@@ -41,6 +41,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.maven.shared.utils.io.IOUtil;
 import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
@@ -57,15 +58,13 @@ import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.common.utils.CommonUtil;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
+@Slf4j
 @Path("/v1/tags")
 @Api(value = "Tags resources collection", tags = "Tags resources collection")
 @Produces(MediaType.APPLICATION_JSON)
 @Collection(name = "tags")
 public class TagResource {
-  public static final Logger LOG = LoggerFactory.getLogger(TagResource.class);
   public static final String TAG_COLLECTION_PATH = "/v1/tags/";
   private final TagRepository dao;
   private final Authorizer authorizer;

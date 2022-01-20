@@ -30,6 +30,7 @@ import java.util.function.BiPredicate;
 import java.util.stream.Collectors;
 import javax.ws.rs.WebApplicationException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.joda.time.Period;
 import org.joda.time.format.ISOPeriodFormat;
 import org.openmetadata.catalog.Entity;
@@ -60,11 +61,9 @@ import org.openmetadata.catalog.type.TagLabel.LabelType;
 import org.openmetadata.catalog.type.Task;
 import org.openmetadata.catalog.type.UsageDetails;
 import org.openmetadata.catalog.type.UsageStats;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
+@Slf4j
 public final class EntityUtil {
-  private static final Logger LOG = LoggerFactory.getLogger(EntityUtil.class);
 
   //
   // Comparators used for sorting list based on the given type

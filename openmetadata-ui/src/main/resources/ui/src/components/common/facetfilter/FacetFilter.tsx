@@ -185,7 +185,9 @@ const FacetFilter: FunctionComponent<FacetProp> = ({
                     )}
                   </div>
                 </div>
-                <div className="sidebar-my-data-holder mt-2 mb-3">
+                <div
+                  className="sidebar-my-data-holder mt-2 mb-3"
+                  data-testid={`filter-containers-${index}`}>
                   {getFilterItems(aggregation)}
                 </div>
                 {getSeparator(aggregations.length, index)}

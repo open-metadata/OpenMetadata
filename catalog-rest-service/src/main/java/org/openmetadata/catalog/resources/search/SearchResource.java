@@ -33,6 +33,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
+import lombok.extern.slf4j.Slf4j;
 import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.client.RequestOptions;
@@ -49,15 +50,13 @@ import org.elasticsearch.search.suggest.SuggestBuilders;
 import org.elasticsearch.search.suggest.completion.CompletionSuggestionBuilder;
 import org.openmetadata.catalog.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.catalog.util.ElasticSearchClientUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
+@Slf4j
 @Path("/v1/search")
 @Api(value = "Search collection", tags = "Search collection")
 @Produces(MediaType.APPLICATION_JSON)
 public class SearchResource {
   private final RestHighLevelClient client;
-  private static final Logger LOG = LoggerFactory.getLogger(SearchResource.class);
 
   public SearchResource(ElasticSearchConfiguration esConfig) {
     this.client = ElasticSearchClientUtils.createElasticSearchClient(esConfig);

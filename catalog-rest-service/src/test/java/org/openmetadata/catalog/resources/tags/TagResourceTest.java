@@ -32,6 +32,7 @@ import java.util.Map;
 import java.util.Optional;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response.Status;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.MethodOrderer;
@@ -49,6 +50,7 @@ import org.openmetadata.catalog.type.TagCategory;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
 
+@Slf4j
 /** Tests not covered here: Tag category and Tag usage counts are covered in TableResourceTest */
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class TagResourceTest extends CatalogApplicationTest {
