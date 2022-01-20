@@ -36,10 +36,8 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.catalog.Entity;
-import org.openmetadata.catalog.api.operations.workflows.CreateIngestion;
-import org.openmetadata.catalog.jdbi3.IngestionRepository;
-import org.openmetadata.catalog.operations.workflows.ConnectorConfig;
-import org.openmetadata.catalog.operations.workflows.Ingestion;
+import org.openmetadata.catalog.jdbi3.AirflowPipelineRepository;
+import org.openmetadata.catalog.operations.pipelines.AirflowPipeline;
 import org.openmetadata.catalog.resources.EntityOperationsResourceTest;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
@@ -48,16 +46,16 @@ import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.TestUtils;
 
 @Slf4j
-public class IngestionResourceTest extends EntityOperationsResourceTest<Ingestion> {
+public class AirflowPipelineResourceTest extends EntityOperationsResourceTest<AirflowPipeline> {
   public static ConnectorConfig INGESTION_CONFIG;
 
-  public IngestionResourceTest() {
+  public AirflowPipelineResourceTest() {
     super(
         Entity.INGESTION,
-        Ingestion.class,
-        IngestionResource.IngestionList.class,
+        AirflowPipeline.class,
+        AirflowPipelineResource.AirflowPipelineList.class,
         "ingestion",
-        IngestionResource.FIELDS,
+        AirflowPipelineResource.FIELDS,
         false,
         true,
         true,
@@ -67,12 +65,13 @@ public class IngestionResourceTest extends EntityOperationsResourceTest<Ingestio
   @BeforeAll
   public void setup(TestInfo test) throws IOException, URISyntaxException {
     super.setup(test);
-    INGESTION_CONFIG =
-        new ConnectorConfig()
-            .withEnableDataProfiler(true)
-            .withUsername("test")
-            .withPassword("test")
-            .withHost("localhost:9092");
+    DatabaseMetadataPipelineConfig databaseMetaDataPipelineConfig =
+        INGESTION_CONFIG =
+            new ConnectorConfig()
+                .withEnableDataProfiler(true)
+                .withUsername("test")
+                .withPassword("test")
+                .withHost("localhost:9092");
   }
 
   @Override
@@ -123,7 +122,7 @@ public class IngestionResourceTest extends EntityOperationsResourceTest<Ingestio
 
   @Override
   public EntityInterface<Ingestion> getEntityInterface(Ingestion entity) {
-    return new IngestionRepository.IngestionEntityInterface(entity);
+    return new AirflowPipelineRepository.IngestionEntityInterface(entity);
   }
 
   @Override
