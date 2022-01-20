@@ -25,6 +25,7 @@ import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.net.URISyntaxException;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import javax.json.JsonPatch;
@@ -164,17 +165,36 @@ public class RoleResourceTest extends EntityResourceTest<Role> {
     assertEquals(expectedDisplayName, role.getDisplayName());
   }
 
+  @Override
+  protected void prepareGetWithDifferentFields(Role role) throws HttpResponseException {
+    // Assign two arbitrary users this role for testing.
+    UserResourceTest.createUser(
+        UserResourceTest.create(role.getName() + "user1").withRoles(List.of(role.getId())), adminAuthHeaders());
+    UserResourceTest.createUser(
+        UserResourceTest.create(role.getName() + "user2").withRoles(List.of(role.getId())), adminAuthHeaders());
+  };
+
   /** Validate returned fields GET .../roles/{id}?fields="..." or GET .../roles/name/{name}?fields="..." */
   @Override
   public void validateGetWithDifferentFields(Role expectedRole, boolean byName) throws HttpResponseException {
     String updatedBy = TestUtils.getPrincipal(adminAuthHeaders());
-    // Role does not have any supported additional fields yet.
+
     // .../roles
-    Role getRole =
+    Role role =
         byName
             ? getRoleByName(expectedRole.getName(), null, adminAuthHeaders())
             : getRole(expectedRole.getId(), null, adminAuthHeaders());
-    validateRole(getRole, expectedRole.getDescription(), expectedRole.getDisplayName(), updatedBy);
+    validateRole(role, expectedRole.getDescription(), expectedRole.getDisplayName(), updatedBy);
+
+    // .../roles?fields=policy,users
+    String fields = "policy,users";
+    role =
+        byName
+            ? getRoleByName(expectedRole.getName(), fields, adminAuthHeaders())
+            : getRole(expectedRole.getId(), fields, adminAuthHeaders());
+    validateRole(role, expectedRole.getDescription(), expectedRole.getDisplayName(), updatedBy);
+    TestUtils.validateEntityReference(role.getPolicy());
+    TestUtils.validateEntityReference(role.getUsers());
   }
 
   private Role patchRole(UUID roleId, String originalJson, Role updated, Map<String, String> authHeaders)

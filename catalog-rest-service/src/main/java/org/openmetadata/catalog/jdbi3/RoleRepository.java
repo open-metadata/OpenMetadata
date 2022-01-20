@@ -19,7 +19,10 @@ import java.io.IOException;
 import java.net.URI;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
+import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
@@ -56,10 +59,11 @@ public class RoleRepository extends EntityRepository<Role> {
   @Override
   public Role setFields(Role role, Fields fields) throws IOException {
     role.setPolicy(fields.contains("policy") ? getPolicyForRole(role) : null);
+    role.setUsers(fields.contains("users") ? getUsersForRole(role) : null);
     return role;
   }
 
-  private EntityReference getPolicyForRole(Role role) throws IOException {
+  private EntityReference getPolicyForRole(@NonNull Role role) throws IOException {
     List<String> result =
         daoCollection
             .relationshipDAO()
@@ -77,6 +81,29 @@ public class RoleRepository extends EntityRepository<Role> {
       return null;
     }
     return Entity.getEntityReference(Entity.POLICY, UUID.fromString(result.get(0)));
+  }
+
+  private List<EntityReference> getUsersForRole(@NonNull Role role) {
+    List<EntityReference> entityReferences =
+        daoCollection
+            .relationshipDAO()
+            .findFromEntity(
+                role.getId().toString(),
+                Entity.ROLE,
+                Relationship.HAS.ordinal(),
+                Entity.USER,
+                toBoolean(toInclude(role)));
+    return Optional.ofNullable(entityReferences).orElse(Collections.emptyList()).stream()
+        .map(
+            ref -> {
+              try {
+                return Entity.getEntityReference(Entity.USER, ref.getId());
+              } catch (IOException e) {
+                LOG.warn("Could not get entity reference for user {}", ref.getId());
+              }
+              return ref;
+            })
+        .collect(Collectors.toList());
   }
 
   @Override
