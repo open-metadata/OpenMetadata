@@ -271,7 +271,7 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook> {
     assertNotNull(callbackEvents.peek());
     List<ChangeEvent> actualEvents =
         getChangeEvents("*", "*", "*", callbackEvents.peek().getTimestamp(), adminAuthHeaders()).getData();
-    waitAndCheckForEvents(actualEvents, callbackEvents, 10, 100);
+    waitAndCheckForEvents(actualEvents, callbackEvents, 15, 250);
     assertWebhookStatusSuccess("healthy");
   }
 
