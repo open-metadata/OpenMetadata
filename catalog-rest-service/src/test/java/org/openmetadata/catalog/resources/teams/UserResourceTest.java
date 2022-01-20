@@ -506,7 +506,7 @@ public class UserResourceTest extends EntityResourceTest<User> {
     return create(getEntityName(test, index));
   }
 
-  public CreateUser create(String entityName) {
+  public static CreateUser create(String entityName) {
     // user part of the email should be less than 64 in length
     String emailUser = entityName == null || entityName.isEmpty() ? UUID.randomUUID().toString() : entityName;
     emailUser = emailUser.length() > 64 ? emailUser.substring(0, 64) : emailUser;

@@ -55,6 +55,10 @@
     "policy" : {
       "description": "Policy that is attached to this role.",
       "$ref": "../../type/entityReference.json"
+    },
+    "users" : {
+      "description": "Users that have this role assigned.",
+      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
     }
   },
   "required" : [
