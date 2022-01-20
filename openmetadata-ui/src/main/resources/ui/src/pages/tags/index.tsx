@@ -15,7 +15,7 @@ import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
 import { isUndefined, toLower } from 'lodash';
 import { EntityTags, FormErrorData } from 'Models';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   createTag,
@@ -67,6 +67,12 @@ const TagsPage = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [errorDataCategory, setErrorDataCategory] = useState<FormErrorData>();
   const [errorDataTag, setErrorDataTag] = useState<FormErrorData>();
+
+  const getTags = useCallback(() => {
+    return getTaglist(categories).filter(
+      (tag) => editTag?.fullyQualifiedName !== tag
+    );
+  }, [currentCategory, editTag]);
 
   const fetchCategories = () => {
     setIsLoading(true);
@@ -440,9 +446,7 @@ const TagsPage = () => {
                                         tagFQN: tag,
                                       })) || []
                                     }
-                                    tagList={
-                                      getTaglist(categories) as Array<string>
-                                    }
+                                    tagList={getTags()}
                                     onCancel={() => {
                                       handleTagSelection();
                                     }}
