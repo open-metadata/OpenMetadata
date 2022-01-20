@@ -321,6 +321,14 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     }
 
     private void updateTasks(Pipeline origPipeline, Pipeline updatedPipeline) throws JsonProcessingException {
+      // Airflow lineage backend gets executed per task in a DAG. This means we will not a get full picture of the
+      // pipeline in each call. Hence, we may create a pipeline and add a single task when one task finishes in a
+      // pipeline in the next task run we may have to update. To take care of this we will merge the tasks
+
+      // The current behavior does not perform a merge but rather overrides the tasks
+      // having the client side request as the full source of truth. We are going to update
+      // the logic of the lineage backend in Airflow to append the tasks accordingly in #2316
+
       List<Task> addedList = new ArrayList<>();
       List<Task> deletedList = new ArrayList<>();
       recordListChange(
