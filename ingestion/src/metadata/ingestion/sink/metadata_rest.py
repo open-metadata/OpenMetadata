@@ -414,7 +414,7 @@ class MetadataRestSink(Sink[Entity]):
         roles = []
         for role in record.roles.__root__:
             try:
-                role_response = self.api_client.get(f"/roles/{role.id.__root__}")    
+                role_response = self.api_client.get(f"/roles/{role.id.__root__}")
             except APIError:
                 self._create_role(role)
             roles.append(self.role_entities[role.name])
