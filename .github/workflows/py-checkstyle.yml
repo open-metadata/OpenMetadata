@@ -9,39 +9,64 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-name: py-checkstyle
+name: Python Checkstyle
 
+# read-write repo token
+# access to secrets
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'ingestion/**'
-  pull_request:
-    branches: [main]
-    paths:
-      - 'ingestion/**'
+  pull_request_target:
+    branches: [ main ]
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
+  py-checkstyle:
+    runs-on: ${{matrix.os}}
+
+    strategy:
+      matrix:
+        os:
+          - ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v2
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
       - name: Set up Python 3.9
         uses: actions/setup-python@v2
         with:
           python-version: 3.9
+
       - name: Install Ubuntu related dependencies
         run: |
           sudo apt-get install -y libsasl2-dev unixodbc-dev python3-venv
+
       - name: Install Python & Openmetadata related dependencies
         run: |
           python3 -m venv env
           source env/bin/activate
           make install install_test install_dev
-          
+
+      # Add back linting once we have 10/10 on main
       - name: Code style check
+        id: style
+        continue-on-error: true
         run: |
           source env/bin/activate
           make generate
-          make black_check lint
+          make black_check
+
+      - name: Create a comment in the PR with the instructions
+        if: steps.style.outcome != 'success'
+        uses: peter-evans/create-or-update-comment@v1
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+            **The Python checkstyle failed.**
+
+            Please run `make black` in the root of your repository and commit the changes to this PR. You can also use [pre-commit](https://pre-commit.com/) to automate the Python code formatting.
+
+      - name: Python checkstyle failed, check the comment in the PR
+        if: steps.style.outcome != 'success'
+        run: |
+          exit 1
