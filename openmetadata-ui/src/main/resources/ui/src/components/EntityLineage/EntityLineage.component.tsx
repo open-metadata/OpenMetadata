@@ -610,6 +610,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
                       <SVGIcons
                         alt="icon-edit-lineag"
                         className="tw--mt-1"
+                        data-testid="edit-lineage"
                         icon={
                           !isEditMode
                             ? 'icon-edit-lineage-color'

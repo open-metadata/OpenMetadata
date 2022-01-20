@@ -400,7 +400,7 @@ const TagsPage = () => {
                                     </button>
                                   </NonAdminAction>
                                 </div>
-                                <div className="tw-mt-1">
+                                <div className="tw-mt-1" data-testid="usage">
                                   <span className="tw-text-grey-muted tw-mr-1">
                                     Usage:
                                   </span>
@@ -414,7 +414,9 @@ const TagsPage = () => {
                                       {tag.usageCount}
                                     </Link>
                                   ) : (
-                                    <span className="tw-no-description">
+                                    <span
+                                      className="tw-no-description"
+                                      data-testid="usage-count">
                                       Not used
                                     </span>
                                   )}

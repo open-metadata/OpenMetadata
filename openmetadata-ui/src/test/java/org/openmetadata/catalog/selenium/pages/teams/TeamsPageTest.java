@@ -210,6 +210,26 @@ public class TeamsPageTest {
     Assert.assertEquals(teamsCount, teamsFilterCount);
   }
 
+  @Test
+  @Order(8)
+  public void teamsWithSameDisplayNameCheck() throws Exception {
+    for (int i = 0; i < 2; i++) {
+      createTeam();
+      webDriver.navigate().back();
+      Events.click(webDriver, By.cssSelector("[data-testid='whatsnew-modal']")); // What's New
+    }
+    Events.click(webDriver, By.cssSelector("[data-testid='closeWhatsNew']")); // Close What's new
+    Events.click(webDriver, By.cssSelector("[data-testid='menu-button'][id='menu-button-Settings']")); // Setting
+    Events.click(webDriver, By.cssSelector("[data-testid='menu-item-Teams']")); // Setting/Teams
+    Thread.sleep(2000);
+    int teamsCount = webDriver.findElements(By.xpath("//*[text()[contains(.,'" + teamDisplayName + "')]] ")).size();
+    if (teamsCount > 1) {
+      throw new Exception("Two Team with same display-name exists");
+    } else {
+      Assert.assertEquals(teamsCount, 1);
+    }
+  }
+
   @AfterEach
   public void closeTabs() {
     ArrayList<String> tabs = new ArrayList<>(webDriver.getWindowHandles());
