@@ -109,7 +109,6 @@ public class TeamResource {
 
   @GET
   @Valid
-  @Pac4JSecurity(authorizers = "isAuthenticated")
   @Operation(
       summary = "List teams",
       tags = "teams",

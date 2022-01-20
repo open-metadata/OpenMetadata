@@ -24,7 +24,6 @@ import org.pac4j.jax.rs.annotations.Pac4JSecurity;
 @Path("/v1/callback")
 @Api(value = "Callback API for SSO")
 @Collection(name = "callback")
-@Pac4JSecurity(ignore = true)
 public class Callback {
   @POST
   @Pac4JCallback(multiProfile = true, renewSession = false)

@@ -113,15 +113,15 @@ database:
 
 
 # Authorizer Configuration
-authorizerConfiguration:
-  className: "org.openmetadata.catalog.security.DefaultAuthorizer"
-  # JWT Filter
-  containerRequestFilter: "org.openmetadata.catalog.security.JwtFilter"
-  adminPrincipals:
-    - "suresh"
-  botPrincipals:
-    - "ingestion-bot"
-  principalDomain: "open-metadata.org"
+#authorizerConfiguration:
+#  className: "org.openmetadata.catalog.security.DefaultAuthorizer"
+#  # JWT Filter
+#  containerRequestFilter: "org.openmetadata.catalog.security.JwtFilter"
+#  adminPrincipals:
+#    - "suresh"
+#  botPrincipals:
+#    - "ingestion-bot"
+#  principalDomain: "open-metadata.org"
 
 #authenticationConfiguration:
 #  provider: "google"
@@ -162,21 +162,22 @@ health:
 
 pac4j:
   # those protect the whole application at Jersey level
-#  globalFilters:
-#    - matchers: excludeConfigAuth
-#      authorizers: isAuthenticated
-#  matchers:
-#    excludeConfigAuth:
-#      class: org.pac4j.core.matching.matcher.PathMatcher
-#      excludedPaths:
-#      - /api/v1/config/auth
-#  callbackUrl: /v1/callback
-#  ajaxRequestResolver:
-#    class: org.pac4j.core.http.ajax.DefaultAjaxRequestResolver
-#  clientsProperties:
-#    google.id: "709849217090-n7s8oc4cvpffubraoi5vbr1s0qfboqvv.apps.googleusercontent.com"
-#    google.secret: ""
-#    google.scope: "email_and_profile"
+  globalFilters:
+    - matchers: excludeConfigAuth
+      authorizers: isAuthenticated
+  matchers:
+    excludeConfigAuth:
+      class: org.pac4j.core.matching.matcher.PathMatcher
+      excludedPaths:
+      - /v1/config/auth
+      - /v1/callback
+  callbackUrl: /v1/callback
+  ajaxRequestResolver:
+    class: org.pac4j.core.http.ajax.DefaultAjaxRequestResolver
+  clientsProperties:
+    google.id: "709849217090-n7s8oc4cvpffubraoi5vbr1s0qfboqvv.apps.googleusercontent.com"
+    google.secret: ""
+    google.scope: "email_and_profile"
 #    oidc.id: "0oa3frevpijciknS35d7"
 #    oidc.secret: ""
 #    oidc.scope: "openid"
