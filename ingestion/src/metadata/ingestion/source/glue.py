@@ -17,7 +17,7 @@ from typing import Iterable
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.location import Location, LocationType
 from metadata.generated.schema.entity.data.pipeline import Pipeline, Task
-from metadata.generated.schema.entity.data.table import Column, Table
+from metadata.generated.schema.entity.data.table import Column, Table, TableType
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
@@ -171,6 +171,13 @@ class GlueSource(Source[Entity]):
                         id=self.storage_service.id, type="storageService"
                     ),
                 )
+
+                table_type: TableType = TableType.Regular
+                if table["TableType"] == "EXTERNAL_TABLE":
+                    table_type = TableType.External
+                elif table["TableType"] == "VIRTUAL_VIEW":
+                    table_type = TableType.View
+
                 table_entity = Table(
                     id=uuid.uuid4(),
                     name=table["Name"][:128],
@@ -179,6 +186,7 @@ class GlueSource(Source[Entity]):
                     else "",
                     fullyQualifiedName=fqn,
                     columns=table_columns,
+                    tableType=table_type,
                 )
                 table_and_db = OMetaDatabaseAndTable(
                     table=table_entity,
