@@ -31,6 +31,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -256,6 +257,28 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline> {
     change.getFieldsAdded().add(new FieldChange().withName("tasks").withNewValue(TASKS));
     updateAndCheckEntity(
         request.withDescription("newDescription").withTasks(TASKS), OK, adminAuthHeaders(), MINOR_UPDATE, change);
+  }
+
+  @Test
+  void put_PipelineTasksOverride_200(TestInfo test) throws IOException, URISyntaxException {
+    // A PUT operation with a new Task should override the current tasks in the Pipeline
+    // This change will always be minor, both with deletes/adds
+    CreatePipeline request = create(test).withService(AIRFLOW_REFERENCE).withTasks(TASKS);
+    Pipeline pipeline = createAndCheckEntity(request, adminAuthHeaders());
+
+    List<Task> newTask =
+        Collections.singletonList(
+            new Task()
+                .withName("newTask")
+                .withDescription("description")
+                .withDisplayName("displayName")
+                .withTaskUrl(new URI("http://localhost:0")));
+
+    ChangeDescription change = getChangeDescription(pipeline.getVersion());
+    change.getFieldsAdded().add(new FieldChange().withName("tasks").withNewValue(newTask));
+    change.getFieldsDeleted().add(new FieldChange().withName("tasks").withOldValue(TASKS));
+
+    updateAndCheckEntity(request.withTasks(newTask), OK, adminAuthHeaders(), MINOR_UPDATE, change);
   }
 
   @Test
