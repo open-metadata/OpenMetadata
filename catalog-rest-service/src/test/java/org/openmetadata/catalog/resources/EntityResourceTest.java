@@ -96,6 +96,7 @@ import org.openmetadata.catalog.resources.services.MessagingServiceResourceTest;
 import org.openmetadata.catalog.resources.services.PipelineServiceResourceTest;
 import org.openmetadata.catalog.resources.services.StorageServiceResourceTest;
 import org.openmetadata.catalog.resources.tags.TagResourceTest;
+import org.openmetadata.catalog.resources.teams.RoleResource;
 import org.openmetadata.catalog.resources.teams.RoleResourceTest;
 import org.openmetadata.catalog.resources.teams.TeamResourceTest;
 import org.openmetadata.catalog.resources.teams.UserResourceTest;
@@ -196,16 +197,17 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
 
     UserResourceTest userResourceTest = new UserResourceTest();
     USER1 = UserResourceTest.createUser(userResourceTest.create(test), adminAuthHeaders());
-    USER_OWNER1 = new EntityReference().withId(USER1.getId()).withType("user");
+    USER_OWNER1 = new EntityReference().withId(USER1.getId()).withType(Entity.USER);
 
-    DATA_STEWARD_ROLE = RoleResourceTest.getRoleByName(DATA_STEWARD_ROLE_NAME, "", adminAuthHeaders());
-    DATA_STEWARD_ROLE_REFERENCE = new EntityReference().withId(DATA_STEWARD_ROLE.getId()).withType("role");
+    DATA_STEWARD_ROLE = RoleResourceTest.getRoleByName(DATA_STEWARD_ROLE_NAME, RoleResource.FIELDS, adminAuthHeaders());
+    DATA_STEWARD_ROLE_REFERENCE = new EntityReference().withId(DATA_STEWARD_ROLE.getId()).withType(Entity.ROLE);
     USER_WITH_DATA_STEWARD_ROLE =
         UserResourceTest.createUser(
             userResourceTest.create("user-data-steward").withRoles(List.of(DATA_STEWARD_ROLE.getId())),
             adminAuthHeaders());
-    DATA_CONSUMER_ROLE = RoleResourceTest.getRoleByName(DATA_CONSUMER_ROLE_NAME, "", adminAuthHeaders());
-    DATA_CONSUMER_ROLE_REFERENCE = new EntityReference().withId(DATA_CONSUMER_ROLE.getId()).withType("role");
+    DATA_CONSUMER_ROLE =
+        RoleResourceTest.getRoleByName(DATA_CONSUMER_ROLE_NAME, RoleResource.FIELDS, adminAuthHeaders());
+    DATA_CONSUMER_ROLE_REFERENCE = new EntityReference().withId(DATA_CONSUMER_ROLE.getId()).withType(Entity.ROLE);
     USER_WITH_DATA_CONSUMER_ROLE =
         UserResourceTest.createUser(
             userResourceTest.create("user-data-consumer").withRoles(List.of(DATA_CONSUMER_ROLE.getId())),
@@ -213,7 +215,7 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
 
     TeamResourceTest teamResourceTest = new TeamResourceTest();
     TEAM1 = TeamResourceTest.createTeam(teamResourceTest.create(test), adminAuthHeaders());
-    TEAM_OWNER1 = new EntityReference().withId(TEAM1.getId()).withType("team");
+    TEAM_OWNER1 = new EntityReference().withId(TEAM1.getId()).withType(Entity.TEAM);
 
     RoleResourceTest roleResourceTest = new RoleResourceTest();
     ROLE1 = createRole(roleResourceTest.create(test), adminAuthHeaders());
