@@ -260,6 +260,9 @@ ADD INDEX(updatedAt),
 ADD COLUMN deleted BOOLEAN GENERATED ALWAYS AS (JSON_EXTRACT(json, '$.deleted')),
 ADD INDEX (deleted);
 
+UPDATE entity_extension
+SET json = JSON_SET(json, '$.updatedAt', UNIX_TIMESTAMP(STR_TO_DATE(json ->> '$.updatedAt', '%Y-%m-%dT%T.%fZ')));
+
 
 ALTER TABLE ingestion_entity
 DROP COLUMN updatedAt,
