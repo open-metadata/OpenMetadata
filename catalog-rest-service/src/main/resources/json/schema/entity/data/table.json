@@ -294,6 +294,14 @@
           "description": "No.of Rows that contain duplicates in a column.",
           "type": "number"
         },
+        "nullCount": {
+          "description": "No.of null values in a column.",
+          "type": "number"
+        },
+        "nullProportion": {
+          "description": "No.of null value proportion in columns.",
+          "type": "number"
+        },
         "missingPercentage": {
           "description": "Missing Percentage is calculated by taking percentage of validCount/valuesCount.",
           "type": "number"
