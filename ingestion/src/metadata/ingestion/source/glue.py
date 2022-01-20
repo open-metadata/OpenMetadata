@@ -172,13 +172,11 @@ class GlueSource(Source[Entity]):
                     ),
                 )
 
-                table_type: TableType = None
+                table_type: TableType = TableType.Regular
                 if table["TableType"] == "EXTERNAL_TABLE":
                     table_type = TableType.External
                 elif table["TableType"] == "VIRTUAL_VIEW":
                     table_type = TableType.View
-                else:
-                    table_type = TableType.Regular
 
                 table_entity = Table(
                     id=uuid.uuid4(),
