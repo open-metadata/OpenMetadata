@@ -17,7 +17,7 @@ import static org.flywaydb.core.internal.info.MigrationInfoDumper.dumpToAsciiTab
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.dropwizard.configuration.EnvironmentVariableSubstitutor;
-import io.dropwizard.configuration.ResourceConfigurationSourceProvider;
+import io.dropwizard.configuration.FileConfigurationSourceProvider;
 import io.dropwizard.configuration.SubstitutingSourceProvider;
 import io.dropwizard.configuration.YamlConfigurationFactory;
 import io.dropwizard.db.DataSourceFactory;
@@ -126,7 +126,7 @@ public final class TablesInitializer {
     CatalogApplicationConfig config =
         factory.build(
             new SubstitutingSourceProvider(
-                new ResourceConfigurationSourceProvider(), new EnvironmentVariableSubstitutor(false)),
+                new FileConfigurationSourceProvider(), new EnvironmentVariableSubstitutor(false)),
             confFilePath);
     DataSourceFactory dataSourceFactory = config.getDataSourceFactory();
     ElasticSearchConfiguration esConfig = config.getElasticSearchConfiguration();
