@@ -55,7 +55,7 @@ const NavBar = ({
       <div className="tw-h-16 tw-py-3 tw-border-b-2 tw-border-separator">
         <div className="tw-flex tw-items-center tw-flex-row tw-justify-between tw-flex-nowrap tw-px-6 centered-layout">
           <div className="tw-flex tw-items-center tw-flex-row tw-justify-between tw-flex-nowrap">
-            <NavLink id="openmetadata_logo" to="/">
+            <NavLink className="tw-flex-shrink-0" id="openmetadata_logo" to="/">
               <SVGIcons alt="OpenMetadata Logo" icon={Icons.LOGO} width="90" />
             </NavLink>
             <div className="tw-ml-5">
@@ -121,7 +121,7 @@ const NavBar = ({
           </div>
           <div className="tw-flex tw-ml-auto tw-pl-36">
             <button
-              className="tw-nav focus:tw-no-underline hover:tw-underline"
+              className="tw-nav focus:tw-no-underline hover:tw-underline tw-flex-shrink-0"
               data-testid="whatsnew-modal"
               onClick={() => handleFeatureModal(true)}>
               <PopOver
@@ -137,7 +137,7 @@ const NavBar = ({
               </PopOver>
             </button>
             <button
-              className="tw-nav focus:tw-no-underline hover:tw-underline"
+              className="tw-nav focus:tw-no-underline hover:tw-underline tw-flex-shrink-0"
               data-testid="tour">
               <PopOver
                 position="bottom"
@@ -153,7 +153,7 @@ const NavBar = ({
                 </Link>
               </PopOver>
             </button>
-            <div>
+            <div className="tw-flex-shrink-0">
               <DropDown
                 dropDownList={supportDropdown}
                 icon={

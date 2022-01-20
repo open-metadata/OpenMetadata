@@ -20,6 +20,7 @@ import { UserType } from '../../enums/user.enum';
 import { Team } from '../../generated/entity/teams/team';
 import { User } from '../../generated/entity/teams/user';
 import { getCountBadge } from '../../utils/CommonUtils';
+import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import Searchbar from '../common/searchbar/Searchbar';
 import UserDetailsModal from '../Modals/UserDetailsModal/UserDetailsModal';
 import UserDataCard from '../UserDataCard/UserDataCard';
@@ -311,25 +312,35 @@ const UserList: FunctionComponent<Props> = ({
   };
 
   return (
-    <PageLayout leftPanel={getLeftPanel()}>
-      {!isLoading ? (
-        <>
-          {getTabs()}
-          {currentTab === 1 && getUserCards(UserType.ISUSER)}
-          {currentTab === 2 && getUserCards(UserType.ISADMIN)}
-          {currentTab === 3 && getUserCards(UserType.ISBOT)}
-          {!isUndefined(selectedUser) && (
-            <UserDetailsModal
-              header="User Details"
-              userData={selectedUser}
-              onCancel={() => setSelectedUser(undefined)}
-              onSave={handleSave}
-            />
-          )}
-        </>
-      ) : (
-        <Loader />
-      )}
+    <PageLayout leftPanel={allUsers.length > 0 && getLeftPanel()}>
+      <>
+        {!isLoading ? (
+          <>
+            {allUsers.length === 0 ? (
+              <ErrorPlaceHolder>
+                <p className="w-text-lg tw-text-center">No Users Added.</p>
+              </ErrorPlaceHolder>
+            ) : (
+              <>
+                {getTabs()}
+                {currentTab === 1 && getUserCards(UserType.ISUSER)}
+                {currentTab === 2 && getUserCards(UserType.ISADMIN)}
+                {currentTab === 3 && getUserCards(UserType.ISBOT)}
+                {!isUndefined(selectedUser) && (
+                  <UserDetailsModal
+                    header="User Details"
+                    userData={selectedUser}
+                    onCancel={() => setSelectedUser(undefined)}
+                    onSave={handleSave}
+                  />
+                )}
+              </>
+            )}
+          </>
+        ) : (
+          <Loader />
+        )}
+      </>
     </PageLayout>
   );
 };
