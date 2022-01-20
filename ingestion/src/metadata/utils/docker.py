@@ -1,13 +1,14 @@
-import pathlib
-import sys
-import time
 import logging
 import pathlib
-import click
-import requests as requests
+import sys
 import tempfile
+import time
 import traceback
 from datetime import timedelta
+
+import click
+import requests as requests
+
 from metadata.telemetry.openmetadata_telemetry import openmetadata_telemetry
 
 logger = logging.getLogger(__name__)
@@ -175,8 +176,8 @@ def run_docker(start, stop, pause, resume, clean, file_path):
             fg="red",
         )
     except Exception as err:
-        logger.error(traceback.format_exc())
-        logger.error(traceback.print_exc())
+        logger.debug(traceback.format_exc())
+        logger.debug(traceback.print_exc())
         openmetadata_telemetry.set_attribute(
             "docker_exception_trace", traceback.format_exc()
         )

@@ -43,7 +43,7 @@ base_requirements = {
     "requests~=2.26",
     "cryptography",
     "PyYAML",
-    "opentelemetry-exporter-otlp-proto-http>=1.6.2,<1.7",
+    "opentelemetry-exporter-otlp-proto-http>=1.8.0",
     "opentelemetry-exporter-jaeger",
     "opentelemetry-sdk-extension-aws",
 }
@@ -77,7 +77,7 @@ plugins: Dict[str, Set[str]] = {
         "thrift~=0.13.0",
         "sasl==0.3.1",
         "thrift-sasl==0.4.3",
-        "presto-types-parser==0.0.2"
+        "presto-types-parser==0.0.2",
     },
     "kafka": {"confluent_kafka>=1.5.0", "fastavro>=1.2.0"},
     "ldap-users": {"ldap3==2.9.1"},

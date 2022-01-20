@@ -79,11 +79,6 @@ class OpenMetadataTelemetry:
                 # configure agent
                 agent_host_name="collect.open-metadata.org",
                 agent_port=6831,
-                # optional: configure also collector
-                # collector_endpoint='http://localhost:14268/api/traces?format=jaeger.thrift',
-                # username=xxxx, # optional
-                # password=xxxx, # optional
-                # max_tag_value_length=None # optional
             )
             otlp_processor = BatchSpanProcessor(jaeger_exporter)
             provider.add_span_processor(otlp_processor)
