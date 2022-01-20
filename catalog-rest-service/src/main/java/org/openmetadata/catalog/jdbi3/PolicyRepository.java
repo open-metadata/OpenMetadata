@@ -17,10 +17,12 @@ import static org.openmetadata.catalog.util.EntityUtil.toBoolean;
 
 import java.io.IOException;
 import java.net.URI;
+import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
@@ -29,6 +31,7 @@ import org.openmetadata.catalog.entity.policies.Policy;
 import org.openmetadata.catalog.entity.policies.accessControl.Rule;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.resources.policies.PolicyResource;
+import org.openmetadata.catalog.security.policyevaluator.PolicyEvaluator;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Include;
@@ -46,6 +49,8 @@ public class PolicyRepository extends EntityRepository<Policy> {
       new Fields(PolicyResource.FIELD_LIST, "displayName,description,owner,policyUrl,enabled,rules,location");
   public static final String ENABLED = "enabled";
 
+  private PolicyEvaluator policyEvaluator;
+
   public PolicyRepository(CollectionDAO dao) {
     super(
         PolicyResource.COLLECTION_PATH,
@@ -58,6 +63,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
         false,
         true,
         false);
+    policyEvaluator = PolicyEvaluator.getInstance();
   }
 
   public static String getFQN(Policy policy) {
@@ -88,7 +94,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
   }
 
   @Override
-  public Policy setFields(Policy policy, Fields fields) throws IOException {
+  public Policy setFields(Policy policy, Fields fields) throws IOException, ParseException {
     policy.setDisplayName(fields.contains("displayName") ? policy.getDisplayName() : null);
     policy.setDescription(fields.contains("description") ? policy.getDescription() : null);
     policy.setOwner(fields.contains("owner") ? getOwner(policy) : null);
@@ -147,6 +153,10 @@ public class PolicyRepository extends EntityRepository<Policy> {
     policy.withOwner(null).withLocation(null).withHref(null);
 
     store(policy.getId(), policy, update);
+    if (PolicyType.AccessControl.equals(policy.getPolicyType())) {
+      // Refresh rules in PolicyEvaluator right after an Access Control policy has been stored.
+      policyEvaluator.refreshRules();
+    }
 
     // Restore the relationships
     policy.withOwner(owner).withLocation(location).withHref(href);
@@ -181,7 +191,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
     if (!policy.getPolicyType().equals(PolicyType.AccessControl)) {
       return;
     }
-    log.debug("Validating rules for {} policy: {}", PolicyType.AccessControl, policy.getName());
+    LOG.debug("Validating rules for {} policy: {}", PolicyType.AccessControl, policy.getName());
     for (Object ruleObject : policy.getRules()) {
       // Cast to access control policy Rule.
       Rule rule = JsonUtils.readValue(JsonUtils.getJsonStructure(ruleObject).toString(), Rule.class);
@@ -199,7 +209,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
     // No validation errors, if execution reaches here.
   }
 
-  private List<Policy> getAccessControlPolicies() throws IOException {
+  private List<Policy> getAccessControlPolicies() throws IOException, ParseException {
     EntityUtil.Fields fields = new EntityUtil.Fields(List.of("policyType", "rules", ENABLED));
     List<String> jsons = daoCollection.policyDAO().listAfter(null, Integer.MAX_VALUE, "", Include.NON_DELETED);
     List<Policy> policies = new ArrayList<>(jsons.size());
@@ -216,6 +226,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
   /**
    * Helper method to get Access Control Policies Rules. This method returns only rules for policies that are enabled.
    */
+  @SneakyThrows(ParseException.class)
   public List<Rule> getAccessControlPolicyRules() throws IOException {
     List<Policy> policies = getAccessControlPolicies();
     List<Rule> rules = new ArrayList<>();

@@ -254,7 +254,7 @@ public class LocationResource {
       @Parameter(description = "Returns list of locations after this cursor", schema = @Schema(type = "string"))
           @QueryParam("after")
           String after)
-      throws IOException, GeneralSecurityException {
+      throws IOException, GeneralSecurityException, ParseException {
     RestUtil.validateCursors(before, after);
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
 
@@ -347,7 +347,7 @@ public class LocationResource {
       })
   public Response create(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateLocation create)
-      throws IOException {
+      throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Location location = getLocation(securityContext, create);
     location = addHref(uriInfo, dao.create(uriInfo, location));

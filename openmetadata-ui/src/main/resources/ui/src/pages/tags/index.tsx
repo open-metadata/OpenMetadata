@@ -293,7 +293,7 @@ const TagsPage = () => {
             {isLoading ? (
               <Loader />
             ) : (
-              <div data-testid="tags-container">
+              <div className="full-height" data-testid="tags-container">
                 {currentCategory && (
                   <div
                     className="tw-flex tw-justify-between tw-items-center"
@@ -336,9 +336,7 @@ const TagsPage = () => {
                   />
                 </div>
                 <div className="tw-bg-white">
-                  <table
-                    className="tw-w-full tw-overflow-x-auto"
-                    data-testid="table">
+                  <table className="tw-table-responsive" data-testid="table">
                     <thead>
                       <tr className="tableHead-row">
                         <th

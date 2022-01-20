@@ -13,11 +13,10 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import static org.openmetadata.catalog.Entity.helper;
 import static org.openmetadata.catalog.jdbi3.Relationship.FOLLOWS;
 import static org.openmetadata.catalog.jdbi3.Relationship.HAS;
 import static org.openmetadata.catalog.jdbi3.Relationship.OWNS;
-import static org.openmetadata.catalog.type.Include.DELETED;
-import static org.openmetadata.catalog.type.Include.NON_DELETED;
 import static org.openmetadata.catalog.util.EntityUtil.toBoolean;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -29,6 +28,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.teams.User;
@@ -36,15 +36,12 @@ import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.resources.teams.UserResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
-import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
+@Slf4j
 public class UserRepository extends EntityRepository<User> {
-  public static final Logger LOG = LoggerFactory.getLogger(UserRepository.class);
   static final Fields USER_PATCH_FIELDS = new Fields(UserResource.FIELD_LIST, "profile,roles,teams");
   static final Fields USER_UPDATE_FIELDS = new Fields(UserResource.FIELD_LIST, "profile,roles,teams");
 
@@ -125,11 +122,10 @@ public class UserRepository extends EntityRepository<User> {
     // Compile entities owned by the team the user belongs to
     List<EntityReference> teams = user.getTeams() == null ? getTeams(user) : user.getTeams();
     for (EntityReference team : teams) {
-      Include include = Entity.getEntityInterface(team).isDeleted() ? DELETED : NON_DELETED;
       ownedEntities.addAll(
           daoCollection
               .relationshipDAO()
-              .findTo(team.getId().toString(), Entity.TEAM, OWNS.ordinal(), toBoolean(include)));
+              .findTo(team.getId().toString(), Entity.TEAM, OWNS.ordinal(), toBoolean(helper(team).isDeleted())));
     }
     // Populate details in entity reference
     return EntityUtil.populateEntityReferences(ownedEntities);

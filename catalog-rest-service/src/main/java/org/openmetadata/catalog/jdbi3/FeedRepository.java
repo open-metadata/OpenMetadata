@@ -13,6 +13,7 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import static org.openmetadata.catalog.Entity.helper;
 import static org.openmetadata.catalog.util.EntityUtil.toBoolean;
 
 import java.io.IOException;
@@ -32,7 +33,6 @@ import org.openmetadata.catalog.resources.feeds.MessageParser.EntityLink.LinkTyp
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.Post;
-import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.JsonUtils;
 
@@ -52,12 +52,9 @@ public class FeedRepository {
     // Validate about data entity is valid
     EntityLink about = EntityLink.parse(thread.getAbout());
     EntityReference aboutRef = EntityUtil.validateEntityLink(about);
-    EntityInterface aboutEntityInterface = Entity.getEntityInterface(aboutRef);
 
     // Get owner for the addressed to Entity
-    EntityReference owner =
-        EntityUtil.populateOwner(
-            aboutEntityInterface, aboutRef.getType(), dao.relationshipDAO(), dao.userDAO(), dao.teamDAO());
+    EntityReference owner = helper(aboutRef).getOwnerOrNull();
 
     // Insert a new thread
     dao.feedDAO().insert(JsonUtils.pojoToJson(thread));

@@ -26,9 +26,9 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assertions.fail;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.ENTITY_ALREADY_EXISTS;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
+import static org.openmetadata.catalog.resources.teams.RoleResourceTest.createRole;
 import static org.openmetadata.catalog.security.SecurityUtil.authHeaders;
 import static org.openmetadata.catalog.util.TestUtils.ENTITY_NAME_LENGTH_ERROR;
 import static org.openmetadata.catalog.util.TestUtils.LONG_ENTITY_NAME;
@@ -62,6 +62,7 @@ import java.util.function.Predicate;
 import javax.json.JsonPatch;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response.Status;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -95,6 +96,7 @@ import org.openmetadata.catalog.resources.services.MessagingServiceResourceTest;
 import org.openmetadata.catalog.resources.services.PipelineServiceResourceTest;
 import org.openmetadata.catalog.resources.services.StorageServiceResourceTest;
 import org.openmetadata.catalog.resources.tags.TagResourceTest;
+import org.openmetadata.catalog.resources.teams.RoleResource;
 import org.openmetadata.catalog.resources.teams.RoleResourceTest;
 import org.openmetadata.catalog.resources.teams.TeamResourceTest;
 import org.openmetadata.catalog.resources.teams.UserResourceTest;
@@ -113,6 +115,7 @@ import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.TestUtils;
 
+@Slf4j
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
   private static final Map<String, EntityResourceTest<?>> ENTITY_RESOURCE_TEST_MAP = new HashMap<>();
@@ -140,6 +143,8 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
   public static User USER_WITH_DATA_CONSUMER_ROLE;
   public static Role DATA_CONSUMER_ROLE;
   public static EntityReference DATA_CONSUMER_ROLE_REFERENCE;
+  public static Role ROLE1;
+  public static EntityReference ROLE_REF1;
 
   public static EntityReference SNOWFLAKE_REFERENCE;
   public static EntityReference REDSHIFT_REFERENCE;
@@ -192,16 +197,17 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
 
     UserResourceTest userResourceTest = new UserResourceTest();
     USER1 = UserResourceTest.createUser(userResourceTest.create(test), adminAuthHeaders());
-    USER_OWNER1 = new EntityReference().withId(USER1.getId()).withType("user");
+    USER_OWNER1 = new EntityReference().withId(USER1.getId()).withType(Entity.USER);
 
-    DATA_STEWARD_ROLE = RoleResourceTest.getRoleByName(DATA_STEWARD_ROLE_NAME, "", adminAuthHeaders());
-    DATA_STEWARD_ROLE_REFERENCE = new EntityReference().withId(DATA_STEWARD_ROLE.getId()).withType("role");
+    DATA_STEWARD_ROLE = RoleResourceTest.getRoleByName(DATA_STEWARD_ROLE_NAME, RoleResource.FIELDS, adminAuthHeaders());
+    DATA_STEWARD_ROLE_REFERENCE = new EntityReference().withId(DATA_STEWARD_ROLE.getId()).withType(Entity.ROLE);
     USER_WITH_DATA_STEWARD_ROLE =
         UserResourceTest.createUser(
             userResourceTest.create("user-data-steward").withRoles(List.of(DATA_STEWARD_ROLE.getId())),
             adminAuthHeaders());
-    DATA_CONSUMER_ROLE = RoleResourceTest.getRoleByName(DATA_CONSUMER_ROLE_NAME, "", adminAuthHeaders());
-    DATA_CONSUMER_ROLE_REFERENCE = new EntityReference().withId(DATA_CONSUMER_ROLE.getId()).withType("role");
+    DATA_CONSUMER_ROLE =
+        RoleResourceTest.getRoleByName(DATA_CONSUMER_ROLE_NAME, RoleResource.FIELDS, adminAuthHeaders());
+    DATA_CONSUMER_ROLE_REFERENCE = new EntityReference().withId(DATA_CONSUMER_ROLE.getId()).withType(Entity.ROLE);
     USER_WITH_DATA_CONSUMER_ROLE =
         UserResourceTest.createUser(
             userResourceTest.create("user-data-consumer").withRoles(List.of(DATA_CONSUMER_ROLE.getId())),
@@ -209,14 +215,11 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
 
     TeamResourceTest teamResourceTest = new TeamResourceTest();
     TEAM1 = TeamResourceTest.createTeam(teamResourceTest.create(test), adminAuthHeaders());
-    TEAM_OWNER1 = new EntityReference().withId(TEAM1.getId()).withType("team");
+    TEAM_OWNER1 = new EntityReference().withId(TEAM1.getId()).withType(Entity.TEAM);
 
-    // Ensure that DefaultAuthorizer gets enough time to load policies before running tests.
-    try {
-      Thread.sleep(8000);
-    } catch (InterruptedException e) {
-      fail();
-    }
+    RoleResourceTest roleResourceTest = new RoleResourceTest();
+    ROLE1 = createRole(roleResourceTest.create(test), adminAuthHeaders());
+    ROLE_REF1 = new EntityReference().withId(ROLE1.getId()).withType("role");
 
     // Create snowflake database service
     DatabaseServiceResourceTest databaseServiceResourceTest = new DatabaseServiceResourceTest();
@@ -323,9 +326,9 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
   public abstract Object createRequest(String name, String description, String displayName, EntityReference owner)
       throws URISyntaxException;
 
-  // Add all possible relationship to check if the entity is missing any of them after deletion
-  public Object addAllRelationships(TestInfo test, Object create) throws HttpResponseException {
-    return create;
+  // Add all possible relationships to check if the entity is missing any of them after deletion
+  public T beforeDeletion(TestInfo test, T entity) throws HttpResponseException {
+    return entity;
   }
 
   // Get container entity based on create request that has CONTAINS relationship to the entity created with this
@@ -340,6 +343,12 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
   // Entity specific validate for entity create using PUT
   public abstract void validateUpdatedEntity(T updatedEntity, Object request, Map<String, String> authHeaders)
       throws HttpResponseException;
+
+  protected void validateDeletedEntity(
+      Object create, T entityBeforeDeletion, T entityAfterDeletion, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    validateCreatedEntity(entityAfterDeletion, create, authHeaders);
+  }
 
   // Entity specific validate for entity create using PATCH
   public abstract void compareEntities(T expected, T updated, Map<String, String> authHeaders)
@@ -523,11 +532,11 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
 
   @Test
   void get_entityIncludeDeleted_200(TestInfo test) throws HttpResponseException, URISyntaxException {
-    Object create =
-        addAllRelationships(test, createRequest(getEntityName(test), "description", "displayName", USER_OWNER1));
+    Object create = createRequest(getEntityName(test), "description", "displayName", USER_OWNER1);
     // Create first time using POST
-    T entity = createEntity(create, adminAuthHeaders());
+    T entity = beforeDeletion(test, createEntity(create, adminAuthHeaders()));
     EntityInterface<T> entityInterface = getEntityInterface(entity);
+    T entityBeforeDeletion = getEntity(entityInterface.getId(), null, allFields, adminAuthHeaders());
     // delete it
     deleteEntity(entityInterface.getId(), adminAuthHeaders());
     assertResponse(
@@ -543,12 +552,11 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     Map<String, String> queryParams = new HashMap<>();
     for (String include : List.of("deleted", "all")) {
       queryParams.put("include", include);
-      validateCreatedEntity(
-          getEntity(entityInterface.getId(), queryParams, allFields, adminAuthHeaders()), create, adminAuthHeaders());
-      validateCreatedEntity(
-          getEntityByName(entityInterface.getFullyQualifiedName(), queryParams, allFields, adminAuthHeaders()),
-          create,
-          adminAuthHeaders());
+      T entityAfterDeletion = getEntity(entityInterface.getId(), queryParams, allFields, adminAuthHeaders());
+      validateDeletedEntity(create, entityBeforeDeletion, entityAfterDeletion, adminAuthHeaders());
+      entityAfterDeletion =
+          getEntityByName(entityInterface.getFullyQualifiedName(), queryParams, allFields, adminAuthHeaders());
+      validateDeletedEntity(create, entityBeforeDeletion, entityAfterDeletion, adminAuthHeaders());
     }
 
     queryParams.put("include", "non-deleted");
@@ -1255,7 +1263,7 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     assertListNotNull(entity.getId(), entity.getHref(), entity.getFullyQualifiedName());
     assertEquals(expectedDescription, entity.getDescription());
     assertEquals(expectedUpdatedByUser, entity.getUpdatedBy());
-    assertOwner(expectedOwner, entity.getOwner());
+    assertReference(expectedOwner, entity.getOwner());
   }
 
   protected final void validateChangeDescription(T updated, UpdateType updateType, ChangeDescription expectedChange)
@@ -1428,8 +1436,9 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
         .withFieldsDeleted(new ArrayList<>());
   }
 
-  protected static void assertOwner(EntityReference expected, EntityReference actual) {
+  protected static void assertReference(EntityReference expected, EntityReference actual) {
     if (expected != null) {
+      assertNotNull(actual);
       TestUtils.validateEntityReference(actual);
       assertEquals(expected.getId(), actual.getId());
       assertEquals(expected.getType(), actual.getType());

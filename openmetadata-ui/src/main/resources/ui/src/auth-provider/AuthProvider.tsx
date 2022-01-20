@@ -33,10 +33,14 @@ import {
 import appState from '../AppState';
 import axiosClient from '../axiosAPIs';
 import { fetchAuthorizerConfig } from '../axiosAPIs/miscAPI';
-import { getLoggedInUser, getUserByName } from '../axiosAPIs/userAPI';
+import {
+  getLoggedInUser,
+  getUserByName,
+  updateUser,
+} from '../axiosAPIs/userAPI';
 import Loader from '../components/Loader/Loader';
 import { COOKIE_VERSION } from '../components/Modals/WhatsNewModal/whatsNewData';
-import { oidcTokenKey, ROUTES } from '../constants/constants';
+import { isAdminUpdated, oidcTokenKey, ROUTES } from '../constants/constants';
 import { ClientErrors } from '../enums/axios.enum';
 import { User } from '../generated/entity/teams/user';
 import { useAuth } from '../hooks/authHooks';
@@ -48,6 +52,7 @@ import {
   getOidcExpiry,
   getUserManagerConfig,
 } from '../utils/AuthProvider.util';
+import { getImages } from '../utils/CommonUtils';
 import { fetchAllUsers } from '../utils/UsedDataUtils';
 import { AuthProviderProps, OidcUser } from './AuthProvider.interface';
 
@@ -99,11 +104,40 @@ const AuthProvider: FunctionComponent<AuthProviderProps> = ({
     history.push(ROUTES.HOME);
   };
 
+  const getUpdatedUser = (data: User, user: OidcUser) => {
+    const getAdminCookie = cookieStorage.getItem(isAdminUpdated);
+    if (getAdminCookie) {
+      appState.updateUserDetails(data);
+    } else {
+      const updatedData = {
+        isAdmin: data.isAdmin,
+        email: data.email,
+        name: data.name,
+        displayName: user.profile.name,
+        profile: { images: getImages(user.profile.picture ?? '') },
+      };
+      updateUser(updatedData)
+        .then((res: AxiosResponse) => {
+          appState.updateUserDetails(res.data);
+          cookieStorage.setItem(isAdminUpdated, 'true');
+        })
+        .catch(() => {
+          showToast({
+            variant: 'error',
+            body: 'Error while updating admin user profile',
+          });
+        });
+    }
+  };
+
   const fetchUserByEmail = (user: OidcUser) => {
     getUserByName(getNameFromEmail(user.profile.email), userAPIQueryFields)
       .then((res: AxiosResponse) => {
         if (res.data) {
-          appState.userDetails = res.data;
+          if (res.data?.isAdmin) {
+            getUpdatedUser(res.data, user);
+          }
+          appState.updateUserDetails(res.data);
           fetchAllUsers();
           handledVerifiedUser();
         } else {
@@ -112,15 +146,15 @@ const AuthProvider: FunctionComponent<AuthProviderProps> = ({
       })
       .catch((err) => {
         if (err.response.data.code === 404) {
-          appState.newUser = user.profile;
-          appState.userDetails = {} as User;
+          appState.updateNewUser(user.profile);
+          appState.updateUserDetails({} as User);
           history.push(ROUTES.SIGNUP);
         }
       });
   };
 
   const resetUserDetails = () => {
-    appState.userDetails = {} as User;
+    appState.updateUserDetails({} as User);
     cookieStorage.removeItem(oidcTokenKey);
     cookieStorage.removeItem(
       `oidc.user:${userManagerConfig?.authority}:${userManagerConfig?.client_id}`
@@ -133,7 +167,7 @@ const AuthProvider: FunctionComponent<AuthProviderProps> = ({
     getLoggedInUser(userAPIQueryFields)
       .then((res: AxiosResponse) => {
         if (res.data) {
-          appState.userDetails = res.data;
+          appState.updateUserDetails(res.data);
         } else {
           resetUserDetails();
         }
@@ -166,11 +200,15 @@ const AuthProvider: FunctionComponent<AuthProviderProps> = ({
           } else {
             getLoggedInUserDetails();
           }
-          // eslint-disable-next-line @typescript-eslint/camelcase
-          appState.authProvider = { authority, provider, client_id: clientId };
-          appState.authDisabled = false;
+          appState.updateAuthProvide({
+            authority,
+            provider,
+            // eslint-disable-next-line @typescript-eslint/camelcase
+            client_id: clientId,
+          });
+          appState.updateAuthState(false);
         } else {
-          appState.authDisabled = true;
+          appState.updateAuthState(true);
           setLoading(false);
         }
       })

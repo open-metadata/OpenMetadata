@@ -13,6 +13,7 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import static org.openmetadata.catalog.Entity.helper;
 import static org.openmetadata.catalog.type.Include.DELETED;
 import static org.openmetadata.catalog.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.catalog.util.EntityUtil.objectMatch;
@@ -21,6 +22,8 @@ import static org.openmetadata.catalog.util.EntityUtil.toBoolean;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.net.URI;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
@@ -35,13 +38,18 @@ import java.util.regex.Pattern;
 import javax.json.JsonPatch;
 import javax.ws.rs.core.Response.Status;
 import javax.ws.rs.core.UriInfo;
+import lombok.SneakyThrows;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.maven.shared.utils.io.IOUtil;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
+import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
+import org.openmetadata.catalog.exception.UnhandledServerException;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.EntityVersionPair;
 import org.openmetadata.catalog.jdbi3.TableRepository.TableUpdater;
 import org.openmetadata.catalog.type.ChangeDescription;
@@ -62,9 +70,8 @@ import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.common.utils.CipherText;
 import org.openmetadata.common.utils.CommonUtil;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
+@Slf4j
 /**
  * This is the base class used by Entity Resources to perform READ and WRITE operations to the backend database to
  * Create, Retrieve, Update, and Delete entities.
@@ -97,7 +104,6 @@ import org.slf4j.LoggerFactory;
  * information does not become stale.
  */
 public abstract class EntityRepository<T> {
-  public static final Logger LOG = LoggerFactory.getLogger(EntityRepository.class);
   private final String collectionPath;
   private final Class<T> entityClass;
   private final String entityName;
@@ -135,7 +141,7 @@ public abstract class EntityRepository<T> {
     this.supportsTags = supportsTags;
     this.supportsOwner = supportsOwner;
     this.supportsFollower = supportsFollower;
-    Entity.registerEntity(entityName, dao, this);
+    Entity.registerEntity(entityClass, entityName, dao, this);
   }
 
   /** Entity related operations that should be implemented or overridden by entities */
@@ -169,7 +175,7 @@ public abstract class EntityRepository<T> {
    *
    * @see TableRepository#prepare(Table) for an example implementation
    */
-  public abstract void prepare(T entity) throws IOException;
+  public abstract void prepare(T entity) throws IOException, ParseException;
 
   /**
    * An entity is stored in the backend database as JSON document. The JSON includes some attributes of the entity and
@@ -202,6 +208,9 @@ public abstract class EntityRepository<T> {
   /**
    * Initialize data from json files if seed data does not exist in corresponding tables. Seed data is stored under
    * catalog-rest-service/src/main/resources/json/data/{entityName}
+   *
+   * <p>This method needs to be explicitly called, typically from initialize method. See {@link
+   * org.openmetadata.catalog.resources.teams.RoleResource#initialize(CatalogApplicationConfig)}
    */
   public void initSeedDataFromResources() throws IOException {
     Pattern pattern = Pattern.compile(String.format(".*json/data/%s/.*\\.json$", entityName));
@@ -342,12 +351,12 @@ public abstract class EntityRepository<T> {
     return new EntityHistory().withEntityType(entityName).withVersions(allVersions);
   }
 
-  public final T create(UriInfo uriInfo, T entity) throws IOException {
+  public final T create(UriInfo uriInfo, T entity) throws IOException, ParseException {
     return withHref(uriInfo, createInternal(entity));
   }
 
   @Transaction
-  public final T createInternal(T entity) throws IOException {
+  public final T createInternal(T entity) throws IOException, ParseException {
     prepare(entity);
     return createNewEntity(entity);
   }
@@ -520,16 +529,8 @@ public abstract class EntityRepository<T> {
     }
   }
 
-  protected EntityReference getOwner(T entity) throws IOException {
-    EntityInterface entityInterface = getEntityInterface(entity);
-    return supportsOwner && entity != null
-        ? EntityUtil.populateOwner(
-            entityInterface,
-            entityName,
-            daoCollection.relationshipDAO(),
-            daoCollection.userDAO(),
-            daoCollection.teamDAO())
-        : null;
+  protected EntityReference getOwner(T entity) throws IOException, ParseException {
+    return helper(entity).getOwnerOrNull();
   }
 
   protected void setOwner(T entity, EntityReference owner) {
@@ -585,6 +586,237 @@ public abstract class EntityRepository<T> {
     EntityInterface<T> originalRef = getEntityInterface(original);
     if (Boolean.TRUE.equals(originalRef.isDeleted())) {
       daoCollection.relationshipDAO().recoverSoftDeleteAll(originalRef.getId().toString());
+    }
+  }
+
+  /**
+   * Builder method for EntityHandler
+   *
+   * @param entity
+   * @return
+   */
+  public EntityHelper getEntityHandler(T entity) {
+    return new EntityHelper(entity);
+  }
+
+  /**
+   * Decorator class for Entity.
+   *
+   * @see Entity#helper(Object) to create a handler from an Entity
+   * @see Entity#r(EntityReference) to create a handler from an EntityReference
+   */
+  public class EntityHelper {
+    private final Include isDeleted;
+    protected final EntityInterface<T> entityInterface;
+    private final T entity;
+
+    private EntityHelper(T entity) {
+      this.entityInterface = getEntityInterface(entity);
+      this.entity = entity;
+      this.isDeleted = entityInterface.isDeleted() ? DELETED : Include.NON_DELETED;
+    }
+
+    public EntityReference toEntityReference() {
+      return entityInterface.getEntityReference();
+    }
+
+    public Include isDeleted() {
+      return isDeleted;
+    }
+
+    /**
+     * Validate the owner if not null before creating this resource. Owner must exist, not being deleted, and must be
+     * either User or Team.
+     *
+     * @return
+     */
+    public EntityReference validateOwnerOrNull() throws IOException, ParseException {
+      EntityReference entityReference = validateFieldOrNull("owner");
+      if (entityReference == null) {
+        return null;
+      } else if (!List.of(Entity.USER, Entity.TEAM).contains(entityReference.getType())) {
+        throw new IllegalArgumentException(String.format("Invalid type %s", entityReference.getType()));
+      }
+      return entityReference;
+    }
+
+    /**
+     * Validate a field containing a EntityReference if not null before creating this resource. The target entity must
+     * exist and not deleted.
+     *
+     * @param fieldName
+     * @return
+     */
+    @SneakyThrows({NoSuchMethodException.class, InvocationTargetException.class, IllegalAccessException.class})
+    public EntityReference validateFieldOrNull(String fieldName) throws IOException, ParseException {
+      Method method = entity.getClass().getMethod("get" + StringUtils.capitalize(fieldName));
+      EntityReference entityReference = (EntityReference) method.invoke(entity);
+      if (entityReference == null) {
+        return null;
+      }
+      // this could be changed to Include.NON_DELETED because we validate only when creating entities linked to
+      // non-deleted entities.
+      Object entity = Entity.getEntity(entityReference, Fields.EMPTY_FIELDS, isDeleted);
+      return helper(entity).toEntityReference();
+    }
+
+    /**
+     * When listing and getting resources, we need to get entities using the relationships. If the relationship exists
+     * then the entity must exist.
+     *
+     * @return
+     */
+    public EntityReference getOwnerOrNull() throws IOException, ParseException {
+      List<EntityReference> refs =
+          daoCollection
+              .relationshipDAO()
+              .findFrom(
+                  entityInterface.getId().toString(), entityName, Relationship.OWNS.ordinal(), toBoolean(isDeleted));
+      if (refs.isEmpty()) {
+        return null;
+      } else if (refs.size() > 1) {
+        LOG.warn(
+            "Possible database issues - multiple owners found for entity {} with type {}",
+            entityInterface.getId(),
+            entityInterface.getEntityReference().getType());
+      }
+      if (!List.of(Entity.USER, Entity.TEAM).contains(refs.get(0).getType())) {
+        throw new IllegalArgumentException(String.format("Invalid ownerType %s", refs.get(0).getType()));
+      } else {
+        return helper(Entity.getEntity(refs.get(0), Fields.EMPTY_FIELDS, Include.ALL)).toEntityReference();
+      }
+    }
+
+    /**
+     * An entity could have (HAS) another entity like in for table and location.
+     *
+     * @param leftEntityName the entity name of the target of HAS.
+     * @return
+     */
+    public EntityReference getHasOrNull(String leftEntityName) throws IOException, ParseException {
+      List<EntityReference> refs =
+          daoCollection
+              .relationshipDAO()
+              .findToReference(
+                  entityInterface.getId().toString(),
+                  entityName,
+                  Relationship.HAS.ordinal(),
+                  leftEntityName,
+                  toBoolean(isDeleted));
+      if (refs.isEmpty()) {
+        return null;
+      } else if (refs.size() > 1) {
+        LOG.warn(
+            "Possible database issues - multiple HAS relationships found for entity {} with type {}",
+            entityInterface.getId(),
+            entityInterface.getEntityReference().getType());
+      }
+      return helper(Entity.getEntity(refs.get(0), Fields.EMPTY_FIELDS, Include.ALL)).toEntityReference();
+    }
+
+    /**
+     * Some entities like table must have a container
+     *
+     * @param containerEntityName entity name of the container. database for table, databaseService for database, and so
+     *     on.
+     * @return
+     */
+    public EntityReference getContainer(String containerEntityName) throws IOException, ParseException {
+      List<EntityReference> refs =
+          daoCollection
+              .relationshipDAO()
+              .findFromEntity(
+                  entityInterface.getId().toString(),
+                  entityName,
+                  Relationship.CONTAINS.ordinal(),
+                  // FIXME: containerEntityName should be a property of the entity decorated.
+                  containerEntityName,
+                  toBoolean(isDeleted));
+      if (refs.isEmpty()) {
+        throw new UnhandledServerException(CatalogExceptionMessage.entityTypeNotFound(containerEntityName));
+      } else if (refs.size() > 1) {
+        LOG.warn(
+            "Possible database issues - multiple containers found for entity {} with type {}",
+            entityInterface.getId(),
+            entityInterface.getEntityReference().getType());
+      }
+      return helper(Entity.getEntity(refs.get(0), Fields.EMPTY_FIELDS, Include.ALL)).toEntityReference();
+    }
+
+    public EntityReference getContainer() throws IOException, ParseException {
+      return getContainer(Collections.emptyList());
+    }
+
+    public EntityReference getContainer(List<String> containerEntityNames) throws IOException, ParseException {
+      List<EntityReference> refs =
+          daoCollection
+              .relationshipDAO()
+              .findFrom(
+                  entityInterface.getId().toString(),
+                  entityName,
+                  Relationship.CONTAINS.ordinal(),
+                  toBoolean(isDeleted));
+      if (refs.isEmpty()) {
+        throw new UnhandledServerException(
+            CatalogExceptionMessage.entityTypeNotFound(String.join(" or ", containerEntityNames)));
+      } else if (refs.size() > 1) {
+        LOG.warn(
+            "Possible database issues - multiple containers found for entity {} with type {}",
+            entityInterface.getId(),
+            entityInterface.getEntityReference().getType());
+      }
+      if (containerEntityNames.size() > 0 && !containerEntityNames.contains(refs.get(0).getType())) {
+        throw new IllegalArgumentException(String.format("Invalid type %s", refs.get(0).getType()));
+      }
+      return helper(Entity.getEntity(refs.get(0), Fields.EMPTY_FIELDS, Include.ALL)).toEntityReference();
+    }
+
+    /**
+     * Validate the type of the entity pointed by the field and return it.
+     *
+     * @param fieldName
+     * @param entityName
+     * @param <S>
+     * @return
+     */
+    public <S> S findEntity(String fieldName, String entityName) throws IOException, ParseException {
+      return findEntity(fieldName, List.of(entityName));
+    }
+
+    /**
+     * Validate the type of the entity pointed by the field and return it.
+     *
+     * @param fieldName
+     * @param entityNames
+     * @param <S>
+     * @return
+     */
+    public <S> S findEntity(String fieldName, List<String> entityNames) throws IOException, ParseException {
+      S entity = findEntity(fieldName);
+      EntityReference entityReference = Entity.getEntityReference(entity);
+      if (entityNames.size() > 0 && !entityNames.contains(entityReference.getType())) {
+        throw new IllegalArgumentException(String.format("Invalid type %s", entityReference.getType()));
+      }
+      return entity;
+    }
+
+    /**
+     * Find the entity whose EntityReference is stored in the field with name fieldName. It must include deleted and
+     * non-deleted because if a field are set by setFields and setFields checks if the relationships are still valid
+     * before storing the EntityReferences.
+     *
+     * @param fieldName the name of the field
+     * @param <S> the class of the entity pointed by the field
+     * @return
+     */
+    @SneakyThrows({NoSuchMethodException.class, InvocationTargetException.class, IllegalAccessException.class})
+    public <S> S findEntity(String fieldName) throws IOException, ParseException {
+      Method method = entity.getClass().getMethod("get" + StringUtils.capitalize(fieldName));
+      EntityReference entityReference = (EntityReference) method.invoke(entity);
+      if (entityReference == null) {
+        throw new UnhandledServerException(CatalogExceptionMessage.fieldIsNull(fieldName));
+      }
+      return Entity.getEntity(entityReference, Fields.EMPTY_FIELDS, Include.ALL);
     }
   }
 

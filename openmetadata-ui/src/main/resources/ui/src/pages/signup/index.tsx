@@ -22,24 +22,14 @@ import { createUser } from '../../axiosAPIs/userAPI';
 import { Button } from '../../components/buttons/Button/Button';
 import PageContainer from '../../components/containers/PageContainer';
 import DropDown from '../../components/dropdown/DropDown';
-import { imageTypes, ROUTES } from '../../constants/constants';
+import { ROUTES } from '../../constants/constants';
 import { getNameFromEmail } from '../../utils/AuthProvider.util';
+import { getImages } from '../../utils/CommonUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { fetchAllUsers } from '../../utils/UsedDataUtils';
 type Team = {
   id: string;
   displayName: string;
-};
-const getImages = (imageUri: string) => {
-  const imagesObj: typeof imageTypes = imageTypes;
-  for (const type in imageTypes) {
-    imagesObj[type as keyof typeof imageTypes] = imageUri.replace(
-      's96-c',
-      imageTypes[type as keyof typeof imageTypes]
-    );
-  }
-
-  return imagesObj;
 };
 
 const Signup = () => {
@@ -77,7 +67,7 @@ const Signup = () => {
     createUser(details).then((res) => {
       if (res.data) {
         setLoading(false);
-        appState.userDetails = res.data;
+        appState.updateUserDetails(res.data);
         fetchAllUsers();
         history.push(ROUTES.HOME);
       } else {

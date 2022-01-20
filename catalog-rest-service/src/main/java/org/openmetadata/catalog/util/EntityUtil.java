@@ -15,7 +15,6 @@ package org.openmetadata.catalog.util;
 
 import static org.openmetadata.catalog.type.Include.ALL;
 import static org.openmetadata.catalog.type.Include.DELETED;
-import static org.openmetadata.catalog.type.Include.NON_DELETED;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -31,6 +30,7 @@ import java.util.function.BiPredicate;
 import java.util.stream.Collectors;
 import javax.ws.rs.WebApplicationException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.joda.time.Period;
 import org.joda.time.format.ISOPeriodFormat;
 import org.openmetadata.catalog.Entity;
@@ -61,11 +61,9 @@ import org.openmetadata.catalog.type.TagLabel.LabelType;
 import org.openmetadata.catalog.type.Task;
 import org.openmetadata.catalog.type.UsageDetails;
 import org.openmetadata.catalog.type.UsageStats;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
+@Slf4j
 public final class EntityUtil {
-  private static final Logger LOG = LoggerFactory.getLogger(EntityUtil.class);
 
   //
   // Comparators used for sorting list based on the given type
@@ -157,73 +155,10 @@ public final class EntityUtil {
     return entity;
   }
 
-  public static EntityReference getService(EntityRelationshipDAO dao, String entityType, UUID entityId) {
-    List<EntityReference> refs =
-        dao.findFrom(entityId.toString(), entityType, Relationship.CONTAINS.ordinal(), toBoolean(Include.NON_DELETED));
-    if (refs.size() > 1) {
-      LOG.warn("Possible database issues - multiple services found for entity {}", entityId);
-    }
-    return refs.isEmpty() ? null : refs.get(0);
-  }
-
-  public static EntityReference getService(
-      EntityRelationshipDAO dao, String entityType, UUID entityId, Include include) {
-    List<EntityReference> refs =
-        dao.findFrom(entityId.toString(), entityType, Relationship.CONTAINS.ordinal(), toBoolean(include));
-    if (refs.size() > 1) {
-      LOG.warn("Possible database issues - multiple services found for entity {}", entityId);
-    }
-    return refs.isEmpty() ? null : refs.get(0);
-  }
-
-  public static EntityReference getService(
-      EntityRelationshipDAO dao, String entityType, UUID entityId, String serviceType) {
-    List<EntityReference> refs =
-        dao.findFromEntity(
-            entityId.toString(),
-            entityType,
-            Relationship.CONTAINS.ordinal(),
-            serviceType,
-            toBoolean(Include.NON_DELETED));
-    if (refs.size() > 1) {
-      LOG.warn("Possible database issues - multiple services found for entity {}", entityId);
-    }
-    return refs.isEmpty() ? null : refs.get(0);
-  }
-
-  public static EntityReference getService(
-      EntityRelationshipDAO dao, String entityType, UUID entityId, String serviceType, Include include) {
-    List<EntityReference> refs =
-        dao.findFromEntity(
-            entityId.toString(), entityType, Relationship.CONTAINS.ordinal(), serviceType, toBoolean(include));
-    if (refs.size() > 1) {
-      LOG.warn("Possible database issues - multiple services found for entity {}", entityId);
-    }
-    return refs.isEmpty() ? null : refs.get(0);
-  }
-
   public static void validateUser(UserDAO userDAO, UUID userId) {
     if (!userDAO.exists(userId)) {
       throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(Entity.USER, userId));
     }
-  }
-
-  // Get owner for a given entity
-  public static EntityReference populateOwner(
-      EntityInterface entityInterface,
-      String entityType,
-      EntityRelationshipDAO entityRelationshipDAO,
-      UserDAO userDAO,
-      TeamDAO teamDAO)
-      throws IOException {
-    Include include = entityInterface.isDeleted() ? DELETED : NON_DELETED;
-    List<EntityReference> ids =
-        entityRelationshipDAO.findFrom(
-            entityInterface.getId().toString(), entityType, Relationship.OWNS.ordinal(), toBoolean(include));
-    if (ids.size() > 1) {
-      LOG.warn("Possible database issues - multiple owners {} found for entity {}", ids, entityInterface.getId());
-    }
-    return ids.isEmpty() ? null : populateOwner(userDAO, teamDAO, ids.get(0));
   }
 
   public static EntityReference populateOwner(UserDAO userDAO, TeamDAO teamDAO, EntityReference owner)

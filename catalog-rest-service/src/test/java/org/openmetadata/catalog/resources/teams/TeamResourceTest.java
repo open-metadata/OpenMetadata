@@ -40,6 +40,7 @@ import java.util.Optional;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.ws.rs.client.WebTarget;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
@@ -51,6 +52,7 @@ import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.jdbi3.TeamRepository.TeamEntityInterface;
 import org.openmetadata.catalog.resources.EntityResourceTest;
+import org.openmetadata.catalog.resources.locations.LocationResourceTest;
 import org.openmetadata.catalog.resources.teams.TeamResource.TeamList;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.ImageList;
@@ -60,6 +62,7 @@ import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
 
+@Slf4j
 public class TeamResourceTest extends EntityResourceTest<Team> {
   final Profile PROFILE = new Profile().withImages(new ImageList().withImage(URI.create("http://image.com")));
 
@@ -337,12 +340,20 @@ public class TeamResourceTest extends EntityResourceTest<Team> {
 
   @Override
   public Object createRequest(String name, String description, String displayName, EntityReference owner) {
-    return create(name).withDescription(description).withDisplayName(displayName).withProfile(PROFILE);
+    return create(name)
+        .withDescription(description)
+        .withDisplayName(displayName)
+        .withProfile(PROFILE)
+        .withUsers(List.of(USER1.getId()));
   }
 
   @Override
-  public Object addAllRelationships(TestInfo test, Object create) throws HttpResponseException {
-    return ((CreateTeam) create).withUsers(List.of(USER1.getId()));
+  public Team beforeDeletion(TestInfo test, Team team) throws HttpResponseException {
+    LocationResourceTest locationResourceTest = new LocationResourceTest();
+    EntityReference teamRef = new EntityReference().withId(team.getId()).withType("team");
+    locationResourceTest.createEntity(
+        locationResourceTest.createRequest(getEntityName(test), null, null, teamRef), adminAuthHeaders());
+    return team;
   }
 
   @Override
@@ -376,6 +387,24 @@ public class TeamResourceTest extends EntityResourceTest<Team> {
   @Override
   public void validateUpdatedEntity(Team updatedEntity, Object request, Map<String, String> authHeaders) {
     validateCreatedEntity(updatedEntity, request, authHeaders);
+  }
+
+  @Override
+  protected void validateDeletedEntity(
+      Object create, Team teamBeforeDeletion, Team teamAfterDeletion, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    super.validateDeletedEntity(create, teamBeforeDeletion, teamAfterDeletion, authHeaders);
+
+    List<EntityReference> expectedOwnedEntities = new ArrayList<>();
+    for (EntityReference ref : Optional.ofNullable(teamBeforeDeletion.getOwns()).orElse(Collections.emptyList())) {
+      expectedOwnedEntities.add(new EntityReference().withId(ref.getId()).withType(Entity.TABLE));
+    }
+    if (!expectedOwnedEntities.isEmpty()) {
+      assertEquals(expectedOwnedEntities.size(), teamAfterDeletion.getOwns().size());
+      for (EntityReference ref : expectedOwnedEntities) {
+        TestUtils.existsInEntityReferenceList(teamAfterDeletion.getOwns(), ref.getId(), true);
+      }
+    }
   }
 
   @Override

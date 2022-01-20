@@ -25,9 +25,11 @@ import javax.json.JsonException;
 import javax.json.JsonObject;
 import javax.json.JsonObjectBuilder;
 import javax.json.JsonPatchBuilder;
+import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.catalog.entity.teams.Team;
 
+@Slf4j
 /** This test provides examples of how to use applyPatch */
 public class JsonUtilsTest {
   /** Test apply patch method with different operations. */

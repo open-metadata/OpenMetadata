@@ -46,6 +46,7 @@ public class TeamsPageTest {
   static String teamDisplayName = faker.name().lastName();
   static Actions actions;
   static WebDriverWait wait;
+  String teamsFilterCountXpath = "//div[@data-testid='terms-summary']//span[@data-testid='filter-count']";
 
   @BeforeEach
   public void openMetadataWindow() {
@@ -175,11 +176,38 @@ public class TeamsPageTest {
     Thread.sleep(2000);
     webDriver.navigate().back();
     Thread.sleep(2000);
-    String teamsFilterCount =
+    String teamsFilterCount = webDriver.findElement(By.xpath(teamsFilterCountXpath)).getAttribute("innerHTML");
+    Events.click(webDriver, By.cssSelector("[data-testid='tables']")); // Tables
+    Events.click(webDriver, By.xpath("(//button[@data-testid='table-link'])[last()]"));
+    Events.click(webDriver, By.xpath("(//button[@data-testid='tab'])[5]")); // Manage
+    Events.click(webDriver, By.cssSelector("[data-testid='owner-dropdown']")); // Owner
+    Thread.sleep(2000);
+    String teamsCount =
         webDriver
-            .findElement(By.xpath("//div[@data-testid='terms-summary']//span[@data-testid='filter-count']"))
+            .findElement(By.xpath("//button[@data-testid='tab']/span/span[@data-testid='filter-count']"))
             .getAttribute("innerHTML");
     Assert.assertEquals(teamsFilterCount, teamsListCount.toString());
+    Assert.assertEquals(teamsCount, teamsFilterCount);
+  }
+
+  @Test
+  @Order(7)
+  public void ownerDropDownListTeamsCount() throws InterruptedException {
+    Events.click(webDriver, By.cssSelector("[data-testid='closeWhatsNew']")); // Close What's new
+    Events.click(webDriver, By.cssSelector("[data-testid='tables']")); // Tables
+    Events.click(webDriver, By.xpath("(//button[@data-testid='table-link'])[last()]"));
+    Events.click(webDriver, By.xpath("(//button[@data-testid='tab'])[5]")); // Manage
+    Events.click(webDriver, By.cssSelector("[data-testid='owner-dropdown']")); // Owner
+    Thread.sleep(2000);
+    String teamsCount =
+        webDriver
+            .findElement(By.xpath("//button[@data-testid='tab']/span/span[@data-testid='filter-count']"))
+            .getAttribute("innerHTML");
+    webDriver.navigate().back();
+    Events.click(webDriver, By.cssSelector("[data-testid='image']")); // home-page
+    Thread.sleep(2000);
+    String teamsFilterCount = webDriver.findElement(By.xpath(teamsFilterCountXpath)).getAttribute("innerHTML");
+    Assert.assertEquals(teamsCount, teamsFilterCount);
   }
 
   @AfterEach

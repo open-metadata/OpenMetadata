@@ -302,7 +302,7 @@ public class DashboardResource {
       })
   public Response create(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDashboard create)
-      throws IOException {
+      throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Dashboard dashboard = getDashboard(securityContext, create);
     dashboard = addHref(uriInfo, dao.create(uriInfo, dashboard));

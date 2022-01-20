@@ -237,7 +237,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
     },
     { key: 'Tier', value: tier?.tagFQN ? tier.tagFQN.split('.')[1] : '' },
     { value: usage },
-    { value: `${weeklyUsageCount} queries past week` },
+    { value: `${weeklyUsageCount} queries` },
     {
       key: 'Columns',
       value:

@@ -15,12 +15,11 @@ package org.openmetadata.catalog.security.auth;
 
 import java.security.Principal;
 import javax.ws.rs.core.SecurityContext;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 /** Holds authenticated principal and security context which is passed to the JAX-RS request methods */
 public class CatalogSecurityContext implements SecurityContext {
-  private static final Logger LOG = LoggerFactory.getLogger(CatalogSecurityContext.class);
 
   private final Principal principal;
   private final String scheme;

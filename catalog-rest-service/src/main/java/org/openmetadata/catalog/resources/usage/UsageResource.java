@@ -35,25 +35,23 @@ import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriInfo;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.UsageRepository;
 import org.openmetadata.catalog.resources.Collection;
-import org.openmetadata.catalog.resources.teams.UserResource;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.type.DailyCount;
 import org.openmetadata.catalog.type.EntityUsage;
 import org.openmetadata.catalog.util.RestUtil;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
+@Slf4j
 @Path("/v1/usage")
 @Api(value = "Usage resource", tags = "Usage resource")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "usage")
 public class UsageResource {
-  private static final Logger LOG = LoggerFactory.getLogger(UserResource.class);
   private final UsageRepository dao;
 
   @Inject

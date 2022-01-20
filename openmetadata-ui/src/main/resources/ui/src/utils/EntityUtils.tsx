@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import classNames from 'classnames';
 import { isEmpty, isNil, isString } from 'lodash';
 import { Bucket, ExtraInfo, LeafNodes, LineagePos } from 'Models';
 import React from 'react';
@@ -432,7 +433,13 @@ export const getInfoElements = (data: ExtraInfo) => {
               rel="noopener noreferrer"
               target={data.openInNewTab ? '_blank' : '_self'}>
               <>
-                <span className="tw-mr-1">{displayVal}</span>
+                <span
+                  className={classNames('tw-mr-1 tw-inline-block tw-truncate', {
+                    'tw-w-52': (displayVal as string).length > 32,
+                  })}
+                  title={displayVal as string}>
+                  {displayVal}
+                </span>
                 {data.openInNewTab && (
                   <SVGIcons
                     alt="external-link"
@@ -444,7 +451,20 @@ export const getInfoElements = (data: ExtraInfo) => {
               </>
             </a>
           ) : (
-            displayVal
+            <>
+              {data.key === 'Owner' ? (
+                <span
+                  className={classNames(
+                    'tw-mr-1 tw-inline-block tw-truncate tw-align-text-bottom',
+                    { 'tw-w-52': (displayVal as string).length > 32 }
+                  )}
+                  title={displayVal as string}>
+                  {displayVal}
+                </span>
+              ) : (
+                <span>{displayVal}</span>
+              )}
+            </>
           )}
         </span>
       ) : null}

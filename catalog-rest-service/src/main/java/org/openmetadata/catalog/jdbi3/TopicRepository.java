@@ -13,9 +13,13 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import static org.openmetadata.catalog.Entity.MESSAGING_SERVICE;
+import static org.openmetadata.catalog.Entity.helper;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.net.URI;
+import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -23,8 +27,6 @@ import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Topic;
 import org.openmetadata.catalog.entity.services.MessagingService;
-import org.openmetadata.catalog.exception.CatalogExceptionMessage;
-import org.openmetadata.catalog.jdbi3.MessagingServiceRepository.MessagingServiceEntityInterface;
 import org.openmetadata.catalog.resources.topics.TopicResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
@@ -62,12 +64,12 @@ public class TopicRepository extends EntityRepository<Topic> {
   }
 
   @Override
-  public void prepare(Topic topic) throws IOException {
-    MessagingService messagingService = getService(topic.getService().getId(), topic.getService().getType());
-    topic.setService(new MessagingServiceEntityInterface(messagingService).getEntityReference());
+  public void prepare(Topic topic) throws IOException, ParseException {
+    MessagingService messagingService = helper(topic).findEntity("service", MESSAGING_SERVICE);
+    topic.setService(helper(messagingService).toEntityReference());
     topic.setServiceType(messagingService.getServiceType());
     topic.setFullyQualifiedName(getFQN(topic));
-    EntityUtil.populateOwner(daoCollection.userDAO(), daoCollection.teamDAO(), topic.getOwner()); // Validate owner
+    topic.setOwner(helper(topic).validateOwnerOrNull());
     topic.setTags(EntityUtil.addDerivedTags(daoCollection.tagDAO(), topic.getTags()));
   }
 
@@ -95,7 +97,7 @@ public class TopicRepository extends EntityRepository<Topic> {
   }
 
   @Override
-  public Topic setFields(Topic topic, Fields fields) throws IOException {
+  public Topic setFields(Topic topic, Fields fields) throws IOException, ParseException {
     topic.setService(getService(topic));
     topic.setOwner(fields.contains("owner") ? getOwner(topic) : null);
     topic.setFollowers(fields.contains("followers") ? getFollowers(topic) : null);
@@ -118,21 +120,8 @@ public class TopicRepository extends EntityRepository<Topic> {
     return new TopicEntityInterface(entity);
   }
 
-  private EntityReference getService(Topic topic) throws IOException {
-    if (topic == null) {
-      return null;
-    }
-    // Find service by topic Id
-    EntityReference service =
-        EntityUtil.getService(daoCollection.relationshipDAO(), Entity.TOPIC, topic.getId(), toInclude(topic));
-    return new MessagingServiceEntityInterface(getService(service.getId(), service.getType())).getEntityReference();
-  }
-
-  private MessagingService getService(UUID serviceId, String entityType) throws IOException {
-    if (entityType.equalsIgnoreCase(Entity.MESSAGING_SERVICE)) {
-      return daoCollection.messagingServiceDAO().findEntityById(serviceId);
-    }
-    throw new IllegalArgumentException(CatalogExceptionMessage.invalidServiceEntity(entityType, Entity.TOPIC));
+  private EntityReference getService(Topic topic) throws IOException, ParseException {
+    return helper(topic).getContainer(MESSAGING_SERVICE);
   }
 
   public void setService(Topic topic, EntityReference service) {

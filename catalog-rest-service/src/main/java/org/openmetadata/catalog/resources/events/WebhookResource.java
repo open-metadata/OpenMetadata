@@ -247,7 +247,7 @@ public class WebhookResource {
       })
   public Response createWebhook(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateWebhook create)
-      throws IOException {
+      throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Webhook webhook = getWebhook(securityContext, create);
     webhook.setStatus(Boolean.TRUE.equals(webhook.getEnabled()) ? Status.STARTED : Status.NOT_STARTED);
