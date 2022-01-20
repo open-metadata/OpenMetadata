@@ -157,11 +157,22 @@
     },
     "pipelineConfig": {
       "description": "OpenMetadata Pipeline Config.",
-      "anyOf":
-      [
-        {"$ref": "#/definitions/databaseMetadataPipelineConfig"},
-        {"$ref": "#/definitions/databaseQueryUsagePipelineConfig"}
-      ]
+      "type": "object",
+      "properties": {
+        "config": {
+          "oneOf":
+          [
+            {"$ref": "#/definitions/databaseMetadataPipelineConfig"},
+            {"$ref": "#/definitions/databaseQueryUsagePipelineConfig"}
+          ]
+        },
+        "schema": {
+          "enum": [
+            "databaseMetadataPipelineConfig",
+            "databaseQueryUsagePipelineConfig"
+          ]
+        }
+      }
     },
     "forceDeploy": {
       "description": "Deploy the pipeline by overwriting existing pipeline with the same name.",
