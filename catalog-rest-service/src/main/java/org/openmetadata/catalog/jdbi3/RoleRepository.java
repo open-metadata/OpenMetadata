@@ -13,18 +13,28 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import static org.openmetadata.catalog.util.EntityUtil.toBoolean;
+
 import java.io.IOException;
 import java.net.URI;
+import java.util.Collections;
+import java.util.List;
 import java.util.UUID;
+import lombok.extern.slf4j.Slf4j;
+import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
+import org.openmetadata.catalog.entity.policies.Policy;
 import org.openmetadata.catalog.entity.teams.Role;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
+import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.resources.teams.RoleResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.PolicyType;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 
+@Slf4j
 public class RoleRepository extends EntityRepository<Role> {
   static final Fields ROLE_UPDATE_FIELDS = new Fields(RoleResource.FIELD_LIST, null);
   static final Fields ROLE_PATCH_FIELDS = new Fields(RoleResource.FIELD_LIST, null);
@@ -45,8 +55,28 @@ public class RoleRepository extends EntityRepository<Role> {
 
   @Override
   public Role setFields(Role role, Fields fields) throws IOException {
-    // Nothing to set.
+    role.setPolicy(fields.contains("policy") ? getPolicyForRole(role) : null);
     return role;
+  }
+
+  private EntityReference getPolicyForRole(Role role) throws IOException {
+    List<String> result =
+        daoCollection
+            .relationshipDAO()
+            .findTo(
+                role.getId().toString(),
+                Entity.ROLE,
+                Relationship.CONTAINS.ordinal(),
+                Entity.POLICY,
+                toBoolean(toInclude(role)));
+    if (result.size() != 1) {
+      LOG.warn(
+          "A role must have exactly one policy that is applicable to the role. Got {} policies for role {}",
+          result.size(),
+          role.getName());
+      return null;
+    }
+    return Entity.getEntityReference(Entity.POLICY, UUID.fromString(result.get(0)));
   }
 
   @Override
@@ -60,21 +90,75 @@ public class RoleRepository extends EntityRepository<Role> {
     return new RoleEntityInterface(entity);
   }
 
+  /**
+   * If policy does not exist for this role, create a new entity reference. The actual policy gets created within the
+   * storeEntity method call.
+   */
   @Override
   public void prepare(Role role) throws IOException {
-    /* Nothing to do */
+    if (role.getPolicy() != null) {
+      return;
+    }
+    // Set up new entity reference for the role's policy.
+    role.setPolicy(
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType(Entity.POLICY)
+            .withName(String.format("%sRoleAccessControlPolicy", role.getName()))
+            .withDisplayName(String.format("%s Role Access Control Policy", role.getDisplayName()))
+            .withDescription(
+                String.format("Policy for %s Role to perform operations on metadata entities", role.getDisplayName())));
   }
 
+  /**
+   * For regular incoming POST, PUT, PATCH operation calls, {@link RoleRepository#prepare(Role)} would create a policy
+   * entity reference if it does not exist.
+   *
+   * <p>This method ensures that the role and its policy are stored correctly.
+   */
   @Override
+  @Transaction
   public void storeEntity(Role role, boolean update) throws IOException {
-    // Don't store href as JSON. Build it on the fly based on relationships
-    role.withHref(null);
+    EntityReference policyRef = role.getPolicy();
+    if (policyRef != null) {
+      try {
+        policyRef = Entity.getEntityReferenceByName(Entity.POLICY, policyRef.getName());
+      } catch (EntityNotFoundException e) {
+        // If policy does not exist for this role, create one.
+        Policy policy =
+            new Policy()
+                .withId(policyRef.getId())
+                .withName(policyRef.getName())
+                .withDisplayName(policyRef.getDisplayName())
+                .withDescription(policyRef.getDescription())
+                .withPolicyType(PolicyType.AccessControl)
+                .withRules(Collections.emptyList())
+                .withEnabled(true)
+                .withDeleted(false)
+                .withUpdatedAt(role.getUpdatedAt())
+                .withUpdatedBy(role.getUpdatedBy());
+        Entity.getEntityRepository(Entity.POLICY).storeEntity(policy, false);
+      }
+    }
+
+    // Don't store policy and href as JSON. Build it on the fly based on relationships
+    role.withPolicy(null).withHref(null);
     store(role.getId(), role, update);
+
+    // Restore the relationships
+    role.withPolicy(policyRef);
   }
 
   @Override
   public void storeRelationships(Role role) {
-    /* Nothing to do */
+    daoCollection
+        .relationshipDAO()
+        .insert(
+            role.getId().toString(),
+            role.getPolicy().getId().toString(),
+            Entity.ROLE,
+            Entity.POLICY,
+            Relationship.CONTAINS.ordinal());
   }
 
   @Override

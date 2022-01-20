@@ -43,6 +43,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.maven.shared.utils.io.IOUtil;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
+import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.entity.teams.User;
@@ -207,6 +208,9 @@ public abstract class EntityRepository<T> {
   /**
    * Initialize data from json files if seed data does not exist in corresponding tables. Seed data is stored under
    * catalog-rest-service/src/main/resources/json/data/{entityName}
+   *
+   * <p>This method needs to be explicitly called, typically from initialize method. See {@link
+   * org.openmetadata.catalog.resources.teams.RoleResource#initialize(CatalogApplicationConfig)}
    */
   public void initSeedDataFromResources() throws IOException {
     Pattern pattern = Pattern.compile(String.format(".*json/data/%s/.*\\.json$", entityName));

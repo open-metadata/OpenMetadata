@@ -51,6 +51,10 @@
       "description": "When `true` indicates the entity has been soft deleted.",
       "type": "boolean",
       "default" : false
+    },
+    "policy" : {
+      "description": "Policy that is attached to this role.",
+      "$ref": "../../type/entityReference.json"
     }
   },
   "required" : [
