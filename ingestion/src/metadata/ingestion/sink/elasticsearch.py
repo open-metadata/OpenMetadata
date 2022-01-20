@@ -489,6 +489,7 @@ class ElasticsearchSink(Sink[Entity]):
             for version in entity_versions.versions:
                 version_json = json.loads(version)
                 updatedAt = version_json["updatedAt"]
+                print(updatedAt)
                 change_description = ChangeDescription(
                     updatedBy=version_json["updatedBy"], updatedAt=updatedAt
                 )
