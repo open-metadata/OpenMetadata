@@ -19,7 +19,6 @@ import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import org.openmetadata.catalog.resources.Collection;
 import org.pac4j.jax.rs.annotations.Pac4JCallback;
-import org.pac4j.jax.rs.annotations.Pac4JSecurity;
 
 @Path("/v1/callback")
 @Api(value = "Callback API for SSO")
