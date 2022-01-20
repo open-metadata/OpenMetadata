@@ -100,7 +100,6 @@ class MetadataRestSink(Sink[Entity]):
         self.api_client = self.metadata.client
         self.role_entities = {}
         self.team_entities = {}
-        self._bootstrap_entities()
 
     @classmethod
     def create(
@@ -385,14 +384,6 @@ class MetadataRestSink(Sink[Entity]):
             logger.error(err)
             self.status.failure(f"Model: {model.name}")
 
-    def _bootstrap_entities(self):
-        team_response = self.api_client.get("/teams")
-        for team in team_response["data"]:
-            self.team_entities[team["name"]] = team["id"]
-        role_response = self.api_client.get("/roles")
-        for role in role_response["data"]:
-            self.role_entities[role["name"]] = role["id"]
-
     def _create_role(self, role: EntityReference) -> None:
         metadata_role = CreateRoleEntityRequest(
             name=role.name, displayName=role.name, description=role.description
@@ -422,12 +413,16 @@ class MetadataRestSink(Sink[Entity]):
     def write_users(self, record: User):
         roles = []
         for role in record.roles.__root__:
-            if role.name not in self.role_entities:
+            try:
+                role_response = self.api_client.get(f"/roles/{role.id.__root__}")
+            except APIError:
                 self._create_role(role)
             roles.append(self.role_entities[role.name])
         teams = []
         for team in record.teams.__root__:
-            if team.name not in self.team_entities:
+            try:
+                team_response = self.api_client.get(f"/teams/{team.id.__root__}")
+            except APIError:
                 self._create_team(team)
             teams.append(self.team_entities[team.name])
 
