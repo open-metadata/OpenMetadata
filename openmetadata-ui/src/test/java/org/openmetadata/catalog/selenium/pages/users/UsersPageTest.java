@@ -102,7 +102,10 @@ public class UsersPageTest {
     openUsersPage();
     Events.sendKeys(webDriver, By.cssSelector("[data-testid='searchbar']"), "AaR");
     Thread.sleep(4000);
-    Object userResultsCount = webDriver.findElements(By.xpath("//div[@data-testid='user-card-container']/div[@data-testid='user-card-container']")).size();
+    Object userResultsCount =
+        webDriver
+            .findElements(By.xpath("//div[@data-testid='user-card-container']/div[@data-testid='user-card-container']"))
+            .size();
     Assert.assertEquals(userResultsCount, 3);
   }
 

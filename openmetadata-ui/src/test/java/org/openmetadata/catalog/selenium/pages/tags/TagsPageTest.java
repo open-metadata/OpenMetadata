@@ -234,7 +234,10 @@ public class TagsPageTest {
     Events.click(webDriver, By.cssSelector("[data-testid='menu-item-Tags']")); // Setting/Tags
     Events.click(webDriver, By.xpath("//*[text()[contains(.,'" + "PersonalData" + "')]] "));
     Thread.sleep(2000);
-    String usageCount = webDriver.findElement(By.xpath("(//div[@data-testid='usage'])[1]/a[@data-testid='usage-count']")).getAttribute("innerHTML");
+    String usageCount =
+        webDriver
+            .findElement(By.xpath("(//div[@data-testid='usage'])[1]/a[@data-testid='usage-count']"))
+            .getAttribute("innerHTML");
     Assert.assertEquals(usageCount, "0");
   }
 
@@ -252,7 +255,10 @@ public class TagsPageTest {
     Events.click(webDriver, By.cssSelector("[data-testid='menu-item-Tags']")); // Setting/Tags
     Events.click(webDriver, By.xpath("//*[text()[contains(.,'" + "PersonalData" + "')]] "));
     Thread.sleep(2000);
-    String usageCount = webDriver.findElement(By.xpath("(//div[@data-testid='usage'])[2]/span[@data-testid='usage-count']")).getAttribute("innerHTML");
+    String usageCount =
+        webDriver
+            .findElement(By.xpath("(//div[@data-testid='usage'])[2]/span[@data-testid='usage-count']"))
+            .getAttribute("innerHTML");
     Assert.assertEquals(usageCount, "Not used");
   }
 

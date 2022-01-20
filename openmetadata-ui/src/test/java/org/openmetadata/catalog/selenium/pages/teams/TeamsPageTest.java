@@ -222,8 +222,7 @@ public class TeamsPageTest {
     Events.click(webDriver, By.cssSelector("[data-testid='menu-button'][id='menu-button-Settings']")); // Setting
     Events.click(webDriver, By.cssSelector("[data-testid='menu-item-Teams']")); // Setting/Teams
     Thread.sleep(2000);
-    int teamsCount =
-        webDriver.findElements(By.xpath("//*[text()[contains(.,'" + teamDisplayName + "')]] ")).size();
+    int teamsCount = webDriver.findElements(By.xpath("//*[text()[contains(.,'" + teamDisplayName + "')]] ")).size();
     if (teamsCount > 1) {
       throw new Exception("Two Team with same display-name exists");
     } else {
