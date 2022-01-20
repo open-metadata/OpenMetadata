@@ -28,7 +28,6 @@ import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
-import org.openmetadata.catalog.jdbi3.PolicyRepository;
 import org.openmetadata.catalog.jdbi3.UserRepository;
 import org.openmetadata.catalog.security.policyevaluator.PolicyEvaluator;
 import org.openmetadata.catalog.type.EntityReference;
@@ -59,8 +58,7 @@ public class DefaultAuthorizer implements Authorizer {
     this.userRepository = new UserRepository(collectionDAO);
     mayBeAddAdminUsers();
     mayBeAddBotUsers();
-    policyEvaluator = PolicyEvaluator.getInstance();
-    policyEvaluator.setPolicyRepository(new PolicyRepository(collectionDAO));
+    this.policyEvaluator = PolicyEvaluator.getInstance();
   }
 
   private void mayBeAddAdminUsers() {
