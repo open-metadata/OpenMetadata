@@ -13,7 +13,7 @@
 
 import React, { FunctionComponent, useEffect, useState } from 'react';
 import { Link, useHistory } from 'react-router-dom';
-import { getDatasetDetailsPath } from '../../constants/constants';
+import { getTableDetailsPath } from '../../constants/constants';
 import { JoinedWith } from '../../generated/entity/data/table';
 import { getCountBadge } from '../../utils/CommonUtils';
 import PopOver from '../common/popover/PopOver';
@@ -53,7 +53,7 @@ const FrequentlyJoinedTables: FunctionComponent<Props> = ({
   const [joinedTables, setJoinedTables] = useState<Props['tableList']>([]);
 
   const handleTableClick = (fqn: string) => {
-    history.push(getDatasetDetailsPath(fqn));
+    history.push(getTableDetailsPath(fqn));
   };
 
   useEffect(() => {
@@ -106,7 +106,7 @@ const FrequentlyJoinedTables: FunctionComponent<Props> = ({
               key={index}>
               <Link
                 className="link-text"
-                to={getDatasetDetailsPath(table.fullyQualifiedName as string)}>
+                to={getTableDetailsPath(table.fullyQualifiedName as string)}>
                 {table.name}
               </Link>
               {getCountBadge(table.joinCount, '', false)}

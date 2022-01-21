@@ -31,6 +31,7 @@ import java.util.Arrays;
 import java.util.Date;
 import java.util.Map;
 import javax.ws.rs.core.Response;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -51,6 +52,7 @@ import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
 import org.openmetadata.catalog.util.TestUtils.UpdateType;
 
+@Slf4j
 public class PipelineServiceResourceTest extends EntityResourceTest<PipelineService> {
 
   public static URI PIPELINE_SERVICE_URL;
@@ -62,6 +64,7 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
         PipelineServiceList.class,
         "services/pipelineServices",
         "",
+        false,
         false,
         false,
         false);
@@ -334,7 +337,7 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
     String fields = "";
     service =
         byName
-            ? getEntityByName(service.getName(), fields, adminAuthHeaders())
+            ? getEntityByName(service.getName(), null, fields, adminAuthHeaders())
             : getEntity(service.getId(), fields, adminAuthHeaders());
     TestUtils.assertListNotNull(
         service.getHref(),

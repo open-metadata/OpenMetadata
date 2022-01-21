@@ -27,8 +27,7 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
-import java.util.ArrayList;
-import java.util.Date;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -51,6 +50,8 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
+import org.openmetadata.catalog.CatalogApplicationConfig;
+import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.teams.CreateRole;
 import org.openmetadata.catalog.entity.teams.Role;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
@@ -59,6 +60,7 @@ import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
+import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.RestUtil.PatchResponse;
@@ -74,10 +76,21 @@ public class RoleResource {
   private final RoleRepository dao;
   private final Authorizer authorizer;
 
+  public static Role addHref(UriInfo uriInfo, Role role) {
+    Entity.withHref(uriInfo, role.getPolicy());
+    Entity.withHref(uriInfo, role.getUsers());
+    return role;
+  }
+
   public RoleResource(CollectionDAO dao, Authorizer authorizer) {
     Objects.requireNonNull(dao, "RoleRepository must not be null");
     this.dao = new RoleRepository(dao);
     this.authorizer = authorizer;
+  }
+
+  @SuppressWarnings("unused") // Method used for reflection
+  public void initialize(CatalogApplicationConfig config) throws IOException {
+    dao.initSeedDataFromResources();
   }
 
   public static class RoleList extends ResultList<Role> {
@@ -90,8 +103,8 @@ public class RoleResource {
     }
   }
 
-  // No additional fields supported for role entity at the moment.
-  public static final List<String> FIELD_LIST = new ArrayList<>();
+  public static final String FIELDS = "policy,users";
+  public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replace(" ", "").split(","));
 
   @GET
   @Valid
@@ -110,6 +123,11 @@ public class RoleResource {
   public ResultList<Role> list(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Fields requested in the returned resource",
+              schema = @Schema(type = "string", example = FIELDS))
+          @QueryParam("fields")
+          String fieldsParam,
       @Parameter(description = "Limit the number tables returned. (1 to 1000000, default = 10)")
           @DefaultValue("10")
           @Min(1)
@@ -121,17 +139,24 @@ public class RoleResource {
           String before,
       @Parameter(description = "Returns list of tables after this cursor", schema = @Schema(type = "string"))
           @QueryParam("after")
-          String after)
+          String after,
+      @Parameter(
+              description = "Include all, deleted, or non-deleted entities.",
+              schema = @Schema(implementation = Include.class))
+          @QueryParam("include")
+          @DefaultValue("non-deleted")
+          Include include)
       throws IOException, GeneralSecurityException, ParseException {
     RestUtil.validateCursors(before, after);
-    EntityUtil.Fields fields = new EntityUtil.Fields(FIELD_LIST, null);
+    EntityUtil.Fields fields = new EntityUtil.Fields(FIELD_LIST, fieldsParam);
 
     ResultList<Role> roles;
     if (before != null) { // Reverse paging
-      roles = dao.listBefore(uriInfo, fields, null, limitParam, before); // Ask for one extra entry
+      roles = dao.listBefore(uriInfo, fields, null, limitParam, before, include); // Ask for one extra entry
     } else { // Forward paging or first page
-      roles = dao.listAfter(uriInfo, fields, null, limitParam, after);
+      roles = dao.listAfter(uriInfo, fields, null, limitParam, after, include);
     }
+    roles.getData().forEach(role -> addHref(uriInfo, role));
     return roles;
   }
 
@@ -169,10 +194,24 @@ public class RoleResource {
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Role.class))),
         @ApiResponse(responseCode = "404", description = "Role for instance {id} is not found")
       })
-  public Role get(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("id") String id)
+  public Role get(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @PathParam("id") String id,
+      @Parameter(
+              description = "Fields requested in the returned resource",
+              schema = @Schema(type = "string", example = FIELDS))
+          @QueryParam("fields")
+          String fieldsParam,
+      @Parameter(
+              description = "Include all, deleted, or non-deleted entities.",
+              schema = @Schema(implementation = Include.class))
+          @QueryParam("include")
+          @DefaultValue("non-deleted")
+          Include include)
       throws IOException, ParseException {
-    EntityUtil.Fields fields = new EntityUtil.Fields(FIELD_LIST, null);
-    return dao.get(uriInfo, id, fields);
+    EntityUtil.Fields fields = new EntityUtil.Fields(FIELD_LIST, fieldsParam);
+    return addHref(uriInfo, dao.get(uriInfo, id, fields, include));
   }
 
   @GET
@@ -190,10 +229,23 @@ public class RoleResource {
         @ApiResponse(responseCode = "404", description = "Role for instance {name} is not found")
       })
   public Role getByName(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("name") String name)
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @PathParam("name") String name,
+      @Parameter(
+              description = "Fields requested in the returned resource",
+              schema = @Schema(type = "string", example = FIELDS))
+          @QueryParam("fields")
+          String fieldsParam,
+      @Parameter(
+              description = "Include all, deleted, or non-deleted entities.",
+              schema = @Schema(implementation = Include.class))
+          @QueryParam("include")
+          @DefaultValue("non-deleted")
+          Include include)
       throws IOException, ParseException {
-    EntityUtil.Fields fields = new EntityUtil.Fields(FIELD_LIST, null);
-    return dao.getByName(uriInfo, name, fields);
+    EntityUtil.Fields fields = new EntityUtil.Fields(FIELD_LIST, fieldsParam);
+    return addHref(uriInfo, dao.getByName(uriInfo, name, fields, include));
   }
 
   @GET
@@ -238,10 +290,10 @@ public class RoleResource {
       })
   public Response create(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateRole createRole)
-      throws IOException {
+      throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Role role = getRole(createRole, securityContext);
-    role = dao.create(uriInfo, role);
+    role = addHref(uriInfo, dao.create(uriInfo, role));
     return Response.created(role.getHref()).entity(role).build();
   }
 
@@ -263,6 +315,7 @@ public class RoleResource {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Role role = getRole(createRole, securityContext);
     RestUtil.PutResponse<Role> response = dao.createOrUpdate(uriInfo, role);
+    addHref(uriInfo, response.getEntity());
     return response.toResponse();
   }
 
@@ -292,6 +345,7 @@ public class RoleResource {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     PatchResponse<Role> response =
         dao.patch(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
+    addHref(uriInfo, response.getEntity());
     return response.toResponse();
   }
 
@@ -308,17 +362,19 @@ public class RoleResource {
   public Response delete(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("id") String id)
       throws IOException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    dao.delete(UUID.fromString(id), false);
+    // A role has a strong relationship with a policy. Recursively delete the policy that the role contains, to avoid
+    // leaving a dangling policy without a role.
+    dao.delete(UUID.fromString(id), true);
     return Response.ok().build();
   }
 
-  private Role getRole(CreateRole ct, SecurityContext securityContext) {
+  private Role getRole(CreateRole cr, SecurityContext securityContext) {
     return new Role()
         .withId(UUID.randomUUID())
-        .withName(ct.getName())
-        .withDescription(ct.getDescription())
-        .withDisplayName(ct.getDisplayName())
+        .withName(cr.getName())
+        .withDescription(cr.getDescription())
+        .withDisplayName(cr.getDisplayName())
         .withUpdatedBy(securityContext.getUserPrincipal().getName())
-        .withUpdatedAt(new Date());
+        .withUpdatedAt(System.currentTimeMillis());
   }
 }

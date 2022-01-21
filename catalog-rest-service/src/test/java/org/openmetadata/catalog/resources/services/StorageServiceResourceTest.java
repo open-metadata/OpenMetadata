@@ -28,6 +28,7 @@ import java.net.URISyntaxException;
 import java.util.Arrays;
 import java.util.Map;
 import javax.ws.rs.core.Response;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
@@ -46,6 +47,7 @@ import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.TestUtils;
 import org.openmetadata.catalog.util.TestUtils.UpdateType;
 
+@Slf4j
 public class StorageServiceResourceTest extends EntityResourceTest<StorageService> {
   public StorageServiceResourceTest() {
     super(
@@ -54,6 +56,7 @@ public class StorageServiceResourceTest extends EntityResourceTest<StorageServic
         StorageServiceList.class,
         "services/storageServices",
         "",
+        false,
         false,
         false,
         false);
@@ -200,7 +203,7 @@ public class StorageServiceResourceTest extends EntityResourceTest<StorageServic
     String fields = "";
     service =
         byName
-            ? getEntityByName(service.getName(), fields, adminAuthHeaders())
+            ? getEntityByName(service.getName(), null, fields, adminAuthHeaders())
             : getEntity(service.getId(), fields, adminAuthHeaders());
     TestUtils.assertListNotNull(
         service.getHref(),

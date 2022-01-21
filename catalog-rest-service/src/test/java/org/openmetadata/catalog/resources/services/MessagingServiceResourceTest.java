@@ -32,6 +32,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import javax.ws.rs.core.Response;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -53,6 +54,7 @@ import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
 import org.openmetadata.catalog.util.TestUtils.UpdateType;
 
+@Slf4j
 public class MessagingServiceResourceTest extends EntityResourceTest<MessagingService> {
 
   public static List<String> KAFKA_BROKERS;
@@ -65,6 +67,7 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
         MessagingServiceList.class,
         "services/messagingServices",
         "",
+        false,
         false,
         false,
         false);
@@ -354,7 +357,7 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
     String fields = "";
     service =
         byName
-            ? getEntityByName(service.getName(), fields, adminAuthHeaders())
+            ? getEntityByName(service.getName(), null, fields, adminAuthHeaders())
             : getEntity(service.getId(), fields, adminAuthHeaders());
     TestUtils.assertListNotNull(
         service.getHref(),

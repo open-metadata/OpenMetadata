@@ -28,7 +28,6 @@ import java.security.GeneralSecurityException;
 import java.text.ParseException;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -53,6 +52,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.operations.workflows.CreateIngestion;
@@ -65,22 +65,20 @@ import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.RestUtil.PatchResponse;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
+@Slf4j
 @Path("operations/v1/ingestion")
 @Api(value = "Ingestion collection", tags = "Ingestion collection")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "ingestion")
 public class IngestionResource {
-  private static final Logger LOG = LoggerFactory.getLogger(IngestionResource.class);
-
   public static final String COLLECTION_PATH = "operations/v1/ingestion/";
   private final IngestionRepository dao;
   private final Authorizer authorizer;
@@ -162,16 +160,22 @@ public class IngestionResource {
           String before,
       @Parameter(description = "Returns list of ingestion after this cursor", schema = @Schema(type = "string"))
           @QueryParam("after")
-          String after)
+          String after,
+      @Parameter(
+              description = "Include all, deleted, or non-deleted entities.",
+              schema = @Schema(implementation = Include.class))
+          @QueryParam("include")
+          @DefaultValue("non-deleted")
+          Include include)
       throws IOException, GeneralSecurityException, ParseException {
     RestUtil.validateCursors(before, after);
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
 
     ResultList<Ingestion> ingestions;
     if (before != null) { // Reverse paging
-      ingestions = dao.listBefore(uriInfo, fields, null, limitParam, before); // Ask for one extra entry
+      ingestions = dao.listBefore(uriInfo, fields, null, limitParam, before, include); // Ask for one extra entry
     } else { // Forward paging or first page
-      ingestions = dao.listAfter(uriInfo, fields, null, limitParam, after);
+      ingestions = dao.listAfter(uriInfo, fields, null, limitParam, after, include);
     }
     if (fieldsParam != null && fieldsParam.contains("status")) {
       addStatus(ingestions.getData());
@@ -220,10 +224,16 @@ public class IngestionResource {
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
-          String fieldsParam)
+          String fieldsParam,
+      @Parameter(
+              description = "Include all, deleted, or non-deleted entities.",
+              schema = @Schema(implementation = Include.class))
+          @QueryParam("include")
+          @DefaultValue("non-deleted")
+          Include include)
       throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
-    Ingestion ingestion = dao.get(uriInfo, id, fields);
+    Ingestion ingestion = dao.get(uriInfo, id, fields, include);
     if (fieldsParam != null && fieldsParam.contains("status")) {
       ingestion = addStatus(ingestion);
     }
@@ -279,10 +289,16 @@ public class IngestionResource {
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
-          String fieldsParam)
+          String fieldsParam,
+      @Parameter(
+              description = "Include all, deleted, or non-deleted entities.",
+              schema = @Schema(implementation = Include.class))
+          @QueryParam("include")
+          @DefaultValue("non-deleted")
+          Include include)
       throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
-    Ingestion ingestion = dao.getByName(uriInfo, fqn, fields);
+    Ingestion ingestion = dao.getByName(uriInfo, fqn, fields, include);
     if (fieldsParam != null && fieldsParam.contains("status")) {
       ingestion = addStatus(ingestion);
     }
@@ -304,7 +320,7 @@ public class IngestionResource {
       })
   public Response create(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateIngestion create)
-      throws IOException {
+      throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Ingestion ingestion = getIngestion(securityContext, create);
     deploy(ingestion);
@@ -337,7 +353,9 @@ public class IngestionResource {
       throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, FIELDS);
     Ingestion ingestion = dao.get(uriInfo, id, fields);
-    SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, dao.getOwnerReference(ingestion));
+    SecurityUtil.checkAdminRoleOrPermissions(
+        authorizer, securityContext, dao.getEntityInterface(ingestion).getEntityReference(), patch);
+
     PatchResponse<Ingestion> response =
         dao.patch(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
     addHref(uriInfo, response.getEntity());
@@ -425,7 +443,7 @@ public class IngestionResource {
         .withOwner(create.getOwner())
         .withService(create.getService())
         .withUpdatedBy(securityContext.getUserPrincipal().getName())
-        .withUpdatedAt(new Date());
+        .withUpdatedAt(System.currentTimeMillis());
   }
 
   private void deploy(Ingestion ingestion) {

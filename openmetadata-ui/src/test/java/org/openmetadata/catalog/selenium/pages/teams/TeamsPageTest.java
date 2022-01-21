@@ -26,11 +26,13 @@ import org.openmetadata.catalog.selenium.events.Events;
 import org.openmetadata.catalog.selenium.properties.Property;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.interactions.Actions;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
+import org.testng.Assert;
 
 @Order(2)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
@@ -44,6 +46,7 @@ public class TeamsPageTest {
   static String teamDisplayName = faker.name().lastName();
   static Actions actions;
   static WebDriverWait wait;
+  String teamsFilterCountXpath = "//div[@data-testid='terms-summary']//span[@data-testid='filter-count']";
 
   @BeforeEach
   public void openMetadataWindow() {
@@ -131,6 +134,100 @@ public class TeamsPageTest {
     Thread.sleep(waitTime);
     Events.click(webDriver, By.cssSelector("[data-testid='assets']"));
     Events.click(webDriver, By.cssSelector("[data-testid='user-card-container']"));
+  }
+
+  @Test
+  @Order(6)
+  public void ownerNameIsConsistentCheck() throws InterruptedException {
+    openTeamsPage();
+    Events.click(webDriver, By.xpath("//*[text()[contains(.,'" + teamDisplayName + "')]] "));
+    Thread.sleep(waitTime);
+    Events.click(webDriver, By.cssSelector("[data-testid='assets']"));
+    Events.click(webDriver, By.cssSelector("[data-testid='user-card-container']"));
+    Thread.sleep(2000);
+    String ownerName = webDriver.findElement(By.xpath("//a[@data-testid='owner-link']/span")).getAttribute("innerHTML");
+    Events.click(webDriver, By.xpath("(//li[@data-testid='breadcrumb-link'][2])/a"));
+    Thread.sleep(2000);
+    WebElement displayName = webDriver.findElement(By.xpath("//*[text()[contains(.,'" + teamDisplayName + "')]] "));
+    if (displayName.isDisplayed()) {
+      Assert.assertEquals(ownerName, teamDisplayName);
+    } else {
+      Events.click(webDriver, By.cssSelector("[data-testid='next']"));
+      Assert.assertEquals(ownerName, teamDisplayName);
+    }
+  }
+
+  @Test
+  @Order(7)
+  public void checkTeamsFilterCount() throws InterruptedException {
+    openTeamsPage();
+    for (int i = 0; i < 5; i++) {
+      Events.click(webDriver, By.cssSelector("[data-testid='add-teams']")); // add team
+      Events.sendKeys(webDriver, By.name("name"), faker.name().firstName()); // name
+      Events.sendKeys(webDriver, By.name("displayName"), faker.name().lastName()); // displayname
+      Events.sendKeys(webDriver, By.xpath(enterDescription), faker.address().toString());
+      Events.click(webDriver, By.cssSelector("[data-testid='boldButton']"));
+      Events.click(webDriver, By.cssSelector("[data-testid='italicButton']"));
+      Events.click(webDriver, By.cssSelector("[data-testid='linkButton']"));
+      Events.click(webDriver, By.cssSelector("[data-testid='saveButton']"));
+    }
+    Thread.sleep(2000);
+    Object teamsListCount = webDriver.findElements(By.xpath("//div[@id='left-panel']//div")).size() - 1;
+    Thread.sleep(2000);
+    webDriver.navigate().back();
+    Thread.sleep(2000);
+    String teamsFilterCount = webDriver.findElement(By.xpath(teamsFilterCountXpath)).getAttribute("innerHTML");
+    Events.click(webDriver, By.cssSelector("[data-testid='tables']")); // Tables
+    Events.click(webDriver, By.xpath("(//button[@data-testid='table-link'])[last()]"));
+    Events.click(webDriver, By.xpath("(//button[@data-testid='tab'])[5]")); // Manage
+    Events.click(webDriver, By.cssSelector("[data-testid='owner-dropdown']")); // Owner
+    Thread.sleep(2000);
+    String teamsCount =
+        webDriver
+            .findElement(By.xpath("//button[@data-testid='tab']/span/span[@data-testid='filter-count']"))
+            .getAttribute("innerHTML");
+    Assert.assertEquals(teamsFilterCount, teamsListCount.toString());
+    Assert.assertEquals(teamsCount, teamsFilterCount);
+  }
+
+  @Test
+  @Order(7)
+  public void ownerDropDownListTeamsCount() throws InterruptedException {
+    Events.click(webDriver, By.cssSelector("[data-testid='closeWhatsNew']")); // Close What's new
+    Events.click(webDriver, By.cssSelector("[data-testid='tables']")); // Tables
+    Events.click(webDriver, By.xpath("(//button[@data-testid='table-link'])[last()]"));
+    Events.click(webDriver, By.xpath("(//button[@data-testid='tab'])[5]")); // Manage
+    Events.click(webDriver, By.cssSelector("[data-testid='owner-dropdown']")); // Owner
+    Thread.sleep(2000);
+    String teamsCount =
+        webDriver
+            .findElement(By.xpath("//button[@data-testid='tab']/span/span[@data-testid='filter-count']"))
+            .getAttribute("innerHTML");
+    webDriver.navigate().back();
+    Events.click(webDriver, By.cssSelector("[data-testid='image']")); // home-page
+    Thread.sleep(2000);
+    String teamsFilterCount = webDriver.findElement(By.xpath(teamsFilterCountXpath)).getAttribute("innerHTML");
+    Assert.assertEquals(teamsCount, teamsFilterCount);
+  }
+
+  @Test
+  @Order(8)
+  public void teamsWithSameDisplayNameCheck() throws Exception {
+    for (int i = 0; i < 2; i++) {
+      createTeam();
+      webDriver.navigate().back();
+      Events.click(webDriver, By.cssSelector("[data-testid='whatsnew-modal']")); // What's New
+    }
+    Events.click(webDriver, By.cssSelector("[data-testid='closeWhatsNew']")); // Close What's new
+    Events.click(webDriver, By.cssSelector("[data-testid='menu-button'][id='menu-button-Settings']")); // Setting
+    Events.click(webDriver, By.cssSelector("[data-testid='menu-item-Teams']")); // Setting/Teams
+    Thread.sleep(2000);
+    int teamsCount = webDriver.findElements(By.xpath("//*[text()[contains(.,'" + teamDisplayName + "')]] ")).size();
+    if (teamsCount > 1) {
+      throw new Exception("Two Team with same display-name exists");
+    } else {
+      Assert.assertEquals(teamsCount, 1);
+    }
   }
 
   @AfterEach

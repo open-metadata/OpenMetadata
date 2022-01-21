@@ -23,6 +23,7 @@ import React from 'react';
 import { reactLocalStorage } from 'reactjs-localstorage';
 import AppState from '../AppState';
 import {
+  imageTypes,
   LOCALSTORAGE_RECENTLY_SEARCHED,
   LOCALSTORAGE_RECENTLY_VIEWED,
   TITLE_FOR_NON_OWNER_ACTION,
@@ -284,7 +285,32 @@ export const getActiveCatClass = (name: string, activeName = '') => {
 export const errorMsg = (value: string) => {
   return (
     <div className="tw-mt-1">
-      <strong className="tw-text-red-500 tw-text-xs tw-italic">{value}</strong>
+      <strong
+        className="tw-text-red-500 tw-text-xs tw-italic"
+        data-testid="error-message">
+        {value}
+      </strong>
     </div>
   );
+};
+
+export const getImages = (imageUri: string) => {
+  const imagesObj: typeof imageTypes = imageTypes;
+  for (const type in imageTypes) {
+    imagesObj[type as keyof typeof imageTypes] = imageUri.replace(
+      's96-c',
+      imageTypes[type as keyof typeof imageTypes]
+    );
+  }
+
+  return imagesObj;
+};
+
+export const isValidUrl = (href: string) => {
+  const regex = new RegExp(
+    // eslint-disable-next-line no-useless-escape
+    /(http(s)?:\/\/.)?(www\.)?[-a-zA-Z0-9@:%._\+~#=]{2,256}\.[a-z]{2,6}\b([-a-zA-Z0-9@:%_\+.~#?&//=]*)/g
+  );
+
+  return href.match(regex);
 };

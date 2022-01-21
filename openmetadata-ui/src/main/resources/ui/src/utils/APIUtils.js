@@ -24,7 +24,8 @@ export const formatDataResponse = (hits) => {
       hit._source.table_id ||
       hit._source.topic_id ||
       hit._source.dashboard_id ||
-      hit._source.pipeline_id;
+      hit._source.pipeline_id ||
+      hit._source.pipeine_id;
     newData.name = hit._source.name;
     newData.description = hit._source.description;
     newData.fullyQualifiedName = hit._source.fqdn;

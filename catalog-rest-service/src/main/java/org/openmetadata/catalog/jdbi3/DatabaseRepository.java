@@ -14,11 +14,14 @@
 package org.openmetadata.catalog.jdbi3;
 
 import static javax.ws.rs.core.Response.Status.CREATED;
+import static org.openmetadata.catalog.Entity.DATABASE_SERVICE;
+import static org.openmetadata.catalog.Entity.helper;
+import static org.openmetadata.catalog.util.EntityUtil.toBoolean;
 
 import java.io.IOException;
 import java.net.URI;
+import java.text.ParseException;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 import javax.ws.rs.core.Response.Status;
@@ -114,7 +117,12 @@ public class DatabaseRepository extends EntityRepository<Database> {
     List<String> tableIds =
         daoCollection
             .relationshipDAO()
-            .findTo(databaseId, Entity.DATABASE, Relationship.CONTAINS.ordinal(), Entity.TABLE);
+            .findTo(
+                databaseId,
+                Entity.DATABASE,
+                Relationship.CONTAINS.ordinal(),
+                Entity.TABLE,
+                toBoolean(toInclude(database)));
     List<EntityReference> tables = new ArrayList<>();
     for (String tableId : tableIds) {
       tables.add(daoCollection.tableDAO().findEntityReferenceById(UUID.fromString(tableId)));
@@ -122,7 +130,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
     return tables;
   }
 
-  public Database setFields(Database database, Fields fields) throws IOException {
+  public Database setFields(Database database, Fields fields) throws IOException, ParseException {
     database.setService(getService(database));
     database.setOwner(fields.contains("owner") ? getOwner(database) : null);
     database.setTables(fields.contains("tables") ? getTables(database) : null);
@@ -155,7 +163,12 @@ public class DatabaseRepository extends EntityRepository<Database> {
     List<String> result =
         daoCollection
             .relationshipDAO()
-            .findTo(databaseId, Entity.DATABASE, Relationship.HAS.ordinal(), Entity.LOCATION);
+            .findTo(
+                databaseId,
+                Entity.DATABASE,
+                Relationship.HAS.ordinal(),
+                Entity.LOCATION,
+                toBoolean(toInclude(database)));
     if (result.size() == 1) {
       String locationId = result.get(0);
       return daoCollection.locationDAO().findEntityReferenceById(UUID.fromString(locationId));
@@ -164,16 +177,8 @@ public class DatabaseRepository extends EntityRepository<Database> {
     }
   }
 
-  private EntityReference getService(Database database) throws IOException {
-    EntityReference ref =
-        EntityUtil.getService(
-            daoCollection.relationshipDAO(), Entity.DATABASE, database.getId(), Entity.DATABASE_SERVICE);
-    if (ref != null) {
-      DatabaseService service = getService(ref.getId(), ref.getType());
-      ref.setName(service.getName());
-      ref.setDescription(service.getDescription());
-    }
-    return ref;
+  private EntityReference getService(Database database) throws IOException, ParseException {
+    return helper(database).getContainer(DATABASE_SERVICE);
   }
 
   private void populateService(Database database) throws IOException {
@@ -252,7 +257,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
     }
 
     @Override
-    public Date getUpdatedAt() {
+    public long getUpdatedAt() {
       return entity.getUpdatedAt();
     }
 
@@ -297,7 +302,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
     }
 
     @Override
-    public void setUpdateDetails(String updatedBy, Date updatedAt) {
+    public void setUpdateDetails(String updatedBy, long updatedAt) {
       entity.setUpdatedBy(updatedBy);
       entity.setUpdatedAt(updatedAt);
     }

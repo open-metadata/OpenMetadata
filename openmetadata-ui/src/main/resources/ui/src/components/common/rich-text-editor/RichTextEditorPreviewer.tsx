@@ -14,8 +14,10 @@
 import classNames from 'classnames';
 import React, { useEffect, useState } from 'react';
 import ReactMarkdown, { PluggableList } from 'react-markdown';
+import { Link } from 'react-router-dom';
 import rehypeRaw from 'rehype-raw';
 import gfm from 'remark-gfm';
+import { isValidUrl } from '../../../utils/CommonUtils';
 
 /*eslint-disable  */
 const RichTextEditorPreviewer = ({
@@ -50,6 +52,27 @@ const RichTextEditorPreviewer = ({
                 {children}
               </ul>
             );
+          },
+          a: ({ node, children, ...props }) => {
+            if (!isValidUrl(props.href as string)) {
+              return <span>{children}</span>;
+            } else {
+              let link = '';
+              const href = props.href;
+              if (
+                href?.indexOf('http://') == 0 ||
+                href?.indexOf('https://') == 0
+              ) {
+                link = href;
+              } else {
+                link = `https://${href}`;
+              }
+              return (
+                <Link to={{ pathname: link }} target="_blank">
+                  {children}
+                </Link>
+              );
+            }
           },
         }}
         remarkPlugins={[gfm] as unknown as PluggableList | undefined}

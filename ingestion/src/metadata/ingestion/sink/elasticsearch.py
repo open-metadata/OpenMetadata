@@ -225,13 +225,13 @@ class ElasticsearchSink(Sink[Entity]):
         column_descriptions = []
         tags = set()
 
-        timestamp = epoch_ms(table.updatedAt.__root__)
+        timestamp = table.updatedAt.__root__
         tier = None
         for table_tag in table.tags:
-            if "Tier" in table_tag.tagFQN:
-                tier = table_tag.tagFQN
+            if "Tier" in table_tag.tagFQN.__root__:
+                tier = table_tag.tagFQN.__root__
             else:
-                tags.add(table_tag.tagFQN)
+                tags.add(table_tag.tagFQN.__root__)
         self._parse_columns(
             table.columns, None, column_names, column_descriptions, tags
         )
@@ -254,6 +254,7 @@ class ElasticsearchSink(Sink[Entity]):
         change_descriptions = self._get_change_descriptions(Table, table.id.__root__)
         table_doc = TableESDocument(
             table_id=str(table.id.__root__),
+            deleted=table.deleted,
             database=str(database_entity.name.__root__),
             service=service_entity.name,
             service_type=service_entity.serviceType.name,
@@ -288,7 +289,7 @@ class ElasticsearchSink(Sink[Entity]):
             {"input": [topic_name], "weight": 10},
         ]
         tags = set()
-        timestamp = epoch_ms(topic.updatedAt.__root__)
+        timestamp = topic.updatedAt.__root__
         service_entity = self.metadata.get_by_id(
             entity=MessagingService, entity_id=str(topic.service.id.__root__)
         )
@@ -299,13 +300,14 @@ class ElasticsearchSink(Sink[Entity]):
                 topic_followers.append(str(follower.id.__root__))
         tier = None
         for topic_tag in topic.tags:
-            if "Tier" in topic_tag.tagFQN:
-                tier = topic_tag.tagFQN
+            if "Tier" in topic_tag.tagFQN.__root__:
+                tier = topic_tag.tagFQN.__root__
             else:
-                tags.add(topic_tag.tagFQN)
+                tags.add(topic_tag.tagFQN.__root__)
         change_descriptions = self._get_change_descriptions(Topic, topic.id.__root__)
         topic_doc = TopicESDocument(
             topic_id=str(topic.id.__root__),
+            deleted=topic.deleted,
             service=service_entity.name,
             service_type=service_entity.serviceType.name,
             service_category="messagingService",
@@ -327,7 +329,7 @@ class ElasticsearchSink(Sink[Entity]):
         dashboard_name = dashboard.name
         suggest = [{"input": [dashboard.displayName], "weight": 10}]
         tags = set()
-        timestamp = epoch_ms(dashboard.updatedAt.__root__)
+        timestamp = dashboard.updatedAt.__root__
         service_entity = self.metadata.get_by_id(
             entity=DashboardService, entity_id=str(dashboard.service.id.__root__)
         )
@@ -340,10 +342,10 @@ class ElasticsearchSink(Sink[Entity]):
                 dashboard_followers.append(str(follower.id.__root__))
         tier = None
         for dashboard_tag in dashboard.tags:
-            if "Tier" in dashboard_tag.tagFQN:
-                tier = dashboard_tag.tagFQN
+            if "Tier" in dashboard_tag.tagFQN.__root__:
+                tier = dashboard_tag.tagFQN.__root__
             else:
-                tags.add(dashboard_tag.tagFQN)
+                tags.add(dashboard_tag.tagFQN.__root__)
         charts: List[Chart] = self._get_charts(dashboard.charts)
         chart_names = []
         chart_descriptions = []
@@ -359,6 +361,7 @@ class ElasticsearchSink(Sink[Entity]):
         )
         dashboard_doc = DashboardESDocument(
             dashboard_id=str(dashboard.id.__root__),
+            deleted=dashboard.deleted,
             service=service_entity.name,
             service_type=service_entity.serviceType.name,
             service_category="dashboardService",
@@ -388,7 +391,7 @@ class ElasticsearchSink(Sink[Entity]):
         fqdn = pipeline.fullyQualifiedName
         suggest = [{"input": [pipeline.displayName], "weight": 10}]
         tags = set()
-        timestamp = epoch_ms(pipeline.updatedAt.__root__)
+        timestamp = pipeline.updatedAt.__root__
         service_entity = self.metadata.get_by_id(
             entity=PipelineService, entity_id=str(pipeline.service.id.__root__)
         )
@@ -401,10 +404,10 @@ class ElasticsearchSink(Sink[Entity]):
                 pipeline_followers.append(str(follower.id.__root__))
         tier = None
         for pipeline_tag in pipeline.tags:
-            if "Tier" in pipeline_tag.tagFQN:
-                tier = pipeline_tag.tagFQN
+            if "Tier" in pipeline_tag.tagFQN.__root__:
+                tier = pipeline_tag.tagFQN.__root__
             else:
-                tags.add(pipeline_tag.tagFQN)
+                tags.add(pipeline_tag.tagFQN.__root__)
         tasks: List[Task] = pipeline.tasks
         task_names = []
         task_descriptions = []
@@ -420,6 +423,7 @@ class ElasticsearchSink(Sink[Entity]):
         )
         pipeline_doc = PipelineESDocument(
             pipeline_id=str(pipeline.id.__root__),
+            deleted=pipeline.deleted,
             service=service_entity.name,
             service_type=service_entity.serviceType.name,
             service_category="pipelineService",
@@ -468,7 +472,7 @@ class ElasticsearchSink(Sink[Entity]):
                 column_descriptions.append(column.description)
             if len(column.tags) > 0:
                 for col_tag in column.tags:
-                    tags.add(col_tag.tagFQN)
+                    tags.add(col_tag.tagFQN.__root__)
             if column.children is not None:
                 self._parse_columns(
                     column.children,
@@ -484,9 +488,9 @@ class ElasticsearchSink(Sink[Entity]):
             change_descriptions = []
             for version in entity_versions.versions:
                 version_json = json.loads(version)
-                updatedAt = parser.parse(version_json["updatedAt"])
+                updatedAt = version_json["updatedAt"]
                 change_description = ChangeDescription(
-                    updatedBy=version_json["updatedBy"], updatedAt=epoch_ms(updatedAt)
+                    updatedBy=version_json["updatedBy"], updatedAt=updatedAt
                 )
                 if "changeDescription" in version_json:
                     change_description.fieldsAdded = version_json["changeDescription"][

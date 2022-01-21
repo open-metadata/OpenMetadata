@@ -12,13 +12,15 @@
  */
 
 import { compare, Operation } from 'fast-json-patch';
-import { isUndefined, lowerCase } from 'lodash';
+import { isUndefined, toLower } from 'lodash';
 import React, { FunctionComponent, useEffect, useState } from 'react';
 import PageLayout from '../../components/containers/PageLayout';
 import Loader from '../../components/Loader/Loader';
+import { UserType } from '../../enums/user.enum';
 import { Team } from '../../generated/entity/teams/team';
 import { User } from '../../generated/entity/teams/user';
 import { getCountBadge } from '../../utils/CommonUtils';
+import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import Searchbar from '../common/searchbar/Searchbar';
 import UserDetailsModal from '../Modals/UserDetailsModal/UserDetailsModal';
 import UserDataCard from '../UserDataCard/UserDataCard';
@@ -39,17 +41,58 @@ const UserList: FunctionComponent<Props> = ({
   const [userList, setUserList] = useState<Array<User>>(allUsers);
   const [users, setUsers] = useState<Array<User>>([]);
   const [admins, setAdmins] = useState<Array<User>>([]);
+  const [bots, setBots] = useState<Array<User>>([]);
   const [currentTeam, setCurrentTeam] = useState<Team>();
   const [currentTab, setCurrentTab] = useState<number>(1);
   const [selectedUser, setSelectedUser] = useState<User>();
   const [searchText, setSearchText] = useState('');
 
-  if (selectedUser) {
-    selectedUser;
-  }
-
   const handleSearchAction = (searchValue: string) => {
     setSearchText(searchValue);
+  };
+
+  const isIncludes = (name: string) => {
+    return toLower(name).includes(toLower(searchText));
+  };
+
+  const setCurrentTabList = (tab: number) => {
+    switch (tab) {
+      case 2:
+        setAdmins(
+          userList.filter(
+            (user) => user.isAdmin && isIncludes(user.displayName || user.name)
+          )
+        );
+
+        break;
+
+      case 3:
+        setBots(
+          userList.filter(
+            (user) => user.isBot && isIncludes(user.displayName || user.name)
+          )
+        );
+
+        break;
+      case 1:
+      default:
+        setUsers(
+          userList.filter(
+            (user) =>
+              !user.isAdmin &&
+              !user.isBot &&
+              isIncludes(user.displayName || user.name)
+          )
+        );
+
+        break;
+    }
+  };
+
+  const setAllTabList = () => {
+    setUsers(userList.filter((user) => !user.isAdmin && !user.isBot));
+    setAdmins(userList.filter((user) => user.isAdmin));
+    setBots(userList.filter((user) => user.isBot));
   };
 
   const selectTeam = (team?: Team) => {
@@ -106,11 +149,7 @@ const UserList: FunctionComponent<Props> = ({
   const handleTabChange = (tab: number) => {
     setSearchText('');
     setCurrentTab(tab);
-    if (tab === 1) {
-      setAdmins(userList.filter((user) => user.isAdmin));
-    } else {
-      setUsers(userList.filter((user) => !user.isAdmin));
-    }
+    setAllTabList();
   };
 
   const getTabs = () => {
@@ -138,6 +177,15 @@ const UserList: FunctionComponent<Props> = ({
               Admins
               {getCountBadge(admins.length, '', currentTab === 2)}
             </button>
+            <button
+              className={`tw-pb-2 tw-px-4 tw-gh-tabs ${getActiveTabClass(3)}`}
+              data-testid="assets"
+              onClick={() => {
+                handleTabChange(3);
+              }}>
+              Bots
+              {getCountBadge(bots.length, '', currentTab === 3)}
+            </button>
           </div>
           <div className="tw-w-4/12 tw-pt-2">
             <Searchbar
@@ -154,42 +202,23 @@ const UserList: FunctionComponent<Props> = ({
   };
 
   useEffect(() => {
-    setUsers(userList.filter((user) => !user.isAdmin));
-    setAdmins(userList.filter((user) => user.isAdmin));
+    setAllTabList();
   }, [userList]);
 
   useEffect(() => {
-    if (!currentTeam) {
+    if (currentTeam) {
+      const userIds = (currentTeam.users || []).map((userData) => userData.id);
+      const filteredUsers = allUsers.filter((user) =>
+        userIds.includes(user.id)
+      );
+      setUserList(filteredUsers);
+    } else {
       setUserList(allUsers);
     }
   }, [allUsers]);
 
-  const isIncludes = (name: string) => {
-    return lowerCase(name).includes(searchText);
-  };
-
   useEffect(() => {
-    if (currentTab === 1) {
-      setUsers(
-        userList.filter((user) => {
-          if (!user.isAdmin && isIncludes(user.displayName || user.name)) {
-            return true;
-          }
-
-          return false;
-        })
-      );
-    } else {
-      setAdmins(
-        userList.filter((user) => {
-          if (user.isAdmin && isIncludes(user.displayName || user.name)) {
-            return true;
-          }
-
-          return false;
-        })
-      );
-    }
+    setCurrentTabList(currentTab);
   }, [searchText]);
 
   const getLeftPanel = () => {
@@ -221,7 +250,9 @@ const UserList: FunctionComponent<Props> = ({
                 className={`tw-group tw-text-grey-body tw-text-body tw-flex tw-justify-between ${getCurrentTeamClass(
                   team.name
                 )}`}>
-                <p className="tw-text-center tag-category tw-self-center">
+                <p
+                  className="tag-category tw-self-center tw-truncate tw-w-48"
+                  title={team.displayName}>
                   {team.displayName}
                 </p>
               </div>
@@ -236,8 +267,24 @@ const UserList: FunctionComponent<Props> = ({
     );
   };
 
-  const getUserCards = (isAdmin = false) => {
-    const listUserData = isAdmin ? admins : users;
+  const getUserCards = (type: UserType) => {
+    let listUserData: Array<User> = [];
+
+    switch (type) {
+      case UserType.ISADMIN:
+        listUserData = admins;
+
+        break;
+      case UserType.ISBOT:
+        listUserData = bots;
+
+        break;
+      case UserType.ISUSER:
+      default:
+        listUserData = users;
+
+        break;
+    }
 
     return (
       <>
@@ -265,24 +312,35 @@ const UserList: FunctionComponent<Props> = ({
   };
 
   return (
-    <PageLayout leftPanel={getLeftPanel()}>
-      {!isLoading ? (
-        <>
-          {getTabs()}
-          {currentTab === 1 && getUserCards()}
-          {currentTab === 2 && getUserCards(true)}
-          {!isUndefined(selectedUser) && (
-            <UserDetailsModal
-              header="User Details"
-              userData={selectedUser}
-              onCancel={() => setSelectedUser(undefined)}
-              onSave={handleSave}
-            />
-          )}
-        </>
-      ) : (
-        <Loader />
-      )}
+    <PageLayout leftPanel={allUsers.length > 0 && getLeftPanel()}>
+      <>
+        {!isLoading ? (
+          <>
+            {allUsers.length === 0 ? (
+              <ErrorPlaceHolder>
+                <p className="w-text-lg tw-text-center">No Users Added.</p>
+              </ErrorPlaceHolder>
+            ) : (
+              <>
+                {getTabs()}
+                {currentTab === 1 && getUserCards(UserType.ISUSER)}
+                {currentTab === 2 && getUserCards(UserType.ISADMIN)}
+                {currentTab === 3 && getUserCards(UserType.ISBOT)}
+                {!isUndefined(selectedUser) && (
+                  <UserDetailsModal
+                    header="User Details"
+                    userData={selectedUser}
+                    onCancel={() => setSelectedUser(undefined)}
+                    onSave={handleSave}
+                  />
+                )}
+              </>
+            )}
+          </>
+        ) : (
+          <Loader />
+        )}
+      </>
     </PageLayout>
   );
 };

@@ -15,7 +15,7 @@ import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
 import { isUndefined, toLower } from 'lodash';
 import { EntityTags, FormErrorData } from 'Models';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   createTag,
@@ -68,6 +68,12 @@ const TagsPage = () => {
   const [errorDataCategory, setErrorDataCategory] = useState<FormErrorData>();
   const [errorDataTag, setErrorDataTag] = useState<FormErrorData>();
 
+  const getTags = useCallback(() => {
+    return getTaglist(categories).filter(
+      (tag) => editTag?.fullyQualifiedName !== tag
+    );
+  }, [currentCategory, editTag]);
+
   const fetchCategories = () => {
     setIsLoading(true);
     getTagCategories('usageCount')
@@ -113,6 +119,8 @@ const TagsPage = () => {
         )
       ) {
         errData['name'] = 'Name already exists';
+      } else if (data.name.length < 2 || data.name.length > 25) {
+        errData['name'] = 'Name size must be between 2 and 25';
       }
       setErrorDataCategory(errData);
 
@@ -162,6 +170,8 @@ const TagsPage = () => {
         )
       ) {
         errData['name'] = 'Name already exists';
+      } else if (data.name.length < 2 || data.name.length > 25) {
+        errData['name'] = 'Name size must be between 2 and 25';
       }
       setErrorDataTag(errData);
 
@@ -267,7 +277,9 @@ const TagsPage = () => {
               </p>
 
               {getCountBadge(
-                category.children?.length || 0,
+                currentCategory?.name === category.name
+                  ? currentCategory.children?.length
+                  : category.children?.length || 0,
                 'tw-self-center',
                 currentCategory?.name === category.name
               )}
@@ -287,7 +299,7 @@ const TagsPage = () => {
             {isLoading ? (
               <Loader />
             ) : (
-              <div data-testid="tags-container">
+              <div className="full-height" data-testid="tags-container">
                 {currentCategory && (
                   <div
                     className="tw-flex tw-justify-between tw-items-center"
@@ -330,9 +342,7 @@ const TagsPage = () => {
                   />
                 </div>
                 <div className="tw-bg-white">
-                  <table
-                    className="tw-w-full tw-overflow-x-auto"
-                    data-testid="table">
+                  <table className="tw-table-responsive" data-testid="table">
                     <thead>
                       <tr className="tableHead-row">
                         <th
@@ -364,28 +374,28 @@ const TagsPage = () => {
                               <td className="tableBody-cell">
                                 <p>{tag.name}</p>
                               </td>
-                              <td
-                                className="tw-group tableBody-cell"
-                                onClick={() => {
-                                  setIsEditTag(true);
-                                  setEditTag(tag);
-                                }}>
-                                <NonAdminAction
-                                  position="left"
-                                  title={TITLE_FOR_NON_ADMIN_ACTION}>
-                                  <div className="tw-cursor-pointer hover:tw-underline tw-flex">
-                                    <div>
-                                      {tag.description ? (
-                                        <RichTextEditorPreviewer
-                                          markdown={tag.description}
-                                        />
-                                      ) : (
-                                        <span className="tw-no-description">
-                                          No description added
-                                        </span>
-                                      )}
-                                    </div>
-                                    <button className="tw-self-start tw-w-8 tw-h-auto tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none">
+                              <td className="tw-group tableBody-cell">
+                                <div className="tw-cursor-pointer tw-flex">
+                                  <div>
+                                    {tag.description ? (
+                                      <RichTextEditorPreviewer
+                                        markdown={tag.description}
+                                      />
+                                    ) : (
+                                      <span className="tw-no-description">
+                                        No description added
+                                      </span>
+                                    )}
+                                  </div>
+                                  <NonAdminAction
+                                    position="left"
+                                    title={TITLE_FOR_NON_ADMIN_ACTION}>
+                                    <button
+                                      className="tw-self-start tw-w-8 tw-h-auto tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none"
+                                      onClick={() => {
+                                        setIsEditTag(true);
+                                        setEditTag(tag);
+                                      }}>
                                       <SVGIcons
                                         alt="edit"
                                         data-testid="editTagDescription"
@@ -394,9 +404,9 @@ const TagsPage = () => {
                                         width="10px"
                                       />
                                     </button>
-                                  </div>
-                                </NonAdminAction>
-                                <div className="tw-mt-1">
+                                  </NonAdminAction>
+                                </div>
+                                <div className="tw-mt-1" data-testid="usage">
                                   <span className="tw-text-grey-muted tw-mr-1">
                                     Usage:
                                   </span>
@@ -410,7 +420,9 @@ const TagsPage = () => {
                                       {tag.usageCount}
                                     </Link>
                                   ) : (
-                                    <span className="tw-no-description">
+                                    <span
+                                      className="tw-no-description"
+                                      data-testid="usage-count">
                                       Not used
                                     </span>
                                   )}
@@ -434,9 +446,7 @@ const TagsPage = () => {
                                         tagFQN: tag,
                                       })) || []
                                     }
-                                    tagList={
-                                      getTaglist(categories) as Array<string>
-                                    }
+                                    tagList={getTags()}
                                     onCancel={() => {
                                       handleTagSelection();
                                     }}

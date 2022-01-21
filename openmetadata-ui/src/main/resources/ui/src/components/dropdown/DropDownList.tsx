@@ -12,7 +12,7 @@
  */
 
 import classNames from 'classnames';
-import { isNil, isUndefined, lowerCase } from 'lodash';
+import { isNil, isUndefined, toLower } from 'lodash';
 import React, { FunctionComponent, useEffect, useRef, useState } from 'react';
 import { useWindowDimensions } from '../../hooks/useWindowDimensions';
 import { getCountBadge } from '../../utils/CommonUtils';
@@ -69,7 +69,7 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
 
   const getDropDownElement = (item: DropDownListItem, index: number) => {
     return (
-      <span
+      <div
         aria-disabled={item.disabled as boolean}
         className={classNames(
           'tw-text-gray-700 tw-block tw-px-4 tw-py-2 tw-text-sm hover:tw-bg-body-hover tw-cursor-pointer',
@@ -80,8 +80,10 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
         key={index}
         role="menuitem"
         onClick={(e) => onSelect && onSelect(e, item.value)}>
-        {item.name}
-      </span>
+        <p className="tw-truncate tw-w-52" title={item.name as string}>
+          {item.name}
+        </p>
+      </div>
     );
   };
 
@@ -92,7 +94,7 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
   useEffect(() => {
     setSearchedList(
       dropDownList.filter((item) => {
-        return lowerCase(item.name as string).includes(lowerCase(searchText));
+        return toLower(item.name as string).includes(toLower(searchText));
       })
     );
   }, [searchText, dropDownList]);

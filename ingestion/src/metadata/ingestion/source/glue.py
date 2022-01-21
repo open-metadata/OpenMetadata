@@ -17,7 +17,7 @@ from typing import Iterable
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.location import Location, LocationType
 from metadata.generated.schema.entity.data.pipeline import Pipeline, Task
-from metadata.generated.schema.entity.data.table import Column, Table
+from metadata.generated.schema.entity.data.table import Column, Table, TableType
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
@@ -27,7 +27,7 @@ from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
-from metadata.ingestion.source.sql_source import SQLSourceStatus
+from metadata.ingestion.source.sql_source_common import SQLSourceStatus
 from metadata.utils.aws_client import AWSClient, AWSClientConfigModel
 from metadata.utils.column_helpers import check_column_complex_type
 from metadata.utils.helpers import (
@@ -171,6 +171,13 @@ class GlueSource(Source[Entity]):
                         id=self.storage_service.id, type="storageService"
                     ),
                 )
+
+                table_type: TableType = TableType.Regular
+                if table["TableType"] == "EXTERNAL_TABLE":
+                    table_type = TableType.External
+                elif table["TableType"] == "VIRTUAL_VIEW":
+                    table_type = TableType.View
+
                 table_entity = Table(
                     id=uuid.uuid4(),
                     name=table["Name"][:128],
@@ -179,6 +186,7 @@ class GlueSource(Source[Entity]):
                     else "",
                     fullyQualifiedName=fqn,
                     columns=table_columns,
+                    tableType=table_type,
                 )
                 table_and_db = OMetaDatabaseAndTable(
                     table=table_entity,

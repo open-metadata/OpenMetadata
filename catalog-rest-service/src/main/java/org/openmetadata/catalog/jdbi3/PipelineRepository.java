@@ -13,12 +13,15 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import static org.openmetadata.catalog.Entity.PIPELINE_SERVICE;
+import static org.openmetadata.catalog.Entity.helper;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.net.URI;
+import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -67,7 +70,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   }
 
   @Override
-  public Pipeline setFields(Pipeline pipeline, Fields fields) throws IOException {
+  public Pipeline setFields(Pipeline pipeline, Fields fields) throws IOException, ParseException {
     pipeline.setDisplayName(pipeline.getDisplayName());
     pipeline.setService(getService(pipeline));
     pipeline.setPipelineUrl(pipeline.getPipelineUrl());
@@ -145,14 +148,8 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     return new PipelineUpdater(original, updated, patchOperation);
   }
 
-  private EntityReference getService(Pipeline pipeline) throws IOException {
-    EntityReference ref =
-        EntityUtil.getService(
-            daoCollection.relationshipDAO(), Entity.PIPELINE, pipeline.getId(), Entity.PIPELINE_SERVICE);
-    PipelineService service = getService(ref.getId(), ref.getType());
-    ref.setName(service.getName());
-    ref.setDescription(service.getDescription());
-    return ref;
+  private EntityReference getService(Pipeline pipeline) throws IOException, ParseException {
+    return helper(pipeline).getContainer(PIPELINE_SERVICE);
   }
 
   private void populateService(Pipeline pipeline) throws IOException {
@@ -221,7 +218,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     }
 
     @Override
-    public Date getUpdatedAt() {
+    public long getUpdatedAt() {
       return entity.getUpdatedAt();
     }
 
@@ -271,7 +268,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     }
 
     @Override
-    public void setUpdateDetails(String updatedBy, Date updatedAt) {
+    public void setUpdateDetails(String updatedBy, long updatedAt) {
       entity.setUpdatedBy(updatedBy);
       entity.setUpdatedAt(updatedAt);
     }

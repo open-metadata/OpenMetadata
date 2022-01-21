@@ -39,6 +39,7 @@ import java.util.UUID;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.joda.time.DateTime;
 import org.junit.jupiter.api.BeforeAll;
@@ -59,11 +60,21 @@ import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.TestUtils;
 
+@Slf4j
 public class PipelineResourceTest extends EntityResourceTest<Pipeline> {
   public static List<Task> TASKS;
 
   public PipelineResourceTest() {
-    super(Entity.PIPELINE, Pipeline.class, PipelineList.class, "pipelines", PipelineResource.FIELDS, true, true, true);
+    super(
+        Entity.PIPELINE,
+        Pipeline.class,
+        PipelineList.class,
+        "pipelines",
+        PipelineResource.FIELDS,
+        true,
+        true,
+        true,
+        true);
   }
 
   @BeforeAll

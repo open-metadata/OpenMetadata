@@ -40,9 +40,9 @@ export interface Thread {
   id: string;
   posts: Post[];
   /**
-   * Timestamp of the when the first post created the thread.
+   * Timestamp of the when the first post created the thread in Unix epoch time milliseconds.
    */
-  threadTs?: Date;
+  threadTs?: number;
 }
 
 /**
@@ -58,7 +58,7 @@ export interface Post {
    */
   message: string;
   /**
-   * Timestamp of the post.
+   * Timestamp of the post in Unix epoch time milliseconds.
    */
-  postTs?: Date;
+  postTs?: number;
 }

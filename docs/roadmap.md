@@ -93,7 +93,7 @@ If you would like to prioritize any feature or would like to add a new feature t
 
 ## 0.7 Release - Dec 15th, 2021
 
-#### Theme: Data Collaboration - Activity Feeds,&#x20;
+#### Theme: Data Collaboration - Activity Feeds,
 
 ### UI - Activity Feed, Improved UX for Search
 
@@ -102,7 +102,7 @@ If you would like to prioritize any feature or would like to add a new feature t
 
 ### Support for Table Location
 
-* Extract Location information from Glue, Redshift&#x20;
+* Extract Location information from Glue, Redshift
 * Show Location details on the Table Page
 
 ### Elastic Search - Improvements
@@ -124,14 +124,14 @@ If you would like to prioritize any feature or would like to add a new feature t
 * Metadata Change Event integration into Slack and framework for integration into other services such as Kafka or other Notification frameworks
 * Delta Lake support, Databricks, Iceberg
 
-## 0.8 Release - Jan 15th, 2021
+## 0.8 Release - Jan 22nd, 2022
 
-### Data Quality&#x20;
+### Data Quality
 
-* Data Quality Tests  support with Json Schemas and APIs
+* Data Quality Tests support with Json Schemas and APIs
 * UI Integration to enable user to write tests and run them on Airflow
-* Store the test results and provide notifications via eventing apis&#x20;
-* Provide integration of DBT tests into OpenMetadata&#x20;
+* Store the test results and provide notifications via eventing apis
+* Provide integration of DBT tests into OpenMetadata
 
 ### Access Control Policies
 

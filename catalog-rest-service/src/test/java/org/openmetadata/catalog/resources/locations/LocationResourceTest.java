@@ -35,6 +35,7 @@ import java.util.Map;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -52,9 +53,19 @@ import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.TestUtils;
 
+@Slf4j
 public class LocationResourceTest extends EntityResourceTest<Location> {
   public LocationResourceTest() {
-    super(Entity.LOCATION, Location.class, LocationList.class, "locations", LocationResource.FIELDS, true, true, true);
+    super(
+        Entity.LOCATION,
+        Location.class,
+        LocationList.class,
+        "locations",
+        LocationResource.FIELDS,
+        true,
+        true,
+        true,
+        true);
   }
 
   @BeforeAll
@@ -283,7 +294,7 @@ public class LocationResourceTest extends EntityResourceTest<Location> {
     String fields = "owner";
     location =
         byName
-            ? getEntityByName(location.getFullyQualifiedName(), fields, adminAuthHeaders())
+            ? getEntityByName(location.getFullyQualifiedName(), null, fields, adminAuthHeaders())
             : getEntity(location.getId(), fields, adminAuthHeaders());
     assertListNotNull(location.getOwner(), location.getService(), location.getServiceType());
     // TODO add other fields

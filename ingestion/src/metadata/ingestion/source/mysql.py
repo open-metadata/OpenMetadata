@@ -10,13 +10,15 @@
 #  limitations under the License.
 
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
-from metadata.ingestion.source.sql_source import SQLConnectionConfig, SQLSource
+from metadata.ingestion.source.sql_source import SQLSource
+from metadata.ingestion.source.sql_source_common import SQLConnectionConfig
 
 
 class MySQLConfig(SQLConnectionConfig):
     host_port = "localhost:3306"
     scheme = "mysql+pymysql"
     service_type = "MySQL"
+    connector_type = "mysql"
 
     def get_connection_url(self):
         return super().get_connection_url()

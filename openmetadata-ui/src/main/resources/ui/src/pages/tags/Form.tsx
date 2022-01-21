@@ -117,9 +117,7 @@ const Form: React.FC<FormProp> = forwardRef(
               {errorData?.name && errorMsg(errorData.name)}
             </div>
             <div>
-              <label className="tw-form-label required-field">
-                Description
-              </label>
+              <label className="tw-form-label">Description</label>
               <MarkdownWithPreview ref={markdownRef} value={data.description} />
             </div>
           </div>

@@ -23,7 +23,6 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
-import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -53,6 +52,7 @@ import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.ChangeEvent;
 import org.openmetadata.catalog.type.EntityHistory;
+import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.Webhook;
 import org.openmetadata.catalog.type.Webhook.Status;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
@@ -112,14 +112,20 @@ public class WebhookResource {
           String before,
       @Parameter(description = "Returns list of webhooks after this cursor", schema = @Schema(type = "string"))
           @QueryParam("after")
-          String after)
+          String after,
+      @Parameter(
+              description = "Include all, deleted, or non-deleted entities.",
+              schema = @Schema(implementation = Include.class))
+          @QueryParam("include")
+          @DefaultValue("non-deleted")
+          Include include)
       throws IOException, ParseException, GeneralSecurityException {
     RestUtil.validateCursors(before, after);
     ResultList<Webhook> webhooks;
     if (before != null) { // Reverse paging
-      webhooks = dao.listBefore(uriInfo, Fields.EMPTY_FIELDS, null, limitParam, before);
+      webhooks = dao.listBefore(uriInfo, Fields.EMPTY_FIELDS, null, limitParam, before, include);
     } else { // Forward paging or first page
-      webhooks = dao.listAfter(uriInfo, Fields.EMPTY_FIELDS, null, limitParam, after);
+      webhooks = dao.listAfter(uriInfo, Fields.EMPTY_FIELDS, null, limitParam, after, include);
     }
     webhooks.getData().forEach(t -> dao.withHref(uriInfo, t));
     return webhooks;
@@ -139,11 +145,17 @@ public class WebhookResource {
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = ChangeEvent.class))),
         @ApiResponse(responseCode = "404", description = "Entity for instance {id} is not found")
       })
-  public Webhook getWebhook(
+  public Webhook get(
       @Context UriInfo uriInfo,
-      @Parameter(description = "webhook Id", schema = @Schema(type = "string")) @PathParam("id") String id)
+      @Parameter(description = "webhook Id", schema = @Schema(type = "string")) @PathParam("id") String id,
+      @Parameter(
+              description = "Include all, deleted, or non-deleted entities.",
+              schema = @Schema(implementation = Include.class))
+          @QueryParam("include")
+          @DefaultValue("non-deleted")
+          Include include)
       throws IOException, GeneralSecurityException, ParseException {
-    return dao.get(uriInfo, id, Fields.EMPTY_FIELDS);
+    return dao.get(uriInfo, id, Fields.EMPTY_FIELDS, include);
   }
 
   @GET
@@ -162,9 +174,15 @@ public class WebhookResource {
   public Webhook getByName(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Name of the webhook", schema = @Schema(type = "string")) @PathParam("name") String fqn)
+      @Parameter(description = "Name of the webhook", schema = @Schema(type = "string")) @PathParam("name") String fqn,
+      @Parameter(
+              description = "Include all, deleted, or non-deleted entities.",
+              schema = @Schema(implementation = Include.class))
+          @QueryParam("include")
+          @DefaultValue("non-deleted")
+          Include include)
       throws IOException, ParseException {
-    return dao.getByName(uriInfo, fqn, Fields.EMPTY_FIELDS);
+    return dao.getByName(uriInfo, fqn, Fields.EMPTY_FIELDS, include);
   }
 
   @GET
@@ -229,7 +247,7 @@ public class WebhookResource {
       })
   public Response createWebhook(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateWebhook create)
-      throws IOException {
+      throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Webhook webhook = getWebhook(securityContext, create);
     webhook.setStatus(Boolean.TRUE.equals(webhook.getEnabled()) ? Status.STARTED : Status.NOT_STARTED);
@@ -281,7 +299,7 @@ public class WebhookResource {
       @Context UriInfo uriInfo,
       @Parameter(description = "webhook Id", schema = @Schema(type = "string")) @PathParam("id") String id)
       throws IOException, GeneralSecurityException, ParseException, InterruptedException {
-    dao.delete(id);
+    dao.delete(UUID.fromString(id), false);
     dao.deleteWebhookPublisher(UUID.fromString(id));
     return Response.ok().build();
   }
@@ -297,6 +315,7 @@ public class WebhookResource {
         .withTimeout(create.getTimeout())
         .withEnabled(create.getEnabled())
         .withUpdatedBy(securityContext.getUserPrincipal().getName())
-        .withUpdatedAt(new Date());
+        .withUpdatedAt(System.currentTimeMillis())
+        .withSecretKey(create.getSecretKey());
   }
 }

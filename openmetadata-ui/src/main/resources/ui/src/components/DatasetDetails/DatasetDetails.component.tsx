@@ -79,6 +79,8 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   lineageLeafNodes,
   isNodeLoading,
   dataModel,
+  addLineageHandler,
+  removeLineageHandler,
 }: DatasetDetailsProps) => {
   const { isAuthDisabled } = useAuth();
   const [isEdit, setIsEdit] = useState(false);
@@ -235,7 +237,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
     },
     { key: 'Tier', value: tier?.tagFQN ? tier.tagFQN.split('.')[1] : '' },
     { value: usage },
-    { value: `${weeklyUsageCount} queries past week` },
+    { value: `${weeklyUsageCount} queries` },
     {
       key: 'Columns',
       value:
@@ -451,7 +453,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
               </div>
             )}
             {activeTab === 2 && (
-              <div>
+              <div id="sampleDataDetails">
                 <SampleDataTable sampleData={getSampleDataWithType()} />
               </div>
             )}
@@ -475,10 +477,12 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                 )}
                 id="lineageDetails">
                 <Entitylineage
+                  addLineageHandler={addLineageHandler}
                   entityLineage={entityLineage}
                   isNodeLoading={isNodeLoading}
                   lineageLeafNodes={lineageLeafNodes}
                   loadNodeHandler={loadNodeHandler}
+                  removeLineageHandler={removeLineageHandler}
                 />
               </div>
             )}

@@ -35,6 +35,7 @@ import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.eclipse.jetty.http.HttpStatus;
 import org.junit.jupiter.api.Assertions;
@@ -49,6 +50,7 @@ import org.openmetadata.catalog.type.JdbcInfo;
 import org.openmetadata.catalog.type.Tag;
 import org.openmetadata.catalog.type.TagLabel;
 
+@Slf4j
 public final class TestUtils {
   // Entity name length allowed is 64 characters. This is a 65 char length invalid entity name
   public static final int ENTITY_NAME_MAX_LEN = 128;
@@ -59,6 +61,7 @@ public final class TestUtils {
     LONG_ENTITY_NAME = "1".repeat(ENTITY_NAME_MAX_LEN + 1);
   }
 
+  public static final String ADMIN_USER_NAME = "admin";
   public static final String ENTITY_NAME_LENGTH_ERROR =
       String.format("[name size must be between 1 and %d]", ENTITY_NAME_MAX_LEN);
 
@@ -267,7 +270,7 @@ public final class TestUtils {
   }
 
   public static Map<String, String> adminAuthHeaders() {
-    return SecurityUtil.authHeaders("admin@open-metadata.org");
+    return SecurityUtil.authHeaders(ADMIN_USER_NAME + "@open-metadata.org");
   }
 
   public static Map<String, String> userAuthHeaders() {

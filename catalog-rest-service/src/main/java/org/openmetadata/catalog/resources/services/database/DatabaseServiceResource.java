@@ -23,7 +23,6 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
-import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -53,6 +52,7 @@ import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
+import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
@@ -105,14 +105,20 @@ public class DatabaseServiceResource {
           String before,
       @Parameter(description = "Returns list of database services after this cursor", schema = @Schema(type = "string"))
           @QueryParam("after")
-          String after)
+          String after,
+      @Parameter(
+              description = "Include all, deleted, or non-deleted entities.",
+              schema = @Schema(implementation = Include.class))
+          @QueryParam("include")
+          @DefaultValue("non-deleted")
+          Include include)
       throws IOException, GeneralSecurityException, ParseException {
     RestUtil.validateCursors(before, after);
 
     if (before != null) {
-      return dao.listBefore(uriInfo, null, null, limitParam, before);
+      return dao.listBefore(uriInfo, null, null, limitParam, before, include);
     }
-    return dao.listAfter(uriInfo, null, null, limitParam, after);
+    return dao.listAfter(uriInfo, null, null, limitParam, after, include);
   }
 
   @GET
@@ -130,9 +136,17 @@ public class DatabaseServiceResource {
         @ApiResponse(responseCode = "404", description = "Database service for instance {id} is not found")
       })
   public DatabaseService get(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("id") String id)
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @PathParam("id") String id,
+      @Parameter(
+              description = "Include all, deleted, or non-deleted entities.",
+              schema = @Schema(implementation = Include.class))
+          @QueryParam("include")
+          @DefaultValue("non-deleted")
+          Include include)
       throws IOException, ParseException {
-    return dao.get(uriInfo, id, null);
+    return dao.get(uriInfo, id, null, include);
   }
 
   @GET
@@ -150,9 +164,17 @@ public class DatabaseServiceResource {
         @ApiResponse(responseCode = "404", description = "Database service for instance {id} is not found")
       })
   public DatabaseService getByName(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("name") String name)
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @PathParam("name") String name,
+      @Parameter(
+              description = "Include all, deleted, or non-deleted entities.",
+              schema = @Schema(implementation = Include.class))
+          @QueryParam("include")
+          @DefaultValue("non-deleted")
+          Include include)
       throws IOException, ParseException {
-    return dao.getByName(uriInfo, name, null);
+    return dao.getByName(uriInfo, name, null, include);
   }
 
   @GET
@@ -221,7 +243,7 @@ public class DatabaseServiceResource {
       })
   public Response create(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDatabaseService create)
-      throws IOException {
+      throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     DatabaseService service = getService(create, securityContext);
     dao.create(uriInfo, service);
@@ -287,6 +309,6 @@ public class DatabaseServiceResource {
         .withJdbc(create.getJdbc())
         .withIngestionSchedule(create.getIngestionSchedule())
         .withUpdatedBy(securityContext.getUserPrincipal().getName())
-        .withUpdatedAt(new Date());
+        .withUpdatedAt(System.currentTimeMillis());
   }
 }

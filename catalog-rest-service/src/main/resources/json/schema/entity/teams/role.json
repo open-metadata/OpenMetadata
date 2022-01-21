@@ -32,8 +32,8 @@
       "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
     },
     "updatedAt" : {
-      "description": "Last update time corresponding to the new version of the entity.",
-      "$ref": "../../type/basic.json#/definitions/dateTime"
+      "description": "Last update time corresponding to the new version of the entity in Unix epoch time milliseconds.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
     },
     "updatedBy" : {
       "description": "User who made the update.",
@@ -51,6 +51,14 @@
       "description": "When `true` indicates the entity has been soft deleted.",
       "type": "boolean",
       "default" : false
+    },
+    "policy" : {
+      "description": "Policy that is attached to this role.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "users" : {
+      "description": "Users that have this role assigned.",
+      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
     }
   },
   "required" : [

@@ -66,6 +66,8 @@ const PipelineDetails = ({
   isNodeLoading,
   version,
   versionHandler,
+  addLineageHandler,
+  removeLineageHandler,
 }: PipeLineDetailsProp) => {
   const { isAuthDisabled } = useAuth();
   const [isEdit, setIsEdit] = useState(false);
@@ -348,9 +350,8 @@ const PipelineDetails = ({
                             </td>
                             <td className="tw-group tableBody-cell tw-relative">
                               <div
-                                className="tw-cursor-pointer hover:tw-underline tw-flex"
-                                data-testid="description"
-                                onClick={() => handleUpdateTask(task, index)}>
+                                className="tw-cursor-pointer tw-flex"
+                                data-testid="description">
                                 <div>
                                   {task.description ? (
                                     <RichTextEditorPreviewer
@@ -362,7 +363,9 @@ const PipelineDetails = ({
                                     </span>
                                   )}
                                 </div>
-                                <button className="tw-self-start tw-w-8 tw-h-auto tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none">
+                                <button
+                                  className="tw-self-start tw-w-8 tw-h-auto tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none"
+                                  onClick={() => handleUpdateTask(task, index)}>
                                   <SVGIcons
                                     alt="edit"
                                     icon="icon-edit"
@@ -383,10 +386,12 @@ const PipelineDetails = ({
               {activeTab === 2 && (
                 <div className="tw-h-full">
                   <Entitylineage
+                    addLineageHandler={addLineageHandler}
                     entityLineage={entityLineage}
                     isNodeLoading={isNodeLoading}
                     lineageLeafNodes={lineageLeafNodes}
                     loadNodeHandler={loadNodeHandler}
+                    removeLineageHandler={removeLineageHandler}
                   />
                 </div>
               )}

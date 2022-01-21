@@ -13,6 +13,9 @@
 
 package org.openmetadata.catalog.resources.lineage;
 
+import static javax.ws.rs.core.Response.Status.NOT_FOUND;
+
+import io.dropwizard.jersey.errors.ErrorMessage;
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -25,6 +28,7 @@ import javax.validation.Valid;
 import javax.validation.constraints.Max;
 import javax.validation.constraints.Min;
 import javax.ws.rs.Consumes;
+import javax.ws.rs.DELETE;
 import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
 import javax.ws.rs.PUT;
@@ -42,11 +46,8 @@ import org.openmetadata.catalog.api.lineage.AddLineage;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.LineageRepository;
 import org.openmetadata.catalog.resources.Collection;
-import org.openmetadata.catalog.resources.teams.UserResource;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.type.EntityLineage;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 @Path("/v1/lineage")
 @Api(value = "Lineage resource", tags = "Lineage resource")
@@ -54,7 +55,6 @@ import org.slf4j.LoggerFactory;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "lineage")
 public class LineageResource {
-  private static final Logger LOG = LoggerFactory.getLogger(UserResource.class);
   private final LineageRepository dao;
 
   public LineageResource(CollectionDAO dao, Authorizer authorizer) {
@@ -151,6 +151,44 @@ public class LineageResource {
       })
   public Response addLineage(@Context UriInfo uriInfo, @Valid AddLineage addLineage) throws IOException {
     dao.addLineage(addLineage);
+    return Response.status(Status.OK).build();
+  }
+
+  @DELETE
+  @Path("/{fromEntity}/{fromId}/{toEntity}/{toId}")
+  @Operation(
+      summary = "Delete a lineage edge",
+      tags = "lineage",
+      description = "Delete a lineage edge with from entity as upstream node and to entity as downstream node.",
+      responses = {
+        @ApiResponse(responseCode = "200"),
+        @ApiResponse(responseCode = "404", description = "Entity for instance {id} is not found")
+      })
+  public Response deleteLineage(
+      @Context UriInfo uriInfo,
+      @Parameter(
+              description = "Entity type of upstream entity of the edge",
+              required = true,
+              schema = @Schema(type = "string", example = "table, report, metrics, or dashboard"))
+          @PathParam("fromEntity")
+          String fromEntity,
+      @Parameter(description = "Entity id", required = true, schema = @Schema(type = "string")) @PathParam("fromId")
+          String fromId,
+      @Parameter(
+              description = "Entity type for downstream entity of the edge",
+              required = true,
+              schema = @Schema(type = "string", example = "table, report, metrics, or dashboard"))
+          @PathParam("toEntity")
+          String toEntity,
+      @Parameter(description = "Entity id", required = true, schema = @Schema(type = "string")) @PathParam("toId")
+          String toId)
+      throws IOException {
+    boolean deleted = dao.deleteLineage(fromEntity, fromId, toEntity, toId);
+    if (!deleted) {
+      return Response.status(NOT_FOUND)
+          .entity(new ErrorMessage(NOT_FOUND.getStatusCode(), "Lineage edge not " + "found"))
+          .build();
+    }
     return Response.status(Status.OK).build();
   }
 

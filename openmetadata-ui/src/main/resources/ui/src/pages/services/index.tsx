@@ -532,8 +532,9 @@ const ServicesPage = () => {
                             )}>
                             <button>
                               <h6
-                                className="tw-text-base tw-text-grey-body tw-font-medium"
-                                data-testid={`service-name-${service.name}`}>
+                                className="tw-text-base tw-text-grey-body tw-font-medium tw-text-left tw-truncate tw-w-48"
+                                data-testid={`service-name-${service.name}`}
+                                title={service.name}>
                                 {service.name}
                               </h6>
                             </button>

@@ -13,31 +13,43 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import static org.openmetadata.catalog.Entity.helper;
+import static org.openmetadata.catalog.type.Include.DELETED;
 import static org.openmetadata.catalog.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.catalog.util.EntityUtil.objectMatch;
+import static org.openmetadata.catalog.util.EntityUtil.toBoolean;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.net.URI;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Date;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.BiPredicate;
+import java.util.regex.Pattern;
 import javax.json.JsonPatch;
 import javax.ws.rs.core.Response.Status;
 import javax.ws.rs.core.UriInfo;
+import lombok.SneakyThrows;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.maven.shared.utils.io.IOUtil;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
+import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
+import org.openmetadata.catalog.exception.UnhandledServerException;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.EntityVersionPair;
 import org.openmetadata.catalog.jdbi3.TableRepository.TableUpdater;
 import org.openmetadata.catalog.type.ChangeDescription;
@@ -46,6 +58,7 @@ import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.EventType;
 import org.openmetadata.catalog.type.FieldChange;
+import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
@@ -56,9 +69,9 @@ import org.openmetadata.catalog.util.RestUtil.PatchResponse;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.common.utils.CipherText;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.openmetadata.common.utils.CommonUtil;
 
+@Slf4j
 /**
  * This is the base class used by Entity Resources to perform READ and WRITE operations to the backend database to
  * Create, Retrieve, Update, and Delete entities.
@@ -91,7 +104,6 @@ import org.slf4j.LoggerFactory;
  * information does not become stale.
  */
 public abstract class EntityRepository<T> {
-  public static final Logger LOG = LoggerFactory.getLogger(EntityRepository.class);
   private final String collectionPath;
   private final Class<T> entityClass;
   private final String entityName;
@@ -129,7 +141,7 @@ public abstract class EntityRepository<T> {
     this.supportsTags = supportsTags;
     this.supportsOwner = supportsOwner;
     this.supportsFollower = supportsFollower;
-    Entity.registerEntity(entityName, dao, this);
+    Entity.registerEntity(entityClass, entityName, dao, this);
   }
 
   /** Entity related operations that should be implemented or overridden by entities */
@@ -163,7 +175,7 @@ public abstract class EntityRepository<T> {
    *
    * @see TableRepository#prepare(Table) for an example implementation
    */
-  public abstract void prepare(T entity) throws IOException;
+  public abstract void prepare(T entity) throws IOException, ParseException;
 
   /**
    * An entity is stored in the backend database as JSON document. The JSON includes some attributes of the entity and
@@ -193,6 +205,45 @@ public abstract class EntityRepository<T> {
    */
   public abstract void restorePatchAttributes(T original, T updated);
 
+  /**
+   * Initialize data from json files if seed data does not exist in corresponding tables. Seed data is stored under
+   * catalog-rest-service/src/main/resources/json/data/{entityName}
+   *
+   * <p>This method needs to be explicitly called, typically from initialize method. See {@link
+   * org.openmetadata.catalog.resources.teams.RoleResource#initialize(CatalogApplicationConfig)}
+   */
+  public void initSeedDataFromResources() throws IOException {
+    Pattern pattern = Pattern.compile(String.format(".*json/data/%s/.*\\.json$", entityName));
+    List<String> jsonDataFiles = CommonUtil.getResources(pattern);
+    jsonDataFiles.forEach(
+        jsonDataFile -> {
+          try {
+            String json =
+                IOUtil.toString(Objects.requireNonNull(getClass().getClassLoader().getResourceAsStream(jsonDataFile)));
+            initSeedData(JsonUtils.readValue(json, entityClass));
+          } catch (IOException e) {
+            LOG.warn("Failed to initialize the {} from file {}: {}", entityName, jsonDataFile, e.getMessage());
+          }
+        });
+  }
+
+  /** Initialize a given entity if it does not exist. */
+  @Transaction
+  public void initSeedData(T entity) throws IOException {
+    EntityInterface<T> entityInterface = Entity.getEntityInterface(entity);
+    String existingJson = dao.findJsonByFqn(entityInterface.getFullyQualifiedName(), Include.ALL);
+    if (existingJson != null) {
+      LOG.info("{} {} is already initialized", entityName, entityInterface.getFullyQualifiedName());
+      return;
+    }
+
+    LOG.info("{} {} is not initialized", entityName, entityInterface.getFullyQualifiedName());
+    entityInterface.setUpdateDetails("admin", System.currentTimeMillis());
+    entityInterface.setId(UUID.randomUUID());
+    storeEntity(entityInterface.getEntity(), false);
+    LOG.info("Created a new {} {}", entityName, entityInterface.getFullyQualifiedName());
+  }
+
   public EntityUpdater getUpdater(T original, T updated, boolean patchOperation) {
     return new EntityUpdater(original, updated, patchOperation);
   }
@@ -203,23 +254,35 @@ public abstract class EntityRepository<T> {
   }
 
   @Transaction
+  public final T get(UriInfo uriInfo, String id, Fields fields, Include include) throws IOException, ParseException {
+    return withHref(uriInfo, setFields(dao.findEntityById(UUID.fromString(id), include), fields));
+  }
+
+  @Transaction
   public final T getByName(UriInfo uriInfo, String fqn, Fields fields) throws IOException, ParseException {
     return withHref(uriInfo, setFields(dao.findEntityByName(fqn), fields));
   }
 
   @Transaction
-  public final ResultList<T> listAfter(UriInfo uriInfo, Fields fields, String fqnPrefix, int limitParam, String after)
+  public final T getByName(UriInfo uriInfo, String fqn, Fields fields, Include include)
+      throws IOException, ParseException {
+    return withHref(uriInfo, setFields(dao.findEntityByName(fqn, include), fields));
+  }
+
+  @Transaction
+  public final ResultList<T> listAfter(
+      UriInfo uriInfo, Fields fields, String fqnPrefix, int limitParam, String after, Include include)
       throws GeneralSecurityException, IOException, ParseException {
     // forward scrolling, if after == null then first page is being asked
     List<String> jsons =
-        dao.listAfter(fqnPrefix, limitParam + 1, after == null ? "" : CipherText.instance().decrypt(after));
+        dao.listAfter(fqnPrefix, limitParam + 1, after == null ? "" : CipherText.instance().decrypt(after), include);
 
     List<T> entities = new ArrayList<>();
     for (String json : jsons) {
       T entity = withHref(uriInfo, setFields(JsonUtils.readValue(json, entityClass), fields));
       entities.add(entity);
     }
-    int total = dao.listCount(fqnPrefix);
+    int total = dao.listCount(fqnPrefix, include);
 
     String beforeCursor;
     String afterCursor = null;
@@ -232,17 +295,18 @@ public abstract class EntityRepository<T> {
   }
 
   @Transaction
-  public final ResultList<T> listBefore(UriInfo uriInfo, Fields fields, String fqnPrefix, int limitParam, String before)
+  public final ResultList<T> listBefore(
+      UriInfo uriInfo, Fields fields, String fqnPrefix, int limitParam, String before, Include include)
       throws IOException, GeneralSecurityException, ParseException {
     // Reverse scrolling - Get one extra result used for computing before cursor
-    List<String> jsons = dao.listBefore(fqnPrefix, limitParam + 1, CipherText.instance().decrypt(before));
+    List<String> jsons = dao.listBefore(fqnPrefix, limitParam + 1, CipherText.instance().decrypt(before), include);
 
     List<T> entities = new ArrayList<>();
     for (String json : jsons) {
       T entity = withHref(uriInfo, setFields(JsonUtils.readValue(json, entityClass), fields));
       entities.add(entity);
     }
-    int total = dao.listCount(fqnPrefix);
+    int total = dao.listCount(fqnPrefix, include);
 
     String beforeCursor = null;
     String afterCursor;
@@ -287,12 +351,12 @@ public abstract class EntityRepository<T> {
     return new EntityHistory().withEntityType(entityName).withVersions(allVersions);
   }
 
-  public final T create(UriInfo uriInfo, T entity) throws IOException {
+  public final T create(UriInfo uriInfo, T entity) throws IOException, ParseException {
     return withHref(uriInfo, createInternal(entity));
   }
 
   @Transaction
-  public final T createInternal(T entity) throws IOException {
+  public final T createInternal(T entity) throws IOException, ParseException {
     prepare(entity);
     return createNewEntity(entity);
   }
@@ -301,15 +365,15 @@ public abstract class EntityRepository<T> {
   public final PutResponse<T> createOrUpdate(UriInfo uriInfo, T updated) throws IOException, ParseException {
     prepare(updated);
     // Check if there is any original, deleted or not
-    T original = JsonUtils.readValue(dao.findDeletedOrExists(getFullyQualifiedName(updated)), entityClass);
+    T original = JsonUtils.readValue(dao.findJsonByFqn(getFullyQualifiedName(updated), Include.ALL), entityClass);
     if (original == null) {
       return new PutResponse<>(Status.CREATED, withHref(uriInfo, createNewEntity(updated)), RestUtil.ENTITY_CREATED);
     }
 
-    // Recover relationships if original was deleted before setFields
-    recoverDeletedRelationships(original);
     // Get all the fields in the original entity that can be updated during PUT operation
     setFields(original, putFields);
+    // Recover relationships if original was deleted before setFields
+    recoverDeletedRelationships(original);
 
     // Update the attributes and relationships of an entity
     EntityUpdater entityUpdater = getUpdater(original, updated, false);
@@ -327,7 +391,7 @@ public abstract class EntityRepository<T> {
     // Apply JSON patch to the original entity to get the updated entity
     T updated = JsonUtils.applyPatch(original, patch, entityClass);
     EntityInterface<T> updatedEntity = getEntityInterface(updated);
-    updatedEntity.setUpdateDetails(user, new Date());
+    updatedEntity.setUpdateDetails(user, System.currentTimeMillis());
 
     prepare(updated);
     restorePatchAttributes(original, updated);
@@ -368,8 +432,9 @@ public abstract class EntityRepository<T> {
             .withEventType(EventType.ENTITY_UPDATED)
             .withEntityType(entityName)
             .withEntityId(entityId)
+            .withEntityFullyQualifiedName(entityInterface.getFullyQualifiedName())
             .withUserName(updatedBy)
-            .withDateTime(new Date())
+            .withTimestamp(System.currentTimeMillis())
             .withCurrentVersion(entityInterface.getVersion())
             .withPreviousVersion(change.getPreviousVersion());
 
@@ -378,9 +443,11 @@ public abstract class EntityRepository<T> {
 
   @Transaction
   public final void delete(UUID id, boolean recursive) throws IOException {
-    // If an entity being deleted contains other children entities, it can't be deleted
+    // If an entity being deleted contains other **non-deleted** children entities, it can't be deleted
     List<EntityReference> contains =
-        daoCollection.relationshipDAO().findTo(id.toString(), entityName, Relationship.CONTAINS.ordinal());
+        daoCollection
+            .relationshipDAO()
+            .findTo(id.toString(), entityName, Relationship.CONTAINS.ordinal(), toBoolean(Include.NON_DELETED));
 
     if (!contains.isEmpty()) {
       if (!recursive) {
@@ -428,10 +495,11 @@ public abstract class EntityRepository<T> {
         new ChangeEvent()
             .withChangeDescription(change)
             .withEventType(EventType.ENTITY_UPDATED)
+            .withEntityFullyQualifiedName(entityInterface.getFullyQualifiedName())
             .withEntityType(entityName)
             .withEntityId(entityId)
             .withUserName(updatedBy)
-            .withDateTime(new Date())
+            .withTimestamp(System.currentTimeMillis())
             .withCurrentVersion(entityInterface.getVersion())
             .withPreviousVersion(change.getPreviousVersion());
 
@@ -461,16 +529,8 @@ public abstract class EntityRepository<T> {
     }
   }
 
-  protected EntityReference getOwner(T entity) throws IOException {
-    EntityInterface entityInterface = getEntityInterface(entity);
-    return supportsOwner && entity != null
-        ? EntityUtil.populateOwner(
-            entityInterface.getId(),
-            entityName,
-            daoCollection.relationshipDAO(),
-            daoCollection.userDAO(),
-            daoCollection.teamDAO())
-        : null;
+  protected EntityReference getOwner(T entity) throws IOException, ParseException {
+    return helper(entity).getOwnerOrNull();
   }
 
   protected void setOwner(T entity, EntityReference owner) {
@@ -500,7 +560,7 @@ public abstract class EntityRepository<T> {
     return !supportsFollower || entity == null
         ? null
         : EntityUtil.getFollowers(
-            entityInterface.getId(), entityName, daoCollection.relationshipDAO(), daoCollection.userDAO());
+            entityInterface, entityName, daoCollection.relationshipDAO(), daoCollection.userDAO());
   }
 
   public T withHref(UriInfo uriInfo, T entity) {
@@ -509,6 +569,11 @@ public abstract class EntityRepository<T> {
     }
     EntityInterface<T> entityInterface = getEntityInterface(entity);
     return entityInterface.withHref(getHref(uriInfo, entityInterface.getId()));
+  }
+
+  public Include toInclude(T entity) {
+    EntityInterface<T> entityInterface = getEntityInterface(entity);
+    return entityInterface.isDeleted() ? DELETED : Include.NON_DELETED;
   }
 
   public URI getHref(UriInfo uriInfo, UUID id) {
@@ -521,6 +586,237 @@ public abstract class EntityRepository<T> {
     EntityInterface<T> originalRef = getEntityInterface(original);
     if (Boolean.TRUE.equals(originalRef.isDeleted())) {
       daoCollection.relationshipDAO().recoverSoftDeleteAll(originalRef.getId().toString());
+    }
+  }
+
+  /**
+   * Builder method for EntityHandler
+   *
+   * @param entity
+   * @return
+   */
+  public EntityHelper getEntityHandler(T entity) {
+    return new EntityHelper(entity);
+  }
+
+  /**
+   * Decorator class for Entity.
+   *
+   * @see Entity#helper(Object) to create a handler from an Entity
+   * @see Entity#r(EntityReference) to create a handler from an EntityReference
+   */
+  public class EntityHelper {
+    private final Include isDeleted;
+    protected final EntityInterface<T> entityInterface;
+    private final T entity;
+
+    private EntityHelper(T entity) {
+      this.entityInterface = getEntityInterface(entity);
+      this.entity = entity;
+      this.isDeleted = entityInterface.isDeleted() ? DELETED : Include.NON_DELETED;
+    }
+
+    public EntityReference toEntityReference() {
+      return entityInterface.getEntityReference();
+    }
+
+    public Include isDeleted() {
+      return isDeleted;
+    }
+
+    /**
+     * Validate the owner if not null before creating this resource. Owner must exist, not being deleted, and must be
+     * either User or Team.
+     *
+     * @return
+     */
+    public EntityReference validateOwnerOrNull() throws IOException, ParseException {
+      EntityReference entityReference = validateFieldOrNull("owner");
+      if (entityReference == null) {
+        return null;
+      } else if (!List.of(Entity.USER, Entity.TEAM).contains(entityReference.getType())) {
+        throw new IllegalArgumentException(String.format("Invalid type %s", entityReference.getType()));
+      }
+      return entityReference;
+    }
+
+    /**
+     * Validate a field containing a EntityReference if not null before creating this resource. The target entity must
+     * exist and not deleted.
+     *
+     * @param fieldName
+     * @return
+     */
+    @SneakyThrows({NoSuchMethodException.class, InvocationTargetException.class, IllegalAccessException.class})
+    public EntityReference validateFieldOrNull(String fieldName) throws IOException, ParseException {
+      Method method = entity.getClass().getMethod("get" + StringUtils.capitalize(fieldName));
+      EntityReference entityReference = (EntityReference) method.invoke(entity);
+      if (entityReference == null) {
+        return null;
+      }
+      // this could be changed to Include.NON_DELETED because we validate only when creating entities linked to
+      // non-deleted entities.
+      Object entity = Entity.getEntity(entityReference, Fields.EMPTY_FIELDS, isDeleted);
+      return helper(entity).toEntityReference();
+    }
+
+    /**
+     * When listing and getting resources, we need to get entities using the relationships. If the relationship exists
+     * then the entity must exist.
+     *
+     * @return
+     */
+    public EntityReference getOwnerOrNull() throws IOException, ParseException {
+      List<EntityReference> refs =
+          daoCollection
+              .relationshipDAO()
+              .findFrom(
+                  entityInterface.getId().toString(), entityName, Relationship.OWNS.ordinal(), toBoolean(isDeleted));
+      if (refs.isEmpty()) {
+        return null;
+      } else if (refs.size() > 1) {
+        LOG.warn(
+            "Possible database issues - multiple owners found for entity {} with type {}",
+            entityInterface.getId(),
+            entityInterface.getEntityReference().getType());
+      }
+      if (!List.of(Entity.USER, Entity.TEAM).contains(refs.get(0).getType())) {
+        throw new IllegalArgumentException(String.format("Invalid ownerType %s", refs.get(0).getType()));
+      } else {
+        return helper(Entity.getEntity(refs.get(0), Fields.EMPTY_FIELDS, Include.ALL)).toEntityReference();
+      }
+    }
+
+    /**
+     * An entity could have (HAS) another entity like in for table and location.
+     *
+     * @param leftEntityName the entity name of the target of HAS.
+     * @return
+     */
+    public EntityReference getHasOrNull(String leftEntityName) throws IOException, ParseException {
+      List<EntityReference> refs =
+          daoCollection
+              .relationshipDAO()
+              .findToReference(
+                  entityInterface.getId().toString(),
+                  entityName,
+                  Relationship.HAS.ordinal(),
+                  leftEntityName,
+                  toBoolean(isDeleted));
+      if (refs.isEmpty()) {
+        return null;
+      } else if (refs.size() > 1) {
+        LOG.warn(
+            "Possible database issues - multiple HAS relationships found for entity {} with type {}",
+            entityInterface.getId(),
+            entityInterface.getEntityReference().getType());
+      }
+      return helper(Entity.getEntity(refs.get(0), Fields.EMPTY_FIELDS, Include.ALL)).toEntityReference();
+    }
+
+    /**
+     * Some entities like table must have a container
+     *
+     * @param containerEntityName entity name of the container. database for table, databaseService for database, and so
+     *     on.
+     * @return
+     */
+    public EntityReference getContainer(String containerEntityName) throws IOException, ParseException {
+      List<EntityReference> refs =
+          daoCollection
+              .relationshipDAO()
+              .findFromEntity(
+                  entityInterface.getId().toString(),
+                  entityName,
+                  Relationship.CONTAINS.ordinal(),
+                  // FIXME: containerEntityName should be a property of the entity decorated.
+                  containerEntityName,
+                  toBoolean(isDeleted));
+      if (refs.isEmpty()) {
+        throw new UnhandledServerException(CatalogExceptionMessage.entityTypeNotFound(containerEntityName));
+      } else if (refs.size() > 1) {
+        LOG.warn(
+            "Possible database issues - multiple containers found for entity {} with type {}",
+            entityInterface.getId(),
+            entityInterface.getEntityReference().getType());
+      }
+      return helper(Entity.getEntity(refs.get(0), Fields.EMPTY_FIELDS, Include.ALL)).toEntityReference();
+    }
+
+    public EntityReference getContainer() throws IOException, ParseException {
+      return getContainer(Collections.emptyList());
+    }
+
+    public EntityReference getContainer(List<String> containerEntityNames) throws IOException, ParseException {
+      List<EntityReference> refs =
+          daoCollection
+              .relationshipDAO()
+              .findFrom(
+                  entityInterface.getId().toString(),
+                  entityName,
+                  Relationship.CONTAINS.ordinal(),
+                  toBoolean(isDeleted));
+      if (refs.isEmpty()) {
+        throw new UnhandledServerException(
+            CatalogExceptionMessage.entityTypeNotFound(String.join(" or ", containerEntityNames)));
+      } else if (refs.size() > 1) {
+        LOG.warn(
+            "Possible database issues - multiple containers found for entity {} with type {}",
+            entityInterface.getId(),
+            entityInterface.getEntityReference().getType());
+      }
+      if (containerEntityNames.size() > 0 && !containerEntityNames.contains(refs.get(0).getType())) {
+        throw new IllegalArgumentException(String.format("Invalid type %s", refs.get(0).getType()));
+      }
+      return helper(Entity.getEntity(refs.get(0), Fields.EMPTY_FIELDS, Include.ALL)).toEntityReference();
+    }
+
+    /**
+     * Validate the type of the entity pointed by the field and return it.
+     *
+     * @param fieldName
+     * @param entityName
+     * @param <S>
+     * @return
+     */
+    public <S> S findEntity(String fieldName, String entityName) throws IOException, ParseException {
+      return findEntity(fieldName, List.of(entityName));
+    }
+
+    /**
+     * Validate the type of the entity pointed by the field and return it.
+     *
+     * @param fieldName
+     * @param entityNames
+     * @param <S>
+     * @return
+     */
+    public <S> S findEntity(String fieldName, List<String> entityNames) throws IOException, ParseException {
+      S entity = findEntity(fieldName);
+      EntityReference entityReference = Entity.getEntityReference(entity);
+      if (entityNames.size() > 0 && !entityNames.contains(entityReference.getType())) {
+        throw new IllegalArgumentException(String.format("Invalid type %s", entityReference.getType()));
+      }
+      return entity;
+    }
+
+    /**
+     * Find the entity whose EntityReference is stored in the field with name fieldName. It must include deleted and
+     * non-deleted because if a field are set by setFields and setFields checks if the relationships are still valid
+     * before storing the EntityReferences.
+     *
+     * @param fieldName the name of the field
+     * @param <S> the class of the entity pointed by the field
+     * @return
+     */
+    @SneakyThrows({NoSuchMethodException.class, InvocationTargetException.class, IllegalAccessException.class})
+    public <S> S findEntity(String fieldName) throws IOException, ParseException {
+      Method method = entity.getClass().getMethod("get" + StringUtils.capitalize(fieldName));
+      EntityReference entityReference = (EntityReference) method.invoke(entity);
+      if (entityReference == null) {
+        throw new UnhandledServerException(CatalogExceptionMessage.fieldIsNull(fieldName));
+      }
+      return Entity.getEntity(entityReference, Fields.EMPTY_FIELDS, Include.ALL);
     }
   }
 
@@ -606,7 +902,8 @@ public abstract class EntityRepository<T> {
         throws IOException {
       // Remove current entity tags in the database. It will be added back later from the merged tag list.
       origTags = Optional.ofNullable(origTags).orElse(Collections.emptyList());
-      updatedTags = Optional.ofNullable(updatedTags).orElse(Collections.emptyList());
+      // updatedTags cannot be immutable list, as we are adding the origTags to updatedTags even if its empty.
+      updatedTags = Optional.ofNullable(updatedTags).orElse(new ArrayList<>());
       if (origTags.isEmpty() && updatedTags.isEmpty()) {
         return; // Nothing to update
       }
@@ -615,9 +912,7 @@ public abstract class EntityRepository<T> {
       EntityUtil.removeTagsByPrefix(daoCollection.tagDAO(), fqn);
       if (!patchOperation) {
         // PUT operation merges tags in the request with what already exists
-        List<TagLabel> mergedTags = EntityUtil.mergeTags(updatedTags, origTags);
-        updatedTags.clear();
-        updatedTags.addAll(mergedTags);
+        EntityUtil.mergeTags(updatedTags, origTags);
       }
 
       List<TagLabel> addedTags = new ArrayList<>();

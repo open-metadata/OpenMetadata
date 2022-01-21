@@ -23,7 +23,7 @@ def get_long_description():
 
 
 base_requirements = {
-    "openmetadata-ingestion-core==0.6.0.dev0",
+    "openmetadata-ingestion-core==0.8.0.dev0",
     "commonregex",
     "idna<3,>=2.5",
     "click>=7.1.1",
@@ -42,6 +42,7 @@ base_requirements = {
     "sql-metadata~=2.0.0",
     "requests~=2.26",
     "cryptography",
+    "Jinja2>=2.11.3, <3.0",
     "PyYAML",
 }
 
@@ -63,7 +64,8 @@ plugins: Dict[str, Set[str]] = {
     "athena": {"PyAthena[SQLAlchemy]"},
     "bigquery": {"sqlalchemy-bigquery==1.2.2"},
     "bigquery-usage": {"google-cloud-logging", "cachetools"},
-    "docker": {"docker==5.0.3"},
+    # "docker": {"docker==5.0.3"},
+    "docker": {"python_on_whales==0.34.0"},
     "dbt": {},
     "druid": {"pydruid>=0.6.2"},
     "elasticsearch": {"elasticsearch~=7.13.1"},
@@ -73,7 +75,7 @@ plugins: Dict[str, Set[str]] = {
         "thrift~=0.13.0",
         "sasl==0.3.1",
         "thrift-sasl==0.4.3",
-        "presto-types-parser==0.0.2"
+        "presto-types-parser==0.0.2",
     },
     "kafka": {"confluent_kafka>=1.5.0", "fastavro>=1.2.0"},
     "ldap-users": {"ldap3==2.9.1"},
@@ -86,11 +88,7 @@ plugins: Dict[str, Set[str]] = {
     "trino": {"sqlalchemy-trino"},
     "postgres": {"pymysql>=1.0.2", "psycopg2-binary", "GeoAlchemy2"},
     "redash": {"redash-toolbelt==0.1.4"},
-    "redshift": {
-        "sqlalchemy-redshift==0.8.9",
-        "psycopg2-binary",
-        "GeoAlchemy2",
-    },
+    "redshift": {"sqlalchemy-redshift==0.8.9", "psycopg2-binary", "GeoAlchemy2"},
     "redshift-usage": {
         "sqlalchemy-redshift==0.8.9",
         "psycopg2-binary",
@@ -135,7 +133,7 @@ test = {
 build_options = {"includes": ["_cffi_backend"]}
 setup(
     name="openmetadata-ingestion",
-    version="0.6.0.dev1",
+    version="0.6.1.dev0",
     url="https://open-metadata.org/",
     author="OpenMetadata Committers",
     license="Apache License 2.0",

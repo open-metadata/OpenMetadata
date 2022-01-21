@@ -39,6 +39,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import javax.ws.rs.core.Response;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -66,6 +67,7 @@ import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.TestUtils;
 
+@Slf4j
 public class DashboardResourceTest extends EntityResourceTest<Dashboard> {
   public static EntityReference SUPERSET_REFERENCE;
   public static EntityReference LOOKER_REFERENCE;
@@ -79,6 +81,7 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard> {
         DashboardList.class,
         "dashboards",
         DashboardResource.FIELDS,
+        true,
         true,
         true,
         true);
@@ -268,7 +271,7 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard> {
     String fields = "owner";
     dashboard =
         byName
-            ? getEntityByName(dashboard.getFullyQualifiedName(), fields, adminAuthHeaders())
+            ? getEntityByName(dashboard.getFullyQualifiedName(), null, fields, adminAuthHeaders())
             : getEntity(dashboard.getId(), fields, adminAuthHeaders());
     // We always return the service
     assertListNotNull(dashboard.getOwner(), dashboard.getService(), dashboard.getServiceType());
@@ -278,7 +281,7 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard> {
     fields = "owner,charts,usageSummary";
     dashboard =
         byName
-            ? getEntityByName(dashboard.getFullyQualifiedName(), fields, adminAuthHeaders())
+            ? getEntityByName(dashboard.getFullyQualifiedName(), null, fields, adminAuthHeaders())
             : getEntity(dashboard.getId(), fields, adminAuthHeaders());
     assertListNotNull(
         dashboard.getOwner(),
@@ -294,6 +297,7 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard> {
       List<UUID> expectedChartReferences =
           expectedCharts.stream().map(EntityReference::getId).collect(Collectors.toList());
       List<UUID> actualChartReferences = new ArrayList<>();
+      assertNotNull(dashboard.getCharts(), "dashboard should have charts");
       dashboard
           .getCharts()
           .forEach(

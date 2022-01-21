@@ -45,8 +45,9 @@ const FacetFilter: FunctionComponent<FacetProp> = ({
       )
     );
   };
-  const getSeparator = (length: number, index: number, flag: boolean) => {
-    return length !== 1 && index < length - 1 && flag ? (
+
+  const getSeparator = (length: number, index: number) => {
+    return length !== 1 && index < length - 1 ? (
       <div className="tw-filter-seperator" />
     ) : null;
   };
@@ -184,14 +185,12 @@ const FacetFilter: FunctionComponent<FacetProp> = ({
                     )}
                   </div>
                 </div>
-                <div className="sidebar-my-data-holder mt-2 mb-3">
+                <div
+                  className="sidebar-my-data-holder mt-2 mb-3"
+                  data-testid={`filter-containers-${index}`}>
                   {getFilterItems(aggregation)}
                 </div>
-                {getSeparator(
-                  aggregations.length,
-                  index,
-                  aggregations[index + 1]?.buckets?.length > 0
-                )}
+                {getSeparator(aggregations.length, index)}
               </>
             ) : null}
           </Fragment>

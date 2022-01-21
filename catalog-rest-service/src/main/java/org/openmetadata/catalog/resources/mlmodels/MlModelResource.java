@@ -27,7 +27,6 @@ import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
 import java.util.Arrays;
-import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -60,6 +59,7 @@ import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
+import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.RestUtil.PatchResponse;
@@ -103,7 +103,7 @@ public class MlModelResource {
   }
 
   static final String FIELDS =
-      "owner,dashboard,algorithm,mlFeatures,mlHyperParameters,mlStore,server," + "followers,tags,usageSummary";
+      "owner,dashboard,algorithm,mlFeatures,mlHyperParameters,mlStore,server,target,followers,tags,usageSummary";
   public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replace(" ", "").split(","));
 
   @GET
@@ -140,16 +140,22 @@ public class MlModelResource {
           String before,
       @Parameter(description = "Returns list of models after this cursor", schema = @Schema(type = "string"))
           @QueryParam("after")
-          String after)
+          String after,
+      @Parameter(
+              description = "Include all, deleted, or non-deleted entities.",
+              schema = @Schema(implementation = Include.class))
+          @QueryParam("include")
+          @DefaultValue("non-deleted")
+          Include include)
       throws IOException, GeneralSecurityException, ParseException {
     RestUtil.validateCursors(before, after);
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
 
     ResultList<MlModel> mlmodels;
     if (before != null) { // Reverse paging
-      mlmodels = dao.listBefore(uriInfo, fields, null, limitParam, before);
+      mlmodels = dao.listBefore(uriInfo, fields, null, limitParam, before, include);
     } else { // Forward paging or first page
-      mlmodels = dao.listAfter(uriInfo, fields, null, limitParam, after);
+      mlmodels = dao.listAfter(uriInfo, fields, null, limitParam, after, include);
     }
     mlmodels.getData().forEach(m -> addHref(uriInfo, m));
     return mlmodels;
@@ -176,10 +182,16 @@ public class MlModelResource {
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
-          String fieldsParam)
+          String fieldsParam,
+      @Parameter(
+              description = "Include all, deleted, or non-deleted entities.",
+              schema = @Schema(implementation = Include.class))
+          @QueryParam("include")
+          @DefaultValue("non-deleted")
+          Include include)
       throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
-    return addHref(uriInfo, dao.get(uriInfo, id, fields));
+    return addHref(uriInfo, dao.get(uriInfo, id, fields, include));
   }
 
   @GET
@@ -203,10 +215,16 @@ public class MlModelResource {
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
-          String fieldsParam)
+          String fieldsParam,
+      @Parameter(
+              description = "Include all, deleted, or non-deleted entities.",
+              schema = @Schema(implementation = Include.class))
+          @QueryParam("include")
+          @DefaultValue("non-deleted")
+          Include include)
       throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
-    return addHref(uriInfo, dao.getByName(uriInfo, fqn, fields));
+    return addHref(uriInfo, dao.getByName(uriInfo, fqn, fields, include));
   }
 
   @POST
@@ -223,7 +241,7 @@ public class MlModelResource {
       })
   public Response create(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateMlModel create)
-      throws IOException {
+      throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     MlModel mlModel = getMlModel(securityContext, create);
     mlModel = addHref(uriInfo, dao.create(uriInfo, mlModel));
@@ -254,7 +272,9 @@ public class MlModelResource {
       throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, FIELDS);
     MlModel mlModel = dao.get(uriInfo, id, fields);
-    SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, dao.getOwnerReference(mlModel));
+    SecurityUtil.checkAdminRoleOrPermissions(
+        authorizer, securityContext, dao.getEntityInterface(mlModel).getEntityReference(), patch);
+
     PatchResponse<MlModel> response =
         dao.patch(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
     addHref(uriInfo, response.getEntity());
@@ -403,9 +423,10 @@ public class MlModelResource {
         .withMlHyperParameters(create.getMlHyperParameters())
         .withMlStore(create.getMlStore())
         .withServer(create.getServer())
+        .withTarget(create.getTarget())
         .withTags(create.getTags())
         .withOwner(create.getOwner())
         .withUpdatedBy(securityContext.getUserPrincipal().getName())
-        .withUpdatedAt(new Date());
+        .withUpdatedAt(System.currentTimeMillis());
   }
 }

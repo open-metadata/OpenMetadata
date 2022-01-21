@@ -49,6 +49,7 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Predicate;
 import javax.json.JsonPatch;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
@@ -65,6 +66,7 @@ import org.openmetadata.catalog.jdbi3.TeamRepository.TeamEntityInterface;
 import org.openmetadata.catalog.jdbi3.UserRepository.UserEntityInterface;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.databases.TableResourceTest;
+import org.openmetadata.catalog.resources.locations.LocationResourceTest;
 import org.openmetadata.catalog.resources.teams.UserResource.UserList;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
@@ -78,11 +80,12 @@ import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.TestUtils;
 import org.openmetadata.catalog.util.TestUtils.UpdateType;
 
+@Slf4j
 public class UserResourceTest extends EntityResourceTest<User> {
   final Profile PROFILE = new Profile().withImages(new ImageList().withImage(URI.create("http://image.com")));
 
   public UserResourceTest() {
-    super(Entity.USER, User.class, UserList.class, "users", UserResource.FIELDS, false, false, false);
+    super(Entity.USER, User.class, UserList.class, "users", UserResource.FIELDS, false, false, false, false);
   }
 
   @Test
@@ -503,7 +506,7 @@ public class UserResourceTest extends EntityResourceTest<User> {
     return create(getEntityName(test, index));
   }
 
-  public CreateUser create(String entityName) {
+  public static CreateUser create(String entityName) {
     // user part of the email should be less than 64 in length
     String emailUser = entityName == null || entityName.isEmpty() ? UUID.randomUUID().toString() : entityName;
     emailUser = emailUser.length() > 64 ? emailUser.substring(0, 64) : emailUser;
@@ -521,7 +524,7 @@ public class UserResourceTest extends EntityResourceTest<User> {
     String fields = "profile";
     user =
         byName
-            ? getEntityByName(user.getName(), fields, adminAuthHeaders())
+            ? getEntityByName(user.getName(), null, fields, adminAuthHeaders())
             : getEntity(user.getId(), fields, adminAuthHeaders());
     assertNotNull(user.getProfile());
     assertNull(user.getTeams());
@@ -530,14 +533,48 @@ public class UserResourceTest extends EntityResourceTest<User> {
     fields = "profile, teams";
     user =
         byName
-            ? getEntityByName(user.getName(), fields, adminAuthHeaders())
+            ? getEntityByName(user.getName(), null, fields, adminAuthHeaders())
             : getEntity(user.getId(), fields, adminAuthHeaders());
     assertListNotNull(user.getProfile(), user.getTeams());
   }
 
   @Override
   public Object createRequest(String name, String description, String displayName, EntityReference owner) {
-    return create(name).withDescription(description).withDisplayName(displayName).withProfile(PROFILE);
+    return create(name)
+        .withDescription(description)
+        .withDisplayName(displayName)
+        .withProfile(PROFILE)
+        .withTeams(List.of(TEAM1.getId()))
+        .withRoles(List.of(ROLE1.getId()));
+  }
+
+  @Override
+  public User beforeDeletion(TestInfo test, User user) throws HttpResponseException {
+    LocationResourceTest locationResourceTest = new LocationResourceTest();
+    EntityReference userRef = new EntityReference().withId(user.getId()).withType("user");
+    locationResourceTest.createEntity(
+        locationResourceTest.createRequest(getEntityName(test, 0), null, null, userRef), adminAuthHeaders());
+    locationResourceTest.createEntity(
+        locationResourceTest.createRequest(getEntityName(test, 1), null, null, TEAM_OWNER1), adminAuthHeaders());
+    return user;
+  }
+
+  @Override
+  protected void validateDeletedEntity(
+      Object create, User userBeforeDeletion, User userAfterDeletion, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    super.validateDeletedEntity(create, userBeforeDeletion, userAfterDeletion, authHeaders);
+
+    List<EntityReference> expectedOwnedEntities = new ArrayList<>();
+    for (EntityReference ref : Optional.ofNullable(userBeforeDeletion.getOwns()).orElse(Collections.emptyList())) {
+      expectedOwnedEntities.add(new EntityReference().withId(ref.getId()).withType(Entity.TABLE));
+    }
+    if (!expectedOwnedEntities.isEmpty()) {
+      assertEquals(expectedOwnedEntities.size(), userAfterDeletion.getOwns().size());
+      for (EntityReference ref : expectedOwnedEntities) {
+        TestUtils.existsInEntityReferenceList(userAfterDeletion.getOwns(), ref.getId(), true);
+      }
+    }
   }
 
   @Override

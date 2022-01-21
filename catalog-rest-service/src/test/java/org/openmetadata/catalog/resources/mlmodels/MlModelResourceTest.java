@@ -34,6 +34,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.BiConsumer;
 import javax.ws.rs.core.Response.Status;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.MethodOrderer;
@@ -76,6 +77,7 @@ import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
 
+@Slf4j
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class MlModelResourceTest extends EntityResourceTest<MlModel> {
 
@@ -116,7 +118,7 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
           new MlHyperParameter().withName("random").withValue("hello"));
 
   public MlModelResourceTest() {
-    super(Entity.MLMODEL, MlModel.class, MlModelList.class, "mlmodels", MlModelResource.FIELDS, true, true, true);
+    super(Entity.MLMODEL, MlModel.class, MlModelList.class, "mlmodels", MlModelResource.FIELDS, true, true, true, true);
   }
 
   @BeforeAll
@@ -376,6 +378,30 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
   }
 
   @Test
+  void put_MlModelAddTarget_200(TestInfo test) throws IOException {
+    CreateMlModel request = create(test);
+    MlModel model = createAndCheckEntity(request, adminAuthHeaders());
+
+    ChangeDescription change = getChangeDescription(model.getVersion());
+    change.getFieldsAdded().add(new FieldChange().withName("target").withNewValue("myTarget"));
+
+    updateAndCheckEntity(request.withTarget("myTarget"), Status.OK, adminAuthHeaders(), MAJOR_UPDATE, change);
+  }
+
+  @Test
+  void put_MlModelUpdateTarget_200(TestInfo test) throws IOException {
+    CreateMlModel request = create(test).withTarget("origTarget");
+    MlModel model = createAndCheckEntity(request, adminAuthHeaders());
+
+    ChangeDescription change = getChangeDescription(model.getVersion());
+    change
+        .getFieldsUpdated()
+        .add(new FieldChange().withName("target").withNewValue("newTarget").withOldValue("origTarget"));
+
+    updateAndCheckEntity(request.withTarget("newTarget"), Status.OK, adminAuthHeaders(), MAJOR_UPDATE, change);
+  }
+
+  @Test
   void delete_MlModel_200_ok(TestInfo test) throws HttpResponseException {
     MlModel model = createMlModel(create(test), adminAuthHeaders());
     deleteEntity(model.getId(), adminAuthHeaders());
@@ -408,7 +434,7 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
     String fields = "owner";
     model =
         byName
-            ? getEntityByName(model.getFullyQualifiedName(), fields, adminAuthHeaders())
+            ? getEntityByName(model.getFullyQualifiedName(), null, fields, adminAuthHeaders())
             : getEntity(model.getId(), fields, adminAuthHeaders());
     assertNotNull(model.getOwner(), model.getAlgorithm());
     assertNull(model.getDashboard());
@@ -417,7 +443,7 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
     fields = "mlFeatures,mlHyperParameters";
     model =
         byName
-            ? getEntityByName(model.getFullyQualifiedName(), fields, adminAuthHeaders())
+            ? getEntityByName(model.getFullyQualifiedName(), null, fields, adminAuthHeaders())
             : getEntity(model.getId(), fields, adminAuthHeaders());
     assertListNotNull(model.getAlgorithm(), model.getMlFeatures(), model.getMlHyperParameters());
     assertNull(model.getDashboard());
@@ -426,7 +452,7 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
     fields = "owner,algorithm";
     model =
         byName
-            ? getEntityByName(model.getFullyQualifiedName(), fields, adminAuthHeaders())
+            ? getEntityByName(model.getFullyQualifiedName(), null, fields, adminAuthHeaders())
             : getEntity(model.getId(), fields, adminAuthHeaders());
     assertListNotNull(model.getOwner(), model.getAlgorithm());
     assertNull(model.getDashboard());
@@ -435,7 +461,7 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
     fields = "owner,algorithm,dashboard";
     model =
         byName
-            ? getEntityByName(model.getFullyQualifiedName(), fields, adminAuthHeaders())
+            ? getEntityByName(model.getFullyQualifiedName(), null, fields, adminAuthHeaders())
             : getEntity(model.getId(), fields, adminAuthHeaders());
     assertListNotNull(model.getOwner(), model.getAlgorithm(), model.getDashboard());
     TestUtils.validateEntityReference(model.getDashboard());

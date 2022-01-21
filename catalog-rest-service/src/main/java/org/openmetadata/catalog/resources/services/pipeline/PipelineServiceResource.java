@@ -23,7 +23,6 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
-import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -54,6 +53,7 @@ import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
@@ -116,15 +116,21 @@ public class PipelineServiceResource {
           String before,
       @Parameter(description = "Returns list of services after this cursor", schema = @Schema(type = "string"))
           @QueryParam("after")
-          String after)
+          String after,
+      @Parameter(
+              description = "Include all, deleted, or non-deleted entities.",
+              schema = @Schema(implementation = Include.class))
+          @QueryParam("include")
+          @DefaultValue("non-deleted")
+          Include include)
       throws IOException, GeneralSecurityException, ParseException {
     RestUtil.validateCursors(before, after);
 
     if (before != null) { // Reverse paging
-      return dao.listBefore(uriInfo, null, null, limitParam, before);
+      return dao.listBefore(uriInfo, null, null, limitParam, before, include);
     }
     // Forward paging or first page
-    return dao.listAfter(uriInfo, null, null, limitParam, after);
+    return dao.listAfter(uriInfo, null, null, limitParam, after, include);
   }
 
   @GET
@@ -142,9 +148,17 @@ public class PipelineServiceResource {
         @ApiResponse(responseCode = "404", description = "Pipeline service for instance {id} is not found")
       })
   public PipelineService get(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("id") String id)
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @PathParam("id") String id,
+      @Parameter(
+              description = "Include all, deleted, or non-deleted entities.",
+              schema = @Schema(implementation = Include.class))
+          @QueryParam("include")
+          @DefaultValue("non-deleted")
+          Include include)
       throws IOException, ParseException {
-    return dao.get(uriInfo, id, null);
+    return dao.get(uriInfo, id, null, include);
   }
 
   @GET
@@ -162,9 +176,17 @@ public class PipelineServiceResource {
         @ApiResponse(responseCode = "404", description = "Pipeline service for instance {id} is not found")
       })
   public PipelineService getByName(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("name") String name)
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @PathParam("name") String name,
+      @Parameter(
+              description = "Include all, deleted, or non-deleted entities.",
+              schema = @Schema(implementation = Include.class))
+          @QueryParam("include")
+          @DefaultValue("non-deleted")
+          Include include)
       throws IOException, ParseException {
-    return dao.getByName(uriInfo, name, null);
+    return dao.getByName(uriInfo, name, null, include);
   }
 
   @GET
@@ -233,7 +255,7 @@ public class PipelineServiceResource {
       })
   public Response create(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreatePipelineService create)
-      throws IOException {
+      throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     PipelineService service = getService(create, securityContext);
     dao.create(uriInfo, service);
@@ -299,6 +321,6 @@ public class PipelineServiceResource {
         .withPipelineUrl(create.getPipelineUrl())
         .withIngestionSchedule(create.getIngestionSchedule())
         .withUpdatedBy(securityContext.getUserPrincipal().getName())
-        .withUpdatedAt(new Date());
+        .withUpdatedAt(System.currentTimeMillis());
   }
 }

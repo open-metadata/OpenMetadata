@@ -1,0 +1,10 @@
+{
+  "name": "DataConsumerRoleAccessControlPolicy",
+  "displayName": "Data Consumer Role Access Control Policy",
+  "fullyQualifiedName": "DataConsumerRoleAccessControlPolicy",
+  "description": "Policy for Data Consumer Role to perform operations on metadata entities",
+  "policyType": "AccessControl",
+  "enabled": true,
+  "deleted": false,
+  "rules": []
+}

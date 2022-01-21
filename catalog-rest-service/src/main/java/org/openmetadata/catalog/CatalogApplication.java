@@ -15,6 +15,8 @@ package org.openmetadata.catalog;
 
 import io.dropwizard.Application;
 import io.dropwizard.assets.AssetsBundle;
+import io.dropwizard.configuration.EnvironmentVariableSubstitutor;
+import io.dropwizard.configuration.SubstitutingSourceProvider;
 import io.dropwizard.health.conf.HealthConfiguration;
 import io.dropwizard.health.core.HealthCheckBundle;
 import io.dropwizard.jdbi3.JdbiFactory;
@@ -34,6 +36,7 @@ import javax.ws.rs.container.ContainerRequestFilter;
 import javax.ws.rs.container.ContainerResponseFilter;
 import javax.ws.rs.core.Response;
 import lombok.SneakyThrows;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.eclipse.jetty.servlet.ErrorPageErrorHandler;
 import org.glassfish.jersey.media.multipart.MultiPartFeature;
@@ -41,6 +44,7 @@ import org.glassfish.jersey.server.ServerProperties;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.statement.SqlLogger;
 import org.jdbi.v3.core.statement.StatementContext;
+import org.openmetadata.catalog.elasticsearch.ElasticSearchEventPublisher;
 import org.openmetadata.catalog.events.EventFilter;
 import org.openmetadata.catalog.events.EventPubSub;
 import org.openmetadata.catalog.exception.CatalogGenericExceptionMapper;
@@ -55,12 +59,12 @@ import org.openmetadata.catalog.security.AuthorizerConfiguration;
 import org.openmetadata.catalog.security.NoopAuthorizer;
 import org.openmetadata.catalog.security.NoopFilter;
 import org.openmetadata.catalog.security.auth.CatalogSecurityContextRequestFilter;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.openmetadata.catalog.slack.SlackPublisherConfiguration;
+import org.openmetadata.catalog.slack.SlackWebhookEventPublisher;
 
 /** Main catalog application */
+@Slf4j
 public class CatalogApplication extends Application<CatalogApplicationConfig> {
-  public static final Logger LOG = LoggerFactory.getLogger(CatalogApplication.class);
   private Authorizer authorizer;
 
   @Override
@@ -112,11 +116,18 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
     // Register Event Handler
     registerEventFilter(catalogConfig, environment, jdbi);
     environment.lifecycle().manage(new ManagedShutdown());
+    // start event hub before registering publishers
+    EventPubSub.start();
+    // Register Event publishers
+    registerEventPublisher(catalogConfig);
   }
 
   @SneakyThrows
   @Override
   public void initialize(Bootstrap<CatalogApplicationConfig> bootstrap) {
+    bootstrap.setConfigurationSourceProvider(
+        new SubstitutingSourceProvider(
+            bootstrap.getConfigurationSourceProvider(), new EnvironmentVariableSubstitutor(false)));
     bootstrap.addBundle(
         new SwaggerBundle<>() {
           @Override
@@ -171,6 +182,23 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
     }
   }
 
+  private void registerEventPublisher(CatalogApplicationConfig catalogApplicationConfig) {
+    // register ElasticSearch Event publisher
+    if (catalogApplicationConfig.getElasticSearchConfiguration() != null) {
+      ElasticSearchEventPublisher elasticSearchEventPublisher =
+          new ElasticSearchEventPublisher(catalogApplicationConfig.getElasticSearchConfiguration());
+      EventPubSub.addEventHandler(elasticSearchEventPublisher);
+    }
+    // register slack Event publishers
+    if (catalogApplicationConfig.getSlackEventPublishers() != null) {
+      for (SlackPublisherConfiguration slackPublisherConfiguration :
+          catalogApplicationConfig.getSlackEventPublishers()) {
+        SlackWebhookEventPublisher slackPublisher = new SlackWebhookEventPublisher(slackPublisherConfiguration);
+        EventPubSub.addEventHandler(slackPublisher);
+      }
+    }
+  }
+
   private void registerResources(CatalogApplicationConfig config, Environment environment, Jdbi jdbi) {
     CollectionRegistry.getInstance().registerResources(jdbi, environment, config, authorizer);
     environment.jersey().register(new SearchResource(config.getElasticSearchConfiguration()));
@@ -190,7 +218,6 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
     @Override
     public void start() throws Exception {
       LOG.info("Starting the application");
-      EventPubSub.start();
     }
 
     @Override

@@ -16,20 +16,20 @@ package org.openmetadata.catalog.events;
 import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.container.ContainerResponseContext;
 import javax.ws.rs.core.Response.Status;
+import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.type.ChangeEvent;
+import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.EventType;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
+@Slf4j
 public class ChangeEventHandler implements EventHandler {
-  private static final Logger LOG = LoggerFactory.getLogger(ChangeEventHandler.class);
   private CollectionDAO dao;
 
   public void init(CatalogApplicationConfig config, Jdbi jdbi) {
@@ -43,15 +43,16 @@ public class ChangeEventHandler implements EventHandler {
       if (changeEvent != null) {
         LOG.info(
             "Recording change event {}:{}:{}:{}",
-            changeEvent.getDateTime().getTime(),
+            changeEvent.getTimestamp(),
             changeEvent.getEntityId(),
             changeEvent.getEventType(),
             changeEvent.getEntityType());
         EventPubSub.publish(changeEvent);
         if (changeEvent.getEntity() != null) {
-          changeEvent.setEntity(JsonUtils.pojoToJson(changeEvent.getEntity()));
+          Object entity = changeEvent.getEntity();
+          changeEvent = copyChangeEvent(changeEvent);
+          changeEvent.setEntity(JsonUtils.pojoToJson(entity));
         }
-
         dao.changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
       }
     } catch (Exception e) {
@@ -77,8 +78,12 @@ public class ChangeEventHandler implements EventHandler {
     // Entity was created by either POST .../entities or PUT .../entities
     if (responseCode == Status.CREATED.getStatusCode() && !RestUtil.ENTITY_FIELDS_CHANGED.equals(changeType)) {
       var entityInterface = Entity.getEntityInterface(entity);
-      String entityType = Entity.getEntityReference(entity).getType();
-      return getChangeEvent(EventType.ENTITY_CREATED, entityType, entityInterface).withEntity(entity);
+      EntityReference entityReference = Entity.getEntityReference(entity);
+      String entityType = entityReference.getType();
+      String entityFQN = entityReference.getName();
+      return getChangeEvent(EventType.ENTITY_CREATED, entityType, entityInterface)
+          .withEntity(entity)
+          .withEntityFullyQualifiedName(entityFQN);
     }
 
     // PUT or PATCH operation didn't result in any change
@@ -89,9 +94,13 @@ public class ChangeEventHandler implements EventHandler {
     // Entity was updated by either PUT .../entities or PATCH .../entities
     if (changeType.equals(RestUtil.ENTITY_UPDATED)) {
       var entityInterface = Entity.getEntityInterface(entity);
-      String entityType = Entity.getEntityReference(entity).getType();
+      EntityReference entityReference = Entity.getEntityReference(entity);
+      String entityType = entityReference.getType();
+      String entityFQN = entityReference.getName();
       return getChangeEvent(EventType.ENTITY_UPDATED, entityType, entityInterface)
-          .withPreviousVersion(entityInterface.getChangeDescription().getPreviousVersion());
+          .withPreviousVersion(entityInterface.getChangeDescription().getPreviousVersion())
+          .withEntity(entity)
+          .withEntityFullyQualifiedName(entityFQN);
     }
 
     // Entity field was updated by PUT .../entities/{id}/fieldName - Example PUT ../tables/{id}/follower
@@ -112,9 +121,20 @@ public class ChangeEventHandler implements EventHandler {
         .withEntityId(entityInterface.getId())
         .withEntityType(entityType)
         .withUserName(entityInterface.getUpdatedBy())
-        .withDateTime(entityInterface.getUpdatedAt())
+        .withTimestamp(entityInterface.getUpdatedAt())
         .withChangeDescription(entityInterface.getChangeDescription())
         .withCurrentVersion(entityInterface.getVersion());
+  }
+
+  private static ChangeEvent copyChangeEvent(ChangeEvent changeEvent) {
+    return new ChangeEvent()
+        .withEventType(changeEvent.getEventType())
+        .withEntityId(changeEvent.getEntityId())
+        .withEntityType(changeEvent.getEntityType())
+        .withUserName(changeEvent.getUserName())
+        .withTimestamp(changeEvent.getTimestamp())
+        .withChangeDescription(changeEvent.getChangeDescription())
+        .withCurrentVersion(changeEvent.getCurrentVersion());
   }
 
   public void close() {}

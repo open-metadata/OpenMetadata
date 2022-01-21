@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { makeAutoObservable } from 'mobx';
+import { action, makeAutoObservable } from 'mobx';
 import { ClientAuth, NewUser } from 'Models';
 import { CurrentTourPageType } from './enums/tour.enum';
 import {
@@ -40,7 +40,29 @@ class AppState {
   activeTabforTourDatasetPage = 1;
 
   constructor() {
-    makeAutoObservable(this);
+    makeAutoObservable(this, {
+      updateUserDetails: action,
+      updateUserTeam: action,
+      updateNewUser: action,
+      updateAuthProvide: action,
+      updateAuthState: action,
+    });
+  }
+
+  updateUserTeam(data: Array<UserTeams>) {
+    this.userTeams = data;
+  }
+  updateUserDetails(data: User) {
+    this.userDetails = data;
+  }
+  updateNewUser(data: NewUser) {
+    this.newUser = data;
+  }
+  updateAuthProvide(clientAuth: ClientAuth) {
+    this.authProvider = clientAuth;
+  }
+  updateAuthState(state: boolean) {
+    this.authDisabled = state;
   }
 }
 
