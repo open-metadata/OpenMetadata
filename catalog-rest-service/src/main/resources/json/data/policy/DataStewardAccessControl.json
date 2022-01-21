@@ -1,6 +1,7 @@
 {
   "name": "DataStewardRoleAccessControlPolicy",
   "displayName": "Data Steward Role Access Control Policy",
+  "fullyQualifiedName": "DataStewardRoleAccessControlPolicy",
   "description": "Policy for Data Steward Role to perform operations on metadata entities",
   "policyType": "AccessControl",
   "enabled": true,
