@@ -13,16 +13,16 @@ import logging
 import os
 import pathlib
 import sys
+from typing import Optional
 
 import click
 from pydantic import ValidationError
 
 from metadata.__version__ import get_metadata_version
+from metadata.cli.docker import run_docker
 from metadata.config.common import load_config_file
 from metadata.ingestion.api.workflow import Workflow
-from metadata.profiler.profiler_metadata import ProfileResult
 from metadata.profiler.profiler_runner import ProfilerRunner
-from metadata.utils.docker import run_docker
 
 logger = logging.getLogger(__name__)
 
@@ -185,6 +185,55 @@ def docker(start, stop, pause, resume, clean, file_path) -> None:
     Run Local Docker - metadata docker --start -f path/to/docker-compose.yml
     """
     run_docker(start, stop, pause, resume, clean, file_path)
+
+
+@metadata.command()
+@click.option(
+    "-h",
+    "--host",
+    help="Host that runs the database",
+    required=True,
+)
+@click.option(
+    "-u",
+    "--user",
+    help="User to run the backup",
+    required=True,
+)
+@click.option(
+    "-p",
+    "--password",
+    help="Credentials for the user",
+    required=True,
+)
+@click.option(
+    "-o",
+    "--output",
+    help="Path to save the backup data",
+    type=click.Path(exists=True, dir_okay=False),
+    required=False,
+)
+@click.option(
+    "--install",
+    help="Installs the dependencies to run the backup",
+    is_flag=True,
+    required=False,
+)
+def backup(
+    host: str,
+    user: str,
+    password: str,
+    output: Optional[str] = ".",
+    install: Optional[bool] = False,
+) -> None:
+    """
+
+    :param host:
+    :param user:
+    :param password:
+    :param output:
+    :return:
+    """
 
 
 metadata.add_command(check)

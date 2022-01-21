@@ -1,13 +1,13 @@
-import pathlib
-import sys
-import time
 import logging
 import pathlib
-import click
-import requests as requests
+import sys
 import tempfile
+import time
 import traceback
 from datetime import timedelta
+
+import click
+import requests as requests
 
 logger = logging.getLogger(__name__)
 
@@ -96,7 +96,7 @@ def run_docker(start, stop, pause, resume, clean, file_path):
                     ometa_client.get(f"/tables/name/bigquery_gcp.shopify.dim_customer")
                     break
                 except Exception as err:
-                    sys.stdout.write(".")
+                    sys.stdout.write("../utils")
                     sys.stdout.flush()
                     time.sleep(5)
             elapsed = time.time() - start_time
