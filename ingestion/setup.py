@@ -44,7 +44,6 @@ base_requirements = {
     "cryptography",
     "Jinja2>=2.11.3, <3.0",
     "PyYAML",
-    "python-on-whales==0.36.1",
 }
 
 report_requirements = {
