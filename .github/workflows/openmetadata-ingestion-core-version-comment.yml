@@ -18,7 +18,7 @@ on:
     branches: [ main ]
     types: [ opened ]
     paths:
-    - 'catalog-rest-service/src/main/resources/json/**'
+    - 'catalog-rest-service/src/main/resources/json/schema/**'
 
 jobs:
   py-ingestion-core-comment:
