@@ -24,6 +24,7 @@ type Props = {
   entityName?: string;
   owner?: Table['owner'];
   hasEditAccess?: boolean;
+  blurWithBodyBG?: boolean;
   removeBlurOnScroll?: boolean;
   description: string;
   isEdit?: boolean;
@@ -43,6 +44,7 @@ const Description = ({
   onCancel,
   onDescriptionUpdate,
   isReadOnly = false,
+  blurWithBodyBG = false,
   removeBlurOnScroll = false,
   entityName,
 }: Props) => {
@@ -50,8 +52,13 @@ const Description = ({
     <div className="schema-description tw-relative">
       <div className="tw-px-3 tw-py-1 tw-flex">
         <div className="tw-relative">
-          {!removeBlurOnScroll && (
-            <div className="tw-absolute tw-inset-0 tw-z-10 on-scroll-blur" />
+          {!removeBlurOnScroll && description.length > 800 && (
+            <div
+              className={classNames(
+                'tw-absolute tw-inset-0 tw-z-10',
+                blurWithBodyBG ? 'on-scroll-blur-body' : 'on-scroll-blur-white'
+              )}
+            />
           )}
           <div
             className="description tw-h-full tw-overflow-y-scroll tw-max-h-40 tw-min-h-12 tw-relative tw-py-2.5"

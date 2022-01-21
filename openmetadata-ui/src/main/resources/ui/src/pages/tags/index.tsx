@@ -327,7 +327,7 @@ const TagsPage = () => {
                   className="tw-mb-3 tw--ml-5"
                   data-testid="description-container">
                   <Description
-                    removeBlurOnScroll
+                    blurWithBodyBG
                     description={currentCategory?.description || ''}
                     entityName={currentCategory?.displayName}
                     isEdit={isEditCategory}
