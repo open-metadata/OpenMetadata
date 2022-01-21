@@ -14,6 +14,7 @@
 import classNames from 'classnames';
 import React, { useEffect, useState } from 'react';
 import ReactMarkdown, { PluggableList } from 'react-markdown';
+import { Link } from 'react-router-dom';
 import rehypeRaw from 'rehype-raw';
 import gfm from 'remark-gfm';
 
@@ -49,6 +50,23 @@ const RichTextEditorPreviewer = ({
               <ul style={{ marginLeft: '16px' }} {...rest}>
                 {children}
               </ul>
+            );
+          },
+          a: ({ node, children, ...props }) => {
+            let link = '';
+            const href = props.href;
+            if (
+              href?.indexOf('http://') == 0 ||
+              href?.indexOf('https://') == 0
+            ) {
+              link = href;
+            } else {
+              link = `https://${href}`;
+            }
+            return (
+              <Link to={{ pathname: link }} target="_blank">
+                {children}
+              </Link>
             );
           },
         }}
