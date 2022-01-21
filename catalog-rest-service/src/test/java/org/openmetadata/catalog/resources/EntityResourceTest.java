@@ -357,6 +357,9 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
   // Get interface to access all common entity attributes
   public abstract EntityInterface<T> getEntityInterface(T entity);
 
+  // Do some preparation work right before calling validateGetWithDifferentFields.
+  protected void prepareGetWithDifferentFields(T entity) throws HttpResponseException {};
+
   // Get an entity by ID and name with different fields. See TableResourceTest for example.
   public abstract void validateGetWithDifferentFields(T entity, boolean byName) throws HttpResponseException;
 
@@ -526,6 +529,7 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
   void get_entityWithDifferentFields_200_OK(TestInfo test) throws IOException, URISyntaxException {
     Object create = createRequest(getEntityName(test), "description", "displayName", USER_OWNER1);
     T entity = createAndCheckEntity(create, adminAuthHeaders());
+    prepareGetWithDifferentFields(entity);
     validateGetWithDifferentFields(entity, false);
     validateGetWithDifferentFields(entity, true);
   }

@@ -31,6 +31,7 @@ import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.interactions.Actions;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
+import org.testng.Assert;
 
 @Order(3)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
@@ -211,6 +212,54 @@ public class TagsPageTest {
     Events.click(webDriver, By.xpath("//div[@data-testid='tag-conatiner']//span"));
     Events.click(webDriver, By.cssSelector("[data-testid='remove']"));
     Events.click(webDriver, By.cssSelector("[data-testid='saveAssociatedTag']"));
+  }
+
+  @Test
+  @Order(10)
+  public void addTagWithExistingName() throws InterruptedException {
+    openTagsPage();
+    Events.click(webDriver, By.xpath("//*[text()[contains(.,'" + "PersonalData" + "')]] "));
+    Events.click(webDriver, By.cssSelector("[data-testid='add-new-tag-button']"));
+    wait.until(ExpectedConditions.elementToBeClickable(By.name("name")));
+    Events.sendKeys(webDriver, By.name("name"), "Personals");
+    Events.click(webDriver, By.cssSelector("[data-testid='saveButton']"));
+    Events.click(webDriver, By.cssSelector("[data-testid='appbar-item'][id='explore']")); // Explore
+    Events.click(webDriver, By.cssSelector("[data-testid='table-link']"));
+    Events.click(webDriver, By.xpath("//div[@data-testid='tag-conatiner']//span"));
+    Events.click(webDriver, By.cssSelector("[data-testid='associatedTagName']"));
+    Events.sendKeys(webDriver, By.cssSelector("[data-testid='associatedTagName']"), "Personals");
+    Events.click(webDriver, By.cssSelector("[data-testid='list-item']"));
+    Events.click(webDriver, By.cssSelector("[data-testid='saveAssociatedTag']"));
+    Events.click(webDriver, By.cssSelector("[data-testid='menu-button'][id='menu-button-Settings']")); // Setting
+    Events.click(webDriver, By.cssSelector("[data-testid='menu-item-Tags']")); // Setting/Tags
+    Events.click(webDriver, By.xpath("//*[text()[contains(.,'" + "PersonalData" + "')]] "));
+    Thread.sleep(2000);
+    String usageCount =
+        webDriver
+            .findElement(By.xpath("(//div[@data-testid='usage'])[1]/a[@data-testid='usage-count']"))
+            .getAttribute("innerHTML");
+    Assert.assertEquals(usageCount, "0");
+  }
+
+  @Test
+  @Order(11)
+  public void removeTagWithExistingName() throws InterruptedException {
+    openTagsPage();
+    Events.click(webDriver, By.xpath("//*[text()[contains(.,'" + "PersonalData" + "')]] "));
+    Events.click(webDriver, By.xpath("(//a[@data-testid='usage-count'])[2]"));
+    Events.click(webDriver, By.cssSelector("[data-testid='table-link']"));
+    Events.click(webDriver, By.xpath("//div[@data-testid='tag-conatiner']//span"));
+    Events.click(webDriver, By.cssSelector("[data-testid='remove']"));
+    Events.click(webDriver, By.cssSelector("[data-testid='saveAssociatedTag']"));
+    Events.click(webDriver, By.cssSelector("[data-testid='menu-button'][id='menu-button-Settings']")); // Setting
+    Events.click(webDriver, By.cssSelector("[data-testid='menu-item-Tags']")); // Setting/Tags
+    Events.click(webDriver, By.xpath("//*[text()[contains(.,'" + "PersonalData" + "')]] "));
+    Thread.sleep(2000);
+    String usageCount =
+        webDriver
+            .findElement(By.xpath("(//div[@data-testid='usage'])[2]/span[@data-testid='usage-count']"))
+            .getAttribute("innerHTML");
+    Assert.assertEquals(usageCount, "Not used");
   }
 
   @AfterEach

@@ -6,9 +6,38 @@ description: >-
 
 # Features
 
-### Discover Your Data
+## List of Supported Features
 
-OpenMetadata enables you to discover your data using a variety of strategies, including: keyword search, data associations (e.g., frequently joined tables, lineage), and complex queries. Using OpenMetadata you can search across tables, topics, dashboards, pipelines, and services. The OpenMetadata standard and discovery UI provides for fine-grained and detailed metadata for assets and a their components (e.g., columns, charts), including support for complex data types such as arrays and structs.
+* [All Your Data in One Place](features.md#all-your-data-in-one-place)
+* [Data Discovery](features.md#data-discovery)
+  * [Keyword Search](features.md#keyword-search)
+  * [Discover Data Through Association](features.md#discover-data-through-association)
+  * [Advanced Search](features.md#advanced-search)
+* [Change Activity Feeds](features.md#change-activity-feeds)
+* [Add Descriptive Metadata](features.md#add-descriptive-metadata)
+* [Complex Data Types](features.md#complex-data-types)
+* [Importance & Owners](features.md#importance-and-owners)
+  * [Filter Assets by Importance](features.md#filter-assets-by-importance)
+  * [Identify Asset Owners](features.md#identify-asset-owners)
+* [Data Lineage](features.md#data-lineage)
+* [DBT Integration](features.md#dbt-integration)
+* [Data Reliability (Data Profiler)](features.md#data-reliability)
+* [Service Connectors](features.md#service-connectors)
+* [Metadata Versioning & Events API](features.md#metadata-versioning)
+* [One-Click Ingestion Pipelines](features.md#one-click-ingestion-pipelines)
+* [Elasticsearch Integration](features.md#elasticsearch-integration)
+
+## Overview of Features
+
+### All Your Data in One Place
+
+OpenMetadata provides all the data context you need for different use cases in a single place.
+
+![](.gitbook/assets/home-screen.gif)
+
+### Data Discovery
+
+OpenMetadata enables you to discover your data using a variety of strategies, including: keyword search, data associations (e.g., frequently joined tables, lineage), and complex queries. Using OpenMetadata you can search across tables, topics, dashboards, pipelines, and services. OpenMetadata supports detailed metadata for assets and a their components (e.g., columns, charts), including support for complex data types such as arrays and structs.
 
 #### Keyword Search
 
@@ -28,7 +57,17 @@ Find assets matching strict criteria on metadata properties and Boolean operator
 
 ![](.gitbook/assets/complex-queries.gif)
 
-### Know Your Data
+### Change Activity Feeds
+
+The OpenMetadata home screen features a change activity feed that enables you view a summary of data change events. This feed shows all changes to data sorted with the most recent changes at the top. The entities in the activity feed are clickable including tables, dashboards, team names, etc. There are activity feeds for:&#x20;
+
+* All data
+* Data for which you are an owner
+* Data you are following
+
+![](.gitbook/assets/activity-feed.gif)
+
+### Add Descriptive Metadata
 
 Add descriptions and tags to tables, columns, and other assets. OpenMetadata indexes assets based on descriptions, tags, names, and other metadata to enable keyword, advanced search, and filtering to enable you and others in your organization to discover your data.
 
@@ -62,7 +101,13 @@ Identify owners who can help with questions about an asset.
 
 Trace the path of data across tables, pipelines, and dashboards.
 
-![](.gitbook/assets/lineage-feature.gif)
+![](.gitbook/assets/lineage.gif)
+
+### DBT Integration
+
+A DBT model provides transformation logic that creates a table from raw data. While lineage tells us broadly what data a table was generated from. A DBT model provides specifics. OpenMetadata includes an integration for DBT that enables you to see what models are being used to generate tables.
+
+![](.gitbook/assets/dbt.gif)
 
 ### Data Reliability
 
@@ -84,11 +129,11 @@ See the [Connectors](install/metadata-ingestion/connectors/) documentation for i
 
 ### Metadata Versioning & Events API
 
-Starting in 0.6, OpenMetadata captures changes in both technical metadata (e.g., table schemas) and business metadata (e.g., tags, ownership, descriptions) as new versions of an entity. Metadata changes generate events that indicates which entity changed, who changed it, and how it changed. You may use these events to integrate metadata into other tools or trigger actions.&#x20;
+Starting in 0.6, OpenMetadata captures changes in both technical metadata (e.g., table schemas) and business metadata (e.g., tags, ownership, descriptions) as new versions of an entity. Metadata changes generate events that indicates which entity changed, who changed it, and how it changed. You may use these events to integrate metadata into other tools or trigger actions.
 
 #### Metadata Versioning
 
-OpenMetadata maintains the version history for all entities using a number with the format _major.minor_, starting with 0.1 as the initial version of an entity.&#x20;
+OpenMetadata maintains the version history for all entities using a number with the format _major.minor_, starting with 0.1 as the initial version of an entity.
 
 Changes in metadata result in version changes as follows:
 
@@ -103,10 +148,16 @@ Versioning also helps in **broader collaboration** among consumers and producers
 
 #### Events API
 
-Starting in the 0.6 release, OpenMetadata captures changes in both technical metadata (e.g., table schemas) and business metadata (e.g., tags, ownership, descriptions) as change events. This lays the groundwork for notifications. In an upcoming release we will add support for push based events, enabling applications to register webhooks to be notified of change events. We will also enable users to subscribe to notifications and alerts for assets of interest. &#x20;
+Starting in the 0.6 release, OpenMetadata captures changes in both technical metadata (e.g., table schemas) and business metadata (e.g., tags, ownership, descriptions) as change events. This lays the groundwork for notifications. In an upcoming release we will add support for push based events, enabling applications to register webhooks to be notified of change events. We will also enable users to subscribe to notifications and alerts for assets of interest.
 
 ### One-Click Ingestion Pipelines
 
 OpenMetadata provides a UI integration with Apache Airflow as a workflow engine to run ingestion, data profiling, data quality and other automation jobs. Admins can configure a service to run the OpenMetadata pipelines and add an ingestion schedule to automatically kick off the ingestion jobs directly from the OpenMetadata UI.
 
 ![](<.gitbook/assets/ingestion for gif.2021-11-17 17\_50\_37.gif>)
+
+### Elasticsearch Integration
+
+OpenMetadata supports SSL-enabled Elasticsearch (including self-signed certs). In prior versions of OpenMetadata it was necessary to run an indexing workflow following any ingestion workflow to make ingested entities available in the OpenMetadata UI. As of the 0.7 release, OpenMetadata automatically runs an indexing workflow as new entities are added or updated through ingestion workflows.
+
+![](.gitbook/assets/auto-index.gif)

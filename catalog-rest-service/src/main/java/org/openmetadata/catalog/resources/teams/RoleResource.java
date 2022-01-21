@@ -27,6 +27,7 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -77,6 +78,7 @@ public class RoleResource {
 
   public static Role addHref(UriInfo uriInfo, Role role) {
     Entity.withHref(uriInfo, role.getPolicy());
+    Entity.withHref(uriInfo, role.getUsers());
     return role;
   }
 
@@ -101,8 +103,8 @@ public class RoleResource {
     }
   }
 
-  public static final String FIELDS = "policy";
-  public static final List<String> FIELD_LIST = List.of(FIELDS);
+  public static final String FIELDS = "policy,users";
+  public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replace(" ", "").split(","));
 
   @GET
   @Valid
@@ -154,6 +156,7 @@ public class RoleResource {
     } else { // Forward paging or first page
       roles = dao.listAfter(uriInfo, fields, null, limitParam, after, include);
     }
+    roles.getData().forEach(role -> addHref(uriInfo, role));
     return roles;
   }
 
@@ -312,6 +315,7 @@ public class RoleResource {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Role role = getRole(createRole, securityContext);
     RestUtil.PutResponse<Role> response = dao.createOrUpdate(uriInfo, role);
+    addHref(uriInfo, response.getEntity());
     return response.toResponse();
   }
 
@@ -341,6 +345,7 @@ public class RoleResource {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     PatchResponse<Role> response =
         dao.patch(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
+    addHref(uriInfo, response.getEntity());
     return response.toResponse();
   }
 

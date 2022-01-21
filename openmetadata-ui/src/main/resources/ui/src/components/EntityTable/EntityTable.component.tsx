@@ -377,9 +377,7 @@ const EntityTable = ({
                                   <PopOver
                                     html={
                                       <div className="tw-break-words">
-                                        <RichTextEditorPreviewer
-                                          markdown={cell.value.toLowerCase()}
-                                        />
+                                        <span>{cell.value.toLowerCase()}</span>
                                       </div>
                                     }
                                     position="bottom"

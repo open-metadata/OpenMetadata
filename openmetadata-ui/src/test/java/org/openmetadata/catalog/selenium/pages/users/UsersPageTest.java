@@ -96,6 +96,19 @@ public class UsersPageTest {
     Assert.assertEquals(afterUsersCount, "15");
   }
 
+  @Test
+  @Order(3)
+  public void caseSensitiveSearchCheck() throws InterruptedException {
+    openUsersPage();
+    Events.sendKeys(webDriver, By.cssSelector("[data-testid='searchbar']"), "AaR");
+    Thread.sleep(4000);
+    Object userResultsCount =
+        webDriver
+            .findElements(By.xpath("//div[@data-testid='user-card-container']/div[@data-testid='user-card-container']"))
+            .size();
+    Assert.assertEquals(userResultsCount, 3);
+  }
+
   @AfterEach
   public void closeTabs() {
     ArrayList<String> tabs = new ArrayList<>(webDriver.getWindowHandles());
