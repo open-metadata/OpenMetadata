@@ -406,6 +406,24 @@ public class CommonTests {
     Events.click(webDriver, By.cssSelector("[data-testid='edit-lineage']"));
   }
 
+  @Test
+  @Order(19)
+  public void searchNotShowingResultsCheck() throws InterruptedException {
+    openHomePage();
+    Events.click(webDriver, By.cssSelector("[data-testid='pipelines']"));
+    Events.sendKeys(webDriver, By.cssSelector("[data-testid='searchBox']"), "sample");
+    Events.sendEnter(webDriver, By.cssSelector("[id='searchBox']"));
+    try {
+      WebElement searchResult =
+          wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("[data-testid='search-results']")));
+      if (searchResult.isDisplayed()) {
+        LOG.info("Success");
+      }
+    } catch (TimeoutException exception) {
+      throw new TimeoutException("No search results found");
+    }
+  }
+
   @AfterEach
   public void closeTabs() {
     ArrayList<String> tabs = new ArrayList<>(webDriver.getWindowHandles());
