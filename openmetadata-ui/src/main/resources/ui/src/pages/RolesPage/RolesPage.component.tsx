@@ -16,7 +16,7 @@ import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { isUndefined, toLower } from 'lodash';
 import { observer } from 'mobx-react';
-import { FormErrorData } from 'Models';
+import { FormErrorData, Policy } from 'Models';
 import React, { Fragment, useEffect, useState } from 'react';
 import {
   createRole,
@@ -37,7 +37,10 @@ import {
   ERROR404,
   TITLE_FOR_NON_ADMIN_ACTION,
 } from '../../constants/constants';
-import { Rule } from '../../generated/entity/policies/accessControl/rule';
+import {
+  Operation,
+  Rule,
+} from '../../generated/entity/policies/accessControl/rule';
 import { Role } from '../../generated/entity/teams/role';
 import { EntityReference } from '../../generated/entity/teams/user';
 import { useAuth } from '../../hooks/authHooks';
@@ -46,6 +49,7 @@ import { getActiveCatClass, isEven } from '../../utils/CommonUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import Form from '../teams/Form';
 import UserCard from '../teams/UserCard';
+import AddRuleModal from './AddRuleModal';
 
 const getActiveTabClass = (tab: number, currentTab: number) => {
   return tab === currentTab ? 'active' : '';
@@ -56,12 +60,13 @@ const RolesPage = () => {
   const [roles, setRoles] = useState<Array<Role>>([]);
   const { isAuthDisabled, isAdminUser } = useAuth();
   const [currentRole, setCurrentRole] = useState<Role>();
-  const [currentPolicy, setCurrentPolicy] = useState<{ rules: Array<Rule> }>();
+  const [currentPolicy, setCurrentPolicy] = useState<Policy>();
   const [error, setError] = useState<string>('');
   const [currentTab, setCurrentTab] = useState<number>(1);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isLoadingPolicy, setIsLoadingPolicy] = useState<boolean>(false);
   const [isAddingRole, setIsAddingRole] = useState<boolean>(false);
+  const [isAddingRule, setIsAddingRule] = useState<boolean>(false);
   const [errorData, setErrorData] = useState<FormErrorData>();
   const [isEditable, setIsEditable] = useState<boolean>(false);
 
@@ -422,7 +427,8 @@ const RolesPage = () => {
                           data-testid="add-new-user-button"
                           size="small"
                           theme="primary"
-                          variant="contained">
+                          variant="contained"
+                          onClick={() => setIsAddingRule(true)}>
                           Add new rule
                         </Button>
                       </NonAdminAction>
@@ -486,6 +492,18 @@ const RolesPage = () => {
                     onCancel={() => setIsAddingRole(false)}
                     onChange={(data) => onNewDataChange(data as Role)}
                     onSave={(data) => createNewRole(data as Role)}
+                  />
+                )}
+                {isAddingRule && (
+                  <AddRuleModal
+                    header="Adding new rule"
+                    initialData={
+                      { name: '', operation: '' as Operation } as Rule
+                    }
+                    onCancel={() => setIsAddingRule(false)}
+                    onSave={() => {
+                      return;
+                    }}
                   />
                 )}
               </div>

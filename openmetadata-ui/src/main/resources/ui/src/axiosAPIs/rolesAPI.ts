@@ -13,6 +13,7 @@
 
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
+import { Policy } from 'Models';
 import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
 
@@ -56,4 +57,10 @@ export const getPolicy = (
   const url = getURLWithQueryFields(`/policies/${id}`, arrQueryFields);
 
   return APIClient.get(url);
+};
+
+export const updatePolicy = (
+  data: Pick<Policy, 'name' | 'policyType' | 'rules'>
+): Promise<AxiosResponse> => {
+  return APIClient.put(`/policies`, data);
 };
