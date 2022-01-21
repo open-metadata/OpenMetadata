@@ -822,3 +822,25 @@ body .profiler-graph .recharts-active-dot circle {
   font-size: 90%;
   /* margin-left: 8px; */
 }
+
+.on-scroll-blur-white {
+  background: linear-gradient(
+    to top,
+    rgba(255, 255, 255, 1) 0%,
+    rgba(255, 255, 255, 0) 26%,
+    rgba(255, 255, 255, 0) 74%,
+    rgba(255, 255, 255, 1) 100%
+  );
+  pointer-events: none; /* so the text is still selectable */
+}
+
+.on-scroll-blur-body {
+  background: linear-gradient(
+    to top,
+    rgba(248, 249, 250, 1) 0%,
+    rgba(255, 255, 255, 0) 26%,
+    rgba(255, 255, 255, 0) 74%,
+    rgba(248, 249, 250, 1) 100%
+  );
+  pointer-events: none; /* so the text is still selectable */
+}
