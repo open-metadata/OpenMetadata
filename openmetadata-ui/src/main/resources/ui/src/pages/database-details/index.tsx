@@ -241,6 +241,7 @@ const DatabaseDetails: FunctionComponent = () => {
 
             <div className="tw-pl-2" data-testid="description-container">
               <Description
+                blurWithBodyBG
                 description={description}
                 entityName={databaseName}
                 isEdit={isEdit}
