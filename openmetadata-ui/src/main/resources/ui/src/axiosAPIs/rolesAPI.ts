@@ -12,6 +12,7 @@
  */
 
 import { AxiosResponse } from 'axios';
+import { Operation } from 'fast-json-patch';
 import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
 
@@ -21,6 +22,31 @@ export const getRoles = (
   const url = getURLWithQueryFields('/roles', arrQueryFields);
 
   return APIClient.get(`${url}${arrQueryFields ? '&' : '?'}limit=1000000`);
+};
+export const getRoleByName = (
+  name: string,
+  arrQueryFields?: string | string[]
+): Promise<AxiosResponse> => {
+  const url = getURLWithQueryFields(`/roles/name/${name}`, arrQueryFields);
+
+  return APIClient.get(url);
+};
+
+export const createRole = (
+  data: Record<string, string>
+): Promise<AxiosResponse> => {
+  return APIClient.post('/roles', data);
+};
+
+export const updateRole = (
+  id: string,
+  patch: Operation[]
+): Promise<AxiosResponse> => {
+  const configOptions = {
+    headers: { 'Content-type': 'application/json-patch+json' },
+  };
+
+  return APIClient.patch(`/roles/${id}`, patch, configOptions);
 };
 
 export const getPolicy = (

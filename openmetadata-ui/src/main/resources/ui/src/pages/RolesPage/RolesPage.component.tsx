@@ -11,11 +11,20 @@
  *  limitations under the License.
  */
 
-import { AxiosResponse } from 'axios';
+import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
+import { compare } from 'fast-json-patch';
+import { isUndefined, toLower } from 'lodash';
 import { observer } from 'mobx-react';
+import { FormErrorData } from 'Models';
 import React, { Fragment, useEffect, useState } from 'react';
-import { getPolicy, getRoles } from '../../axiosAPIs/rolesAPI';
+import {
+  createRole,
+  getPolicy,
+  getRoleByName,
+  getRoles,
+  updateRole,
+} from '../../axiosAPIs/rolesAPI';
 import { Button } from '../../components/buttons/Button/Button';
 import Description from '../../components/common/description/Description';
 import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
@@ -23,7 +32,11 @@ import NonAdminAction from '../../components/common/non-admin-action/NonAdminAct
 import PageContainerV1 from '../../components/containers/PageContainerV1';
 import PageLayout from '../../components/containers/PageLayout';
 import Loader from '../../components/Loader/Loader';
-import { TITLE_FOR_NON_ADMIN_ACTION } from '../../constants/constants';
+import FormModal from '../../components/Modals/FormModal';
+import {
+  ERROR404,
+  TITLE_FOR_NON_ADMIN_ACTION,
+} from '../../constants/constants';
 import { Rule } from '../../generated/entity/policies/accessControl/rule';
 import { Role } from '../../generated/entity/teams/role';
 import { EntityReference } from '../../generated/entity/teams/user';
@@ -31,7 +44,12 @@ import { useAuth } from '../../hooks/authHooks';
 import useToastContext from '../../hooks/useToastContext';
 import { getActiveCatClass, isEven } from '../../utils/CommonUtils';
 import SVGIcons from '../../utils/SvgUtils';
+import Form from '../teams/Form';
 import UserCard from '../teams/UserCard';
+
+const getActiveTabClass = (tab: number, currentTab: number) => {
+  return tab === currentTab ? 'active' : '';
+};
 
 const RolesPage = () => {
   const showToast = useToastContext();
@@ -43,10 +61,9 @@ const RolesPage = () => {
   const [currentTab, setCurrentTab] = useState<number>(1);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isLoadingPolicy, setIsLoadingPolicy] = useState<boolean>(false);
-
-  const getActiveTabClass = (tab: number) => {
-    return tab === currentTab ? 'active' : '';
-  };
+  const [isAddingRole, setIsAddingRole] = useState<boolean>(false);
+  const [errorData, setErrorData] = useState<FormErrorData>();
+  const [isEditable, setIsEditable] = useState<boolean>(false);
 
   const getTabs = () => {
     return (
@@ -55,7 +72,10 @@ const RolesPage = () => {
           className="tw-flex tw-flex-row tw-gh-tabs-container"
           data-testid="tabs">
           <button
-            className={`tw-pb-2 tw-px-4 tw-gh-tabs ${getActiveTabClass(1)}`}
+            className={`tw-pb-2 tw-px-4 tw-gh-tabs ${getActiveTabClass(
+              1,
+              currentTab
+            )}`}
             data-testid="users"
             onClick={() => {
               setCurrentTab(1);
@@ -63,7 +83,10 @@ const RolesPage = () => {
             Policy
           </button>
           <button
-            className={`tw-pb-2 tw-px-4 tw-gh-tabs ${getActiveTabClass(2)}`}
+            className={`tw-pb-2 tw-px-4 tw-gh-tabs ${getActiveTabClass(
+              2,
+              currentTab
+            )}`}
             data-testid="assets"
             onClick={() => {
               setCurrentTab(2);
@@ -80,30 +103,39 @@ const RolesPage = () => {
       <>
         <div className="tw-flex tw-justify-between tw-items-center tw-mb-3 tw-border-b">
           <h6 className="tw-heading tw-text-base">Roles</h6>
-          <Button
-            className={classNames('tw-h-7 tw-px-2 tw-mb-4')}
-            data-testid="add-roles"
-            size="small"
-            theme="primary"
-            variant="contained">
-            <i aria-hidden="true" className="fa fa-plus" />
-          </Button>
+          <NonAdminAction position="bottom" title={TITLE_FOR_NON_ADMIN_ACTION}>
+            <Button
+              className={classNames('tw-h-7 tw-px-2 tw-mb-4', {
+                'tw-opacity-40': !isAdminUser && !isAuthDisabled,
+              })}
+              data-testid="add-role"
+              size="small"
+              theme="primary"
+              variant="contained"
+              onClick={() => {
+                setErrorData(undefined);
+                setIsAddingRole(true);
+              }}>
+              <i aria-hidden="true" className="fa fa-plus" />
+            </Button>
+          </NonAdminAction>
         </div>
-        {roles.map((role) => (
-          <div
-            className={`tw-group tw-text-grey-body tw-cursor-pointer tw-text-body tw-mb-3 tw-flex tw-justify-between ${getActiveCatClass(
-              role.name,
-              currentRole?.name
-            )}`}
-            key={role.name}
-            onClick={() => setCurrentRole(role)}>
-            <p
-              className="tag-category label-category tw-self-center tw-truncate tw-w-52"
-              title={role.displayName}>
-              {role.displayName}
-            </p>
-          </div>
-        ))}
+        {roles &&
+          roles.map((role) => (
+            <div
+              className={`tw-group tw-text-grey-body tw-cursor-pointer tw-text-body tw-mb-3 tw-flex tw-justify-between ${getActiveCatClass(
+                role.name,
+                currentRole?.name
+              )}`}
+              key={role.name}
+              onClick={() => setCurrentRole(role)}>
+              <p
+                className="tag-category label-category tw-self-center tw-truncate tw-w-52"
+                title={role.displayName}>
+                {role.displayName}
+              </p>
+            </div>
+          ))}
       </>
     );
   };
@@ -190,6 +222,14 @@ const RolesPage = () => {
   };
 
   const getRoleUsers = (users: Array<EntityReference>) => {
+    if (!users.length) {
+      return (
+        <div className="tw-text-center tw-py-5">
+          <p className="tw-text-base">No Users Added.</p>
+        </div>
+      );
+    }
+
     return (
       <div className="tw-grid tw-grid-cols-4 tw-gap-x-2">
         {users.map((user) => (
@@ -205,6 +245,41 @@ const RolesPage = () => {
         ))}
       </div>
     );
+  };
+
+  const onNewDataChange = (data: Role, forceSet = false) => {
+    if (errorData || forceSet) {
+      const errData: { [key: string]: string } = {};
+      if (!data.name.trim()) {
+        errData['name'] = 'Name is required';
+      } else if (
+        !isUndefined(
+          roles.find((item) => toLower(item.name) === toLower(data.name))
+        )
+      ) {
+        errData['name'] = 'Name already exists';
+      } else if (data.name.length < 1 || data.name.length > 128) {
+        errData['name'] = 'Name size must be between 1 and 128';
+      }
+      if (!data.displayName?.trim()) {
+        errData['displayName'] = 'Display name is required';
+      } else if (data.displayName.length < 1 || data.displayName.length > 128) {
+        errData['displayName'] = 'Display name size must be between 1 and 128';
+      }
+      setErrorData(errData);
+
+      return errData;
+    }
+
+    return {};
+  };
+
+  const onDescriptionEdit = (): void => {
+    setIsEditable(true);
+  };
+
+  const onCancel = (): void => {
+    setIsEditable(false);
   };
 
   const fetchPolicy = (id: string) => {
@@ -241,6 +316,71 @@ const RolesPage = () => {
         });
       })
       .finally(() => setIsLoading(false));
+  };
+
+  const createNewRole = (data: Role) => {
+    const errData = onNewDataChange(data, true);
+    const { description, name, displayName } = data;
+    if (!Object.values(errData).length) {
+      createRole({
+        description: description as string,
+        name,
+        displayName: displayName as string,
+      })
+        .then((res: AxiosResponse) => {
+          if (res.data) {
+            fetchRoles();
+          }
+        })
+        .catch((error: AxiosError) => {
+          showToast({
+            variant: 'error',
+            body: error.message ?? 'Something went wrong!',
+          });
+        })
+        .finally(() => {
+          setIsAddingRole(false);
+        });
+    }
+  };
+
+  const fetchCurrentRole = (name: string, update = false) => {
+    if (currentRole?.name !== name || update) {
+      setIsLoading(true);
+      getRoleByName(name, ['users', 'policy'])
+        .then((res: AxiosResponse) => {
+          setCurrentRole(res.data);
+          if (roles.length <= 0) {
+            fetchRoles();
+          }
+        })
+        .catch((err: AxiosError) => {
+          if (err?.response?.data.code) {
+            setError(ERROR404);
+          }
+        })
+        .finally(() => {
+          setIsLoading(false);
+        });
+    }
+  };
+
+  const onDescriptionUpdate = (updatedHTML: string) => {
+    if (currentRole?.description !== updatedHTML) {
+      const updatedRole = { ...currentRole, description: updatedHTML };
+      const jsonPatch = compare(currentRole as Role, updatedRole);
+      updateRole(currentRole?.id as string, jsonPatch).then(
+        (res: AxiosResponse) => {
+          if (res.data) {
+            fetchCurrentRole(res.data.name, true);
+          }
+        }
+      );
+
+      setIsEditable(false);
+    } else {
+      setIsEditable(false);
+    }
   };
 
   useEffect(() => {
@@ -293,7 +433,10 @@ const RolesPage = () => {
                       <Description
                         description={currentRole?.description || ''}
                         entityName={currentRole?.displayName}
-                        isEdit={false}
+                        isEdit={isEditable}
+                        onCancel={onCancel}
+                        onDescriptionEdit={onDescriptionEdit}
+                        onDescriptionUpdate={onDescriptionUpdate}
                       />
                     </div>
                     {getTabs()}
@@ -314,12 +457,36 @@ const RolesPage = () => {
                   <ErrorPlaceHolder>
                     <p className="w-text-lg tw-text-center">No Roles Added.</p>
                     <p className="w-text-lg tw-text-center">
-                      <button className="link-text tw-underline">
-                        Click here
-                      </button>
-                      {' to add new Role'}
+                      <NonAdminAction
+                        position="bottom"
+                        title={TITLE_FOR_NON_ADMIN_ACTION}>
+                        <button
+                          className="link-text tw-underline"
+                          onClick={() => {
+                            setErrorData(undefined);
+                            setIsAddingRole(true);
+                          }}>
+                          Click here
+                        </button>
+                        {' to add new Role'}
+                      </NonAdminAction>
                     </p>
                   </ErrorPlaceHolder>
+                )}
+                {isAddingRole && (
+                  <FormModal
+                    errorData={errorData}
+                    form={Form}
+                    header="Adding new role"
+                    initialData={{
+                      name: '',
+                      description: '',
+                      displayName: '',
+                    }}
+                    onCancel={() => setIsAddingRole(false)}
+                    onChange={(data) => onNewDataChange(data as Role)}
+                    onSave={(data) => createNewRole(data as Role)}
+                  />
                 )}
               </div>
             )}
