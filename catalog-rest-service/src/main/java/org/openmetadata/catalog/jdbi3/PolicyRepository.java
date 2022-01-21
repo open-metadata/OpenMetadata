@@ -21,7 +21,6 @@ import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
@@ -49,7 +48,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
       new Fields(PolicyResource.FIELD_LIST, "displayName,description,owner,policyUrl,enabled,rules,location");
   public static final String ENABLED = "enabled";
 
-  private PolicyEvaluator policyEvaluator;
+  private final PolicyEvaluator policyEvaluator;
 
   public PolicyRepository(CollectionDAO dao) {
     super(
@@ -242,10 +241,6 @@ public class PolicyRepository extends EntityRepository<Policy> {
       }
     }
     return rules;
-  }
-
-  public static List<Object> getRuleObjects(List<Rule> rules) {
-    return rules.stream().map(Object.class::cast).collect(Collectors.toList());
   }
 
   private void setLocation(Policy policy, EntityReference location) {
