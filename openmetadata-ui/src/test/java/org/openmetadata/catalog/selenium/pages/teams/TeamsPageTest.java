@@ -107,8 +107,12 @@ public class TeamsPageTest {
     // Select the created listed team
     Events.click(webDriver, By.cssSelector("[data-testid='edit-description']"));
     wait.until(ExpectedConditions.elementToBeClickable(By.xpath(enterDescription)));
-    Events.sendKeys(webDriver, By.xpath(enterDescription), faker.address().toString());
+    Events.sendKeys(webDriver, By.xpath(enterDescription), faker.address().toString() + "[google](www.google.com)");
     Events.click(webDriver, By.cssSelector("[data-testid='save']"));
+    Events.click(webDriver, By.xpath("//div[@data-testid='description']//a"));
+    Thread.sleep(2000);
+    String currentUrl = webDriver.getCurrentUrl();
+    Assert.assertEquals(currentUrl, "https://www.google.com/?gws_rd=ssl");
   }
 
   @Test
