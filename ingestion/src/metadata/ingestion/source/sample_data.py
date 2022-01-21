@@ -38,10 +38,6 @@ from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.models.table_metadata import Chart, Dashboard
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
-from metadata.ingestion.source.access_control_policies import (
-    AccessControlPoliciesConfig,
-    AccessControlPoliciesSource,
-)
 from metadata.utils.helpers import (
     get_dashboard_service_or_create,
     get_database_service_or_create,
@@ -264,13 +260,6 @@ class SampleDataSource(Source[Entity]):
         self.models = json.load(
             open(self.config.sample_data_folder + "/models/models.json", "r")
         )
-        policies_config = AccessControlPoliciesConfig(
-            policies_file=self.config.sample_data_folder
-            + "/policies/access_control.json"
-        )
-        self.policies_source = AccessControlPoliciesSource(
-            policies_config, metadata_config, ctx
-        )
 
     @classmethod
     def create(cls, config_dict, metadata_config_dict, ctx):
@@ -279,7 +268,7 @@ class SampleDataSource(Source[Entity]):
         return cls(config, metadata_config, ctx)
 
     def prepare(self):
-        self.policies_source.prepare()
+        pass
 
     def next_record(self) -> Iterable[Entity]:
         yield from self.ingest_locations()
@@ -292,7 +281,6 @@ class SampleDataSource(Source[Entity]):
         yield from self.ingest_lineage()
         yield from self.ingest_users()
         yield from self.ingest_mlmodels()
-        yield from self.policies_source.next_record()
 
     def ingest_locations(self) -> Iterable[Location]:
         for location in self.locations["locations"]:
