@@ -11,9 +11,11 @@
  *  limitations under the License.
  */
 
+import { AxiosResponse } from 'axios';
 import classNames from 'classnames';
 import { observer } from 'mobx-react';
-import React, { useState } from 'react';
+import React, { Fragment, useEffect, useState } from 'react';
+import { getPolicy, getRoles } from '../../axiosAPIs/rolesAPI';
 import { Button } from '../../components/buttons/Button/Button';
 import Description from '../../components/common/description/Description';
 import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
@@ -22,89 +24,25 @@ import PageContainerV1 from '../../components/containers/PageContainerV1';
 import PageLayout from '../../components/containers/PageLayout';
 import Loader from '../../components/Loader/Loader';
 import { TITLE_FOR_NON_ADMIN_ACTION } from '../../constants/constants';
-import {
-  Operation,
-  Rule,
-} from '../../generated/entity/policies/accessControl/rule';
+import { Rule } from '../../generated/entity/policies/accessControl/rule';
 import { Role } from '../../generated/entity/teams/role';
+import { EntityReference } from '../../generated/entity/teams/user';
 import { useAuth } from '../../hooks/authHooks';
+import useToastContext from '../../hooks/useToastContext';
 import { getActiveCatClass, isEven } from '../../utils/CommonUtils';
 import SVGIcons from '../../utils/SvgUtils';
-
-const RolesData = [
-  {
-    name: 'data steward',
-    displayName: 'Data Steward',
-    description: 'description for data steward role',
-    id: 'id1',
-    policy: [
-      {
-        allow: true,
-        operation: Operation.UpdateDescription,
-        enabled: false,
-        name: 'Update Description',
-      },
-      {
-        allow: false,
-        operation: Operation.UpdateTags,
-        enabled: true,
-        name: 'Update Tags',
-      },
-      {
-        allow: true,
-        operation: Operation.SuggestDescription,
-        enabled: false,
-        name: 'Suggest Description',
-      },
-      {
-        allow: true,
-        operation: Operation.SuggestTags,
-        enabled: true,
-        name: 'Suggest Tags',
-      },
-    ],
-    users: [],
-  },
-  {
-    name: 'data consumer',
-    displayName: 'Data Consumer',
-    description: 'description for data consumer role',
-    id: 'id2',
-    policy: [
-      {
-        allow: true,
-        operation: Operation.UpdateDescription,
-        enabled: false,
-        name: 'Update Description',
-      },
-      {
-        allow: true,
-        operation: Operation.SuggestDescription,
-        enabled: false,
-        name: 'Suggest Description',
-      },
-      {
-        allow: true,
-        operation: Operation.SuggestTags,
-        enabled: true,
-        name: 'Suggest Tags',
-      },
-    ],
-    users: [],
-  },
-];
-
-interface RoleData extends Role {
-  policy: Array<Rule>;
-  users: Array<string>;
-}
+import UserCard from '../teams/UserCard';
 
 const RolesPage = () => {
+  const showToast = useToastContext();
+  const [roles, setRoles] = useState<Array<Role>>([]);
   const { isAuthDisabled, isAdminUser } = useAuth();
-  const [currentRole, setCurrentRole] = useState<RoleData>(RolesData[0]);
-  const [error] = useState<string>('');
-  const [isLoading] = useState<boolean>(false);
+  const [currentRole, setCurrentRole] = useState<Role>();
+  const [currentPolicy, setCurrentPolicy] = useState<{ rules: Array<Rule> }>();
+  const [error, setError] = useState<string>('');
   const [currentTab, setCurrentTab] = useState<number>(1);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isLoadingPolicy, setIsLoadingPolicy] = useState<boolean>(false);
 
   const getActiveTabClass = (tab: number) => {
     return tab === currentTab ? 'active' : '';
@@ -151,27 +89,34 @@ const RolesPage = () => {
             <i aria-hidden="true" className="fa fa-plus" />
           </Button>
         </div>
-        {RolesData &&
-          RolesData.map((role) => (
-            <div
-              className={`tw-group tw-text-grey-body tw-cursor-pointer tw-text-body tw-mb-3 tw-flex tw-justify-between ${getActiveCatClass(
-                role.name,
-                currentRole?.name
-              )}`}
-              key={role.name}
-              onClick={() => setCurrentRole(role)}>
-              <p
-                className="tag-category label-category tw-self-center tw-truncate tw-w-52"
-                title={role.displayName}>
-                {role.displayName}
-              </p>
-            </div>
-          ))}
+        {roles.map((role) => (
+          <div
+            className={`tw-group tw-text-grey-body tw-cursor-pointer tw-text-body tw-mb-3 tw-flex tw-justify-between ${getActiveCatClass(
+              role.name,
+              currentRole?.name
+            )}`}
+            key={role.name}
+            onClick={() => setCurrentRole(role)}>
+            <p
+              className="tag-category label-category tw-self-center tw-truncate tw-w-52"
+              title={role.displayName}>
+              {role.displayName}
+            </p>
+          </div>
+        ))}
       </>
     );
   };
 
   const getPolicyRules = (rules: Array<Rule>) => {
+    if (!rules.length) {
+      return (
+        <div className="tw-text-center tw-py-5">
+          <p className="tw-text-base">No Rules Added.</p>
+        </div>
+      );
+    }
+
     return (
       <div className="tw-bg-white">
         <table className="tw-w-full tw-overflow-x-auto" data-testid="table">
@@ -244,6 +189,70 @@ const RolesPage = () => {
     );
   };
 
+  const getRoleUsers = (users: Array<EntityReference>) => {
+    return (
+      <div className="tw-grid tw-grid-cols-4 tw-gap-x-2">
+        {users.map((user) => (
+          <UserCard
+            isIconVisible
+            item={{
+              description: user.displayName as string,
+              name: user.name as string,
+              id: user.id,
+            }}
+            key={user.id}
+          />
+        ))}
+      </div>
+    );
+  };
+
+  const fetchPolicy = (id: string) => {
+    setIsLoadingPolicy(true);
+    getPolicy(
+      id,
+      'displayName,description,owner,policyUrl,enabled,rules,location'
+    )
+      .then((res: AxiosResponse) => {
+        setCurrentPolicy(res.data);
+      })
+      .catch(() => {
+        showToast({
+          variant: 'error',
+          body: 'Error while getting policy',
+        });
+      })
+      .finally(() => setIsLoadingPolicy(false));
+  };
+
+  const fetchRoles = () => {
+    setIsLoading(true);
+    getRoles(['policy', 'users'])
+      .then((res: AxiosResponse) => {
+        const { data } = res.data;
+        setRoles(data);
+        setCurrentRole(data[0]);
+      })
+      .catch(() => {
+        setError('Error while getting roles');
+        showToast({
+          variant: 'error',
+          body: 'Error while getting roles',
+        });
+      })
+      .finally(() => setIsLoading(false));
+  };
+
+  useEffect(() => {
+    fetchRoles();
+  }, []);
+
+  useEffect(() => {
+    if (currentRole) {
+      fetchPolicy(currentRole?.policy?.id as string);
+    }
+  }, [currentRole]);
+
   return (
     <>
       {error ? (
@@ -255,7 +264,7 @@ const RolesPage = () => {
               <Loader />
             ) : (
               <div className="tw-pb-3" data-testid="role-container">
-                {RolesData.length > 0 ? (
+                {roles.length > 0 ? (
                   <>
                     <div
                       className="tw-flex tw-justify-between tw-items-center"
@@ -287,10 +296,18 @@ const RolesPage = () => {
                         isEdit={false}
                       />
                     </div>
-
                     {getTabs()}
-                    {currentTab === 1
-                      ? getPolicyRules(currentRole.policy)
+                    {currentTab === 1 ? (
+                      <Fragment>
+                        {isLoadingPolicy ? (
+                          <Loader />
+                        ) : (
+                          <>{getPolicyRules(currentPolicy?.rules ?? [])}</>
+                        )}
+                      </Fragment>
+                    ) : null}
+                    {currentTab === 2
+                      ? getRoleUsers(currentRole?.users ?? [])
                       : null}
                   </>
                 ) : (
