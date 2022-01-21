@@ -1,7 +1,7 @@
 {
   "$id": "https://open-metadata.org/schema/entity/type/storage.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "description": "Definitions related to Storage Service",
+  "description": "Definitions related to Storage Service.",
   "definitions": {
     "storageServiceType": {
       "description": "Type of storage service such as S3, GCS, HDFS...",
@@ -29,7 +29,7 @@
       ]
     },
     "storageClassType": {
-      "description": "Type of storage class for the storage service",
+      "description": "Type of storage class for the storage service.",
       "type": "string",
       "javaType": "org.openmetadata.catalog.type.StorageClassType",
       "oneOf": [
@@ -46,7 +46,7 @@
     },
     "s3StorageClass": {
       "$comment": "https://sdk.amazonaws.com/java/api/latest/software/amazon/awssdk/services/s3/model/StorageClass.html",
-      "description": "Type of storage class offered by S3",
+      "description": "Type of storage class offered by S3.",
       "type": "string",
       "javaType": "org.openmetadata.catalog.type.S3StorageClassType",
       "enum": [
@@ -88,7 +88,7 @@
     },
     "gcsStorageClass": {
       "$comment": "https://googleapis.dev/java/google-cloud-storage/latest/index.html",
-      "description": "Type of storage class offered by GCS",
+      "description": "Type of storage class offered by GCS.",
       "type": "string",
       "javaType": "org.openmetadata.catalog.type.GCSStorageClassType",
       "enum": [
@@ -126,7 +126,7 @@
     },
     "abfsStorageClass": {
       "$comment": "https://docs.microsoft.com/en-us/java/api/com.azure.storage.blob.models.accesstier?view=azure-java-stable",
-      "description": "Type of storage class offered by ABFS",
+      "description": "Type of storage class offered by ABFS.",
       "type": "string",
       "javaType": "org.openmetadata.catalog.type.ABFSStorageClassType",
       "enum": [

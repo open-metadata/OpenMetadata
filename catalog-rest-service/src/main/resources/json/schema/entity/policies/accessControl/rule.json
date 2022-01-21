@@ -8,7 +8,7 @@
   "definitions": {
     "operation": {
       "javaType": "org.openmetadata.catalog.type.MetadataOperation",
-      "description": "This schema defines all possible operations on metadata of data entities",
+      "description": "This schema defines all possible operations on metadata of data entities.",
       "type": "string",
       "enum": [
         "SuggestDescription",
@@ -32,17 +32,17 @@
       "type": "string"
     },
     "entityTypeAttr": {
-      "description": "Entity type that the rule should match on",
+      "description": "Entity type that the rule should match on.",
       "type": "string",
       "default": null
     },
     "entityTagAttr": {
-      "description": "Entity tag that the rule should match on",
+      "description": "Entity tag that the rule should match on.",
       "$ref": "../../../type/tagLabel.json#/definitions/tagFQN",
       "default": null
     },
     "userRoleAttr": {
-      "description": "Role of the user that the rule should match on",
+      "description": "Role of the user that the rule should match on.",
       "$ref": "../../teams/team.json#/definitions/teamName",
       "default": null
     },
