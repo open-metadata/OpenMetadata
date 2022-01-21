@@ -61,6 +61,7 @@ import org.openmetadata.catalog.jdbi3.PolicyRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
+import org.openmetadata.catalog.security.policyevaluator.PolicyEvaluator;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Include;
@@ -96,8 +97,13 @@ public class PolicyResource {
     this.authorizer = authorizer;
   }
 
-  @SuppressWarnings("unused") // Method used for reflection
+  @SuppressWarnings("unused") // Method is used for reflection
   public void initialize(CatalogApplicationConfig config) throws IOException {
+    // Set up the PolicyEvaluator, before loading seed data.
+    PolicyEvaluator policyEvaluator = PolicyEvaluator.getInstance();
+    policyEvaluator.setPolicyRepository(dao);
+    // Load any existing rules from database, before loading seed data.
+    policyEvaluator.refreshRules();
     dao.initSeedDataFromResources();
   }
 
