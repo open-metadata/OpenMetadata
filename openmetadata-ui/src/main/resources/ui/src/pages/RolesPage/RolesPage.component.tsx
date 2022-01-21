@@ -16,7 +16,7 @@ import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { isUndefined, toLower } from 'lodash';
 import { observer } from 'mobx-react';
-import { FormErrorData, Policy } from 'Models';
+import { FormErrorData } from 'Models';
 import React, { Fragment, useEffect, useState } from 'react';
 import {
   createRole,
@@ -50,6 +50,7 @@ import SVGIcons from '../../utils/SvgUtils';
 import Form from '../teams/Form';
 import UserCard from '../teams/UserCard';
 import AddRuleModal from './AddRuleModal';
+import { Policy } from './policy.interface';
 
 const getActiveTabClass = (tab: number, currentTab: number) => {
   return tab === currentTab ? 'active' : '';

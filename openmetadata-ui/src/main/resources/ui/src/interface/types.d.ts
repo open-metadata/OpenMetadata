@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { Rule } from '../generated/entity/policies/accessControl/rule';
 declare module 'Models' {
   import { TagLabel } from '../generated/type/tagLabel';
 
@@ -436,20 +435,5 @@ declare module 'Models' {
 
   export interface FormErrorData {
     [key: string]: string | undefined;
-  }
-  export interface Policy {
-    id: string;
-    name: string;
-    fullyQualifiedName: string;
-    displayName: string;
-    description: string;
-    href: string;
-    policyType: string;
-    enabled: boolean;
-    version: number;
-    updatedAt: number;
-    updatedBy: string;
-    rules: Rule[];
-    deleted: boolean;
   }
 }
