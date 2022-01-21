@@ -54,7 +54,9 @@ const RichTextEditorPreviewer = ({
             );
           },
           a: ({ node, children, ...props }) => {
-            if (isValidUrl(props.href as string)) {
+            if (!isValidUrl(props.href as string)) {
+              return <span>{children}</span>;
+            } else {
               let link = '';
               const href = props.href;
               if (
@@ -70,8 +72,6 @@ const RichTextEditorPreviewer = ({
                   {children}
                 </Link>
               );
-            } else {
-              return <span>{children}</span>;
             }
           },
         }}
