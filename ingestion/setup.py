@@ -44,6 +44,9 @@ base_requirements = {
     "cryptography",
     "Jinja2>=2.11.3, <3.0",
     "PyYAML",
+    "opentelemetry-exporter-otlp-proto-http>=1.8.0",
+    "opentelemetry-exporter-jaeger",
+    "opentelemetry-sdk-extension-aws",
 }
 
 report_requirements = {
