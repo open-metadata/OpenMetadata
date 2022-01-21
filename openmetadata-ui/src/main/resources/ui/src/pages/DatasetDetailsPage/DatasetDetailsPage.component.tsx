@@ -114,6 +114,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
   const [tableFQN, setTableFQN] = useState<string>(
     getPartialNameFromFQN(datasetFQN, ['service', 'database', 'table'], '.')
   );
+  const [deleted, setDeleted] = useState<boolean>(false);
 
   const activeTabHandler = (tabValue: number) => {
     const currentTabIndex = tabValue - 1;
@@ -289,6 +290,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
           name,
           columns,
           database,
+          deleted,
           owner,
           usageSummary,
           followers,
@@ -307,6 +309,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
         setTier(getTierTags(tags));
         setOwner(getOwnerFromId(owner?.id));
         setFollowers(followers);
+        setDeleted(deleted);
         setSlashedTableName([
           {
             name: service.name,
@@ -378,6 +381,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
           columnsUpdateHandler={columnsUpdateHandler}
           dataModel={tableDetails.dataModel}
           datasetFQN={tableFQN}
+          deleted={deleted}
           description={description}
           descriptionUpdateHandler={descriptionUpdateHandler}
           entityLineage={entityLineage}
