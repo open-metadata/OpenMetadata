@@ -35,6 +35,12 @@ jobs:
         java-version: '11'
         distribution: 'adopt'
 
+    - name: Install open-metadata dependencies
+      run: |
+        python3 -m venv env
+        source env/bin/activate
+        make install_test install_dev generate
+
     - name: Start Server and Ingest Sample Data
       run: ./docker/run_local_docker.sh
       timeout-minutes: 20
@@ -47,12 +53,6 @@ jobs:
     - name: Install Ubuntu dependencies
       run: |
         sudo apt-get install -y libsasl2-dev unixodbc-dev python3-venv
-
-    - name: Install open-metadata dependencies
-      run: |
-        python3 -m venv env
-        source env/bin/activate
-        make install_test install_dev generate
 
     - name: Run Python Tests & record coverage
       run: |
