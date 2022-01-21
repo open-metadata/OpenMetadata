@@ -9,7 +9,7 @@ authenticationConfiguration:
   provider: "okta"
   publicKey: "https://{okta_domain}/oauth2/default/v1/keys"
   authority: "{okta_domain}"
-  clientId: "{Client Secret}"
+  clientId: "{Client Id}"
   callbackUrl: "http://localhost:8585/callback"
 ```
 
@@ -24,5 +24,5 @@ authorizerConfiguration:
     - "suresh"
   botPrincipals:
     - "ingestion-bot"
-  prinicipalDomain: "open-metadata.org"
+  principalDomain: "open-metadata.org"
 ```
