@@ -41,11 +41,7 @@ import { getTotalEntityCountByType } from '../../utils/EntityUtils';
 import { getFilterString } from '../../utils/FilterUtils';
 
 const ExplorePage: FunctionComponent = () => {
-  const initialFilter = getFilterString(
-    getQueryParam(location.search),
-    [],
-    true
-  );
+  const initialFilter = getFilterString(getQueryParam(location.search));
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingForData, setIsLoadingForData] = useState(true);
   const [error, setError] = useState<string>('');

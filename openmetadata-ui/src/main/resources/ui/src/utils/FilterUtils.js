@@ -36,3 +36,13 @@ export const getFilterString = (
 
   return filterString.join(' AND ');
 };
+
+export const getFilterCount = (filterData) => {
+  return Object.values(filterData).reduce((count, currentValue) => {
+    return count + currentValue.length;
+  }, 0);
+};
+
+export const getFilterKey = (key) => {
+  return key === 'service_type' ? 'service' : key;
+};

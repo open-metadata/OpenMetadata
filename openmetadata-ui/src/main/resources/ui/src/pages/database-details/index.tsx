@@ -24,7 +24,6 @@ import {
   getDatabaseDetailsByFQN,
   patchDatabaseDetails,
 } from '../../axiosAPIs/databaseAPI';
-import { getServiceById } from '../../axiosAPIs/serviceAPI';
 import { getDatabaseTables } from '../../axiosAPIs/tableAPI';
 import Description from '../../components/common/description/Description';
 import NextPrevious from '../../components/common/next-previous/NextPrevious';
@@ -57,7 +56,7 @@ const DatabaseDetails: FunctionComponent = () => {
   const { databaseFQN } = useParams() as Record<string, string>;
   const [isLoading, setIsLoading] = useState(true);
   const [database, setDatabase] = useState<Database>();
-  const [serviceName, setServiceName] = useState<string>();
+  const [serviceType, setServiceType] = useState<string>();
   const [tableData, setTableData] = useState<Array<Table>>([]);
 
   const [databaseName, setDatabaseName] = useState<string>(
@@ -123,37 +122,32 @@ const DatabaseDetails: FunctionComponent = () => {
 
   const getDetailsByFQN = () => {
     getDatabaseDetailsByFQN(databaseFQN).then((res: AxiosResponse) => {
-      const { description, id, name, service } = res.data;
+      const { description, id, name, service, serviceType } = res.data;
       setDatabase(res.data);
       setDescription(description);
       setDatabaseId(id);
       setDatabaseName(name);
 
-      getServiceById('databaseServices', service?.id).then(
-        (resService: AxiosResponse) => {
-          setServiceName(resService.data.name);
-          setSlashedTableName([
-            {
-              name: resService.data.name,
-              url: resService.data.name
-                ? getServiceDetailsPath(
-                    resService.data.name,
-                    resService.data.serviceType,
-                    ServiceCategory.DATABASE_SERVICES
-                  )
-                : '',
-              imgSrc: resService.data.serviceType
-                ? serviceTypeLogo(resService.data.serviceType)
-                : undefined,
-            },
-            {
-              name: name,
-              url: '',
-              activeTitle: true,
-            },
-          ]);
-        }
-      );
+      setServiceType(serviceType);
+
+      setSlashedTableName([
+        {
+          name: service.name,
+          url: service.name
+            ? getServiceDetailsPath(
+                service.name,
+                serviceType,
+                ServiceCategory.DATABASE_SERVICES
+              )
+            : '',
+          imgSrc: serviceType ? serviceTypeLogo(serviceType) : undefined,
+        },
+        {
+          name: name,
+          url: '',
+          activeTitle: true,
+        },
+      ]);
     });
     fetchDatabaseTablesAndDBTModels();
   };
@@ -213,7 +207,7 @@ const DatabaseDetails: FunctionComponent = () => {
       history.push(
         `${getExplorePathWithSearch(
           appState.inPageSearchText
-        )}?database=${databaseName}&service=${serviceName}`
+        )}?database=${databaseName}&service_type=${serviceType}`
       );
     }
   }, [appState.inPageSearchText]);

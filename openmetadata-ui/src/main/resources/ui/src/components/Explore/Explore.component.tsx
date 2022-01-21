@@ -12,7 +12,7 @@
  */
 
 import classNames from 'classnames';
-import { cloneDeep } from 'lodash';
+import { cloneDeep, isEmpty } from 'lodash';
 import {
   AggregationType,
   Bucket,
@@ -53,10 +53,13 @@ import {
 } from '../../constants/explore.constants';
 import { SearchIndex } from '../../enums/search.enum';
 import { usePrevious } from '../../hooks/usePrevious';
-import { getAggregationList } from '../../utils/AggregationUtils';
+import {
+  getAggregationList,
+  getAggregationListFromQS,
+} from '../../utils/AggregationUtils';
 import { formatDataResponse } from '../../utils/APIUtils';
 import { getCountBadge } from '../../utils/CommonUtils';
-import { getFilterString } from '../../utils/FilterUtils';
+import { getFilterCount, getFilterString } from '../../utils/FilterUtils';
 import { dropdownIcon as DropDownIcon } from '../../utils/svgconstant';
 import SVGIcons from '../../utils/SvgUtils';
 import PageLayout from '../containers/PageLayout';
@@ -100,7 +103,9 @@ const Explore: React.FC<ExploreProps> = ({
   const [fieldList, setFieldList] =
     useState<Array<{ name: string; value: string }>>(tableSortingFields);
   const [isEntityLoading, setIsEntityLoading] = useState(true);
-  const [isFilterSelected, setIsFilterSelected] = useState(false);
+  const [isFilterSet, setIsFilterSet] = useState<boolean>(
+    !isEmpty(getQueryParam(location.search))
+  );
   const [connectionError] = useState(error.includes('Connection refused'));
   const isMounting = useRef(true);
   const forceSetAgg = useRef(false);
@@ -117,7 +122,7 @@ const Explore: React.FC<ExploreProps> = ({
         if (filterType.includes(selectedFilter)) {
           return { ...prevState };
         }
-        setIsFilterSelected(true);
+        setIsFilterSet(true);
 
         return {
           ...prevState,
@@ -132,30 +137,26 @@ const Explore: React.FC<ExploreProps> = ({
       const index = filter.indexOf(selectedFilter);
       filter.splice(index, 1);
       setFilters((prevState) => {
-        const selectedFilterCount = Object.values(prevState).reduce(
-          (count, currentValue) => {
-            return count + currentValue.length;
-          },
-          0
-        );
-        setIsFilterSelected(selectedFilterCount >= 1);
+        const selectedFilterCount = getFilterCount(prevState);
+        setIsFilterSet(selectedFilterCount >= 1);
 
         return { ...prevState, [type]: filter };
       });
     }
   };
 
-  const onClearFilterHandler = (type: string[]) => {
+  const onClearFilterHandler = (type: string[], isForceClear = false) => {
     setFilters((prevFilters) => {
       const updatedFilter = type.reduce((filterObj, type) => {
         return { ...filterObj, [type]: [] };
       }, {});
-      setIsFilterSelected(false);
+      const queryParamFilters = getQueryParam(location.search);
+      setIsFilterSet(false);
 
       return {
         ...prevFilters,
-        ...getQueryParam(location.search),
         ...updatedFilter,
+        ...(isForceClear ? {} : queryParamFilters),
       };
     });
   };
@@ -356,8 +357,8 @@ const Explore: React.FC<ExploreProps> = ({
     return selectedTab === currentTab ? 'active' : '';
   };
 
-  const resetFilters = () => {
-    onClearFilterHandler(visibleFilters);
+  const resetFilters = (isForceReset = false) => {
+    onClearFilterHandler(visibleFilters, isForceReset);
   };
 
   const getTabCount = (index: string, isActive: boolean, className = '') => {
@@ -398,12 +399,12 @@ const Explore: React.FC<ExploreProps> = ({
             <div className="tw-w-64 tw-mr-5 tw-flex-shrink-0">
               <Button
                 className={classNames('tw-underline tw-mt-5', {
-                  'tw-invisible': !isFilterSelected,
+                  'tw-invisible': !getFilterCount(filters),
                 })}
                 size="custom"
                 theme="primary"
                 variant="link"
-                onClick={resetFilters}>
+                onClick={() => resetFilters(true)}>
                 Clear All
               </Button>
             </div>
@@ -443,7 +444,7 @@ const Explore: React.FC<ExploreProps> = ({
 
   const getData = () => {
     if (!isMounting.current && previsouIndex === getCurrentIndex(tab)) {
-      forceSetAgg.current = !isFilterSelected;
+      forceSetAgg.current = !isFilterSet;
       fetchTableData();
     }
   };
@@ -494,7 +495,7 @@ const Explore: React.FC<ExploreProps> = ({
             ? getAggregationList(
                 searchResult.resSearchResults.data.aggregations
               )
-            : []
+            : getAggregationListFromQS(location.search)
         );
       } else {
         const aggServiceType = getAggregationList(
