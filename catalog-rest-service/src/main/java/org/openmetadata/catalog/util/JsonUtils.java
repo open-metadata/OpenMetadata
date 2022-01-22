@@ -100,6 +100,13 @@ public final class JsonUtils {
     return list;
   }
 
+  public static <T> T convertValue(Object object, Class<T> clz) {
+    if (object == null) {
+      return null;
+    }
+    return OBJECT_MAPPER.convertValue(object, clz);
+  }
+
   /** Applies the patch on original object and returns the updated object */
   public static <T> T applyPatch(T original, JsonPatch patch, Class<T> clz) {
     JsonStructure targetJson = JsonUtils.getJsonStructure(original);

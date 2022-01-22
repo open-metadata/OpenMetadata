@@ -65,10 +65,7 @@ def create_delete_table(client: OpenMetadata):
 
 def create_delete_database(client: OpenMetadata):
     data = {
-        "jdbc": {
-            "connectionUrl": "mysql://localhost/catalog_db",
-            "driverClass": "jdbc",
-        },
+        "databaseConnection": {"hostPort": "localhost"},
         "name": "temp_local_mysql",
         "serviceType": "MySQL",
         "description": "local mysql env",

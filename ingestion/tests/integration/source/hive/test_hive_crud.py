@@ -92,7 +92,7 @@ def create_delete_table(client: OpenMetadata, databases: List[Database]):
 
 def create_delete_database(client: OpenMetadata, databases: List[Database]):
     data = {
-        "jdbc": {"connectionUrl": "hive://localhost/default", "driverClass": "jdbc"},
+        "databaseConnection": {"hostPort": "localhost"},
         "name": "temp_local_hive",
         "serviceType": "Hive",
         "description": "local hive env",

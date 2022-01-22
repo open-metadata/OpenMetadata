@@ -453,6 +453,7 @@ const TeamsPage = () => {
                       className="tw-mb-3 tw--ml-5"
                       data-testid="description-container">
                       <Description
+                        blurWithBodyBG
                         description={currentTeam?.description || ''}
                         entityName={currentTeam?.displayName}
                         isEdit={isEditable}

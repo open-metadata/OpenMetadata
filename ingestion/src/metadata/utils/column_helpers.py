@@ -127,6 +127,7 @@ _column_string_mapping = {
     "XML": "BINARY",
     "XMLTYPE": "BINARY",
     "CURSOR": "BINARY",
+    "TIMESTAMP_NTZ": "TIMESTAMP",
     "TIMESTAMP_LTZ": "TIMESTAMP",
     "TIMESTAMP_TZ": "TIMESTAMP",
 }

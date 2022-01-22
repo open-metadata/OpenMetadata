@@ -72,6 +72,38 @@
           "name": "Druid"
         }
       ]
+    },
+    "databaseConnection": {
+      "type": "object",
+      "javaType": "org.openmetadata.catalog.type.DatabaseConnection",
+      "description": "Database Connection.",
+      "properties": {
+        "username": {
+          "description": "username to connect  to the data source.",
+          "type": "string"
+        },
+        "password": {
+          "description": "password to connect  to the data source.",
+          "type": "string"
+        },
+        "hostPort": {
+          "description": "Host and port of the data source.",
+          "type": "string"
+        },
+        "database": {
+          "description": "Database of the data source.",
+          "type": "string"
+        },
+        "connectionOptions": {
+          "description": "Additional connection options that can be sent to service during the connection.",
+          "type": "object"
+        },
+        "connectionArguments": {
+          "description": "Additional connection arguments such as security or protocol configs that can be sent to service during connection.",
+          "type": "object"
+        }
+      },
+      "additionalProperties": false
     }
   },
   "properties": {
@@ -97,6 +129,9 @@
       "description": "Description of a database service instance.",
       "type": "string"
     },
+    "databaseConnection": {
+      "$ref": "#/definitions/databaseConnection"
+    },
     "version" : {
       "description": "Metadata version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
@@ -112,14 +147,6 @@
     "href": {
       "description": "Link to the resource corresponding to this database service.",
       "$ref": "../../type/basic.json#/definitions/href"
-    },
-    "jdbc": {
-      "description": "JDBC connection information.",
-      "$ref": "../../type/jdbcConnection.json#/definitions/jdbcInfo"
-    },
-    "ingestionSchedule": {
-      "description": "Schedule for running metadata ingestion jobs.",
-      "$ref": "../../type/schedule.json"
     },
     "changeDescription": {
       "description" : "Change that lead to this version of the entity.",

@@ -169,9 +169,11 @@ class SampleDataSource(Source[Entity]):
         self.config = config
         self.metadata_config = metadata_config
         self.metadata = OpenMetadata(metadata_config)
+        print("hi")
         self.storage_service_json = json.load(
             open(self.config.sample_data_folder + "/locations/service.json", "r")
         )
+        print("hello")
         self.locations = json.load(
             open(self.config.sample_data_folder + "/locations/locations.json", "r")
         )
