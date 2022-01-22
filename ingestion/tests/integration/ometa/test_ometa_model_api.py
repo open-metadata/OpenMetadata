@@ -15,15 +15,13 @@ OpenMetadata high-level API Model test
 import uuid
 from unittest import TestCase
 
-from metadata.generated.schema.api.data.createDatabase import (
-    CreateDatabaseEntityRequest,
-)
-from metadata.generated.schema.api.data.createMlModel import CreateMlModelEntityRequest
-from metadata.generated.schema.api.data.createTable import CreateTableEntityRequest
+from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
+from metadata.generated.schema.api.data.createMlModel import CreateMlModelRequest
+from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.services.createDatabaseService import (
-    CreateDatabaseServiceEntityRequest,
+    CreateDatabaseServiceRequest,
 )
-from metadata.generated.schema.api.teams.createUser import CreateUserEntityRequest
+from metadata.generated.schema.api.teams.createUser import CreateUserRequest
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.mlmodel import (
     FeatureSource,
@@ -56,7 +54,7 @@ class OMetaModelTest(TestCase):
     assert metadata.health_check()
 
     user = metadata.create_or_update(
-        data=CreateUserEntityRequest(name="random-user", email="random@user.com"),
+        data=CreateUserRequest(name="random-user", email="random@user.com"),
     )
     owner = EntityReference(id=user.id, type="user")
 
@@ -66,7 +64,7 @@ class OMetaModelTest(TestCase):
         algorithm="algo",
         fullyQualifiedName="test-model",
     )
-    create = CreateMlModelEntityRequest(name="test-model", algorithm="algo")
+    create = CreateMlModelRequest(name="test-model", algorithm="algo")
 
     def test_create(self):
         """
@@ -88,7 +86,7 @@ class OMetaModelTest(TestCase):
 
         updated = self.create.dict(exclude_unset=True)
         updated["owner"] = self.owner
-        updated_entity = CreateMlModelEntityRequest(**updated)
+        updated_entity = CreateMlModelRequest(**updated)
 
         res = self.metadata.create_or_update(data=updated_entity)
 
@@ -192,34 +190,34 @@ class OMetaModelTest(TestCase):
         We can add lineage information
         """
 
-        service = CreateDatabaseServiceEntityRequest(
+        service = CreateDatabaseServiceRequest(
             name="test-service-table-ml",
             serviceType=DatabaseServiceType.MySQL,
             databaseConnection=DatabaseConnection(hostPort="localhost:8000"),
         )
         service_entity = self.metadata.create_or_update(data=service)
 
-        create_db = CreateDatabaseEntityRequest(
+        create_db = CreateDatabaseRequest(
             name="test-db-ml",
             service=EntityReference(id=service_entity.id, type="databaseService"),
         )
         create_db_entity = self.metadata.create_or_update(data=create_db)
 
-        create_table1 = CreateTableEntityRequest(
+        create_table1 = CreateTableRequest(
             name="test-ml",
             database=create_db_entity.id,
             columns=[Column(name="education", dataType=DataType.STRING)],
         )
         table1_entity = self.metadata.create_or_update(data=create_table1)
 
-        create_table2 = CreateTableEntityRequest(
+        create_table2 = CreateTableRequest(
             name="another_test-ml",
             database=create_db_entity.id,
             columns=[Column(name="age", dataType=DataType.INT)],
         )
         table2_entity = self.metadata.create_or_update(data=create_table2)
 
-        model = CreateMlModelEntityRequest(
+        model = CreateMlModelRequest(
             name="test-model-lineage",
             algorithm="algo",
             mlFeatures=[

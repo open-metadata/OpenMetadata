@@ -18,7 +18,7 @@ from mlflow.entities import RunData
 from mlflow.entities.model_registry import ModelVersion
 from mlflow.tracking import MlflowClient
 
-from metadata.generated.schema.api.data.createMlModel import CreateMlModelEntityRequest
+from metadata.generated.schema.api.data.createMlModel import CreateMlModelRequest
 from metadata.generated.schema.entity.data.mlmodel import (
     FeatureType,
     MlFeature,
@@ -72,12 +72,12 @@ class MlFlowConnectionConfig(ConfigModel):
     registry_uri: Optional[str]
 
 
-class MlflowSource(Source[CreateMlModelEntityRequest]):
+class MlflowSource(Source[CreateMlModelRequest]):
     """
     Source implementation to ingest MLFlow data.
 
     We will iterate on the registered ML Models
-    and prepare an iterator of CreateMlModelEntityRequest
+    and prepare an iterator of CreateMlModelRequest
     """
 
     def __init__(self, config: MlFlowConnectionConfig, ctx: WorkflowContext):
@@ -98,7 +98,7 @@ class MlflowSource(Source[CreateMlModelEntityRequest]):
         config = MlFlowConnectionConfig.parse_obj(config_dict)
         return cls(config, ctx)
 
-    def next_record(self) -> Iterable[CreateMlModelEntityRequest]:
+    def next_record(self) -> Iterable[CreateMlModelRequest]:
         """
         Fetch all registered models from MlFlow.
 
@@ -125,7 +125,7 @@ class MlflowSource(Source[CreateMlModelEntityRequest]):
 
             self.status.scanned(model.name)
 
-            yield CreateMlModelEntityRequest(
+            yield CreateMlModelRequest(
                 name=model.name,
                 description=model.description,
                 algorithm="mlflow",  # Setting this to a constant

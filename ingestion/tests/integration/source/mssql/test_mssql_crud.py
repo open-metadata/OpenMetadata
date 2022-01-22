@@ -17,11 +17,11 @@ from sqlalchemy.engine import create_engine
 from sqlalchemy.inspection import inspect
 
 from metadata.generated.schema.api.data.createDatabase import (
-    CreateDatabaseEntityRequest,
+    CreateDatabaseRequest,
 )
-from metadata.generated.schema.api.data.createTable import CreateTableEntityRequest
+from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.services.createDatabaseService import (
-    CreateDatabaseServiceEntityRequest,
+    CreateDatabaseServiceRequest,
 )
 from metadata.generated.schema.entity.data.table import Column
 from metadata.generated.schema.type.entityReference import EntityReference
@@ -66,7 +66,7 @@ def create_delete_table(client):
         Column(name="id", columnDataType="INT"),
         Column(name="name", columnDataType="VARCHAR"),
     ]
-    table = CreateTableEntityRequest(
+    table = CreateTableRequest(
         name="test1", columns=columns, database=databases[0].id
     )
     created_table = client.create_or_update_table(table)
@@ -89,9 +89,9 @@ def create_delete_database(client):
         "serviceType": "MSSQL",
         "description": "local mssql env",
     }
-    create_mssql_service = CreateDatabaseServiceEntityRequest(**data)
+    create_mssql_service = CreateDatabaseServiceRequest(**data)
     mssql_service = client.create_database_service(create_mssql_service)
-    create_database_request = CreateDatabaseEntityRequest(
+    create_database_request = CreateDatabaseRequest(
         name="dwh", service=EntityReference(id=mssql_service.id, type="databaseService")
     )
     created_database = client.create_database(create_database_request)

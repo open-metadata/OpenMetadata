@@ -18,11 +18,11 @@ from sqlalchemy.engine import create_engine
 from sqlalchemy.inspection import inspect
 
 from metadata.generated.schema.api.data.createDatabase import (
-    CreateDatabaseEntityRequest,
+    CreateDatabaseRequest,
 )
-from metadata.generated.schema.api.data.createTable import CreateTableEntityRequest
+from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.services.createDatabaseService import (
-    CreateDatabaseServiceEntityRequest,
+    CreateDatabaseServiceRequest,
 )
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import Column
@@ -47,7 +47,7 @@ def create_delete_table(client: OpenMetadata):
         Column(name="id", dataType="INT", dataLength=1),
         Column(name="name", dataType="VARCHAR", dataLength=1),
     ]
-    table = CreateTableEntityRequest(
+    table = CreateTableRequest(
         name="test1", columns=columns, database=databases[0].id
     )
     created_table = client.create_or_update(table)
@@ -70,9 +70,9 @@ def create_delete_database(client: OpenMetadata):
         "serviceType": "MySQL",
         "description": "local mysql env",
     }
-    create_mysql_service = CreateDatabaseServiceEntityRequest(**data)
+    create_mysql_service = CreateDatabaseServiceRequest(**data)
     mysql_service = client.create_or_update(create_mysql_service)
-    create_database_request = CreateDatabaseEntityRequest(
+    create_database_request = CreateDatabaseRequest(
         name="dwh", service=EntityReference(id=mysql_service.id, type="databaseService")
     )
     created_database = client.create_or_update(create_database_request)

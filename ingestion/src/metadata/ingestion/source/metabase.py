@@ -19,7 +19,7 @@ from urllib.parse import quote
 import requests
 from pydantic import SecretStr
 
-from metadata.generated.schema.api.lineage.addLineage import AddLineage
+from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.dashboard import Dashboard as Model_Dashboard
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.dashboardService import (
@@ -183,7 +183,7 @@ class MetabaseSource(Source[Entity]):
                         entity=Model_Dashboard, fqdn=dashboard_fqdn
                     )
                     logger.debug("from entity {}".format(table_entity))
-                    lineage = AddLineage(
+                    lineage = AddLineageRequest(
                         edge=EntitiesEdge(
                             fromEntity=EntityReference(
                                 id=table_entity.id.__root__, type="table"

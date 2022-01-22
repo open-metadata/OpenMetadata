@@ -21,7 +21,7 @@ from typing import Dict, Generic, List, Optional, Type, TypeVar, Union, get_args
 
 from pydantic import BaseModel
 
-from metadata.generated.schema.api.lineage.addLineage import AddLineage
+from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.database import Database
@@ -196,7 +196,7 @@ class OpenMetadata(
         if issubclass(entity, Metrics):
             return "/metrics"
 
-        if issubclass(entity, AddLineage):
+        if issubclass(entity, AddLineageRequest):
             return "/lineage"
 
         if issubclass(entity, Report):

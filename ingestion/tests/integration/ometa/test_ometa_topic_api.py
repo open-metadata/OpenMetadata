@@ -15,11 +15,11 @@ OpenMetadata high-level API Chart test
 import uuid
 from unittest import TestCase
 
-from metadata.generated.schema.api.data.createTopic import CreateTopicEntityRequest
+from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
 from metadata.generated.schema.api.services.createMessagingService import (
-    CreateMessagingServiceEntityRequest,
+    CreateMessagingServiceRequest,
 )
-from metadata.generated.schema.api.teams.createUser import CreateUserEntityRequest
+from metadata.generated.schema.api.teams.createUser import CreateUserRequest
 from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.services.messagingService import (
     MessagingService,
@@ -44,11 +44,11 @@ class OMetaTopicTest(TestCase):
     assert metadata.health_check()
 
     user = metadata.create_or_update(
-        data=CreateUserEntityRequest(name="random-user", email="random@user.com"),
+        data=CreateUserRequest(name="random-user", email="random@user.com"),
     )
     owner = EntityReference(id=user.id, type="user")
 
-    service = CreateMessagingServiceEntityRequest(
+    service = CreateMessagingServiceRequest(
         name="test-service-topic",
         serviceType=MessagingServiceType.Kafka,
         brokers=["https://localhost:1000"],
@@ -70,7 +70,7 @@ class OMetaTopicTest(TestCase):
             partitions=2,
         )
 
-        cls.create = CreateTopicEntityRequest(
+        cls.create = CreateTopicRequest(
             name="test",
             service=EntityReference(id=cls.service_entity.id, type=cls.service_type),
             partitions=2,
@@ -116,7 +116,7 @@ class OMetaTopicTest(TestCase):
 
         updated = self.create.dict(exclude_unset=True)
         updated["owner"] = self.owner
-        updated_entity = CreateTopicEntityRequest(**updated)
+        updated_entity = CreateTopicRequest(**updated)
 
         res = self.metadata.create_or_update(data=updated_entity)
 
