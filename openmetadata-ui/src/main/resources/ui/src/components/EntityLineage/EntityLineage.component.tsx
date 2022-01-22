@@ -210,31 +210,31 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
   const setElementsHandle = () => {
     const flag: { [x: string]: boolean } = {};
     const uniqueElements: Elements = [];
-    const graphElements = getLineageData(
-      entityLineage,
-      selectNodeHandler,
-      loadNodeHandler,
-      lineageLeafNodes,
-      isNodeLoading,
-      getNodeLable,
-      isEditMode,
-      'buttonedge',
-      onEdgeClick
-    ) as Elements;
+    if (!isEmpty(entityLineage)) {
+      const graphElements = getLineageData(
+        entityLineage,
+        selectNodeHandler,
+        loadNodeHandler,
+        lineageLeafNodes,
+        isNodeLoading,
+        getNodeLable,
+        isEditMode,
+        'buttonedge',
+        onEdgeClick
+      ) as Elements;
 
-    graphElements.forEach((elem) => {
-      if (!flag[elem.id]) {
-        flag[elem.id] = true;
-        uniqueElements.push(elem);
-      }
-    });
+      graphElements.forEach((elem) => {
+        if (!flag[elem.id]) {
+          flag[elem.id] = true;
+          uniqueElements.push(elem);
+        }
+      });
+    }
 
     return uniqueElements;
   };
 
-  const [elements, setElements] = useState<Elements>(
-    getLayoutedElements(setElementsHandle())
-  );
+  const [elements, setElements] = useState<Elements>([]);
   const closeDrawer = (value: boolean) => {
     setIsDrawerOpen(value);
     setElements((prevElements) => {

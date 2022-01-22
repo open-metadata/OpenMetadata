@@ -277,6 +277,16 @@ const DatasetDetailsPage: FunctionComponent = () => {
       });
   };
 
+  const getLineageData = () => {
+    getLineageByFQN(tableFQN, EntityType.TABLE)
+      .then((res: AxiosResponse) => {
+        setEntityLineage(res.data);
+      })
+      .finally(() => {
+        setIsLineageLoading(false);
+      });
+  };
+
   useEffect(() => {
     setIsLoading(true);
     getTableDetailsByFQN(
@@ -348,18 +358,17 @@ const DatasetDetailsPage: FunctionComponent = () => {
         setTableTags(getTableTags(columns || []));
         setUsageSummary(usageSummary);
         setJoins(joins);
+
+        if (!deleted) {
+          getLineageData();
+        } else {
+          setIsLineageLoading(false);
+        }
       })
       .finally(() => {
         setIsLoading(false);
       });
 
-    getLineageByFQN(tableFQN, EntityType.TABLE)
-      .then((res: AxiosResponse) => {
-        setEntityLineage(res.data);
-      })
-      .finally(() => {
-        setIsLineageLoading(false);
-      });
     setActiveTab(getCurrentDatasetTab(tab));
   }, [tableFQN]);
 

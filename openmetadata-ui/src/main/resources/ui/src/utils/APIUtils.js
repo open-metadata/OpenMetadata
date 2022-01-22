@@ -209,7 +209,7 @@ export const getEntityByTypeAndId = (id, entityType) => {
   }
 };
 
-export const getURLWithQueryFields = (url, lstQueryFields) => {
+export const getURLWithQueryFields = (url, lstQueryFields, qParams = '') => {
   let strQuery = lstQueryFields
     ? typeof lstQueryFields === 'string'
       ? lstQueryFields
@@ -219,5 +219,11 @@ export const getURLWithQueryFields = (url, lstQueryFields) => {
     : '';
   strQuery = strQuery.replace(/ /g, '');
 
-  return url + (strQuery ? `?fields=${strQuery}` : '');
+  let queryParam = strQuery ? `?fields=${strQuery}` : '';
+
+  if (qParams) {
+    queryParam += queryParam ? `&${qParams}` : `?${qParams}`;
+  }
+
+  return url + queryParam;
 };

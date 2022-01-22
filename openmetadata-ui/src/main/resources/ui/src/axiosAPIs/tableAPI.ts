@@ -43,9 +43,14 @@ export const getTableVersion: Function = (
 
 export const getTableDetailsByFQN: Function = (
   fqn: string,
-  arrQueryFields: string
+  arrQueryFields: string,
+  include = 'all'
 ): Promise<AxiosResponse> => {
-  const url = getURLWithQueryFields(`/tables/name/${fqn}`, arrQueryFields);
+  const url = getURLWithQueryFields(
+    `/tables/name/${fqn}`,
+    arrQueryFields,
+    `include=${include}`
+  );
 
   return APIClient.get(url);
 };
