@@ -13,7 +13,7 @@ import importlib
 import logging
 import traceback
 from datetime import datetime, timezone
-from typing import Type, TypeVar
+from typing import Tuple, Type, TypeVar
 
 from metadata.config.common import ConfigModel, DynamicTypedConfig
 from metadata.ingestion.source.sql_source_common import SQLSourceStatus

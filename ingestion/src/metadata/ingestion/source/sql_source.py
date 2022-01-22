@@ -216,11 +216,16 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                     logger.error(repr(err))
                     logger.error(err)
 
-                if self._instantiate_profiler():
-                    profile = self.run_data_profiler(table_name, schema)
-                    table_entity.tableProfile = (
-                        [profile] if profile is not None else None
-                    )
+                try:
+                    if self._instantiate_profiler():
+                        profile = self.run_data_profiler(table_name, schema)
+                        table_entity.tableProfile = (
+                            [profile] if profile is not None else None
+                        )
+                # Catch any errors during the profile runner and continue
+                except Exception as err:
+                    logger.error(repr(err))
+                    logger.error(err)
                 # check if we have any model to associate with
                 table_entity.dataModel = self._get_data_model(schema, table_name)
 
