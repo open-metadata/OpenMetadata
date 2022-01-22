@@ -1,3 +1,4 @@
+import os
 from unittest import TestCase
 
 from metadata.utils.column_type_parser import ColumnTypeParser
@@ -11,103 +12,14 @@ COLUMN_TYPE_PARSE = [
     "struct<record_1:struct<record_2:struct<record_3:struct<record_4:string>>>>",
     "array<struct<check_datatype:array<string>>>",
 ]
+root = os.path.dirname(__file__)
+import json
 
-EXPECTED_OUTPUT = [
-    {
-        "dataType": "ARRAY",
-        "arrayDataType": "STRING",
-        "dataTypeDisplay": "array<string>",
-    },
-    {
-        "children": [
-            {"dataType": "INT", "dataTypeDisplay": "int", "name": "a"},
-            {"dataType": "STRING", "dataTypeDisplay": "string", "name": "b"},
-        ],
-        "dataTypeDisplay": "struct<a:int,b:string>",
-        "dataType": "STRUCT",
-    },
-    {
-        "children": [
-            {
-                "children": [
-                    {
-                        "dataType": "ARRAY",
-                        "arrayDataType": "STRING",
-                        "dataTypeDisplay": "array<string>",
-                        "name": "b",
-                    },
-                    {"dataType": "BIGINT", "dataTypeDisplay": "bigint", "name": "c"},
-                ],
-                "dataTypeDisplay": "struct<b:array<string>,c:bigint>",
-                "dataType": "STRUCT",
-                "name": "a",
-            }
-        ],
-        "dataTypeDisplay": "struct<a:struct<b:array<string>,c:bigint>>",
-        "dataType": "STRUCT",
-    },
-    {
-        "children": [
-            {
-                "dataType": "ARRAY",
-                "arrayDataType": "STRING",
-                "dataTypeDisplay": "array<string>",
-                "name": "a",
-            }
-        ],
-        "dataTypeDisplay": "struct<a:array<string>>",
-        "dataType": "STRUCT",
-    },
-    {
-        "children": [
-            {
-                "dataType": "ARRAY",
-                "arrayDataType": "STRUCT",
-                "dataTypeDisplay": "array<struct<bigquery_test_datatype_511:array<string>>>",
-                "name": "bigquerytestdatatype51",
-            }
-        ],
-        "dataTypeDisplay": "struct<bigquerytestdatatype51:array<struct<bigquery_test_datatype_511:array<string>>>>",
-        "dataType": "STRUCT",
-    },
-    {
-        "children": [
-            {
-                "children": [
-                    {
-                        "children": [
-                            {
-                                "children": [
-                                    {
-                                        "dataType": "STRING",
-                                        "dataTypeDisplay": "string",
-                                        "name": "record_4",
-                                    }
-                                ],
-                                "dataTypeDisplay": "struct<record_4:string>",
-                                "dataType": "STRUCT",
-                                "name": "record_3",
-                            }
-                        ],
-                        "dataTypeDisplay": "struct<record_3:struct<record_4:string>>",
-                        "dataType": "STRUCT",
-                        "name": "record_2",
-                    }
-                ],
-                "dataTypeDisplay": "struct<record_2:struct<record_3:struct<record_4:string>>>",
-                "dataType": "STRUCT",
-                "name": "record_1",
-            }
-        ],
-        "dataTypeDisplay": "struct<record_1:struct<record_2:struct<record_3:struct<record_4:string>>>>",
-        "dataType": "STRUCT",
-    },
-    {
-        "dataType": "ARRAY",
-        "arrayDataType": "STRUCT",
-        "dataTypeDisplay": "array<struct<check_datatype:array<string>>>",
-    },
-]
+try:
+    with open(os.path.join(root, "resources/expected_output_column_parser.json")) as f:
+        EXPECTED_OUTPUT = json.loads(f.read())["data"]
+except Exception as err:
+    print(err)
 
 
 class ColumnTypeParseTest(TestCase):
