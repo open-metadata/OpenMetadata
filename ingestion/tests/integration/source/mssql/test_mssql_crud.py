@@ -84,10 +84,7 @@ def create_delete_table(client):
 
 def create_delete_database(client):
     data = {
-        "jdbc": {
-            "connectionUrl": "mssql://localhost/catalog_test",
-            "driverClass": "jdbc",
-        },
+        "databaseConnection": {"hostPort": "localhost"},
         "name": "temp_local_mssql",
         "serviceType": "MSSQL",
         "description": "local mssql env",

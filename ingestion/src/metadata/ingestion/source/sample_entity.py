@@ -144,7 +144,11 @@ class SampleEntitySource(Source[Entity]):
     def ingest_tables(self) -> Iterable[OMetaDatabaseAndTable]:
         for h in range(self.config.no_of_services):
             service = {
-                "jdbc": {"connectionUrl": f"jdbc://localhost", "driverClass": "jdbc"},
+                "databaseConnection": {
+                    "hostPort": f"localhost",
+                    "username": "sample_user",
+                    "password": "sample_password",
+                },
                 "name": self.service_name(),
                 "description": self.description(),
                 "serviceType": self.service_type(),

@@ -32,6 +32,7 @@ from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.data.table import Column, DataType, Table
 from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseConnection,
     DatabaseService,
     DatabaseServiceType,
 )
@@ -41,7 +42,6 @@ from metadata.generated.schema.entity.services.pipelineService import (
 )
 from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.generated.schema.type.jdbcConnection import JdbcInfo
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 
@@ -62,7 +62,7 @@ class OMetaLineageTest(TestCase):
     db_service = CreateDatabaseServiceEntityRequest(
         name="test-service-db-lineage",
         serviceType=DatabaseServiceType.MySQL,
-        jdbc=JdbcInfo(driverClass="jdbc", connectionUrl="jdbc://localhost"),
+        databaseConnection=DatabaseConnection(hostPort="localhost:1000"),
     )
 
     pipeline_service = CreatePipelineServiceEntityRequest(
