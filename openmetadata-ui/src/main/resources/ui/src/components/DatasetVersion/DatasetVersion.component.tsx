@@ -49,6 +49,7 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
   slashedTableName,
   datasetFQN,
   versionList,
+  deleted = false,
   backHandler,
   versionHandler,
 }: DatasetVersionProp) => {
@@ -341,6 +342,7 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
           <div className={classNames('version-data')}>
             <EntityPageInfo
               isVersionSelected
+              deleted={deleted}
               entityName={currentVersionData.name ?? ''}
               extraInfo={getExtraInfo()}
               followersList={[]}

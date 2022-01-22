@@ -24,8 +24,11 @@ const secondaryBG = '#B02AAC40';
 
 // state colors
 const success = '#008376';
-const error = '#FF4C3B';
+const successBG = '#00837640';
+const error = '#E54937';
+const errorBG = '#E5493740';
 const info = '#1890FF';
+const infoBG = '#1890FF40';
 const warning = '#FFC34E';
 const warningBG = '#FFC34E40';
 
@@ -97,14 +100,17 @@ module.exports = {
         tag: tagBG,
         badge: badgeBG,
         success: success,
+        'success-lite': successBG,
         error: error,
+        'error-lite': errorBG,
         warning: warning,
         'warning-lite': warningBG,
+        info: info,
+        'info-lite': infoBG,
         'status-success': statusSuccess,
         'status-failed': statusFailed,
         'status-running': statusRunning,
         'status-queued': statusQueued,
-        info: info,
         separator: mainSeparator,
       },
       fontFamily: {

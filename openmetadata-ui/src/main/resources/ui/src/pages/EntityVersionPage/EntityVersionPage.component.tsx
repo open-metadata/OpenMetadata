@@ -582,6 +582,7 @@ const EntityVersionPage: FunctionComponent = () => {
             backHandler={backHandler}
             currentVersionData={currentVersionData}
             datasetFQN={entityFQN}
+            deleted={currentVersionData.deleted}
             isVersionLoading={isVersionLoading}
             owner={owner}
             slashedTableName={slashedEntityName}
