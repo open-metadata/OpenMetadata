@@ -35,6 +35,10 @@ jobs:
         java-version: '11'
         distribution: 'adopt'
 
+    - name: Install Ubuntu dependencies
+      run: |
+        sudo apt-get install -y libsasl2-dev unixodbc-dev python3-venv
+
     - name: Install open-metadata dependencies
       run: |
         python3 -m venv env
@@ -49,10 +53,6 @@ jobs:
       uses: actions/setup-python@v2
       with:
         python-version: 3.9
-
-    - name: Install Ubuntu dependencies
-      run: |
-        sudo apt-get install -y libsasl2-dev unixodbc-dev python3-venv
 
     - name: Run Python Tests & record coverage
       run: |
