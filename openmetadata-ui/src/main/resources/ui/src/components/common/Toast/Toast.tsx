@@ -49,7 +49,7 @@ const Toast = (props: ToastProps) => {
             />
           </div>
 
-          <div className="tw-font-semibold tw-self-center tw-px-1 tw-break-all">
+          <div className="tw-font-semibold tw-self-center tw-px-1 tw-break-words">
             {body}
           </div>
           <button
