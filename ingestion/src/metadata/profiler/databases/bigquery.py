@@ -23,7 +23,7 @@ class BigquerySQLExpressions(SQLExpressions):
 class Bigquery(DatabaseCommon):
     config: BigQueryConfig = None
     sql_exprs: BigquerySQLExpressions = BigquerySQLExpressions()
-    
+
     def get_connection_url(self):
         if self.config.project_id:
             return f"{self.config.scheme}://{self.config.project_id}"
