@@ -70,10 +70,6 @@ class ProfilerRunner:
         config = ProfilerConfig.parse_obj(config_dict)
         return cls(config)
 
-    @staticmethod
-    def standardize_schema_table_names(schema: str, table: str) -> Tuple[str, str]:
-        return schema, table
-
     def run_profiler(self):
         schema_names = self.database.inspector.get_schema_names()
         results = []
@@ -85,9 +81,6 @@ class ProfilerRunner:
 
             for table_name in tables:
                 try:
-                    schema, table_name = self.standardize_schema_table_names(
-                        schema, table_name
-                    )
                     if not self.sql_config.table_filter_pattern.included(table_name):
                         self.status.filter(
                             f"{self.sql_config.get_service_name()}.{table_name}",
