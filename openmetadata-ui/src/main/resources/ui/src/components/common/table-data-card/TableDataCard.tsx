@@ -94,9 +94,7 @@ const TableDataCard: FunctionComponent<Props> = ({
   const getAssetTags = () => {
     const assetTags = [...(tags as Array<TagLabel>)];
     if (tier && !isUndefined(tier)) {
-      assetTags
-        // .filter((tag) => !tag.tagFQN.includes((tier as TagLabel).tagFQN))
-        .unshift(tier as TagLabel);
+      assetTags.unshift(tier as TagLabel);
     }
 
     return [...new Set(assetTags)];
@@ -117,7 +115,6 @@ const TableDataCard: FunctionComponent<Props> = ({
       id={id}>
       <div>
         <div className="tw-flex tw-items-center">
-          {/* {getEntityIcon(indexType)} */}
           <img
             alt=""
             className="tw-inline tw-h-5 tw-w-5"

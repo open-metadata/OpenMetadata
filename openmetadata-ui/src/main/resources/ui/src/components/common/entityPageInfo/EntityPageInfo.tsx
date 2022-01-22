@@ -231,7 +231,7 @@ const EntityPageInfo = ({
                     )}
                     data-testid="follow-button"
                     onClick={() => {
-                      !deleted && followHandler && followHandler();
+                      !deleted && followHandler?.();
                     }}>
                     {isFollowing ? (
                       <>
