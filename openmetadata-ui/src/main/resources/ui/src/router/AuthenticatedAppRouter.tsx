@@ -89,9 +89,11 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       />
       <Route exact component={EntityVersionPage} path={ROUTES.ENTITY_VERSION} />
       <Route exact component={IngestionPage} path={ROUTES.INGESTION} />
-      <Route exact component={RolesPage} path={ROUTES.ROLES} />
       {isAuthDisabled || isAdminUser ? (
-        <Route exact component={UserListPage} path={ROUTES.USER_LIST} />
+        <>
+          <Route exact component={RolesPage} path={ROUTES.ROLES} />
+          <Route exact component={UserListPage} path={ROUTES.USER_LIST} />
+        </>
       ) : null}
 
       <Redirect to={ROUTES.NOT_FOUND} />
