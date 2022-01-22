@@ -23,6 +23,7 @@ import {
   getPolicy,
   getRoleByName,
   getRoles,
+  updatePolicy,
   updateRole,
 } from '../../axiosAPIs/rolesAPI';
 import { Button } from '../../components/buttons/Button/Button';
@@ -389,6 +390,32 @@ const RolesPage = () => {
     }
   };
 
+  const onPolicyUpdate = (data: Rule) => {
+    const newRule = {
+      ...data,
+      name: `${currentPolicy?.name}-${data.operation}`,
+      userRoleAttr: currentRole?.name,
+      priority: 25000,
+    };
+    const updatedPolicy = {
+      name: currentPolicy?.name as string,
+      policyType: currentPolicy?.policyType as string,
+      rules: [...(currentPolicy?.rules as Rule[]), newRule],
+    };
+
+    updatePolicy(updatedPolicy)
+      .then((res: AxiosResponse) => {
+        setCurrentPolicy(res.data);
+      })
+      .catch((err: AxiosError) => {
+        showToast({
+          variant: 'error',
+          body: err.message ?? 'Error while adding new rule',
+        });
+      })
+      .finally(() => setIsAddingRule(false));
+  };
+
   useEffect(() => {
     fetchRoles();
   }, []);
@@ -504,9 +531,7 @@ const RolesPage = () => {
                       { name: '', operation: '' as Operation } as Rule
                     }
                     onCancel={() => setIsAddingRule(false)}
-                    onSave={() => {
-                      return;
-                    }}
+                    onSave={onPolicyUpdate}
                   />
                 )}
               </div>

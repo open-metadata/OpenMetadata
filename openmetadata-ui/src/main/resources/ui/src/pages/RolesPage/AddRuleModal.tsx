@@ -79,21 +79,6 @@ const AddRuleModal: FC<AddRuleProps> = ({
             </p>
           </div>
           <div className="tw-modal-body">
-            <div className="tw-mb-4">
-              <label className="tw-form-label required-field">Name</label>
-              <input
-                autoComplete="off"
-                className="tw-text-sm tw-appearance-none tw-border tw-border-main
-                tw-rounded tw-w-full tw-py-2 tw-px-3 tw-text-grey-body  tw-leading-tight
-                focus:tw-outline-none focus:tw-border-focus hover:tw-border-hover tw-h-10"
-                name="name"
-                placeholder="Name"
-                type="text"
-                value={data.name}
-                onChange={onChangeHadler}
-              />
-              {errorData?.name && errorMsg(errorData.name)}
-            </div>
             {!isUndefined(initialData.operation) && (
               <div className="tw-mb-4">
                 <label className="tw-form-label required-field">
@@ -107,6 +92,7 @@ const AddRuleModal: FC<AddRuleProps> = ({
                   name="operation"
                   value={data.operation}
                   onChange={onChangeHadler}>
+                  <option value="">Select Operation</option>
                   <option value={Operation.UpdateDescription}>
                     Update Description
                   </option>
