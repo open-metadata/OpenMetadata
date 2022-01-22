@@ -23,6 +23,11 @@ class BigquerySQLExpressions(SQLExpressions):
 class Bigquery(DatabaseCommon):
     config: BigQueryConfig = None
     sql_exprs: BigquerySQLExpressions = BigquerySQLExpressions()
+    
+    def get_connection_url(self):
+        if self.config.project_id:
+            return f"{self.config.scheme}://{self.config.project_id}"
+        return f"{self.config.scheme}://"
 
     def __init__(self, config):
         super().__init__(config)
@@ -34,14 +39,6 @@ class Bigquery(DatabaseCommon):
         return cls(config)
 
     def qualify_table_name(self, table_name: str, schema_name: str) -> str:
-        return f"`{self.config.database}.{table_name}`"
-
-    def standardize_schema_table_names(
-        self, schema: str, table: str
-    ) -> Tuple[str, str]:
-        segments = table.split(".")
-        if len(segments) != 2:
-            raise ValueError(f"expected table to contain schema name already {table}")
-        if segments[0] != schema:
-            raise ValueError(f"schema {schema} does not match table {table}")
-        return segments[0], segments[1]
+        if schema_name:
+            return f"`{schema_name}.{table_name}`"
+        return f"{table_name}"
