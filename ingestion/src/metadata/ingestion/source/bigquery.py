@@ -74,9 +74,9 @@ class BigquerySource(SQLSource):
         metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
         if config.options.get("credentials", None):
             cred_path = create_credential_temp_file(config.options.get("credentials"))
-        os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = cred_path
-        del config.options["credentials"]
-        config.options["credentials_path"] = cred_path
+            os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = cred_path
+            config.options["credentials_path"] = cred_path
+            del config.options["credentials"]
         return cls(config, metadata_config, ctx)
 
     def close(self):

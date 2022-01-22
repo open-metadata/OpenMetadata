@@ -459,7 +459,6 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
             if "column_names" in constraint.keys()
         ]
 
-        dataset_name = f"{schema}.{table}"
         table_columns = []
         columns = inspector.get_columns(table, schema)
         try:
