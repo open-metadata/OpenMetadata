@@ -497,7 +497,9 @@ const RolesPage = () => {
                 )}
                 {isAddingRule && (
                   <AddRuleModal
-                    header="Adding new rule"
+                    header={`Adding new rule for ${toLower(
+                      currentRole?.displayName
+                    )}`}
                     initialData={
                       { name: '', operation: '' as Operation } as Rule
                     }

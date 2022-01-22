@@ -69,7 +69,7 @@ const AddRuleModal: FC<AddRuleProps> = ({
   return (
     <dialog className="tw-modal" data-testid="modal-container">
       <div className="tw-modal-backdrop" onClick={() => onCancel()} />
-      <div className="tw-modal-container tw-overflow-y-auto tw-max-h-screen">
+      <div className="tw-modal-container tw-overflow-y-auto tw-max-h-screen tw-w-120">
         <form onSubmit={onSubmitHandler}>
           <div className="tw-modal-header">
             <p
@@ -94,46 +94,45 @@ const AddRuleModal: FC<AddRuleProps> = ({
               />
               {errorData?.name && errorMsg(errorData.name)}
             </div>
-            <div className="tw-grid tw-grid-cols-2 tw-gap-2">
-              {!isUndefined(initialData.operation) && (
-                <div className="tw-mb-4">
-                  <label className="tw-form-label required-field">
-                    Select Operation
-                  </label>
-                  <select
-                    required
-                    className="tw-text-sm tw-appearance-none tw-border tw-border-main
-                tw-rounded tw-w-full tw-py-2 tw-px-3 tw-text-grey-body  tw-leading-tight
-                focus:tw-outline-none focus:tw-border-focus hover:tw-border-hover tw-h-10 tw-bg-white"
-                    name="operation"
-                    value={data.operation}
-                    onChange={onChangeHadler}>
-                    <option value={Operation.UpdateDescription}>
-                      Update Description
-                    </option>
-                    <option value={Operation.UpdateOwner}>Update Owner</option>
-                    <option value={Operation.UpdateTags}>Update Tags</option>
-                  </select>
-                  {errorData?.operation && errorMsg(errorData.operation)}
-                </div>
-              )}
+            {!isUndefined(initialData.operation) && (
               <div className="tw-mb-4">
-                <label className="tw-form-label">Access</label>
+                <label className="tw-form-label required-field">
+                  Select Operation
+                </label>
                 <select
                   required
                   className="tw-text-sm tw-appearance-none tw-border tw-border-main
                 tw-rounded tw-w-full tw-py-2 tw-px-3 tw-text-grey-body  tw-leading-tight
                 focus:tw-outline-none focus:tw-border-focus hover:tw-border-hover tw-h-10 tw-bg-white"
-                  name="access"
-                  value={access}
-                  onChange={(e) => setAccess(e.target.value as RuleAccess)}>
-                  <option value={RuleAccess.ALLOW}>Allow</option>
-                  <option value={RuleAccess.DENY}>Deny</option>
+                  name="operation"
+                  value={data.operation}
+                  onChange={onChangeHadler}>
+                  <option value={Operation.UpdateDescription}>
+                    Update Description
+                  </option>
+                  <option value={Operation.UpdateOwner}>Update Owner</option>
+                  <option value={Operation.UpdateTags}>Update Tags</option>
                 </select>
+                {errorData?.operation && errorMsg(errorData.operation)}
               </div>
-            </div>
+            )}
+
             <div className="tw-mb-4">
-              <label className="tw-form-label">Enabled</label>
+              <label className="tw-form-label">Access</label>
+              <select
+                required
+                className="tw-text-sm tw-appearance-none tw-border tw-border-main
+                tw-rounded tw-w-full tw-py-2 tw-px-3 tw-text-grey-body  tw-leading-tight
+                focus:tw-outline-none focus:tw-border-focus hover:tw-border-hover tw-h-10 tw-bg-white"
+                name="access"
+                value={access}
+                onChange={(e) => setAccess(e.target.value as RuleAccess)}>
+                <option value={RuleAccess.ALLOW}>ALLOW</option>
+                <option value={RuleAccess.DENY}>DENY</option>
+              </select>
+            </div>
+            <div className="tw-flex tw-items-center">
+              <label>Enable</label>
               <div
                 className={classNames(
                   'toggle-switch tw-ml-4',
