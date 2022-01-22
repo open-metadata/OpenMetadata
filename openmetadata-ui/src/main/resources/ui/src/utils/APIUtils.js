@@ -46,6 +46,7 @@ export const formatDataResponse = (hits) => {
 
     newData.entityType = hit._source.entity_type;
     newData.changeDescriptions = hit._source.change_descriptions;
+    newData.deleted = hit._source.deleted;
 
     return newData;
   });
@@ -209,7 +210,7 @@ export const getEntityByTypeAndId = (id, entityType) => {
   }
 };
 
-export const getURLWithQueryFields = (url, lstQueryFields) => {
+export const getURLWithQueryFields = (url, lstQueryFields, qParams = '') => {
   let strQuery = lstQueryFields
     ? typeof lstQueryFields === 'string'
       ? lstQueryFields
@@ -219,5 +220,11 @@ export const getURLWithQueryFields = (url, lstQueryFields) => {
     : '';
   strQuery = strQuery.replace(/ /g, '');
 
-  return url + (strQuery ? `?fields=${strQuery}` : '');
+  let queryParam = strQuery ? `?fields=${strQuery}` : '';
+
+  if (qParams) {
+    queryParam += queryParam ? `&${qParams}` : `?${qParams}`;
+  }
+
+  return url + queryParam;
 };

@@ -115,6 +115,7 @@ const SearchedData: React.FC<SearchedDataProp> = ({
         <div className="tw-mb-3" key={index}>
           <TableDataCard
             database={table.database}
+            deleted={table.deleted}
             description={tDesc}
             fullyQualifiedName={table.fullyQualifiedName}
             id={`tabledatacard${index}`}
