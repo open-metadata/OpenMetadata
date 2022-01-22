@@ -14,9 +14,7 @@ cd "$( dirname "${BASH_SOURCE[0]}" )"
 echo "Maven Build - Skipping Tests"
 cd ../ && mvn -DskipTests clean package
 echo "Prepare Docker volume for the operators"
-mkdir -p /tmp/openmetadata
-ln -sf $(pwd)/ingestion/examples /tmp/openmetadata
-make build_docker_base
+make generate
 cd docker/local-metadata
 echo "Starting Local Docker Containers"
 docker-compose down && docker-compose up --build -d
