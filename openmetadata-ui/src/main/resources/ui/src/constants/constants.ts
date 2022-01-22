@@ -272,7 +272,7 @@ export const navLinkDevelop = [
 
 export const navLinkSettings = [
   { name: 'Teams', to: '/teams', disabled: false },
-  { name: 'Roles', to: '/roles', disabled: false },
+  { name: 'Roles', to: '/roles', disabled: false, isAdminOnly: true },
   { name: 'Users', to: '/user-list', disabled: false, isAdminOnly: true },
   { name: 'Tags', to: '/tags', disabled: false },
   // { name: 'Store', to: '/store', disabled: false },
