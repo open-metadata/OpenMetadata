@@ -35,8 +35,9 @@ black_check:
 
 generate:
 	@echo "Running Datamodel Code Generator"
-	@echo "Make sure to first run `make install_dev`"
+	@echo "Make sure to first run the install_dev recipe"
 	datamodel-codegen  --input catalog-rest-service/src/main/resources/json  --input-file-type jsonschema --output ingestion/src/metadata/generated
+	make install
 
 run_ometa_integration_tests:
 	coverage run -m pytest -c ingestion/setup.cfg --doctest-modules --junitxml=ingestion/junit/test-results-integration.xml --override-ini=testpaths="ingestion/tests/integration/ometa ingestion/tests/integration/stage"
