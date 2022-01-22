@@ -33,6 +33,7 @@ import NonAdminAction from '../../components/common/non-admin-action/NonAdminAct
 import PageContainerV1 from '../../components/containers/PageContainerV1';
 import PageLayout from '../../components/containers/PageLayout';
 import Loader from '../../components/Loader/Loader';
+import ConfirmationModal from '../../components/Modals/ConfirmationModal/ConfirmationModal';
 import FormModal from '../../components/Modals/FormModal';
 import {
   ERROR404,
@@ -71,7 +72,10 @@ const RolesPage = () => {
   const [isAddingRule, setIsAddingRule] = useState<boolean>(false);
   const [errorData, setErrorData] = useState<FormErrorData>();
   const [isEditable, setIsEditable] = useState<boolean>(false);
-
+  const [isDeletingRule, setIsDeletingRule] = useState<{
+    rule: Rule | undefined;
+    state: boolean;
+  }>({ rule: undefined, state: false });
   const getTabs = () => {
     return (
       <div className="tw-mb-3 ">
@@ -204,20 +208,25 @@ const RolesPage = () => {
                 </td>
                 <td className="tableBody-cell">
                   <div className="tw-flex">
-                    <SVGIcons
-                      alt="icon-edit"
-                      className="tw-cursor-pointer"
-                      icon="icon-edit"
-                      title="Edit"
-                      width="12"
-                    />
-                    <SVGIcons
-                      alt="icon-delete"
-                      className="tw-ml-4 tw-cursor-pointer"
-                      icon="icon-delete"
-                      title="Delete"
-                      width="12"
-                    />
+                    <span>
+                      <SVGIcons
+                        alt="icon-edit"
+                        className="tw-cursor-pointer"
+                        icon="icon-edit"
+                        title="Edit"
+                        width="12"
+                      />
+                    </span>
+                    <span
+                      onClick={() => setIsDeletingRule({ rule, state: true })}>
+                      <SVGIcons
+                        alt="icon-delete"
+                        className="tw-ml-4 tw-cursor-pointer"
+                        icon="icon-delete"
+                        title="Delete"
+                        width="12"
+                      />
+                    </span>
                   </div>
                 </td>
               </tr>
@@ -395,7 +404,6 @@ const RolesPage = () => {
       ...data,
       name: `${currentPolicy?.name}-${data.operation}`,
       userRoleAttr: currentRole?.name,
-      priority: 25000,
     };
     const updatedPolicy = {
       name: currentPolicy?.name as string,
@@ -410,10 +418,32 @@ const RolesPage = () => {
       .catch((err: AxiosError) => {
         showToast({
           variant: 'error',
-          body: err.message ?? 'Error while adding new rule',
+          body: err.response?.data?.message ?? 'Error while adding new rule',
         });
       })
       .finally(() => setIsAddingRule(false));
+  };
+  const deleteRule = (data: Rule) => {
+    const updatedPolicy = {
+      name: currentPolicy?.name as string,
+      policyType: currentPolicy?.policyType as string,
+      rules: currentPolicy?.rules?.filter(
+        (rule) => rule.operation !== data.operation
+      ) as Rule[],
+    };
+    updatePolicy(updatedPolicy)
+      .then((res: AxiosResponse) => {
+        setCurrentPolicy(res.data);
+      })
+      .catch((err: AxiosError) => {
+        showToast({
+          variant: 'error',
+          body: err.response?.data?.message ?? 'Error while deleting rule',
+        });
+      })
+      .finally(() => {
+        setIsDeletingRule({ rule: undefined, state: false });
+      });
   };
 
   useEffect(() => {
@@ -532,6 +562,20 @@ const RolesPage = () => {
                     }
                     onCancel={() => setIsAddingRule(false)}
                     onSave={onPolicyUpdate}
+                  />
+                )}
+                {isDeletingRule.state && (
+                  <ConfirmationModal
+                    bodyText={`Are you sure want to delete ${isDeletingRule.rule?.name} rule?`}
+                    cancelText="Cancel"
+                    confirmText="Confirm"
+                    header="Deleting rule"
+                    onCancel={() =>
+                      setIsDeletingRule({ rule: undefined, state: false })
+                    }
+                    onConfirm={() => {
+                      deleteRule(isDeletingRule.rule as Rule);
+                    }}
                   />
                 )}
               </div>
