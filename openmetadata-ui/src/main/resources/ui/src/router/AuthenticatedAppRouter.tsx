@@ -25,6 +25,7 @@ import ExplorePage from '../pages/explore/ExplorePage.component';
 import IngestionPage from '../pages/IngestionPage/IngestionPage.component';
 import MyDataPage from '../pages/MyDataPage/MyDataPage.component';
 import PipelineDetailsPage from '../pages/PipelineDetails/PipelineDetailsPage.component';
+import RolesPage from '../pages/RolesPage/RolesPage.component';
 import ServicePage from '../pages/service';
 import ServicesPage from '../pages/services';
 import SignupPage from '../pages/signup';
@@ -89,7 +90,10 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <Route exact component={EntityVersionPage} path={ROUTES.ENTITY_VERSION} />
       <Route exact component={IngestionPage} path={ROUTES.INGESTION} />
       {isAuthDisabled || isAdminUser ? (
-        <Route exact component={UserListPage} path={ROUTES.USER_LIST} />
+        <>
+          <Route exact component={RolesPage} path={ROUTES.ROLES} />
+          <Route exact component={UserListPage} path={ROUTES.USER_LIST} />
+        </>
       ) : null}
 
       <Redirect to={ROUTES.NOT_FOUND} />

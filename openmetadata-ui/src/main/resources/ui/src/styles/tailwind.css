@@ -205,7 +205,7 @@
   }
   .tw-notification {
     @apply tw-bg-white tw-transition tw-duration-300 tw-ease-linear tw-relative tw-flex tw-justify-between tw-pointer-events-auto
-     tw-mb-3.5 tw-p-4 tw-w-80 tw-h-auto tw-rounded tw-shadow tw-text-white tw-bg-left-top tw-bg-no-repeat;
+     tw-mb-3.5 tw-p-4 tw-w-96 tw-h-auto tw-rounded tw-shadow tw-text-white tw-bg-left-top tw-bg-no-repeat;
   }
   /* Toaster CSS end */
 
