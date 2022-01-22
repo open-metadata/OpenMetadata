@@ -62,9 +62,17 @@ def get_database_service_or_create(
         return service
     else:
         service = {
-            "jdbc": {
-                "connectionUrl": f"jdbc://{config.host_port}",
-                "driverClass": "jdbc",
+            "databaseConnection": {
+                "hostPort": config.host_port if hasattr(config, "host_port") else None,
+                "username": config.username if hasattr(config, "username") else None,
+                "password": config.password if hasattr(config, "password") else None,
+                "database": config.database if hasattr(config, "database") else None,
+                "connectionOptions": config.options
+                if hasattr(config, "options")
+                else None,
+                "connectionArguments": config.connect_args
+                if hasattr(config, "connect_args")
+                else None,
             },
             "name": config.service_name,
             "description": "",

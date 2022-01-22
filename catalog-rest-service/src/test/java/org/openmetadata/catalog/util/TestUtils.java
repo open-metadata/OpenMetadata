@@ -45,8 +45,8 @@ import org.openmetadata.catalog.resources.tags.TagResourceTest;
 import org.openmetadata.catalog.resources.teams.UserResourceTest;
 import org.openmetadata.catalog.security.CatalogOpenIdAuthorizationRequestFilter;
 import org.openmetadata.catalog.security.SecurityUtil;
+import org.openmetadata.catalog.type.DatabaseConnection;
 import org.openmetadata.catalog.type.EntityReference;
-import org.openmetadata.catalog.type.JdbcInfo;
 import org.openmetadata.catalog.type.Tag;
 import org.openmetadata.catalog.type.TagLabel;
 
@@ -66,7 +66,7 @@ public final class TestUtils {
       String.format("[name size must be between 1 and %d]", ENTITY_NAME_MAX_LEN);
 
   public static final UUID NON_EXISTENT_ENTITY = UUID.randomUUID();
-  public static final JdbcInfo JDBC_INFO;
+  public static final DatabaseConnection DATABASE_CONNECTION;
   public static URI DASHBOARD_URL;
   public static URI PIPELINE_URL;
 
@@ -78,10 +78,12 @@ public final class TestUtils {
   }
 
   static {
-    JDBC_INFO =
-        new JdbcInfo()
-            .withConnectionUrl("scheme://user_name:password#_@%:localhost:1000/test")
-            .withDriverClass("driverClass");
+    DATABASE_CONNECTION =
+        new DatabaseConnection()
+            .withHostPort("localhost:1000")
+            .withUsername("user_name")
+            .withPassword("password")
+            .withDatabase("test");
   }
 
   static {

@@ -49,6 +49,7 @@ import org.openmetadata.catalog.entity.services.StorageService;
 import org.openmetadata.catalog.entity.teams.Role;
 import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
+import org.openmetadata.catalog.jdbi3.AirflowPipelineRepository.AirflowPipelineEntityInterface;
 import org.openmetadata.catalog.jdbi3.BotsRepository.BotsEntityInterface;
 import org.openmetadata.catalog.jdbi3.ChartRepository.ChartEntityInterface;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.TagDAO.TagLabelMapper;
@@ -72,7 +73,7 @@ import org.openmetadata.catalog.jdbi3.TeamRepository.TeamEntityInterface;
 import org.openmetadata.catalog.jdbi3.TopicRepository.TopicEntityInterface;
 import org.openmetadata.catalog.jdbi3.UserRepository.UserEntityInterface;
 import org.openmetadata.catalog.jdbi3.WebhookRepository.WebhookEntityInterface;
-import org.openmetadata.catalog.operations.workflows.Ingestion;
+import org.openmetadata.catalog.operations.pipelines.AirflowPipeline;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.TagLabel;
@@ -140,7 +141,7 @@ public interface CollectionDAO {
   PolicyDAO policyDAO();
 
   @CreateSqlObject
-  IngestionDAO ingestionDAO();
+  AirflowPipelineDAO airflowPipelineDAO();
 
   @CreateSqlObject
   DatabaseServiceDAO dbServiceDAO();
@@ -688,15 +689,15 @@ public interface CollectionDAO {
     }
   }
 
-  interface PipelineDAO extends EntityDAO<Pipeline> {
+  interface AirflowPipelineDAO extends EntityDAO<AirflowPipeline> {
     @Override
     default String getTableName() {
-      return "pipeline_entity";
+      return "airflow_pipeline_entity";
     }
 
     @Override
-    default Class<Pipeline> getEntityClass() {
-      return Pipeline.class;
+    default Class<AirflowPipeline> getEntityClass() {
+      return AirflowPipeline.class;
     }
 
     @Override
@@ -705,8 +706,8 @@ public interface CollectionDAO {
     }
 
     @Override
-    default EntityReference getEntityReference(Pipeline entity) {
-      return new PipelineEntityInterface(entity).getEntityReference();
+    default EntityReference getEntityReference(AirflowPipeline entity) {
+      return new AirflowPipelineEntityInterface(entity).getEntityReference();
     }
   }
 
@@ -866,15 +867,15 @@ public interface CollectionDAO {
         @Bind("after") String after);
   }
 
-  interface IngestionDAO extends EntityDAO<Ingestion> {
+  interface PipelineDAO extends EntityDAO<Pipeline> {
     @Override
     default String getTableName() {
-      return "ingestion_entity";
+      return "pipeline_entity";
     }
 
     @Override
-    default Class<Ingestion> getEntityClass() {
-      return Ingestion.class;
+    default Class<Pipeline> getEntityClass() {
+      return Pipeline.class;
     }
 
     @Override
@@ -883,8 +884,8 @@ public interface CollectionDAO {
     }
 
     @Override
-    default EntityReference getEntityReference(Ingestion entity) {
-      return new IngestionRepository.IngestionEntityInterface(entity).getEntityReference();
+    default EntityReference getEntityReference(Pipeline entity) {
+      return new PipelineEntityInterface(entity).getEntityReference();
     }
   }
 

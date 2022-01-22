@@ -227,7 +227,7 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
         new CreateDatabaseService()
             .withName(databaseServiceResourceTest.getEntityName(test, 1))
             .withServiceType(DatabaseServiceType.Snowflake)
-            .withJdbc(TestUtils.JDBC_INFO);
+            .withDatabaseConnection(TestUtils.DATABASE_CONNECTION);
     DatabaseService databaseService =
         new DatabaseServiceResourceTest().createEntity(createDatabaseService, adminAuthHeaders());
     SNOWFLAKE_REFERENCE =
@@ -1078,12 +1078,12 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     return TestUtils.post(getCollection(), createRequest, entityClass, authHeaders);
   }
 
-  protected final T updateEntity(Object updateRequest, Status status, Map<String, String> authHeaders)
+  public final T updateEntity(Object updateRequest, Status status, Map<String, String> authHeaders)
       throws HttpResponseException {
     return TestUtils.put(getCollection(), updateRequest, entityClass, status, authHeaders);
   }
 
-  protected final T patchEntity(UUID id, String originalJson, T updated, Map<String, String> authHeaders)
+  public final T patchEntity(UUID id, String originalJson, T updated, Map<String, String> authHeaders)
       throws JsonProcessingException, HttpResponseException {
     String updatedEntityJson = JsonUtils.pojoToJson(updated);
     JsonPatch patch = JsonUtils.getJsonPatch(originalJson, updatedEntityJson);

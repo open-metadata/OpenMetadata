@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-package org.openmetadata.catalog.ingestion;
+package org.openmetadata.catalog.airflow;
 
 import java.io.IOException;
 import java.net.MalformedURLException;
@@ -26,9 +26,15 @@ import java.util.List;
 import javax.ws.rs.core.Response;
 import org.json.JSONObject;
 import org.openmetadata.catalog.CatalogApplicationConfig;
-import org.openmetadata.catalog.exception.IngestionPipelineDeploymentException;
-import org.openmetadata.catalog.operations.workflows.Ingestion;
-import org.openmetadata.catalog.operations.workflows.IngestionStatus;
+import org.openmetadata.catalog.airflow.models.AirflowAuthRequest;
+import org.openmetadata.catalog.airflow.models.AirflowAuthResponse;
+import org.openmetadata.catalog.airflow.models.AirflowDagRun;
+import org.openmetadata.catalog.airflow.models.AirflowListResponse;
+import org.openmetadata.catalog.airflow.models.IngestionAirflowPipeline;
+import org.openmetadata.catalog.exception.AirflowException;
+import org.openmetadata.catalog.exception.AirflowPipelineDeploymentException;
+import org.openmetadata.catalog.operations.pipelines.AirflowPipeline;
+import org.openmetadata.catalog.operations.pipelines.PipelineStatus;
 import org.openmetadata.catalog.util.JsonUtils;
 
 public class AirflowRESTClient {
@@ -36,14 +42,17 @@ public class AirflowRESTClient {
   private final String username;
   private final String password;
   private final HttpClient client;
-  private static final String authHeader = "Bearer %s";
+  private static final String AUTH_HEADER = "Authorization";
+  private static final String AUTH_TOKEN = "Bearer %s";
+  private static final String CONTENT_HEADER = "Content-Type";
+  private static final String CONTENT_TYPE = "application/json";
 
   public AirflowRESTClient(CatalogApplicationConfig config) {
     AirflowConfiguration airflowConfig = config.getAirflowConfiguration();
     try {
       this.url = new URL(airflowConfig.getApiEndpoint());
     } catch (MalformedURLException e) {
-      throw new RuntimeException(e);
+      throw new AirflowException(airflowConfig.getApiEndpoint() + " Malformed.");
     }
     this.username = airflowConfig.getUsername();
     this.password = airflowConfig.getPassword();
@@ -56,13 +65,13 @@ public class AirflowRESTClient {
 
   private String authenticate() throws InterruptedException, IOException {
     String authEndpoint = "%s/api/v1/security/login";
-    String url = String.format(authEndpoint, this.url);
+    String authUrl = String.format(authEndpoint, url);
     AirflowAuthRequest authRequest =
         AirflowAuthRequest.builder().username(this.username).password(this.password).build();
     String authPayload = JsonUtils.pojoToJson(authRequest);
     HttpRequest request =
-        HttpRequest.newBuilder(URI.create(url))
-            .header("Content-Type", "application/json")
+        HttpRequest.newBuilder(URI.create(authUrl))
+            .header(CONTENT_HEADER, CONTENT_TYPE)
             .POST(HttpRequest.BodyPublishers.ofString(authPayload))
             .build();
     HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
@@ -70,48 +79,49 @@ public class AirflowRESTClient {
       AirflowAuthResponse authResponse = JsonUtils.readValue(response.body(), AirflowAuthResponse.class);
       return authResponse.getAccessToken();
     }
-    throw new RuntimeException("Failed to get access_token. Please check AirflowConfiguration username, password");
+    throw new AirflowException("Failed to get access_token. Please check AirflowConfiguration username, password");
   }
 
-  public String deploy(Ingestion ingestion, CatalogApplicationConfig config) {
+  public String deploy(AirflowPipeline airflowPipeline, CatalogApplicationConfig config) {
     try {
-      IngestionPipeline pipeline = AirflowUtils.toIngestionPipeline(ingestion, config.getAirflowConfiguration());
+      IngestionAirflowPipeline pipeline =
+          AirflowUtils.toIngestionPipeline(airflowPipeline, config.getAirflowConfiguration());
       String token = authenticate();
-      String authToken = String.format(this.authHeader, token);
+      String authToken = String.format(AUTH_TOKEN, token);
       String pipelinePayload = JsonUtils.pojoToJson(pipeline);
       String deployEndPoint = "%s/rest_api/api?api=deploy_dag";
-      String url = String.format(deployEndPoint, this.url);
+      String deployUrl = String.format(deployEndPoint, url);
       HttpRequest request =
-          HttpRequest.newBuilder(URI.create(url))
-              .header("Content-Type", "application/json")
-              .header("Authorization", authToken)
+          HttpRequest.newBuilder(URI.create(deployUrl))
+              .header(CONTENT_HEADER, CONTENT_TYPE)
+              .header(AUTH_HEADER, authToken)
               .POST(HttpRequest.BodyPublishers.ofString(pipelinePayload))
               .build();
       HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
       if (response.statusCode() == 200) {
         return response.body();
       }
-      throw IngestionPipelineDeploymentException.byMessage(
-          ingestion.getName(),
-          "Failed to trigger IngestionPipeline",
+      throw AirflowPipelineDeploymentException.byMessage(
+          airflowPipeline.getName(),
+          "Failed to trigger Airflow Pipeline",
           Response.Status.fromStatusCode(response.statusCode()));
     } catch (Exception e) {
-      throw IngestionPipelineDeploymentException.byMessage(ingestion.getName(), e.getMessage());
+      throw AirflowPipelineDeploymentException.byMessage(airflowPipeline.getName(), e.getMessage());
     }
   }
 
   public String runPipeline(String pipelineName) {
     try {
       String token = authenticate();
-      String authToken = String.format(this.authHeader, token);
+      String authToken = String.format(AUTH_TOKEN, token);
       String triggerEndPoint = "%s/rest_api/api?api=trigger_dag";
-      String url = String.format(triggerEndPoint, this.url);
+      String triggerUrl = String.format(triggerEndPoint, url);
       JSONObject requestPayload = new JSONObject();
       requestPayload.put("workflow_name", pipelineName);
       HttpRequest request =
-          HttpRequest.newBuilder(URI.create(url))
-              .header("Content-Type", "application/json")
-              .header("Authorization", authToken)
+          HttpRequest.newBuilder(URI.create(triggerUrl))
+              .header(CONTENT_HEADER, CONTENT_TYPE)
+              .header(AUTH_HEADER, authToken)
               .POST(HttpRequest.BodyPublishers.ofString(requestPayload.toString()))
               .build();
       HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
@@ -119,49 +129,49 @@ public class AirflowRESTClient {
         return response.body();
       }
 
-      throw IngestionPipelineDeploymentException.byMessage(
+      throw AirflowPipelineDeploymentException.byMessage(
           pipelineName, "Failed to trigger IngestionPipeline", Response.Status.fromStatusCode(response.statusCode()));
     } catch (Exception e) {
-      throw IngestionPipelineDeploymentException.byMessage(pipelineName, e.getMessage());
+      throw AirflowPipelineDeploymentException.byMessage(pipelineName, e.getMessage());
     }
   }
 
-  public Ingestion getStatus(Ingestion ingestion) {
+  public AirflowPipeline getStatus(AirflowPipeline airflowPipeline) {
     try {
       String token = authenticate();
-      String authToken = String.format(this.authHeader, token);
+      String authToken = String.format(AUTH_TOKEN, token);
       String statusEndPoint = "%s/rest_api/api?api=list_run&dag_id=%s";
-      String url = String.format(statusEndPoint, this.url, ingestion.getName());
+      String statusUrl = String.format(statusEndPoint, url, airflowPipeline.getName());
       JSONObject requestPayload = new JSONObject();
       HttpRequest request =
-          HttpRequest.newBuilder(URI.create(url))
-              .header("Content-Type", "application/json")
-              .header("Authorization", authToken)
+          HttpRequest.newBuilder(URI.create(statusUrl))
+              .header(CONTENT_HEADER, CONTENT_TYPE)
+              .header(AUTH_HEADER, authToken)
               .POST(HttpRequest.BodyPublishers.ofString(requestPayload.toString()))
               .build();
       HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
       if (response.statusCode() == 200) {
         AirflowListResponse airflowListResponse = JsonUtils.readValue(response.body(), AirflowListResponse.class);
-        ingestion.setNextExecutionDate(airflowListResponse.getNextRun());
-        List<IngestionStatus> statuses = new ArrayList<>();
-        for (AirflowDagRun dagRun : airflowListResponse.dagRuns) {
-          IngestionStatus ingestionStatus =
-              new IngestionStatus()
+        airflowPipeline.setNextExecutionDate(airflowListResponse.getNextRun());
+        List<PipelineStatus> statuses = new ArrayList<>();
+        for (AirflowDagRun dagRun : airflowListResponse.getDagRuns()) {
+          PipelineStatus pipelineStatus =
+              new PipelineStatus()
                   .withState(dagRun.getState())
                   .withStartDate(dagRun.getStartDate())
                   .withEndDate(dagRun.getEndDate());
-          statuses.add(ingestionStatus);
+          statuses.add(pipelineStatus);
         }
-        ingestion.setIngestionStatuses(statuses);
-        return ingestion;
+        airflowPipeline.setPipelineStatuses(statuses);
+        return airflowPipeline;
       }
 
-      throw IngestionPipelineDeploymentException.byMessage(
-          ingestion.getName(),
+      throw AirflowPipelineDeploymentException.byMessage(
+          airflowPipeline.getName(),
           "Failed to fetch ingestion pipeline runs",
           Response.Status.fromStatusCode(response.statusCode()));
     } catch (Exception e) {
-      throw IngestionPipelineDeploymentException.byMessage(ingestion.getName(), e.getMessage());
+      throw AirflowPipelineDeploymentException.byMessage(airflowPipeline.getName(), e.getMessage());
     }
   }
 }
