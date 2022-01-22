@@ -13,7 +13,7 @@ import logging
 import os
 import pathlib
 import sys
-from typing import Optional
+from typing import List, Optional, Tuple
 
 import click
 from pydantic import ValidationError
@@ -208,23 +208,56 @@ def docker(start, stop, pause, resume, clean, file_path) -> None:
     required=True,
 )
 @click.option(
-    "--upload",
-    help="S3 URI to upload file",
+    "-d",
+    "--database",
+    help="Database to backup",
+    required=True,
+)
+@click.option(
+    "--port",
+    help="Database service port",
+    default="3306",
+    required=False,
+)
+@click.option(
+    "--output",
+    help="Local path to store the backup",
+    type=click.Path(exists=False, dir_okay=True),
     default=None,
     required=False,
+)
+@click.option(
+    "--upload",
+    help="S3 endpoint, bucket & key to upload the backup file",
+    nargs=3,
+    type=click.Tuple([str, str, str]),
+    default=None,
+    required=False,
+)
+@click.option(
+    "-o", "--options", multiple=True, default=["--protocol=tcp", "--no-tablespaces"]
 )
 def backup(
     host: str,
     user: str,
     password: str,
-    upload: Optional[str],
+    database: str,
+    port: str,
+    output: Optional[str],
+    upload: Optional[Tuple[str, str, str]],
+    options: List[str],
 ) -> None:
     """
-    Run a backup for the metadata DB
+    Run a backup for the metadata DB.
+    Requires mysqldump installed on the host.
 
-    Requires mysqldump installed on the host
+    We can pass as many options as required with `-o <opt1>, -o <opt2> [...]`
+
+    To run the upload, provide the information as
+    `--upload endpoint bucket key` and properly configure the environment
+    variables AWS_ACCESS_KEY_ID & AWS_SECRET_ACCESS_KEY
     """
-    run_backup(host, user, password, upload)
+    run_backup(host, user, password, database, port, output, upload, options)
 
 
 metadata.add_command(check)
