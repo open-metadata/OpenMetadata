@@ -34,8 +34,8 @@
       "type": "string"
     },
     "startDate": {
-      "description": "Last update time corresponding to the new version of the entity in Unix epoch time milliseconds.",
-      "$ref": "../../type/basic.json#/definitions/timestamp"
+      "description": "Start date of the workflow",
+      "$ref": "../../type/basic.json#/definitions/dateTime"
     },
     "tasks": {
       "description": "All the tasks that are part of pipeline.",
