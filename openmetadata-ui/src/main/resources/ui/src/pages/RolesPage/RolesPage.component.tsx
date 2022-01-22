@@ -72,12 +72,12 @@ const RolesPage = () => {
   const [isAddingRule, setIsAddingRule] = useState<boolean>(false);
   const [errorData, setErrorData] = useState<FormErrorData>();
   const [isEditable, setIsEditable] = useState<boolean>(false);
-  const [isDeletingRule, setIsDeletingRule] = useState<{
+  const [deletingRule, setDeletingRule] = useState<{
     rule: Rule | undefined;
     state: boolean;
   }>({ rule: undefined, state: false });
 
-  const [isEditingRule, setIsEditingRule] = useState<{
+  const [editingRule, setEditingRule] = useState<{
     rule: Rule | undefined;
     state: boolean;
   }>({ rule: undefined, state: false });
@@ -286,7 +286,7 @@ const RolesPage = () => {
             `Error while updating ${data.name} rule`,
         });
       })
-      .finally(() => setIsEditingRule({ rule: undefined, state: false }));
+      .finally(() => setEditingRule({ rule: undefined, state: false }));
   };
 
   const deleteRule = (data: Rule) => {
@@ -308,7 +308,7 @@ const RolesPage = () => {
         });
       })
       .finally(() => {
-        setIsDeletingRule({ rule: undefined, state: false });
+        setDeletingRule({ rule: undefined, state: false });
       });
   };
 
@@ -426,8 +426,9 @@ const RolesPage = () => {
                 <td className="tableBody-cell">
                   <p
                     className={classNames(
-                      { 'tw-text-status-success': rule.allow },
-                      { 'tw-text-status-failed': !rule.allow }
+                      rule.allow
+                        ? 'tw-text-status-success'
+                        : 'tw-text-status-failed'
                     )}>
                     {rule.allow ? 'ALLOW' : 'DENY'}
                   </p>
@@ -447,8 +448,7 @@ const RolesPage = () => {
                 </td>
                 <td className="tableBody-cell">
                   <div className="tw-flex">
-                    <span
-                      onClick={() => setIsEditingRule({ rule, state: true })}>
+                    <span onClick={() => setEditingRule({ rule, state: true })}>
                       <SVGIcons
                         alt="icon-edit"
                         className="tw-cursor-pointer"
@@ -458,7 +458,7 @@ const RolesPage = () => {
                       />
                     </span>
                     <span
-                      onClick={() => setIsDeletingRule({ rule, state: true })}>
+                      onClick={() => setDeletingRule({ rule, state: true })}>
                       <SVGIcons
                         alt="icon-delete"
                         className="tw-ml-4 tw-cursor-pointer"
@@ -627,29 +627,29 @@ const RolesPage = () => {
                   />
                 )}
 
-                {isEditingRule.state && (
+                {editingRule.state && (
                   <AddRuleModal
                     isEditing
-                    header={`Edit rule ${isEditingRule.rule?.name}`}
-                    initialData={isEditingRule.rule as Rule}
+                    header={`Edit rule ${editingRule.rule?.name}`}
+                    initialData={editingRule.rule as Rule}
                     onCancel={() =>
-                      setIsEditingRule({ rule: undefined, state: false })
+                      setEditingRule({ rule: undefined, state: false })
                     }
                     onSave={onRuleUpdate}
                   />
                 )}
 
-                {isDeletingRule.state && (
+                {deletingRule.state && (
                   <ConfirmationModal
-                    bodyText={`Are you sure want to delete ${isDeletingRule.rule?.name}?`}
+                    bodyText={`Are you sure want to delete ${deletingRule.rule?.name}?`}
                     cancelText="Cancel"
                     confirmText="Confirm"
                     header="Deleting rule"
                     onCancel={() =>
-                      setIsDeletingRule({ rule: undefined, state: false })
+                      setDeletingRule({ rule: undefined, state: false })
                     }
                     onConfirm={() => {
-                      deleteRule(isDeletingRule.rule as Rule);
+                      deleteRule(deletingRule.rule as Rule);
                     }}
                   />
                 )}
