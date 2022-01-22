@@ -35,6 +35,11 @@ jobs:
         java-version: '11'
         distribution: 'adopt'
 
+    - name: Set up Python 3.9
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.9
+
     - name: Install Ubuntu dependencies
       run: |
         sudo apt-get install -y libsasl2-dev unixodbc-dev python3-venv
@@ -48,11 +53,6 @@ jobs:
     - name: Start Server and Ingest Sample Data
       run: ./docker/run_local_docker.sh
       timeout-minutes: 20
-
-    - name: Set up Python 3.9
-      uses: actions/setup-python@v2
-      with:
-        python-version: 3.9
 
     - name: Run Python Tests & record coverage
       run: |
