@@ -160,20 +160,52 @@ public class PolicyResourceTest extends EntityResourceTest<Policy> {
 
   @Test
   void post_AccessControlPolicyWithValidRules_200_ok(TestInfo test) throws IOException {
-    CreatePolicy create = createAccessControlPolicyWithValidRules(test);
+    List<Rule> rules = new ArrayList<>();
+    rules.add(
+        PolicyUtils.accessControlRule(null, null, "DataConsumer", MetadataOperation.UpdateDescription, true, 0, true));
+    rules.add(PolicyUtils.accessControlRule(null, null, "DataConsumer", MetadataOperation.UpdateTags, true, 1, true));
+    CreatePolicy create = createAccessControlPolicyWithRules(getEntityName(test), rules);
     createAndCheckEntity(create, adminAuthHeaders());
   }
 
   @Test
-  void post_AccessControlPolicyWithInvalidRules_400_error(TestInfo test) throws IOException {
-    CreatePolicy create = createAccessControlPolicyWithInvalidRules(test);
+  void post_AccessControlPolicyWithInvalidRules_400_error(TestInfo test) {
+    List<Rule> rules = new ArrayList<>();
+    rules.add(
+        PolicyUtils.accessControlRule("rule21", null, null, null, MetadataOperation.UpdateDescription, true, 0, true));
+    CreatePolicy create = createAccessControlPolicyWithRules(getEntityName(test), rules);
     HttpResponseException exception =
         assertThrows(HttpResponseException.class, () -> createEntity(create, adminAuthHeaders()));
     assertResponseContains(
         exception,
         BAD_REQUEST,
-        "Check if operation is non-null and at least one among the user (subject) "
-            + "and entity (object) attributes is specified");
+        String.format(
+            "Found invalid rule rule21 within policy %s. Please ensure that at least one among the user "
+                + "(subject) and entity (object) attributes is specified",
+            getEntityName(test)));
+  }
+
+  @Test
+  void post_AccessControlPolicyWithDuplicateRules_400_error(TestInfo test) {
+    List<Rule> rules = new ArrayList<>();
+    rules.add(
+        PolicyUtils.accessControlRule(
+            "rule1", null, null, "DataConsumer", MetadataOperation.UpdateDescription, true, 0, true));
+    rules.add(
+        PolicyUtils.accessControlRule(
+            "rule2", null, null, "DataConsumer", MetadataOperation.UpdateTags, true, 1, true));
+    rules.add(
+        PolicyUtils.accessControlRule(
+            "rule3", null, null, "DataConsumer", MetadataOperation.UpdateTags, true, 1, true));
+    CreatePolicy create = createAccessControlPolicyWithRules(getEntityName(test), rules);
+    HttpResponseException exception =
+        assertThrows(HttpResponseException.class, () -> createEntity(create, adminAuthHeaders()));
+    assertResponseContains(
+        exception,
+        BAD_REQUEST,
+        String.format(
+            "Found multiple rules with operation UpdateTags within policy %s. Please ensure that operation across all rules within the policy are distinct",
+            getEntityName(test)));
   }
 
   @Test
@@ -414,20 +446,6 @@ public class PolicyResourceTest extends EntityResourceTest<Policy> {
         .withPolicyType(PolicyType.AccessControl)
         .withRules(rules.stream().map(rule -> (Object) rule).collect(Collectors.toList()))
         .withOwner(USER_OWNER1);
-  }
-
-  private CreatePolicy createAccessControlPolicyWithInvalidRules(TestInfo test) {
-    List<Rule> rules = new ArrayList<>();
-    rules.add(PolicyUtils.accessControlRule(null, null, null, MetadataOperation.UpdateDescription, true, 0, true));
-    return createAccessControlPolicyWithRules(getEntityName(test), rules);
-  }
-
-  private CreatePolicy createAccessControlPolicyWithValidRules(TestInfo test) {
-    List<Rule> rules = new ArrayList<>();
-    rules.add(
-        PolicyUtils.accessControlRule(null, null, "DataConsumer", MetadataOperation.UpdateDescription, true, 0, true));
-    rules.add(PolicyUtils.accessControlRule(null, null, "DataConsumer", MetadataOperation.UpdateTags, true, 1, true));
-    return createAccessControlPolicyWithRules(getEntityName(test), rules);
   }
 
   private static Location createLocation() throws HttpResponseException {

@@ -274,10 +274,7 @@ class AmundsenSource(Source[Entity]):
             return service
         else:
             service = {
-                "jdbc": {
-                    "connectionUrl": f"jdbc://temp",
-                    "driverClass": "jdbc",
-                },
+                "databaseConnection": {"hostPort": f"localhost"},
                 "name": service_name,
                 "description": "",
                 "serviceType": service_type.capitalize(),

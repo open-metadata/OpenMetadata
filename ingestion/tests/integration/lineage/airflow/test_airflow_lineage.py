@@ -42,10 +42,10 @@ from metadata.generated.schema.api.services.createDatabaseService import (
 from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.data.table import Column, DataType, Table
 from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseConnection,
     DatabaseServiceType,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.generated.schema.type.jdbcConnection import JdbcInfo
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 
@@ -63,7 +63,7 @@ class AirflowLineageTest(TestCase):
     service = CreateDatabaseServiceEntityRequest(
         name="test-service-table-lineage",
         serviceType=DatabaseServiceType.MySQL,
-        jdbc=JdbcInfo(driverClass="jdbc", connectionUrl="jdbc://localhost"),
+        databaseConnection=DatabaseConnection(hostPort="localhost"),
     )
     service_type = "databaseService"
 

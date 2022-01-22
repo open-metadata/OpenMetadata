@@ -86,7 +86,7 @@ public final class Entity {
   //
   // Operations
   //
-  public static final String INGESTION = "ingestion";
+  public static final String AIRFLOW_PIPELINE = "airflowPipeline";
   public static final String WEBHOOK = "webhook";
 
   private Entity() {}

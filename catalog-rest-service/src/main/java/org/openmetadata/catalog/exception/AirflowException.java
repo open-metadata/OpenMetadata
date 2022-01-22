@@ -15,26 +15,24 @@ package org.openmetadata.catalog.exception;
 
 import javax.ws.rs.core.Response;
 
-public class IngestionPipelineDeploymentException extends WebServiceException {
+public class AirflowException extends WebServiceException {
 
-  private static final String BY_NAME_MESSAGE = "Failed to deploy pipeline [%s] due to [%s].";
+  private static final String BY_NAME_MESSAGE = "Airflow Exception [%s] due to [%s].";
 
-  public IngestionPipelineDeploymentException(String message) {
+  public AirflowException(String message) {
     super(Response.Status.BAD_REQUEST, message);
   }
 
-  private IngestionPipelineDeploymentException(Response.Status status, String message) {
+  private AirflowException(Response.Status status, String message) {
     super(status, message);
   }
 
-  public static IngestionPipelineDeploymentException byMessage(
-      String name, String errorMessage, Response.Status status) {
-    return new IngestionPipelineDeploymentException(status, buildMessageByName(name, errorMessage));
+  public static AirflowException byMessage(String name, String errorMessage, Response.Status status) {
+    return new AirflowException(status, buildMessageByName(name, errorMessage));
   }
 
-  public static IngestionPipelineDeploymentException byMessage(String name, String errorMessage) {
-    return new IngestionPipelineDeploymentException(
-        Response.Status.BAD_REQUEST, buildMessageByName(name, errorMessage));
+  public static AirflowException byMessage(String name, String errorMessage) {
+    return new AirflowException(Response.Status.BAD_REQUEST, buildMessageByName(name, errorMessage));
   }
 
   private static String buildMessageByName(String name, String errorMessage) {
