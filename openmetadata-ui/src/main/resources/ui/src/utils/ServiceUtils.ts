@@ -286,12 +286,15 @@ export const getTotalEntityCountByService = (buckets: Array<Bucket> = []) => {
 };
 
 export const getIngestionTypeList = (
-  serviceType: string
+  serviceType: string,
+  onlyMetaData = false
 ): Array<string> | undefined => {
   let ingestionType: Array<string> | undefined;
   switch (serviceType) {
     case DatabaseServiceType.BIGQUERY:
-      ingestionType = [IngestionType.BIGQUERY, IngestionType.BIGQUERY_USAGE];
+      ingestionType = onlyMetaData
+        ? [IngestionType.BIGQUERY]
+        : [IngestionType.BIGQUERY, IngestionType.BIGQUERY_USAGE];
 
       break;
     case DatabaseServiceType.HIVE:
@@ -315,7 +318,9 @@ export const getIngestionTypeList = (
       break;
 
     case DatabaseServiceType.REDSHIFT:
-      ingestionType = [IngestionType.REDSHIFT, IngestionType.REDSHIFT_USAGE];
+      ingestionType = onlyMetaData
+        ? [IngestionType.REDSHIFT]
+        : [IngestionType.REDSHIFT, IngestionType.REDSHIFT_USAGE];
 
       break;
 
@@ -325,7 +330,9 @@ export const getIngestionTypeList = (
       break;
 
     case DatabaseServiceType.SNOWFLAKE:
-      ingestionType = [IngestionType.SNOWFLAKE, IngestionType.SNOWFLAKE_USAGE];
+      ingestionType = onlyMetaData
+        ? [IngestionType.SNOWFLAKE]
+        : [IngestionType.SNOWFLAKE, IngestionType.SNOWFLAKE_USAGE];
 
       break;
 

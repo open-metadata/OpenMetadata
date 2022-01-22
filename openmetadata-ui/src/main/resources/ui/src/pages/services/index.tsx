@@ -13,7 +13,7 @@
 
 import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
-import { isNil, isNull } from 'lodash';
+import { isNil } from 'lodash';
 import { Paging, ServiceCollection, ServiceData, ServiceTypes } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -58,8 +58,12 @@ import { MessagingService } from '../../generated/entity/services/messagingServi
 import { PipelineService } from '../../generated/entity/services/pipelineService';
 import { useAuth } from '../../hooks/authHooks';
 import useToastContext from '../../hooks/useToastContext';
-import { getActiveCatClass, getCountBadge } from '../../utils/CommonUtils';
-import { getFrequencyTime, serviceTypeLogo } from '../../utils/ServiceUtils';
+import {
+  getActiveCatClass,
+  getCountBadge,
+  getServiceLogo,
+} from '../../utils/CommonUtils';
+import { getFrequencyTime } from '../../utils/ServiceUtils';
 import SVGIcons from '../../utils/SvgUtils';
 
 type ServiceRecord = {
@@ -292,15 +296,6 @@ const ServicesPage = () => {
     setIsConfirmationModalOpen(true);
   };
 
-  const getServiceLogo = (serviceType: string): JSX.Element | null => {
-    const logo = serviceTypeLogo(serviceType);
-    if (!isNull(logo)) {
-      return <img alt="" className="tw-h-8 tw-w-8" src={logo} />;
-    }
-
-    return null;
-  };
-
   const getServiceTabs = (): Array<{
     name: ServiceTypes;
     displayName: string;
@@ -365,14 +360,14 @@ const ServicesPage = () => {
   const getOptionalFields = (service: ServiceDataObj): JSX.Element => {
     switch (serviceName) {
       case ServiceCategory.DATABASE_SERVICES: {
-        const databaseService = service as unknown as DatabaseService;
+        // const databaseService = service as unknown as DatabaseService;
 
         return (
           <>
             <div className="tw-mb-1" data-testid="additional-field">
               <label className="tw-mb-0">Driver Class:</label>
               <span className=" tw-ml-1 tw-font-normal tw-text-grey-body">
-                {databaseService.jdbc.driverClass}
+                {/* {databaseService.jdbc.driverClass} */}
               </span>
             </div>
           </>
@@ -610,7 +605,10 @@ const ServicesPage = () => {
                           <div
                             className="tw-flex tw-justify-end"
                             data-testid="service-icon">
-                            {getServiceLogo(service.serviceType || '')}
+                            {getServiceLogo(
+                              service.serviceType || '',
+                              'tw-h-8 tw-w-8'
+                            )}
                           </div>
                         </div>
                       </div>

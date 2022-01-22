@@ -12,13 +12,14 @@
  */
 
 import classNames from 'classnames';
-import { isEmpty, isUndefined } from 'lodash';
+import { isEmpty, isNull, isUndefined } from 'lodash';
 import {
   RecentlySearched,
   RecentlySearchedData,
   RecentlyViewed,
   RecentlyViewedData,
 } from 'Models';
+import { utc } from 'moment';
 import React from 'react';
 import { reactLocalStorage } from 'reactjs-localstorage';
 import AppState from '../AppState';
@@ -33,6 +34,8 @@ import {
   EntityReference as UserTeams,
   User,
 } from '../generated/entity/teams/user';
+import { serviceTypeLogo } from './ServiceUtils';
+import SVGIcons, { Icons } from './SvgUtils';
 
 export const arraySorterByKey = (
   key: string,
@@ -304,6 +307,31 @@ export const getImages = (imageUri: string) => {
   }
 
   return imagesObj;
+};
+
+export const getServiceLogo = (
+  serviceType: string,
+  className = ''
+): JSX.Element | null => {
+  const logo = serviceTypeLogo(serviceType);
+
+  if (!isNull(logo)) {
+    return <img alt="" className={className} src={logo} />;
+  }
+
+  return null;
+};
+
+export const getCurrentDate = () => {
+  return `${utc(new Date()).format('YYYY-MM-DD')}`;
+};
+
+export const getSvgArrow = (isActive: boolean) => {
+  return isActive ? (
+    <SVGIcons alt="arrow-down" icon={Icons.ARROW_DOWN_PRIMARY} />
+  ) : (
+    <SVGIcons alt="arrow-right" icon={Icons.ARROW_RIGHT_PRIMARY} />
+  );
 };
 
 export const isValidUrl = (href: string) => {

@@ -436,4 +436,9 @@ declare module 'Models' {
   export interface FormErrorData {
     [key: string]: string | undefined;
   }
+
+  export type StepperStepType = {
+    name: string;
+    step: number;
+  };
 }
