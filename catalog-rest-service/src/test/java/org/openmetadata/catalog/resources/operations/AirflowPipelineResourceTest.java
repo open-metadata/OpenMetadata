@@ -491,7 +491,7 @@ public class AirflowPipelineResourceTest extends EntityOperationsResourceTest<Ai
         JsonUtils.convertValue(airflowPipeline.getPipelineConfig(), DatabaseServiceMetadataPipeline.class);
     assertEquals(ingestionPipeline.getConcurrency(), airflowPipeline.getConcurrency());
     // there should be one airflow task that encompases all of metadata pipeline config
-    assertEquals(ingestionPipeline.getTasks().size(), 1);
+    assertEquals(1, ingestionPipeline.getTasks().size());
     OpenMetadataIngestionTask airflowTask = ingestionPipeline.getTasks().get(0);
     IngestionTaskConfig taskConfig = airflowTask.getConfig();
     Map<String, Object> taskParams = taskConfig.getOpKwargs();

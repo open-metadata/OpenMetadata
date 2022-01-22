@@ -110,7 +110,7 @@ public final class AirflowUtils {
   }
 
   public static OpenMetadataIngestionComponent makeOpenMetadataConfigComponent(
-      AirflowPipeline airflowPipeline, AirflowConfiguration airflowConfiguration) {
+      AirflowConfiguration airflowConfiguration) {
     Map<String, Object> metadataConfig = new HashMap<>();
     metadataConfig.put("api_endpoint", airflowConfiguration.getMetadataApiEndpoint());
     metadataConfig.put("auth_provider_type", airflowConfiguration.getAuthProvider());
@@ -123,7 +123,7 @@ public final class AirflowUtils {
     return OpenMetadataIngestionConfig.builder()
         .source(makeOpenMetadataDatasourceComponent(airflowPipeline))
         .sink(makeOpenMetadataSinkComponent(airflowPipeline))
-        .metadataServer(makeOpenMetadataConfigComponent(airflowPipeline, airflowConfiguration))
+        .metadataServer(makeOpenMetadataConfigComponent(airflowConfiguration))
         .build();
   }
 
