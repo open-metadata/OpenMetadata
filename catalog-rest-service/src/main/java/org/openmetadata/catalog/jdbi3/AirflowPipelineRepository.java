@@ -24,118 +24,114 @@ import java.util.List;
 import java.util.UUID;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
-import org.openmetadata.catalog.operations.workflows.Ingestion;
-import org.openmetadata.catalog.resources.operations.IngestionResource;
+import org.openmetadata.catalog.operations.pipelines.AirflowPipeline;
+import org.openmetadata.catalog.resources.operations.AirflowPipelineResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
-import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 
-public class IngestionRepository extends EntityRepository<Ingestion> {
-  private static final Fields INGESTION_UPDATE_FIELDS =
-      new Fields(IngestionResource.FIELD_LIST, "scheduleInterval,owner,tags");
-  private static final Fields INGESTION_PATCH_FIELDS =
-      new Fields(IngestionResource.FIELD_LIST, "scheduleInterval,owner,tags");
+public class AirflowPipelineRepository extends EntityRepository<AirflowPipeline> {
+  private static final Fields AIRFLOW_PIPELINE_UPDATE_FIELDS =
+      new Fields(AirflowPipelineResource.FIELD_LIST, "pipelineConfig,scheduleInterval,owner,tags");
+  private static final Fields AIRFLOW_PIPELINE_PATCH_FIELDS =
+      new Fields(AirflowPipelineResource.FIELD_LIST, "pipelineConfig,scheduleInterval,owner,tags");
 
-  public IngestionRepository(CollectionDAO dao) {
+  public AirflowPipelineRepository(CollectionDAO dao) {
     super(
-        IngestionResource.COLLECTION_PATH,
-        Entity.INGESTION,
-        Ingestion.class,
-        dao.ingestionDAO(),
+        AirflowPipelineResource.COLLECTION_PATH,
+        Entity.AIRFLOW_PIPELINE,
+        AirflowPipeline.class,
+        dao.airflowPipelineDAO(),
         dao,
-        INGESTION_PATCH_FIELDS,
-        INGESTION_UPDATE_FIELDS,
-        true,
+        AIRFLOW_PIPELINE_PATCH_FIELDS,
+        AIRFLOW_PIPELINE_UPDATE_FIELDS,
+        false,
         true,
         false);
   }
 
-  public static String getFQN(Ingestion ingestion) {
-    return (ingestion.getService().getName() + "." + ingestion.getName());
+  public static String getFQN(AirflowPipeline airflowPipeline) {
+    return (airflowPipeline.getService().getName() + "." + airflowPipeline.getName());
   }
 
   @Transaction
-  public EntityReference getOwnerReference(Ingestion ingestion) throws IOException {
-    return EntityUtil.populateOwner(daoCollection.userDAO(), daoCollection.teamDAO(), ingestion.getOwner());
+  public EntityReference getOwnerReference(AirflowPipeline airflowPipeline) throws IOException {
+    return EntityUtil.populateOwner(daoCollection.userDAO(), daoCollection.teamDAO(), airflowPipeline.getOwner());
   }
 
   @Override
-  public Ingestion setFields(Ingestion ingestion, Fields fields) throws IOException, ParseException {
-    ingestion.setDisplayName(ingestion.getDisplayName());
-    ingestion.setService(getService(ingestion));
-    ingestion.setConnectorConfig(ingestion.getConnectorConfig());
-    ingestion.setScheduleInterval(ingestion.getScheduleInterval());
-    ingestion.setOwner(fields.contains("owner") ? getOwner(ingestion) : null);
-    ingestion.setTags(fields.contains("tags") ? getTags(ingestion.getFullyQualifiedName()) : null);
-    return ingestion;
+  public AirflowPipeline setFields(AirflowPipeline airflowPipeline, Fields fields) throws IOException, ParseException {
+    airflowPipeline.setDisplayName(airflowPipeline.getDisplayName());
+    airflowPipeline.setService(getService(airflowPipeline));
+    airflowPipeline.setPipelineConfig(airflowPipeline.getPipelineConfig());
+    airflowPipeline.setScheduleInterval(airflowPipeline.getScheduleInterval());
+    airflowPipeline.setOwner(fields.contains("owner") ? getOwner(airflowPipeline) : null);
+    return airflowPipeline;
   }
 
   @Override
-  public void restorePatchAttributes(Ingestion original, Ingestion updated) {}
+  public void restorePatchAttributes(AirflowPipeline original, AirflowPipeline updated) {}
 
   @Override
-  public EntityInterface<Ingestion> getEntityInterface(Ingestion entity) {
-    return new IngestionEntityInterface(entity);
+  public EntityInterface<AirflowPipeline> getEntityInterface(AirflowPipeline entity) {
+    return new AirflowPipelineEntityInterface(entity);
   }
 
   @Override
-  public void prepare(Ingestion ingestion) throws IOException, ParseException {
+  public void prepare(AirflowPipeline airflowPipeline) throws IOException, ParseException {
     EntityReference entityReference =
-        helper(helper(ingestion).findEntity("service", List.of(DATABASE_SERVICE, DASHBOARD_SERVICE)))
+        helper(helper(airflowPipeline).findEntity("service", List.of(DATABASE_SERVICE, DASHBOARD_SERVICE)))
             .toEntityReference();
-    ingestion.setService(entityReference);
-    ingestion.setFullyQualifiedName(getFQN(ingestion));
-    ingestion.setOwner(helper(ingestion).validateOwnerOrNull());
-    ingestion.setTags(EntityUtil.addDerivedTags(daoCollection.tagDAO(), ingestion.getTags()));
+    airflowPipeline.setService(entityReference);
+    airflowPipeline.setFullyQualifiedName(getFQN(airflowPipeline));
+    airflowPipeline.setOwner(helper(airflowPipeline).validateOwnerOrNull());
   }
 
   @Override
-  public void storeEntity(Ingestion ingestion, boolean update) throws IOException {
+  public void storeEntity(AirflowPipeline airflowPipeline, boolean update) throws IOException {
     // Relationships and fields such as href are derived and not stored as part of json
-    EntityReference owner = ingestion.getOwner();
-    List<TagLabel> tags = ingestion.getTags();
-    EntityReference service = ingestion.getService();
+    EntityReference owner = airflowPipeline.getOwner();
+    EntityReference service = airflowPipeline.getService();
 
     // Don't store owner, dashboard, href and tags as JSON. Build it on the fly based on relationships
-    ingestion.withOwner(null).withHref(null).withTags(null);
+    airflowPipeline.withOwner(null).withHref(null);
 
-    store(ingestion.getId(), ingestion, update);
+    store(airflowPipeline.getId(), airflowPipeline, update);
 
     // Restore the relationships
-    ingestion.withOwner(owner).withService(service).withTags(tags);
+    airflowPipeline.withOwner(owner).withService(service);
   }
 
   @Override
-  public void storeRelationships(Ingestion ingestion) {
-    EntityReference service = ingestion.getService();
+  public void storeRelationships(AirflowPipeline airflowPipeline) {
+    EntityReference service = airflowPipeline.getService();
     daoCollection
         .relationshipDAO()
         .insert(
             service.getId().toString(),
-            ingestion.getId().toString(),
+            airflowPipeline.getId().toString(),
             service.getType(),
-            Entity.INGESTION,
+            Entity.AIRFLOW_PIPELINE,
             Relationship.CONTAINS.ordinal());
-    setOwner(ingestion, ingestion.getOwner());
-    applyTags(ingestion);
+    setOwner(airflowPipeline, airflowPipeline.getOwner());
+    applyTags(airflowPipeline);
   }
 
   @Override
-  public EntityUpdater getUpdater(Ingestion original, Ingestion updated, boolean patchOperation) {
-    return new IngestionUpdater(original, updated, patchOperation);
+  public EntityUpdater getUpdater(AirflowPipeline original, AirflowPipeline updated, boolean patchOperation) {
+    return new AirflowPipelineUpdater(original, updated, patchOperation);
   }
 
-  private EntityReference getService(Ingestion ingestion) throws IOException, ParseException {
-    return helper(ingestion).getContainer(List.of(Entity.DATABASE_SERVICE, Entity.DASHBOARD_SERVICE));
+  private EntityReference getService(AirflowPipeline airflowPipeline) throws IOException, ParseException {
+    return helper(airflowPipeline).getContainer(List.of(Entity.DATABASE_SERVICE, Entity.DASHBOARD_SERVICE));
   }
 
-  public static class IngestionEntityInterface implements EntityInterface<Ingestion> {
-    private final Ingestion entity;
+  public static class AirflowPipelineEntityInterface implements EntityInterface<AirflowPipeline> {
+    private final AirflowPipeline entity;
 
-    public IngestionEntityInterface(Ingestion entity) {
+    public AirflowPipelineEntityInterface(AirflowPipeline entity) {
       this.entity = entity;
     }
 
@@ -170,11 +166,6 @@ public class IngestionRepository extends EntityRepository<Ingestion> {
     }
 
     @Override
-    public List<TagLabel> getTags() {
-      return entity.getTags();
-    }
-
-    @Override
     public Double getVersion() {
       return entity.getVersion();
     }
@@ -206,11 +197,11 @@ public class IngestionRepository extends EntityRepository<Ingestion> {
           .withName(getFullyQualifiedName())
           .withDescription(getDescription())
           .withDisplayName(getDisplayName())
-          .withType(Entity.INGESTION);
+          .withType(Entity.AIRFLOW_PIPELINE);
     }
 
     @Override
-    public Ingestion getEntity() {
+    public AirflowPipeline getEntity() {
       return entity;
     }
 
@@ -257,28 +248,23 @@ public class IngestionRepository extends EntityRepository<Ingestion> {
     }
 
     @Override
-    public Ingestion withHref(URI href) {
+    public AirflowPipeline withHref(URI href) {
       return entity.withHref(href);
-    }
-
-    @Override
-    public void setTags(List<TagLabel> tags) {
-      entity.setTags(tags);
     }
   }
 
   /** Handles entity updated from PUT and POST operation. */
-  public class IngestionUpdater extends EntityUpdater {
-    public IngestionUpdater(Ingestion original, Ingestion updated, boolean patchOperation) {
+  public class AirflowPipelineUpdater extends EntityUpdater {
+    public AirflowPipelineUpdater(AirflowPipeline original, AirflowPipeline updated, boolean patchOperation) {
       super(original, updated, patchOperation);
     }
 
     @Override
     public void entitySpecificUpdate() throws IOException {
-      Ingestion origIngestion = original.getEntity();
-      Ingestion updatedIngestion = updated.getEntity();
+      AirflowPipeline origIngestion = original.getEntity();
+      AirflowPipeline updatedIngestion = updated.getEntity();
       recordChange("scheduleInterval", origIngestion.getScheduleInterval(), updatedIngestion.getScheduleInterval());
-      recordChange("connectorConfig", origIngestion.getConnectorConfig(), updatedIngestion.getConnectorConfig());
+      recordChange("pipelineConfig", origIngestion.getPipelineConfig(), updatedIngestion.getPipelineConfig());
       recordChange("startDate", origIngestion.getStartDate(), updatedIngestion.getStartDate());
       recordChange("endDate", origIngestion.getEndDate(), updatedIngestion.getEndDate());
     }

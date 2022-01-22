@@ -53,10 +53,7 @@ def catalog_service(docker_ip, docker_services):
 def test_create_database_service(catalog_service):
     client = REST(catalog_service + "/api", "test", "test")
     data = {
-        "jdbc": {
-            "connectionUrl": "postgresql+psycopg2://catalog_user:catalog_password@localhost:5432/pagila",
-            "driverClass": "jdbc",
-        },
+        "databaseConnection": {"hostPort": "localhost:5432"},
         "name": "temp_local_postgres",
         "serviceType": "POSTGRES",
         "description": "local postgres env",

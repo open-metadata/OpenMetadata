@@ -97,7 +97,7 @@ def create_delete_table(client: OpenMetadata, databases: List[Database]):
 
 def create_delete_database(client: OpenMetadata, databases: List[Database]):
     data = {
-        "jdbc": {"connectionUrl": "trino://localhost/default", "driverClass": "jdbc"},
+        "databaseConnection": {"hostPort": "localhost:0000"},
         "name": "temp_local_trino",
         "serviceType": "Trino",
         "description": "local trino env",

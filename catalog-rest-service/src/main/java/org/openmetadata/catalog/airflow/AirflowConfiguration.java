@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-package org.openmetadata.catalog.ingestion;
+package org.openmetadata.catalog.airflow;
 
 import javax.validation.constraints.NotEmpty;
 
@@ -28,6 +28,8 @@ public class AirflowConfiguration {
   private String metadataApiEndpoint;
 
   private String authProvider;
+
+  private String secretKey;
 
   public String getApiEndpoint() {
     return apiEndpoint;
@@ -70,7 +72,7 @@ public class AirflowConfiguration {
   }
 
   public String getSecretKey() {
-    return "";
+    return secretKey;
   }
 
   @Override

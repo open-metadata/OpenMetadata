@@ -306,8 +306,7 @@ public class DatabaseServiceResource {
         .withName(create.getName())
         .withDescription(create.getDescription())
         .withServiceType(create.getServiceType())
-        .withJdbc(create.getJdbc())
-        .withIngestionSchedule(create.getIngestionSchedule())
+        .withDatabaseConnection(create.getDatabaseConnection())
         .withUpdatedBy(securityContext.getUserPrincipal().getName())
         .withUpdatedAt(System.currentTimeMillis());
   }
