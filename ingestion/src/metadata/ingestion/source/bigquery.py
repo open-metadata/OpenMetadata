@@ -43,7 +43,7 @@ def get_columns(bq_schema):
             "precision": field.precision,
             "scale": field.scale,
             "max_length": field.max_length,
-            "raw_data_type": str(_get_sqla_column_type(field))
+            "raw_data_type": str(_get_sqla_column_type(field)),
         }
         col_list.append(col_obj)
     return col_list
@@ -85,7 +85,7 @@ class BigquerySource(SQLSource):
             os.unlink(self.config.options["credentials_path"])
 
     def standardize_schema_table_names(
-            self, schema: str, table: str
+        self, schema: str, table: str
     ) -> Tuple[str, str]:
         segments = table.split(".")
         if len(segments) != 2:
