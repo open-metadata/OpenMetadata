@@ -101,7 +101,7 @@
   }
 
   .tw-modal {
-    @apply tw-z-9999 tw-flex tw-fixed tw-inset-0 tw-bg-transparent tw-justify-center tw-h-screen tw-w-screen tw-items-center tw-antialiased;
+    @apply tw-z-9999 tw-text-grey-body tw-flex tw-fixed tw-inset-0 tw-bg-transparent tw-justify-center tw-h-screen tw-w-screen tw-items-center tw-antialiased;
   }
   .tw-modal-confetti {
     background-size: cover;

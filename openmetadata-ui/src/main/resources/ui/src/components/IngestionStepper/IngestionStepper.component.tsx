@@ -17,14 +17,21 @@ import './IngestionStepper.css';
 type Props = {
   steps: Array<{ name: string; step: number }>;
   activeStep: number;
+  stepperLineClassName?: string;
 };
-const IngestionStepper = ({ steps, activeStep }: Props) => {
+const IngestionStepper = ({
+  steps,
+  activeStep,
+  stepperLineClassName = '',
+}: Props) => {
   return (
     <div className="ingestion-content tw-relative">
       {steps.map((step, index) => (
         <Fragment key={index}>
           {index > 0 && index < steps.length && (
-            <span className="ingestion-line" />
+            <span
+              className={classNames('ingestion-line', stepperLineClassName)}
+            />
           )}
           <div className="ingestion-wrapper" key={index}>
             <span className="tw-flex tw-flex-col">
