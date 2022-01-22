@@ -2,7 +2,7 @@
   "$id": "https://open-metadata.org/schema/operations/pipelines/airflowPipeline.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Airflow Pipeline",
-  "description": "Airflow Pipeline is used to setup a DAG and deploy.",
+  "description": "Airflow Pipeline is used to setup a DAG and deploy. This entity is used to setup metadata/quality pipelines on Apache Airflow.",
   "type": "object",
   "definitions": {
     "pipelineType": {
