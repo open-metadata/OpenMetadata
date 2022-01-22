@@ -13,17 +13,16 @@ import os
 from typing import Optional, Tuple, Any
 import json, tempfile, logging
 
+from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
+from metadata.ingestion.source.sql_source import SQLSource
+from metadata.ingestion.source.sql_source_common import SQLConnectionConfig
+from metadata.utils.column_type_parser import create_sqlalchemy_type
 from sqlalchemy_bigquery import _types
 from sqlalchemy_bigquery._struct import STRUCT
 from sqlalchemy_bigquery._types import (
     _get_sqla_column_type,
     _get_transitive_schema_fields,
 )
-
-from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
-from metadata.ingestion.source.sql_source import SQLSource
-from metadata.ingestion.source.sql_source_common import SQLConnectionConfig
-from metadata.utils.column_helpers import create_sqlalchemy_type
 
 GEOGRAPHY = create_sqlalchemy_type("GEOGRAPHY")
 _types._type_map["GEOGRAPHY"] = GEOGRAPHY
@@ -44,7 +43,7 @@ def get_columns(bq_schema):
             "precision": field.precision,
             "scale": field.scale,
             "max_length": field.max_length,
-            "raw_data_type": repr(_get_sqla_column_type(field)),
+            "raw_data_type": str(_get_sqla_column_type(field)),
         }
         col_list.append(col_obj)
     return col_list
@@ -75,9 +74,9 @@ class BigquerySource(SQLSource):
         metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
         if config.options.get("credentials", None):
             cred_path = create_credential_temp_file(config.options.get("credentials"))
-        os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = cred_path
-        del config.options["credentials"]
-        config.options["credentials_path"] = cred_path
+            os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = cred_path
+            config.options["credentials_path"] = cred_path
+            del config.options["credentials"]
         return cls(config, metadata_config, ctx)
 
     def close(self):

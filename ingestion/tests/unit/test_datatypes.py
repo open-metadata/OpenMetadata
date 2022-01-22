@@ -1,11 +1,8 @@
-import unittest
 from unittest import TestCase
 
-from metadata.ingestion.api.source import SourceStatus
-from metadata.ingestion.source.sql_source import SQLSourceStatus
-from metadata.utils.column_helpers import get_column_type
+from metadata.utils.column_type_parser import ColumnTypeParser
 
-SQLTYPES = [
+SQLTYPES = {
     "ARRAY",
     "BIGINT",
     "BIGNUMERIC",
@@ -93,14 +90,13 @@ SQLTYPES = [
     "TIMESTAMP_NTZ",
     "TIMESTAMP_LTZ",
     "TIMESTAMP_TZ",
-]
+}
 
 
 class DataTypeTest(TestCase):
     def test_check_datatype_support(self):
-        status = SQLSourceStatus()
         for types in SQLTYPES:
             with self.subTest(line=types):
-                col_type = get_column_type(status, "Unit Test", types)
+                col_type = ColumnTypeParser.get_column_type(types)
                 col_type = True if col_type != "NULL" else False
                 self.assertTrue(col_type, msg=types)
