@@ -141,10 +141,10 @@ public class AirflowRESTClient {
       String token = authenticate();
       String authToken = String.format(AUTH_TOKEN, token);
       String statusEndPoint = "%s/rest_api/api?api=list_run&dag_id=%s";
-      String url = String.format(statusEndPoint, this.url, airflowPipeline.getName());
+      String statusUrl = String.format(statusEndPoint, url, airflowPipeline.getName());
       JSONObject requestPayload = new JSONObject();
       HttpRequest request =
-          HttpRequest.newBuilder(URI.create(url))
+          HttpRequest.newBuilder(URI.create(statusUrl))
               .header(CONTENT_HEADER, CONTENT_TYPE)
               .header(AUTH_HEADER, authToken)
               .POST(HttpRequest.BodyPublishers.ofString(requestPayload.toString()))
