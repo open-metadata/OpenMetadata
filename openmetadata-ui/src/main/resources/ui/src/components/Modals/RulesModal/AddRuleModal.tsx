@@ -15,13 +15,13 @@ import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import { FormErrorData } from 'Models';
 import React, { FC, useState } from 'react';
-import { Button } from '../../components/buttons/Button/Button';
-import { RuleAccess } from '../../enums/rule.enum';
+import { RuleAccess } from '../../../enums/rule.enum';
 import {
   Operation,
   Rule,
-} from '../../generated/entity/policies/accessControl/rule';
-import { errorMsg } from '../../utils/CommonUtils';
+} from '../../../generated/entity/policies/accessControl/rule';
+import { errorMsg } from '../../../utils/CommonUtils';
+import { Button } from '../../buttons/Button/Button';
 
 interface AddRuleProps {
   header: string;
@@ -30,6 +30,7 @@ interface AddRuleProps {
   isEditing?: boolean;
   onCancel: () => void;
   onSave: (data: Rule) => void;
+  onChange?: (data: Rule) => void;
 }
 
 const AddRuleModal: FC<AddRuleProps> = ({
@@ -39,6 +40,7 @@ const AddRuleModal: FC<AddRuleProps> = ({
   errorData,
   onSave,
   isEditing = false,
+  onChange,
 }: AddRuleProps) => {
   const [data, setData] = useState<Rule>(initialData);
   const [access, setAccess] = useState<RuleAccess>(
@@ -51,21 +53,27 @@ const AddRuleModal: FC<AddRuleProps> = ({
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
     e.persist();
+    let rule = data;
     setData((prevState) => {
-      return {
+      rule = {
         ...prevState,
         [e.target.name]: e.target.value,
       };
+
+      return rule;
     });
+    onChange?.(rule);
   };
 
   const onSubmitHandler = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    onSave({
+    const rule = {
       ...data,
       allow: access === RuleAccess.ALLOW,
       enabled: isEnabled,
-    });
+    };
+    onSave(rule);
+    onChange?.(rule);
   };
 
   return (
@@ -84,10 +92,9 @@ const AddRuleModal: FC<AddRuleProps> = ({
             {!isUndefined(initialData.operation) && (
               <div className="tw-mb-4">
                 <label className="tw-form-label required-field">
-                  Select Operation
+                  Operation
                 </label>
                 <select
-                  required
                   className={classNames(
                     'tw-text-sm tw-appearance-none tw-border tw-border-main',
                     'tw-rounded tw-w-full tw-py-2 tw-px-3 tw-text-grey-body  tw-leading-tight',

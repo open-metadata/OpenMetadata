@@ -35,6 +35,7 @@ import PageLayout from '../../components/containers/PageLayout';
 import Loader from '../../components/Loader/Loader';
 import ConfirmationModal from '../../components/Modals/ConfirmationModal/ConfirmationModal';
 import FormModal from '../../components/Modals/FormModal';
+import AddRuleModal from '../../components/Modals/RulesModal/AddRuleModal';
 import {
   ERROR404,
   TITLE_FOR_NON_ADMIN_ACTION,
@@ -51,7 +52,6 @@ import { getActiveCatClass, isEven } from '../../utils/CommonUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import Form from '../teams/Form';
 import UserCard from '../teams/UserCard';
-import AddRuleModal from './AddRuleModal';
 import { Policy } from './policy.interface';
 
 const getActiveTabClass = (tab: number, currentTab: number) => {
@@ -100,6 +100,20 @@ const RolesPage = () => {
         errData['displayName'] = 'Display name is required';
       } else if (data.displayName.length < 1 || data.displayName.length > 128) {
         errData['displayName'] = 'Display name size must be between 1 and 128';
+      }
+      setErrorData(errData);
+
+      return errData;
+    }
+
+    return {};
+  };
+
+  const validateRuleData = (data: Rule, forceSet = false) => {
+    if (errorData || forceSet) {
+      const errData: { [key: string]: string } = {};
+      if (!data.operation) {
+        errData['operation'] = 'Operation is required.';
       }
       setErrorData(errData);
 
@@ -218,29 +232,32 @@ const RolesPage = () => {
     }
   };
 
-  const onPolicyUpdate = (data: Rule) => {
-    const newRule = {
-      ...data,
-      name: `${currentPolicy?.name}-${data.operation}`,
-      userRoleAttr: currentRole?.name,
-    };
-    const updatedPolicy = {
-      name: currentPolicy?.name as string,
-      policyType: currentPolicy?.policyType as string,
-      rules: [...(currentPolicy?.rules as Rule[]), newRule],
-    };
+  const createRule = (data: Rule) => {
+    const errData = validateRuleData(data, true);
+    if (!Object.values(errData).length) {
+      const newRule = {
+        ...data,
+        name: `${currentPolicy?.name}-${data.operation}`,
+        userRoleAttr: currentRole?.name,
+      };
+      const updatedPolicy = {
+        name: currentPolicy?.name as string,
+        policyType: currentPolicy?.policyType as string,
+        rules: [...(currentPolicy?.rules as Rule[]), newRule],
+      };
 
-    updatePolicy(updatedPolicy)
-      .then((res: AxiosResponse) => {
-        setCurrentPolicy(res.data);
-      })
-      .catch((err: AxiosError) => {
-        showToast({
-          variant: 'error',
-          body: err.response?.data?.message ?? 'Error while adding new rule',
-        });
-      })
-      .finally(() => setIsAddingRule(false));
+      updatePolicy(updatedPolicy)
+        .then((res: AxiosResponse) => {
+          setCurrentPolicy(res.data);
+        })
+        .catch((err: AxiosError) => {
+          showToast({
+            variant: 'error',
+            body: err.response?.data?.message ?? 'Error while adding new rule',
+          });
+        })
+        .finally(() => setIsAddingRule(false));
+    }
   };
 
   const onRuleUpdate = (data: Rule) => {
@@ -526,7 +543,10 @@ const RolesPage = () => {
                           size="small"
                           theme="primary"
                           variant="contained"
-                          onClick={() => setIsAddingRule(true)}>
+                          onClick={() => {
+                            setErrorData(undefined);
+                            setIsAddingRule(true);
+                          }}>
                           Add new rule
                         </Button>
                       </NonAdminAction>
@@ -594,6 +614,7 @@ const RolesPage = () => {
                 )}
                 {isAddingRule && (
                   <AddRuleModal
+                    errorData={errorData}
                     header={`Adding new rule for ${toLower(
                       currentRole?.displayName
                     )}`}
@@ -601,7 +622,8 @@ const RolesPage = () => {
                       { name: '', operation: '' as Operation } as Rule
                     }
                     onCancel={() => setIsAddingRule(false)}
-                    onSave={onPolicyUpdate}
+                    onChange={(data) => validateRuleData(data as Rule)}
+                    onSave={createRule}
                   />
                 )}
 
@@ -619,7 +641,7 @@ const RolesPage = () => {
 
                 {isDeletingRule.state && (
                   <ConfirmationModal
-                    bodyText={`Are you sure want to delete ${isDeletingRule.rule?.name} rule?`}
+                    bodyText={`Are you sure want to delete ${isDeletingRule.rule?.name}?`}
                     cancelText="Cancel"
                     confirmText="Confirm"
                     header="Deleting rule"
