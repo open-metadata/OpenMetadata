@@ -29,6 +29,8 @@ DROP INDEX updatedAt;
 
 UPDATE dbservice_entity
 SET json = JSON_SET(json, '$.updatedAt', UNIX_TIMESTAMP(STR_TO_DATE(json ->> '$.updatedAt', '%Y-%m-%dT%T.%fZ')), '$.deleted', FALSE);
+UPDATE dbservice_entity
+SET json = JSON_REMOVE(json, '$.jdbc');
 
 ALTER TABLE dbservice_entity
 ADD COLUMN updatedAt BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.updatedAt') NOT NULL AFTER json,
