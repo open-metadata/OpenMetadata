@@ -41,7 +41,10 @@ public class AirflowRESTClient {
   private final String username;
   private final String password;
   private final HttpClient client;
-  private static final String authHeader = "Bearer %s";
+  private static final String AUTH_HEADER = "Authorization";
+  private static final String AUTH_TOKEN = "Bearer %s";
+  private static final String CONTENT_HEADER = "Content-Type";
+  private static final String CONTENT_TYPE = "application/json";
 
   public AirflowRESTClient(CatalogApplicationConfig config) {
     AirflowConfiguration airflowConfig = config.getAirflowConfiguration();
@@ -61,13 +64,13 @@ public class AirflowRESTClient {
 
   private String authenticate() throws InterruptedException, IOException {
     String authEndpoint = "%s/api/v1/security/login";
-    String url = String.format(authEndpoint, this.url);
+    String authUrl = String.format(authEndpoint, url);
     AirflowAuthRequest authRequest =
         AirflowAuthRequest.builder().username(this.username).password(this.password).build();
     String authPayload = JsonUtils.pojoToJson(authRequest);
     HttpRequest request =
-        HttpRequest.newBuilder(URI.create(url))
-            .header("Content-Type", "application/json")
+        HttpRequest.newBuilder(URI.create(authUrl))
+            .header(CONTENT_HEADER, CONTENT_TYPE)
             .POST(HttpRequest.BodyPublishers.ofString(authPayload))
             .build();
     HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
@@ -83,14 +86,14 @@ public class AirflowRESTClient {
       IngestionAirflowPipeline pipeline =
           AirflowUtils.toIngestionPipeline(airflowPipeline, config.getAirflowConfiguration());
       String token = authenticate();
-      String authToken = String.format(this.authHeader, token);
+      String authToken = String.format(AUTH_TOKEN, token);
       String pipelinePayload = JsonUtils.pojoToJson(pipeline);
       String deployEndPoint = "%s/rest_api/api?api=deploy_dag";
       String url = String.format(deployEndPoint, this.url);
       HttpRequest request =
           HttpRequest.newBuilder(URI.create(url))
-              .header("Content-Type", "application/json")
-              .header("Authorization", authToken)
+              .header(CONTENT_HEADER, CONTENT_TYPE)
+              .header(AUTH_HEADER, authToken)
               .POST(HttpRequest.BodyPublishers.ofString(pipelinePayload))
               .build();
       HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
@@ -109,15 +112,15 @@ public class AirflowRESTClient {
   public String runPipeline(String pipelineName) {
     try {
       String token = authenticate();
-      String authToken = String.format(this.authHeader, token);
+      String authToken = String.format(AUTH_TOKEN, token);
       String triggerEndPoint = "%s/rest_api/api?api=trigger_dag";
       String url = String.format(triggerEndPoint, this.url);
       JSONObject requestPayload = new JSONObject();
       requestPayload.put("workflow_name", pipelineName);
       HttpRequest request =
           HttpRequest.newBuilder(URI.create(url))
-              .header("Content-Type", "application/json")
-              .header("Authorization", authToken)
+              .header(CONTENT_HEADER, CONTENT_TYPE)
+              .header(AUTH_HEADER, authToken)
               .POST(HttpRequest.BodyPublishers.ofString(requestPayload.toString()))
               .build();
       HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
@@ -135,14 +138,14 @@ public class AirflowRESTClient {
   public AirflowPipeline getStatus(AirflowPipeline airflowPipeline) {
     try {
       String token = authenticate();
-      String authToken = String.format(authHeader, token);
+      String authToken = String.format(AUTH_TOKEN, token);
       String statusEndPoint = "%s/rest_api/api?api=list_run&dag_id=%s";
       String url = String.format(statusEndPoint, this.url, airflowPipeline.getName());
       JSONObject requestPayload = new JSONObject();
       HttpRequest request =
           HttpRequest.newBuilder(URI.create(url))
-              .header("Content-Type", "application/json")
-              .header("Authorization", authToken)
+              .header(CONTENT_HEADER, CONTENT_TYPE)
+              .header(AUTH_HEADER, authToken)
               .POST(HttpRequest.BodyPublishers.ofString(requestPayload.toString()))
               .build();
       HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());

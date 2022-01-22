@@ -452,7 +452,7 @@ public class AirflowPipelineResource {
         .withUpdatedAt(System.currentTimeMillis());
   }
 
-  private void deploy(AirflowPipeline airflowPipeline) throws IOException, ParseException {
+  private void deploy(AirflowPipeline airflowPipeline) {
     if (Boolean.TRUE.equals(airflowPipeline.getForceDeploy())) {
       airflowRESTClient.deploy(airflowPipeline, config);
     }

@@ -38,25 +38,25 @@ import org.openmetadata.catalog.util.JsonUtils;
 
 public final class AirflowUtils {
 
-  public static String INGESTION_HOST_PORT = "host_port";
-  public static String INGESTION_USERNAME = "username";
-  public static String INGESTION_PASSWORD = "password";
-  public static String INGESTION_DATABASE = "database";
-  public static String INGESTION_SERVICE_NAME = "service_name";
-  public static String INGESTION_SAMPLE_QUERY = "query";
-  public static String INGESTION_INCLUDE_VIEWS = "include_views";
-  public static String INGESTION_INCLUDE_TABLES = "include_tables";
-  public static String INGESTION_GENERATE_SAMPLE_DATA = "generate_sample_data";
-  public static String INGESTION_ENABLE_DATA_PROFILER = "data_profiler_enabled";
-  public static String INGESTION_TABLE_FILTER_PATTERN = "table_filter_pattern";
-  public static String INGESTION_SCHEMA_FILTER_PATTERN = "schema_filter_pattern";
-  public static String INGESTION_DBT_MANIFEST_FILE_PATH = "dbt_manifest_file";
-  public static String INGESTION_DBT_CATALOG_FILE_PATH = "dbt_catalog_file";
-  public static String INGESTION_MARK_DELETED_TABLES = "mark_deleted_tables_as_deleted";
-  public static String INGESTION_USAGE_DURATION = "duration";
-  public static String INGESTION_OPTIONS = "options";
-  public static String INGESTION_CONNECTION_ARGS = "connection_args";
-  public static String INGESTION_USAGE_STAGE_FILE_PATH = "filename";
+  public static final String INGESTION_HOST_PORT = "host_port";
+  public static final String INGESTION_USERNAME = "username";
+  public static final String INGESTION_PASSWORD = "password";
+  public static final String INGESTION_DATABASE = "database";
+  public static final String INGESTION_SERVICE_NAME = "service_name";
+  public static final String INGESTION_SAMPLE_QUERY = "query";
+  public static final String INGESTION_INCLUDE_VIEWS = "include_views";
+  public static final String INGESTION_GENERATE_SAMPLE_DATA = "generate_sample_data";
+  public static final String INGESTION_ENABLE_DATA_PROFILER = "data_profiler_enabled";
+  public static final String INGESTION_TABLE_FILTER_PATTERN = "table_filter_pattern";
+  public static final String INGESTION_SCHEMA_FILTER_PATTERN = "schema_filter_pattern";
+  public static final String INGESTION_DBT_MANIFEST_FILE_PATH = "dbt_manifest_file";
+  public static final String INGESTION_DBT_CATALOG_FILE_PATH = "dbt_catalog_file";
+  public static final String INGESTION_MARK_DELETED_TABLES = "mark_deleted_tables_as_deleted";
+  public static final String INGESTION_USAGE_DURATION = "duration";
+  public static final String INGESTION_OPTIONS = "options";
+  public static final String INGESTION_CONNECTION_ARGS = "connection_args";
+  public static final String INGESTION_USAGE_STAGE_FILE_PATH = "filename";
+  public static final String INGESTION_STATUS = "status";
 
   private AirflowUtils() {}
 
