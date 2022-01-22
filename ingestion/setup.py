@@ -66,6 +66,7 @@ plugins: Dict[str, Set[str]] = {
     "bigquery-usage": {"google-cloud-logging", "cachetools"},
     # "docker": {"docker==5.0.3"},
     "docker": {"python_on_whales==0.34.0"},
+    "backup": {"boto3~=1.19.12"},
     "dbt": {},
     "druid": {"pydruid>=0.6.2"},
     "elasticsearch": {"elasticsearch~=7.13.1"},
