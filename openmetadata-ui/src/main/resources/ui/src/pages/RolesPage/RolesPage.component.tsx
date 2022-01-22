@@ -76,192 +76,11 @@ const RolesPage = () => {
     rule: Rule | undefined;
     state: boolean;
   }>({ rule: undefined, state: false });
-  const getTabs = () => {
-    return (
-      <div className="tw-mb-3 ">
-        <nav
-          className="tw-flex tw-flex-row tw-gh-tabs-container"
-          data-testid="tabs">
-          <button
-            className={`tw-pb-2 tw-px-4 tw-gh-tabs ${getActiveTabClass(
-              1,
-              currentTab
-            )}`}
-            data-testid="users"
-            onClick={() => {
-              setCurrentTab(1);
-            }}>
-            Policy
-          </button>
-          <button
-            className={`tw-pb-2 tw-px-4 tw-gh-tabs ${getActiveTabClass(
-              2,
-              currentTab
-            )}`}
-            data-testid="assets"
-            onClick={() => {
-              setCurrentTab(2);
-            }}>
-            Users
-          </button>
-        </nav>
-      </div>
-    );
-  };
 
-  const fetchLeftPanel = () => {
-    return (
-      <>
-        <div className="tw-flex tw-justify-between tw-items-center tw-mb-3 tw-border-b">
-          <h6 className="tw-heading tw-text-base">Roles</h6>
-          <NonAdminAction position="bottom" title={TITLE_FOR_NON_ADMIN_ACTION}>
-            <Button
-              className={classNames('tw-h-7 tw-px-2 tw-mb-4', {
-                'tw-opacity-40': !isAdminUser && !isAuthDisabled,
-              })}
-              data-testid="add-role"
-              size="small"
-              theme="primary"
-              variant="contained"
-              onClick={() => {
-                setErrorData(undefined);
-                setIsAddingRole(true);
-              }}>
-              <i aria-hidden="true" className="fa fa-plus" />
-            </Button>
-          </NonAdminAction>
-        </div>
-        {roles &&
-          roles.map((role) => (
-            <div
-              className={`tw-group tw-text-grey-body tw-cursor-pointer tw-text-body tw-mb-3 tw-flex tw-justify-between ${getActiveCatClass(
-                role.name,
-                currentRole?.name
-              )}`}
-              key={role.name}
-              onClick={() => setCurrentRole(role)}>
-              <p
-                className="tag-category label-category tw-self-center tw-truncate tw-w-52"
-                title={role.displayName}>
-                {role.displayName}
-              </p>
-            </div>
-          ))}
-      </>
-    );
-  };
-
-  const getPolicyRules = (rules: Array<Rule>) => {
-    if (!rules.length) {
-      return (
-        <div className="tw-text-center tw-py-5">
-          <p className="tw-text-base">No Rules Added.</p>
-        </div>
-      );
-    }
-
-    return (
-      <div className="tw-bg-white">
-        <table className="tw-w-full tw-overflow-x-auto" data-testid="table">
-          <thead>
-            <tr className="tableHead-row">
-              <th className="tableHead-cell" data-testid="heading-description">
-                Operation
-              </th>
-              <th className="tableHead-cell" data-testid="heading-description">
-                Access
-              </th>
-              <th className="tableHead-cell" data-testid="heading-description">
-                Enabled
-              </th>
-              <th className="tableHead-cell" data-testid="heading-description">
-                Action
-              </th>
-            </tr>
-          </thead>
-          <tbody className="tw-text-sm" data-testid="table-body">
-            {rules.map((rule, index) => (
-              <tr
-                className={`tableBody-row ${!isEven(index + 1) && 'odd-row'}`}
-                key={index}>
-                <td className="tableBody-cell">
-                  <p>{rule.operation}</p>
-                </td>
-                <td className="tableBody-cell">
-                  <p
-                    className={classNames(
-                      { 'tw-text-status-success': rule.allow },
-                      { 'tw-text-status-failed': !rule.allow }
-                    )}>
-                    {rule.allow ? 'ALLOW' : 'DENY'}
-                  </p>
-                </td>
-                <td className="tableBody-cell">
-                  <div
-                    className={classNames(
-                      'toggle-switch tw-ml-4',
-                      rule.enabled ? 'open' : null
-                    )}
-                    data-testid="rule-switch">
-                    <div className="switch" />
-                  </div>
-                </td>
-                <td className="tableBody-cell">
-                  <div className="tw-flex">
-                    <span>
-                      <SVGIcons
-                        alt="icon-edit"
-                        className="tw-cursor-pointer"
-                        icon="icon-edit"
-                        title="Edit"
-                        width="12"
-                      />
-                    </span>
-                    <span
-                      onClick={() => setIsDeletingRule({ rule, state: true })}>
-                      <SVGIcons
-                        alt="icon-delete"
-                        className="tw-ml-4 tw-cursor-pointer"
-                        icon="icon-delete"
-                        title="Delete"
-                        width="12"
-                      />
-                    </span>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    );
-  };
-
-  const getRoleUsers = (users: Array<EntityReference>) => {
-    if (!users.length) {
-      return (
-        <div className="tw-text-center tw-py-5">
-          <p className="tw-text-base">No Users Added.</p>
-        </div>
-      );
-    }
-
-    return (
-      <div className="tw-grid tw-grid-cols-4 tw-gap-x-2">
-        {users.map((user) => (
-          <UserCard
-            isIconVisible
-            item={{
-              description: user.displayName as string,
-              name: user.name as string,
-              id: user.id,
-            }}
-            key={user.id}
-          />
-        ))}
-      </div>
-    );
-  };
+  const [isEditingRule, setIsEditingRule] = useState<{
+    rule: Rule | undefined;
+    state: boolean;
+  }>({ rule: undefined, state: false });
 
   const onNewDataChange = (data: Role, forceSet = false) => {
     if (errorData || forceSet) {
@@ -423,6 +242,36 @@ const RolesPage = () => {
       })
       .finally(() => setIsAddingRule(false));
   };
+
+  const onRuleUpdate = (data: Rule) => {
+    const rules = currentPolicy?.rules?.map((rule) => {
+      if (rule.name === data.name) {
+        return data;
+      } else {
+        return rule;
+      }
+    });
+
+    const updatedPolicy = {
+      name: currentPolicy?.name as string,
+      policyType: currentPolicy?.policyType as string,
+      rules: rules as Rule[],
+    };
+    updatePolicy(updatedPolicy)
+      .then((res: AxiosResponse) => {
+        setCurrentPolicy(res.data);
+      })
+      .catch((err: AxiosError) => {
+        showToast({
+          variant: 'error',
+          body:
+            err.response?.data?.message ??
+            `Error while updating ${data.name} rule`,
+        });
+      })
+      .finally(() => setIsEditingRule({ rule: undefined, state: false }));
+  };
+
   const deleteRule = (data: Rule) => {
     const updatedPolicy = {
       name: currentPolicy?.name as string,
@@ -444,6 +293,197 @@ const RolesPage = () => {
       .finally(() => {
         setIsDeletingRule({ rule: undefined, state: false });
       });
+  };
+
+  const getTabs = () => {
+    return (
+      <div className="tw-mb-3 ">
+        <nav
+          className="tw-flex tw-flex-row tw-gh-tabs-container"
+          data-testid="tabs">
+          <button
+            className={`tw-pb-2 tw-px-4 tw-gh-tabs ${getActiveTabClass(
+              1,
+              currentTab
+            )}`}
+            data-testid="users"
+            onClick={() => {
+              setCurrentTab(1);
+            }}>
+            Policy
+          </button>
+          <button
+            className={`tw-pb-2 tw-px-4 tw-gh-tabs ${getActiveTabClass(
+              2,
+              currentTab
+            )}`}
+            data-testid="assets"
+            onClick={() => {
+              setCurrentTab(2);
+            }}>
+            Users
+          </button>
+        </nav>
+      </div>
+    );
+  };
+
+  const fetchLeftPanel = () => {
+    return (
+      <>
+        <div className="tw-flex tw-justify-between tw-items-center tw-mb-3 tw-border-b">
+          <h6 className="tw-heading tw-text-base">Roles</h6>
+          <NonAdminAction position="bottom" title={TITLE_FOR_NON_ADMIN_ACTION}>
+            <Button
+              className={classNames('tw-h-7 tw-px-2 tw-mb-4', {
+                'tw-opacity-40': !isAdminUser && !isAuthDisabled,
+              })}
+              data-testid="add-role"
+              size="small"
+              theme="primary"
+              variant="contained"
+              onClick={() => {
+                setErrorData(undefined);
+                setIsAddingRole(true);
+              }}>
+              <i aria-hidden="true" className="fa fa-plus" />
+            </Button>
+          </NonAdminAction>
+        </div>
+        {roles &&
+          roles.map((role) => (
+            <div
+              className={`tw-group tw-text-grey-body tw-cursor-pointer tw-text-body tw-mb-3 tw-flex tw-justify-between ${getActiveCatClass(
+                role.name,
+                currentRole?.name
+              )}`}
+              key={role.name}
+              onClick={() => setCurrentRole(role)}>
+              <p
+                className="tag-category label-category tw-self-center tw-truncate tw-w-52"
+                title={role.displayName}>
+                {role.displayName}
+              </p>
+            </div>
+          ))}
+      </>
+    );
+  };
+
+  const getPolicyRules = (rules: Array<Rule>) => {
+    if (!rules.length) {
+      return (
+        <div className="tw-text-center tw-py-5">
+          <p className="tw-text-base">No Rules Added.</p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="tw-bg-white">
+        <table className="tw-w-full tw-overflow-x-auto" data-testid="table">
+          <thead>
+            <tr className="tableHead-row">
+              <th className="tableHead-cell" data-testid="heading-description">
+                Operation
+              </th>
+              <th className="tableHead-cell" data-testid="heading-description">
+                Access
+              </th>
+              <th className="tableHead-cell" data-testid="heading-description">
+                Enabled
+              </th>
+              <th className="tableHead-cell" data-testid="heading-description">
+                Action
+              </th>
+            </tr>
+          </thead>
+          <tbody className="tw-text-sm" data-testid="table-body">
+            {rules.map((rule, index) => (
+              <tr
+                className={`tableBody-row ${!isEven(index + 1) && 'odd-row'}`}
+                key={index}>
+                <td className="tableBody-cell">
+                  <p>{rule.operation}</p>
+                </td>
+                <td className="tableBody-cell">
+                  <p
+                    className={classNames(
+                      { 'tw-text-status-success': rule.allow },
+                      { 'tw-text-status-failed': !rule.allow }
+                    )}>
+                    {rule.allow ? 'ALLOW' : 'DENY'}
+                  </p>
+                </td>
+                <td className="tableBody-cell">
+                  <div
+                    className={classNames(
+                      'toggle-switch tw-ml-4',
+                      rule.enabled ? 'open' : null
+                    )}
+                    data-testid="rule-switch"
+                    onClick={() =>
+                      onRuleUpdate({ ...rule, enabled: !rule.enabled })
+                    }>
+                    <div className="switch" />
+                  </div>
+                </td>
+                <td className="tableBody-cell">
+                  <div className="tw-flex">
+                    <span
+                      onClick={() => setIsEditingRule({ rule, state: true })}>
+                      <SVGIcons
+                        alt="icon-edit"
+                        className="tw-cursor-pointer"
+                        icon="icon-edit"
+                        title="Edit"
+                        width="12"
+                      />
+                    </span>
+                    <span
+                      onClick={() => setIsDeletingRule({ rule, state: true })}>
+                      <SVGIcons
+                        alt="icon-delete"
+                        className="tw-ml-4 tw-cursor-pointer"
+                        icon="icon-delete"
+                        title="Delete"
+                        width="12"
+                      />
+                    </span>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  };
+
+  const getRoleUsers = (users: Array<EntityReference>) => {
+    if (!users.length) {
+      return (
+        <div className="tw-text-center tw-py-5">
+          <p className="tw-text-base">No Users Added.</p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="tw-grid tw-grid-cols-4 tw-gap-x-2">
+        {users.map((user) => (
+          <UserCard
+            isIconVisible
+            item={{
+              description: user.displayName as string,
+              name: user.name as string,
+              id: user.id,
+            }}
+            key={user.id}
+          />
+        ))}
+      </div>
+    );
   };
 
   useEffect(() => {
@@ -564,6 +604,19 @@ const RolesPage = () => {
                     onSave={onPolicyUpdate}
                   />
                 )}
+
+                {isEditingRule.state && (
+                  <AddRuleModal
+                    isEditing
+                    header={`Edit rule ${isEditingRule.rule?.name}`}
+                    initialData={isEditingRule.rule as Rule}
+                    onCancel={() =>
+                      setIsEditingRule({ rule: undefined, state: false })
+                    }
+                    onSave={onRuleUpdate}
+                  />
+                )}
+
                 {isDeletingRule.state && (
                   <ConfirmationModal
                     bodyText={`Are you sure want to delete ${isDeletingRule.rule?.name} rule?`}

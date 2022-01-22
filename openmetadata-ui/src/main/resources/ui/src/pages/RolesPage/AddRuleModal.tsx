@@ -27,6 +27,7 @@ interface AddRuleProps {
   header: string;
   errorData?: FormErrorData;
   initialData: Rule;
+  isEditing?: boolean;
   onCancel: () => void;
   onSave: (data: Rule) => void;
 }
@@ -37,6 +38,7 @@ const AddRuleModal: FC<AddRuleProps> = ({
   initialData,
   errorData,
   onSave,
+  isEditing = false,
 }: AddRuleProps) => {
   const [data, setData] = useState<Rule>(initialData);
   const [access, setAccess] = useState<RuleAccess>(
@@ -86,9 +88,13 @@ const AddRuleModal: FC<AddRuleProps> = ({
                 </label>
                 <select
                   required
-                  className="tw-text-sm tw-appearance-none tw-border tw-border-main
-                tw-rounded tw-w-full tw-py-2 tw-px-3 tw-text-grey-body  tw-leading-tight
-                focus:tw-outline-none focus:tw-border-focus hover:tw-border-hover tw-h-10 tw-bg-white"
+                  className={classNames(
+                    'tw-text-sm tw-appearance-none tw-border tw-border-main',
+                    'tw-rounded tw-w-full tw-py-2 tw-px-3 tw-text-grey-body  tw-leading-tight',
+                    'focus:tw-outline-none focus:tw-border-focus hover:tw-border-hover tw-h-10 tw-bg-white',
+                    { 'tw-cursor-not-allowed tw-opacity-60': isEditing }
+                  )}
+                  disabled={isEditing}
                   name="operation"
                   value={data.operation}
                   onChange={onChangeHadler}>
@@ -144,7 +150,7 @@ const AddRuleModal: FC<AddRuleProps> = ({
               theme="primary"
               type="submit"
               variant="contained">
-              Save
+              {isEditing ? 'Update' : 'Save'}
             </Button>
           </div>
         </form>
