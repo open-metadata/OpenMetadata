@@ -33,21 +33,21 @@ import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 
 public class AirflowPipelineRepository extends EntityRepository<AirflowPipeline> {
-  private static final Fields INGESTION_UPDATE_FIELDS =
-      new Fields(AirflowPipelineResource.FIELD_LIST, "scheduleInterval,owner,tags");
-  private static final Fields INGESTION_PATCH_FIELDS =
-      new Fields(AirflowPipelineResource.FIELD_LIST, "scheduleInterval,owner,tags");
+  private static final Fields AIRFLOW_PIPELINE_UPDATE_FIELDS =
+      new Fields(AirflowPipelineResource.FIELD_LIST, "pipelineConfig,scheduleInterval,owner,tags");
+  private static final Fields AIRFLOW_PIPELINE_PATCH_FIELDS =
+      new Fields(AirflowPipelineResource.FIELD_LIST, "pipelineConfig,scheduleInterval,owner,tags");
 
   public AirflowPipelineRepository(CollectionDAO dao) {
     super(
         AirflowPipelineResource.COLLECTION_PATH,
-        Entity.INGESTION,
+        Entity.AIRFLOW_PIPELINE,
         AirflowPipeline.class,
         dao.airflowPipelineDAO(),
         dao,
-        INGESTION_PATCH_FIELDS,
-        INGESTION_UPDATE_FIELDS,
-        true,
+        AIRFLOW_PIPELINE_PATCH_FIELDS,
+        AIRFLOW_PIPELINE_UPDATE_FIELDS,
+        false,
         true,
         false);
   }
@@ -113,7 +113,7 @@ public class AirflowPipelineRepository extends EntityRepository<AirflowPipeline>
             service.getId().toString(),
             airflowPipeline.getId().toString(),
             service.getType(),
-            Entity.INGESTION,
+            Entity.AIRFLOW_PIPELINE,
             Relationship.CONTAINS.ordinal());
     setOwner(airflowPipeline, airflowPipeline.getOwner());
     applyTags(airflowPipeline);
@@ -197,7 +197,7 @@ public class AirflowPipelineRepository extends EntityRepository<AirflowPipeline>
           .withName(getFullyQualifiedName())
           .withDescription(getDescription())
           .withDisplayName(getDisplayName())
-          .withType(Entity.INGESTION);
+          .withType(Entity.AIRFLOW_PIPELINE);
     }
 
     @Override

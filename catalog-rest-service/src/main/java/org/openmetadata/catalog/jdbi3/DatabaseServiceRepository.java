@@ -21,10 +21,9 @@ import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.services.DatabaseService;
 import org.openmetadata.catalog.resources.services.database.DatabaseServiceResource;
 import org.openmetadata.catalog.type.ChangeDescription;
+import org.openmetadata.catalog.type.DatabaseConnection;
 import org.openmetadata.catalog.type.EntityReference;
-import org.openmetadata.catalog.type.JdbcInfo;
 import org.openmetadata.catalog.util.EntityInterface;
-import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 
 public class DatabaseServiceRepository extends EntityRepository<DatabaseService> {
@@ -60,9 +59,7 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
   }
 
   @Override
-  public void prepare(DatabaseService entity) {
-    EntityUtil.validateIngestionSchedule(entity.getIngestionSchedule());
-  }
+  public void prepare(DatabaseService entity) {}
 
   @Override
   public void storeEntity(DatabaseService service, boolean update) throws IOException {
@@ -197,18 +194,13 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
 
     @Override
     public void entitySpecificUpdate() throws IOException {
-      updateJdbc();
-      recordChange(
-          "ingestionSchedule",
-          original.getEntity().getIngestionSchedule(),
-          updated.getEntity().getIngestionSchedule(),
-          true);
+      updateDatabaseConnectionConfig();
     }
 
-    private void updateJdbc() throws JsonProcessingException {
-      JdbcInfo origJdbc = original.getEntity().getJdbc();
-      JdbcInfo updatedJdbc = updated.getEntity().getJdbc();
-      recordChange("jdbc", origJdbc, updatedJdbc, true);
+    private void updateDatabaseConnectionConfig() throws JsonProcessingException {
+      DatabaseConnection origConn = original.getEntity().getDatabaseConnection();
+      DatabaseConnection updatedConn = updated.getEntity().getDatabaseConnection();
+      recordChange("databaseConnection", origConn, updatedConn, true);
     }
   }
 }

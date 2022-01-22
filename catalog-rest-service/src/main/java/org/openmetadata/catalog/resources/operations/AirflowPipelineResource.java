@@ -55,8 +55,8 @@ import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.Entity;
+import org.openmetadata.catalog.airflow.AirflowRESTClient;
 import org.openmetadata.catalog.api.operations.pipelines.CreateAirflowPipeline;
-import org.openmetadata.catalog.ingestion.AirflowRESTClient;
 import org.openmetadata.catalog.jdbi3.AirflowPipelineRepository;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.operations.pipelines.AirflowPipeline;
@@ -73,13 +73,13 @@ import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
 
 @Slf4j
-@Path("operations/v1/airflowPipeline")
+@Path("/operations/v1/airflowPipeline/")
 @Api(value = "Ingestion collection", tags = "Ingestion collection")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "ingestion")
+@Collection(name = "airflowPipelines")
 public class AirflowPipelineResource {
-  public static final String COLLECTION_PATH = "operations/v1/ingestion/";
+  public static final String COLLECTION_PATH = "operations/v1/airflowPipeline/";
   private final AirflowPipelineRepository dao;
   private final Authorizer authorizer;
   private AirflowRESTClient airflowRESTClient;
@@ -101,7 +101,7 @@ public class AirflowPipelineResource {
   }
 
   public AirflowPipelineResource(CollectionDAO dao, Authorizer authorizer) {
-    Objects.requireNonNull(dao, "IngestionRepository must not be null");
+    Objects.requireNonNull(dao, "AirflowPipelineRepository must not be null");
     this.dao = new AirflowPipelineRepository(dao);
     this.authorizer = authorizer;
   }
@@ -123,7 +123,7 @@ public class AirflowPipelineResource {
     }
   }
 
-  static final String FIELDS = "owner,tags,status,service,scheduleInterval";
+  static final String FIELDS = "owner,tags,status,service,pipelineConfig,scheduleInterval";
   public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replace(" ", "").split(","));
 
   @GET
@@ -329,9 +329,8 @@ public class AirflowPipelineResource {
       throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     AirflowPipeline airflowPipeline = getAirflowPipeline(securityContext, create);
-    deploy(airflowPipeline);
-    // write to db only when the deployment is successful
     airflowPipeline = addHref(uriInfo, dao.create(uriInfo, airflowPipeline));
+    deploy(airflowPipeline);
     return Response.created(airflowPipeline.getHref()).entity(airflowPipeline).build();
   }
 
@@ -385,9 +384,8 @@ public class AirflowPipelineResource {
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateAirflowPipeline create)
       throws IOException, ParseException {
     AirflowPipeline airflowPipeline = getAirflowPipeline(securityContext, create);
-    deploy(airflowPipeline);
-    // write to db only when the deployment is successful
     PutResponse<AirflowPipeline> response = dao.createOrUpdate(uriInfo, airflowPipeline);
+    deploy(airflowPipeline);
     addHref(uriInfo, response.getEntity());
     return response.toResponse();
   }
@@ -454,7 +452,7 @@ public class AirflowPipelineResource {
         .withUpdatedAt(System.currentTimeMillis());
   }
 
-  private void deploy(AirflowPipeline airflowPipeline) {
+  private void deploy(AirflowPipeline airflowPipeline) throws IOException, ParseException {
     if (Boolean.TRUE.equals(airflowPipeline.getForceDeploy())) {
       airflowRESTClient.deploy(airflowPipeline, config);
     }

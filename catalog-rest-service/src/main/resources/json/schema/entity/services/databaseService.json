@@ -73,10 +73,10 @@
         }
       ]
     },
-    "databaseConnectionConfig": {
+    "databaseConnection": {
       "type": "object",
-      "javaType": "org.openmetadata.catalog.type.DatabaseConnectionConfig",
-      "description": "Database Connection Config.",
+      "javaType": "org.openmetadata.catalog.type.DatabaseConnection",
+      "description": "Database Connection.",
       "properties": {
         "username": {
           "description": "username to connect  to the data source.",
@@ -102,7 +102,8 @@
           "description": "Additional connection arguments such as security or protocol configs that can be sent to service during connection.",
           "type": "object"
         }
-      }
+      },
+      "additionalProperties": false
     }
   },
   "properties": {
@@ -128,13 +129,8 @@
       "description": "Description of a database service instance.",
       "type": "string"
     },
-    "hostname": {
-      "description": "Hostname of this service.",
-      "type": "string"
-    },
-    "port": {
-      "description": "Port where this service listens to.",
-      "type": "integer"
+    "databaseConnection": {
+      "$ref": "#/definitions/databaseConnection"
     },
     "version" : {
       "description": "Metadata version of the entity.",

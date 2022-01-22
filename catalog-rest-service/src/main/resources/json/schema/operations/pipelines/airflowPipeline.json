@@ -11,96 +11,8 @@
       "javaType": "org.openmetadata.catalog.operations.pipelines.PipelineType",
       "enum": [
         "metadata",
-        "query-usage"
-      ],
-      "javaEnums": [
-        {
-          "name": "metadata"
-        },
-        {
-          "name": "query_usage"
-        }
+        "queryUsage"
       ]
-    },
-    "filterPattern": {
-      "type": "object",
-      "javaType": "org.openmetadata.catalog.operations.pipelines.FilterPattern",
-      "description": "Regex to only fetch tables or databases that matches the pattern.",
-      "properties": {
-        "includes": {
-          "description": "List of strings/regex patterns to match and include only database entities that match.",
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "default": null
-        },
-        "excludes": {
-          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "default": null
-        }
-      }
-    },
-    "databaseMetadataPipelineConfig": {
-      "type": "object",
-      "javaType": "org.openmetadata.catalog.operations.pipelines.DatabaseMetadataPipelineConfig",
-      "description": "Database Metadata Pipeline Config.",
-      "properties": {
-        "markDeletedTables": {
-          "description":"Optional configuration to soft delete tables in OpenMetadata if the source tables are deleted.",
-          "type": "boolean",
-          "default": "true"
-        },
-        "includeViews": {
-          "description": "Optional configuration to turn off fetching metadata for views.",
-          "type": "boolean",
-          "default": "true"
-        },
-        "generateSampleData": {
-          "description": "Option to turn on/off generating sample data during metadata extraction.",
-          "type": "boolean",
-          "default": "true"
-        },
-        "sampleDataQuery": {
-          "description": "Sample data extraction query.",
-          "type": "string",
-          "default": "select * from {}.{} limit 50"
-        },
-        "enableDataProfiler": {
-          "description": "Run data profiler as part of this metadata ingestion to get table profile data.",
-          "type": "boolean",
-          "default": "false"
-        },
-        "includeFilterPattern": {
-          "description": "Regex to only fetch tables or databases that matches the pattern.",
-          "$ref": "#/definitions/filterPattern"
-        },
-        "excludeFilterPattern": {
-          "description": "Regex exclude tables or databases that matches the pattern.",
-          "$ref": "#/definitions/filterPattern"
-        }
-      }
-    },
-    "databaseQueryUsagePipelineConfig":  {
-      "type": "object",
-      "javaType": "org.openmetadata.catalog.operations.pipelines.DatabaseQueryUsagePipelineConfig",
-      "description": "Database Query Usage Pipeline Config.",
-      "properties": {
-        "queryLogDuration": {
-          "description":"Configuration to tune how far we want to look back in query logs to process usage data.",
-          "type": "integer",
-          "default": "1"
-        },
-        "stageFileLocation": {
-          "description": "Temporary file name to store the query logs before processing. Absolute file path required.",
-          "type": "string",
-          "default": "/tmp/query_log"
-        }
-      }
     },
     "pipelineStatus": {
       "type": "object",
@@ -120,6 +32,26 @@
           "type": "string"
         }
       }
+    },
+    "pipelineConfig": {
+      "description": "OpenMetadata Pipeline Config.",
+      "type": "object",
+      "properties": {
+        "config": {
+          "oneOf":
+          [
+            {"$ref": "databaseServiceMetadataPipeline.json"},
+            {"$ref": "databaseServiceQueryUsagePipeline.json"}
+          ]
+        },
+        "schema": {
+          "enum": [
+            "databaseServiceMetadataPipeline",
+            "databaseServiceQueryUsagePipeline"
+          ]
+        }
+      },
+      "additionalProperties": false
     }
   },
   "properties" : {
@@ -156,23 +88,7 @@
       "maxLength": 256
     },
     "pipelineConfig": {
-      "description": "OpenMetadata Pipeline Config.",
-      "type": "object",
-      "properties": {
-        "config": {
-          "oneOf":
-          [
-            {"$ref": "#/definitions/databaseMetadataPipelineConfig"},
-            {"$ref": "#/definitions/databaseQueryUsagePipelineConfig"}
-          ]
-        },
-        "schema": {
-          "enum": [
-            "databaseMetadataPipelineConfig",
-            "databaseQueryUsagePipelineConfig"
-          ]
-        }
-      }
+      "$ref": "#/definitions/pipelineConfig"
     },
     "forceDeploy": {
       "description": "Deploy the pipeline by overwriting existing pipeline with the same name.",
@@ -268,6 +184,6 @@
       "default": false
     }
   },
-  "required": ["name", "service", "pipelineConfig", "startDate"],
+  "required": ["name", "service", "pipelineType","pipelineConfig", "startDate"],
   "additionalProperties": false
 }

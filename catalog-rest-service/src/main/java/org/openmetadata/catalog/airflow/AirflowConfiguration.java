@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-package org.openmetadata.catalog.ingestion;
+package org.openmetadata.catalog.airflow;
 
 import javax.validation.constraints.NotEmpty;
 

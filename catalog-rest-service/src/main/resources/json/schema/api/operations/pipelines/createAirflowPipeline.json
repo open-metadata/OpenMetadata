@@ -22,6 +22,9 @@
     "pipelineType": {
       "$ref": "../../../operations/pipelines/airflowPipeline.json#/definitions/pipelineType"
     },
+    "pipelineConfig": {
+      "$ref": "../../../operations/pipelines/airflowPipeline.json#/definitions/pipelineConfig"
+    },
     "owner": {
       "description": "Owner of this Pipeline.",
       "$ref": "../../../type/entityReference.json",
