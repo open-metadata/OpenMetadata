@@ -17,7 +17,7 @@ from snowflake.sqlalchemy.snowdialect import ischema_names
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.source.sql_source import SQLSource
 from metadata.ingestion.source.sql_source_common import SQLConnectionConfig
-from metadata.utils.column_helpers import create_sqlalchemy_type
+from metadata.utils.column_type_parser import create_sqlalchemy_type
 
 GEOGRAPHY = create_sqlalchemy_type("GEOGRAPHY")
 ischema_names["VARIANT"] = VARIANT
