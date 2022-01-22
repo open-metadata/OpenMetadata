@@ -34,6 +34,7 @@ import FollowersModal from './FollowersModal';
 type Props = {
   titleLinks: TitleBreadcrumbProps['titleLinks'];
   isFollowing?: boolean;
+  deleted?: boolean;
   followers?: number;
   extraInfo: Array<ExtraInfo>;
   tier: TagLabel;
@@ -54,6 +55,7 @@ type Props = {
 const EntityPageInfo = ({
   titleLinks,
   isFollowing,
+  deleted = false,
   followHandler,
   followers,
   extraInfo,
@@ -140,7 +142,9 @@ const EntityPageInfo = ({
 
   const getVersionButton = (version: string) => {
     return (
-      <div className="tw-flex tw-h-6 tw-ml-2 tw-mt-2" onClick={versionHandler}>
+      <div
+        className="tw-flex tw-h-6 tw-ml-2 tw-mt-2"
+        onClick={() => !deleted && versionHandler?.()}>
         <span
           className={classNames(
             'tw-flex tw-border tw-border-primary tw-rounded',
@@ -153,7 +157,10 @@ const EntityPageInfo = ({
               'tw-text-xs tw-border-r tw-font-medium tw-py-1 tw-px-2 tw-rounded-l focus:tw-outline-none',
               !isUndefined(isVersionSelected)
                 ? 'tw-border-white'
-                : 'tw-border-primary'
+                : 'tw-border-primary',
+              {
+                'tw-cursor-not-allowed': deleted,
+              }
             )}
             data-testid="version-button">
             <SVGIcons
@@ -164,7 +171,12 @@ const EntityPageInfo = ({
           </button>
 
           <span
-            className="tw-text-xs tw-border-l-0 tw-font-medium tw-py-1 tw-px-2 tw-rounded-r tw-cursor-pointer"
+            className={classNames(
+              'tw-text-xs tw-border-l-0 tw-font-medium tw-py-1 tw-px-2 tw-rounded-r tw-cursor-pointer',
+              {
+                'tw-cursor-not-allowed': deleted,
+              }
+            )}
             data-testid="getversions">
             {parseFloat(version).toFixed(1)}
           </span>
@@ -180,9 +192,19 @@ const EntityPageInfo = ({
   return (
     <div>
       <div className="tw-flex tw-flex-col">
-        <div className="tw-flex tw-flex-initial tw-justify-between tw-items-center">
-          <TitleBreadcrumb titleLinks={titleLinks} />
-          <div className="tw-flex">
+        <div className="tw-flex tw-flex-initial tw-justify-between tw-items-start">
+          <div className="tw-flex tw-items-center">
+            <TitleBreadcrumb titleLinks={titleLinks} />
+            {deleted && (
+              <>
+                <div className="tw-rounded tw-bg-error-lite tw-text-error tw-font-medium tw-h-6 tw-px-2 tw-py-0.5 tw-ml-2">
+                  <i className="fas fa-exclamation-circle tw-mr-1" />
+                  Deleted
+                </div>
+              </>
+            )}
+          </div>
+          <div className="tw-flex tw-py-1">
             {!isUndefined(version) ? (
               <>
                 {!isUndefined(isVersionSelected) ? (
@@ -214,10 +236,13 @@ const EntityPageInfo = ({
                   <button
                     className={classNames(
                       'tw-text-xs tw-border-r tw-font-medium tw-py-1 tw-px-2 tw-rounded-l focus:tw-outline-none',
-                      isFollowing ? 'tw-border-white' : 'tw-border-primary'
+                      isFollowing ? 'tw-border-white' : 'tw-border-primary',
+                      { 'tw-cursor-not-allowed': deleted }
                     )}
                     data-testid="follow-button"
-                    onClick={followHandler}>
+                    onClick={() => {
+                      !deleted && followHandler?.();
+                    }}>
                     {isFollowing ? (
                       <>
                         <i className="fas fa-star" /> Unfollow

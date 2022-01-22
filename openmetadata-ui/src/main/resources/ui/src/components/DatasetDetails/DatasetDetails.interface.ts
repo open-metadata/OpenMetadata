@@ -51,6 +51,7 @@ export interface DatasetDetailsProps {
   followers: Array<User>;
   tableTags: Array<EntityTags>;
   slashedTableName: TitleBreadcrumbProps['titleLinks'];
+  deleted?: boolean;
   setActiveTabHandler: (value: number) => void;
   followTableHandler: () => void;
   unfollowTableHandler: () => void;
