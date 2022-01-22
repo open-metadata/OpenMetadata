@@ -57,9 +57,9 @@
       "default": false
     },
     "priority": {
-      "description": "Priority of this rule among other rules in this policy.",
+      "description": "Priority of this rule among all rules across all policies.",
       "type": "integer",
-      "default": 0
+      "default": 250000
     },
     "enabled": {
       "description": "Is the rule enabled.",
