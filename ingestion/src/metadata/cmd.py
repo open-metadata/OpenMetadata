@@ -19,6 +19,7 @@ import click
 from pydantic import ValidationError
 
 from metadata.__version__ import get_metadata_version
+from metadata.cli.backup import run_backup
 from metadata.cli.docker import run_docker
 from metadata.config.common import load_config_file
 from metadata.ingestion.api.workflow import Workflow
@@ -207,33 +208,23 @@ def docker(start, stop, pause, resume, clean, file_path) -> None:
     required=True,
 )
 @click.option(
-    "-o",
-    "--output",
-    help="Path to save the backup data",
-    type=click.Path(exists=True, dir_okay=False),
-    required=False,
-)
-@click.option(
-    "--install",
-    help="Installs the dependencies to run the backup",
-    is_flag=True,
+    "--upload",
+    help="S3 URI to upload file",
+    default=None,
     required=False,
 )
 def backup(
     host: str,
     user: str,
     password: str,
-    output: Optional[str] = ".",
-    install: Optional[bool] = False,
+    upload: Optional[str],
 ) -> None:
     """
+    Run a backup for the metadata DB
 
-    :param host:
-    :param user:
-    :param password:
-    :param output:
-    :return:
+    Requires mysqldump installed on the host
     """
+    run_backup(host, user, password, upload)
 
 
 metadata.add_command(check)
