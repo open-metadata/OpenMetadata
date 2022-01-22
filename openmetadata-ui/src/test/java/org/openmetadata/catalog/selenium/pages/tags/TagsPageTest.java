@@ -16,6 +16,7 @@ package org.openmetadata.catalog.selenium.pages.tags;
 import com.github.javafaker.Faker;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.logging.Logger;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.MethodOrderer;
@@ -23,9 +24,12 @@ import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.catalog.selenium.events.Events;
+import org.openmetadata.catalog.selenium.pages.myData.MyDataPageTest;
 import org.openmetadata.catalog.selenium.properties.Property;
 import org.openqa.selenium.By;
+import org.openqa.selenium.TimeoutException;
 import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.interactions.Actions;
@@ -36,6 +40,8 @@ import org.testng.Assert;
 @Order(3)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class TagsPageTest {
+
+  private static final Logger LOG = Logger.getLogger(MyDataPageTest.class.getName());
 
   static WebDriver webDriver;
   static String url = Property.getInstance().getURL();
@@ -243,6 +249,26 @@ public class TagsPageTest {
 
   @Test
   @Order(11)
+  public void TagUsageCheck() throws InterruptedException {
+    openTagsPage();
+    Events.click(webDriver, By.xpath("//*[text()[contains(.,'" + "PersonalData" + "')]] "));
+    Events.click(webDriver, By.xpath("(//a[@data-testid='usage-count'])[2]"));
+    Thread.sleep(2000);
+    String beforeFilterCount =
+        webDriver
+            .findElement(By.xpath("(//button[@data-testid='tab'])[1]//span[@data-testid='filter-count']"))
+            .getAttribute("innerHTML");
+    Events.click(webDriver, By.xpath("(//button[@data-testid='tab'])[2]"));
+    Events.click(webDriver, By.xpath("(//button[@data-testid='tab'])[1]"));
+    String afterFilterCount =
+        webDriver
+            .findElement(By.xpath("(//button[@data-testid='tab'])[1]//span[@data-testid='filter-count']"))
+            .getAttribute("innerHTML");
+    Assert.assertEquals(afterFilterCount, beforeFilterCount);
+  }
+
+  @Test
+  @Order(12)
   public void removeTagWithExistingName() throws InterruptedException {
     openTagsPage();
     Events.click(webDriver, By.xpath("//*[text()[contains(.,'" + "PersonalData" + "')]] "));
@@ -260,6 +286,27 @@ public class TagsPageTest {
             .findElement(By.xpath("(//div[@data-testid='usage'])[2]/span[@data-testid='usage-count']"))
             .getAttribute("innerHTML");
     Assert.assertEquals(usageCount, "Not used");
+  }
+
+  @Test
+  @Order(13)
+  public void addSelfAssociatedTag() throws Exception {
+    openTagsPage();
+    Events.click(webDriver, By.xpath("//*[text()[contains(.,'" + "PersonalData" + "')]] "));
+    actions.moveToElement(webDriver.findElement(By.cssSelector("[data-testid='tags']"))).perform();
+    Events.click(webDriver, By.cssSelector("[data-testid='tags']"));
+    Events.click(webDriver, By.cssSelector("[data-testid='associatedTagName']"));
+    try {
+
+      Events.sendKeys(webDriver, By.cssSelector("[data-testid='associatedTagName']"), "PersonalData.Personal");
+      WebElement sameTag =
+          wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("[data-testid='list-item']")));
+      if (sameTag.isDisplayed()) {
+        throw new Exception("Can add tag itself as it's associated tag");
+      }
+    } catch (TimeoutException exception) {
+      LOG.info("Success");
+    }
   }
 
   @AfterEach

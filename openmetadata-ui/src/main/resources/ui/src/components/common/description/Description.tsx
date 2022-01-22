@@ -12,7 +12,7 @@
  */
 
 import classNames from 'classnames';
-import React, { Fragment } from 'react';
+import React from 'react';
 import { Table } from '../../../generated/entity/data/table';
 import { getHtmlForNonAdminAction } from '../../../utils/CommonUtils';
 import SVGIcons from '../../../utils/SvgUtils';
@@ -24,6 +24,8 @@ type Props = {
   entityName?: string;
   owner?: Table['owner'];
   hasEditAccess?: boolean;
+  blurWithBodyBG?: boolean;
+  removeBlurOnScroll?: boolean;
   description: string;
   isEdit?: boolean;
   onDescriptionEdit?: () => void;
@@ -42,15 +44,26 @@ const Description = ({
   onCancel,
   onDescriptionUpdate,
   isReadOnly = false,
+  blurWithBodyBG = false,
+  removeBlurOnScroll = false,
   entityName,
 }: Props) => {
   return (
-    <div
-      className="schema-description tw-flex tw-flex-col tw-h-full tw-overflow-y-scroll tw-max-h-40 tw-min-h-12 tw-relative"
-      id="center">
+    <div className="schema-description tw-relative">
       <div className="tw-px-3 tw-py-1 tw-flex">
-        <Fragment>
-          <div className="description" data-testid="description">
+        <div className="tw-relative">
+          {!removeBlurOnScroll && description.length > 800 && (
+            <div
+              className={classNames(
+                'tw-absolute tw-inset-0 tw-z-10',
+                blurWithBodyBG ? 'on-scroll-blur-body' : 'on-scroll-blur-white'
+              )}
+            />
+          )}
+          <div
+            className="description tw-h-full tw-overflow-y-scroll tw-max-h-40 tw-min-h-12 tw-relative tw-py-2.5"
+            data-testid="description"
+            id="center">
             {description?.trim() ? (
               <RichTextEditorPreviewer
                 className="tw-p-2"
@@ -71,12 +84,13 @@ const Description = ({
               onSave={onDescriptionUpdate}
             />
           )}
-        </Fragment>
+        </div>
         {!isReadOnly ? (
           <div
-            className={classNames('tw-w-5 tw-min-w-max', {
-              'tw-pt-2': Boolean(description?.trim()),
-            })}>
+            className={classNames(
+              'tw-w-5 tw-min-w-max',
+              description?.trim() ? 'tw-pt-4' : 'tw-pt-2.5'
+            )}>
             <NonAdminAction
               html={getHtmlForNonAdminAction(Boolean(owner))}
               isOwner={hasEditAccess}

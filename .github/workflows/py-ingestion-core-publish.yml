@@ -21,7 +21,7 @@ on:
     branches:
       - main
     paths:
-      - 'catalog-rest-service/src/main/resources/json/**'
+      - 'catalog-rest-service/src/main/resources/json/schema/**'
       - 'ingestion-core/src/metadata/_version.py'
 
 jobs:

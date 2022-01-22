@@ -55,11 +55,11 @@ import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.Entity;
-import org.openmetadata.catalog.api.operations.workflows.CreateIngestion;
-import org.openmetadata.catalog.ingestion.AirflowRESTClient;
+import org.openmetadata.catalog.airflow.AirflowRESTClient;
+import org.openmetadata.catalog.api.operations.pipelines.CreateAirflowPipeline;
+import org.openmetadata.catalog.jdbi3.AirflowPipelineRepository;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
-import org.openmetadata.catalog.jdbi3.IngestionRepository;
-import org.openmetadata.catalog.operations.workflows.Ingestion;
+import org.openmetadata.catalog.operations.pipelines.AirflowPipeline;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
@@ -73,14 +73,14 @@ import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
 
 @Slf4j
-@Path("operations/v1/ingestion")
+@Path("/operations/v1/airflowPipeline/")
 @Api(value = "Ingestion collection", tags = "Ingestion collection")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "ingestion")
-public class IngestionResource {
-  public static final String COLLECTION_PATH = "operations/v1/ingestion/";
-  private final IngestionRepository dao;
+@Collection(name = "airflowPipelines")
+public class AirflowPipelineResource {
+  public static final String COLLECTION_PATH = "operations/v1/airflowPipeline/";
+  private final AirflowPipelineRepository dao;
   private final Authorizer authorizer;
   private AirflowRESTClient airflowRESTClient;
   private CatalogApplicationConfig config;
@@ -89,20 +89,20 @@ public class IngestionResource {
     ref.withHref(RestUtil.getHref(uriInfo, COLLECTION_PATH, ref.getId()));
   }
 
-  public static ResultList<Ingestion> addHref(UriInfo uriInfo, ResultList<Ingestion> ingestions) {
+  public static ResultList<AirflowPipeline> addHref(UriInfo uriInfo, ResultList<AirflowPipeline> ingestions) {
     Optional.ofNullable(ingestions.getData()).orElse(Collections.emptyList()).forEach(i -> addHref(uriInfo, i));
     return ingestions;
   }
 
-  public static Ingestion addHref(UriInfo uriInfo, Ingestion ingestion) {
-    Entity.withHref(uriInfo, ingestion.getOwner());
-    Entity.withHref(uriInfo, ingestion.getService());
-    return ingestion;
+  public static AirflowPipeline addHref(UriInfo uriInfo, AirflowPipeline airflowPipeline) {
+    Entity.withHref(uriInfo, airflowPipeline.getOwner());
+    Entity.withHref(uriInfo, airflowPipeline.getService());
+    return airflowPipeline;
   }
 
-  public IngestionResource(CollectionDAO dao, Authorizer authorizer) {
-    Objects.requireNonNull(dao, "IngestionRepository must not be null");
-    this.dao = new IngestionRepository(dao);
+  public AirflowPipelineResource(CollectionDAO dao, Authorizer authorizer) {
+    Objects.requireNonNull(dao, "AirflowPipelineRepository must not be null");
+    this.dao = new AirflowPipelineRepository(dao);
     this.authorizer = authorizer;
   }
 
@@ -111,37 +111,38 @@ public class IngestionResource {
     this.config = config;
   }
 
-  public static class IngestionList extends ResultList<Ingestion> {
+  public static class AirflowPipelineList extends ResultList<AirflowPipeline> {
     @SuppressWarnings("unused")
-    IngestionList() {
+    AirflowPipelineList() {
       // Empty constructor needed for deserialization
     }
 
-    public IngestionList(List<Ingestion> data, String beforeCursor, String afterCursor, int total)
+    public AirflowPipelineList(List<AirflowPipeline> data, String beforeCursor, String afterCursor, int total)
         throws GeneralSecurityException, UnsupportedEncodingException {
       super(data, beforeCursor, afterCursor, total);
     }
   }
 
-  static final String FIELDS = "owner,tags,status,scheduleInterval";
+  static final String FIELDS = "owner,tags,status,service,pipelineConfig,scheduleInterval";
   public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replace(" ", "").split(","));
 
   @GET
   @Valid
   @Operation(
-      summary = "List Ingestion Workflows",
-      tags = "ingestion",
+      summary = "List Airflow Pipelines for Metadata Operations",
+      tags = "airflowPipelines",
       description =
-          "Get a list of ingestion workflows. Use `fields` parameter to get only necessary fields. "
+          "Get a list of Airflow Pipelines for Metadata Operations. Use `fields` parameter to get only necessary fields. "
               + " Use cursor-based pagination to limit the number "
               + "entries in the list using `limit` and `before` or `after` query params.",
       responses = {
         @ApiResponse(
             responseCode = "200",
             description = "List of ingestion workflows",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = IngestionList.class)))
+            content =
+                @Content(mediaType = "application/json", schema = @Schema(implementation = AirflowPipeline.class)))
       })
-  public ResultList<Ingestion> list(
+  public ResultList<AirflowPipeline> list(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(
@@ -171,34 +172,34 @@ public class IngestionResource {
     RestUtil.validateCursors(before, after);
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
 
-    ResultList<Ingestion> ingestions;
+    ResultList<AirflowPipeline> airflowPipelines;
     if (before != null) { // Reverse paging
-      ingestions = dao.listBefore(uriInfo, fields, null, limitParam, before, include); // Ask for one extra entry
+      airflowPipelines = dao.listBefore(uriInfo, fields, null, limitParam, before, include); // Ask for one extra entry
     } else { // Forward paging or first page
-      ingestions = dao.listAfter(uriInfo, fields, null, limitParam, after, include);
+      airflowPipelines = dao.listAfter(uriInfo, fields, null, limitParam, after, include);
     }
     if (fieldsParam != null && fieldsParam.contains("status")) {
-      addStatus(ingestions.getData());
+      addStatus(airflowPipelines.getData());
     }
-    return addHref(uriInfo, ingestions);
+    return addHref(uriInfo, airflowPipelines);
   }
 
   @GET
   @Path("/{id}/versions")
   @Operation(
       summary = "List ingestion workflow versions",
-      tags = "ingestion",
-      description = "Get a list of all the versions of a ingestion identified by `id`",
+      tags = "airflowPipelines",
+      description = "Get a list of all the versions of a AirflowPipeline identified by `id`",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "List of ingestion versions",
+            description = "List of AirflowPipeline versions",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = EntityHistory.class)))
       })
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "ingestion Id", schema = @Schema(type = "string")) @PathParam("id") String id)
+      @Parameter(description = "AirflowPipeline Id", schema = @Schema(type = "string")) @PathParam("id") String id)
       throws IOException, ParseException {
     return dao.listVersions(id);
   }
@@ -206,17 +207,18 @@ public class IngestionResource {
   @GET
   @Path("/{id}")
   @Operation(
-      summary = "Get a ingestion workflow",
-      tags = "ingestion",
-      description = "Get a ingestion workflow by `id`.",
+      summary = "Get a AirflowPipeline",
+      tags = "airflowPipelines",
+      description = "Get a AirflowPipeline by `id`.",
       responses = {
         @ApiResponse(
             responseCode = "200",
             description = "The ingestion",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Ingestion.class))),
-        @ApiResponse(responseCode = "404", description = "ingestion for instance {id} is not found")
+            content =
+                @Content(mediaType = "application/json", schema = @Schema(implementation = AirflowPipeline.class))),
+        @ApiResponse(responseCode = "404", description = "AirflowPipeline for instance {id} is not found")
       })
-  public Ingestion get(
+  public AirflowPipeline get(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @PathParam("id") String id,
@@ -233,29 +235,30 @@ public class IngestionResource {
           Include include)
       throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
-    Ingestion ingestion = dao.get(uriInfo, id, fields, include);
+    AirflowPipeline airflowPipeline = dao.get(uriInfo, id, fields, include);
     if (fieldsParam != null && fieldsParam.contains("status")) {
-      ingestion = addStatus(ingestion);
+      airflowPipeline = addStatus(airflowPipeline);
     }
-    return addHref(uriInfo, ingestion);
+    return addHref(uriInfo, airflowPipeline);
   }
 
   @GET
   @Path("/{id}/versions/{version}")
   @Operation(
-      summary = "Get a version of the ingestion",
-      tags = "ingestion",
-      description = "Get a version of the ingestion by given `id`",
+      summary = "Get a version of the AirflowPipeline",
+      tags = "airflowPipelines",
+      description = "Get a version of the AirflowPipeline by given `id`",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "ingestion",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Ingestion.class))),
+            description = "airflowPipelines",
+            content =
+                @Content(mediaType = "application/json", schema = @Schema(implementation = AirflowPipeline.class))),
         @ApiResponse(
             responseCode = "404",
-            description = "Ingestion for instance {id} and version  " + "{version} is not found")
+            description = "AirflowPipeline for instance {id} and version  " + "{version} is not found")
       })
-  public Ingestion getVersion(
+  public AirflowPipeline getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Ingestion Id", schema = @Schema(type = "string")) @PathParam("id") String id,
@@ -271,17 +274,18 @@ public class IngestionResource {
   @GET
   @Path("/name/{fqn}")
   @Operation(
-      summary = "Get a ingestion by name",
-      tags = "ingestion",
+      summary = "Get a AirlfowPipeline by name",
+      tags = "airflowPipelines",
       description = "Get a ingestion by fully qualified name.",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "The ingestion",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Ingestion.class))),
+            description = "AirflowPipeline",
+            content =
+                @Content(mediaType = "application/json", schema = @Schema(implementation = AirflowPipeline.class))),
         @ApiResponse(responseCode = "404", description = "Ingestion for instance {id} is not found")
       })
-  public Ingestion getByName(
+  public AirflowPipeline getByName(
       @Context UriInfo uriInfo,
       @PathParam("fqn") String fqn,
       @Context SecurityContext securityContext,
@@ -298,43 +302,44 @@ public class IngestionResource {
           Include include)
       throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
-    Ingestion ingestion = dao.getByName(uriInfo, fqn, fields, include);
+    AirflowPipeline airflowPipeline = dao.getByName(uriInfo, fqn, fields, include);
     if (fieldsParam != null && fieldsParam.contains("status")) {
-      ingestion = addStatus(ingestion);
+      airflowPipeline = addStatus(airflowPipeline);
     }
-    return addHref(uriInfo, ingestion);
+    return addHref(uriInfo, airflowPipeline);
   }
 
   @POST
   @Operation(
-      summary = "Create a Ingestion",
-      tags = "ingestion",
-      description = "Create a new Ingestion.",
+      summary = "Create a Airflow Pipeline",
+      tags = "airflowPipelines",
+      description = "Create a new Airflow Pipeline.",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "The ingestion",
+            description = "The Airflow Pipeline",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = CreateIngestion.class))),
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = CreateAirflowPipeline.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateIngestion create)
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateAirflowPipeline create)
       throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    Ingestion ingestion = getIngestion(securityContext, create);
-    deploy(ingestion);
-    // write to db only when the deployment is successful
-    ingestion = addHref(uriInfo, dao.create(uriInfo, ingestion));
-    return Response.created(ingestion.getHref()).entity(ingestion).build();
+    AirflowPipeline airflowPipeline = getAirflowPipeline(securityContext, create);
+    airflowPipeline = addHref(uriInfo, dao.create(uriInfo, airflowPipeline));
+    deploy(airflowPipeline);
+    return Response.created(airflowPipeline.getHref()).entity(airflowPipeline).build();
   }
 
   @PATCH
   @Path("/{id}")
   @Operation(
-      summary = "Update a ingestion",
-      tags = "ingestion",
-      description = "Update an existing ingestion using JsonPatch.",
+      summary = "Update a AirflowPipeline",
+      tags = "airflowPipelines",
+      description = "Update an existing AirflowPipeline using JsonPatch.",
       externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
   public Response updateDescription(
@@ -352,11 +357,11 @@ public class IngestionResource {
           JsonPatch patch)
       throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, FIELDS);
-    Ingestion ingestion = dao.get(uriInfo, id, fields);
+    AirflowPipeline airflowPipeline = dao.get(uriInfo, id, fields);
     SecurityUtil.checkAdminRoleOrPermissions(
-        authorizer, securityContext, dao.getEntityInterface(ingestion).getEntityReference(), patch);
+        authorizer, securityContext, dao.getEntityInterface(airflowPipeline).getEntityReference(), patch);
 
-    PatchResponse<Ingestion> response =
+    PatchResponse<AirflowPipeline> response =
         dao.patch(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
     addHref(uriInfo, response.getEntity());
     return response.toResponse();
@@ -364,23 +369,23 @@ public class IngestionResource {
 
   @PUT
   @Operation(
-      summary = "Create or update a ingestion",
-      tags = "ingestion",
-      description = "Create a new ingestion, if it does not exist or update an existing ingestion.",
+      summary = "Create or update a AirflowPipeline",
+      tags = "airflowPipelines",
+      description = "Create a new AirflowPipeline, if it does not exist or update an existing AirflowPipeline.",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "The ingestion",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Ingestion.class))),
+            description = "The AirflowPipeline",
+            content =
+                @Content(mediaType = "application/json", schema = @Schema(implementation = AirflowPipeline.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createOrUpdate(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateIngestion create)
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateAirflowPipeline create)
       throws IOException, ParseException {
-    Ingestion ingestion = getIngestion(securityContext, create);
-    deploy(ingestion);
-    // write to db only when the deployment is successful
-    PutResponse<Ingestion> response = dao.createOrUpdate(uriInfo, ingestion);
+    AirflowPipeline airflowPipeline = getAirflowPipeline(securityContext, create);
+    PutResponse<AirflowPipeline> response = dao.createOrUpdate(uriInfo, airflowPipeline);
+    deploy(airflowPipeline);
     addHref(uriInfo, response.getEntity());
     return response.toResponse();
   }
@@ -388,22 +393,23 @@ public class IngestionResource {
   @POST
   @Path("/trigger/{id}")
   @Operation(
-      summary = "Trigger a ingestion workflow run",
-      tags = "ingestion",
-      description = "Trigger a ingestion workflow run by ingestion name.",
+      summary = "Trigger a airflow pipeline run",
+      tags = "airflowPipelines",
+      description = "Trigger a airflow pipeline run by id.",
       responses = {
         @ApiResponse(
             responseCode = "200",
             description = "The ingestion",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Ingestion.class))),
+            content =
+                @Content(mediaType = "application/json", schema = @Schema(implementation = AirflowPipeline.class))),
         @ApiResponse(responseCode = "404", description = "Ingestion for instance {name} is not found")
       })
-  public Ingestion triggerIngestion(
+  public AirflowPipeline triggerIngestion(
       @Context UriInfo uriInfo, @PathParam("id") String id, @Context SecurityContext securityContext)
       throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, "owner");
-    Ingestion ingestion = dao.get(uriInfo, id, fields);
-    airflowRESTClient.runPipeline(ingestion.getName());
+    AirflowPipeline pipeline = dao.get(uriInfo, id, fields);
+    airflowRESTClient.runPipeline(pipeline.getName());
     return addHref(uriInfo, dao.get(uriInfo, id, fields));
   }
 
@@ -411,7 +417,7 @@ public class IngestionResource {
   @Path("/{id}")
   @Operation(
       summary = "Delete a Ingestion",
-      tags = "ingestion",
+      tags = "airflowPipelines",
       description = "Delete a ingestion by `id`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
@@ -422,46 +428,46 @@ public class IngestionResource {
     return Response.ok().build();
   }
 
-  private Ingestion getIngestion(SecurityContext securityContext, CreateIngestion create) {
-    return new Ingestion()
+  private AirflowPipeline getAirflowPipeline(SecurityContext securityContext, CreateAirflowPipeline create) {
+    return new AirflowPipeline()
         .withId(UUID.randomUUID())
         .withName(create.getName())
         .withDisplayName(create.getDisplayName())
         .withDescription(create.getDescription())
-        .withIngestionType(create.getIngestionType())
+        .withPipelineType(create.getPipelineType())
         .withForceDeploy(create.getForceDeploy())
         .withConcurrency(create.getConcurrency())
-        .withPauseWorkflow(create.getPauseWorkflow())
+        .withPausePipeline(create.getPausePipeline())
         .withStartDate(create.getStartDate())
         .withEndDate(create.getEndDate())
         .withRetries(create.getRetries())
         .withRetryDelay(create.getRetryDelay())
-        .withConnectorConfig(create.getConnectorConfig())
-        .withWorkflowCatchup(create.getWorkflowCatchup())
+        .withPipelineConfig(create.getPipelineConfig())
+        .withPipelineCatchup(create.getPipelineCatchup())
+        .withPipelineTimeout(create.getPipelineTimeout())
         .withScheduleInterval(create.getScheduleInterval())
-        .withTags(create.getTags())
         .withOwner(create.getOwner())
         .withService(create.getService())
         .withUpdatedBy(securityContext.getUserPrincipal().getName())
         .withUpdatedAt(System.currentTimeMillis());
   }
 
-  private void deploy(Ingestion ingestion) {
-    if (Boolean.TRUE.equals(ingestion.getForceDeploy())) {
-      airflowRESTClient.deploy(ingestion, config);
+  private void deploy(AirflowPipeline airflowPipeline) {
+    if (Boolean.TRUE.equals(airflowPipeline.getForceDeploy())) {
+      airflowRESTClient.deploy(airflowPipeline, config);
     }
   }
 
-  public void addStatus(List<Ingestion> ingestions) {
-    Optional.ofNullable(ingestions).orElse(Collections.emptyList()).forEach(this::addStatus);
+  public void addStatus(List<AirflowPipeline> airflowPipelines) {
+    Optional.ofNullable(airflowPipelines).orElse(Collections.emptyList()).forEach(this::addStatus);
   }
 
-  private Ingestion addStatus(Ingestion ingestion) {
+  private AirflowPipeline addStatus(AirflowPipeline airflowPipeline) {
     try {
-      ingestion = airflowRESTClient.getStatus(ingestion);
+      airflowPipeline = airflowRESTClient.getStatus(airflowPipeline);
     } catch (Exception e) {
-      LOG.error("Failed to fetch status for {}", ingestion.getName());
+      LOG.error("Failed to fetch status for {}", airflowPipeline.getName());
     }
-    return ingestion;
+    return airflowPipeline;
   }
 }
