@@ -10,14 +10,10 @@
 #  limitations under the License.
 
 import logging
-import re
-import textwrap
 import traceback
 import uuid
 from dataclasses import dataclass, field
 from typing import Iterable, List, Optional
-
-from pydantic import SecretStr
 
 from metadata.config.common import ConfigModel
 from metadata.generated.schema.api.services.createDatabaseService import (
@@ -38,13 +34,14 @@ from metadata.ingestion.models.user import User
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.source.neo4j_helper import Neo4JConfig, Neo4jHelper
-from metadata.utils.column_helpers import check_column_complex_type, get_column_type
+from metadata.utils.column_type_parser import ColumnTypeParser
 from metadata.utils.helpers import get_dashboard_service_or_create
 from metadata.utils.sql_queries import (
     NEO4J_AMUNDSEN_DASHBOARD_QUERY,
     NEO4J_AMUNDSEN_TABLE_QUERY,
     NEO4J_AMUNDSEN_USER_QUERY,
 )
+from pydantic import SecretStr
 
 logger: logging.Logger = logging.getLogger(__name__)
 
@@ -155,28 +152,10 @@ class AmundsenSource(Source[Entity]):
                 # Amundsen merges the length into type itself. Instead of making changes to our generic type builder
                 # we will do a type match and see if it matches any primitive types and return a type
                 data_type = self.get_type_primitive_type(data_type)
-                (
-                    col_type,
-                    data_type_display,
-                    arr_data_type,
-                    children,
-                ) = check_column_complex_type(
-                    self.status, table["name"], data_type, name
-                )
-
-                col = Column(
-                    name=name,
-                    description=description,
-                    dataType=col_type,
-                    dataTypeDisplay="{}({})".format(col_type, 1)
-                    if data_type_display is None
-                    else f"{data_type_display}",
-                    children=children,
-                    arrayDataType=arr_data_type,
-                    ordinalPosition=row_order,
-                    dataLength=1,
-                )
-                row_order += 1
+                parsed_string = ColumnTypeParser._parse_datatype_string(data_type)
+                parsed_string["name"] = name
+                parsed_string["dataLength"] = 1
+                col = Column(**parsed_string)
                 columns.append(col)
 
             fqn = f"{service_name}.{database.name}.{table['schema']}.{table['name']}"
