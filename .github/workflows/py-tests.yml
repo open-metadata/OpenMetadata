@@ -16,10 +16,13 @@ on:
     branches: [main]
     paths:
       - ingestion/**
+      - catalog-rest-service/src/main/resources/json/schema/**
   pull_request_target:
     branches: [main]
     paths:
       - ingestion/**
+      - catalog-rest-service/src/main/resources/json/schema/**
+
 jobs:
   py-run-tests:
     runs-on: ubuntu-latest
