@@ -14,7 +14,7 @@
 import classNames from 'classnames';
 import cronstrue from 'cronstrue';
 import { capitalize, isNil, lowerCase } from 'lodash';
-import React, { useCallback, useState } from 'react';
+import React, { Fragment, useCallback, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   getServiceDetailsPath,
@@ -22,14 +22,13 @@ import {
 } from '../../constants/constants';
 import { NoDataFoundPlaceHolder } from '../../constants/services.const';
 import { ServiceCategory } from '../../enums/service.enum';
-import { useAuth } from '../../hooks/authHooks';
+// import { useAuth } from '../../hooks/authHooks';
 import { isEven } from '../../utils/CommonUtils';
-import { Button } from '../buttons/Button/Button';
+// import { Button } from '../buttons/Button/Button';
 import NextPrevious from '../common/next-previous/NextPrevious';
 import NonAdminAction from '../common/non-admin-action/NonAdminAction';
 import PopOver from '../common/popover/PopOver';
 import Searchbar from '../common/searchbar/Searchbar';
-import PageContainer from '../containers/PageContainer';
 import IngestionModal from '../IngestionModal/IngestionModal.component';
 import Loader from '../Loader/Loader';
 import ConfirmationModal from '../Modals/ConfirmationModal/ConfirmationModal';
@@ -45,7 +44,7 @@ const Ingestion: React.FC<Props> = ({
   paging,
   pagingHandler,
 }: Props) => {
-  const { isAdminUser, isAuthDisabled } = useAuth();
+  // const { isAdminUser, isAuthDisabled } = useAuth();
   const [searchText, setSearchText] = useState('');
   const [currTriggerId, setCurrTriggerId] = useState({ id: '', state: '' });
   const [isAdding, setIsAdding] = useState<boolean>(false);
@@ -86,15 +85,15 @@ const Ingestion: React.FC<Props> = ({
     });
   };
 
-  const handleUpdate = (ingestion: IngestionData) => {
-    setUpdateSelection({
-      id: ingestion.id as string,
-      name: ingestion.displayName,
-      state: '',
-      ingestion: ingestion,
-    });
-    setIsUpdating(true);
-  };
+  // const handleUpdate = (ingestion: IngestionData) => {
+  //   setUpdateSelection({
+  //     id: ingestion.id as string,
+  //     name: ingestion.displayName,
+  //     state: '',
+  //     ingestion: ingestion,
+  //   });
+  //   setIsUpdating(true);
+  // };
 
   const handleCancelUpdate = () => {
     setUpdateSelection({
@@ -148,14 +147,14 @@ const Ingestion: React.FC<Props> = ({
       });
   };
 
-  const ConfirmDelete = (id: string, name: string) => {
-    setDeleteSelection({
-      id,
-      name,
-      state: '',
-    });
-    setIsConfirmationModalOpen(true);
-  };
+  // const ConfirmDelete = (id: string, name: string) => {
+  //   setDeleteSelection({
+  //     id,
+  //     name,
+  //     state: '',
+  //   });
+  //   setIsConfirmationModalOpen(true);
+  // };
 
   const getServiceTypeFromName = (serviceName = ''): string => {
     return (
@@ -221,7 +220,7 @@ const Ingestion: React.FC<Props> = ({
   };
 
   return (
-    <PageContainer className="tw-bg-white">
+    <Fragment>
       <div className="tw-px-4" data-testid="ingestion-container">
         <div className="tw-flex">
           <div className="tw-w-4/12">
@@ -235,7 +234,7 @@ const Ingestion: React.FC<Props> = ({
             ) : null}
           </div>
           <div className="tw-w-8/12 tw-flex tw-justify-end">
-            <NonAdminAction
+            {/* <NonAdminAction
               position="bottom"
               title={TITLE_FOR_NON_ADMIN_ACTION}>
               <Button
@@ -249,12 +248,14 @@ const Ingestion: React.FC<Props> = ({
                 onClick={() => setIsAdding(true)}>
                 Add Ingestion
               </Button>
-            </NonAdminAction>
+            </NonAdminAction> */}
           </div>
         </div>
         {getSearchedIngestions().length ? (
           <div className="tw-table-responsive tw-my-6">
-            <table className="tw-w-full" data-testid="ingestion-table">
+            <table
+              className="tw-bg-white tw-w-full tw-mb-4"
+              data-testid="ingestion-table">
               <thead>
                 <tr className="tableHead-row" data-testid="table-header">
                   <th className="tableHead-cell">Name</th>
@@ -338,7 +339,7 @@ const Ingestion: React.FC<Props> = ({
                               'Run'
                             )}
                           </div>
-                          <div
+                          {/* <div
                             className="link-text tw-mr-2"
                             data-testid="edit"
                             onClick={() => handleUpdate(ingestion)}>
@@ -351,8 +352,8 @@ const Ingestion: React.FC<Props> = ({
                             ) : (
                               'Edit'
                             )}
-                          </div>
-                          <div
+                          </div> */}
+                          {/* <div
                             className="link-text tw-mr-2"
                             data-testid="delete"
                             onClick={() =>
@@ -370,7 +371,7 @@ const Ingestion: React.FC<Props> = ({
                             ) : (
                               'Delete'
                             )}
-                          </div>
+                          </div> */}
                         </div>
                       </NonAdminAction>
                     </td>
@@ -453,7 +454,7 @@ const Ingestion: React.FC<Props> = ({
           }
         />
       )}
-    </PageContainer>
+    </Fragment>
   );
 };
 

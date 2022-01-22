@@ -24,6 +24,7 @@ import {
 } from '../../axiosAPIs/ingestionWorkflowAPI';
 import { getServices } from '../../axiosAPIs/serviceAPI';
 import IngestionError from '../../components/common/error/IngestionError';
+import PageContainer from '../../components/containers/PageContainer';
 import Ingestion from '../../components/Ingestion/Ingestion.component';
 import { IngestionData } from '../../components/Ingestion/ingestion.interface';
 import Loader from '../../components/Loader/Loader';
@@ -36,7 +37,7 @@ import { getOwnerFromId } from '../../utils/TableUtils';
 const IngestionPage = () => {
   const showToast = useToastContext();
   const [isLoading, setIsLoading] = useState(true);
-  const [ingestions, setIngestions] = useState([]);
+  const [ingestions, setIngestions] = useState<IngestionData[]>([]);
   const [serviceList, setServiceList] = useState<Array<DatabaseService>>([]);
   const [paging, setPaging] = useState<Paging>({} as Paging);
   const [isConnectionAvailable, setConnectionAvailable] =
@@ -205,16 +206,18 @@ const IngestionPage = () => {
       ) : (
         <Fragment>
           {isConnectionAvailable ? (
-            <Ingestion
-              addIngestion={addIngestionWorkflowHandler}
-              deleteIngestion={deleteIngestionById}
-              ingestionList={ingestions}
-              paging={paging}
-              pagingHandler={pagingHandler}
-              serviceList={serviceList}
-              triggerIngestion={triggerIngestionById}
-              updateIngestion={updateIngestion}
-            />
+            <PageContainer className="tw-bg-white">
+              <Ingestion
+                addIngestion={addIngestionWorkflowHandler}
+                deleteIngestion={deleteIngestionById}
+                ingestionList={ingestions}
+                paging={paging}
+                pagingHandler={pagingHandler}
+                serviceList={serviceList}
+                triggerIngestion={triggerIngestionById}
+                updateIngestion={updateIngestion}
+              />
+            </PageContainer>
           ) : (
             <IngestionError />
           )}

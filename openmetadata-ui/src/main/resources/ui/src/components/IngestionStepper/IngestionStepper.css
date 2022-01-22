@@ -43,14 +43,13 @@
   color: #7147e8;
 }
 
-.ingestion-line::before {
+.ingestion-line {
   top: 10px;
   bottom: 0;
   position: absolute;
-  content: ' ';
-  width: 78%;
+  width: 75%;
   height: 2px;
-  left: 64px;
+  left: 82px;
   background-color: #d9ceee;
 }
 .ingestion-line-se {
@@ -59,4 +58,9 @@
   height: 15px;
   background-color: #d9ceee;
   transform: translate(8px, 0);
+}
+
+.service-stepper-line {
+  width: 80%;
+  left: 70px;
 }

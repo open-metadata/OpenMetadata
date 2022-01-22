@@ -13,15 +13,16 @@
 
 import classNames from 'classnames';
 import cronstrue from 'cronstrue';
+import { StepperStepType } from 'Models';
 import { utc } from 'moment';
 import React, { Fragment, ReactNode, useEffect, useState } from 'react';
 import { IngestionType } from '../../enums/service.enum';
+import { getCurrentDate } from '../../utils/CommonUtils';
 import { getIngestionTypeList } from '../../utils/ServiceUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import { Button } from '../buttons/Button/Button';
 import CronEditor from '../common/CronEditor/CronEditor';
 import IngestionStepper from '../IngestionStepper/IngestionStepper.component';
-import { Steps } from '../IngestionStepper/IngestionStepper.interface';
 import {
   IngestionModalProps,
   ServiceData,
@@ -36,7 +37,7 @@ const errorMsg = (value: string) => {
   );
 };
 
-const STEPS: Array<Steps> = [
+const STEPS: Array<StepperStepType> = [
   { name: 'Ingestion details', step: 1 },
   { name: 'Connector config', step: 2 },
   { name: 'Scheduling', step: 3 },
@@ -87,10 +88,6 @@ const getIngestionName = (name: string) => {
   const nameString = name.trim().replace(/\s+/g, '_');
 
   return nameString.toLowerCase();
-};
-
-const getCurrentDate = () => {
-  return `${utc(new Date()).format('YYYY-MM-DD')}`;
 };
 
 const setService = (
