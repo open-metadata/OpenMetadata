@@ -8,17 +8,20 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+
+import json
 from datetime import timedelta
 
 from airflow import DAG
-from docker.types import Mount
 
 try:
-    from airflow.operators.docker_operator import DockerOperator
+    from airflow.operators.python import PythonOperator
 except ModuleNotFoundError:
-    from airflow.providers.docker.operators.docker import DockerOperator
+    from airflow.operators.python_operator import PythonOperator
 
 from airflow.utils.dates import days_ago
+
+from metadata.ingestion.api.workflow import Workflow
 
 default_args = {
     "owner": "user_name",
@@ -34,7 +37,7 @@ config = """
   "source": {
     "type": "sample-data",
     "config": {
-      "sample_data_folder": "/opt/operator/sample_data"
+      "sample_data_folder": "./examples/sample_data"
     }
   },
   "sink": {
@@ -52,6 +55,15 @@ config = """
 """
 
 
+def metadata_ingestion_workflow():
+    workflow_config = json.loads(config)
+    workflow = Workflow.create(workflow_config)
+    workflow.execute()
+    workflow.raise_from_status()
+    workflow.print_status()
+    workflow.stop()
+
+
 with DAG(
     "sample_data",
     default_args=default_args,
@@ -60,20 +72,7 @@ with DAG(
     is_paused_upon_creation=False,
     catchup=False,
 ) as dag:
-    ingest_task = DockerOperator(
-        task_id="ingest_using_docker",
-        image="openmetadata/ingestion-connector-base",
-        command="python main.py",
-        environment={"config": config},
-        tty=True,
-        auto_remove=True,
-        mounts=[
-            Mount(
-                source="/tmp/openmetadata/examples/",
-                target="/opt/operator/",
-                type="bind",
-            ),
-        ],
-        mount_tmp_dir=False,
-        network_mode="host",  # Needed to reach Docker OM
+    ingest_task = PythonOperator(
+        task_id="ingest_using_recipe",
+        python_callable=metadata_ingestion_workflow,
     )
