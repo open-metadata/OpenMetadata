@@ -42,6 +42,7 @@ type Props = {
     value: number;
   }[];
   database?: string;
+  deleted?: boolean;
 };
 
 const TableDataCard: FunctionComponent<Props> = ({
@@ -57,6 +58,7 @@ const TableDataCard: FunctionComponent<Props> = ({
   indexType,
   matches,
   database,
+  deleted = false,
 }: Props) => {
   const location = useLocation();
   const history = useHistory();
@@ -114,7 +116,7 @@ const TableDataCard: FunctionComponent<Props> = ({
       data-testid="table-data-card"
       id={id}>
       <div>
-        <div className="tw-flex">
+        <div className="tw-flex tw-items-center">
           {/* {getEntityIcon(indexType)} */}
           <img
             alt=""
@@ -130,6 +132,14 @@ const TableDataCard: FunctionComponent<Props> = ({
               {stringToHTML(name)}
             </button>
           </h6>
+          {deleted && (
+            <>
+              <div className="tw-rounded tw-bg-error-lite tw-text-error tw-text-xs tw-font-medium tw-h-5 tw-px-1.5 tw-py-0.5 tw-ml-2">
+                <i className="fas fa-exclamation-circle tw-mr-1" />
+                Deleted
+              </div>
+            </>
+          )}
         </div>
       </div>
       <div className="tw-pt-3">

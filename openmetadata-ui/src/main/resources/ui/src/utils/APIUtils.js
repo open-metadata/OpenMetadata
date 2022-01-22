@@ -46,6 +46,7 @@ export const formatDataResponse = (hits) => {
 
     newData.entityType = hit._source.entity_type;
     newData.changeDescriptions = hit._source.change_descriptions;
+    newData.deleted = hit._source.deleted;
 
     return newData;
   });
