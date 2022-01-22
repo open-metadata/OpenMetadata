@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { AxiosResponse } from 'axios';
+import { AxiosError, AxiosResponse } from 'axios';
 import { compare } from 'fast-json-patch';
 import { observer } from 'mobx-react';
 import { EntityTags, LeafNodes, LineagePos, LoadingNodeState } from 'Models';
@@ -281,6 +281,12 @@ const DatasetDetailsPage: FunctionComponent = () => {
     getLineageByFQN(tableFQN, EntityType.TABLE)
       .then((res: AxiosResponse) => {
         setEntityLineage(res.data);
+      })
+      .catch((err: AxiosError) => {
+        showToast({
+          variant: 'error',
+          body: err.message ?? 'Error while fetching lineage data',
+        });
       })
       .finally(() => {
         setIsLineageLoading(false);
