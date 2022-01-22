@@ -54,7 +54,7 @@ class GlueSourceConfig(AWSClientConfigModel):
 
 class GlueSource(Source[Entity]):
     def __init__(
-            self, config: GlueSourceConfig, metadata_config: MetadataServerConfig, ctx
+        self, config: GlueSourceConfig, metadata_config: MetadataServerConfig, ctx
     ):
         super().__init__(ctx)
         self.status = SQLSourceStatus()
@@ -124,11 +124,11 @@ class GlueSource(Source[Entity]):
             )
             if isinstance(parsed_string, list):
                 parsed_string = {}
-                parsed_string['dataTypeDisplay'] = str(column['Type'])
-                parsed_string['dataType'] = "UNION"
+                parsed_string["dataTypeDisplay"] = str(column["Type"])
+                parsed_string["dataType"] = "UNION"
             parsed_string["name"] = column["Name"][:64]
-            parsed_string['ordinalPosition'] = index
-            parsed_string['dataLength'] = parsed_string.get('dataLength', 1)
+            parsed_string["ordinalPosition"] = index
+            parsed_string["dataLength"] = parsed_string.get("dataLength", 1)
             yield Column(**parsed_string)
 
     def ingest_tables(self, next_tables_token=None) -> Iterable[OMetaDatabaseAndTable]:
@@ -174,7 +174,6 @@ class GlueSource(Source[Entity]):
                     if hasattr(table, "Description")
                     else "",
                     fullyQualifiedName=fqn,
-
                     columns=table_columns,
                     tableType=table_type,
                 )
@@ -195,8 +194,8 @@ class GlueSource(Source[Entity]):
         downstream_tasks = []
         for edges in tasks["Edges"]:
             if (
-                    edges["SourceId"] == task_unique_id
-                    and edges["DestinationId"] in self.task_id_mapping.values()
+                edges["SourceId"] == task_unique_id
+                and edges["DestinationId"] in self.task_id_mapping.values()
             ):
                 downstream_tasks.append(
                     list(self.task_id_mapping.keys())[

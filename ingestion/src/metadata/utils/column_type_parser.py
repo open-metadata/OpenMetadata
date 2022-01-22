@@ -44,7 +44,7 @@ class ColumnTypeParser:
         types.BINARY: "BINARY",
         types.INTEGER: "INT",
         types.Integer: "INT",
-        types.BigInteger: "BIGINT"
+        types.BigInteger: "BIGINT",
     }
 
     _SOURCE_TYPE_TO_OM_TYPE = {
@@ -104,6 +104,7 @@ class ColumnTypeParser:
         "OBJECT": "JSON",
         "RAW": "BINARY",
         "REAL": "FLOAT",
+        "RECORD": "STRUCT",
         "ROWID": "VARCHAR",
         "ROWVERSION": "NUMBER",
         "SET": "SET",
@@ -158,15 +159,18 @@ class ColumnTypeParser:
 
     @staticmethod
     def _parse_datatype_string(
-            s: str, **kwargs: Any
+        s: str, **kwargs: Any
     ) -> Union[object, Dict[str, object]]:
         s = s.strip()
         if s.startswith("array<"):
             if s[-1] != ">":
                 raise ValueError("expected '>' found: %s" % s)
+            arr_data_type = ColumnTypeParser._parse_primitive_datatype_string(s[6:-1])[
+                "dataType"
+            ]
             return {
                 "dataType": "ARRAY",
-                "arrayDataType": s[0:5].upper(),
+                "arrayDataType": arr_data_type,
                 "dataTypeDisplay": s,
             }
         elif s.startswith("map<"):
@@ -245,7 +249,10 @@ class ColumnTypeParser:
                     "dataLength": int(m.group(3)),  # type: ignore
                 }
             else:
-                return {"dataType": ColumnTypeParser.get_column_type(m.group(0)), "dataTypeDisplay": s}
+                return {
+                    "dataType": ColumnTypeParser.get_column_type(m.group(0)),
+                    "dataTypeDisplay": s,
+                }
         elif s == "date":
             return {"dataType": "DATE", "dataTypeDisplay": s}
         elif s == "timestamp":

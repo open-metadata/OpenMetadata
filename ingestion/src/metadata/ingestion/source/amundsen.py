@@ -75,7 +75,7 @@ class AmundsenStatus(SourceStatus):
 
 class AmundsenSource(Source[Entity]):
     def __init__(
-            self, config: AmundsenConfig, metadata_config: MetadataServerConfig, ctx
+        self, config: AmundsenConfig, metadata_config: MetadataServerConfig, ctx
     ):
         self.config = config
         self.metadata_config = metadata_config
@@ -145,16 +145,16 @@ class AmundsenSource(Source[Entity]):
             columns: List[Column] = []
             row_order = 1
             for (name, description, data_type) in zip(
-                    table["column_names"],
-                    table["column_descriptions"],
-                    table["column_types"],
+                table["column_names"],
+                table["column_descriptions"],
+                table["column_types"],
             ):
                 # Amundsen merges the length into type itself. Instead of making changes to our generic type builder
                 # we will do a type match and see if it matches any primitive types and return a type
                 data_type = self.get_type_primitive_type(data_type)
                 parsed_string = ColumnTypeParser._parse_datatype_string(data_type)
-                parsed_string['name'] = name
-                parsed_string['dataLength'] = 1
+                parsed_string["name"] = name
+                parsed_string["dataLength"] = 1
                 col = Column(**parsed_string)
                 columns.append(col)
 
@@ -215,10 +215,10 @@ class AmundsenSource(Source[Entity]):
         )
 
         for (name, chart_id, chart_type, url) in zip(
-                dashboard["chart_names"],
-                dashboard["chart_ids"],
-                dashboard["chart_types"],
-                dashboard["chart_urls"],
+            dashboard["chart_names"],
+            dashboard["chart_ids"],
+            dashboard["chart_types"],
+            dashboard["chart_urls"],
         ):
             chart = Chart(
                 name=chart_id,
@@ -245,7 +245,7 @@ class AmundsenSource(Source[Entity]):
         return data_type
 
     def get_database_service_or_create(
-            self, service_name: str, service_type: str
+        self, service_name: str, service_type: str
     ) -> DatabaseService:
         metadata = OpenMetadata(self.metadata_config)
         service = metadata.get_by_name(entity=DatabaseService, fqdn=service_name)
