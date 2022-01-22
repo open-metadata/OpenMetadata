@@ -19,7 +19,9 @@ import java.io.IOException;
 import java.net.URI;
 import java.text.ParseException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -34,6 +36,7 @@ import org.openmetadata.catalog.security.policyevaluator.PolicyEvaluator;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Include;
+import org.openmetadata.catalog.type.MetadataOperation;
 import org.openmetadata.catalog.type.PolicyType;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
@@ -191,18 +194,32 @@ public class PolicyRepository extends EntityRepository<Policy> {
       return;
     }
     LOG.debug("Validating rules for {} policy: {}", PolicyType.AccessControl, policy.getName());
+
+    Set<MetadataOperation> operations = new HashSet<>();
     for (Object ruleObject : policy.getRules()) {
       // Cast to access control policy Rule.
       Rule rule = JsonUtils.readValue(JsonUtils.getJsonStructure(ruleObject).toString(), Rule.class);
-      // If the operation is not specified or if all user (subject) and entity (object) attributes are null, the rule
-      // is invalid.
-      if (rule.getOperation() == null
-          || (rule.getEntityTagAttr() == null && rule.getEntityTypeAttr() == null && rule.getUserRoleAttr() == null)) {
+
+      if (rule.getOperation() == null) {
         throw new IllegalArgumentException(
             String.format(
-                "Found invalid rule %s within policy %s. Check if operation is non-null "
-                    + "and at least one among the user (subject) and entity (object) attributes is specified",
-                rule, policy.getName()));
+                "Found invalid rule %s within policy %s. Please ensure operation is non-null",
+                rule.getName(), policy.getName()));
+      }
+
+      if (!operations.add(rule.getOperation())) {
+        throw new IllegalArgumentException(
+            String.format(
+                "Found multiple rules with operation %s within policy %s. Please ensure that operation across all rules within the policy are distinct",
+                rule.getOperation(), policy.getName()));
+      }
+
+      // If all user (subject) and entity (object) attributes are null, the rule is invalid.
+      if (rule.getEntityTagAttr() == null && rule.getEntityTypeAttr() == null && rule.getUserRoleAttr() == null) {
+        throw new IllegalArgumentException(
+            String.format(
+                "Found invalid rule %s within policy %s. Please ensure that at least one among the user (subject) and entity (object) attributes is specified",
+                rule.getName(), policy.getName()));
       }
     }
     // No validation errors, if execution reaches here.
