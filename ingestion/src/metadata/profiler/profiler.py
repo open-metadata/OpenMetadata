@@ -44,6 +44,12 @@ class Profiler:
         self.schema_name = schema_name
         self.excluded_columns = excluded_columns
         self.time = profile_time
+        if "." in table_name:
+            schema_name = table_name.split(".")[0]
+            table_name = "".join(table_name.split(".")[1:])
+            self.table = Table(name=table_name)
+            self.schema_name = schema_name
+
         self.qualified_table_name = self.database.qualify_table_name(
             table_name, schema_name
         )
