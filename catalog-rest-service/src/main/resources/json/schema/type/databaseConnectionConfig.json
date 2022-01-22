@@ -4,7 +4,6 @@
   "title": "DatabaseConnectionConfig",
   "description": "Database Connection Config to capture connection details to a database service.",
   "type": "object",
-  "required": ["name", "service", "connectorConfig", "startDate"],
   "additionalProperties": false,
   "properties": {
     "username": {

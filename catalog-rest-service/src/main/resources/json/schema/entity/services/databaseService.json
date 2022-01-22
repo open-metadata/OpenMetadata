@@ -158,6 +158,6 @@
       "default": false
     }
   },
-  "required": ["id", "name", "serviceType", "href", "jdbc"],
+  "required": ["id", "name", "serviceType", "href", "databaseConnection"],
   "additionalProperties": false
 }

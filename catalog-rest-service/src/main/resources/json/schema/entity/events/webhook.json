@@ -115,6 +115,6 @@
       "default": false
     }
   },
-  "required": ["id", "name", "endPoint", "eventFilter"],
+  "required": ["id", "name", "endpoint", "eventFilters"],
   "additionalProperties": false
 }

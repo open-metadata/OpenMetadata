@@ -47,6 +47,6 @@
       "type": "string"
     }
   },
-  "required": ["name", "endPoint", "eventFilter"],
+  "required": ["name", "endpoint", "eventFilters"],
   "additionalProperties": false
 }
