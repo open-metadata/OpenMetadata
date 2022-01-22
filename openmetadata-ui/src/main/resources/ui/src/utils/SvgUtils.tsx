@@ -17,6 +17,8 @@ import IconGithub from '../assets/img/icon-github.png';
 import IconGoogle from '../assets/img/icon-google.png';
 import IconOkta from '../assets/img/icon-okta.png';
 import IconWelcomePopper from '../assets/img/welcome-popper-icon.png';
+import IconAnnouncementWhite from '../assets/svg/announcements-white.svg';
+import IconAnnouncement from '../assets/svg/announcements.svg';
 import IconAPI from '../assets/svg/api.svg';
 import IconSuccess from '../assets/svg/check.svg';
 import IconConfigColor from '../assets/svg/config-color.svg';
@@ -70,7 +72,6 @@ import IconTimesCircle from '../assets/svg/ic-times-circle.svg';
 import IconTrends from '../assets/svg/ic-trends.svg';
 import IconUpArrow from '../assets/svg/ic-up-arrow.svg';
 import IconVEllipsis from '../assets/svg/ic-v-ellipsis.svg';
-import IconWhatsNew from '../assets/svg/ic-whats-new.svg';
 import IconWorkflows from '../assets/svg/ic-workflows.svg';
 import IconKey from '../assets/svg/icon-key.svg';
 import IconNotNull from '../assets/svg/icon-notnull.svg';
@@ -111,6 +112,7 @@ import IconVersionBlack from '../assets/svg/version-black.svg';
 import IconVersionWhite from '../assets/svg/version-white.svg';
 import IconVersion from '../assets/svg/version.svg';
 import IconWarning from '../assets/svg/warning.svg';
+import IconWhatsNew from '../assets/svg/whatsNew.svg';
 
 type Props = {
   alt: string;
@@ -219,6 +221,8 @@ export const Icons = {
   CONTROLMINUS: 'icon-control-minus',
   EDITLINEAGECOLOR: 'icon-edit-lineage-color',
   EDITLINEAGE: 'icon-edit-lineage',
+  ANNOUNCEMENT: 'icon-announcement',
+  ANNOUNCEMENT_WHITE: 'icon-announcement-white',
 };
 
 const SVGIcons: FunctionComponent<Props> = ({
@@ -629,6 +633,14 @@ const SVGIcons: FunctionComponent<Props> = ({
       break;
     case Icons.EDITLINEAGECOLOR:
       IconComponent = IconEditLineageColor;
+
+      break;
+    case Icons.ANNOUNCEMENT:
+      IconComponent = IconAnnouncement;
+
+      break;
+    case Icons.ANNOUNCEMENT_WHITE:
+      IconComponent = IconAnnouncementWhite;
 
       break;
 
