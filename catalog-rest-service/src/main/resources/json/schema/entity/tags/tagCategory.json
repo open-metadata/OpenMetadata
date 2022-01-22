@@ -67,9 +67,9 @@
           "type": "boolean",
           "default": false
         },
-        "deleted" : {
+        "deleted": {
           "description": "When `true` indicates the entity has been soft deleted.",
-          "type" : "boolean",
+          "type": "boolean",
           "default": false
         },
         "associatedTags": {
@@ -137,9 +137,9 @@
       "description": "Change that lead to this version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
     },
-    "deleted" : {
+    "deleted": {
       "description": "When `true` indicates the entity has been soft deleted.",
-      "type" : "boolean",
+      "type": "boolean",
       "default": false
     }
   },
