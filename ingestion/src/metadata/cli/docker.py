@@ -13,10 +13,13 @@ logger = logging.getLogger(__name__)
 
 logging.getLogger("urllib3").setLevel(logging.WARN)
 # Configure logger.
-BASE_LOGGING_FORMAT = (
-    "[%(asctime)s] %(levelname)-8s {%(name)s:%(lineno)d} - %(message)s"
+handler = logging.StreamHandler()
+handler.setFormatter(
+    logging.Formatter(
+        "[%(asctime)s] %(levelname)-8s {%(name)s:%(lineno)d} - %(message)s"
+    )
 )
-logging.basicConfig(format=BASE_LOGGING_FORMAT)
+logger.addHandler(handler)
 
 calc_gb = 1024 * 1024 * 1000
 min_memory_limit = 3 * calc_gb
