@@ -29,6 +29,10 @@ import {
   MessagingServiceType,
   ServiceCategory,
 } from '../../../enums/service.enum';
+import {
+  CreateAirflowPipeline,
+  Schema,
+} from '../../../generated/api/operations/pipelines/createAirflowPipeline';
 // import { DashboardService } from '../../../generated/entity/services/dashboardService';
 import { DatabaseService } from '../../../generated/entity/services/databaseService';
 import { MessagingService } from '../../../generated/entity/services/messagingService';
@@ -48,7 +52,12 @@ import RichTextEditorPreviewer from '../../common/rich-text-editor/RichTextEdito
 import IngestionStepper from '../../IngestionStepper/IngestionStepper.component';
 // import { serviceType } from '../../../constants/services.const';
 
+type DynamicObj = {
+  [key: string]: string;
+};
+
 export type DataObj = {
+  id?: string;
   description: string | undefined;
   ingestionSchedule?:
     | {
@@ -58,9 +67,13 @@ export type DataObj = {
     | undefined;
   name: string;
   serviceType: string;
-  jdbc?: {
-    connectionUrl: string;
-    driverClass: string;
+  databaseConnection?: {
+    hostPort: string;
+    password: string;
+    username: string;
+    database: string;
+    connectionArguments: DynamicObj;
+    connectionOptions: DynamicObj;
   };
   brokers?: Array<string>;
   schemaRegistry?: string;
@@ -112,8 +125,14 @@ type Props = {
   header: string;
   serviceName: ServiceTypes;
   serviceList: Array<ServiceDataObj>;
-  data?: ServiceDataObj;
-  onSave: (obj: DataObj, text: string, editData: EditObj) => void;
+  // data?: ServiceDataObj; // until databaseService interface is not generating from Schema
+  data?: DataObj;
+  onSave: (
+    obj: DataObj,
+    text: string,
+    editData: EditObj,
+    ingestionList?: CreateAirflowPipeline[]
+  ) => void;
   onCancel: () => void;
 };
 
@@ -187,16 +206,6 @@ const requiredField = (label: string) => (
   </>
 );
 
-// const generateOptions = (count: number, initialValue = 0) => {
-//   return Array(count)
-//     .fill(null)
-//     .map((_, i) => (
-//       <option key={i + initialValue} value={i + initialValue}>
-//         {i + initialValue}
-//       </option>
-//     ));
-// };
-
 const generateName = (data: Array<ServiceDataObj>) => {
   const newArr: string[] = [];
   data.forEach((d) => {
@@ -206,22 +215,16 @@ const generateName = (data: Array<ServiceDataObj>) => {
   return newArr;
 };
 
-const seprateUrl = (url?: string) => {
-  if (url) {
-    const urlString = url?.split('://')[1] || url;
-    // const [idpwd, urlport] = urlString.split('@');
-    // const [userName, password] = idpwd.split(':');
-    // const [path, portwarehouse] = urlport.split(':');
-    // const [port, database] = portwarehouse.split('/');
+const getKeyValueObject = (arr: DynamicFormFieldType[]) => {
+  const keyValuePair: DynamicObj = {};
 
-    const database = urlString?.split('/')[1];
-    const connectionUrl = url.replace(`/${database}`, '');
-    // return { userName, password, path, port, database };
+  arr.forEach((obj) => {
+    if (obj.key && obj.value) {
+      keyValuePair[obj.key] = obj.value;
+    }
+  });
 
-    return { connectionUrl, database };
-  }
-
-  return {};
+  return keyValuePair;
 };
 
 const PreviewSection = ({
@@ -252,6 +255,17 @@ const PreviewSection = ({
 
 const INGESTION_SCHEDULER_INITIAL_VALUE = '5 * * * *';
 
+const getKeyValuePair = (obj: DynamicObj) => {
+  const newObj = Object.entries(obj).map((v) => {
+    return {
+      key: v[0],
+      value: v[1],
+    };
+  });
+
+  return newObj;
+};
+
 export const AddServiceModal: FunctionComponent<Props> = ({
   header,
   serviceName,
@@ -270,14 +284,12 @@ export const AddServiceModal: FunctionComponent<Props> = ({
   const [serviceType, setServiceType] = useState(
     serviceTypes[serviceName] || []
   );
-  const [parseUrl] = useState(seprateUrl(data?.jdbc?.connectionUrl) || {});
   const [existingNames] = useState(generateName(serviceList));
   const [selectService, setSelectService] = useState(data?.serviceType || '');
   const [name, setName] = useState(data?.name || '');
-  const [url, setUrl] = useState(parseUrl?.connectionUrl || '');
-  const [database, setDatabase] = useState(parseUrl?.database || '');
-  const [driverClass, setDriverClass] = useState(
-    data?.jdbc?.driverClass || 'jdbc'
+  const [url, setUrl] = useState(data?.databaseConnection?.hostPort || '');
+  const [database, setDatabase] = useState(
+    data?.databaseConnection?.database || ''
   );
   const [brokers, setBrokers] = useState(
     data?.brokers?.length ? data.brokers.join(', ') : ''
@@ -286,8 +298,16 @@ export const AddServiceModal: FunctionComponent<Props> = ({
     data?.schemaRegistry || ''
   );
   const [dashboardUrl, setDashboardUrl] = useState(data?.dashboardUrl || '');
-  const [username, setUsername] = useState(data?.username || '');
-  const [password, setPassword] = useState(data?.password || '');
+  const [username, setUsername] = useState(
+    isDatabaseService
+      ? data?.databaseConnection?.username || ''
+      : data?.username || ''
+  );
+  const [password, setPassword] = useState(
+    isDatabaseService
+      ? data?.databaseConnection?.password || ''
+      : data?.password || ''
+  );
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const [apiKey, setApiKey] = useState(data?.api_key || '');
   const [isApiKeyVisible, setisApiKeyVisible] = useState(false);
@@ -325,13 +345,13 @@ export const AddServiceModal: FunctionComponent<Props> = ({
   >();
   const [connectionOptions, setConnectionOptions] = useState<
     DynamicFormFieldType[]
-  >([]);
+  >(getKeyValuePair(data?.databaseConnection?.connectionOptions || {}) || []);
   const [isAddConnectionOptionDisable, setIsAddConnectionOptionDisable] =
     useState(false);
 
   const [connectionArguments, setConnectionArguments] = useState<
     DynamicFormFieldType[]
-  >([]);
+  >(getKeyValuePair(data?.databaseConnection?.connectionArguments || {}) || []);
   const [isAddConnectionArgumentDisable, setIsAddConnectionArgumentDisable] =
     useState(false);
 
@@ -342,14 +362,6 @@ export const AddServiceModal: FunctionComponent<Props> = ({
       ? 'hostname:port'
       : 'hostname1:port1, hostname2:port2';
   };
-
-  // const handleChangeFrequency = (
-  //   event: React.ChangeEvent<HTMLSelectElement>
-  // ) => {
-  //   const name = event.target.name,
-  //     value = +event.target.value;
-  //   setFrequency({ ...frequency, [name]: value });
-  // };
 
   const isServiceNameExists = () => {
     const isExists = existingNames.includes(name.trim());
@@ -377,11 +389,6 @@ export const AddServiceModal: FunctionComponent<Props> = ({
 
       case 'url':
         setUrl(value);
-
-        break;
-
-      case 'driverClass':
-        setDriverClass(value);
 
         break;
 
@@ -430,40 +437,24 @@ export const AddServiceModal: FunctionComponent<Props> = ({
   };
 
   const handleSave = () => {
-    // const { day, hour, minute } = frequency;
-    // const date = new Date();
-
-    const ingestion = selectedIngestionType
-      ? ingestionTypeList?.reduce(
-          (stg, data) => {
-            return data.id === selectedIngestionType
-              ? {
-                  repeatFrequency: data.repeatFrequency,
-                  startDate: data.startDate,
-                }
-              : stg;
-          },
-          {
-            repeatFrequency: '',
-            startDate: '',
-          }
-        )
-      : undefined;
-
     let dataObj: DataObj = {
       description: description,
-      ingestionSchedule: ingestion,
       name: name,
       serviceType: selectService,
     };
+
     switch (serviceName) {
       case ServiceCategory.DATABASE_SERVICES:
         {
           dataObj = {
             ...dataObj,
-            jdbc: {
-              connectionUrl: `${url}${database && '/' + database}`,
-              driverClass: driverClass,
+            databaseConnection: {
+              hostPort: url,
+              connectionArguments: getKeyValueObject(connectionArguments),
+              connectionOptions: getKeyValueObject(connectionOptions),
+              database: database,
+              password: password,
+              username: username,
             },
           };
         }
@@ -540,7 +531,44 @@ export const AddServiceModal: FunctionComponent<Props> = ({
         break;
     }
 
-    onSave(dataObj, serviceName, editData);
+    const ingestionDetails: CreateAirflowPipeline[] =
+      isDatabaseService && ingestionTypeList
+        ? ingestionTypeList.map((value) => {
+            return {
+              name: value.ingestionName,
+              pipelineConfig: {
+                schema: Schema.DatabaseServiceMetadataPipeline,
+                config: {
+                  includeViews: value.includeView,
+                  generateSampleData: value.ingestSampleData,
+                  enableDataProfiler: value.enableDataProfiler,
+                  schemaFilterPattern: {
+                    includes:
+                      value.schemaFilterPattern.includePattern.split(','),
+                    excludes:
+                      value.schemaFilterPattern.excludePattern.split(','),
+                  },
+                  tableFilterPattern: {
+                    includes:
+                      value.tableFilterPattern.includePattern.split(','),
+                    excludes:
+                      value.tableFilterPattern.excludePattern.split(','),
+                  },
+                },
+              },
+              service: {
+                type: 'databaseService',
+                id: '',
+              },
+              scheduleInterval: value.repeatFrequency,
+              startDate: value.startDate as unknown as Date,
+              endDate: value.endDate as unknown as Date,
+              forceDeploy: true,
+            };
+          })
+        : [];
+
+    onSave(dataObj, serviceName, editData, ingestionDetails);
   };
 
   const handleErrorForAdditionalField = () => {
@@ -555,11 +583,10 @@ export const AddServiceModal: FunctionComponent<Props> = ({
           setMsg = {
             ...setMsg,
             url: !url,
-            driverClass: !driverClass,
           };
         }
 
-        isValid = Boolean(url && driverClass);
+        isValid = Boolean(url);
 
         break;
       case ServiceCategory.MESSAGING_SERVICES:
@@ -651,6 +678,12 @@ export const AddServiceModal: FunctionComponent<Props> = ({
     setIsAddConnectionOptionDisable(true);
   };
 
+  const removeConnectionOptionFields = (i: number) => {
+    const newFormValues = [...connectionOptions];
+    newFormValues.splice(i, 1);
+    setConnectionOptions(newFormValues);
+  };
+
   const handleConnectionOptionFieldsChange = (
     i: number,
     field: keyof DynamicFormFieldType,
@@ -668,6 +701,12 @@ export const AddServiceModal: FunctionComponent<Props> = ({
   const addConnectionArgumentFields = () => {
     setConnectionArguments([...connectionArguments, { key: '', value: '' }]);
     setIsAddConnectionArgumentDisable(true);
+  };
+
+  const removeConnectionArgumentFields = (i: number) => {
+    const newFormValues = [...connectionArguments];
+    newFormValues.splice(i, 1);
+    setConnectionArguments(newFormValues);
   };
 
   const handleConnectionArgumentFieldsChange = (
@@ -733,7 +772,6 @@ export const AddServiceModal: FunctionComponent<Props> = ({
             value={username}
             onChange={(e) => setUsername(e.target.value)}
           />
-          {/* {showErrorMsg.username && errorMsg('Username is required')} */}
         </Field>
         <Field>
           <label className="tw-block tw-form-label" htmlFor="password">
@@ -748,7 +786,6 @@ export const AddServiceModal: FunctionComponent<Props> = ({
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
-          {/* {showErrorMsg.password && errorMsg('Password is required')} */}
         </Field>
 
         <div>
@@ -768,43 +805,59 @@ export const AddServiceModal: FunctionComponent<Props> = ({
           </div>
 
           {connectionOptions.map((value, i) => (
-            <div className="tw-grid tw-grid-cols-2 tw-gap-x-2" key={i}>
-              <Field>
-                <input
-                  className="tw-form-inputs tw-px-3 tw-py-1"
-                  id={`option-key-${i}`}
-                  name="key"
-                  placeholder="Key"
-                  type="text"
-                  value={value.key}
-                  onChange={(e) =>
-                    handleConnectionOptionFieldsChange(i, 'key', e.target.value)
-                  }
+            <div className="tw-flex tw-items-center" key={i}>
+              <div className="tw-grid tw-grid-cols-2 tw-gap-x-2 tw-w-11/12">
+                <Field>
+                  <input
+                    className="tw-form-inputs tw-px-3 tw-py-1"
+                    id={`option-key-${i}`}
+                    name="key"
+                    placeholder="Key"
+                    type="text"
+                    value={value.key}
+                    onChange={(e) =>
+                      handleConnectionOptionFieldsChange(
+                        i,
+                        'key',
+                        e.target.value
+                      )
+                    }
+                  />
+                </Field>
+                <Field>
+                  <input
+                    className="tw-form-inputs tw-px-3 tw-py-1"
+                    id={`option-value-${i}`}
+                    name="value"
+                    placeholder="Value"
+                    type="text"
+                    value={value.value}
+                    onChange={(e) =>
+                      handleConnectionOptionFieldsChange(
+                        i,
+                        'value',
+                        e.target.value
+                      )
+                    }
+                  />
+                </Field>
+              </div>
+              <button
+                className="focus:tw-outline-none tw-mt-3 tw-w-1/12"
+                onClick={() => removeConnectionOptionFields(i)}>
+                <SVGIcons
+                  alt="delete"
+                  icon="icon-delete"
+                  title="Delete"
+                  width="12px"
                 />
-              </Field>
-              <Field>
-                <input
-                  className="tw-form-inputs tw-px-3 tw-py-1"
-                  id={`option-value-${i}`}
-                  name="value"
-                  placeholder="Value"
-                  type="text"
-                  value={value.value}
-                  onChange={(e) =>
-                    handleConnectionOptionFieldsChange(
-                      i,
-                      'value',
-                      e.target.value
-                    )
-                  }
-                />
-              </Field>
+              </button>
             </div>
           ))}
         </div>
         <div>
           <div className="tw-flex tw-items-center tw-mt-6">
-            <p className="w-form-label">Connection Arguments</p>
+            <p className="w-form-label tw-mr-3">Connection Arguments</p>
             <Button
               className={classNames('tw-h-5 tw-px-2', {
                 'tw-opacity-40': isAddConnectionArgumentDisable,
@@ -818,41 +871,53 @@ export const AddServiceModal: FunctionComponent<Props> = ({
             </Button>
           </div>
           {connectionArguments.map((value, i) => (
-            <div className="tw-grid tw-grid-cols-2 tw-gap-x-2" key={i}>
-              <Field>
-                <input
-                  className="tw-form-inputs tw-px-3 tw-py-1"
-                  id={`argument-key-${i}`}
-                  name="key"
-                  placeholder="Key"
-                  type="text"
-                  value={value.key}
-                  onChange={(e) =>
-                    handleConnectionArgumentFieldsChange(
-                      i,
-                      'key',
-                      e.target.value
-                    )
-                  }
+            <div className="tw-flex tw-items-center" key={i}>
+              <div className="tw-grid tw-grid-cols-2 tw-gap-x-2 tw-w-11/12">
+                <Field>
+                  <input
+                    className="tw-form-inputs tw-px-3 tw-py-1"
+                    id={`argument-key-${i}`}
+                    name="key"
+                    placeholder="Key"
+                    type="text"
+                    value={value.key}
+                    onChange={(e) =>
+                      handleConnectionArgumentFieldsChange(
+                        i,
+                        'key',
+                        e.target.value
+                      )
+                    }
+                  />
+                </Field>
+                <Field>
+                  <input
+                    className="tw-form-inputs tw-px-3 tw-py-1"
+                    id={`argument-value-${i}`}
+                    name="value"
+                    placeholder="Value"
+                    type="text"
+                    value={value.value}
+                    onChange={(e) =>
+                      handleConnectionArgumentFieldsChange(
+                        i,
+                        'value',
+                        e.target.value
+                      )
+                    }
+                  />
+                </Field>
+              </div>
+              <button
+                className="focus:tw-outline-none tw-mt-3 tw-w-1/12"
+                onClick={() => removeConnectionArgumentFields(i)}>
+                <SVGIcons
+                  alt="delete"
+                  icon="icon-delete"
+                  title="Delete"
+                  width="12px"
                 />
-              </Field>
-              <Field>
-                <input
-                  className="tw-form-inputs tw-px-3 tw-py-1"
-                  id={`argument-value-${i}`}
-                  name="value"
-                  placeholder="Value"
-                  type="text"
-                  value={value.value}
-                  onChange={(e) =>
-                    handleConnectionArgumentFieldsChange(
-                      i,
-                      'value',
-                      e.target.value
-                    )
-                  }
-                />
-              </Field>
+              </button>
             </div>
           ))}
         </div>
@@ -1200,10 +1265,6 @@ export const AddServiceModal: FunctionComponent<Props> = ({
           {
             key: 'Database',
             value: database,
-          },
-          {
-            key: 'Driver Class',
-            value: driverClass,
           },
         ];
 
@@ -1819,7 +1880,7 @@ export const AddServiceModal: FunctionComponent<Props> = ({
                           data-testid="end-date"
                           min={type.startDate}
                           type="date"
-                          value=""
+                          value={type.endDate}
                           onChange={(e) => {
                             const newFormValues = [...ingestionTypeList];
                             newFormValues[id].endDate = e.target.value;

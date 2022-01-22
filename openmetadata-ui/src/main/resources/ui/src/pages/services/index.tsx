@@ -17,6 +17,7 @@ import { isNil } from 'lodash';
 import { Paging, ServiceCollection, ServiceData, ServiceTypes } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { addAirflowPipeline } from '../../axiosAPIs/airflowPipelineAPI';
 import {
   deleteService,
   getServiceDetails,
@@ -49,6 +50,7 @@ import {
   servicesDisplayName,
 } from '../../constants/services.const';
 import { ServiceCategory } from '../../enums/service.enum';
+import { CreateAirflowPipeline } from '../../generated/api/operations/pipelines/createAirflowPipeline';
 import {
   DashboardService,
   DashboardServiceType,
@@ -216,9 +218,10 @@ const ServicesPage = () => {
   };
 
   const handleAdd = (selectedService: string, dataObj: DataObj) => {
-    return new Promise<void>((resolve, reject) => {
+    return new Promise<AxiosResponse>((resolve, reject) => {
       postService(selectedService, dataObj)
-        .then(({ data }: { data: AxiosResponse['data'] }) => {
+        .then((res: AxiosResponse) => {
+          const { data } = res;
           const updatedData = {
             ...data,
             ...data.jdbc,
@@ -232,7 +235,7 @@ const ServicesPage = () => {
             [serviceName]: pre[serviceName] + 1,
           }));
           setServiceList(updatedServiceList);
-          resolve();
+          resolve(res);
         })
         .catch((err: AxiosError) => {
           reject(err);
@@ -243,7 +246,8 @@ const ServicesPage = () => {
   const handleSave = (
     dataObj: DataObj,
     selectedService: string,
-    isEdit: EditObj
+    isEdit: EditObj,
+    ingestionList?: CreateAirflowPipeline[]
   ) => {
     let promiseSave;
     if (isEdit.edit && isEdit.id) {
@@ -252,9 +256,27 @@ const ServicesPage = () => {
       promiseSave = handleAdd(selectedService, dataObj);
     }
     promiseSave
-      .then(() => {
-        setIsModalOpen(false);
-        setEditData(undefined);
+      .then((serviceRes: AxiosResponse | void) => {
+        const serviceId = serviceRes?.data.id;
+        if (ingestionList?.length && serviceId) {
+          const promises = ingestionList.map((ingestion) => {
+            return addAirflowPipeline({
+              ...ingestion,
+              service: {
+                ...ingestion.service,
+                id: serviceId,
+              },
+            });
+          });
+
+          Promise.allSettled(promises).then(() => {
+            setIsModalOpen(false);
+            setEditData(undefined);
+          });
+        } else {
+          setIsModalOpen(false);
+          setEditData(undefined);
+        }
       })
       .catch((err: AxiosError) => {
         showToast({
@@ -653,7 +675,7 @@ const ServicesPage = () => {
 
               {isModalOpen && (
                 <AddServiceModal
-                  data={editData}
+                  data={editData as DataObj}
                   header={`${editData ? 'Edit' : 'Add new'} service`}
                   serviceList={serviceList}
                   serviceName={serviceName}
