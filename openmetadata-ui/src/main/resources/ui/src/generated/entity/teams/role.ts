@@ -39,6 +39,10 @@ export interface Role {
   id: string;
   name: string;
   /**
+   * Policy that is attached to this role.
+   */
+  policy?: EntityReference;
+  /**
    * Last update time corresponding to the new version of the entity in Unix epoch time
    * milliseconds.
    */
@@ -47,6 +51,10 @@ export interface Role {
    * User who made the update.
    */
   updatedBy?: string;
+  /**
+   * Users that have this role assigned.
+   */
+  users?: EntityReference[];
   /**
    * Metadata version of the entity.
    */
@@ -92,4 +100,43 @@ export interface FieldChange {
    * field type to deserialize it.
    */
   oldValue?: any;
+}
+
+/**
+ * Policy that is attached to this role.
+ *
+ * This schema defines the EntityReference type used for referencing an entity.
+ * EntityReference is used for capturing relationships from one entity to another. For
+ * example, a table has an attribute called database of type EntityReference that captures
+ * the relationship of a table `belongs to a` database.
+ *
+ * Users that have this role assigned.
+ */
+export interface EntityReference {
+  /**
+   * Optional description of entity.
+   */
+  description?: string;
+  /**
+   * Display Name that identifies this entity.
+   */
+  displayName?: string;
+  /**
+   * Link to the entity resource.
+   */
+  href?: string;
+  /**
+   * Unique identifier that identifies an entity instance.
+   */
+  id: string;
+  /**
+   * Name of the entity instance. For entities such as tables, databases where the name is not
+   * unique, fullyQualifiedName is returned in this field.
+   */
+  name?: string;
+  /**
+   * Entity type/class name - Examples: `database`, `table`, `metrics`, `databaseService`,
+   * `dashboardService`...
+   */
+  type: string;
 }
