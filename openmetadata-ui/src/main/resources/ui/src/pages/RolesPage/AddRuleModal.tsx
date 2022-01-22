@@ -61,7 +61,7 @@ const AddRuleModal: FC<AddRuleProps> = ({
     e.preventDefault();
     onSave({
       ...data,
-      allow: access === RuleAccess.DENY,
+      allow: access === RuleAccess.ALLOW,
       enabled: isEnabled,
     });
   };
@@ -113,10 +113,6 @@ const AddRuleModal: FC<AddRuleProps> = ({
                     </option>
                     <option value={Operation.UpdateOwner}>Update Owner</option>
                     <option value={Operation.UpdateTags}>Update Tags</option>
-                    <option value={Operation.SuggestDescription}>
-                      Suggest Description
-                    </option>
-                    <option value={Operation.SuggestTags}>Suggest Tags</option>
                   </select>
                   {errorData?.operation && errorMsg(errorData.operation)}
                 </div>
