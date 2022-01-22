@@ -7,12 +7,7 @@
       "description": "Type of storage service such as S3, GCS, HDFS...",
       "type": "string",
       "javaType": "org.openmetadata.catalog.type.StorageServiceType",
-      "enum": [
-        "S3",
-        "GCS",
-        "HDFS",
-        "ABFS"
-      ],
+      "enum": ["S3", "GCS", "HDFS", "ABFS"],
       "javaEnums": [
         {
           "name": "S3"
@@ -129,11 +124,7 @@
       "description": "Type of storage class offered by ABFS",
       "type": "string",
       "javaType": "org.openmetadata.catalog.type.ABFSStorageClassType",
-      "enum": [
-        "ARCHIVE",
-        "HOT",
-        "COOL"
-      ],
+      "enum": ["ARCHIVE", "HOT", "COOL"],
       "javaEnums": [
         {
           "name": "ARCHIVE"

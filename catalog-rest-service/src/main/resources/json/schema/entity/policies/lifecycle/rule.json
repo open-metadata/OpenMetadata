@@ -40,9 +40,6 @@
       "default": true
     }
   },
-  "required": [
-    "filters",
-    "actions"
-  ],
+  "required": ["filters", "actions"],
   "additionalProperties": false
 }

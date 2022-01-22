@@ -8,13 +8,7 @@
     "dashboardServiceType": {
       "description": "Type of Dashboard service - Superset, Looker, Redash or Tableau.",
       "type": "string",
-      "enum": [
-        "Superset",
-        "Looker",
-        "Tableau",
-        "Redash",
-        "Metabase"
-      ],
+      "enum": ["Superset", "Looker", "Tableau", "Redash", "Metabase"],
       "javaEnums": [
         {
           "name": "Superset"
@@ -57,15 +51,15 @@
       "description": "Description of a dashboard service instance.",
       "type": "string"
     },
-    "version" : {
+    "version": {
       "description": "Metadata version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
     },
-    "updatedAt" : {
+    "updatedAt": {
       "description": "Last update time corresponding to the new version of the entity in Unix epoch time milliseconds.",
       "$ref": "../../type/basic.json#/definitions/timestamp"
     },
-    "updatedBy" : {
+    "updatedBy": {
       "description": "User who made the update.",
       "type": "string"
     },
@@ -74,11 +68,11 @@
       "type": "string",
       "format": "uri"
     },
-    "username" : {
+    "username": {
       "description": "Username to log-into Dashboard Service.",
       "type": "string"
     },
-    "password" : {
+    "password": {
       "description": "Password to log-into Dashboard Service.",
       "type": "string"
     },
@@ -91,20 +85,15 @@
       "$ref": "../../type/basic.json#/definitions/href"
     },
     "changeDescription": {
-      "description" : "Change that lead to this version of the entity.",
+      "description": "Change that lead to this version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
     },
-    "deleted" : {
+    "deleted": {
       "description": "When `true` indicates the entity has been soft deleted.",
-      "type" : "boolean",
+      "type": "boolean",
       "default": false
     }
   },
-  "required": [
-    "id",
-    "name",
-    "serviceType",
-    "dashboardUrl"
-  ],
+  "required": ["id", "name", "serviceType", "dashboardUrl"],
   "additionalProperties": false
 }

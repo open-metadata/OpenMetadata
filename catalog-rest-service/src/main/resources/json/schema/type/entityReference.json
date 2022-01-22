@@ -40,9 +40,6 @@
       "$ref": "basic.json#/definitions/href"
     }
   },
-  "required": [
-    "id",
-    "type"
-  ],
+  "required": ["id", "type"],
   "additionalProperties": false
 }
