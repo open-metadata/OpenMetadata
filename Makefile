@@ -8,19 +8,20 @@ clean_env37:
 	rm -rf env38
 
 install:
-	python3 -m pip install ingestion/
+	python -m pip install ingestion/
 
 install_test:
-	python3 -m pip install "ingestion[test]/"
+	python -m pip install "ingestion[test]/"
 
 install_dev:
-	python3 -m pip install "ingestion[dev]/"
+	python -m pip install "ingestion[dev]/"
 
 precommit_install:
 	@echo "Installing pre-commit hooks"
 	@echo "Make sure to first run `make install_test`"
 	pre-commit install
 
+## Checkstyle
 isort:
 	isort $(PY_SOURCE) --skip $(PY_SOURCE)/metadata/generated --profile black --multi-line 3
 
@@ -33,12 +34,14 @@ black:
 black_check:
 	black --check --diff $(PY_SOURCE) --exclude $(PY_SOURCE)/metadata/generated
 
+## Ingestion models generation
 generate:
 	@echo "Running Datamodel Code Generator"
 	@echo "Make sure to first run the install_dev recipe"
-	datamodel-codegen  --input catalog-rest-service/src/main/resources/json  --input-file-type jsonschema --output ingestion/src/metadata/generated
+	datamodel-codegen --input catalog-rest-service/src/main/resources/json --input-file-type jsonschema --output ingestion/src/metadata/generated
 	make install
 
+## Ingestion tests & QA
 run_ometa_integration_tests:
 	coverage run -m pytest -c ingestion/setup.cfg --doctest-modules --junitxml=ingestion/junit/test-results-integration.xml --override-ini=testpaths="ingestion/tests/integration/ometa ingestion/tests/integration/stage"
 
@@ -60,6 +63,7 @@ sonar_ingestion:
 		sonarsource/sonar-scanner-cli \
 		-Dproject.settings=ingestion/sonar-project.properties
 
+## Ingestion publish
 publish:
 	make install_dev generate
 	cd ingestion; \
@@ -67,6 +71,7 @@ publish:
 	  twine check dist/*; \
 	  twine upload dist/*
 
+## Docker operators
 build_docker_base:
 	make install_dev generate
 	docker build -f ingestion/connectors/Dockerfile-base ingestion/ -t openmetadata/ingestion-connector-base
@@ -79,8 +84,42 @@ push_docker_connectors:
 	@echo "Pushing Docker connectors. Make sure to run build_docker_connectors first"
 	python ingestion/connectors/docker-cli.py push
 
+## Yarn
 yarn_install_cache:
 	cd openmetadata-ui/src/main/resources/ui && yarn install --frozen-lockfile
 
 yarn_start_dev_ui:
 	cd openmetadata-ui/src/main/resources/ui && yarn start
+
+## Ingestion Core
+core_install_dev:
+	cd ingestion-core; \
+		rm -rf venv; \
+		python -m virtualenv venv; \
+		. venv/bin/activate; \
+		python -m pip install ".[dev]"
+
+core_clean:
+	rm -rf ingestion-core/src/metadata/generated
+	rm -rf ingestion-core/build
+	rm -rf ingestion-core/dist
+
+core_generate:
+	make core_install_dev
+	mkdir -p ingestion-core/src/metadata/generated
+	. ingestion-core/venv/bin/activate
+	datamodel-codegen --input catalog-rest-service/src/main/resources/json  --input-file-type jsonschema --output ingestion-core/src/metadata/generated
+
+core_bump_version_dev:
+	make core_install_dev
+	cd ingestion-core; \
+		. venv/bin/activate; \
+		python -m incremental.update metadata --dev
+
+core_publish:
+	make core_clean core_generate
+	cd ingestion-core; \
+		. venv/bin/activate; \
+		python setup.py install sdist bdist_wheel; \
+		twine check dist/*; \
+		twine upload -r testpypi dist/*
