@@ -343,18 +343,18 @@
           "type": "number"
         },
         "variance": {
-          "description": "Variance of a column",
+          "description": "Variance of a column.",
           "type": "number"
         },
         "histogram": {
-          "description": "Histogram of a column",
+          "description": "Histogram of a column.",
           "properties": {
             "boundaries": {
-              "description": "Boundaries of Histogram",
+              "description": "Boundaries of Histogram.",
               "type": "array"
             },
             "frequencies": {
-              "description": "Frequencies of Histogram",
+              "description": "Frequencies of Histogram.",
               "type": "array"
             }
           }
