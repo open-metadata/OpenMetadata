@@ -156,30 +156,6 @@ public class TeamResourceTest extends EntityResourceTest<Team> {
     assertTrue(user.getTeams().isEmpty());
   }
 
-  @Test
-  void delete_validTeam_as_non_admin_401(TestInfo test) throws IOException {
-    UserResourceTest userResourceTest = new UserResourceTest();
-    User user1 = createUser(userResourceTest.create(test, 1), authHeaders("test@open-metadata.org"));
-    List<UUID> users = Collections.singletonList(user1.getId());
-    CreateTeam create = create(test).withUsers(users);
-    Team team = createAndCheckEntity(create, adminAuthHeaders());
-    HttpResponseException exception =
-        assertThrows(
-            HttpResponseException.class, () -> deleteAndCheckEntity(team, authHeaders("test@open-metadata.org")));
-    assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
-  }
-
-  @Test
-  void patch_teamDeletedDisallowed_400(TestInfo test) throws HttpResponseException, JsonProcessingException {
-    // Ensure team deleted attribute can't be changed using patch
-    Team team = createTeam(create(test), adminAuthHeaders());
-    String teamJson = JsonUtils.pojoToJson(team);
-    team.setDeleted(true);
-    HttpResponseException exception =
-        assertThrows(HttpResponseException.class, () -> patchTeam(teamJson, team, adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, CatalogExceptionMessage.readOnlyAttribute("Team", "deleted"));
-  }
-
   //  @Test
   //  public void patch_teamAttributes_as_admin_200_ok(TestInfo test)
   //          throws HttpResponseException, JsonProcessingException {

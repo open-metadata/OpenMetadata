@@ -30,14 +30,12 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import javax.ws.rs.client.WebTarget;
-import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
@@ -56,7 +54,6 @@ import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.type.Task;
 import org.openmetadata.catalog.util.EntityInterface;
-import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.TestUtils;
@@ -301,34 +298,8 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline> {
   }
 
   @Test
-  void delete_emptyPipeline_200_ok(TestInfo test) throws IOException {
-    Pipeline pipeline = createPipeline(create(test), adminAuthHeaders());
-    deleteAndCheckEntity(pipeline, adminAuthHeaders());
-  }
-
-  @Test
   void delete_nonEmptyPipeline_4xx() {
     // TODO
-  }
-
-  @Test
-  void delete_put_Pipeline_200(TestInfo test) throws IOException {
-    CreatePipeline request = create(test).withService(AIRFLOW_REFERENCE).withDescription("");
-    Pipeline pipeline = createEntity(request, adminAuthHeaders());
-
-    // Delete
-    deleteAndCheckEntity(pipeline, adminAuthHeaders());
-
-    Double version = EntityUtil.nextVersion(pipeline.getVersion()); // Account for the version change during delete
-    ChangeDescription change = getChangeDescription(version);
-    change.setFieldsUpdated(
-        Arrays.asList(
-            new FieldChange().withName("deleted").withNewValue(false).withOldValue(true),
-            new FieldChange().withName("description").withNewValue("updatedDescription").withOldValue("")));
-
-    // PUT with updated description
-    updateAndCheckEntity(
-        request.withDescription("updatedDescription"), Response.Status.OK, adminAuthHeaders(), MINOR_UPDATE, change);
   }
 
   public static Pipeline updatePipeline(CreatePipeline create, Status status, Map<String, String> authHeaders)

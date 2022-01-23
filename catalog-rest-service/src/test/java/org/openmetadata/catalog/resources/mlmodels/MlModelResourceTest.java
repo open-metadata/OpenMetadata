@@ -74,7 +74,6 @@ import org.openmetadata.catalog.type.MlFeatureSource;
 import org.openmetadata.catalog.type.MlHyperParameter;
 import org.openmetadata.catalog.type.MlStore;
 import org.openmetadata.catalog.util.EntityInterface;
-import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
 
@@ -400,33 +399,6 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
         .add(new FieldChange().withName("target").withNewValue("newTarget").withOldValue("origTarget"));
 
     updateAndCheckEntity(request.withTarget("newTarget"), Status.OK, adminAuthHeaders(), MAJOR_UPDATE, change);
-  }
-
-  @Test
-  void delete_MlModel_200_ok(TestInfo test) throws IOException {
-    MlModel model = createMlModel(create(test), adminAuthHeaders());
-    deleteAndCheckEntity(model, adminAuthHeaders());
-  }
-
-  @Test
-  void delete_put_MlModel_200(TestInfo test) throws IOException {
-    // Create with empty description
-    CreateMlModel request = create(test).withDescription("");
-    MlModel model = createAndCheckEntity(request, adminAuthHeaders());
-
-    // Delete
-    deleteAndCheckEntity(model, adminAuthHeaders());
-
-    Double version = EntityUtil.nextVersion(model.getVersion()); // Account for the version change during delete
-    ChangeDescription change = getChangeDescription(version);
-    change.setFieldsUpdated(
-        Arrays.asList(
-            new FieldChange().withName("deleted").withNewValue(false).withOldValue(true),
-            new FieldChange().withName("description").withNewValue("updatedDescription").withOldValue("")));
-
-    // PUT with updated description and expect a MAJOR_UPDATE with updated description
-    updateAndCheckEntity(
-        request.withDescription("updatedDescription"), Status.OK, adminAuthHeaders(), MINOR_UPDATE, change);
   }
 
   /** Validate returned fields GET .../models/{id}?fields="..." or GET .../models/name/{fqn}?fields="..." */

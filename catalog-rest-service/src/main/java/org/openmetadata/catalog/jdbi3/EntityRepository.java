@@ -817,9 +817,17 @@ public abstract class EntityRepository<T> {
     PATCH,
     SOFT_DELETE;
 
-    public boolean isPatch() { return this == PATCH; }
-    public boolean isPut() { return this == PUT; }
-    public boolean isDelete() { return this == SOFT_DELETE; }
+    public boolean isPatch() {
+      return this == PATCH;
+    }
+
+    public boolean isPut() {
+      return this == PUT;
+    }
+
+    public boolean isDelete() {
+      return this == SOFT_DELETE;
+    }
   }
 
   /**
@@ -877,12 +885,16 @@ public abstract class EntityRepository<T> {
     }
 
     private void updateDeleted() throws JsonProcessingException {
-      if (operation.isPut() || operation.isPut()) {
+      if (operation.isPut() || operation.isPatch()) {
+        // Update operation can't set delete attributed to true. This can only be done as part of delete operation
+        if (updated.isDeleted() != original.isDeleted() && Boolean.TRUE.equals(updated.isDeleted())) {
+          throw new IllegalArgumentException(CatalogExceptionMessage.readOnlyAttribute(entityName, "deleted"));
+        }
+        // PUT or PATCH is restoring the soft-deleted entity
         if (Boolean.TRUE.equals(original.isDeleted())) {
           updated.setDeleted(false);
           recordChange("deleted", true, false);
         }
-        // TODO check if deleted flag is being set and throw exception
       } else {
         recordChange("deleted", original.isDeleted(), updated.isDeleted());
       }

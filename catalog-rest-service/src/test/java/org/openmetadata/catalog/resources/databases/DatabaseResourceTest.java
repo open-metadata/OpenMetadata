@@ -19,7 +19,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.openmetadata.catalog.security.SecurityUtil.authHeaders;
-import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
 import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
 import static org.openmetadata.catalog.util.TestUtils.assertListNull;
@@ -27,10 +26,8 @@ import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
-import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.BeforeAll;
@@ -43,11 +40,8 @@ import org.openmetadata.catalog.entity.data.Database;
 import org.openmetadata.catalog.jdbi3.DatabaseRepository.DatabaseEntityInterface;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.databases.DatabaseResource.DatabaseList;
-import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
-import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.util.EntityInterface;
-import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.TestUtils;
 
@@ -140,32 +134,6 @@ public class DatabaseResourceTest extends EntityResourceTest<Database> {
         assertEquals(service.getName(), db.getService().getName());
       }
     }
-  }
-
-  @Test
-  void delete_emptyDatabase_200_ok(TestInfo test) throws IOException {
-    Database database = createDatabase(create(test), adminAuthHeaders());
-    deleteAndCheckEntity(database, adminAuthHeaders());
-  }
-
-  @Test
-  void delete_put_Database_200(TestInfo test) throws IOException {
-    CreateDatabase request = create(test).withService(MYSQL_REFERENCE).withDescription("");
-    Database database = createEntity(request, adminAuthHeaders());
-
-    // Delete
-    deleteAndCheckEntity(database, adminAuthHeaders());
-
-    Double version = EntityUtil.nextVersion(database.getVersion()); // Account for the version change during delete
-    ChangeDescription change = getChangeDescription(version);
-    change.setFieldsUpdated(
-        Arrays.asList(
-            new FieldChange().withName("deleted").withNewValue(false).withOldValue(true),
-            new FieldChange().withName("description").withNewValue("updatedDescription").withOldValue("")));
-
-    // PUT with updated description
-    updateAndCheckEntity(
-        request.withDescription("updatedDescription"), Response.Status.OK, adminAuthHeaders(), MINOR_UPDATE, change);
   }
 
   @Test

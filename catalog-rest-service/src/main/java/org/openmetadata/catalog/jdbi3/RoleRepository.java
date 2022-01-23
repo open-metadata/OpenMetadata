@@ -28,7 +28,6 @@ import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.policies.Policy;
 import org.openmetadata.catalog.entity.teams.Role;
-import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.resources.teams.RoleResource;
 import org.openmetadata.catalog.type.ChangeDescription;
@@ -164,7 +163,7 @@ public class RoleRepository extends EntityRepository<Role> {
                 .withDeleted(false)
                 .withUpdatedAt(role.getUpdatedAt())
                 .withUpdatedBy(role.getUpdatedBy());
-        Entity.getEntityRepository(Entity.POLICY).storeEntity(policy, false);
+        Entity.getEntityRepository(Entity.POLICY).storeEntity(policy, update);
       }
     }
 
@@ -308,14 +307,6 @@ public class RoleRepository extends EntityRepository<Role> {
   public class RoleUpdater extends EntityUpdater {
     public RoleUpdater(Role original, Role updated, Operation operation) {
       super(original, updated, operation);
-    }
-
-    @Override
-    public void entitySpecificUpdate() throws IOException {
-      // Update operation cannot undelete a role.
-      if (updated.getEntity().getDeleted() != original.getEntity().getDeleted()) {
-        throw new IllegalArgumentException(CatalogExceptionMessage.readOnlyAttribute("Role", "deleted"));
-      }
     }
   }
 }

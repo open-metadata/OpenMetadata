@@ -27,7 +27,6 @@ import java.util.Optional;
 import java.util.UUID;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.teams.Team;
-import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.resources.teams.TeamResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
@@ -267,10 +266,6 @@ public class TeamRepository extends EntityRepository<Team> {
 
     @Override
     public void entitySpecificUpdate() throws IOException {
-      // Update operation can't undelete a user
-      if (updated.getEntity().getDeleted() != original.getEntity().getDeleted()) {
-        throw new IllegalArgumentException(CatalogExceptionMessage.readOnlyAttribute("Team", "deleted"));
-      }
       recordChange("profile", original.getEntity().getProfile(), updated.getEntity().getProfile());
       updateUsers(original.getEntity(), updated.getEntity());
     }

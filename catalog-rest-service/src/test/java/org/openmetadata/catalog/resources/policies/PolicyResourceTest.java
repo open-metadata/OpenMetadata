@@ -31,14 +31,12 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import javax.ws.rs.client.WebTarget;
-import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.BeforeAll;
@@ -61,7 +59,6 @@ import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.type.MetadataOperation;
 import org.openmetadata.catalog.type.PolicyType;
 import org.openmetadata.catalog.util.EntityInterface;
-import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.PolicyUtils;
 import org.openmetadata.catalog.util.TestUtils;
@@ -340,32 +337,6 @@ public class PolicyResourceTest extends EntityResourceTest<Policy> {
     change = getChangeDescription(policy.getVersion());
     change.getFieldsAdded().add(new FieldChange().withName("location").withNewValue(locationObj));
     patchEntityAndCheck(policy, origJson, adminAuthHeaders(), MINOR_UPDATE, change);
-  }
-
-  @Test
-  void delete_emptyPolicy_200_ok(TestInfo test) throws IOException {
-    Policy policy = createPolicy(create(test), adminAuthHeaders());
-    deleteAndCheckEntity(policy, adminAuthHeaders());
-  }
-
-  @Test
-  void delete_put_Policy_200(TestInfo test) throws IOException {
-    CreatePolicy request = create(test).withDescription("");
-    Policy policy = createEntity(request, adminAuthHeaders());
-
-    // Delete
-    deleteAndCheckEntity(policy, adminAuthHeaders());
-
-    Double version = EntityUtil.nextVersion(policy.getVersion()); // Account for the version change during delete
-    ChangeDescription change = getChangeDescription(version);
-    change.setFieldsUpdated(
-        Arrays.asList(
-            new FieldChange().withName("deleted").withNewValue(false).withOldValue(true),
-            new FieldChange().withName("description").withNewValue("updatedDescription").withOldValue("")));
-
-    // PUT with updated description
-    updateAndCheckEntity(
-        request.withDescription("updatedDescription"), Response.Status.OK, adminAuthHeaders(), MINOR_UPDATE, change);
   }
 
   @Test
