@@ -48,6 +48,8 @@ import org.openmetadata.catalog.jdbi3.Relationship;
 import org.openmetadata.catalog.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.catalog.type.Column;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.EventFilter;
+import org.openmetadata.catalog.type.EventType;
 import org.openmetadata.catalog.type.FailureDetails;
 import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.type.Include;
@@ -441,6 +443,26 @@ public final class EntityUtil {
       return null;
     } else { // "non-deleted"
       return Boolean.FALSE;
+    }
+  }
+
+  public static Double nextVersion(Double version) {
+    return Math.round((version + 0.1) * 10.0) / 10.0;
+  }
+
+  public static Double nextMajorVersion(Double version) {
+    return Math.round((version + 1.0) * 10.0) / 10.0;
+  }
+
+  public static void addSoftDeleteFilter(List<EventFilter> filters) {
+    // Add filter for soft delete events if delete event type is requested
+    Optional<EventFilter> deleteFilter =
+        filters.stream().filter(eventFilter -> eventFilter.getEventType().equals(EventType.ENTITY_DELETED)).findAny();
+    if (deleteFilter.isPresent()) {
+      filters.add(
+          new EventFilter()
+              .withEventType(EventType.ENTITY_SOFT_DELETED)
+              .withEntities(deleteFilter.get().getEntities()));
     }
   }
 }

@@ -16,6 +16,8 @@ package org.openmetadata.catalog.jdbi3;
 import static org.openmetadata.catalog.Entity.helper;
 import static org.openmetadata.catalog.type.Include.DELETED;
 import static org.openmetadata.catalog.util.EntityUtil.entityReferenceMatch;
+import static org.openmetadata.catalog.util.EntityUtil.nextMajorVersion;
+import static org.openmetadata.catalog.util.EntityUtil.nextVersion;
 import static org.openmetadata.catalog.util.EntityUtil.objectMatch;
 import static org.openmetadata.catalog.util.EntityUtil.toBoolean;
 
@@ -65,6 +67,7 @@ import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil;
+import org.openmetadata.catalog.util.RestUtil.DeleteResponse;
 import org.openmetadata.catalog.util.RestUtil.PatchResponse;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
@@ -109,7 +112,7 @@ public abstract class EntityRepository<T> {
   private final String entityName;
   protected final EntityDAO<T> dao;
   protected final CollectionDAO daoCollection;
-  protected boolean softDelete = true;
+  protected boolean supportsSoftDelete = true;
   protected final boolean supportsTags;
   protected final boolean supportsOwner;
   protected final boolean supportsFollower;
@@ -244,8 +247,8 @@ public abstract class EntityRepository<T> {
     LOG.info("Created a new {} {}", entityName, entityInterface.getFullyQualifiedName());
   }
 
-  public EntityUpdater getUpdater(T original, T updated, boolean patchOperation) {
-    return new EntityUpdater(original, updated, patchOperation);
+  public EntityUpdater getUpdater(T original, T updated, Operation operation) {
+    return new EntityUpdater(original, updated, operation);
   }
 
   @Transaction
@@ -376,7 +379,7 @@ public abstract class EntityRepository<T> {
     recoverDeletedRelationships(original);
 
     // Update the attributes and relationships of an entity
-    EntityUpdater entityUpdater = getUpdater(original, updated, false);
+    EntityUpdater entityUpdater = getUpdater(original, updated, Operation.PUT);
     entityUpdater.update();
     String change = entityUpdater.fieldsChanged() ? RestUtil.ENTITY_UPDATED : RestUtil.ENTITY_NO_CHANGE;
     return new PutResponse<>(Status.OK, withHref(uriInfo, updated), change);
@@ -397,7 +400,7 @@ public abstract class EntityRepository<T> {
     restorePatchAttributes(original, updated);
 
     // Update the attributes and relationships of an entity
-    EntityUpdater entityUpdater = getUpdater(original, updated, true);
+    EntityUpdater entityUpdater = getUpdater(original, updated, Operation.PATCH);
     entityUpdater.update();
     String change = entityUpdater.fieldsChanged() ? RestUtil.ENTITY_UPDATED : RestUtil.ENTITY_NO_CHANGE;
     return new PatchResponse<>(Status.OK, withHref(uriInfo, updated), change);
@@ -442,12 +445,24 @@ public abstract class EntityRepository<T> {
   }
 
   @Transaction
-  public final void delete(UUID id, boolean recursive) throws IOException {
+  public final DeleteResponse<T> delete(String updatedBy, String id) throws IOException {
+    return delete(updatedBy, id, false);
+  }
+
+  @Transaction
+  public final DeleteResponse<T> delete(String updatedBy, String id, boolean recursive) throws IOException {
+    // Validate entity
+    String json = dao.findJsonById(id, Include.NON_DELETED);
+    if (json == null) {
+      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(entityName, id));
+    }
+
+    T original = JsonUtils.readValue(json, entityClass);
     // If an entity being deleted contains other **non-deleted** children entities, it can't be deleted
     List<EntityReference> contains =
         daoCollection
             .relationshipDAO()
-            .findTo(id.toString(), entityName, Relationship.CONTAINS.ordinal(), toBoolean(Include.NON_DELETED));
+            .findTo(id, entityName, Relationship.CONTAINS.ordinal(), toBoolean(Include.NON_DELETED));
 
     if (!contains.isEmpty()) {
       if (!recursive) {
@@ -456,21 +471,27 @@ public abstract class EntityRepository<T> {
       // Soft delete all the contained entities
       for (EntityReference entityReference : contains) {
         LOG.info("Recursively deleting {} {}", entityReference.getType(), entityReference.getId());
-        Entity.deleteEntity(entityReference.getType(), entityReference.getId(), recursive);
+        Entity.deleteEntity(updatedBy, entityReference.getType(), entityReference.getId(), recursive);
       }
     }
 
-    if (softDelete) {
-      T entity = dao.findEntityById(id);
-      EntityInterface<T> entityInterface = getEntityInterface(entity);
+    String changeType;
+    T updated = JsonUtils.readValue(json, entityClass);
+    EntityInterface<T> entityInterface = getEntityInterface(updated);
+    entityInterface.setUpdateDetails(updatedBy, System.currentTimeMillis());
+    if (supportsSoftDelete) {
       entityInterface.setDeleted(true);
-      storeEntity(entity, true);
-      daoCollection.relationshipDAO().softDeleteAll(id.toString(), entityName);
-      return;
+      EntityUpdater updater = getUpdater(original, updated, Operation.SOFT_DELETE);
+      updater.update();
+      daoCollection.relationshipDAO().softDeleteAll(id, entityName);
+      changeType = RestUtil.ENTITY_SOFT_DELETED;
+    } else {
+      // Hard delete
+      dao.delete(id);
+      daoCollection.relationshipDAO().deleteAll(id, entityName);
+      changeType = RestUtil.ENTITY_DELETED;
     }
-    // Hard delete
-    dao.delete(id);
-    daoCollection.relationshipDAO().deleteAll(id.toString(), entityName);
+    return new DeleteResponse<>(updated, changeType);
   }
 
   @Transaction
@@ -589,12 +610,7 @@ public abstract class EntityRepository<T> {
     }
   }
 
-  /**
-   * Builder method for EntityHandler
-   *
-   * @param entity
-   * @return
-   */
+  /** Builder method for EntityHandler */
   public EntityHelper getEntityHandler(T entity) {
     return new EntityHelper(entity);
   }
@@ -627,8 +643,6 @@ public abstract class EntityRepository<T> {
     /**
      * Validate the owner if not null before creating this resource. Owner must exist, not being deleted, and must be
      * either User or Team.
-     *
-     * @return
      */
     public EntityReference validateOwnerOrNull() throws IOException, ParseException {
       EntityReference entityReference = validateFieldOrNull("owner");
@@ -643,9 +657,6 @@ public abstract class EntityRepository<T> {
     /**
      * Validate a field containing a EntityReference if not null before creating this resource. The target entity must
      * exist and not deleted.
-     *
-     * @param fieldName
-     * @return
      */
     @SneakyThrows({NoSuchMethodException.class, InvocationTargetException.class, IllegalAccessException.class})
     public EntityReference validateFieldOrNull(String fieldName) throws IOException, ParseException {
@@ -663,8 +674,6 @@ public abstract class EntityRepository<T> {
     /**
      * When listing and getting resources, we need to get entities using the relationships. If the relationship exists
      * then the entity must exist.
-     *
-     * @return
      */
     public EntityReference getOwnerOrNull() throws IOException, ParseException {
       List<EntityReference> refs =
@@ -691,7 +700,6 @@ public abstract class EntityRepository<T> {
      * An entity could have (HAS) another entity like in for table and location.
      *
      * @param leftEntityName the entity name of the target of HAS.
-     * @return
      */
     public EntityReference getHasOrNull(String leftEntityName) throws IOException, ParseException {
       List<EntityReference> refs =
@@ -719,7 +727,6 @@ public abstract class EntityRepository<T> {
      *
      * @param containerEntityName entity name of the container. database for table, databaseService for database, and so
      *     on.
-     * @return
      */
     public EntityReference getContainer(String containerEntityName) throws IOException, ParseException {
       List<EntityReference> refs =
@@ -771,26 +778,12 @@ public abstract class EntityRepository<T> {
       return helper(Entity.getEntity(refs.get(0), Fields.EMPTY_FIELDS, Include.ALL)).toEntityReference();
     }
 
-    /**
-     * Validate the type of the entity pointed by the field and return it.
-     *
-     * @param fieldName
-     * @param entityName
-     * @param <S>
-     * @return
-     */
+    /** Validate the type of the entity pointed by the field and return it. */
     public <S> S findEntity(String fieldName, String entityName) throws IOException, ParseException {
       return findEntity(fieldName, List.of(entityName));
     }
 
-    /**
-     * Validate the type of the entity pointed by the field and return it.
-     *
-     * @param fieldName
-     * @param entityNames
-     * @param <S>
-     * @return
-     */
+    /** Validate the type of the entity pointed by the field and return it. */
     public <S> S findEntity(String fieldName, List<String> entityNames) throws IOException, ParseException {
       S entity = findEntity(fieldName);
       EntityReference entityReference = Entity.getEntityReference(entity);
@@ -807,7 +800,6 @@ public abstract class EntityRepository<T> {
      *
      * @param fieldName the name of the field
      * @param <S> the class of the entity pointed by the field
-     * @return
      */
     @SneakyThrows({NoSuchMethodException.class, InvocationTargetException.class, IllegalAccessException.class})
     public <S> S findEntity(String fieldName) throws IOException, ParseException {
@@ -818,6 +810,16 @@ public abstract class EntityRepository<T> {
       }
       return Entity.getEntity(entityReference, Fields.EMPTY_FIELDS, Include.ALL);
     }
+  }
+
+  enum Operation {
+    PUT,
+    PATCH,
+    SOFT_DELETE;
+
+    public boolean isPatch() { return this == PATCH; }
+    public boolean isPut() { return this == PUT; }
+    public boolean isDelete() { return this == SOFT_DELETE; }
   }
 
   /**
@@ -833,25 +835,29 @@ public abstract class EntityRepository<T> {
   public class EntityUpdater {
     protected final EntityInterface<T> original;
     protected final EntityInterface<T> updated;
-    protected final boolean patchOperation;
+    protected final Operation operation;
     protected final ChangeDescription changeDescription = new ChangeDescription();
     protected boolean majorVersionChange = false;
 
-    public EntityUpdater(T original, T updated, boolean patchOperation) {
+    public EntityUpdater(T original, T updated, Operation operation) {
       this.original = getEntityInterface(original);
       this.updated = getEntityInterface(updated);
-      this.patchOperation = patchOperation;
+      this.operation = operation;
     }
 
     /** Compare original and updated entities and perform updates. Update the entity version and track changes. */
     public final void update() throws IOException {
-      updated.setId(original.getId());
-      updateDeleted();
-      updateDescription();
-      updateDisplayName();
-      updateOwner();
-      updateTags(updated.getFullyQualifiedName(), "tags", original.getTags(), updated.getTags());
-      entitySpecificUpdate();
+      if (operation.isDelete()) { // DELETE Operation
+        updateDeleted();
+      } else { // PUT or PATCH operations
+        updated.setId(original.getId());
+        updateDeleted();
+        updateDescription();
+        updateDisplayName();
+        updateOwner();
+        updateTags(updated.getFullyQualifiedName(), "tags", original.getTags(), updated.getTags());
+        entitySpecificUpdate();
+      }
 
       // Store the updated entity
       storeUpdate();
@@ -862,7 +868,7 @@ public abstract class EntityRepository<T> {
     }
 
     private void updateDescription() throws JsonProcessingException {
-      if (!patchOperation && original.getDescription() != null && !original.getDescription().isEmpty()) {
+      if (operation.isPut() && original.getDescription() != null && !original.getDescription().isEmpty()) {
         // Update description only when stored is empty to retain user authored descriptions
         updated.setDescription(original.getDescription());
         return;
@@ -871,14 +877,19 @@ public abstract class EntityRepository<T> {
     }
 
     private void updateDeleted() throws JsonProcessingException {
-      if (Boolean.TRUE.equals(original.isDeleted())) {
-        updated.setDeleted(false);
-        recordChange("deleted", true, false);
+      if (operation.isPut() || operation.isPut()) {
+        if (Boolean.TRUE.equals(original.isDeleted())) {
+          updated.setDeleted(false);
+          recordChange("deleted", true, false);
+        }
+        // TODO check if deleted flag is being set and throw exception
+      } else {
+        recordChange("deleted", original.isDeleted(), updated.isDeleted());
       }
     }
 
     private void updateDisplayName() throws JsonProcessingException {
-      if (!patchOperation && original.getDisplayName() != null && !original.getDisplayName().isEmpty()) {
+      if (operation.isPut() && original.getDisplayName() != null && !original.getDisplayName().isEmpty()) {
         // Update displayName only when stored is empty to retain user authored descriptions
         updated.setDisplayName(original.getDisplayName());
         return;
@@ -889,7 +900,7 @@ public abstract class EntityRepository<T> {
     private void updateOwner() throws JsonProcessingException {
       EntityReference origOwner = original.getOwner();
       EntityReference updatedOwner = updated.getOwner();
-      if (patchOperation || updatedOwner != null) {
+      if (operation.isPatch() || updatedOwner != null) {
         // Update owner for all PATCH operations. For PUT operations, ownership can't be removed
         if (recordChange("owner", origOwner, updatedOwner, true, entityReferenceMatch)) {
           EntityUtil.updateOwner(
@@ -910,7 +921,7 @@ public abstract class EntityRepository<T> {
 
       // Remove current entity tags in the database. It will be added back later from the merged tag list.
       EntityUtil.removeTagsByPrefix(daoCollection.tagDAO(), fqn);
-      if (!patchOperation) {
+      if (operation.isPut()) {
         // PUT operation merges tags in the request with what already exists
         EntityUtil.mergeTags(updatedTags, origTags);
       }
@@ -925,9 +936,9 @@ public abstract class EntityRepository<T> {
     public final boolean updateVersion(Double oldVersion) {
       Double newVersion = oldVersion;
       if (majorVersionChange) {
-        newVersion = Math.round((oldVersion + 1.0) * 10.0) / 10.0;
+        newVersion = nextMajorVersion(oldVersion);
       } else if (fieldsChanged()) {
-        newVersion = Math.round((oldVersion + 0.1) * 10.0) / 10.0;
+        newVersion = nextVersion(oldVersion);
       }
       LOG.info(
           "{} {}->{} - Fields added {}, updated {}, deleted {}",
@@ -1018,18 +1029,23 @@ public abstract class EntityRepository<T> {
     }
 
     public final void storeUpdate() throws IOException {
-      if (updateVersion(original.getVersion())) { // Update changed the entity veresion
-        // Store the old version
-        String extensionName = EntityUtil.getVersionExtension(entityName, original.getVersion());
-        daoCollection
-            .entityExtensionDAO()
-            .insert(original.getId().toString(), extensionName, entityName, JsonUtils.pojoToJson(original.getEntity()));
-
-        // Store the new version
-        EntityRepository.this.storeEntity(updated.getEntity(), true);
+      if (updateVersion(original.getVersion())) { // Update changed the entity version
+        storeOldVersion(); // Store old version for listing previous versions of the entity
+        storeNewVersion(); // Store the update version of the entity
       } else { // Update did not change the entity version
         updated.setUpdateDetails(original.getUpdatedBy(), original.getUpdatedAt());
       }
+    }
+
+    private void storeOldVersion() throws JsonProcessingException {
+      String extensionName = EntityUtil.getVersionExtension(entityName, original.getVersion());
+      daoCollection
+          .entityExtensionDAO()
+          .insert(original.getId().toString(), extensionName, entityName, JsonUtils.pojoToJson(original.getEntity()));
+    }
+
+    private void storeNewVersion() throws IOException {
+      EntityRepository.this.storeEntity(updated.getEntity(), true);
     }
   }
 }

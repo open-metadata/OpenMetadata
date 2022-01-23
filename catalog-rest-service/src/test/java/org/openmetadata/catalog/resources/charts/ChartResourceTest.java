@@ -51,6 +51,7 @@ import org.openmetadata.catalog.type.ChartType;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.util.EntityInterface;
+import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.TestUtils;
 
@@ -149,9 +150,9 @@ public class ChartResourceTest extends EntityResourceTest<Chart> {
   }
 
   @Test
-  void delete_emptyChart_200_ok(TestInfo test) throws HttpResponseException {
+  void delete_emptyChart_200_ok(TestInfo test) throws IOException {
     Chart chart = createEntity(create(test), adminAuthHeaders());
-    deleteEntity(chart.getId(), adminAuthHeaders());
+    deleteAndCheckEntity(chart, adminAuthHeaders());
   }
 
   @Test
@@ -165,9 +166,10 @@ public class ChartResourceTest extends EntityResourceTest<Chart> {
     Chart chart = createEntity(request, adminAuthHeaders());
 
     // Delete
-    deleteEntity(chart.getId(), adminAuthHeaders());
+    deleteAndCheckEntity(chart, adminAuthHeaders());
 
-    ChangeDescription change = getChangeDescription(chart.getVersion());
+    Double version = EntityUtil.nextVersion(chart.getVersion()); // Account for the version change during delete
+    ChangeDescription change = getChangeDescription(version);
     change.setFieldsUpdated(
         Arrays.asList(
             new FieldChange().withName("deleted").withNewValue(false).withOldValue(true),

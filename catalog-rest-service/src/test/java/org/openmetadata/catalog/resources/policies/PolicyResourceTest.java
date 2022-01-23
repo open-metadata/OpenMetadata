@@ -61,6 +61,7 @@ import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.type.MetadataOperation;
 import org.openmetadata.catalog.type.PolicyType;
 import org.openmetadata.catalog.util.EntityInterface;
+import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.PolicyUtils;
 import org.openmetadata.catalog.util.TestUtils;
@@ -342,9 +343,9 @@ public class PolicyResourceTest extends EntityResourceTest<Policy> {
   }
 
   @Test
-  void delete_emptyPolicy_200_ok(TestInfo test) throws HttpResponseException {
+  void delete_emptyPolicy_200_ok(TestInfo test) throws IOException {
     Policy policy = createPolicy(create(test), adminAuthHeaders());
-    deleteEntity(policy.getId(), adminAuthHeaders());
+    deleteAndCheckEntity(policy, adminAuthHeaders());
   }
 
   @Test
@@ -353,9 +354,10 @@ public class PolicyResourceTest extends EntityResourceTest<Policy> {
     Policy policy = createEntity(request, adminAuthHeaders());
 
     // Delete
-    deleteEntity(policy.getId(), adminAuthHeaders());
+    deleteAndCheckEntity(policy, adminAuthHeaders());
 
-    ChangeDescription change = getChangeDescription(policy.getVersion());
+    Double version = EntityUtil.nextVersion(policy.getVersion()); // Account for the version change during delete
+    ChangeDescription change = getChangeDescription(version);
     change.setFieldsUpdated(
         Arrays.asList(
             new FieldChange().withName("deleted").withNewValue(false).withOldValue(true),

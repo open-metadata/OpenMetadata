@@ -74,6 +74,7 @@ import org.openmetadata.catalog.type.MlFeatureSource;
 import org.openmetadata.catalog.type.MlHyperParameter;
 import org.openmetadata.catalog.type.MlStore;
 import org.openmetadata.catalog.util.EntityInterface;
+import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
 
@@ -402,9 +403,9 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
   }
 
   @Test
-  void delete_MlModel_200_ok(TestInfo test) throws HttpResponseException {
+  void delete_MlModel_200_ok(TestInfo test) throws IOException {
     MlModel model = createMlModel(create(test), adminAuthHeaders());
-    deleteEntity(model.getId(), adminAuthHeaders());
+    deleteAndCheckEntity(model, adminAuthHeaders());
   }
 
   @Test
@@ -414,9 +415,10 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
     MlModel model = createAndCheckEntity(request, adminAuthHeaders());
 
     // Delete
-    deleteEntity(model.getId(), adminAuthHeaders());
+    deleteAndCheckEntity(model, adminAuthHeaders());
 
-    ChangeDescription change = getChangeDescription(model.getVersion());
+    Double version = EntityUtil.nextVersion(model.getVersion()); // Account for the version change during delete
+    ChangeDescription change = getChangeDescription(version);
     change.setFieldsUpdated(
         Arrays.asList(
             new FieldChange().withName("deleted").withNewValue(false).withOldValue(true),

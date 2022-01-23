@@ -149,7 +149,7 @@ public class TeamResourceTest extends EntityResourceTest<Team> {
     Team team = createAndCheckEntity(create, adminAuthHeaders());
 
     // Team with users can be deleted - Team -- has --> User relationships are deleted
-    deleteEntity(team.getId(), adminAuthHeaders());
+    deleteAndCheckEntity(team, adminAuthHeaders());
 
     // Make sure user does not have relationship to this team
     User user = userResourceTest.getEntity(user1.getId(), "teams", adminAuthHeaders());
@@ -165,7 +165,7 @@ public class TeamResourceTest extends EntityResourceTest<Team> {
     Team team = createAndCheckEntity(create, adminAuthHeaders());
     HttpResponseException exception =
         assertThrows(
-            HttpResponseException.class, () -> deleteEntity(team.getId(), authHeaders("test@open-metadata.org")));
+            HttpResponseException.class, () -> deleteAndCheckEntity(team, authHeaders("test@open-metadata.org")));
     assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
   }
 

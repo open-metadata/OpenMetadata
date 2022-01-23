@@ -200,8 +200,8 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   }
 
   @Override
-  public EntityUpdater getUpdater(MlModel original, MlModel updated, boolean patchOperation) {
-    return new MlModelUpdater(original, updated, patchOperation);
+  public EntityUpdater getUpdater(MlModel original, MlModel updated, Operation operation) {
+    return new MlModelUpdater(original, updated, operation);
   }
 
   private EntityReference getDashboard(MlModel mlModel) throws IOException {
@@ -386,8 +386,8 @@ public class MlModelRepository extends EntityRepository<MlModel> {
 
   /** Handles entity updated from PUT and POST operation. */
   public class MlModelUpdater extends EntityUpdater {
-    public MlModelUpdater(MlModel original, MlModel updated, boolean patchOperation) {
-      super(original, updated, patchOperation);
+    public MlModelUpdater(MlModel original, MlModel updated, Operation operation) {
+      super(original, updated, operation);
     }
 
     @Override

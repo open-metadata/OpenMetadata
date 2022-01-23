@@ -105,6 +105,7 @@ import org.openmetadata.catalog.type.TableProfile;
 import org.openmetadata.catalog.type.TableType;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.type.TagLabel.LabelType;
+import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil;
@@ -933,13 +934,13 @@ public class TableResourceTest extends EntityResourceTest<Table> {
   }
 
   @Test
-  void get_deletedTableWithDeleteLocation(TestInfo test) throws HttpResponseException {
+  void get_deletedTableWithDeleteLocation(TestInfo test) throws IOException {
     Object create = createRequest(getEntityName(test), "description", "displayName", USER_OWNER1);
     // Create first time using POST
     Table table = beforeDeletion(test, createEntity(create, adminAuthHeaders()));
     Table tableBeforeDeletion = getEntity(table.getId(), null, TableResource.FIELDS, adminAuthHeaders());
     // delete both
-    deleteEntity(tableBeforeDeletion.getId(), adminAuthHeaders());
+    deleteAndCheckEntity(table, adminAuthHeaders());
     new LocationResourceTest().deleteEntity(tableBeforeDeletion.getLocation().getId(), adminAuthHeaders());
     Map<String, String> queryParams = new HashMap<>();
     queryParams.put("include", "deleted");
@@ -1052,9 +1053,9 @@ public class TableResourceTest extends EntityResourceTest<Table> {
   }
 
   @Test
-  void delete_table_200_ok(TestInfo test) throws HttpResponseException {
+  void delete_table_200_ok(TestInfo test) throws IOException {
     Table table = createEntity(create(test), adminAuthHeaders());
-    deleteEntity(table.getId(), adminAuthHeaders());
+    deleteAndCheckEntity(table, adminAuthHeaders());
   }
 
   @Test
@@ -1063,9 +1064,10 @@ public class TableResourceTest extends EntityResourceTest<Table> {
     Table table = createEntity(request, adminAuthHeaders());
 
     // Delete
-    deleteEntity(table.getId(), adminAuthHeaders());
+    deleteAndCheckEntity(table, adminAuthHeaders());
 
-    ChangeDescription change = getChangeDescription(table.getVersion());
+    Double version = EntityUtil.nextVersion(table.getVersion()); // Account for the version change during delete
+    ChangeDescription change = getChangeDescription(version);
     change.setFieldsUpdated(
         Arrays.asList(
             new FieldChange().withName("deleted").withNewValue(false).withOldValue(true),
@@ -1081,7 +1083,7 @@ public class TableResourceTest extends EntityResourceTest<Table> {
     Table table = createEntity(create(test), adminAuthHeaders());
     HttpResponseException exception =
         assertThrows(
-            HttpResponseException.class, () -> deleteEntity(table.getId(), authHeaders("test@open-metadata.org")));
+            HttpResponseException.class, () -> deleteAndCheckEntity(table, authHeaders("test@open-metadata.org")));
     assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
   }
 
@@ -1249,7 +1251,7 @@ public class TableResourceTest extends EntityResourceTest<Table> {
         new CreateLocation().withName(getLocationName(test)).withService(AWS_STORAGE_SERVICE_REFERENCE);
     Location location = createLocation(create, adminAuthHeaders());
     addAndCheckLocation(table, location.getId(), OK, userAuthHeaders());
-    deleteEntity(table.getId(), adminAuthHeaders());
+    deleteAndCheckEntity(table, adminAuthHeaders());
     Map<String, String> queryParams =
         new HashMap<>() {
           {

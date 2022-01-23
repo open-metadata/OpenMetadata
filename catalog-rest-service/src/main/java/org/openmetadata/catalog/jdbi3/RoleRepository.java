@@ -189,8 +189,8 @@ public class RoleRepository extends EntityRepository<Role> {
   }
 
   @Override
-  public EntityUpdater getUpdater(Role original, Role updated, boolean patchOperation) {
-    return new RoleUpdater(original, updated, patchOperation);
+  public EntityUpdater getUpdater(Role original, Role updated, Operation operation) {
+    return new RoleUpdater(original, updated, operation);
   }
 
   public static class RoleEntityInterface implements EntityInterface<Role> {
@@ -306,8 +306,8 @@ public class RoleRepository extends EntityRepository<Role> {
 
   /** Handles entity updated from PUT and POST operation. */
   public class RoleUpdater extends EntityUpdater {
-    public RoleUpdater(Role original, Role updated, boolean patchOperation) {
-      super(original, updated, patchOperation);
+    public RoleUpdater(Role original, Role updated, Operation operation) {
+      super(original, updated, operation);
     }
 
     @Override

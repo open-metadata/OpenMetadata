@@ -201,12 +201,13 @@ public final class Entity {
     return entityRepository;
   }
 
-  public static void deleteEntity(String entity, UUID entityId, boolean recursive) throws IOException {
+  public static void deleteEntity(String updatedBy, String entity, UUID entityId, boolean recursive)
+      throws IOException {
     EntityRepository<?> dao = ENTITY_REPOSITORY_MAP.get(entity);
     if (dao == null) {
       throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entity));
     }
-    dao.delete(entityId, recursive);
+    dao.delete(updatedBy, entityId.toString(), recursive);
   }
 
   public static <T> EntityRepository<T> getEntityRepositoryForClass(@NonNull Class<T> clazz) {

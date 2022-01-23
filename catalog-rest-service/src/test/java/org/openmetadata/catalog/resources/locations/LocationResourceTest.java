@@ -50,6 +50,7 @@ import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.util.EntityInterface;
+import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.TestUtils;
 
@@ -198,9 +199,9 @@ public class LocationResourceTest extends EntityResourceTest<Location> {
   }
 
   @Test
-  void delete_location_200_ok(TestInfo test) throws HttpResponseException {
+  void delete_location_200_ok(TestInfo test) throws IOException {
     Location location = createLocation(create(test), adminAuthHeaders());
-    deleteEntity(location.getId(), adminAuthHeaders());
+    deleteAndCheckEntity(location, adminAuthHeaders());
   }
 
   @Test
@@ -209,9 +210,10 @@ public class LocationResourceTest extends EntityResourceTest<Location> {
     Location location = createEntity(request, adminAuthHeaders());
 
     // Delete
-    deleteEntity(location.getId(), adminAuthHeaders());
+    deleteAndCheckEntity(location, adminAuthHeaders());
 
-    ChangeDescription change = getChangeDescription(location.getVersion());
+    Double version = EntityUtil.nextVersion(location.getVersion()); // Account for the version change during delete
+    ChangeDescription change = getChangeDescription(version);
     change.setFieldsUpdated(
         Arrays.asList(
             new FieldChange().withName("deleted").withNewValue(false).withOldValue(true),

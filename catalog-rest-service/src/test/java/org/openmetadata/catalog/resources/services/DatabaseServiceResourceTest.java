@@ -55,6 +55,7 @@ import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.type.Schedule;
 import org.openmetadata.catalog.util.EntityInterface;
+import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
 import org.openmetadata.catalog.util.TestUtils.UpdateType;
@@ -205,10 +206,10 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
   }
 
   @Test
-  void delete_ExistentDatabaseService_as_admin_200(TestInfo test) throws HttpResponseException {
+  void delete_ExistentDatabaseService_as_admin_200(TestInfo test) throws IOException {
     Map<String, String> authHeaders = adminAuthHeaders();
     DatabaseService databaseService = createEntity(create(test), authHeaders);
-    deleteEntity(databaseService.getId(), authHeaders);
+    deleteAndCheckEntity(databaseService, authHeaders);
   }
 
   @Test
@@ -217,9 +218,11 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
     DatabaseService databaseService = createEntity(request, adminAuthHeaders());
 
     // Delete
-    deleteEntity(databaseService.getId(), adminAuthHeaders());
+    deleteAndCheckEntity(databaseService, adminAuthHeaders());
 
-    ChangeDescription change = getChangeDescription(databaseService.getVersion());
+    Double version =
+        EntityUtil.nextVersion(databaseService.getVersion()); // Account for the version change during delete
+    ChangeDescription change = getChangeDescription(version);
     change.setFieldsUpdated(
         Arrays.asList(
             new FieldChange().withName("deleted").withNewValue(false).withOldValue(true),
@@ -237,7 +240,7 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
     HttpResponseException exception =
         assertThrows(
             HttpResponseException.class,
-            () -> deleteEntity(databaseService.getId(), authHeaders("test@open-metadata.org")));
+            () -> deleteAndCheckEntity(databaseService, authHeaders("test@open-metadata.org")));
     TestUtils.assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
   }
 
