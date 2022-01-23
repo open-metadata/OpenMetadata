@@ -18,6 +18,10 @@ import traceback
 import uuid
 from typing import Dict, Iterable, List, Optional, Tuple
 
+from sqlalchemy import create_engine
+from sqlalchemy.engine.reflection import Inspector
+from sqlalchemy.inspection import inspect
+
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import (
     Column,
@@ -41,9 +45,6 @@ from metadata.ingestion.source.sql_source_common import (
 )
 from metadata.utils.column_type_parser import ColumnTypeParser
 from metadata.utils.helpers import get_database_service_or_create
-from sqlalchemy import create_engine
-from sqlalchemy.engine.reflection import Inspector
-from sqlalchemy.inspection import inspect
 
 logger: logging.Logger = logging.getLogger(__name__)
 

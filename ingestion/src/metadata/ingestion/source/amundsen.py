@@ -15,6 +15,8 @@ import uuid
 from dataclasses import dataclass, field
 from typing import Iterable, List, Optional
 
+from pydantic import SecretStr
+
 from metadata.config.common import ConfigModel
 from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceEntityRequest,
@@ -41,7 +43,6 @@ from metadata.utils.sql_queries import (
     NEO4J_AMUNDSEN_TABLE_QUERY,
     NEO4J_AMUNDSEN_USER_QUERY,
 )
-from pydantic import SecretStr
 
 logger: logging.Logger = logging.getLogger(__name__)
 

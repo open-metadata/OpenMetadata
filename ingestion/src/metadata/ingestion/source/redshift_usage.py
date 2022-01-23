@@ -24,7 +24,6 @@ from metadata.ingestion.source.sql_alchemy_helper import (
 from metadata.utils.helpers import get_start_and_end
 from metadata.utils.sql_queries import REDSHIFT_SQL_STATEMENT
 
-
 logger = logging.getLogger(__name__)
 
 
