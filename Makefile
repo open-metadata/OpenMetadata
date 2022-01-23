@@ -39,7 +39,7 @@ generate:
 	@echo "Running Datamodel Code Generator"
 	@echo "Make sure to first run the install_dev recipe"
 	datamodel-codegen --input catalog-rest-service/src/main/resources/json --input-file-type jsonschema --output ingestion/src/metadata/generated
-	make install
+	$(MAKE) install
 
 ## Ingestion tests & QA
 run_ometa_integration_tests:
@@ -50,8 +50,8 @@ unit_ingestion:
 
 coverage:
 	coverage erase
-	make unit_ingestion
-	make run_ometa_integration_tests
+	$(MAKE) unit_ingestion
+	$(MAKE) run_ometa_integration_tests
 	coverage xml -i -o ingestion/coverage.xml
 
 sonar_ingestion:
@@ -65,7 +65,7 @@ sonar_ingestion:
 
 ## Ingestion publish
 publish:
-	make install_dev generate
+	$(MAKE) install_dev generate
 	cd ingestion; \
 	  python setup.py install sdist bdist_wheel; \
 	  twine check dist/*; \
@@ -73,7 +73,7 @@ publish:
 
 ## Docker operators
 build_docker_base:
-	make install_dev generate
+	$(MAKE) install_dev generate
 	docker build -f ingestion/connectors/Dockerfile-base ingestion/ -t openmetadata/ingestion-connector-base
 
 build_docker_connectors:
@@ -105,19 +105,19 @@ core_clean:
 	rm -rf ingestion-core/dist
 
 core_generate:
-	make core_install_dev
+	$(MAKE) core_install_dev
 	mkdir -p ingestion-core/src/metadata/generated
 	. ingestion-core/venv/bin/activate
 	datamodel-codegen --input catalog-rest-service/src/main/resources/json  --input-file-type jsonschema --output ingestion-core/src/metadata/generated
 
 core_bump_version_dev:
-	make core_install_dev
+	$(MAKE) core_install_dev
 	cd ingestion-core; \
 		. venv/bin/activate; \
 		python -m incremental.update metadata --dev
 
 core_publish:
-	make core_clean core_generate
+	$(MAKE) core_clean core_generate
 	cd ingestion-core; \
 		. venv/bin/activate; \
 		python setup.py install sdist bdist_wheel; \
