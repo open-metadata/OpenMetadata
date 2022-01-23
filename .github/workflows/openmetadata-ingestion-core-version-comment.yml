@@ -35,6 +35,6 @@ jobs:
         with:
           issue-number: ${{ github.event.pull_request.number }}
           body: |
-            **Schema Change Detected. Needs py-ingestion-core version bump**
+            **Schema Change Detected. Needs ingestion-core version bump**
 
-            Please run `make bump-version-dev` in the ingestion-core folder of your repository and commit the changes to _version.py in this PR. Please ignore if this has been handled already.
+            Please run `make core_bump_version_dev` in the project's root and commit the changes to _version.py in this PR. Please ignore if this has been handled already.
