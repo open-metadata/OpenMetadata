@@ -41,9 +41,10 @@ py_format:  ## Run black and isort to format the Python codebase
 	isort $(PY_SOURCE) --skip $(PY_SOURCE)/metadata/generated --profile black --multi-line 3
 	black $(PY_SOURCE) --exclude $(PY_SOURCE)/metadata/generated
 
-.PHONY: black_check
-black_check:  ## Check if Python sources are correctly formatted
+.PHONY: py_format_check
+py_format_check:  ## Check if Python sources are correctly formatted
 	black --check --diff $(PY_SOURCE) --exclude $(PY_SOURCE)/metadata/generated
+	isort --check-only $(PY_SOURCE) --skip $(PY_SOURCE)/metadata/generated --profile black --multi-line 3
 
 ## Ingestion models generation
 .PHONY: generate
