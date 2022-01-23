@@ -132,6 +132,10 @@
     "databaseConnection": {
       "$ref": "#/definitions/databaseConnection"
     },
+    "airflowPipelines": {
+      "description": "References to airflow pipelines deployed for this database service.",
+      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+    },
     "version" : {
       "description": "Metadata version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/entityVersion"

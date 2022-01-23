@@ -13,9 +13,13 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import static org.openmetadata.catalog.util.EntityUtil.toBoolean;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.net.URI;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.services.DatabaseService;
@@ -44,8 +48,31 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
   }
 
   @Override
-  public DatabaseService setFields(DatabaseService entity, Fields fields) {
+  public DatabaseService setFields(DatabaseService entity, Fields fields) throws IOException {
+    entity.setAirflowPipelines(fields.contains("airflowPipeline") ? getAirflowPipelines(entity) : null);
     return entity;
+  }
+
+  private List<EntityReference> getAirflowPipelines(DatabaseService databaseService) throws IOException {
+    if (databaseService == null) {
+      return null;
+    }
+    String databaseServiceId = databaseService.getId().toString();
+    List<String> airflowPipelineIds =
+        daoCollection
+            .relationshipDAO()
+            .findTo(
+                databaseServiceId,
+                Entity.DATABASE_SERVICE,
+                Relationship.CONTAINS.ordinal(),
+                Entity.AIRFLOW_PIPELINE,
+                toBoolean(toInclude(databaseService)));
+    List<EntityReference> airflowPipelines = new ArrayList<>();
+    for (String airflowPipelineId : airflowPipelineIds) {
+      airflowPipelines.add(
+          daoCollection.airflowPipelineDAO().findEntityReferenceById(UUID.fromString(airflowPipelineId)));
+    }
+    return airflowPipelines;
   }
 
   @Override

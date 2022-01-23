@@ -150,6 +150,11 @@ public class AirflowPipelineResource {
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
           String fieldsParam,
+      @Parameter(
+              description = "Filter airflow pipelines by service fully qualified name",
+              schema = @Schema(type = "string", example = "snowflakeWestCoast"))
+          @QueryParam("service")
+          String serviceParam,
       @Parameter(description = "Limit the number ingestion returned. (1 to 1000000, " + "default = 10)")
           @DefaultValue("10")
           @Min(1)
@@ -174,9 +179,10 @@ public class AirflowPipelineResource {
 
     ResultList<AirflowPipeline> airflowPipelines;
     if (before != null) { // Reverse paging
-      airflowPipelines = dao.listBefore(uriInfo, fields, null, limitParam, before, include); // Ask for one extra entry
+      airflowPipelines =
+          dao.listBefore(uriInfo, fields, serviceParam, limitParam, before, include); // Ask for one extra entry
     } else { // Forward paging or first page
-      airflowPipelines = dao.listAfter(uriInfo, fields, null, limitParam, after, include);
+      airflowPipelines = dao.listAfter(uriInfo, fields, serviceParam, limitParam, after, include);
     }
     if (fieldsParam != null && fieldsParam.contains("status")) {
       addStatus(airflowPipelines.getData());

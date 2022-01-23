@@ -18,6 +18,7 @@ import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.openmetadata.catalog.Entity.helper;
 import static org.openmetadata.catalog.security.SecurityUtil.authHeaders;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
@@ -25,6 +26,7 @@ import static org.openmetadata.catalog.util.TestUtils.getPrincipal;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
+import java.text.ParseException;
 import java.util.Arrays;
 import java.util.Map;
 import javax.ws.rs.core.Response;
@@ -33,11 +35,17 @@ import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.catalog.Entity;
+import org.openmetadata.catalog.api.operations.pipelines.CreateAirflowPipeline;
+import org.openmetadata.catalog.api.operations.pipelines.PipelineConfig;
 import org.openmetadata.catalog.api.services.CreateDatabaseService;
 import org.openmetadata.catalog.api.services.CreateDatabaseService.DatabaseServiceType;
 import org.openmetadata.catalog.entity.services.DatabaseService;
 import org.openmetadata.catalog.jdbi3.DatabaseServiceRepository.DatabaseServiceEntityInterface;
+import org.openmetadata.catalog.operations.pipelines.AirflowPipeline;
+import org.openmetadata.catalog.operations.pipelines.DatabaseServiceMetadataPipeline;
+import org.openmetadata.catalog.operations.pipelines.FilterPattern;
 import org.openmetadata.catalog.resources.EntityResourceTest;
+import org.openmetadata.catalog.resources.operations.AirflowPipelineResourceTest;
 import org.openmetadata.catalog.resources.services.database.DatabaseServiceResource.DatabaseServiceList;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.ConnectionArguments;
@@ -125,6 +133,60 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
     update.withDatabaseConnection(databaseConnection);
     service = updateEntity(update, OK, adminAuthHeaders());
     assertEquals(databaseConnection, service.getDatabaseConnection());
+  }
+
+  @Test
+  void put_addIngestion_as_admin_2xx(TestInfo test) throws IOException, ParseException {
+    DatabaseService service = createAndCheckEntity(create(test).withDescription(null), adminAuthHeaders());
+
+    // Update database description and ingestion service that are null
+    CreateDatabaseService update = create(test).withDescription("description1");
+
+    ChangeDescription change = getChangeDescription(service.getVersion());
+    change.getFieldsAdded().add(new FieldChange().withName("description").withNewValue("description1"));
+    updateAndCheckEntity(update, OK, adminAuthHeaders(), UpdateType.MINOR_UPDATE, change);
+    DatabaseConnection databaseConnection =
+        new DatabaseConnection()
+            .withDatabase("test")
+            .withHostPort("host:9000")
+            .withPassword("password")
+            .withUsername("username");
+    update.withDatabaseConnection(databaseConnection);
+    service = updateEntity(update, OK, adminAuthHeaders());
+    assertEquals(databaseConnection, service.getDatabaseConnection());
+    ConnectionArguments connectionArguments =
+        new ConnectionArguments()
+            .withAdditionalProperty("credentials", "/tmp/creds.json")
+            .withAdditionalProperty("client_email", "ingestion-bot@domain.com");
+    ConnectionOptions connectionOptions =
+        new ConnectionOptions().withAdditionalProperty("key1", "value1").withAdditionalProperty("key2", "value2");
+    databaseConnection.withConnectionArguments(connectionArguments).withConnectionOptions(connectionOptions);
+    update.withDatabaseConnection(databaseConnection);
+    service = updateEntity(update, OK, adminAuthHeaders());
+    assertEquals(databaseConnection, service.getDatabaseConnection());
+
+    AirflowPipelineResourceTest airflowPipelineResourceTest = new AirflowPipelineResourceTest();
+    CreateAirflowPipeline createAirflowPipeline =
+        airflowPipelineResourceTest.create(test).withService(helper(service).toEntityReference());
+
+    DatabaseServiceMetadataPipeline databaseServiceMetadataPipeline =
+        new DatabaseServiceMetadataPipeline()
+            .withMarkDeletedTables(true)
+            .withIncludeViews(true)
+            .withSchemaFilterPattern(new FilterPattern().withExcludes(Arrays.asList("information_schema.*", "test.*")))
+            .withTableFilterPattern(new FilterPattern().withIncludes(Arrays.asList("sales.*", "users.*")));
+    PipelineConfig pipelineConfig =
+        new PipelineConfig()
+            .withSchema(PipelineConfig.Schema.DATABASE_SERVICE_METADATA_PIPELINE)
+            .withConfig(databaseServiceMetadataPipeline);
+    createAirflowPipeline.withPipelineConfig(pipelineConfig);
+    AirflowPipeline airflowPipeline =
+        airflowPipelineResourceTest.createEntity(createAirflowPipeline, adminAuthHeaders());
+    DatabaseService updatedService = getEntity(service.getId(), "airflowPipeline", adminAuthHeaders());
+    assertEquals(1, updatedService.getAirflowPipelines().size());
+    EntityReference expectedPipeline = updatedService.getAirflowPipelines().get(0);
+    assertEquals(airflowPipeline.getId(), expectedPipeline.getId());
+    assertEquals(airflowPipeline.getFullyQualifiedName(), expectedPipeline.getName());
   }
 
   @Test
