@@ -20,7 +20,7 @@ import org.openmetadata.catalog.util.ResultList;
 @Slf4j
 public abstract class EntityOperationsResourceTest<T> extends EntityResourceTest<T> {
   public EntityOperationsResourceTest(
-      String entityName,
+      String entityType,
       Class<T> entityClass,
       Class<? extends ResultList<T>> entityListClass,
       String collectionName,
@@ -30,7 +30,7 @@ public abstract class EntityOperationsResourceTest<T> extends EntityResourceTest
       boolean supportsTags,
       boolean supportsAuthorizedMetadataOperations) {
     super(
-        entityName,
+        entityType,
         entityClass,
         entityListClass,
         collectionName,

@@ -168,8 +168,8 @@ public class ChartResourceTest extends EntityResourceTest<Chart> {
     return create(getEntityName(test, index));
   }
 
-  public CreateChart create(String entityName) {
-    return new CreateChart().withName(entityName).withService(SUPERSET_REFERENCE).withChartType(ChartType.Area);
+  public CreateChart create(String name) {
+    return new CreateChart().withName(name).withService(SUPERSET_REFERENCE).withChartType(ChartType.Area);
   }
 
   @Override

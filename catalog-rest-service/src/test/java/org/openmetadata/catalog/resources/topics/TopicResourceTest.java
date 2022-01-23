@@ -278,8 +278,8 @@ public class TopicResourceTest extends EntityResourceTest<Topic> {
     return create(getEntityName(test));
   }
 
-  private CreateTopic create(String entityName) {
-    return new CreateTopic().withName(entityName).withService(KAFKA_REFERENCE).withPartitions(1);
+  private CreateTopic create(String name) {
+    return new CreateTopic().withName(name).withService(KAFKA_REFERENCE).withPartitions(1);
   }
 
   @Override

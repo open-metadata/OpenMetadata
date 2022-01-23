@@ -210,9 +210,9 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
     return create(getEntityName(test, index));
   }
 
-  private CreateDatabaseService create(String entityName) {
+  private CreateDatabaseService create(String name) {
     return new CreateDatabaseService()
-        .withName(entityName)
+        .withName(name)
         .withServiceType(DatabaseServiceType.Snowflake)
         .withDatabaseConnection(TestUtils.DATABASE_CONNECTION);
   }

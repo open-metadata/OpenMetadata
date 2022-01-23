@@ -176,7 +176,7 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook> {
         .add(new FieldChange().withName("status").withOldValue(Status.FAILED).withNewValue(Status.STARTED));
     webhook = updateAndCheckEntity(create, Response.Status.OK, adminAuthHeaders(), UpdateType.MINOR_UPDATE, change);
 
-    deleteAndCheckEntity(webhook, adminAuthHeaders());
+    deleteEntity(webhook.getId(), adminAuthHeaders());
   }
 
   @Override

@@ -159,8 +159,8 @@ public interface EntityDAO<T> {
       entity = JsonUtils.readValue(json, clz);
     }
     if (entity == null) {
-      String entityName = Entity.getEntityNameFromClass(clz);
-      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(entityName, id));
+      String entityType = Entity.getEntityTypeFromClass(clz);
+      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(entityType, id));
     }
     return entity;
   }
@@ -181,8 +181,8 @@ public interface EntityDAO<T> {
       entity = JsonUtils.readValue(json, clz);
     }
     if (entity == null) {
-      String entityName = Entity.getEntityNameFromClass(clz);
-      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(entityName, fqn));
+      String entityType = Entity.getEntityTypeFromClass(clz);
+      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(entityType, fqn));
     }
     return entity;
   }
@@ -222,8 +222,8 @@ public interface EntityDAO<T> {
   default int delete(String id) {
     int rowsDeleted = delete(getTableName(), id);
     if (rowsDeleted <= 0) {
-      String entityName = Entity.getEntityNameFromClass(getEntityClass());
-      throw EntityNotFoundException.byMessage(entityNotFound(entityName, id));
+      String entityType = Entity.getEntityTypeFromClass(getEntityClass());
+      throw EntityNotFoundException.byMessage(entityNotFound(entityType, id));
     }
     return rowsDeleted;
   }
