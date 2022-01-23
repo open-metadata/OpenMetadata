@@ -144,8 +144,8 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   }
 
   @Override
-  public EntityUpdater getUpdater(Pipeline original, Pipeline updated, boolean patchOperation) {
-    return new PipelineUpdater(original, updated, patchOperation);
+  public EntityUpdater getUpdater(Pipeline original, Pipeline updated, Operation operation) {
+    return new PipelineUpdater(original, updated, operation);
   }
 
   private EntityReference getService(Pipeline pipeline) throws IOException, ParseException {
@@ -307,8 +307,8 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
   /** Handles entity updated from PUT and POST operation. */
   public class PipelineUpdater extends EntityUpdater {
-    public PipelineUpdater(Pipeline original, Pipeline updated, boolean patchOperation) {
-      super(original, updated, patchOperation);
+    public PipelineUpdater(Pipeline original, Pipeline updated, Operation operation) {
+      super(original, updated, operation);
     }
 
     @Override

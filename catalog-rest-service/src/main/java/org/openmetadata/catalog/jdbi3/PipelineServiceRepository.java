@@ -76,8 +76,8 @@ public class PipelineServiceRepository extends EntityRepository<PipelineService>
   }
 
   @Override
-  public EntityUpdater getUpdater(PipelineService original, PipelineService updated, boolean patchOperation) {
-    return new PipelineServiceUpdater(original, updated, patchOperation);
+  public EntityUpdater getUpdater(PipelineService original, PipelineService updated, Operation operation) {
+    return new PipelineServiceUpdater(original, updated, operation);
   }
 
   public static class PipelineServiceEntityInterface implements EntityInterface<PipelineService> {
@@ -191,8 +191,8 @@ public class PipelineServiceRepository extends EntityRepository<PipelineService>
   }
 
   public class PipelineServiceUpdater extends EntityUpdater {
-    public PipelineServiceUpdater(PipelineService original, PipelineService updated, boolean patchOperation) {
-      super(original, updated, patchOperation);
+    public PipelineServiceUpdater(PipelineService original, PipelineService updated, Operation operation) {
+      super(original, updated, operation);
     }
 
     @Override

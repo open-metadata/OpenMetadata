@@ -64,6 +64,7 @@ import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.RestUtil;
+import org.openmetadata.catalog.util.RestUtil.DeleteResponse;
 import org.openmetadata.catalog.util.RestUtil.PatchResponse;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
@@ -400,14 +401,15 @@ public class DatabaseResource {
       })
   public Response delete(
       @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
       @Parameter(description = "Recursively delete this entity and it's children. (Default `false`)")
           @DefaultValue("false")
           @QueryParam("recursive")
           boolean recursive,
       @PathParam("id") String id)
       throws IOException {
-    dao.delete(UUID.fromString(id), recursive);
-    return Response.ok().build();
+    DeleteResponse<Database> response = dao.delete(securityContext.getUserPrincipal().getName(), id, recursive);
+    return response.toResponse();
   }
 
   private Database getDatabase(SecurityContext securityContext, CreateDatabase create) {

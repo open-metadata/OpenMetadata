@@ -50,6 +50,7 @@ import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.type.Schedule;
 import org.openmetadata.catalog.util.EntityInterface;
+import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
 import org.openmetadata.catalog.util.TestUtils.UpdateType;
@@ -249,10 +250,10 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
   }
 
   @Test
-  void delete_ExistentMessagingService_as_admin_200(TestInfo test) throws HttpResponseException {
+  void delete_ExistentMessagingService_as_admin_200(TestInfo test) throws IOException {
     Map<String, String> authHeaders = adminAuthHeaders();
     MessagingService messagingService = createEntity(create(test), authHeaders);
-    deleteEntity(messagingService.getId(), authHeaders);
+    deleteAndCheckEntity(messagingService, authHeaders);
   }
 
   @Test
@@ -261,9 +262,11 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
     MessagingService messagingService = createEntity(request, adminAuthHeaders());
 
     // Delete
-    deleteEntity(messagingService.getId(), adminAuthHeaders());
+    deleteAndCheckEntity(messagingService, adminAuthHeaders());
 
-    ChangeDescription change = getChangeDescription(messagingService.getVersion());
+    Double version =
+        EntityUtil.nextVersion(messagingService.getVersion()); // Account for the version change during delete
+    ChangeDescription change = getChangeDescription(version);
     change.setFieldsUpdated(
         Arrays.asList(
             new FieldChange().withName("deleted").withNewValue(false).withOldValue(true),
@@ -281,7 +284,7 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
     HttpResponseException exception =
         assertThrows(
             HttpResponseException.class,
-            () -> deleteEntity(messagingService.getId(), authHeaders("test@open-metadata.org")));
+            () -> deleteAndCheckEntity(messagingService, authHeaders("test@open-metadata.org")));
     TestUtils.assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
   }
 
@@ -376,6 +379,7 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
         assertEquals(expectedSchedule, actualSchedule);
         break;
       case "brokers":
+        @SuppressWarnings("unchecked")
         List<String> expectedBrokers = (List<String>) expected;
         List<String> actualBrokers = JsonUtils.readObjects((String) actual, String.class);
         assertEquals(expectedBrokers, actualBrokers);

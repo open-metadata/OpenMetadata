@@ -48,6 +48,7 @@ import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.type.Schedule;
 import org.openmetadata.catalog.util.EntityInterface;
+import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
 import org.openmetadata.catalog.util.TestUtils.UpdateType;
@@ -86,7 +87,7 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
             HttpResponseException.class, () -> createEntity(create(test).withServiceType(null), adminAuthHeaders()));
     TestUtils.assertResponse(exception, BAD_REQUEST, "[serviceType must not be null]");
 
-    // Create pipeline with mandatory brokers field empty
+    // Create pipeline with mandatory `brokers` field empty
     exception =
         assertThrows(
             HttpResponseException.class, () -> createEntity(create(test).withPipelineUrl(null), adminAuthHeaders()));
@@ -229,10 +230,10 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
   }
 
   @Test
-  void delete_ExistentPipelineService_as_admin_200(TestInfo test) throws HttpResponseException {
+  void delete_ExistentPipelineService_as_admin_200(TestInfo test) throws IOException {
     Map<String, String> authHeaders = adminAuthHeaders();
     PipelineService pipelineService = createEntity(create(test), authHeaders);
-    deleteEntity(pipelineService.getId(), authHeaders);
+    deleteAndCheckEntity(pipelineService, authHeaders);
   }
 
   @Test
@@ -241,9 +242,10 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
     PipelineService pipelineService = createEntity(request, adminAuthHeaders());
 
     // Delete
-    deleteEntity(pipelineService.getId(), adminAuthHeaders());
+    deleteAndCheckEntity(pipelineService, adminAuthHeaders());
 
-    ChangeDescription change = getChangeDescription(pipelineService.getVersion());
+    Double version = EntityUtil.nextVersion(pipelineService.getVersion());
+    ChangeDescription change = getChangeDescription(version);
     change.setFieldsUpdated(
         Arrays.asList(
             new FieldChange().withName("deleted").withNewValue(false).withOldValue(true),
@@ -261,7 +263,7 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
     HttpResponseException exception =
         assertThrows(
             HttpResponseException.class,
-            () -> deleteEntity(pipelineService.getId(), authHeaders("test@open-metadata.org")));
+            () -> deleteAndCheckEntity(pipelineService, authHeaders("test@open-metadata.org")));
     TestUtils.assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
   }
 

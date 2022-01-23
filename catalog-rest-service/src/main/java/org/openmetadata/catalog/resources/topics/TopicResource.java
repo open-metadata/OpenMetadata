@@ -64,6 +64,7 @@ import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.RestUtil;
+import org.openmetadata.catalog.util.RestUtil.DeleteResponse;
 import org.openmetadata.catalog.util.RestUtil.PatchResponse;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
@@ -410,9 +411,10 @@ public class TopicResource {
         @ApiResponse(responseCode = "200", description = "OK"),
         @ApiResponse(responseCode = "404", description = "Topic for instance {id} is not found")
       })
-  public Response delete(@Context UriInfo uriInfo, @PathParam("id") String id) throws IOException {
-    dao.delete(UUID.fromString(id), false);
-    return Response.ok().build();
+  public Response delete(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("id") String id)
+      throws IOException {
+    DeleteResponse<Topic> response = dao.delete(securityContext.getUserPrincipal().getName(), id);
+    return response.toResponse();
   }
 
   private Topic getTopic(SecurityContext securityContext, CreateTopic create) {

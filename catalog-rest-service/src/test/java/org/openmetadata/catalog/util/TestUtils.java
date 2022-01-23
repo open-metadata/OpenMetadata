@@ -303,9 +303,10 @@ public final class TestUtils {
     } else if (updateType == UpdateType.NO_CHANGE) {
       assertEquals(previousVersion, newVersion); // No change in the version
     } else if (updateType == UpdateType.MINOR_UPDATE) {
-      assertEquals(Math.round((previousVersion + 0.1) * 10.0) / 10.0, newVersion); // Minor version change
+      assertEquals(EntityUtil.nextVersion(previousVersion), newVersion); //
+      // Minor version change
     } else if (updateType == UpdateType.MAJOR_UPDATE) {
-      assertEquals(Math.round((previousVersion + 1.0) * 10.0) / 10.0, newVersion); // Major version change
+      assertEquals(EntityUtil.nextMajorVersion(previousVersion), newVersion); // Major version change
     }
   }
 

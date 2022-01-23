@@ -44,6 +44,7 @@ import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.type.StorageServiceType;
 import org.openmetadata.catalog.util.EntityInterface;
+import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.TestUtils;
 import org.openmetadata.catalog.util.TestUtils.UpdateType;
 
@@ -106,10 +107,10 @@ public class StorageServiceResourceTest extends EntityResourceTest<StorageServic
   }
 
   @Test
-  void delete_ExistentService_as_admin_200(TestInfo test) throws HttpResponseException {
+  void delete_ExistentService_as_admin_200(TestInfo test) throws IOException {
     Map<String, String> authHeaders = adminAuthHeaders();
     StorageService storageService = createEntity(create(test), authHeaders);
-    deleteEntity(storageService.getId(), authHeaders);
+    deleteAndCheckEntity(storageService, authHeaders);
   }
 
   @Test
@@ -118,9 +119,11 @@ public class StorageServiceResourceTest extends EntityResourceTest<StorageServic
     StorageService storageService = createEntity(request, adminAuthHeaders());
 
     // Delete
-    deleteEntity(storageService.getId(), adminAuthHeaders());
+    deleteAndCheckEntity(storageService, adminAuthHeaders());
 
-    ChangeDescription change = getChangeDescription(storageService.getVersion());
+    Double version =
+        EntityUtil.nextVersion(storageService.getVersion()); // Account for the version change during delete
+    ChangeDescription change = getChangeDescription(version);
     change.setFieldsUpdated(
         Arrays.asList(
             new FieldChange().withName("deleted").withNewValue(false).withOldValue(true),
@@ -138,7 +141,7 @@ public class StorageServiceResourceTest extends EntityResourceTest<StorageServic
     HttpResponseException exception =
         assertThrows(
             HttpResponseException.class,
-            () -> deleteEntity(storageService.getId(), authHeaders("test@open-metadata.org")));
+            () -> deleteAndCheckEntity(storageService, authHeaders("test@open-metadata.org")));
     TestUtils.assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
   }
 

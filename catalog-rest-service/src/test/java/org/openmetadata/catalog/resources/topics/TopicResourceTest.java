@@ -49,6 +49,7 @@ import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.type.topic.CleanupPolicy;
 import org.openmetadata.catalog.type.topic.SchemaType;
 import org.openmetadata.catalog.util.EntityInterface;
+import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.TestUtils;
@@ -244,9 +245,9 @@ public class TopicResourceTest extends EntityResourceTest<Topic> {
   }
 
   @Test
-  void delete_emptyTopic_200_ok(TestInfo test) throws HttpResponseException {
+  void delete_emptyTopic_200_ok(TestInfo test) throws IOException {
     Topic topic = createTopic(create(test), adminAuthHeaders());
-    deleteEntity(topic.getId(), adminAuthHeaders());
+    deleteAndCheckEntity(topic, adminAuthHeaders());
   }
 
   @Test
@@ -255,9 +256,10 @@ public class TopicResourceTest extends EntityResourceTest<Topic> {
     Topic topic = createEntity(request, adminAuthHeaders());
 
     // Delete
-    deleteEntity(topic.getId(), adminAuthHeaders());
+    deleteAndCheckEntity(topic, adminAuthHeaders());
 
-    ChangeDescription change = getChangeDescription(topic.getVersion());
+    Double version = EntityUtil.nextVersion(topic.getVersion()); // Account for the version change during delete
+    ChangeDescription change = getChangeDescription(version);
     change.setFieldsUpdated(
         Arrays.asList(
             new FieldChange().withName("deleted").withNewValue(false).withOldValue(true),

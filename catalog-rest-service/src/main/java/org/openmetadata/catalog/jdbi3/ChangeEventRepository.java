@@ -15,6 +15,7 @@ package org.openmetadata.catalog.jdbi3;
 
 import static org.openmetadata.catalog.type.EventType.ENTITY_CREATED;
 import static org.openmetadata.catalog.type.EventType.ENTITY_DELETED;
+import static org.openmetadata.catalog.type.EventType.ENTITY_SOFT_DELETED;
 import static org.openmetadata.catalog.type.EventType.ENTITY_UPDATED;
 
 import java.io.IOException;
@@ -42,6 +43,7 @@ public class ChangeEventRepository {
     jsons.addAll(dao.changeEventDAO().list(ENTITY_CREATED.value(), entityCreatedList, timestamp));
     jsons.addAll(dao.changeEventDAO().list(ENTITY_UPDATED.value(), entityUpdatedList, timestamp));
     jsons.addAll(dao.changeEventDAO().list(ENTITY_DELETED.value(), entityDeletedList, timestamp));
+    jsons.addAll(dao.changeEventDAO().list(ENTITY_SOFT_DELETED.value(), entityDeletedList, timestamp));
 
     List<ChangeEvent> changeEvents = new ArrayList<>();
     for (String json : jsons) {

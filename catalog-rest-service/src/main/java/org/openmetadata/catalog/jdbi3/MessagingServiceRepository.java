@@ -76,8 +76,8 @@ public class MessagingServiceRepository extends EntityRepository<MessagingServic
   }
 
   @Override
-  public EntityUpdater getUpdater(MessagingService original, MessagingService updated, boolean patchOperation) {
-    return new MessagingServiceUpdater(original, updated, patchOperation);
+  public EntityUpdater getUpdater(MessagingService original, MessagingService updated, Operation operation) {
+    return new MessagingServiceUpdater(original, updated, operation);
   }
 
   public static class MessagingServiceEntityInterface implements EntityInterface<MessagingService> {
@@ -191,8 +191,8 @@ public class MessagingServiceRepository extends EntityRepository<MessagingServic
   }
 
   public class MessagingServiceUpdater extends EntityUpdater {
-    public MessagingServiceUpdater(MessagingService original, MessagingService updated, boolean patchOperation) {
-      super(original, updated, patchOperation);
+    public MessagingServiceUpdater(MessagingService original, MessagingService updated, Operation operation) {
+      super(original, updated, operation);
     }
 
     @Override

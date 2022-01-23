@@ -55,8 +55,10 @@ import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.Webhook;
 import org.openmetadata.catalog.type.Webhook.Status;
+import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.RestUtil;
+import org.openmetadata.catalog.util.RestUtil.DeleteResponse;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
 
@@ -297,14 +299,17 @@ public class WebhookResource {
       })
   public Response deleteWebhook(
       @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
       @Parameter(description = "webhook Id", schema = @Schema(type = "string")) @PathParam("id") String id)
       throws IOException, GeneralSecurityException, ParseException, InterruptedException {
-    dao.delete(UUID.fromString(id), false);
+    DeleteResponse<Webhook> response = dao.delete(securityContext.getUserPrincipal().getName(), id);
     dao.deleteWebhookPublisher(UUID.fromString(id));
-    return Response.ok().build();
+    return response.toResponse();
   }
 
   public Webhook getWebhook(SecurityContext securityContext, CreateWebhook create) {
+    // Add filter for soft delete events if delete event type is requested
+    EntityUtil.addSoftDeleteFilter(create.getEventFilters());
     return new Webhook()
         .withDescription(create.getDescription())
         .withName(create.getName())
