@@ -106,8 +106,8 @@ public class StorageServiceResourceTest extends EntityResourceTest<StorageServic
     return create(getEntityName(test, index));
   }
 
-  private CreateStorageService create(String entityName) {
-    return new CreateStorageService().withName(entityName).withServiceType(StorageServiceType.S3);
+  private CreateStorageService create(String name) {
+    return new CreateStorageService().withName(name).withServiceType(StorageServiceType.S3);
   }
 
   @Override

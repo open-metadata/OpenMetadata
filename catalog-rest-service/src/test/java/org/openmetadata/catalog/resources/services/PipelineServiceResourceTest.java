@@ -231,9 +231,9 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
     return create(getEntityName(test, index));
   }
 
-  private CreatePipelineService create(String entityName) {
+  private CreatePipelineService create(String name) {
     return new CreatePipelineService()
-        .withName(entityName)
+        .withName(name)
         .withServiceType(CreatePipelineService.PipelineServiceType.Airflow)
         .withPipelineUrl(PIPELINE_SERVICE_URL)
         .withIngestionSchedule(new Schedule().withStartDate(new Date()).withRepeatFrequency("P1D"));

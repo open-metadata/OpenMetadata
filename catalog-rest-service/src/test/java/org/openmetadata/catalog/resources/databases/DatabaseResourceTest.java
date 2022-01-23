@@ -177,8 +177,8 @@ public class DatabaseResourceTest extends EntityResourceTest<Database> {
     return create(getEntityName(test));
   }
 
-  private CreateDatabase create(String entityName) {
-    return new CreateDatabase().withName(entityName).withService(SNOWFLAKE_REFERENCE);
+  private CreateDatabase create(String name) {
+    return new CreateDatabase().withName(name).withService(SNOWFLAKE_REFERENCE);
   }
 
   @Override

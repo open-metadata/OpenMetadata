@@ -117,12 +117,12 @@ public final class Entity {
   }
 
   public static <T> EntityReference getEntityReference(T entity) {
-    String entityName = getEntityNameFromObject(entity);
+    String entityType = getEntityTypeFromObject(entity);
 
     @SuppressWarnings("unchecked")
-    EntityRepository<T> entityRepository = (EntityRepository<T>) ENTITY_REPOSITORY_MAP.get(entityName);
+    EntityRepository<T> entityRepository = (EntityRepository<T>) ENTITY_REPOSITORY_MAP.get(entityType);
     if (entityRepository == null) {
-      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entityName));
+      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entityType));
     }
     return entityRepository.getEntityInterface(entity).getEntityReference();
   }
@@ -135,10 +135,10 @@ public final class Entity {
     if (ref == null) {
       return null;
     }
-    String entityName = ref.getType();
-    EntityRepository<?> entityRepository = ENTITY_REPOSITORY_MAP.get(entityName);
+    String entityType = ref.getType();
+    EntityRepository<?> entityRepository = ENTITY_REPOSITORY_MAP.get(entityType);
     if (entityRepository == null) {
-      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entityName));
+      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entityType));
     }
     URI href = entityRepository.getHref(uriInfo, ref.getId());
     return ref.withHref(href);
@@ -148,8 +148,8 @@ public final class Entity {
     if (entity == null) {
       return null;
     }
-    String entityName = getEntityNameFromObject(entity);
-    EntityRepository<T> entityRepository = getEntityRepository(entityName);
+    String entityType = getEntityTypeFromObject(entity);
+    EntityRepository<T> entityRepository = getEntityRepository(entityType);
     return entityRepository.getEntityInterface(entity);
   }
 
@@ -189,14 +189,14 @@ public final class Entity {
   /**
    * Retrieve the corresponding entity repository for a given entity name.
    *
-   * @param entityName type of entity, eg: {@link Entity#TABLE}, {@link Entity#TOPIC}, etc
+   * @param entityType type of entity, eg: {@link Entity#TABLE}, {@link Entity#TOPIC}, etc
    * @return entity repository corresponding to the entity name
    */
-  public static <T> EntityRepository<T> getEntityRepository(@NonNull String entityName) {
+  public static <T> EntityRepository<T> getEntityRepository(@NonNull String entityType) {
     @SuppressWarnings("unchecked")
-    EntityRepository<T> entityRepository = (EntityRepository<T>) ENTITY_REPOSITORY_MAP.get(entityName);
+    EntityRepository<T> entityRepository = (EntityRepository<T>) ENTITY_REPOSITORY_MAP.get(entityType);
     if (entityRepository == null) {
-      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entityName));
+      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entityType));
     }
     return entityRepository;
   }
@@ -239,11 +239,11 @@ public final class Entity {
     return entityRepository.getEntityHandler(entity);
   }
 
-  public static <T> String getEntityNameFromClass(Class<T> clz) {
+  public static <T> String getEntityTypeFromClass(Class<T> clz) {
     return CANONICAL_ENTITY_NAME_MAP.get(clz.getSimpleName().toLowerCase(Locale.ROOT));
   }
 
-  public static String getEntityNameFromObject(Object object) {
+  public static String getEntityTypeFromObject(Object object) {
     return CANONICAL_ENTITY_NAME_MAP.get(object.getClass().getSimpleName().toLowerCase(Locale.ROOT));
   }
 

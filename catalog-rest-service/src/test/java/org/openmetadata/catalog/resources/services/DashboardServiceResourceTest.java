@@ -224,9 +224,9 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
     return create(getEntityName(test, index));
   }
 
-  private CreateDashboardService create(String entityName) throws URISyntaxException {
+  private CreateDashboardService create(String name) throws URISyntaxException {
     return new CreateDashboardService()
-        .withName(entityName)
+        .withName(name)
         .withServiceType(CreateDashboardService.DashboardServiceType.Superset)
         .withDashboardUrl(new URI("http://192.1.1.1:0"))
         .withIngestionSchedule(new Schedule().withStartDate(new Date()).withRepeatFrequency("P1D"));

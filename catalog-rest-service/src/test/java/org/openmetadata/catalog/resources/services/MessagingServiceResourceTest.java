@@ -251,9 +251,9 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
     return create(getEntityName(test, index));
   }
 
-  private CreateMessagingService create(String entityName) {
+  private CreateMessagingService create(String name) {
     return new CreateMessagingService()
-        .withName(entityName)
+        .withName(name)
         .withServiceType(MessagingServiceType.Kafka)
         .withBrokers(KAFKA_BROKERS)
         .withSchemaRegistry(SCHEMA_REGISTRY_URL)

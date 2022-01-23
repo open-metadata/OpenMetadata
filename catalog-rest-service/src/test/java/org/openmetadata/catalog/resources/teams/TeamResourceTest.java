@@ -310,8 +310,8 @@ public class TeamResourceTest extends EntityResourceTest<Team> {
     return create(getEntityName(test));
   }
 
-  public CreateTeam create(String entityName) {
-    return new CreateTeam().withName(entityName);
+  public CreateTeam create(String name) {
+    return new CreateTeam().withName(name);
   }
 
   @Override

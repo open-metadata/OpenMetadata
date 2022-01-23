@@ -351,7 +351,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline> {
     return create(getEntityName(test));
   }
 
-  private CreatePipeline create(String entityName) {
-    return new CreatePipeline().withName(entityName).withService(AIRFLOW_REFERENCE);
+  private CreatePipeline create(String name) {
+    return new CreatePipeline().withName(name).withService(AIRFLOW_REFERENCE);
   }
 }

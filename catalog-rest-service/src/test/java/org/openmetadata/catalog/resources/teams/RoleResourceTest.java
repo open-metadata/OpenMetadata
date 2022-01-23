@@ -175,8 +175,8 @@ public class RoleResourceTest extends EntityResourceTest<Role> {
     return create(getEntityName(test));
   }
 
-  public CreateRole create(String entityName) {
-    return new CreateRole().withName(entityName);
+  public CreateRole create(String name) {
+    return new CreateRole().withName(name);
   }
 
   @Override

@@ -358,15 +358,15 @@ public final class EntityUtil {
   }
 
   public static List<EntityReference> getFollowers(
-      EntityInterface followedEntityInterface,
-      String entityName,
+      EntityInterface<?> followedEntityInterface,
+      String name,
       EntityRelationshipDAO entityRelationshipDAO,
       UserDAO userDAO)
       throws IOException {
     List<String> followerIds =
         entityRelationshipDAO.findFrom(
             followedEntityInterface.getId().toString(),
-            entityName,
+            name,
             Relationship.FOLLOWS.ordinal(),
             Entity.USER,
             toBoolean(ALL));
@@ -410,12 +410,14 @@ public final class EntityUtil {
     return refList.stream().sorted(compareEntityReference).map(EntityReference::getId).collect(Collectors.toList());
   }
 
-  public static String getVersionExtension(String entityName, Double version) {
-    return String.format("%s.%s.%s", entityName, "version", version.toString());
+  /** Entity version extension name formed by entityType.version.versionNumber. Example - `table.version.0.1` */
+  public static String getVersionExtension(String entityType, Double version) {
+    return String.format("%s.%s", getVersionExtensionPrefix(entityType), version.toString());
   }
 
-  public static String getVersionExtensionPrefix(String entityName) {
-    return String.format("%s.%s", entityName, "version");
+  /** Entity version extension name prefix formed by entityType.version Example - `table.version` */
+  public static String getVersionExtensionPrefix(String entityType) {
+    return String.format("%s.%s", entityType, "version");
   }
 
   public static Double getVersion(String extension) {
@@ -458,11 +460,11 @@ public final class EntityUtil {
     // Add filter for soft delete events if delete event type is requested
     Optional<EventFilter> deleteFilter =
         filters.stream().filter(eventFilter -> eventFilter.getEventType().equals(EventType.ENTITY_DELETED)).findAny();
-    if (deleteFilter.isPresent()) {
-      filters.add(
-          new EventFilter()
-              .withEventType(EventType.ENTITY_SOFT_DELETED)
-              .withEntities(deleteFilter.get().getEntities()));
-    }
+    deleteFilter.ifPresent(
+        eventFilter ->
+            filters.add(
+                new EventFilter()
+                    .withEventType(EventType.ENTITY_SOFT_DELETED)
+                    .withEntities(eventFilter.getEntities())));
   }
 }

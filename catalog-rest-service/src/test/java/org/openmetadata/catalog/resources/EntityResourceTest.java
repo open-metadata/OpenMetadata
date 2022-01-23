@@ -121,7 +121,7 @@ import org.openmetadata.catalog.util.TestUtils;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
   private static final Map<String, EntityResourceTest<?>> ENTITY_RESOURCE_TEST_MAP = new HashMap<>();
-  private final String entityName;
+  private final String entityType;
   private final Class<T> entityClass;
   private final Class<? extends ResultList<T>> entityListClass;
   protected final String collectionName;
@@ -170,7 +170,7 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
   public static TagLabel TIER2_TAG_LABEL;
 
   public EntityResourceTest(
-      String entityName,
+      String entityTYpe,
       Class<T> entityClass,
       Class<? extends ResultList<T>> entityListClass,
       String collectionName,
@@ -179,7 +179,7 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
       boolean supportsOwner,
       boolean supportsTags,
       boolean supportsAuthorizedMetadataOperations) {
-    this.entityName = entityName;
+    this.entityType = entityTYpe;
     this.entityClass = entityClass;
     this.entityListClass = entityListClass;
     this.collectionName = collectionName;
@@ -188,7 +188,7 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     this.supportsOwner = supportsOwner;
     this.supportsTags = supportsTags;
     this.supportsAuthorizedMetadataOperations = supportsAuthorizedMetadataOperations;
-    ENTITY_RESOURCE_TEST_MAP.put(entityName, this);
+    ENTITY_RESOURCE_TEST_MAP.put(entityTYpe, this);
   }
 
   @BeforeAll
@@ -196,7 +196,7 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     webhookCallbackResource.clearEvents();
     WebhookResourceTest webhookResourceTest = new WebhookResourceTest();
     webhookResourceTest.startWebhookSubscription();
-    webhookResourceTest.startWebhookEntitySubscriptions(entityName);
+    webhookResourceTest.startWebhookEntitySubscriptions(entityType);
 
     UserResourceTest userResourceTest = new UserResourceTest();
     USER1 = UserResourceTest.createUser(userResourceTest.create(test), adminAuthHeaders());
@@ -317,7 +317,7 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
   public void afterAllTests() throws Exception {
     WebhookResourceTest webhookResourceTest = new WebhookResourceTest();
     webhookResourceTest.validateWebhookEvents();
-    webhookResourceTest.validateWebhookEntityEvents(entityName);
+    webhookResourceTest.validateWebhookEntityEvents(entityType);
     delete_recursiveTest();
   }
 
@@ -549,12 +549,12 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     assertResponse(
         () -> getEntity(entityInterface.getId(), Collections.emptyMap(), null, adminAuthHeaders()),
         NOT_FOUND,
-        entityNotFound(entityName, entityInterface.getId()));
+        entityNotFound(entityType, entityInterface.getId()));
     assertResponse(
         () ->
             getEntityByName(entityInterface.getFullyQualifiedName(), Collections.emptyMap(), null, adminAuthHeaders()),
         NOT_FOUND,
-        entityNotFound(entityName, entityInterface.getFullyQualifiedName()));
+        entityNotFound(entityType, entityInterface.getFullyQualifiedName()));
 
     Map<String, String> queryParams = new HashMap<>();
     for (String include : List.of("deleted", "all")) {
@@ -570,11 +570,11 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     assertResponse(
         () -> getEntity(entityInterface.getId(), queryParams, null, adminAuthHeaders()),
         NOT_FOUND,
-        entityNotFound(entityName, entityInterface.getId()));
+        entityNotFound(entityType, entityInterface.getId()));
     assertResponse(
         () -> getEntityByName(entityInterface.getFullyQualifiedName(), queryParams, null, adminAuthHeaders()),
         NOT_FOUND,
-        entityNotFound(entityName, entityInterface.getFullyQualifiedName()));
+        entityNotFound(entityType, entityInterface.getFullyQualifiedName()));
   }
 
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -998,7 +998,7 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     HttpResponseException exception =
         assertThrows(
             HttpResponseException.class, () -> patchEntity(entityInterface.getId(), json, entity, adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, CatalogExceptionMessage.readOnlyAttribute(entityName, "deleted"));
+    assertResponse(exception, BAD_REQUEST, CatalogExceptionMessage.readOnlyAttribute(entityType, "deleted"));
   }
 
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1008,7 +1008,7 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
   void delete_nonExistentEntity_404() {
     HttpResponseException exception =
         assertThrows(HttpResponseException.class, () -> deleteEntity(NON_EXISTENT_ENTITY, adminAuthHeaders()));
-    assertResponse(exception, NOT_FOUND, entityNotFound(entityName, NON_EXISTENT_ENTITY));
+    assertResponse(exception, NOT_FOUND, entityNotFound(entityType, NON_EXISTENT_ENTITY));
   }
 
   @Test
@@ -1054,21 +1054,21 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     HttpResponseException exception =
         assertThrows(
             HttpResponseException.class,
-            () -> getChangeEvents("invalidEntity", entityName, null, System.currentTimeMillis(), adminAuthHeaders()));
+            () -> getChangeEvents("invalidEntity", entityType, null, System.currentTimeMillis(), adminAuthHeaders()));
     assertResponse(exception, BAD_REQUEST, "Invalid entity invalidEntity in query param entityCreated");
 
     // Invalid entityUpdated list
     exception =
         assertThrows(
             HttpResponseException.class,
-            () -> getChangeEvents(null, "invalidEntity", entityName, System.currentTimeMillis(), adminAuthHeaders()));
+            () -> getChangeEvents(null, "invalidEntity", entityType, System.currentTimeMillis(), adminAuthHeaders()));
     assertResponse(exception, BAD_REQUEST, "Invalid entity invalidEntity in query param entityUpdated");
 
     // Invalid entityDeleted list
     exception =
         assertThrows(
             HttpResponseException.class,
-            () -> getChangeEvents(entityName, null, "invalidEntity", System.currentTimeMillis(), adminAuthHeaders()));
+            () -> getChangeEvents(entityType, null, "invalidEntity", System.currentTimeMillis(), adminAuthHeaders()));
     assertResponse(exception, BAD_REQUEST, "Invalid entity invalidEntity in query param entityDeleted");
   }
 
@@ -1191,7 +1191,7 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
       target = target.queryParam("recursive", true);
     }
     TestUtils.delete(target, entityClass, authHeaders);
-    assertResponse(() -> getEntity(id, authHeaders), NOT_FOUND, entityNotFound(entityName, id));
+    assertResponse(() -> getEntity(id, authHeaders), NOT_FOUND, entityNotFound(entityType, id));
   }
 
   public final T createAndCheckEntity(Object create, Map<String, String> authHeaders) throws IOException {
@@ -1411,8 +1411,8 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
       // Sometimes change event is not returned on quickly querying with a millisecond
       // Try multiple times before giving up
       if (withEventFilter) {
-        // Get change event with an event filter for specific entity entityName
-        changeEvents = getChangeEvents(entityName, entityName, null, timestamp, authHeaders);
+        // Get change event with an event filter for specific entity type
+        changeEvents = getChangeEvents(entityType, entityType, null, timestamp, authHeaders);
       } else {
         // Get change event with no event filter for entity types
         changeEvents = getChangeEvents("*", "*", null, timestamp, authHeaders);
@@ -1445,7 +1445,7 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
             + entityInterface.getId());
 
     assertEquals(expectedEventType, changeEvent.getEventType());
-    assertEquals(entityName, changeEvent.getEntityType());
+    assertEquals(entityType, changeEvent.getEntityType());
     assertEquals(entityInterface.getId(), changeEvent.getEntityId());
     assertEquals(entityInterface.getVersion(), changeEvent.getCurrentVersion());
     assertEquals(TestUtils.getPrincipal(authHeaders), changeEvent.getUserName());
@@ -1476,8 +1476,7 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     int iteration = 0;
     while (changeEvent == null && iteration < 25) {
       iteration++;
-      // Get change event with an event filter for specific entity entityName
-      changeEvents = getChangeEvents(null, null, entityName, timestamp, authHeaders);
+      changeEvents = getChangeEvents(null, null, entityType, timestamp, authHeaders);
 
       if (changeEvents == null || changeEvents.getData().size() == 0) {
         try {
@@ -1497,7 +1496,7 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
 
     assertNotNull(changeEvent, "Deleted event after " + timestamp + " was not found for entity " + id);
     assertEquals(expectedEventType, changeEvent.getEventType());
-    assertEquals(entityName, changeEvent.getEntityType());
+    assertEquals(entityType, changeEvent.getEntityType());
     assertEquals(id, changeEvent.getEntityId());
     assertEquals(expectedVersion, changeEvent.getCurrentVersion());
     assertEquals(updatedBy, changeEvent.getUserName());
@@ -1692,10 +1691,10 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
   }
 
   public final String getEntityName(TestInfo test) {
-    return String.format("%s_%s", entityName, test.getDisplayName());
+    return String.format("%s_%s", entityType, test.getDisplayName());
   }
 
   public final String getEntityName(TestInfo test, int index) {
-    return String.format("%s_%d_%s", entityName, index, test.getDisplayName());
+    return String.format("%s_%d_%s", entityType, index, test.getDisplayName());
   }
 }

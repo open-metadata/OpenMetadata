@@ -64,7 +64,7 @@ class AttributeBasedFacts {
   }
 
   private static String getEntityType(@NonNull Object entity) {
-    String entityType = Entity.getEntityNameFromObject(entity);
+    String entityType = Entity.getEntityTypeFromObject(entity);
     if (entityType == null) {
       LOG.warn("could not find entity type for the given entity {}", entity);
     }
