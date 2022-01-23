@@ -20,7 +20,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.openmetadata.catalog.Entity.helper;
 import static org.openmetadata.catalog.security.SecurityUtil.authHeaders;
-import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
 import static org.openmetadata.catalog.util.TestUtils.getPrincipal;
 
@@ -29,7 +28,6 @@ import java.net.URISyntaxException;
 import java.text.ParseException;
 import java.util.Arrays;
 import java.util.Map;
-import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
@@ -55,7 +53,6 @@ import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.type.Schedule;
 import org.openmetadata.catalog.util.EntityInterface;
-import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
 import org.openmetadata.catalog.util.TestUtils.UpdateType;
@@ -203,45 +200,6 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
                 updateAndCheckEntity(
                     create(test), OK, authHeaders("test@open-metadata.org"), UpdateType.MINOR_UPDATE, null));
     TestUtils.assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} " + "is not admin");
-  }
-
-  @Test
-  void delete_ExistentDatabaseService_as_admin_200(TestInfo test) throws IOException {
-    Map<String, String> authHeaders = adminAuthHeaders();
-    DatabaseService databaseService = createEntity(create(test), authHeaders);
-    deleteAndCheckEntity(databaseService, authHeaders);
-  }
-
-  @Test
-  void delete_put_DatabaseService_200(TestInfo test) throws IOException {
-    CreateDatabaseService request = create(test).withDescription("");
-    DatabaseService databaseService = createEntity(request, adminAuthHeaders());
-
-    // Delete
-    deleteAndCheckEntity(databaseService, adminAuthHeaders());
-
-    Double version =
-        EntityUtil.nextVersion(databaseService.getVersion()); // Account for the version change during delete
-    ChangeDescription change = getChangeDescription(version);
-    change.setFieldsUpdated(
-        Arrays.asList(
-            new FieldChange().withName("deleted").withNewValue(false).withOldValue(true),
-            new FieldChange().withName("description").withNewValue("updatedDescription").withOldValue("")));
-
-    // PUT with updated description
-    updateAndCheckEntity(
-        request.withDescription("updatedDescription"), Response.Status.OK, adminAuthHeaders(), MINOR_UPDATE, change);
-  }
-
-  @Test
-  void delete_as_user_401(TestInfo test) throws HttpResponseException {
-    Map<String, String> authHeaders = adminAuthHeaders();
-    DatabaseService databaseService = createEntity(create(test), authHeaders);
-    HttpResponseException exception =
-        assertThrows(
-            HttpResponseException.class,
-            () -> deleteAndCheckEntity(databaseService, authHeaders("test@open-metadata.org")));
-    TestUtils.assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
   }
 
   public CreateDatabaseService create(TestInfo test) {

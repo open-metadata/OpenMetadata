@@ -417,6 +417,7 @@ public class DashboardResource {
       })
   public Response delete(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("id") String id)
       throws IOException {
+    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     DeleteResponse<Dashboard> response = dao.delete(securityContext.getUserPrincipal().getName(), id);
     return response.toResponse();
   }

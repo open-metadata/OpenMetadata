@@ -408,6 +408,7 @@ public class DatabaseResource {
           boolean recursive,
       @PathParam("id") String id)
       throws IOException {
+    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     DeleteResponse<Database> response = dao.delete(securityContext.getUserPrincipal().getName(), id, recursive);
     return response.toResponse();
   }

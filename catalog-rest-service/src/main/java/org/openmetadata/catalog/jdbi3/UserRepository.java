@@ -32,7 +32,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.teams.User;
-import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.resources.teams.UserResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
@@ -324,10 +323,6 @@ public class UserRepository extends EntityRepository<User> {
 
     @Override
     public void entitySpecificUpdate() throws IOException {
-      // Update operation can't undelete a user
-      if (updated.getEntity().getDeleted() != original.getEntity().getDeleted()) {
-        throw new IllegalArgumentException(CatalogExceptionMessage.readOnlyAttribute("User", "deactivated"));
-      }
       updateRoles(original.getEntity(), updated.getEntity());
       updateTeams(original.getEntity(), updated.getEntity());
       recordChange("profile", original.getEntity().getProfile(), updated.getEntity().getProfile(), true);

@@ -32,13 +32,11 @@ import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
-import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.BeforeAll;
@@ -63,7 +61,6 @@ import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.util.EntityInterface;
-import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.TestUtils;
@@ -231,34 +228,8 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard> {
   }
 
   @Test
-  void delete_emptyDashboard_200_ok(TestInfo test) throws IOException {
-    Dashboard dashboard = createDashboard(create(test), adminAuthHeaders());
-    deleteAndCheckEntity(dashboard, adminAuthHeaders());
-  }
-
-  @Test
   void delete_nonEmptyDashboard_4xx() {
     // TODO
-  }
-
-  @Test
-  void delete_put_Dashboard_200(TestInfo test) throws IOException {
-    CreateDashboard request = create(test).withDescription("");
-    Dashboard dashboard = createEntity(request, adminAuthHeaders());
-
-    // Delete
-    deleteAndCheckEntity(dashboard, adminAuthHeaders());
-
-    Double version = EntityUtil.nextVersion(dashboard.getVersion()); // Account for the version change during delete
-    ChangeDescription change = getChangeDescription(version);
-    change.setFieldsUpdated(
-        Arrays.asList(
-            new FieldChange().withName("deleted").withNewValue(false).withOldValue(true),
-            new FieldChange().withName("description").withNewValue("updatedDescription").withOldValue("")));
-
-    // PUT with updated description
-    updateAndCheckEntity(
-        request.withDescription("updatedDescription"), Response.Status.OK, adminAuthHeaders(), MINOR_UPDATE, change);
   }
 
   public Dashboard createDashboard(CreateDashboard create, Map<String, String> authHeaders)
