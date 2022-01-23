@@ -409,6 +409,7 @@ public class ChartResource {
       })
   public Response delete(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("id") String id)
       throws IOException {
+    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     DeleteResponse<Chart> response = dao.delete(securityContext.getUserPrincipal().getName(), id);
     return response.toResponse();
   }

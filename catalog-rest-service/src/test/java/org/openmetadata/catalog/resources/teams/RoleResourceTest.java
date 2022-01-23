@@ -13,7 +13,6 @@
 
 package org.openmetadata.catalog.resources.teams;
 
-import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -28,7 +27,6 @@ import java.net.URISyntaxException;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import javax.json.JsonPatch;
 import javax.ws.rs.client.WebTarget;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
@@ -40,7 +38,6 @@ import org.openmetadata.catalog.api.teams.CreateRole;
 import org.openmetadata.catalog.api.teams.CreateTeam;
 import org.openmetadata.catalog.entity.policies.Policy;
 import org.openmetadata.catalog.entity.teams.Role;
-import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.jdbi3.RoleRepository.RoleEntityInterface;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.policies.PolicyResource;
@@ -95,37 +92,6 @@ public class RoleResourceTest extends EntityResourceTest<Role> {
     assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
   }
 
-  /**
-   * @see EntityResourceTest#put_addDeleteFollower_200 for tests related getting role with entities owned by the role
-   */
-  @Test
-  void delete_validRole_200_OK(TestInfo test) throws IOException {
-    CreateRole create = create(test);
-    Role role = createAndCheckRole(create, adminAuthHeaders());
-    deleteAndCheckEntity(role, adminAuthHeaders());
-  }
-
-  @Test
-  void delete_validRole_as_non_admin_401(TestInfo test) throws IOException {
-    CreateRole create = create(test);
-    Role role = createAndCheckRole(create, adminAuthHeaders());
-    HttpResponseException exception =
-        assertThrows(
-            HttpResponseException.class, () -> deleteAndCheckEntity(role, authHeaders("test@open-metadata.org")));
-    assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
-  }
-
-  @Test
-  void patch_roleDeletedDisallowed_400(TestInfo test) throws HttpResponseException, JsonProcessingException {
-    // Ensure role deleted attribute can't be changed using patch
-    Role role = createRole(create(test), adminAuthHeaders());
-    String roleJson = JsonUtils.pojoToJson(role);
-    role.setDeleted(true);
-    HttpResponseException exception =
-        assertThrows(HttpResponseException.class, () -> patchRole(roleJson, role, adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, CatalogExceptionMessage.readOnlyAttribute("Role", "deleted"));
-  }
-
   @Test
   void patch_roleAttributes_as_non_admin_403(TestInfo test) throws HttpResponseException, JsonProcessingException {
     // Create table without any attributes
@@ -136,7 +102,7 @@ public class RoleResourceTest extends EntityResourceTest<Role> {
     HttpResponseException exception =
         assertThrows(
             HttpResponseException.class,
-            () -> patchRole(role.getId(), originalJson, role, authHeaders("test@open-metadata.org")));
+            () -> patchEntity(role.getId(), originalJson, role, authHeaders("test@open-metadata.org")));
     assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
   }
 
@@ -172,7 +138,7 @@ public class RoleResourceTest extends EntityResourceTest<Role> {
         UserResourceTest.create(role.getName() + "user1").withRoles(List.of(role.getId())), adminAuthHeaders());
     UserResourceTest.createUser(
         UserResourceTest.create(role.getName() + "user2").withRoles(List.of(role.getId())), adminAuthHeaders());
-  };
+  }
 
   /** Validate returned fields GET .../roles/{id}?fields="..." or GET .../roles/name/{name}?fields="..." */
   @Override
@@ -195,18 +161,6 @@ public class RoleResourceTest extends EntityResourceTest<Role> {
     validateRole(role, expectedRole.getDescription(), expectedRole.getDisplayName(), updatedBy);
     TestUtils.validateEntityReference(role.getPolicy());
     TestUtils.validateEntityReference(role.getUsers());
-  }
-
-  private Role patchRole(UUID roleId, String originalJson, Role updated, Map<String, String> authHeaders)
-      throws JsonProcessingException, HttpResponseException {
-    String updatedJson = JsonUtils.pojoToJson(updated);
-    JsonPatch patch = JsonUtils.getJsonPatch(originalJson, updatedJson);
-    return TestUtils.patch(CatalogApplicationTest.getResource("roles/" + roleId), patch, Role.class, authHeaders);
-  }
-
-  private Role patchRole(String originalJson, Role updated, Map<String, String> authHeaders)
-      throws JsonProcessingException, HttpResponseException {
-    return patchRole(updated.getId(), originalJson, updated, authHeaders);
   }
 
   public static Role createRole(CreateTeam create, Map<String, String> authHeaders) throws HttpResponseException {

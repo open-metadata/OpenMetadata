@@ -25,7 +25,6 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.openmetadata.catalog.exception.CatalogExceptionMessage.readOnlyAttribute;
 import static org.openmetadata.catalog.resources.teams.RoleResourceTest.createRole;
 import static org.openmetadata.catalog.resources.teams.TeamResourceTest.createTeam;
 import static org.openmetadata.catalog.security.SecurityUtil.authHeaders;
@@ -321,17 +320,6 @@ public class UserResourceTest extends EntityResourceTest<User> {
   }
 
   @Test
-  void patch_userDeletedDisallowed_400(TestInfo test) throws HttpResponseException, JsonProcessingException {
-    // Ensure user deleted attributed can't be changed using patch
-    User user = createUser(create(test), adminAuthHeaders());
-    String userJson = JsonUtils.pojoToJson(user);
-    user.setDeleted(true);
-    HttpResponseException exception =
-        assertThrows(HttpResponseException.class, () -> patchUser(userJson, user, adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, readOnlyAttribute("User", "deactivated"));
-  }
-
-  @Test
   void patch_userAttributes_as_admin_200_ok(TestInfo test) throws IOException {
     // Create user without any attributes - ***Note*** isAdmin by default is false.
     User user = createUser(create(test), adminAuthHeaders());
@@ -442,16 +430,6 @@ public class UserResourceTest extends EntityResourceTest<User> {
     change.getFieldsDeleted().add(new FieldChange().withName("profile").withOldValue(profile1));
     change.getFieldsDeleted().add(new FieldChange().withName("isBot").withOldValue(true).withNewValue(null));
     patchEntityAndCheck(user, origJson, adminAuthHeaders(), MINOR_UPDATE, change);
-  }
-
-  @Test
-  void delete_validUser_as_non_admin_401(TestInfo test) throws HttpResponseException {
-    CreateUser create = create(test).withName("test3").withEmail("test3@email.com");
-    User user = createUser(create, authHeaders("test3"));
-
-    HttpResponseException exception =
-        assertThrows(HttpResponseException.class, () -> deleteAndCheckEntity(user, authHeaders("test3@email.com")));
-    assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test3'} is not admin");
   }
 
   @Test

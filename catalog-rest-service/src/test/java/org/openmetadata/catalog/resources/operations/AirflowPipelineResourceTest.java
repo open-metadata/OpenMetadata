@@ -505,12 +505,6 @@ public class AirflowPipelineResourceTest extends EntityOperationsResourceTest<Ai
   }
 
   @Test
-  void delete_AirflowPipeline_200_ok(TestInfo test) throws HttpResponseException {
-    AirflowPipeline airflowPipeline = createEntity(create(test), adminAuthHeaders());
-    deleteEntity(airflowPipeline.getId(), adminAuthHeaders());
-  }
-
-  @Test
   void delete_nonEmptyPipeline_4xx() {
     // TODO
   }

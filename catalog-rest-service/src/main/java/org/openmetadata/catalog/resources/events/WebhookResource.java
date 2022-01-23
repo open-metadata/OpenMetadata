@@ -302,6 +302,7 @@ public class WebhookResource {
       @Context SecurityContext securityContext,
       @Parameter(description = "webhook Id", schema = @Schema(type = "string")) @PathParam("id") String id)
       throws IOException, GeneralSecurityException, ParseException, InterruptedException {
+    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     DeleteResponse<Webhook> response = dao.delete(securityContext.getUserPrincipal().getName(), id);
     dao.deleteWebhookPublisher(UUID.fromString(id));
     return response.toResponse();

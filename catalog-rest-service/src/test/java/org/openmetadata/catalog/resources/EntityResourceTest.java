@@ -61,6 +61,7 @@ import java.util.function.BiConsumer;
 import java.util.function.Predicate;
 import javax.json.JsonPatch;
 import javax.ws.rs.client.WebTarget;
+import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
@@ -889,7 +890,7 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     if (!supportsPatch) {
       return;
     }
-    // Create chart without description, owner
+    // Create entity without description, owner
     T entity = createEntity(createRequest(getEntityName(test), null, null, null), adminAuthHeaders());
     EntityInterface<T> entityInterface = getEntityInterface(entity);
     assertListNull(entityInterface.getDescription(), entityInterface.getOwner());
@@ -983,6 +984,23 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     patchEntityAndCheck(entity, origJson, adminAuthHeaders(), MINOR_UPDATE, change);
   }
 
+  @Test
+  void patch_deleted_attribute_disallowed_400(TestInfo test)
+      throws HttpResponseException, JsonProcessingException, URISyntaxException {
+    if (!supportsPatch) {
+      return;
+    }
+    // `deleted` attribute can't be set to true in PATCH operation & can only be done using DELETE operation
+    T entity = createEntity(createRequest(getEntityName(test), "", "", null), adminAuthHeaders());
+    EntityInterface<T> entityInterface = getEntityInterface(entity);
+    String json = JsonUtils.pojoToJson(entity);
+    entityInterface.setDeleted(true);
+    HttpResponseException exception =
+        assertThrows(
+            HttpResponseException.class, () -> patchEntity(entityInterface.getId(), json, entity, adminAuthHeaders()));
+    assertResponse(exception, BAD_REQUEST, CatalogExceptionMessage.readOnlyAttribute(entityName, "deleted"));
+  }
+
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // Common entity tests for DELETE operations
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -991,6 +1009,40 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     HttpResponseException exception =
         assertThrows(HttpResponseException.class, () -> deleteEntity(NON_EXISTENT_ENTITY, adminAuthHeaders()));
     assertResponse(exception, NOT_FOUND, entityNotFound(entityName, NON_EXISTENT_ENTITY));
+  }
+
+  @Test
+  void delete_entity_as_admin_200(TestInfo test) throws IOException, URISyntaxException {
+    Object request = createRequest(getEntityName(test), "", "", null);
+    T entity = createEntity(request, adminAuthHeaders());
+    deleteAndCheckEntity(entity, adminAuthHeaders());
+  }
+
+  @Test
+  void delete_entity_as_non_admin_401(TestInfo test) throws HttpResponseException, URISyntaxException {
+    Object request = createRequest(getEntityName(test), "", "", null);
+    T entity = createEntity(request, adminAuthHeaders());
+    HttpResponseException exception =
+        assertThrows(
+            HttpResponseException.class, () -> deleteAndCheckEntity(entity, authHeaders("test@open-metadata.org")));
+    assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
+  }
+
+  /** Soft delete an entity and then use PUT request to restore it back */
+  @Test
+  void delete_put_entity_200(TestInfo test) throws IOException, URISyntaxException {
+    Object request = createRequest(getEntityName(test), "", "", null);
+    T entity = createEntity(request, adminAuthHeaders());
+    EntityInterface<T> entityInterface = getEntityInterface(entity);
+
+    // Soft delete the entity
+    deleteAndCheckEntity(entity, adminAuthHeaders());
+    Double version = EntityUtil.nextVersion(entityInterface.getVersion()); // Version changes during soft-delete
+
+    // Send PUT request (with no changes) to restore the entity from soft deleted state
+    ChangeDescription change = getChangeDescription(version);
+    change.getFieldsUpdated().add(new FieldChange().withName("deleted").withNewValue(false).withOldValue(true));
+    updateAndCheckEntity(request, Response.Status.OK, adminAuthHeaders(), MINOR_UPDATE, change);
   }
 
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////

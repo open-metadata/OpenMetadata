@@ -59,7 +59,6 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import javax.ws.rs.client.WebTarget;
-import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
@@ -105,7 +104,6 @@ import org.openmetadata.catalog.type.TableProfile;
 import org.openmetadata.catalog.type.TableType;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.type.TagLabel.LabelType;
-import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil;
@@ -1050,41 +1048,6 @@ public class TableResourceTest extends EntityResourceTest<Table> {
     tableList1 = listEntities(queryParams, adminAuthHeaders());
     assertEquals(tableList.getData().size(), tableList1.getData().size());
     assertFields(tableList1.getData(), fields1);
-  }
-
-  @Test
-  void delete_table_200_ok(TestInfo test) throws IOException {
-    Table table = createEntity(create(test), adminAuthHeaders());
-    deleteAndCheckEntity(table, adminAuthHeaders());
-  }
-
-  @Test
-  void delete_put_Table_200(TestInfo test) throws IOException {
-    CreateTable request = create(test).withDatabase(DATABASE.getId()).withDescription("");
-    Table table = createEntity(request, adminAuthHeaders());
-
-    // Delete
-    deleteAndCheckEntity(table, adminAuthHeaders());
-
-    Double version = EntityUtil.nextVersion(table.getVersion()); // Account for the version change during delete
-    ChangeDescription change = getChangeDescription(version);
-    change.setFieldsUpdated(
-        Arrays.asList(
-            new FieldChange().withName("deleted").withNewValue(false).withOldValue(true),
-            new FieldChange().withName("description").withNewValue("updatedDescription").withOldValue("")));
-
-    // PUT with updated description
-    updateAndCheckEntity(
-        request.withDescription("updatedDescription"), Response.Status.OK, adminAuthHeaders(), MINOR_UPDATE, change);
-  }
-
-  @Test
-  void delete_table_as_non_admin_401(TestInfo test) throws HttpResponseException {
-    Table table = createEntity(create(test), adminAuthHeaders());
-    HttpResponseException exception =
-        assertThrows(
-            HttpResponseException.class, () -> deleteAndCheckEntity(table, authHeaders("test@open-metadata.org")));
-    assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
   }
 
   /**
