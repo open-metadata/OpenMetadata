@@ -47,6 +47,7 @@ import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.util.EntityInterface;
+import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.TestUtils;
 
@@ -142,9 +143,9 @@ public class DatabaseResourceTest extends EntityResourceTest<Database> {
   }
 
   @Test
-  void delete_emptyDatabase_200_ok(TestInfo test) throws HttpResponseException {
+  void delete_emptyDatabase_200_ok(TestInfo test) throws IOException {
     Database database = createDatabase(create(test), adminAuthHeaders());
-    deleteEntity(database.getId(), adminAuthHeaders());
+    deleteAndCheckEntity(database, adminAuthHeaders());
   }
 
   @Test
@@ -153,9 +154,10 @@ public class DatabaseResourceTest extends EntityResourceTest<Database> {
     Database database = createEntity(request, adminAuthHeaders());
 
     // Delete
-    deleteEntity(database.getId(), adminAuthHeaders());
+    deleteAndCheckEntity(database, adminAuthHeaders());
 
-    ChangeDescription change = getChangeDescription(database.getVersion());
+    Double version = EntityUtil.nextVersion(database.getVersion()); // Account for the version change during delete
+    ChangeDescription change = getChangeDescription(version);
     change.setFieldsUpdated(
         Arrays.asList(
             new FieldChange().withName("deleted").withNewValue(false).withOldValue(true),

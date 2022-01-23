@@ -123,8 +123,8 @@ public class TeamRepository extends EntityRepository<Team> {
   }
 
   @Override
-  public EntityUpdater getUpdater(Team original, Team updated, boolean patchOperation) {
-    return new TeamUpdater(original, updated, patchOperation);
+  public EntityUpdater getUpdater(Team original, Team updated, Operation operation) {
+    return new TeamUpdater(original, updated, operation);
   }
 
   private List<EntityReference> getUsers(Team team) throws IOException {
@@ -261,8 +261,8 @@ public class TeamRepository extends EntityRepository<Team> {
 
   /** Handles entity updated from PUT and POST operation. */
   public class TeamUpdater extends EntityUpdater {
-    public TeamUpdater(Team original, Team updated, boolean patchOperation) {
-      super(original, updated, patchOperation);
+    public TeamUpdater(Team original, Team updated, Operation operation) {
+      super(original, updated, operation);
     }
 
     @Override

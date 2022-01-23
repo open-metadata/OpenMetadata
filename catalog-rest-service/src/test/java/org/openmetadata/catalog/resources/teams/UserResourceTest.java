@@ -450,7 +450,7 @@ public class UserResourceTest extends EntityResourceTest<User> {
     User user = createUser(create, authHeaders("test3"));
 
     HttpResponseException exception =
-        assertThrows(HttpResponseException.class, () -> deleteEntity(user.getId(), authHeaders("test3@email.com")));
+        assertThrows(HttpResponseException.class, () -> deleteAndCheckEntity(user, authHeaders("test3@email.com")));
     assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test3'} is not admin");
   }
 
@@ -469,7 +469,7 @@ public class UserResourceTest extends EntityResourceTest<User> {
     tableResourceTest.addAndCheckFollower(table.getId(), user.getId(), CREATED, 1, adminAuthHeaders());
 
     // Delete user
-    deleteEntity(user.getId(), adminAuthHeaders());
+    deleteAndCheckEntity(user, adminAuthHeaders());
 
     // Make sure the user is no longer following the table
     team = TeamResourceTest.getTeam(team.getId(), "users", adminAuthHeaders());

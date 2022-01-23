@@ -56,6 +56,7 @@ import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.type.Task;
 import org.openmetadata.catalog.util.EntityInterface;
+import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.TestUtils;
@@ -300,9 +301,9 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline> {
   }
 
   @Test
-  void delete_emptyPipeline_200_ok(TestInfo test) throws HttpResponseException {
+  void delete_emptyPipeline_200_ok(TestInfo test) throws IOException {
     Pipeline pipeline = createPipeline(create(test), adminAuthHeaders());
-    deleteEntity(pipeline.getId(), adminAuthHeaders());
+    deleteAndCheckEntity(pipeline, adminAuthHeaders());
   }
 
   @Test
@@ -316,9 +317,10 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline> {
     Pipeline pipeline = createEntity(request, adminAuthHeaders());
 
     // Delete
-    deleteEntity(pipeline.getId(), adminAuthHeaders());
+    deleteAndCheckEntity(pipeline, adminAuthHeaders());
 
-    ChangeDescription change = getChangeDescription(pipeline.getVersion());
+    Double version = EntityUtil.nextVersion(pipeline.getVersion()); // Account for the version change during delete
+    ChangeDescription change = getChangeDescription(version);
     change.setFieldsUpdated(
         Arrays.asList(
             new FieldChange().withName("deleted").withNewValue(false).withOldValue(true),

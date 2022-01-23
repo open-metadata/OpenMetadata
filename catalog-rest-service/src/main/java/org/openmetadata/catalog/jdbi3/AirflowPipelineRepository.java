@@ -120,8 +120,8 @@ public class AirflowPipelineRepository extends EntityRepository<AirflowPipeline>
   }
 
   @Override
-  public EntityUpdater getUpdater(AirflowPipeline original, AirflowPipeline updated, boolean patchOperation) {
-    return new AirflowPipelineUpdater(original, updated, patchOperation);
+  public EntityUpdater getUpdater(AirflowPipeline original, AirflowPipeline updated, Operation operation) {
+    return new AirflowPipelineUpdater(original, updated, operation);
   }
 
   private EntityReference getService(AirflowPipeline airflowPipeline) throws IOException, ParseException {
@@ -255,8 +255,8 @@ public class AirflowPipelineRepository extends EntityRepository<AirflowPipeline>
 
   /** Handles entity updated from PUT and POST operation. */
   public class AirflowPipelineUpdater extends EntityUpdater {
-    public AirflowPipelineUpdater(AirflowPipeline original, AirflowPipeline updated, boolean patchOperation) {
-      super(original, updated, patchOperation);
+    public AirflowPipelineUpdater(AirflowPipeline original, AirflowPipeline updated, Operation operation) {
+      super(original, updated, operation);
     }
 
     @Override

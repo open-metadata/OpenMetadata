@@ -47,18 +47,21 @@ import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.type.Webhook;
 import org.openmetadata.catalog.type.Webhook.Status;
 import org.openmetadata.catalog.util.EntityInterface;
+import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
 import org.openmetadata.catalog.util.TestUtils.UpdateType;
 
 @Slf4j
 public class WebhookResourceTest extends EntityResourceTest<Webhook> {
-  public static List<EventFilter> ALL_EVENTS_FILTER = new ArrayList<>();
+  public static final List<EventFilter> ALL_EVENTS_FILTER;
 
   static {
-    ALL_EVENTS_FILTER.add(new EventFilter().withEventType(EventType.ENTITY_CREATED).withEntities(List.of("*")));
-    ALL_EVENTS_FILTER.add(new EventFilter().withEventType(EventType.ENTITY_UPDATED).withEntities(List.of("*")));
-    ALL_EVENTS_FILTER.add(new EventFilter().withEventType(EventType.ENTITY_DELETED).withEntities(List.of("*")));
+    ALL_EVENTS_FILTER =
+        List.of(
+            new EventFilter().withEventType(EventType.ENTITY_CREATED).withEntities(List.of("*")),
+            new EventFilter().withEventType(EventType.ENTITY_UPDATED).withEntities(List.of("*")),
+            new EventFilter().withEventType(EventType.ENTITY_DELETED).withEntities(List.of("*")));
   }
 
   public WebhookResourceTest() {
@@ -173,7 +176,7 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook> {
         .add(new FieldChange().withName("status").withOldValue(Status.FAILED).withNewValue(Status.STARTED));
     webhook = updateAndCheckEntity(create, Response.Status.OK, adminAuthHeaders(), UpdateType.MINOR_UPDATE, change);
 
-    deleteEntity(webhook.getId(), adminAuthHeaders());
+    deleteAndCheckEntity(webhook, adminAuthHeaders());
   }
 
   @Override
@@ -202,7 +205,9 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook> {
     validateCommonEntityFields(
         getEntityInterface(webhook), createRequest.getDescription(), TestUtils.getPrincipal(authHeaders), null);
     assertEquals(createRequest.getName(), webhook.getName());
-    assertEquals(createRequest.getEventFilters(), webhook.getEventFilters());
+    ArrayList<EventFilter> filters = new ArrayList<>(createRequest.getEventFilters());
+    EntityUtil.addSoftDeleteFilter(filters);
+    assertEquals(filters, webhook.getEventFilters());
   }
 
   @Override

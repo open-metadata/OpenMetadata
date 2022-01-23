@@ -102,7 +102,7 @@ public class RoleResourceTest extends EntityResourceTest<Role> {
   void delete_validRole_200_OK(TestInfo test) throws IOException {
     CreateRole create = create(test);
     Role role = createAndCheckRole(create, adminAuthHeaders());
-    deleteEntity(role.getId(), adminAuthHeaders());
+    deleteAndCheckEntity(role, adminAuthHeaders());
   }
 
   @Test
@@ -111,7 +111,7 @@ public class RoleResourceTest extends EntityResourceTest<Role> {
     Role role = createAndCheckRole(create, adminAuthHeaders());
     HttpResponseException exception =
         assertThrows(
-            HttpResponseException.class, () -> deleteEntity(role.getId(), authHeaders("test@open-metadata.org")));
+            HttpResponseException.class, () -> deleteAndCheckEntity(role, authHeaders("test@open-metadata.org")));
     assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
   }
 

@@ -89,8 +89,8 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   @Override
-  public EntityUpdater getUpdater(User original, User updated, boolean patchOperation) {
-    return new UserUpdater(original, updated, patchOperation);
+  public EntityUpdater getUpdater(User original, User updated, Operation operation) {
+    return new UserUpdater(original, updated, operation);
   }
 
   @Transaction
@@ -318,8 +318,8 @@ public class UserRepository extends EntityRepository<User> {
 
   /** Handles entity updated from PUT and POST operation. */
   public class UserUpdater extends EntityUpdater {
-    public UserUpdater(User original, User updated, boolean patchOperation) {
-      super(original, updated, patchOperation);
+    public UserUpdater(User original, User updated, Operation operation) {
+      super(original, updated, operation);
     }
 
     @Override

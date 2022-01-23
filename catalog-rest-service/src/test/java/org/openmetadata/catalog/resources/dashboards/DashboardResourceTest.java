@@ -63,6 +63,7 @@ import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.util.EntityInterface;
+import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.TestUtils;
@@ -230,9 +231,9 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard> {
   }
 
   @Test
-  void delete_emptyDashboard_200_ok(TestInfo test) throws HttpResponseException {
+  void delete_emptyDashboard_200_ok(TestInfo test) throws IOException {
     Dashboard dashboard = createDashboard(create(test), adminAuthHeaders());
-    deleteEntity(dashboard.getId(), adminAuthHeaders());
+    deleteAndCheckEntity(dashboard, adminAuthHeaders());
   }
 
   @Test
@@ -246,9 +247,10 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard> {
     Dashboard dashboard = createEntity(request, adminAuthHeaders());
 
     // Delete
-    deleteEntity(dashboard.getId(), adminAuthHeaders());
+    deleteAndCheckEntity(dashboard, adminAuthHeaders());
 
-    ChangeDescription change = getChangeDescription(dashboard.getVersion());
+    Double version = EntityUtil.nextVersion(dashboard.getVersion()); // Account for the version change during delete
+    ChangeDescription change = getChangeDescription(version);
     change.setFieldsUpdated(
         Arrays.asList(
             new FieldChange().withName("deleted").withNewValue(false).withOldValue(true),

@@ -63,6 +63,7 @@ import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.RestUtil;
+import org.openmetadata.catalog.util.RestUtil.DeleteResponse;
 import org.openmetadata.catalog.util.RestUtil.PatchResponse;
 import org.openmetadata.catalog.util.ResultList;
 
@@ -364,8 +365,8 @@ public class RoleResource {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     // A role has a strong relationship with a policy. Recursively delete the policy that the role contains, to avoid
     // leaving a dangling policy without a role.
-    dao.delete(UUID.fromString(id), true);
-    return Response.ok().build();
+    DeleteResponse<Role> response = dao.delete(securityContext.getUserPrincipal().getName(), id, true);
+    return response.toResponse();
   }
 
   private Role getRole(CreateRole cr, SecurityContext securityContext) {

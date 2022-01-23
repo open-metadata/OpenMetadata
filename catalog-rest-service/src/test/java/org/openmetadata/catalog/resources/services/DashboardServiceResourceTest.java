@@ -47,6 +47,7 @@ import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.type.Schedule;
 import org.openmetadata.catalog.util.EntityInterface;
+import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
 import org.openmetadata.catalog.util.TestUtils.UpdateType;
@@ -222,10 +223,10 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
   }
 
   @Test
-  void delete_ExistentDashboardService_as_admin_200(TestInfo test) throws HttpResponseException, URISyntaxException {
+  void delete_ExistentDashboardService_as_admin_200(TestInfo test) throws IOException, URISyntaxException {
     Map<String, String> authHeaders = adminAuthHeaders();
     DashboardService dashboardService = createEntity(create(test), authHeaders);
-    deleteEntity(dashboardService.getId(), authHeaders);
+    deleteAndCheckEntity(dashboardService, authHeaders);
   }
 
   @Test
@@ -234,9 +235,11 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
     DashboardService dashboardService = createEntity(request, adminAuthHeaders());
 
     // Delete
-    deleteEntity(dashboardService.getId(), adminAuthHeaders());
+    deleteAndCheckEntity(dashboardService, adminAuthHeaders());
 
-    ChangeDescription change = getChangeDescription(dashboardService.getVersion());
+    Double version =
+        EntityUtil.nextVersion(dashboardService.getVersion()); // Account for the version change during delete
+    ChangeDescription change = getChangeDescription(version);
     change.setFieldsUpdated(
         Arrays.asList(
             new FieldChange().withName("deleted").withNewValue(false).withOldValue(true),
@@ -254,7 +257,7 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
     HttpResponseException exception =
         assertThrows(
             HttpResponseException.class,
-            () -> deleteEntity(dashboardService.getId(), authHeaders("test@open-metadata.org")));
+            () -> deleteAndCheckEntity(dashboardService, authHeaders("test@open-metadata.org")));
     TestUtils.assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
   }
 

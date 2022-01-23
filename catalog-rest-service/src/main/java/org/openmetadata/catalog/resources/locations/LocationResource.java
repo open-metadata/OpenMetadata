@@ -62,6 +62,7 @@ import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.RestUtil;
+import org.openmetadata.catalog.util.RestUtil.DeleteResponse;
 import org.openmetadata.catalog.util.RestUtil.PatchResponse;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
@@ -425,8 +426,8 @@ public class LocationResource {
       @Parameter(description = "Id of the location", schema = @Schema(type = "string")) @PathParam("id") String id)
       throws IOException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    dao.delete(UUID.fromString(id), false);
-    return Response.ok().build();
+    DeleteResponse<Location> response = dao.delete(securityContext.getUserPrincipal().getName(), id);
+    return response.toResponse();
   }
 
   @PUT

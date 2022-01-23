@@ -195,8 +195,8 @@ public interface EntityDAO<T> {
     return getEntityReference(findEntityByName(fqn));
   }
 
-  default String findJsonById(String fqn, Include include) {
-    return findById(getTableName(), fqn, toBoolean(include));
+  default String findJsonById(String id, Include include) {
+    return findById(getTableName(), id, toBoolean(include));
   }
 
   default String findJsonByFqn(String fqn, Include include) {
@@ -219,8 +219,8 @@ public interface EntityDAO<T> {
     return exists(getTableName(), id.toString());
   }
 
-  default int delete(UUID id) {
-    int rowsDeleted = delete(getTableName(), id.toString());
+  default int delete(String id) {
+    int rowsDeleted = delete(getTableName(), id);
     if (rowsDeleted <= 0) {
       String entityName = Entity.getEntityNameFromClass(getEntityClass());
       throw EntityNotFoundException.byMessage(entityNotFound(entityName, id));

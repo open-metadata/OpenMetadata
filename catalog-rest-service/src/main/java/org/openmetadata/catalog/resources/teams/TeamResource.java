@@ -62,6 +62,7 @@ import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.RestUtil;
+import org.openmetadata.catalog.util.RestUtil.DeleteResponse;
 import org.openmetadata.catalog.util.RestUtil.PatchResponse;
 import org.openmetadata.catalog.util.ResultList;
 
@@ -356,8 +357,8 @@ public class TeamResource {
   public Response delete(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("id") String id)
       throws IOException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    dao.delete(UUID.fromString(id), false);
-    return Response.ok().build();
+    DeleteResponse<Team> response = dao.delete(securityContext.getUserPrincipal().getName(), id);
+    return response.toResponse();
   }
 
   private Team getTeam(CreateTeam ct, SecurityContext securityContext) {
