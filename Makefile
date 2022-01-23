@@ -146,7 +146,7 @@ core_bump_version_dev:  ## Bump a `dev` version to the ingestion-core module. To
 		python -m incremental.update metadata --dev
 
 .PHONY: core_publish
-core_publish:  ## Publish the ingestion-core module to Test PyPI
+core_publish:  ## Install, generate and publish the ingestion-core module to Test PyPI
 	$(MAKE) core_clean core_generate
 	cd ingestion-core; \
 		. venv/bin/activate; \
