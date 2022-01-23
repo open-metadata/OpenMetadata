@@ -28,7 +28,7 @@ install_dev:  ## Install the ingestion module with dev dependencies
 .PHONY: precommit_install
 precommit_install:  ## Install the project's precommit hooks from .pre-commit-config.yaml
 	@echo "Installing pre-commit hooks"
-	@echo "Make sure to first run `make install_test`"
+	@echo "Make sure to first run install_test first"
 	pre-commit install
 
 ## Checkstyle
