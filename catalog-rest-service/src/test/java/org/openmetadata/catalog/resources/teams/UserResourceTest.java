@@ -264,7 +264,7 @@ public class UserResourceTest extends EntityResourceTest<User> {
 
     // Empty query field .../users?fields=
     HttpResponseException exception =
-        assertThrows(HttpResponseException.class, () -> getEntity(user.getId(), "", adminAuthHeaders()));
+        assertThrows(HttpResponseException.class, () -> getEntity(user.getId(), "test", adminAuthHeaders()));
     TestUtils.assertResponseContains(exception, BAD_REQUEST, "Invalid field name");
 
     // .../users?fields=invalidField

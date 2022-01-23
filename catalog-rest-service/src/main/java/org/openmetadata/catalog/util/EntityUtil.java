@@ -384,7 +384,7 @@ public final class EntityUtil {
     private final List<String> fieldList;
 
     public Fields(List<String> validFields, String fieldsParam) {
-      if (fieldsParam == null) {
+      if (fieldsParam == null || fieldsParam.isEmpty()) {
         fieldList = Collections.emptyList();
         return;
       }

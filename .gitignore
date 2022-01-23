@@ -48,6 +48,7 @@ logs
 .idea/modules.xml
 .idea/runConfigurations.xml
 .idea/workspace.xml
+.idea/uiDesigner.xml
 # Package Files
 *.jar
 *.war

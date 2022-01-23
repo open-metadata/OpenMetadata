@@ -128,8 +128,8 @@ public class TeamResourceTest extends EntityResourceTest<Team> {
 
     // Empty query field .../teams?fields=
     HttpResponseException exception =
-        assertThrows(HttpResponseException.class, () -> getTeam(team.getId(), "", adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, CatalogExceptionMessage.invalidField(""));
+        assertThrows(HttpResponseException.class, () -> getTeam(team.getId(), "test", adminAuthHeaders()));
+    assertResponse(exception, BAD_REQUEST, CatalogExceptionMessage.invalidField("test"));
 
     // .../teams?fields=invalidField
     exception =

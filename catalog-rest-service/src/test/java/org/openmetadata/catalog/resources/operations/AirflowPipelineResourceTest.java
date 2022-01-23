@@ -19,6 +19,7 @@ import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.catalog.Entity.DATABASE_SERVICE;
 import static org.openmetadata.catalog.Entity.helper;
 import static org.openmetadata.catalog.airflow.AirflowUtils.INGESTION_CONNECTION_ARGS;
@@ -39,9 +40,11 @@ import java.net.URISyntaxException;
 import java.text.ParseException;
 import java.util.Arrays;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.function.Predicate;
 import javax.ws.rs.core.Response.Status;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
@@ -59,6 +62,7 @@ import org.openmetadata.catalog.airflow.models.OpenMetadataIngestionConfig;
 import org.openmetadata.catalog.airflow.models.OpenMetadataIngestionTask;
 import org.openmetadata.catalog.api.operations.pipelines.CreateAirflowPipeline;
 import org.openmetadata.catalog.api.operations.pipelines.PipelineConfig;
+import org.openmetadata.catalog.api.services.CreateDatabaseService;
 import org.openmetadata.catalog.entity.services.DatabaseService;
 import org.openmetadata.catalog.jdbi3.AirflowPipelineRepository;
 import org.openmetadata.catalog.operations.pipelines.AirflowPipeline;
@@ -410,6 +414,84 @@ public class AirflowPipelineResourceTest extends EntityOperationsResourceTest<Ai
   }
 
   @Test
+  void list_AirflowPipelinesList_200(TestInfo test) throws IOException {
+    DatabaseServiceResourceTest databaseServiceResourceTest = new DatabaseServiceResourceTest();
+    CreateDatabaseService createSnowflakeService =
+        new CreateDatabaseService()
+            .withName("snowflake_test_list")
+            .withServiceType(CreateDatabaseService.DatabaseServiceType.Snowflake)
+            .withDatabaseConnection(TestUtils.DATABASE_CONNECTION);
+    DatabaseService snowflakeDatabaseService =
+        databaseServiceResourceTest.createEntity(createSnowflakeService, adminAuthHeaders());
+    EntityReference snowflakeRef =
+        new EntityReference()
+            .withName(snowflakeDatabaseService.getName())
+            .withId(snowflakeDatabaseService.getId())
+            .withType(Entity.DATABASE_SERVICE);
+
+    CreateDatabaseService createBigQueryService =
+        new CreateDatabaseService()
+            .withName("bigquery_test_list")
+            .withServiceType(CreateDatabaseService.DatabaseServiceType.BigQuery)
+            .withDatabaseConnection(TestUtils.DATABASE_CONNECTION);
+    DatabaseService databaseService =
+        databaseServiceResourceTest.createEntity(createBigQueryService, adminAuthHeaders());
+    EntityReference bigqueryRef =
+        new EntityReference()
+            .withName(databaseService.getName())
+            .withId(databaseService.getId())
+            .withType(Entity.DATABASE_SERVICE);
+
+    CreateAirflowPipeline requestPipeline_1 =
+        create(test)
+            .withName("ingestion_1")
+            .withPipelineType(PipelineType.METADATA)
+            .withService(bigqueryRef)
+            .withDescription("description")
+            .withScheduleInterval("5 * * * *");
+    AirflowPipeline pipelineBigquery1 = createAndCheckEntity(requestPipeline_1, adminAuthHeaders());
+    CreateAirflowPipeline requestPipeline_2 =
+        create(test)
+            .withName("ingestion_2")
+            .withPipelineType(PipelineType.METADATA)
+            .withService(bigqueryRef)
+            .withDescription("description")
+            .withScheduleInterval("5 * * * *");
+    AirflowPipeline pipelineBigquery2 = createAndCheckEntity(requestPipeline_2, adminAuthHeaders());
+    CreateAirflowPipeline requestPipeline_3 =
+        create(test)
+            .withName("ingestion_2")
+            .withPipelineType(PipelineType.METADATA)
+            .withService(snowflakeRef)
+            .withDescription("description")
+            .withScheduleInterval("5 * * * *");
+    AirflowPipeline airflowPipeline3 = createAndCheckEntity(requestPipeline_3, adminAuthHeaders());
+    // List charts by filtering on service name and ensure right charts in the response
+    Map<String, String> queryParams =
+        new HashMap<>() {
+          {
+            put("service", bigqueryRef.getName());
+          }
+        };
+    Predicate<AirflowPipeline> isPipelineBigquery1 = p -> p.getId().equals(pipelineBigquery1.getId());
+    Predicate<AirflowPipeline> isPipelineBigquery2 = u -> u.getId().equals(pipelineBigquery2.getId());
+    Predicate<AirflowPipeline> isPipelineBigquery3 = u -> u.getId().equals(airflowPipeline3.getId());
+    List<AirflowPipeline> actualBigqueryPipelines = listEntities(queryParams, adminAuthHeaders()).getData();
+    assertEquals(2, actualBigqueryPipelines.size());
+    assertTrue(actualBigqueryPipelines.stream().anyMatch(isPipelineBigquery1));
+    assertTrue(actualBigqueryPipelines.stream().anyMatch(isPipelineBigquery2));
+    queryParams =
+        new HashMap<>() {
+          {
+            put("service", snowflakeRef.getName());
+          }
+        };
+    List<AirflowPipeline> actualSnowflakePipelines = listEntities(queryParams, adminAuthHeaders()).getData();
+    assertEquals(1, actualSnowflakePipelines.size());
+    assertTrue(actualSnowflakePipelines.stream().anyMatch(isPipelineBigquery3));
+  }
+
+  @Test
   void put_AirflowPipelineUpdate_200(TestInfo test) throws IOException {
     CreateAirflowPipeline request = create(test).withService(BIGQUERY_REFERENCE).withDescription(null).withOwner(null);
     AirflowPipeline ingestion = createAndCheckEntity(request, adminAuthHeaders());
@@ -453,7 +535,7 @@ public class AirflowPipelineResourceTest extends EntityOperationsResourceTest<Ai
     assertListNotNull(ingestion.getOwner(), ingestion.getService());
   }
 
-  private CreateAirflowPipeline create(TestInfo test) {
+  public CreateAirflowPipeline create(TestInfo test) {
     return create(getEntityName(test));
   }
 
@@ -518,5 +600,10 @@ public class AirflowPipelineResourceTest extends EntityOperationsResourceTest<Ai
           databaseConnection.getConnectionOptions().getAdditionalProperties(),
           source.getConfig().get(INGESTION_OPTIONS));
     }
+  }
+
+  private void listDatabaseServicePipelines(AirflowPipeline airflowPipeline) throws IOException, ParseException {
+    DatabaseService databaseService = helper(airflowPipeline).findEntity("service", DATABASE_SERVICE);
+    DatabaseServiceResourceTest.getResource("services/databaseServices");
   }
 }
