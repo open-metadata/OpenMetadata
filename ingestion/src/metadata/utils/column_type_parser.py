@@ -1,6 +1,5 @@
 import re
-from typing import Any, Dict, Optional, Type
-from typing import List, Union
+from typing import Any, Dict, List, Optional, Type, Union
 
 from sqlalchemy.sql import sqltypes as types
 from sqlalchemy.types import TypeEngine

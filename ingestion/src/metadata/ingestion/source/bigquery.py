@@ -9,20 +9,23 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+import json
+import logging
 import os
-from typing import Optional, Tuple, Any
-import json, tempfile, logging
+import tempfile
+from typing import Any, Optional, Tuple
 
-from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
-from metadata.ingestion.source.sql_source import SQLSource
-from metadata.ingestion.source.sql_source_common import SQLConnectionConfig
-from metadata.utils.column_type_parser import create_sqlalchemy_type
 from sqlalchemy_bigquery import _types
 from sqlalchemy_bigquery._struct import STRUCT
 from sqlalchemy_bigquery._types import (
     _get_sqla_column_type,
     _get_transitive_schema_fields,
 )
+
+from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
+from metadata.ingestion.source.sql_source import SQLSource
+from metadata.ingestion.source.sql_source_common import SQLConnectionConfig
+from metadata.utils.column_type_parser import create_sqlalchemy_type
 
 GEOGRAPHY = create_sqlalchemy_type("GEOGRAPHY")
 _types._type_map["GEOGRAPHY"] = GEOGRAPHY
