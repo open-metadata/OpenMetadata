@@ -445,9 +445,9 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel> {
     return create(getEntityName(test));
   }
 
-  private CreateMlModel create(String entityName) {
+  private CreateMlModel create(String name) {
     return new CreateMlModel()
-        .withName(entityName)
+        .withName(name)
         .withAlgorithm(ALGORITHM)
         .withMlFeatures(ML_FEATURES)
         .withMlHyperParameters(ML_HYPERPARAMS);

@@ -1357,11 +1357,11 @@ public class TableResourceTest extends EntityResourceTest<Table> {
     return create(getEntityName(test, index));
   }
 
-  public CreateTable create(String entityName) {
+  public CreateTable create(String name) {
     TableConstraint constraint =
         new TableConstraint().withConstraintType(ConstraintType.UNIQUE).withColumns(List.of(COLUMNS.get(0).getName()));
     return new CreateTable()
-        .withName(entityName)
+        .withName(name)
         .withDatabase(DATABASE.getId())
         .withColumns(COLUMNS)
         .withTableConstraints(List.of(constraint));

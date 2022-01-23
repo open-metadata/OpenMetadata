@@ -484,11 +484,11 @@ public class UserResourceTest extends EntityResourceTest<User> {
     return create(getEntityName(test, index));
   }
 
-  public static CreateUser create(String entityName) {
+  public static CreateUser create(String name) {
     // user part of the email should be less than 64 in length
-    String emailUser = entityName == null || entityName.isEmpty() ? UUID.randomUUID().toString() : entityName;
+    String emailUser = name == null || name.isEmpty() ? UUID.randomUUID().toString() : name;
     emailUser = emailUser.length() > 64 ? emailUser.substring(0, 64) : emailUser;
-    return new CreateUser().withName(entityName).withEmail(emailUser + "@open-metadata.org");
+    return new CreateUser().withName(name).withEmail(emailUser + "@open-metadata.org");
   }
 
   public static User createUser(CreateUser create, Map<String, String> authHeaders) throws HttpResponseException {

@@ -150,7 +150,7 @@ public class FeedRepository {
     }
     EntityLink entityLink = EntityLink.parse(link);
     if (entityLink.getLinkType() != LinkType.ENTITY) {
-      throw new IllegalArgumentException("Only entity links of type <E#/{entityType}/{entityName}> is allowed");
+      throw new IllegalArgumentException("Only entity links of type <E#/{entityType}/{entityType}> is allowed");
     }
     EntityReference reference = EntityUtil.validateEntityLink(entityLink);
     List<String> threadIds = new ArrayList<>();

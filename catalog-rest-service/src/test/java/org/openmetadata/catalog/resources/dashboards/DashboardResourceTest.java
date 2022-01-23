@@ -287,8 +287,8 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard> {
     return create(getEntityName(test));
   }
 
-  public CreateDashboard create(String entityName) {
-    return new CreateDashboard().withName(entityName).withService(SUPERSET_REFERENCE);
+  public CreateDashboard create(String name) {
+    return new CreateDashboard().withName(name).withService(SUPERSET_REFERENCE);
   }
 
   @Override

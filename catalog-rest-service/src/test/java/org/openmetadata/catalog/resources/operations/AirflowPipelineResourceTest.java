@@ -533,9 +533,9 @@ public class AirflowPipelineResourceTest extends EntityOperationsResourceTest<Ai
     return create(getEntityName(test));
   }
 
-  private CreateAirflowPipeline create(String entityName) {
+  private CreateAirflowPipeline create(String name) {
     return new CreateAirflowPipeline()
-        .withName(entityName)
+        .withName(name)
         .withPipelineType(PipelineType.METADATA)
         .withService(BIGQUERY_REFERENCE)
         .withPipelineConfig(INGESTION_CONFIG)
