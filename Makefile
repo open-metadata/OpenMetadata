@@ -31,17 +31,14 @@ precommit_install:  ## Install the project's precommit hooks from .pre-commit-co
 	@echo "Make sure to first run install_test first"
 	pre-commit install
 
-## Checkstyle
-.PHONY: isort
-isort:  ## Run isort command to standardize Python imports
-	isort $(PY_SOURCE) --skip $(PY_SOURCE)/metadata/generated --profile black --multi-line 3
-
+## Python Checkstyle
 .PHONY: lint
 lint:  ## Run pylint on the Python sources to analyze the codebase
 	find $(PY_SOURCE) -path $(PY_SOURCE)/metadata/generated -prune -false -o -type f -name "*.py" | xargs pylint
 
-.PHONY: black
-black:  ## Run the black formatting tool on Python sources
+.PHONY: py_format
+py_format:  ## Run black and isort to format the Python codebase
+	isort $(PY_SOURCE) --skip $(PY_SOURCE)/metadata/generated --profile black --multi-line 3
 	black $(PY_SOURCE) --exclude $(PY_SOURCE)/metadata/generated
 
 .PHONY: black_check
