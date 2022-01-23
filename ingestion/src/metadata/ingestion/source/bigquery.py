@@ -54,6 +54,8 @@ _types.get_columns = get_columns
 
 class BigQueryConfig(SQLConnectionConfig):
     scheme = "bigquery"
+    host_port: Optional[str] = "bigquery.googleapis.com"
+    username: Optional[str] = None
     project_id: Optional[str] = None
     duration: int = 1
     service_type = "BigQuery"
@@ -72,7 +74,11 @@ class BigquerySource(SQLSource):
     def create(cls, config_dict, metadata_config_dict, ctx):
         config: SQLConnectionConfig = BigQueryConfig.parse_obj(config_dict)
         metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
-        if config.options.get("credentials", None):
+        if config.options.get("credentials_path"):
+            os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = config.options[
+                "credentials_path"
+            ]
+        elif config.options.get("credentials", None):
             cred_path = create_credential_temp_file(config.options.get("credentials"))
             os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = cred_path
             config.options["credentials_path"] = cred_path
