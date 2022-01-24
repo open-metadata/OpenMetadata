@@ -538,6 +538,19 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
   }
 
   @Test
+  void get_deletedVersion(TestInfo test) throws IOException, URISyntaxException {
+    Object create = createRequest(getEntityName(test), "description", "displayName", USER_OWNER1);
+    T entity = createEntity(create, adminAuthHeaders());
+    EntityInterface<T> entityInterface = getEntityInterface(entity);
+    getEntity(entityInterface.getId(), null, allFields, adminAuthHeaders());
+    deleteAndCheckEntity(entity, adminAuthHeaders());
+    EntityHistory history = getVersionList(entityInterface.getId(), adminAuthHeaders());
+    T latestVersion = JsonUtils.readValue((String) history.getVersions().get(0), entityClass);
+    entityInterface = getEntityInterface(latestVersion);
+    getVersion(entityInterface.getId(), entityInterface.getVersion(), adminAuthHeaders());
+  }
+
+  @Test
   void get_entityIncludeDeleted_200(TestInfo test) throws IOException, URISyntaxException {
     Object create = createRequest(getEntityName(test), "description", "displayName", USER_OWNER1);
     // Create first time using POST
