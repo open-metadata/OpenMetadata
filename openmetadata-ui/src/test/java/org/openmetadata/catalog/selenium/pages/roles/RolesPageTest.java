@@ -1,6 +1,9 @@
 package org.openmetadata.catalog.selenium.pages.roles;
 
 import com.github.javafaker.Faker;
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.logging.Logger;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.MethodOrderer;
@@ -17,10 +20,6 @@ import org.openqa.selenium.interactions.Actions;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.testng.Assert;
-
-import java.time.Duration;
-import java.util.ArrayList;
-import java.util.logging.Logger;
 
 @Order(19)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
@@ -108,7 +107,8 @@ public class RolesPageTest {
     Events.click(webDriver, By.cssSelector("[value='deny']"));
     Events.click(webDriver, By.cssSelector("[data-testid='saveButton']"));
     Thread.sleep(2000);
-    String access = webDriver.findElement(By.xpath("//tbody[@data-testid='table-body']/tr/td[2]/p")).getAttribute("innerHTML");
+    String access =
+        webDriver.findElement(By.xpath("//tbody[@data-testid='table-body']/tr/td[2]/p")).getAttribute("innerHTML");
     Assert.assertEquals(access, "DENY");
   }
 
