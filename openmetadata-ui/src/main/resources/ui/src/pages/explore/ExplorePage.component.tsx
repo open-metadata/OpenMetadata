@@ -57,6 +57,7 @@ const ExplorePage: FunctionComponent = () => {
   const [pipelineCount, setPipelineCount] = useState<number>(0);
   const [dbtModelCount, setDbtModelCount] = useState<number>(0);
   const [searchResult, setSearchResult] = useState<ExploreSearchData>();
+  const [showDeleted, setShowDeleted] = useState(false);
   const [initialSortField] = useState<string>(
     searchQuery
       ? tabsInfo[getCurrentTab(tab) - 1].sortField
@@ -107,7 +108,8 @@ const ExplorePage: FunctionComponent = () => {
         initialFilter,
         emptyValue,
         emptyValue,
-        entity
+        entity,
+        showDeleted
       )
     );
 
@@ -166,7 +168,8 @@ const ExplorePage: FunctionComponent = () => {
         d.filters,
         d.sortField,
         d.sortOrder,
-        d.searchIndex
+        d.searchIndex,
+        showDeleted
       );
     });
 
@@ -198,7 +201,7 @@ const ExplorePage: FunctionComponent = () => {
 
   useEffect(() => {
     fetchCounts();
-  }, [searchText]);
+  }, [searchText, showDeleted]);
 
   useEffect(() => {
     AppState.explorePageTab = tab;
@@ -260,6 +263,7 @@ const ExplorePage: FunctionComponent = () => {
             searchQuery={searchQuery}
             searchResult={searchResult}
             searchText={searchText}
+            showDeleted={showDeleted}
             sortValue={initialSortField}
             tab={tab}
             tabCounts={{
@@ -274,6 +278,7 @@ const ExplorePage: FunctionComponent = () => {
             updatePipelineCount={handlePipelineCount}
             updateTableCount={handleTableCount}
             updateTopicCount={handleTopicCount}
+            onShowDeleted={(checked) => setShowDeleted(checked)}
           />
         </PageContainerV1>
       )}
