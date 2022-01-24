@@ -21,7 +21,7 @@ import {
 
 const LoginCarousel = () => {
   return (
-    <div style={{ width: '633px' }}>
+    <div style={{ width: '85%' }}>
       <Slider {...LOGIN_SLIDER_SETTINGS}>
         {LOGIN_SLIDE.map((data) => (
           <div key={uniqueId()}>
