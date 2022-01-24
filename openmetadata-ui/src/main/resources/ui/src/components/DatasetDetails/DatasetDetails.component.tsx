@@ -483,6 +483,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                 id="lineageDetails">
                 <Entitylineage
                   addLineageHandler={addLineageHandler}
+                  deleted={deleted}
                   entityLineage={entityLineage}
                   isNodeLoading={isNodeLoading}
                   lineageLeafNodes={lineageLeafNodes}

@@ -51,6 +51,7 @@ export interface DashboardDetailsProps {
   followers: Array<User>;
   dashboardTags: Array<EntityTags>;
   slashedDashboardName: TitleBreadcrumbProps['titleLinks'];
+  deleted?: boolean;
   setActiveTabHandler: (value: number) => void;
   followDashboardHandler: () => void;
   unfollowDashboardHandler: () => void;
