@@ -131,15 +131,15 @@ authenticationConfiguration:
   callbackUrl: "http://localhost:8585/callback"
 
 elasticsearch:
-  host: localhost
-  port: 9200
-  scheme: "http"
+  host: ${ELASTICSEARCH_HOST:-localhost}
+  port: ${ELASTICSEARCH_PORT:-9200}
+  scheme: ${ELASTICSEARCH_SCHEME:-http}
 
 airflowConfiguration:
-  apiEndpoint: "http://localhost:8080"
-  username: "admin"
-  password: "admin"
-  metadataApiEndpoint: "http://localhost:8585/api"
+  apiEndpoint: http://${AIRFLOW_HOST:-localhost}:${AIRFLOW_PORT:-8080}
+  username: ${AIRFLOW_USERNAME:-admin}
+  password: ${AIRFLOW_PASSWORD:-admin}
+  metadataApiEndpoint: http://${SERVER_HOST:-localhost}:${SERVER_PORT:-8585}/api
   authProvider: "no-auth"
 
 eventHandlerConfiguration:
