@@ -12,36 +12,33 @@
  */
 
 import { AxiosError, AxiosResponse } from 'axios';
-import { toString } from 'lodash';
+// import { toString } from 'lodash';
 import { Paging } from 'Models';
 import React, { Fragment, useEffect, useState } from 'react';
 import {
-  addIngestionWorkflow,
-  deleteIngestionWorkflowsById,
+  // addIngestionWorkflow,
+  // deleteIngestionWorkflowsById,
   getIngestionWorkflows,
-  triggerIngestionWorkflowsById,
-  updateIngestionWorkflow,
 } from '../../axiosAPIs/ingestionWorkflowAPI';
 import { getServices } from '../../axiosAPIs/serviceAPI';
 import IngestionError from '../../components/common/error/IngestionError';
 import PageContainer from '../../components/containers/PageContainer';
-import Ingestion from '../../components/Ingestion/Ingestion.component';
+// import Ingestion from '../../components/Ingestion/Ingestion.component';
 import { IngestionData } from '../../components/Ingestion/ingestion.interface';
 import Loader from '../../components/Loader/Loader';
 import { DatabaseService } from '../../generated/entity/services/databaseService';
-import { EntityReference } from '../../generated/type/entityReference';
+// import { EntityReference } from '../../generated/type/entityReference';
 import useToastContext from '../../hooks/useToastContext';
-import { getCurrentUserId } from '../../utils/CommonUtils';
-import { getOwnerFromId } from '../../utils/TableUtils';
+// import { getCurrentUserId } from '../../utils/CommonUtils';
+// import { getOwnerFromId } from '../../utils/TableUtils';
 
 const IngestionPage = () => {
   const showToast = useToastContext();
   const [isLoading, setIsLoading] = useState(true);
-  const [ingestions, setIngestions] = useState<IngestionData[]>([]);
-  const [serviceList, setServiceList] = useState<Array<DatabaseService>>([]);
-  const [paging, setPaging] = useState<Paging>({} as Paging);
-  const [isConnectionAvailable, setConnectionAvailable] =
-    useState<boolean>(true);
+  const [, setIngestions] = useState<IngestionData[]>([]);
+  const [, setServiceList] = useState<Array<DatabaseService>>([]);
+  const [, setPaging] = useState<Paging>({} as Paging);
+  const [isConnectionAvailable] = useState<boolean>(true);
   const getDatabaseServices = () => {
     getServices('databaseServices')
       .then((res: AxiosResponse) => {
@@ -73,126 +70,126 @@ const IngestionPage = () => {
       });
   };
 
-  const triggerIngestionById = (
-    id: string,
-    displayName: string
-  ): Promise<void> => {
-    return new Promise<void>((resolve, reject) => {
-      triggerIngestionWorkflowsById(id)
-        .then((res) => {
-          if (res.data) {
-            resolve();
-            getAllIngestionWorkflows();
-          } else {
-            reject();
-          }
-        })
-        .catch((err: AxiosError) => {
-          const msg = err.message;
-          showToast({
-            variant: 'error',
-            body:
-              msg ?? `Error while triggering ingestion workflow ${displayName}`,
-          });
-          reject();
-        });
-    });
-  };
+  // const triggerIngestionById = (
+  //   id: string,
+  //   displayName: string
+  // ): Promise<void> => {
+  //   return new Promise<void>((resolve, reject) => {
+  //     triggerIngestionWorkflowsById(id)
+  //       .then((res) => {
+  //         if (res.data) {
+  //           resolve();
+  //           getAllIngestionWorkflows();
+  //         } else {
+  //           reject();
+  //         }
+  //       })
+  //       .catch((err: AxiosError) => {
+  //         const msg = err.message;
+  //         showToast({
+  //           variant: 'error',
+  //           body:
+  //             msg ?? `Error while triggering ingestion workflow ${displayName}`,
+  //         });
+  //         reject();
+  //       });
+  //   });
+  // };
 
-  const deleteIngestionById = (
-    id: string,
-    displayName: string
-  ): Promise<void> => {
-    return new Promise<void>((resolve, reject) => {
-      deleteIngestionWorkflowsById(id)
-        .then(() => {
-          resolve();
-          getAllIngestionWorkflows();
-        })
-        .catch((err: AxiosError) => {
-          const msg = err.message;
-          showToast({
-            variant: 'error',
-            body:
-              msg ?? `Error while deleting ingestion workflow ${displayName}`,
-          });
-          reject();
-        });
-    });
-  };
+  // const deleteIngestionById = (
+  //   id: string,
+  //   displayName: string
+  // ): Promise<void> => {
+  //   return new Promise<void>((resolve, reject) => {
+  //     deleteIngestionWorkflowsById(id)
+  //       .then(() => {
+  //         resolve();
+  //         getAllIngestionWorkflows();
+  //       })
+  //       .catch((err: AxiosError) => {
+  //         const msg = err.message;
+  //         showToast({
+  //           variant: 'error',
+  //           body:
+  //             msg ?? `Error while deleting ingestion workflow ${displayName}`,
+  //         });
+  //         reject();
+  //       });
+  //   });
+  // };
 
-  const updateIngestion = (
-    data: IngestionData,
-    id: string,
-    displayName: string,
-    triggerIngestion?: boolean
-  ): Promise<void> => {
-    return new Promise<void>((resolve, reject) => {
-      updateIngestionWorkflow(data)
-        .then(() => {
-          resolve();
-          getAllIngestionWorkflows();
-          if (triggerIngestion) {
-            triggerIngestionById(id, displayName).then();
-          }
-        })
-        .catch((err: AxiosError) => {
-          const msg = err.message;
-          showToast({
-            variant: 'error',
-            body:
-              msg ?? `Error while updating ingestion workflow ${displayName}`,
-          });
-          reject();
-        });
-    });
-  };
+  // const updateIngestion = (
+  //   data: IngestionData,
+  //   id: string,
+  //   displayName: string,
+  //   triggerIngestion?: boolean
+  // ): Promise<void> => {
+  //   return new Promise<void>((resolve, reject) => {
+  //     updateIngestionWorkflow(data)
+  //       .then(() => {
+  //         resolve();
+  //         getAllIngestionWorkflows();
+  //         if (triggerIngestion) {
+  //           triggerIngestionById(id, displayName).then();
+  //         }
+  //       })
+  //       .catch((err: AxiosError) => {
+  //         const msg = err.message;
+  //         showToast({
+  //           variant: 'error',
+  //           body:
+  //             msg ?? `Error while updating ingestion workflow ${displayName}`,
+  //         });
+  //         reject();
+  //       });
+  //   });
+  // };
 
-  const addIngestionWorkflowHandler = (
-    data: IngestionData,
-    triggerIngestion?: boolean
-  ) => {
-    setIsLoading(true);
-    const service = serviceList.find((s) => s.name === data.service.name);
-    const owner = getOwnerFromId(getCurrentUserId());
-    const ingestionData = {
-      ...data,
-      service: {
-        id: service?.id,
-        type: 'databaseService',
-        name: data.service.name,
-      } as EntityReference,
-      owner: {
-        id: owner?.id as string,
-        name: owner?.name,
-        type: 'user',
-      },
-    };
+  // const addIngestionWorkflowHandler = (
+  //   data: IngestionData,
+  //   triggerIngestion?: boolean
+  // ) => {
+  //   setIsLoading(true);
+  //   const service = serviceList.find((s) => s.name === data.service.name);
+  //   const owner = getOwnerFromId(getCurrentUserId());
+  //   const ingestionData = {
+  //     ...data,
+  //     service: {
+  //       id: service?.id,
+  //       type: 'databaseService',
+  //       name: data.service.name,
+  //     } as EntityReference,
+  //     owner: {
+  //       id: owner?.id as string,
+  //       name: owner?.name,
+  //       type: 'user',
+  //     },
+  //   };
 
-    addIngestionWorkflow(ingestionData)
-      .then((res: AxiosResponse) => {
-        const { id, displayName } = res.data;
-        setIsLoading(false);
-        getAllIngestionWorkflows();
-        if (triggerIngestion) {
-          triggerIngestionById(id, displayName).then();
-        }
-      })
-      .catch((err: AxiosError) => {
-        const errMsg = toString(err.response?.data?.message) ?? '';
-        if (errMsg.includes('Connection refused')) {
-          setConnectionAvailable(false);
-        }
-        setIsLoading(false);
-      });
-  };
+  //   addIngestionWorkflow(ingestionData)
+  //     .then((res: AxiosResponse) => {
+  //       const { id, displayName } = res.data;
+  //       setIsLoading(false);
+  //       getAllIngestionWorkflows();
+  //       if (triggerIngestion) {
+  //         triggerIngestionById(id, displayName).then();
+  //       }
+  //     })
+  //     .catch((err: AxiosError) => {
+  //       const errMsg = toString(err.response?.data?.message) ?? '';
+  //       if (errMsg.includes('Connection refused')) {
+  //         setConnectionAvailable(false);
+  //       }
+  //       setIsLoading(false);
+  //     });
+  // };
 
-  const pagingHandler = (cursorType: string) => {
-    const pagingString = `&${cursorType}=${
-      paging[cursorType as keyof typeof paging]
-    }`;
-    getAllIngestionWorkflows(pagingString);
-  };
+  // const pagingHandler = (cursorType: string) => {
+  //   const pagingString = `&${cursorType}=${
+  //     paging[cursorType as keyof typeof paging]
+  //   }`;
+  //   getAllIngestionWorkflows(pagingString);
+  // };
 
   useEffect(() => {
     getDatabaseServices();
@@ -207,7 +204,7 @@ const IngestionPage = () => {
         <Fragment>
           {isConnectionAvailable ? (
             <PageContainer className="tw-bg-white">
-              <Ingestion
+              {/* <Ingestion
                 addIngestion={addIngestionWorkflowHandler}
                 deleteIngestion={deleteIngestionById}
                 ingestionList={ingestions}
@@ -216,7 +213,7 @@ const IngestionPage = () => {
                 serviceList={serviceList}
                 triggerIngestion={triggerIngestionById}
                 updateIngestion={updateIngestion}
-              />
+              /> */}
             </PageContainer>
           ) : (
             <IngestionError />

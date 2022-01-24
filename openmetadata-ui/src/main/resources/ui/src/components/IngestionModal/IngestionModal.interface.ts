@@ -13,9 +13,10 @@
 
 import React from 'react';
 import {
-  ConnectorConfig,
-  IngestionData,
-} from '../Ingestion/ingestion.interface';
+  AirflowPipeline,
+  PipelineType,
+} from '../../generated/operations/pipelines/airflowPipeline';
+import { ConnectorConfig } from '../Ingestion/ingestion.interface';
 
 export interface ServiceData {
   serviceType: string;
@@ -24,7 +25,8 @@ export interface ServiceData {
 
 export interface IngestionModalProps {
   isUpdating?: boolean;
-  ingestionList: Array<IngestionData>;
+  ingestionList: Array<AirflowPipeline>;
+  ingestionTypes: PipelineType[];
   header: string | React.ReactNode;
   name?: string;
   service?: string;
@@ -32,9 +34,9 @@ export interface IngestionModalProps {
   type?: string;
   schedule?: string;
   connectorConfig?: ConnectorConfig;
-  selectedIngestion?: IngestionData;
-  addIngestion?: (data: IngestionData, triggerIngestion?: boolean) => void;
-  updateIngestion?: (data: IngestionData, triggerIngestion?: boolean) => void;
+  selectedIngestion?: AirflowPipeline;
+  addIngestion?: (data: AirflowPipeline, triggerIngestion?: boolean) => void;
+  updateIngestion?: (data: AirflowPipeline, triggerIngestion?: boolean) => void;
   onCancel: () => void;
 }
 
