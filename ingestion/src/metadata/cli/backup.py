@@ -18,9 +18,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import List, Optional, Tuple
 
-import boto3
 import click
-from boto3.exceptions import S3UploadFailedError
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -60,6 +58,16 @@ def upload_backup(endpoint: str, bucket: str, key: str, file: Path) -> None:
     :param key: S3 key to upload the backup file
     :param file: file to upload
     """
+
+    try:
+        import boto3
+        from boto3.exceptions import S3UploadFailedError
+    except ModuleNotFoundError as err:
+        logger.error(
+            "Trying to import boto3 to run the backup upload."
+            + " Please install openmetadata-ingestion[backup]."
+        )
+        raise err
 
     s3_key = Path(key) / file.name
     click.secho(
