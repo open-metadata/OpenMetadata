@@ -39,6 +39,7 @@ describe('Test Ingestion modal component', () => {
       <IngestionModal
         header="Add Ingestion"
         ingestionList={[]}
+        ingestionTypes={[]}
         serviceList={mockServiceList}
         onCancel={mockFunction}
       />,
@@ -76,6 +77,7 @@ describe('Test Ingestion modal component', () => {
         addIngestion={mockFunction}
         header="Add Ingestion"
         ingestionList={[]}
+        ingestionTypes={[]}
         serviceList={mockServiceList}
         onCancel={mockFunction}
       />,

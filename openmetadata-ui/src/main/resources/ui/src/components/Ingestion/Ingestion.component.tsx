@@ -22,9 +22,15 @@ import {
 } from '../../constants/constants';
 import { NoDataFoundPlaceHolder } from '../../constants/services.const';
 import { ServiceCategory } from '../../enums/service.enum';
-// import { useAuth } from '../../hooks/authHooks';
+import {
+  AirflowPipeline,
+  ConfigObject,
+  PipelineType,
+} from '../../generated/operations/pipelines/airflowPipeline';
+import { useAuth } from '../../hooks/authHooks';
 import { isEven } from '../../utils/CommonUtils';
-// import { Button } from '../buttons/Button/Button';
+import { getAirflowPipelineTypes } from '../../utils/ServiceUtils';
+import { Button } from '../buttons/Button/Button';
 import NextPrevious from '../common/next-previous/NextPrevious';
 import NonAdminAction from '../common/non-admin-action/NonAdminAction';
 import PopOver from '../common/popover/PopOver';
@@ -32,9 +38,10 @@ import Searchbar from '../common/searchbar/Searchbar';
 import IngestionModal from '../IngestionModal/IngestionModal.component';
 import Loader from '../Loader/Loader';
 import ConfirmationModal from '../Modals/ConfirmationModal/ConfirmationModal';
-import { IngestionData, Props } from './ingestion.interface';
+import { Props } from './ingestion.interface';
 
 const Ingestion: React.FC<Props> = ({
+  serviceType = '',
   ingestionList,
   serviceList,
   deleteIngestion,
@@ -44,7 +51,7 @@ const Ingestion: React.FC<Props> = ({
   paging,
   pagingHandler,
 }: Props) => {
-  // const { isAdminUser, isAuthDisabled } = useAuth();
+  const { isAdminUser, isAuthDisabled } = useAuth();
   const [searchText, setSearchText] = useState('');
   const [currTriggerId, setCurrTriggerId] = useState({ id: '', state: '' });
   const [isAdding, setIsAdding] = useState<boolean>(false);
@@ -59,11 +66,24 @@ const Ingestion: React.FC<Props> = ({
     id: '',
     name: '',
     state: '',
-    ingestion: {} as IngestionData,
+    ingestion: {} as AirflowPipeline,
   });
 
   const handleSearchAction = (searchValue: string) => {
     setSearchText(searchValue);
+  };
+
+  const getAirflowPipelineTypeOption = (): PipelineType[] => {
+    const types = getAirflowPipelineTypes(serviceType) || [];
+
+    return ingestionList.reduce((prev, curr) => {
+      const index = prev.indexOf(curr.pipelineType);
+      if (index > -1) {
+        prev.splice(index, 1);
+      }
+
+      return prev;
+    }, types);
   };
 
   const handleTriggerIngestion = (id: string, displayName: string) => {
@@ -85,39 +105,46 @@ const Ingestion: React.FC<Props> = ({
     });
   };
 
-  // const handleUpdate = (ingestion: IngestionData) => {
-  //   setUpdateSelection({
-  //     id: ingestion.id as string,
-  //     name: ingestion.displayName,
-  //     state: '',
-  //     ingestion: ingestion,
-  //   });
-  //   setIsUpdating(true);
-  // };
+  const handleUpdate = (ingestion: AirflowPipeline) => {
+    setUpdateSelection({
+      id: ingestion.id as string,
+      name: ingestion.name,
+      state: '',
+      ingestion: ingestion,
+    });
+    setIsUpdating(true);
+  };
 
   const handleCancelUpdate = () => {
     setUpdateSelection({
       id: '',
       name: '',
       state: '',
-      ingestion: {} as IngestionData,
+      ingestion: {} as AirflowPipeline,
     });
     setIsUpdating(false);
   };
   const handleUpdateIngestion = (
-    data: IngestionData,
+    data: AirflowPipeline,
     triggerIngestion?: boolean
   ) => {
-    const { service, owner } = updateSelection.ingestion;
-    const updatedData = {
+    const { pipelineConfig } = updateSelection.ingestion;
+    const updatedData: AirflowPipeline = {
       ...updateSelection.ingestion,
-      ...data,
-      service,
-      owner,
+      pipelineConfig: {
+        ...pipelineConfig,
+        config: {
+          ...(pipelineConfig.config as ConfigObject),
+
+          ...(data.pipelineConfig.config as ConfigObject),
+        },
+      },
+      scheduleInterval: data.scheduleInterval,
     };
     setUpdateSelection((prev) => ({ ...prev, state: 'waiting' }));
     updateIngestion(
-      updatedData,
+      updatedData as AirflowPipeline,
+      updateSelection.ingestion,
       updateSelection.id,
       updateSelection.name,
       triggerIngestion
@@ -147,14 +174,14 @@ const Ingestion: React.FC<Props> = ({
       });
   };
 
-  // const ConfirmDelete = (id: string, name: string) => {
-  //   setDeleteSelection({
-  //     id,
-  //     name,
-  //     state: '',
-  //   });
-  //   setIsConfirmationModalOpen(true);
-  // };
+  const ConfirmDelete = (id: string, name: string) => {
+    setDeleteSelection({
+      id,
+      name,
+      state: '',
+    });
+    setIsConfirmationModalOpen(true);
+  };
 
   const getServiceTypeFromName = (serviceName = ''): string => {
     return (
@@ -175,17 +202,17 @@ const Ingestion: React.FC<Props> = ({
       : ingestionList;
   }, [searchText, ingestionList]);
 
-  const getStatuses = (ingestion: IngestionData) => {
-    const lastFiveIngestions = ingestion.ingestionStatuses
+  const getStatuses = (ingestion: AirflowPipeline) => {
+    const lastFiveIngestions = ingestion.pipelineStatuses
       ?.sort((a, b) => {
         // Turn your strings into millis, and then subtract them
         // to get a value that is either negative, positive, or zero.
-        const date1 = new Date(a.startDate);
-        const date2 = new Date(b.startDate);
+        const date1 = new Date(a.startDate || '');
+        const date2 = new Date(b.startDate || '');
 
         return date1.getTime() - date2.getTime();
       })
-      .slice(Math.max(ingestion.ingestionStatuses.length - 5, 0));
+      .slice(Math.max(ingestion.pipelineStatuses.length - 5, 0));
 
     return lastFiveIngestions?.map((r, i) => {
       return (
@@ -234,21 +261,24 @@ const Ingestion: React.FC<Props> = ({
             ) : null}
           </div>
           <div className="tw-w-8/12 tw-flex tw-justify-end">
-            {/* <NonAdminAction
+            <NonAdminAction
               position="bottom"
               title={TITLE_FOR_NON_ADMIN_ACTION}>
               <Button
                 className={classNames('tw-h-8 tw-rounded tw-mb-2', {
-                  'tw-opacity-40': !isAdminUser && !isAuthDisabled,
+                  'tw-opacity-40':
+                    (!isAdminUser && !isAuthDisabled) ||
+                    !getAirflowPipelineTypeOption().length,
                 })}
                 data-testid="add-new-ingestion-button"
+                disabled={!getAirflowPipelineTypeOption().length}
                 size="small"
                 theme="primary"
                 variant="contained"
                 onClick={() => setIsAdding(true)}>
                 Add Ingestion
               </Button>
-            </NonAdminAction> */}
+            </NonAdminAction>
           </div>
         </div>
         {getSearchedIngestions().length ? (
@@ -275,10 +305,8 @@ const Ingestion: React.FC<Props> = ({
                       !isEven(index + 1) ? 'odd-row' : null
                     )}
                     key={index}>
-                    <td className="tableBody-cell">{ingestion.displayName}</td>
-                    <td className="tableBody-cell">
-                      {ingestion.ingestionType}
-                    </td>
+                    <td className="tableBody-cell">{ingestion.name}</td>
+                    <td className="tableBody-cell">{ingestion.pipelineType}</td>
                     <td className="tableBody-cell">
                       <Link
                         to={getServiceDetailsPath(
@@ -326,7 +354,7 @@ const Ingestion: React.FC<Props> = ({
                             onClick={() =>
                               handleTriggerIngestion(
                                 ingestion.id as string,
-                                ingestion.displayName
+                                ingestion.name
                               )
                             }>
                             {currTriggerId.id === ingestion.id ? (
@@ -339,7 +367,7 @@ const Ingestion: React.FC<Props> = ({
                               'Run'
                             )}
                           </div>
-                          {/* <div
+                          <div
                             className="link-text tw-mr-2"
                             data-testid="edit"
                             onClick={() => handleUpdate(ingestion)}>
@@ -352,14 +380,14 @@ const Ingestion: React.FC<Props> = ({
                             ) : (
                               'Edit'
                             )}
-                          </div> */}
-                          {/* <div
+                          </div>
+                          <div
                             className="link-text tw-mr-2"
                             data-testid="delete"
                             onClick={() =>
                               ConfirmDelete(
                                 ingestion.id as string,
-                                ingestion.displayName
+                                ingestion.name
                               )
                             }>
                             {deleteSelection.id === ingestion.id ? (
@@ -371,7 +399,7 @@ const Ingestion: React.FC<Props> = ({
                             ) : (
                               'Delete'
                             )}
-                          </div> */}
+                          </div>
                         </div>
                       </NonAdminAction>
                     </td>
@@ -406,6 +434,7 @@ const Ingestion: React.FC<Props> = ({
           }}
           header="Add Ingestion"
           ingestionList={ingestionList}
+          ingestionTypes={getAirflowPipelineTypeOption()}
           name=""
           service=""
           serviceList={serviceList.map((s) => ({
@@ -421,6 +450,7 @@ const Ingestion: React.FC<Props> = ({
           isUpdating
           header={<span>{`Edit ${updateSelection.name}`}</span>}
           ingestionList={ingestionList}
+          ingestionTypes={getAirflowPipelineTypes(serviceType) || []}
           selectedIngestion={updateSelection.ingestion}
           serviceList={serviceList.map((s) => ({
             name: s.name,

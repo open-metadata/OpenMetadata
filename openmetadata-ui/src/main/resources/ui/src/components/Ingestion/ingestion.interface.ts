@@ -14,6 +14,7 @@
 import { Paging } from 'Models';
 import { IngestionType } from '../../enums/service.enum';
 import { DatabaseService } from '../../generated/entity/services/databaseService';
+import { AirflowPipeline } from '../../generated/operations/pipelines/airflowPipeline';
 import { EntityReference } from '../../generated/type/entityReference';
 
 export interface ConnectorConfig {
@@ -48,15 +49,17 @@ export interface IngestionData {
 }
 
 export interface Props {
+  serviceType?: string;
   paging: Paging;
-  ingestionList: Array<IngestionData>;
+  ingestionList: Array<AirflowPipeline>;
   serviceList: Array<DatabaseService>;
   pagingHandler: (value: string) => void;
   deleteIngestion: (id: string, displayName: string) => Promise<void>;
   triggerIngestion: (id: string, displayName: string) => Promise<void>;
-  addIngestion: (data: IngestionData, triggerIngestion?: boolean) => void;
+  addIngestion: (data: AirflowPipeline, triggerIngestion?: boolean) => void;
   updateIngestion: (
-    data: IngestionData,
+    data: AirflowPipeline,
+    oldData: AirflowPipeline,
     id: string,
     displayName: string,
     triggerIngestion?: boolean
