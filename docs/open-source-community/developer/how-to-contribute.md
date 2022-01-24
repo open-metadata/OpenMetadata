@@ -36,7 +36,7 @@ git remote -v
 git checkout -b ISSUE-200
 ```
 
-Make changes. Follow the [Coding Style](coding-style.md) Guide on best practices and [Build the code & run tests](build-code-run-tests.md) on how to set up IntelliJ, Maven.
+Make changes. Follow the [Coding Style](docs/open-source-community/developer/backend/coding-style.md) Guide on best practices and [Build the code & run tests](build-code-run-tests.md) on how to set up IntelliJ, Maven.
 
 ## Push your changes to Github
 
