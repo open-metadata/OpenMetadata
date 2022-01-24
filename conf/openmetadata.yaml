@@ -112,9 +112,9 @@ database:
 
 
 elasticsearch:
-  host: localhost
-  port: 9200
-  scheme: "http"
+  host: ${ELASTICSEARCH_HOST:-localhost}
+  port: ${ELASTICSEARCH_PORT:-9200}
+  scheme: ${ELASTICSEARCH_SCHEME:-http}
 
 eventHandlerConfiguration:
   eventHandlerClassNames:
@@ -122,16 +122,16 @@ eventHandlerConfiguration:
     - "org.openmetadata.catalog.events.ChangeEventHandler"
 
 airflowConfiguration:
-  apiEndpoint: "http://192.168.1.45:8080"
-  username: "admin"
-  password: "admin"
-  metadataApiEndpoint: "http://192.168.1.20:8585/api"
+  apiEndpoint: http://${AIRFLOW_HOST:-localhost}:${AIRFLOW_PORT:-8080}
+  username: ${AIRFLOW_USERNAME:-admin}
+  password: ${AIRFLOW_PASSWORD:-admin}
+  metadataApiEndpoint: http://${SERVER_HOST:-localhost}:${SERVER_PORT:-8585}/api
   authProvider: "no-auth"
 
 slackEventPublishers:
   - name: "slack events"
     webhookUrl: "slackIncomingWebhook"
-    openMetadataUrl: "http://localhost:8585"
+    openMetadataUrl: http://${SERVER_HOST:-localhost}:${SERVER_PORT:-8585}
     filters:
       - eventType: "entityCreated"
         entities:
