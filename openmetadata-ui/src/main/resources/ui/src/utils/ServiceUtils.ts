@@ -48,7 +48,9 @@ import {
   IngestionType,
   MessagingServiceType,
   PipelineServiceType,
+  ServiceCategory,
 } from '../enums/service.enum';
+import { PipelineType } from '../generated/operations/pipelines/airflowPipeline';
 import { ApiData } from '../pages/services';
 
 export const serviceTypeLogo = (type: string) => {
@@ -346,4 +348,47 @@ export const getIngestionTypeList = (
   }
 
   return ingestionType;
+};
+
+export const getAirflowPipelineTypes = (
+  serviceType: string,
+  onlyMetaData = false
+): Array<PipelineType> | undefined => {
+  if (onlyMetaData) {
+    return [PipelineType.Metadata];
+  }
+  switch (serviceType) {
+    case DatabaseServiceType.REDSHIFT:
+    case DatabaseServiceType.BIGQUERY:
+    case DatabaseServiceType.SNOWFLAKE:
+      return [PipelineType.Metadata, PipelineType.QueryUsage];
+
+    case DatabaseServiceType.HIVE:
+    case DatabaseServiceType.MSSQL:
+    case DatabaseServiceType.MYSQL:
+    case DatabaseServiceType.POSTGRES:
+    case DatabaseServiceType.TRINO:
+    case DatabaseServiceType.VERTICA:
+      return [PipelineType.Metadata];
+
+    default:
+      return;
+  }
+};
+
+export const getIsIngestionEnable = (serviceCategory: ServiceCategory) => {
+  switch (serviceCategory) {
+    case ServiceCategory.DATABASE_SERVICES:
+      return true;
+
+    case ServiceCategory.MESSAGING_SERVICES:
+    case ServiceCategory.PIPELINE_SERVICES:
+    case ServiceCategory.DASHBOARD_SERVICES:
+      return false;
+
+    default:
+      break;
+  }
+
+  return false;
 };

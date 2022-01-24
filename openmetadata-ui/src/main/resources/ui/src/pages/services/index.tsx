@@ -185,11 +185,6 @@ const ServicesPage = () => {
     setEditData(undefined);
   };
 
-  const handleEdit = (value: ServiceDataObj) => {
-    setEditData(value);
-    setIsModalOpen(true);
-  };
-
   const handleUpdate = (
     selectedService: string,
     id: string,
@@ -381,20 +376,6 @@ const ServicesPage = () => {
 
   const getOptionalFields = (service: ServiceDataObj): JSX.Element => {
     switch (serviceName) {
-      case ServiceCategory.DATABASE_SERVICES: {
-        // const databaseService = service as unknown as DatabaseService;
-
-        return (
-          <>
-            <div className="tw-mb-1" data-testid="additional-field">
-              <label className="tw-mb-0">Driver Class:</label>
-              <span className=" tw-ml-1 tw-font-normal tw-text-grey-body">
-                {/* {databaseService.jdbc.driverClass} */}
-              </span>
-            </div>
-          </>
-        );
-      }
       case ServiceCategory.MESSAGING_SERVICES: {
         const messagingService = service as unknown as MessagingService;
 
@@ -591,21 +572,6 @@ const ServicesPage = () => {
                         </div>
                         <div className="tw-flex tw-flex-col tw-justify-between tw-flex-none">
                           <div className="tw-flex tw-justify-end">
-                            <NonAdminAction
-                              position="top"
-                              title={TITLE_FOR_NON_ADMIN_ACTION}>
-                              <button
-                                className="tw-pr-3 focus:tw-outline-none"
-                                data-testid={`edit-service-${service.name}`}
-                                onClick={() => handleEdit(service)}>
-                                <SVGIcons
-                                  alt="edit"
-                                  icon="icon-edit"
-                                  title="Edit"
-                                  width="12px"
-                                />
-                              </button>
-                            </NonAdminAction>
                             <NonAdminAction
                               position="top"
                               title={TITLE_FOR_NON_ADMIN_ACTION}>

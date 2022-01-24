@@ -37,12 +37,18 @@ import {
 import { DatabaseService } from '../../../generated/entity/services/databaseService';
 import { MessagingService } from '../../../generated/entity/services/messagingService';
 import { PipelineService } from '../../../generated/entity/services/pipelineService';
+import { useAuth } from '../../../hooks/authHooks';
 import {
   errorMsg,
   getCurrentDate,
+  getCurrentUserId,
+  getSeparator,
   getServiceLogo,
 } from '../../../utils/CommonUtils';
-import { getIngestionTypeList } from '../../../utils/ServiceUtils';
+import {
+  getIngestionTypeList,
+  getIsIngestionEnable,
+} from '../../../utils/ServiceUtils';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 // import { fromISOString } from '../../../utils/ServiceUtils';
 import { Button } from '../../buttons/Button/Button';
@@ -156,6 +162,7 @@ type EditorContentRef = {
 };
 
 type IngestionListType = {
+  showError: boolean;
   type: string;
   ingestionName: string;
   tableFilterPattern: {
@@ -200,9 +207,10 @@ export const Field = ({ children }: { children: React.ReactNode }) => {
   return <div className="tw-mt-4">{children}</div>;
 };
 
-const requiredField = (label: string) => (
+const requiredField = (label: string, excludeSpace = false) => (
   <>
-    {label} <span className="tw-text-red-500">&nbsp;*</span>
+    {label}{' '}
+    <span className="tw-text-red-500">{!excludeSpace && <>&nbsp;</>}*</span>
   </>
 );
 
@@ -274,11 +282,12 @@ export const AddServiceModal: FunctionComponent<Props> = ({
   onCancel,
   serviceList,
 }: Props) => {
-  const [isDatabaseService] = useState(
-    serviceName == ServiceCategory.DATABASE_SERVICES
+  const { isAdminUser } = useAuth();
+  const [isIngestionEnable] = useState(
+    getIsIngestionEnable(serviceName as ServiceCategory)
   );
   const [steps] = useState<Array<StepperStepType>>(
-    isDatabaseService ? STEPS_FOR_DATABASE_SERVICE : STEPS_FOR_OTHER_SERVICE
+    isIngestionEnable ? STEPS_FOR_DATABASE_SERVICE : STEPS_FOR_OTHER_SERVICE
   );
   const [editData] = useState({ edit: !!data, id: data?.id });
   const [serviceType, setServiceType] = useState(
@@ -299,12 +308,12 @@ export const AddServiceModal: FunctionComponent<Props> = ({
   );
   const [dashboardUrl, setDashboardUrl] = useState(data?.dashboardUrl || '');
   const [username, setUsername] = useState(
-    isDatabaseService
+    serviceName === ServiceCategory.DATABASE_SERVICES
       ? data?.databaseConnection?.username || ''
       : data?.username || ''
   );
   const [password, setPassword] = useState(
-    isDatabaseService
+    serviceName === ServiceCategory.DATABASE_SERVICES
       ? data?.databaseConnection?.password || ''
       : data?.password || ''
   );
@@ -332,9 +341,6 @@ export const AddServiceModal: FunctionComponent<Props> = ({
     pipelineUrl: false,
   });
 
-  const [showErrorMsgForIngestion, setShowErrorMsgForIngestion] = useState({
-    ingestionName: false,
-  });
   const [description, setdescription] = useState(data?.description || '');
   const [sameNameError, setSameNameError] = useState(false);
   const [activeStepperStep, setActiveStepperStep] = useState(data ? 2 : 1);
@@ -346,14 +352,10 @@ export const AddServiceModal: FunctionComponent<Props> = ({
   const [connectionOptions, setConnectionOptions] = useState<
     DynamicFormFieldType[]
   >(getKeyValuePair(data?.databaseConnection?.connectionOptions || {}) || []);
-  const [isAddConnectionOptionDisable, setIsAddConnectionOptionDisable] =
-    useState(false);
 
   const [connectionArguments, setConnectionArguments] = useState<
     DynamicFormFieldType[]
   >(getKeyValuePair(data?.databaseConnection?.connectionArguments || {}) || []);
-  const [isAddConnectionArgumentDisable, setIsAddConnectionArgumentDisable] =
-    useState(false);
 
   const markdownRef = useRef<EditorContentRef>();
 
@@ -405,12 +407,13 @@ export const AddServiceModal: FunctionComponent<Props> = ({
       selectService: false,
     });
     setSelectService(service);
-    if (isDatabaseService) {
+    if (isIngestionEnable) {
       const ingestionTypes = getIngestionTypeList(service, true) || [];
       const ingestionScheduleList: IngestionListType[] = [];
 
       ingestionTypes.forEach((s, i) => {
         ingestionScheduleList.push({
+          showError: false,
           type: s,
           ingestionName: '',
           includeView: true,
@@ -424,7 +427,7 @@ export const AddServiceModal: FunctionComponent<Props> = ({
             includePattern: '',
             excludePattern: '',
           },
-          isIngestionActive: false,
+          isIngestionActive: true,
           repeatFrequency: INGESTION_SCHEDULER_INITIAL_VALUE,
           startDate: getCurrentDate(),
           endDate: '',
@@ -532,40 +535,79 @@ export const AddServiceModal: FunctionComponent<Props> = ({
     }
 
     const ingestionDetails: CreateAirflowPipeline[] =
-      isDatabaseService && ingestionTypeList
-        ? ingestionTypeList.map((value) => {
-            return {
-              name: value.ingestionName,
-              pipelineConfig: {
-                schema: Schema.DatabaseServiceMetadataPipeline,
-                config: {
-                  includeViews: value.includeView,
-                  generateSampleData: value.ingestSampleData,
-                  enableDataProfiler: value.enableDataProfiler,
-                  schemaFilterPattern: {
-                    includes:
-                      value.schemaFilterPattern.includePattern.split(','),
-                    excludes:
-                      value.schemaFilterPattern.excludePattern.split(','),
-                  },
-                  tableFilterPattern: {
-                    includes:
-                      value.tableFilterPattern.includePattern.split(','),
-                    excludes:
-                      value.tableFilterPattern.excludePattern.split(','),
+      isIngestionEnable && ingestionTypeList
+        ? ingestionTypeList.reduce((obj, value) => {
+            if (value.isIngestionActive) {
+              const schemaIncludePattern =
+                value.schemaFilterPattern.includePattern;
+              const schemaExcludePattern =
+                value.schemaFilterPattern.excludePattern;
+              const tableIncludePattern =
+                value.tableFilterPattern.includePattern;
+              const tableExcludePattern =
+                value.tableFilterPattern.excludePattern;
+
+              const ingestionObj = {
+                name: value.ingestionName,
+                pipelineConfig: {
+                  schema: Schema.DatabaseServiceMetadataPipeline,
+                  config: {
+                    includeViews: value.includeView,
+                    generateSampleData: value.ingestSampleData,
+                    enableDataProfiler: value.enableDataProfiler,
+                    schemaFilterPattern:
+                      !isEmpty(schemaIncludePattern) &&
+                      !isEmpty(schemaExcludePattern)
+                        ? {
+                            includes: !isEmpty(schemaIncludePattern)
+                              ? value.schemaFilterPattern.includePattern.split(
+                                  ','
+                                )
+                              : undefined,
+                            excludes: !isEmpty(schemaExcludePattern)
+                              ? value.schemaFilterPattern.excludePattern.split(
+                                  ','
+                                )
+                              : undefined,
+                          }
+                        : undefined,
+                    tableFilterPattern:
+                      !isEmpty(tableIncludePattern) &&
+                      !isEmpty(tableExcludePattern)
+                        ? {
+                            includes: !isEmpty(tableIncludePattern)
+                              ? value.tableFilterPattern.includePattern.split(
+                                  ','
+                                )
+                              : undefined,
+                            excludes: !isEmpty(tableExcludePattern)
+                              ? value.tableFilterPattern.excludePattern.split(
+                                  ','
+                                )
+                              : undefined,
+                          }
+                        : undefined,
                   },
                 },
-              },
-              service: {
-                type: 'databaseService',
-                id: '',
-              },
-              scheduleInterval: value.repeatFrequency,
-              startDate: value.startDate as unknown as Date,
-              endDate: value.endDate as unknown as Date,
-              forceDeploy: true,
-            };
-          })
+                service: {
+                  type: 'databaseService',
+                  id: '',
+                },
+                owner: {
+                  id: getCurrentUserId(),
+                  type: isAdminUser ? 'admin' : 'user',
+                },
+                scheduleInterval: value.repeatFrequency,
+                startDate: value.startDate as unknown as Date,
+                endDate: value.endDate as unknown as Date,
+                forceDeploy: true,
+              };
+
+              return [...obj, ingestionObj];
+            }
+
+            return obj;
+          }, [] as CreateAirflowPipeline[])
         : [];
 
     onSave(dataObj, serviceName, editData, ingestionDetails);
@@ -675,7 +717,6 @@ export const AddServiceModal: FunctionComponent<Props> = ({
 
   const addConnectionOptionFields = () => {
     setConnectionOptions([...connectionOptions, { key: '', value: '' }]);
-    setIsAddConnectionOptionDisable(true);
   };
 
   const removeConnectionOptionFields = (i: number) => {
@@ -692,15 +733,10 @@ export const AddServiceModal: FunctionComponent<Props> = ({
     const newFormValues = [...connectionOptions];
     newFormValues[i][field] = value;
     setConnectionOptions(newFormValues);
-
-    setIsAddConnectionOptionDisable(
-      () => isEmpty(newFormValues[i].key) || isEmpty(newFormValues[i].value)
-    );
   };
 
   const addConnectionArgumentFields = () => {
     setConnectionArguments([...connectionArguments, { key: '', value: '' }]);
-    setIsAddConnectionArgumentDisable(true);
   };
 
   const removeConnectionArgumentFields = (i: number) => {
@@ -717,10 +753,6 @@ export const AddServiceModal: FunctionComponent<Props> = ({
     const newFormValues = [...connectionArguments];
     newFormValues[i][field] = value;
     setConnectionArguments(newFormValues);
-
-    setIsAddConnectionArgumentDisable(
-      () => isEmpty(newFormValues[i].key) || isEmpty(newFormValues[i].value)
-    );
   };
 
   const getDatabaseFields = (): JSX.Element => {
@@ -729,36 +761,21 @@ export const AddServiceModal: FunctionComponent<Props> = ({
         <div className="tw-mt-4 tw-grid tw-grid-cols-3 tw-gap-2 ">
           <div className="tw-col-span-3">
             <label className="tw-block tw-form-label" htmlFor="url">
-              {requiredField('Connection Url:')}
+              {requiredField('Host Port:')}
             </label>
             <input
               className="tw-form-inputs tw-px-3 tw-py-1"
               data-testid="url"
               id="url"
               name="url"
-              placeholder="username:password@hostname:port"
+              placeholder="http(s)://hostname:port"
               type="text"
               value={url}
               onChange={handleValidation}
             />
-            {showErrorMsg.url && errorMsg('Connection url is required')}
+            {showErrorMsg.url && errorMsg('Host port is required')}
           </div>
         </div>
-        <Field>
-          <label className="tw-block tw-form-label" htmlFor="database">
-            Database:
-          </label>
-          <input
-            className="tw-form-inputs tw-px-3 tw-py-1"
-            data-testid="database"
-            id="database"
-            name="database"
-            placeholder="database name"
-            type="text"
-            value={database}
-            onChange={(e) => setDatabase(e.target.value)}
-          />
-        </Field>
         <Field>
           <label className="tw-block tw-form-label" htmlFor="username">
             Username:
@@ -788,14 +805,27 @@ export const AddServiceModal: FunctionComponent<Props> = ({
           />
         </Field>
 
+        <Field>
+          <label className="tw-block tw-form-label" htmlFor="database">
+            Database:
+          </label>
+          <input
+            className="tw-form-inputs tw-px-3 tw-py-1"
+            data-testid="database"
+            id="database"
+            name="database"
+            placeholder="database name"
+            type="text"
+            value={database}
+            onChange={(e) => setDatabase(e.target.value)}
+          />
+        </Field>
+
         <div>
           <div className="tw-flex tw-items-center tw-mt-6">
             <p className="w-form-label tw-mr-3">Connection Options</p>
             <Button
-              className={classNames('tw-h-5 tw-px-2', {
-                'tw-opacity-40': isAddConnectionOptionDisable,
-              })}
-              disabled={isAddConnectionOptionDisable}
+              className="tw-h-5 tw-px-2"
               size="x-small"
               theme="primary"
               variant="contained"
@@ -859,11 +889,8 @@ export const AddServiceModal: FunctionComponent<Props> = ({
           <div className="tw-flex tw-items-center tw-mt-6">
             <p className="w-form-label tw-mr-3">Connection Arguments</p>
             <Button
-              className={classNames('tw-h-5 tw-px-2', {
-                'tw-opacity-40': isAddConnectionArgumentDisable,
-              })}
-              disabled={isAddConnectionArgumentDisable}
-              size="small"
+              className="tw-h-5 tw-px-2"
+              size="x-small"
               theme="primary"
               variant="contained"
               onClick={addConnectionArgumentFields}>
@@ -1234,21 +1261,6 @@ export const AddServiceModal: FunctionComponent<Props> = ({
     }
   };
 
-  const getCronScring = () => {
-    const cronString = ingestionTypeList?.reduce((stg, data) => {
-      return data.id === selectedIngestionType ? data.repeatFrequency : stg;
-    }, '');
-
-    return (
-      <p className="tw-pl-6">
-        {cronstrue.toString(cronString || '', {
-          use24HourTimeFormat: true,
-          verbose: true,
-        })}
-      </p>
-    );
-  };
-
   const getConfigurationData = () => {
     let data: {
       key: string;
@@ -1259,14 +1271,53 @@ export const AddServiceModal: FunctionComponent<Props> = ({
       case ServiceCategory.DATABASE_SERVICES:
         data = [
           {
-            key: 'Connection Url',
+            key: 'Host Port',
             value: url,
           },
-          {
+        ];
+
+        if (username) {
+          data.push({
+            key: 'User Name',
+            value: username,
+          });
+        }
+
+        if (password) {
+          data.push({
+            key: 'Password',
+            value: (
+              <div>
+                <span
+                  className={classNames({
+                    'tw-align-middle': !isPasswordVisible,
+                  })}>
+                  {isPasswordVisible
+                    ? password
+                    : ''.padStart(password.length, '*')}
+                </span>
+                <i
+                  className={classNames(
+                    'far tw-text-grey-body tw-ml-2',
+                    {
+                      'fa-eye-slash': isPasswordVisible,
+                    },
+
+                    { 'fa-eye ': !isPasswordVisible }
+                  )}
+                  onClick={() => setIsPasswordVisible((pre) => !pre)}
+                />
+              </div>
+            ),
+          });
+        }
+
+        if (database) {
+          data.push({
             key: 'Database',
             value: database,
-          },
-        ];
+          });
+        }
 
         break;
 
@@ -1437,7 +1488,7 @@ export const AddServiceModal: FunctionComponent<Props> = ({
   };
 
   const getServiceDetailsPreview = () => {
-    let serviceDetailsData: Array<{
+    const serviceDetailsData: Array<{
       key: string;
       value: string | ReactNode;
     }> = [
@@ -1447,14 +1498,12 @@ export const AddServiceModal: FunctionComponent<Props> = ({
         value: name,
       },
     ];
+
     if (description) {
-      serviceDetailsData = [
-        ...serviceDetailsData,
-        {
-          key: 'Description',
-          value: <RichTextEditorPreviewer markdown={description} />,
-        },
-      ];
+      serviceDetailsData.push({
+        key: 'Description',
+        value: <RichTextEditorPreviewer markdown={description} />,
+      });
     }
 
     return serviceDetailsData;
@@ -1463,7 +1512,7 @@ export const AddServiceModal: FunctionComponent<Props> = ({
   const previousStepHandler = () => {
     let increamentCount = 1;
 
-    if (activeStepperStep === 5 && !isDatabaseService) {
+    if (activeStepperStep === 5 && !isIngestionEnable) {
       increamentCount = 2;
     }
 
@@ -1501,15 +1550,24 @@ export const AddServiceModal: FunctionComponent<Props> = ({
         break;
 
       case 4:
-        if (ingestionTypeList && selectedIngestionType) {
-          isValid = Boolean(
-            ingestionTypeList[selectedIngestionType - 1].ingestionName
-          );
-          setShowErrorMsgForIngestion({
-            ...showErrorMsgForIngestion,
-            ingestionName:
-              !ingestionTypeList[selectedIngestionType - 1].ingestionName,
+        if (ingestionTypeList) {
+          let noErrorListCount = 0;
+          const newFormValue = ingestionTypeList.map((value) => {
+            if (isEmpty(value.ingestionName)) {
+              isValid = false;
+
+              return {
+                ...value,
+                showError: true,
+              };
+            } else {
+              noErrorListCount++;
+            }
+
+            return value;
           });
+          isValid = ingestionTypeList.length === noErrorListCount;
+          setIngestionTypeList(newFormValue);
         } else {
           isValid = true;
         }
@@ -1523,7 +1581,7 @@ export const AddServiceModal: FunctionComponent<Props> = ({
     setActiveStepperStep((pre) => {
       let increamentCount = 1;
 
-      if (activeStepperStep === 3 && !isDatabaseService) {
+      if (activeStepperStep === 3 && !isIngestionEnable) {
         increamentCount = 2;
       }
 
@@ -1625,7 +1683,7 @@ export const AddServiceModal: FunctionComponent<Props> = ({
                       { 'tw-border-b': type.isIngestionActive }
                     )}>
                     <div className="tw-flex tw-items-center tw-gap-2">
-                      <p className="tw-text-primary">{type.type}</p>
+                      <p>Metadata Extraction</p>
                     </div>
                     <div>
                       <div
@@ -1664,26 +1722,24 @@ export const AddServiceModal: FunctionComponent<Props> = ({
                         onChange={(e) => {
                           const newFormValues = [...ingestionTypeList];
                           newFormValues[id].ingestionName = e.target.value;
+                          newFormValues[id].showError = Boolean(e.target.value);
                           setIngestionTypeList(newFormValues);
-                          setShowErrorMsgForIngestion({
-                            ...showErrorMsgForIngestion,
-                            ingestionName: false,
-                          });
                         }}
                       />
-                      {showErrorMsgForIngestion.ingestionName &&
+                      {type.showError &&
+                        isEmpty(type.ingestionName) &&
                         errorMsg('Ingestion Name is required')}
                       {/* {showErrorMsg.isPipelineNameExists &&
                         errorMsg(`Ingestion with similar name already exists.`)} */}
                     </Field>
                     <Field>
-                      <p>Table Filter</p>
+                      {getSeparator('Table Filter Pattern')}
                       <div className="tw-grid tw-grid-cols-2 tw-gap-x-4 tw-mt-1">
                         <div>
                           <label
                             className="tw-block"
                             htmlFor="tableIncludeFilterPattern">
-                            Include Patterns:
+                            Include:
                           </label>
                           <input
                             className="tw-form-inputs tw-px-3 tw-py-1"
@@ -1707,7 +1763,7 @@ export const AddServiceModal: FunctionComponent<Props> = ({
                           <label
                             className="tw-block"
                             htmlFor="tableExcludeFilterPattern">
-                            Exclude Patterns:
+                            Exclude:
                           </label>
                           <input
                             className="tw-form-inputs tw-px-3 tw-py-1"
@@ -1730,13 +1786,13 @@ export const AddServiceModal: FunctionComponent<Props> = ({
                       </div>
                     </Field>
                     <Field>
-                      <p>Schema Filter</p>
+                      {getSeparator('Schema Filter Pattern')}
                       <div className="tw-grid tw-grid-cols-2 tw-gap-x-4 tw-mt-1">
                         <div>
                           <label
                             className="tw-block"
                             htmlFor="schemaIncludeFilterPattern">
-                            Include Patterns:
+                            Include:
                           </label>
                           <input
                             className="tw-form-inputs tw-px-3 tw-py-1"
@@ -1760,7 +1816,7 @@ export const AddServiceModal: FunctionComponent<Props> = ({
                           <label
                             className="tw-block"
                             htmlFor="schemaExcludeFilterPattern">
-                            Exclude Patterns:
+                            Exclude:
                           </label>
                           <input
                             className="tw-form-inputs tw-px-3 tw-py-1"
@@ -1784,6 +1840,7 @@ export const AddServiceModal: FunctionComponent<Props> = ({
                     </Field>
 
                     <Field>
+                      <hr className="tw-pb-4 tw-mt-7" />
                       <div className="tw-flex tw-justify-between tw-pt-1">
                         <div className="tw-flex tw-gap-1">
                           <label>Include views</label>
@@ -1843,7 +1900,7 @@ export const AddServiceModal: FunctionComponent<Props> = ({
 
                     <div className="tw-mt-4" data-testid="schedule-interval">
                       <label htmlFor="">
-                        {requiredField('Schedule interval:')}
+                        {getSeparator(requiredField('Schedule interval', true))}
                       </label>
                       <div className="tw-flex tw-mt-2 tw-ml-3">
                         <CronEditor
@@ -1919,18 +1976,117 @@ export const AddServiceModal: FunctionComponent<Props> = ({
                 header="Configuration"
               />
 
-              {Boolean(
-                selectedIngestionType &&
-                  ingestionTypeList &&
-                  ingestionTypeList.length > 0
-              ) && (
+              {connectionOptions.length > 0 && (
+                <PreviewSection
+                  className="tw-mb-4 tw-mt-4"
+                  data={connectionOptions.filter((v) => v.key && v.value)}
+                  header="Connection Options"
+                />
+              )}
+
+              {connectionArguments.length > 0 && (
+                <PreviewSection
+                  className="tw-mb-4 tw-mt-4"
+                  data={connectionArguments.filter((v) => v.key && v.value)}
+                  header="Connection Arguments"
+                />
+              )}
+
+              {Boolean(ingestionTypeList && ingestionTypeList.length) && (
                 <Fragment>
-                  <PreviewSection
-                    className="tw-mb-4 tw-mt-4"
-                    data={[]}
-                    header="Scheduling"
-                  />
-                  {getCronScring()}
+                  {ingestionTypeList?.map((value) => {
+                    return value.isIngestionActive ? (
+                      <>
+                        <PreviewSection
+                          className="tw-mb-4 tw-mt-4"
+                          data={[
+                            {
+                              key: 'Ingestion name',
+                              value: value.ingestionName,
+                            },
+                            {
+                              key: 'Include views',
+                              value: value.includeView ? 'Yes' : 'No',
+                            },
+                            {
+                              key: 'Enable data profiler',
+                              value: value.enableDataProfiler ? 'Yes' : 'No',
+                            },
+                            {
+                              key: 'Ingest sample data',
+                              value: value.ingestSampleData ? 'Yes' : 'No',
+                            },
+                          ]}
+                          header="Scheduling"
+                        />
+
+                        <p className="tw-pl-6">
+                          {cronstrue.toString(value.repeatFrequency || '', {
+                            use24HourTimeFormat: true,
+                            verbose: true,
+                          })}
+                        </p>
+
+                        {(!isEmpty(value.tableFilterPattern.includePattern) ||
+                          !isEmpty(
+                            value.tableFilterPattern.excludePattern
+                          )) && (
+                          <PreviewSection
+                            className="tw-mb-4 tw-mt-4"
+                            data={[
+                              {
+                                key: 'Include',
+                                value: !isEmpty(
+                                  value.tableFilterPattern.includePattern
+                                )
+                                  ? value.tableFilterPattern.includePattern
+                                  : 'None',
+                              },
+                              {
+                                key: 'Exclude',
+                                value: !isEmpty(
+                                  value.tableFilterPattern.excludePattern
+                                )
+                                  ? value.tableFilterPattern.excludePattern
+                                  : 'None',
+                              },
+                            ]}
+                            header="Table Filter Patterns"
+                          />
+                        )}
+
+                        {(!isEmpty(value.schemaFilterPattern.includePattern) ||
+                          !isEmpty(
+                            value.schemaFilterPattern.excludePattern
+                          )) && (
+                          <PreviewSection
+                            className="tw-mb-4 tw-mt-4"
+                            data={[
+                              {
+                                key: 'Include',
+                                value: !isEmpty(
+                                  value.schemaFilterPattern.includePattern
+                                )
+                                  ? value.schemaFilterPattern.includePattern
+                                  : 'None',
+                              },
+                              {
+                                key: 'Exclude',
+                                value: !isEmpty(
+                                  value.schemaFilterPattern.excludePattern
+                                )
+                                  ? value.schemaFilterPattern.excludePattern
+                                  : 'None',
+                              },
+                            ]}
+                            header="Schema Filter Patterns"
+                          />
+                        )}
+                      </>
+                    ) : (
+                      <></>
+                    );
+                  })}
                 </Fragment>
               )}
             </div>
@@ -1974,7 +2130,7 @@ export const AddServiceModal: FunctionComponent<Props> = ({
           <IngestionStepper
             activeStep={activeStepperStep}
             stepperLineClassName={
-              isDatabaseService ? 'service-stepper-line' : undefined
+              isIngestionEnable ? 'service-stepper-line' : undefined
             }
             steps={steps}
           />

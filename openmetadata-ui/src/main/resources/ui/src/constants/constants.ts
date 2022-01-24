@@ -277,7 +277,7 @@ export const navLinkSettings = [
   { name: 'Tags', to: '/tags', disabled: false },
   // { name: 'Store', to: '/store', disabled: false },
   { name: 'Services', to: '/services', disabled: false },
-  { name: 'Ingestions', to: '/ingestion', disabled: false },
+  // { name: 'Ingestions', to: '/ingestion', disabled: false },
   // { name: 'Marketplace', to: '/marketplace', disabled: true },
   // { name: 'Preferences', to: '/preference', disabled: true },
 ];
