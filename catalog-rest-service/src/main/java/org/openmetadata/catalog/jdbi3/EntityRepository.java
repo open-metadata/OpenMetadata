@@ -332,7 +332,7 @@ public abstract class EntityRepository<T> {
       return JsonUtils.readValue(json, entityClass);
     }
     // If requested the latest version, return it from current version of the entity
-    T entity = setFields(dao.findEntityById(UUID.fromString(id)), putFields);
+    T entity = setFields(dao.findEntityById(UUID.fromString(id), Include.ALL), putFields);
     EntityInterface<T> entityInterface = getEntityInterface(entity);
     if (entityInterface.getVersion().equals(requestedVersion)) {
       return entity;
@@ -343,7 +343,7 @@ public abstract class EntityRepository<T> {
 
   @Transaction
   public EntityHistory listVersions(String id) throws IOException, ParseException {
-    T latest = setFields(dao.findEntityById(UUID.fromString(id)), putFields);
+    T latest = setFields(dao.findEntityById(UUID.fromString(id), Include.ALL), putFields);
     String extensionPrefix = EntityUtil.getVersionExtensionPrefix(entityType);
     List<EntityVersionPair> oldVersions = daoCollection.entityExtensionDAO().getEntityVersions(id, extensionPrefix);
     oldVersions.sort(EntityUtil.compareVersion.reversed());
