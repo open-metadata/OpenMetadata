@@ -116,10 +116,10 @@ yarn_start_dev_ui:  ## Run the UI locally with Yarn
 
 ## Ingestion Core
 .PHONY: core_install_dev
-core_install_dev:  ## Prepare a virtualenv for the ingestion-core module
+core_install_dev:  ## Prepare a venv for the ingestion-core module
 	cd ingestion-core; \
 		rm -rf venv; \
-		python -m virtualenv venv; \
+		python -m venv venv; \
 		. venv/bin/activate; \
 		python -m pip install ".[dev]"
 
