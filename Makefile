@@ -132,8 +132,8 @@ core_clean:  ## Clean the ingestion-core generated files
 .PHONY: core_generate
 core_generate:  ## Generate the pydantic models from the JSON Schemas to the ingestion-core module
 	$(MAKE) core_install_dev
-	mkdir -p ingestion-core/src/metadata/generated
-	. ingestion-core/venv/bin/activate
+	mkdir -p ingestion-core/src/metadata/generated; \
+	. ingestion-core/venv/bin/activate; \
 	datamodel-codegen --input catalog-rest-service/src/main/resources/json  --input-file-type jsonschema --output ingestion-core/src/metadata/generated
 
 .PHONY: core_bump_version_dev
