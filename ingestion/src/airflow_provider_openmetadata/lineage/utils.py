@@ -136,6 +136,19 @@ def get_xlets(
     return None
 
 
+def get_iso_start_date(props: Dict[str, Any]) -> Optional[str]:
+    """
+    Given a properties dict, return the start_date
+    as an iso string if start_date is informed
+    :param props: properties dict
+    :return: iso start_date or None
+    """
+    if "start_date" in props:
+        return convert_epoch_to_iso(int(float(props["start_date"])))
+
+    return None
+
+
 def create_pipeline_entity(
     dag_properties: Dict[str, str],
     task_properties: Dict[str, str],
@@ -161,7 +174,7 @@ def create_pipeline_entity(
         f"{pipeline_service_url}/taskinstance/list/"
         + f"?flt1_dag_id_equals={dag.dag_id}&_flt_3_task_id={operator.task_id}"
     )
-    dag_start_date = convert_epoch_to_iso(int(float(dag_properties["start_date"])))
+    dag_start_date = get_iso_start_date(dag_properties)
 
     downstream_tasks = []
     if "_downstream_task_ids" in task_properties:
