@@ -20,22 +20,21 @@ export const LOGIN_SLIDE = [
   {
     image: screenShot1,
     description:
-      'Centralized Metadata Store, Discover, Collaborate and get your Data Right',
+      'Enables End-to-end Metadata Management with Data Discovery, Data Quality, Observability, and People Collaboration',
   },
   {
     image: screenShot2,
-    description:
-      'Centralized Metadata Store, Discover, Collaborate and get your Data Right',
+    description: 'Discover your Data and Unlock the Value of Data Assets',
   },
   {
     image: screenShot3,
     description:
-      'Centralized Metadata Store, Discover, Collaborate and get your Data Right',
+      'Assess Data Reliability with Data Profiler, Lineage, Sample Data, and more',
   },
   {
     image: screenShot4,
     description:
-      'Centralized Metadata Store, Discover, Collaborate and get your Data Right',
+      'Fosters Collaboration among the Producers and Consumers of Data',
   },
 ];
 
