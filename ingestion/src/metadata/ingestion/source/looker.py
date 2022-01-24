@@ -93,18 +93,26 @@ class LookerSource(Source[Entity]):
             metadata_config,
         )
 
+    def check_env(self, env_key):
+        if os.environ.get(env_key):
+            return True
+        return None
+
     def looker_client(self):
         try:
-            os.environ["LOOKERSDK_CLIENT_ID"] = self.config.username
-            os.environ[
-                "LOOKERSDK_CLIENT_SECRET"
-            ] = self.config.password.get_secret_value()
-            os.environ["LOOKERSDK_BASE_URL"] = self.config.url
+            if not self.check_env("LOOKERSDK_CLIENT_ID"):
+                os.environ["LOOKERSDK_CLIENT_ID"] = self.config.username
+            if not self.check_env("LOOKERSDK_CLIENT_SECRET"):
+                os.environ[
+                    "LOOKERSDK_CLIENT_SECRET"
+                ] = self.config.password.get_secret_value()
+            if not self.check_env("LOOKERSDK_BASE_URL"):
+                os.environ["LOOKERSDK_BASE_URL"] = self.config.url
             client = looker_sdk.init31()
             client.me()
             return client
         except Exception as err:
-            print(f"ERROR: {repr(err)}")
+            logger.error(f"ERROR: {repr(err)}")
 
     @classmethod
     def create(
