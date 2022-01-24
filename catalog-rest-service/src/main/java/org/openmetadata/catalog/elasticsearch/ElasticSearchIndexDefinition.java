@@ -204,7 +204,7 @@ class ElasticSearchIndex {
 
   String fqdn;
   String service;
-  Boolean deleted = false;
+  Boolean deleted;
 
   @JsonProperty("service_type")
   String serviceType;
