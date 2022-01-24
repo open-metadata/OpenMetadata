@@ -478,7 +478,6 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                     col_data_length = None
                     arr_data_type = None
                     parsed_string = None
-                    print(column["raw_data_type"])
                     if (
                         "raw_data_type" in column
                         and column["raw_data_type"] is not None
