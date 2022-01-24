@@ -28,15 +28,17 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.ENTITY_ALREADY_EXISTS;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
-import static org.openmetadata.catalog.resources.teams.RoleResourceTest.createRole;
+import static org.openmetadata.catalog.resources.databases.TableResourceTest.getColumn;
 import static org.openmetadata.catalog.security.SecurityUtil.authHeaders;
+import static org.openmetadata.catalog.type.ColumnDataType.BIGINT;
+import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.ENTITY_NAME_LENGTH_ERROR;
 import static org.openmetadata.catalog.util.TestUtils.LONG_ENTITY_NAME;
 import static org.openmetadata.catalog.util.TestUtils.NON_EXISTENT_ENTITY;
+import static org.openmetadata.catalog.util.TestUtils.TEST_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.NO_CHANGE;
-import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
 import static org.openmetadata.catalog.util.TestUtils.assertEntityPagination;
 import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
 import static org.openmetadata.catalog.util.TestUtils.assertListNull;
@@ -73,6 +75,10 @@ import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestInstance;
 import org.openmetadata.catalog.CatalogApplicationTest;
 import org.openmetadata.catalog.Entity;
+import org.openmetadata.catalog.api.data.CreateChart;
+import org.openmetadata.catalog.api.data.CreateDatabase;
+import org.openmetadata.catalog.api.services.CreateDashboardService;
+import org.openmetadata.catalog.api.services.CreateDashboardService.DashboardServiceType;
 import org.openmetadata.catalog.api.services.CreateDatabaseService;
 import org.openmetadata.catalog.api.services.CreateDatabaseService.DatabaseServiceType;
 import org.openmetadata.catalog.api.services.CreateMessagingService;
@@ -80,6 +86,8 @@ import org.openmetadata.catalog.api.services.CreateMessagingService.MessagingSer
 import org.openmetadata.catalog.api.services.CreatePipelineService;
 import org.openmetadata.catalog.api.services.CreatePipelineService.PipelineServiceType;
 import org.openmetadata.catalog.api.services.CreateStorageService;
+import org.openmetadata.catalog.entity.data.Chart;
+import org.openmetadata.catalog.entity.data.Database;
 import org.openmetadata.catalog.entity.services.DashboardService;
 import org.openmetadata.catalog.entity.services.DatabaseService;
 import org.openmetadata.catalog.entity.services.MessagingService;
@@ -89,11 +97,16 @@ import org.openmetadata.catalog.entity.teams.Role;
 import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
+import org.openmetadata.catalog.jdbi3.ChartRepository.ChartEntityInterface;
+import org.openmetadata.catalog.jdbi3.DashboardServiceRepository.DashboardServiceEntityInterface;
 import org.openmetadata.catalog.jdbi3.DatabaseServiceRepository.DatabaseServiceEntityInterface;
 import org.openmetadata.catalog.jdbi3.MessagingServiceRepository.MessagingServiceEntityInterface;
 import org.openmetadata.catalog.jdbi3.PipelineServiceRepository.PipelineServiceEntityInterface;
+import org.openmetadata.catalog.resources.charts.ChartResourceTest;
+import org.openmetadata.catalog.resources.databases.DatabaseResourceTest;
 import org.openmetadata.catalog.resources.events.EventResource.ChangeEventList;
 import org.openmetadata.catalog.resources.events.WebhookResourceTest;
+import org.openmetadata.catalog.resources.services.DashboardServiceResourceTest;
 import org.openmetadata.catalog.resources.services.DatabaseServiceResourceTest;
 import org.openmetadata.catalog.resources.services.MessagingServiceResourceTest;
 import org.openmetadata.catalog.resources.services.PipelineServiceResourceTest;
@@ -105,6 +118,8 @@ import org.openmetadata.catalog.resources.teams.TeamResourceTest;
 import org.openmetadata.catalog.resources.teams.UserResourceTest;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.ChangeEvent;
+import org.openmetadata.catalog.type.Column;
+import org.openmetadata.catalog.type.ColumnDataType;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.EventType;
@@ -121,8 +136,8 @@ import org.openmetadata.catalog.util.TestUtils;
 
 @Slf4j
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
-  private static final Map<String, EntityResourceTest<?>> ENTITY_RESOURCE_TEST_MAP = new HashMap<>();
+public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
+  private static final Map<String, EntityResourceTest<?, ?>> ENTITY_RESOURCE_TEST_MAP = new HashMap<>();
   private final String entityType;
   private final Class<T> entityClass;
   private final Class<? extends ResultList<T>> entityListClass;
@@ -149,7 +164,7 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
   public static Role DATA_CONSUMER_ROLE;
   public static EntityReference DATA_CONSUMER_ROLE_REFERENCE;
   public static Role ROLE1;
-  public static EntityReference ROLE_REF1;
+  public static EntityReference ROLE1_REFERENCE;
 
   public static EntityReference SNOWFLAKE_REFERENCE;
   public static EntityReference REDSHIFT_REFERENCE;
@@ -170,6 +185,14 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
   public static TagLabel PII_SENSITIVE_TAG_LABEL;
   public static TagLabel TIER1_TAG_LABEL;
   public static TagLabel TIER2_TAG_LABEL;
+
+  public static EntityReference SUPERSET_REFERENCE;
+  public static EntityReference LOOKER_REFERENCE;
+  public static List<EntityReference> CHART_REFERENCES;
+
+  public static Database DATABASE;
+
+  public static List<Column> COLUMNS;
 
   public EntityResourceTest(
       String entityTYpe,
@@ -201,40 +224,45 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     webhookResourceTest.startWebhookEntitySubscriptions(entityType);
 
     UserResourceTest userResourceTest = new UserResourceTest();
-    USER1 = UserResourceTest.createUser(userResourceTest.create(test), adminAuthHeaders());
+    USER1 = userResourceTest.createEntity(userResourceTest.createRequest(test), ADMIN_AUTH_HEADERS);
     USER_OWNER1 = new EntityReference().withId(USER1.getId()).withType(Entity.USER);
 
-    DATA_STEWARD_ROLE = RoleResourceTest.getRoleByName(DATA_STEWARD_ROLE_NAME, RoleResource.FIELDS, adminAuthHeaders());
+    RoleResourceTest roleResourceTest = new RoleResourceTest();
+    DATA_STEWARD_ROLE =
+        roleResourceTest.getEntityByName(DATA_STEWARD_ROLE_NAME, RoleResource.FIELDS, ADMIN_AUTH_HEADERS);
     DATA_STEWARD_ROLE_REFERENCE = new EntityReference().withId(DATA_STEWARD_ROLE.getId()).withType(Entity.ROLE);
     USER_WITH_DATA_STEWARD_ROLE =
-        UserResourceTest.createUser(
-            UserResourceTest.create("user-data-steward").withRoles(List.of(DATA_STEWARD_ROLE.getId())),
-            adminAuthHeaders());
+        userResourceTest.createEntity(
+            userResourceTest
+                .createRequest("user-data-steward", "", "", null)
+                .withRoles(List.of(DATA_STEWARD_ROLE.getId())),
+            ADMIN_AUTH_HEADERS);
     DATA_CONSUMER_ROLE =
-        RoleResourceTest.getRoleByName(DATA_CONSUMER_ROLE_NAME, RoleResource.FIELDS, adminAuthHeaders());
+        roleResourceTest.getEntityByName(DATA_CONSUMER_ROLE_NAME, RoleResource.FIELDS, ADMIN_AUTH_HEADERS);
     DATA_CONSUMER_ROLE_REFERENCE = new EntityReference().withId(DATA_CONSUMER_ROLE.getId()).withType(Entity.ROLE);
     USER_WITH_DATA_CONSUMER_ROLE =
-        UserResourceTest.createUser(
-            UserResourceTest.create("user-data-consumer").withRoles(List.of(DATA_CONSUMER_ROLE.getId())),
-            adminAuthHeaders());
+        userResourceTest.createEntity(
+            userResourceTest
+                .createRequest("user-data-consumer", "", "", null)
+                .withRoles(List.of(DATA_CONSUMER_ROLE.getId())),
+            ADMIN_AUTH_HEADERS);
 
     TeamResourceTest teamResourceTest = new TeamResourceTest();
-    TEAM1 = TeamResourceTest.createTeam(teamResourceTest.create(test), adminAuthHeaders());
+    TEAM1 = teamResourceTest.createEntity(teamResourceTest.createRequest(test), ADMIN_AUTH_HEADERS);
     TEAM_OWNER1 = new EntityReference().withId(TEAM1.getId()).withType(Entity.TEAM);
 
-    RoleResourceTest roleResourceTest = new RoleResourceTest();
-    ROLE1 = createRole(roleResourceTest.create(test), adminAuthHeaders());
-    ROLE_REF1 = new EntityReference().withId(ROLE1.getId()).withType("role");
+    ROLE1 = roleResourceTest.createEntity(roleResourceTest.createRequest(test), ADMIN_AUTH_HEADERS);
+    ROLE1_REFERENCE = new EntityReference().withId(ROLE1.getId()).withType("role");
 
     // Create snowflake database service
     DatabaseServiceResourceTest databaseServiceResourceTest = new DatabaseServiceResourceTest();
     CreateDatabaseService createDatabaseService =
-        new CreateDatabaseService()
-            .withName(databaseServiceResourceTest.getEntityName(test, 1))
+        databaseServiceResourceTest
+            .createRequest(test, 1)
             .withServiceType(DatabaseServiceType.Snowflake)
             .withDatabaseConnection(TestUtils.DATABASE_CONNECTION);
     DatabaseService databaseService =
-        new DatabaseServiceResourceTest().createEntity(createDatabaseService, adminAuthHeaders());
+        new DatabaseServiceResourceTest().createEntity(createDatabaseService, ADMIN_AUTH_HEADERS);
     SNOWFLAKE_REFERENCE =
         new EntityReference()
             .withName(databaseService.getName())
@@ -242,15 +270,15 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
             .withType(Entity.DATABASE_SERVICE);
 
     createDatabaseService.withName("redshiftDB").withServiceType(DatabaseServiceType.Redshift);
-    databaseService = databaseServiceResourceTest.createEntity(createDatabaseService, adminAuthHeaders());
+    databaseService = databaseServiceResourceTest.createEntity(createDatabaseService, ADMIN_AUTH_HEADERS);
     REDSHIFT_REFERENCE = new DatabaseServiceEntityInterface(databaseService).getEntityReference();
 
     createDatabaseService.withName("bigQueryDB").withServiceType(DatabaseServiceType.BigQuery);
-    databaseService = databaseServiceResourceTest.createEntity(createDatabaseService, adminAuthHeaders());
+    databaseService = databaseServiceResourceTest.createEntity(createDatabaseService, ADMIN_AUTH_HEADERS);
     BIGQUERY_REFERENCE = new DatabaseServiceEntityInterface(databaseService).getEntityReference();
 
     createDatabaseService.withName("mysqlDB").withServiceType(DatabaseServiceType.MySQL);
-    databaseService = databaseServiceResourceTest.createEntity(createDatabaseService, adminAuthHeaders());
+    databaseService = databaseServiceResourceTest.createEntity(createDatabaseService, ADMIN_AUTH_HEADERS);
     MYSQL_REFERENCE = new DatabaseServiceEntityInterface(databaseService).getEntityReference();
 
     // Create Kafka messaging service
@@ -260,7 +288,7 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
             .withName("kafka")
             .withServiceType(MessagingServiceType.Kafka)
             .withBrokers(List.of("192.168.1.1:0"));
-    MessagingService messagingService = messagingServiceResourceTest.createEntity(createMessaging, adminAuthHeaders());
+    MessagingService messagingService = messagingServiceResourceTest.createEntity(createMessaging, ADMIN_AUTH_HEADERS);
     KAFKA_REFERENCE = new MessagingServiceEntityInterface(messagingService).getEntityReference();
 
     // Create Pulsar messaging service
@@ -268,17 +296,17 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
         .withName("pulsar")
         .withServiceType(MessagingServiceType.Pulsar)
         .withBrokers(List.of("192.168.1.1:0"));
-    messagingService = messagingServiceResourceTest.createEntity(createMessaging, adminAuthHeaders());
+    messagingService = messagingServiceResourceTest.createEntity(createMessaging, ADMIN_AUTH_HEADERS);
     PULSAR_REFERENCE = new MessagingServiceEntityInterface(messagingService).getEntityReference();
 
     // Create Airflow pipeline service
     PipelineServiceResourceTest pipelineServiceResourceTest = new PipelineServiceResourceTest();
     CreatePipelineService createPipeline =
-        new CreatePipelineService()
-            .withName("airflow")
+        pipelineServiceResourceTest
+            .createRequest("airflow", "", "", null)
             .withServiceType(PipelineServiceType.Airflow)
             .withPipelineUrl(new URI("http://localhost:0"));
-    PipelineService pipelineService = pipelineServiceResourceTest.createEntity(createPipeline, adminAuthHeaders());
+    PipelineService pipelineService = pipelineServiceResourceTest.createEntity(createPipeline, ADMIN_AUTH_HEADERS);
     AIRFLOW_REFERENCE = new PipelineServiceEntityInterface(pipelineService).getEntityReference();
 
     // Create Prefect pipeline service
@@ -286,19 +314,19 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
         .withName("prefect")
         .withServiceType(PipelineServiceType.Prefect)
         .withPipelineUrl(new URI("http://localhost:0"));
-    pipelineService = pipelineServiceResourceTest.createEntity(createPipeline, adminAuthHeaders());
+    pipelineService = pipelineServiceResourceTest.createEntity(createPipeline, ADMIN_AUTH_HEADERS);
     PREFECT_REFERENCE = new PipelineServiceEntityInterface(pipelineService).getEntityReference();
 
     // Create AWS storage service, S3
     CreateStorageService createService =
         new CreateStorageService().withName("s3").withServiceType(StorageServiceType.S3);
-    StorageService service = new StorageServiceResourceTest().createEntity(createService, adminAuthHeaders());
+    StorageService service = new StorageServiceResourceTest().createEntity(createService, ADMIN_AUTH_HEADERS);
     AWS_STORAGE_SERVICE_REFERENCE =
         new EntityReference().withName(service.getName()).withId(service.getId()).withType(Entity.STORAGE_SERVICE);
 
     // Create GCP storage service, GCS
     createService.withName("gs").withServiceType(StorageServiceType.GCS);
-    service = new StorageServiceResourceTest().createEntity(createService, adminAuthHeaders());
+    service = new StorageServiceResourceTest().createEntity(createService, ADMIN_AUTH_HEADERS);
     GCP_STORAGE_SERVICE_REFERENCE =
         new EntityReference().withName(service.getName()).withId(service.getId()).withType(Entity.STORAGE_SERVICE);
 
@@ -308,10 +336,42 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     PII_SENSITIVE_TAG_LABEL = getTagLabel("PII.Sensitive");
     TIER1_TAG_LABEL = getTagLabel("Tier.Tier1");
     TIER2_TAG_LABEL = getTagLabel("Tier.Tier2");
+
+    DashboardServiceResourceTest dashboardResourceTest = new DashboardServiceResourceTest();
+    CreateDashboardService createDashboardService =
+        dashboardResourceTest
+            .createRequest("superset", "", "", null)
+            .withServiceType(DashboardServiceType.Superset)
+            .withDashboardUrl(TestUtils.DASHBOARD_URL);
+
+    DashboardService dashboardService =
+        new DashboardServiceResourceTest().createEntity(createDashboardService, ADMIN_AUTH_HEADERS);
+    SUPERSET_REFERENCE = new DashboardServiceEntityInterface(dashboardService).getEntityReference();
+
+    createDashboardService.withName("looker").withServiceType(DashboardServiceType.Looker);
+    dashboardService = new DashboardServiceResourceTest().createEntity(createDashboardService, ADMIN_AUTH_HEADERS);
+    LOOKER_REFERENCE = new DashboardServiceEntityInterface(dashboardService).getEntityReference();
+    CHART_REFERENCES = new ArrayList<>();
+    ChartResourceTest chartResourceTest = new ChartResourceTest();
+    for (int i = 0; i < 3; i++) {
+      CreateChart createChart = chartResourceTest.createRequest(test, i).withService(SUPERSET_REFERENCE);
+      Chart chart = chartResourceTest.createEntity(createChart, ADMIN_AUTH_HEADERS);
+      CHART_REFERENCES.add(new ChartEntityInterface(chart).getEntityReference());
+    }
+
+    DatabaseResourceTest databaseResourceTest = new DatabaseResourceTest();
+    CreateDatabase create = databaseResourceTest.createRequest(test).withService(SNOWFLAKE_REFERENCE);
+    DATABASE = databaseResourceTest.createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+
+    COLUMNS =
+        Arrays.asList(
+            getColumn("c1", BIGINT, USER_ADDRESS_TAG_LABEL),
+            getColumn("c2", ColumnDataType.VARCHAR, USER_ADDRESS_TAG_LABEL).withDataLength(10),
+            getColumn("c3", BIGINT, USER_BANK_ACCOUNT_TAG_LABEL));
   }
 
   private TagLabel getTagLabel(String tagName) throws HttpResponseException {
-    Tag tag = TagResourceTest.getTag(tagName, adminAuthHeaders());
+    Tag tag = TagResourceTest.getTag(tagName, ADMIN_AUTH_HEADERS);
     return new TagLabel().withTagFQN(tag.getFullyQualifiedName()).withDescription(tag.getDescription());
   }
 
@@ -328,8 +388,15 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   // Create request such as CreateTable, CreateChart returned by concrete implementation
-  public abstract Object createRequest(String name, String description, String displayName, EntityReference owner)
-      throws URISyntaxException;
+  public K createRequest(TestInfo test) {
+    return createRequest(getEntityName(test), null, null, null);
+  }
+
+  public K createRequest(TestInfo test, int index) {
+    return createRequest(getEntityName(test, index), null, null, null);
+  }
+
+  public abstract K createRequest(String name, String description, String displayName, EntityReference owner);
 
   // Add all possible relationships to check if the entity is missing any of them after deletion
   public T beforeDeletion(TestInfo test, T entity) throws HttpResponseException {
@@ -339,18 +406,20 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
   // Get container entity based on create request that has CONTAINS relationship to the entity created with this
   // request has . For table, it is database. For database, it is databaseService. See Relationship.CONTAINS for
   // details.
-  public abstract EntityReference getContainer(Object createRequest) throws URISyntaxException;
+  public EntityReference getContainer(K createRequest) {
+    return null;
+  }
 
   // Entity specific validate for entity create using POST
-  public abstract void validateCreatedEntity(T createdEntity, Object request, Map<String, String> authHeaders)
+  public abstract void validateCreatedEntity(T createdEntity, K request, Map<String, String> authHeaders)
       throws HttpResponseException;
 
   // Entity specific validate for entity create using PUT
-  public abstract void validateUpdatedEntity(T updatedEntity, Object request, Map<String, String> authHeaders)
+  public abstract void validateUpdatedEntity(T updatedEntity, K request, Map<String, String> authHeaders)
       throws HttpResponseException;
 
   protected void validateDeletedEntity(
-      Object create, T entityBeforeDeletion, T entityAfterDeletion, Map<String, String> authHeaders)
+      K create, T entityBeforeDeletion, T entityAfterDeletion, Map<String, String> authHeaders)
       throws HttpResponseException {
     validateCreatedEntity(entityAfterDeletion, create, authHeaders);
   }
@@ -375,7 +444,7 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
   // Common entity tests for GET operations
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   @Test
-  void get_entityListWithPagination_200(TestInfo test) throws IOException, URISyntaxException {
+  void get_entityListWithPagination_200(TestInfo test) throws IOException {
     // Create a number of entities between 5 and 20 inclusive
     Random rand = new Random();
     int maxEntities = rand.nextInt(16) + 5;
@@ -383,13 +452,13 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     List<UUID> createdUUIDs = new ArrayList<>();
     for (int i = 0; i < maxEntities; i++) {
       createdUUIDs.add(
-          getEntityInterface(createEntity(createRequest(getEntityName(test, i), null, null, null), adminAuthHeaders()))
+          getEntityInterface(createEntity(createRequest(getEntityName(test, i), null, null, null), ADMIN_AUTH_HEADERS))
               .getId());
     }
 
-    T entity = createEntity(createRequest(getEntityName(test, -1), null, null, null), adminAuthHeaders());
+    T entity = createEntity(createRequest(getEntityName(test, -1), null, null, null), ADMIN_AUTH_HEADERS);
     EntityInterface<T> deleted = getEntityInterface(entity);
-    deleteAndCheckEntity(entity, adminAuthHeaders());
+    deleteAndCheckEntity(entity, ADMIN_AUTH_HEADERS);
 
     Predicate<T> matchDeleted =
         e -> {
@@ -406,7 +475,7 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
             }
           };
       // List all entities and use it for checking pagination
-      ResultList<T> allEntities = listEntities(queryParams, 1000000, null, null, adminAuthHeaders());
+      ResultList<T> allEntities = listEntities(queryParams, 1000000, null, null, ADMIN_AUTH_HEADERS);
       int totalRecords = allEntities.getData().size();
       printEntities(allEntities);
 
@@ -423,7 +492,7 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
         boolean foundDeleted = false;
         do { // For each limit (or page size) - forward scroll till the end
           LOG.info("Limit {} forward scrollCount {} afterCursor {}", limit, pageCount, after);
-          forwardPage = listEntities(queryParams, limit, null, after, adminAuthHeaders());
+          forwardPage = listEntities(queryParams, limit, null, after, ADMIN_AUTH_HEADERS);
           foundDeleted = forwardPage.getData().stream().anyMatch(matchDeleted) || foundDeleted;
           after = forwardPage.getPaging().getAfter();
           before = forwardPage.getPaging().getBefore();
@@ -433,7 +502,7 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
             assertNull(before);
           } else {
             // Make sure scrolling back based on before cursor returns the correct result
-            backwardPage = listEntities(queryParams, limit, before, null, adminAuthHeaders());
+            backwardPage = listEntities(queryParams, limit, before, null, ADMIN_AUTH_HEADERS);
             assertEntityPagination(allEntities.getData(), backwardPage, limit, (indexInAllTables - limit));
           }
 
@@ -454,7 +523,7 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
         foundDeleted = false;
         do {
           LOG.info("Limit {} backward scrollCount {} beforeCursor {}", limit, pageCount, before);
-          forwardPage = listEntities(queryParams, limit, before, null, adminAuthHeaders());
+          forwardPage = listEntities(queryParams, limit, before, null, ADMIN_AUTH_HEADERS);
           foundDeleted = forwardPage.getData().stream().anyMatch(matchDeleted) || foundDeleted;
           printEntities(forwardPage);
           before = forwardPage.getPaging().getBefore();
@@ -475,7 +544,7 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
         for (T e : allEntities.getData()) {
           EntityInterface<T> toBeDeleted = getEntityInterface(e);
           if (createdUUIDs.contains(toBeDeleted.getId()) && !toBeDeleted.isDeleted()) {
-            deleteAndCheckEntity(e, adminAuthHeaders());
+            deleteAndCheckEntity(e, ADMIN_AUTH_HEADERS);
           }
         }
       }
@@ -483,23 +552,23 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
   }
 
   /** At the end of test for an entity, delete the parent container to test recursive delete functionality */
-  private void delete_recursiveTest() throws URISyntaxException, IOException {
+  private void delete_recursiveTest() throws IOException {
     // Finally, delete the container that contains the entities created for this test
     EntityReference container = getContainer(createRequest("deleteRecursive", "", "", null));
     if (container != null) {
-      ResultList<T> listBeforeDeletion = listEntities(null, 1000, null, null, adminAuthHeaders());
+      ResultList<T> listBeforeDeletion = listEntities(null, 1000, null, null, ADMIN_AUTH_HEADERS);
       // Delete non-empty container entity and ensure deletion is not allowed
-      EntityResourceTest<?> containerTest = ENTITY_RESOURCE_TEST_MAP.get(container.getType());
+      EntityResourceTest<?, ?> containerTest = ENTITY_RESOURCE_TEST_MAP.get(container.getType());
       HttpResponseException exception =
           assertThrows(
-              HttpResponseException.class, () -> containerTest.deleteEntity(container.getId(), adminAuthHeaders()));
+              HttpResponseException.class, () -> containerTest.deleteEntity(container.getId(), ADMIN_AUTH_HEADERS));
       assertResponse(exception, BAD_REQUEST, container.getType() + " is not empty");
 
       // Now delete the container with recursive flag on
-      containerTest.deleteEntity(container.getId(), true, adminAuthHeaders());
+      containerTest.deleteEntity(container.getId(), true, ADMIN_AUTH_HEADERS);
 
       // Make sure entities contained are deleted and the new list operation returns 0 entities
-      ResultList<T> listAfterDeletion = listEntities(null, 1000, null, null, adminAuthHeaders());
+      ResultList<T> listAfterDeletion = listEntities(null, 1000, null, null, ADMIN_AUTH_HEADERS);
       listAfterDeletion
           .getData()
           .forEach(e -> assertNotEquals(getEntityInterface(e).getContainer().getId(), container.getId()));
@@ -511,14 +580,14 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
   void get_entityListWithInvalidLimit_4xx() {
     // Limit must be >= 1 and <= 1000,000
     HttpResponseException exception =
-        assertThrows(HttpResponseException.class, () -> listEntities(null, -1, null, null, adminAuthHeaders()));
+        assertThrows(HttpResponseException.class, () -> listEntities(null, -1, null, null, ADMIN_AUTH_HEADERS));
     assertResponse(exception, BAD_REQUEST, "[query param limit must be greater than or equal to 1]");
 
-    exception = assertThrows(HttpResponseException.class, () -> listEntities(null, 0, null, null, adminAuthHeaders()));
+    exception = assertThrows(HttpResponseException.class, () -> listEntities(null, 0, null, null, ADMIN_AUTH_HEADERS));
     assertResponse(exception, BAD_REQUEST, "[query param limit must be greater than or equal to 1]");
 
     exception =
-        assertThrows(HttpResponseException.class, () -> listEntities(null, 1000001, null, null, adminAuthHeaders()));
+        assertThrows(HttpResponseException.class, () -> listEntities(null, 1000001, null, null, ADMIN_AUTH_HEADERS));
     assertResponse(exception, BAD_REQUEST, "[query param limit must be less than or equal to 1000000]");
   }
 
@@ -526,68 +595,66 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
   void get_entityListWithInvalidPaginationCursors_4xx() {
     // Passing both before and after cursors is invalid
     HttpResponseException exception =
-        assertThrows(HttpResponseException.class, () -> listEntities(null, 1, "", "", adminAuthHeaders()));
+        assertThrows(HttpResponseException.class, () -> listEntities(null, 1, "", "", ADMIN_AUTH_HEADERS));
     assertResponse(exception, BAD_REQUEST, "Only one of before or after query parameter allowed");
   }
 
   @Test
-  void get_entityWithDifferentFields_200_OK(TestInfo test) throws IOException, URISyntaxException {
-    Object create = createRequest(getEntityName(test), "description", "displayName", USER_OWNER1);
-    T entity = createAndCheckEntity(create, adminAuthHeaders());
+  void get_entityWithDifferentFields_200_OK(TestInfo test) throws IOException {
+    K create = createRequest(getEntityName(test), "description", "displayName", USER_OWNER1);
+    T entity = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
     prepareGetWithDifferentFields(entity);
     validateGetWithDifferentFields(entity, false);
     validateGetWithDifferentFields(entity, true);
   }
 
   @Test
-  void get_deletedVersion(TestInfo test) throws IOException, URISyntaxException {
-    Object create = createRequest(getEntityName(test), "description", "displayName", USER_OWNER1);
-    T entity = createEntity(create, adminAuthHeaders());
+  void get_deletedVersion(TestInfo test) throws IOException {
+    T entity = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
     EntityInterface<T> entityInterface = getEntityInterface(entity);
-    getEntity(entityInterface.getId(), null, allFields, adminAuthHeaders());
-    deleteAndCheckEntity(entity, adminAuthHeaders());
-    EntityHistory history = getVersionList(entityInterface.getId(), adminAuthHeaders());
+    getEntity(entityInterface.getId(), allFields, ADMIN_AUTH_HEADERS);
+    deleteAndCheckEntity(entity, ADMIN_AUTH_HEADERS);
+    EntityHistory history = getVersionList(entityInterface.getId(), ADMIN_AUTH_HEADERS);
     T latestVersion = JsonUtils.readValue((String) history.getVersions().get(0), entityClass);
     entityInterface = getEntityInterface(latestVersion);
-    getVersion(entityInterface.getId(), entityInterface.getVersion(), adminAuthHeaders());
+    getVersion(entityInterface.getId(), entityInterface.getVersion(), ADMIN_AUTH_HEADERS);
   }
 
   @Test
-  void get_entityIncludeDeleted_200(TestInfo test) throws IOException, URISyntaxException {
-    Object create = createRequest(getEntityName(test), "description", "displayName", USER_OWNER1);
+  void get_entityIncludeDeleted_200(TestInfo test) throws IOException {
+    K create = createRequest(test);
     // Create first time using POST
-    T entity = beforeDeletion(test, createEntity(create, adminAuthHeaders()));
+    T entity = beforeDeletion(test, createEntity(create, ADMIN_AUTH_HEADERS));
     EntityInterface<T> entityInterface = getEntityInterface(entity);
-    T entityBeforeDeletion = getEntity(entityInterface.getId(), null, allFields, adminAuthHeaders());
+    T entityBeforeDeletion = getEntity(entityInterface.getId(), allFields, ADMIN_AUTH_HEADERS);
     // delete it
-    deleteAndCheckEntity(entity, adminAuthHeaders());
+    deleteAndCheckEntity(entity, ADMIN_AUTH_HEADERS);
     assertResponse(
-        () -> getEntity(entityInterface.getId(), Collections.emptyMap(), null, adminAuthHeaders()),
+        () -> getEntity(entityInterface.getId(), null, ADMIN_AUTH_HEADERS),
         NOT_FOUND,
         entityNotFound(entityType, entityInterface.getId()));
     assertResponse(
-        () ->
-            getEntityByName(entityInterface.getFullyQualifiedName(), Collections.emptyMap(), null, adminAuthHeaders()),
+        () -> getEntityByName(entityInterface.getFullyQualifiedName(), null, ADMIN_AUTH_HEADERS),
         NOT_FOUND,
         entityNotFound(entityType, entityInterface.getFullyQualifiedName()));
 
     Map<String, String> queryParams = new HashMap<>();
     for (String include : List.of("deleted", "all")) {
       queryParams.put("include", include);
-      T entityAfterDeletion = getEntity(entityInterface.getId(), queryParams, allFields, adminAuthHeaders());
-      validateDeletedEntity(create, entityBeforeDeletion, entityAfterDeletion, adminAuthHeaders());
+      T entityAfterDeletion = getEntity(entityInterface.getId(), queryParams, allFields, ADMIN_AUTH_HEADERS);
+      validateDeletedEntity(create, entityBeforeDeletion, entityAfterDeletion, ADMIN_AUTH_HEADERS);
       entityAfterDeletion =
-          getEntityByName(entityInterface.getFullyQualifiedName(), queryParams, allFields, adminAuthHeaders());
-      validateDeletedEntity(create, entityBeforeDeletion, entityAfterDeletion, adminAuthHeaders());
+          getEntityByName(entityInterface.getFullyQualifiedName(), queryParams, allFields, ADMIN_AUTH_HEADERS);
+      validateDeletedEntity(create, entityBeforeDeletion, entityAfterDeletion, ADMIN_AUTH_HEADERS);
     }
 
     queryParams.put("include", "non-deleted");
     assertResponse(
-        () -> getEntity(entityInterface.getId(), queryParams, null, adminAuthHeaders()),
+        () -> getEntity(entityInterface.getId(), queryParams, null, ADMIN_AUTH_HEADERS),
         NOT_FOUND,
         entityNotFound(entityType, entityInterface.getId()));
     assertResponse(
-        () -> getEntityByName(entityInterface.getFullyQualifiedName(), queryParams, null, adminAuthHeaders()),
+        () -> getEntityByName(entityInterface.getFullyQualifiedName(), queryParams, null, ADMIN_AUTH_HEADERS),
         NOT_FOUND,
         entityNotFound(entityType, entityInterface.getFullyQualifiedName()));
   }
@@ -596,88 +663,88 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
   // Common entity tests for POST operations
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   @Test
-  void post_entityCreateWithInvalidName_400() throws URISyntaxException {
+  void post_entityCreateWithInvalidName_400() {
     // Create an entity with mandatory name field null
-    final Object request = createRequest(null, "description", "displayName", null);
+    final K request = createRequest(null, "description", "displayName", null);
     HttpResponseException exception =
-        assertThrows(HttpResponseException.class, () -> createEntity(request, adminAuthHeaders()));
+        assertThrows(HttpResponseException.class, () -> createEntity(request, ADMIN_AUTH_HEADERS));
     assertResponse(exception, BAD_REQUEST, "[name must not be null]");
 
     // Create an entity with mandatory name field empty
-    final Object request1 = createRequest("", "description", "displayName", null);
-    exception = assertThrows(HttpResponseException.class, () -> createEntity(request1, adminAuthHeaders()));
+    final K request1 = createRequest("", "description", "displayName", null);
+    exception = assertThrows(HttpResponseException.class, () -> createEntity(request1, ADMIN_AUTH_HEADERS));
     assertResponse(exception, BAD_REQUEST, ENTITY_NAME_LENGTH_ERROR);
 
     // Create an entity with mandatory name field too long
-    final Object request2 = createRequest(LONG_ENTITY_NAME, "description", "displayName", null);
-    exception = assertThrows(HttpResponseException.class, () -> createEntity(request2, adminAuthHeaders()));
+    final K request2 = createRequest(LONG_ENTITY_NAME, "description", "displayName", null);
+    exception = assertThrows(HttpResponseException.class, () -> createEntity(request2, ADMIN_AUTH_HEADERS));
     assertResponse(exception, BAD_REQUEST, ENTITY_NAME_LENGTH_ERROR);
   }
 
   @Test
-  void post_entityWithInvalidOwnerType_4xx(TestInfo test) throws URISyntaxException {
+  void post_entityWithInvalidOwnerType_4xx(TestInfo test) {
     if (!supportsOwner) {
       return;
     }
     EntityReference owner = new EntityReference().withId(TEAM1.getId()); /* No owner type is set */
-    Object create = createRequest(getEntityName(test), "", "", owner);
+    K create = createRequest(getEntityName(test), "", "", owner);
     HttpResponseException exception =
-        assertThrows(HttpResponseException.class, () -> createEntity(create, adminAuthHeaders()));
+        assertThrows(HttpResponseException.class, () -> createEntity(create, ADMIN_AUTH_HEADERS));
     TestUtils.assertResponseContains(exception, BAD_REQUEST, "type must not be null");
   }
 
   @Test
-  void post_entityWithNonExistentOwner_4xx(TestInfo test) throws URISyntaxException {
+  void post_entityWithNonExistentOwner_4xx(TestInfo test) {
     if (!supportsOwner) {
       return;
     }
     EntityReference owner = new EntityReference().withId(NON_EXISTENT_ENTITY).withType("user");
-    Object create = createRequest(getEntityName(test), "", "", owner);
+    K create = createRequest(getEntityName(test), "", "", owner);
     HttpResponseException exception =
-        assertThrows(HttpResponseException.class, () -> createEntity(create, adminAuthHeaders()));
+        assertThrows(HttpResponseException.class, () -> createEntity(create, ADMIN_AUTH_HEADERS));
     assertResponse(exception, NOT_FOUND, CatalogExceptionMessage.entityNotFound(Entity.USER, NON_EXISTENT_ENTITY));
   }
 
   @Test
-  void post_entityAlreadyExists_409_conflict(TestInfo test) throws HttpResponseException, URISyntaxException {
-    Object create = createRequest(getEntityName(test), "", "", null);
+  void post_entityAlreadyExists_409_conflict(TestInfo test) throws HttpResponseException {
+    K create = createRequest(getEntityName(test), "", "", null);
     // Create first time using POST
-    createEntity(create, adminAuthHeaders());
+    createEntity(create, ADMIN_AUTH_HEADERS);
     // Second time creating the same entity using POST should fail
-    assertResponse(() -> createEntity(create, adminAuthHeaders()), CONFLICT, ENTITY_ALREADY_EXISTS);
+    assertResponse(() -> createEntity(create, ADMIN_AUTH_HEADERS), CONFLICT, ENTITY_ALREADY_EXISTS);
   }
 
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // Common entity tests for PUT operations
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   @Test
-  void put_entityCreate_200(TestInfo test) throws IOException, URISyntaxException {
+  void put_entityCreate_200(TestInfo test) throws IOException {
     // Create a new entity with PUT
-    Object request = createRequest(getEntityName(test), "description", "displayName", null);
-    updateAndCheckEntity(request, CREATED, adminAuthHeaders(), UpdateType.CREATED, null);
+    K request = createRequest(getEntityName(test), "description", "displayName", null);
+    updateAndCheckEntity(request, CREATED, ADMIN_AUTH_HEADERS, UpdateType.CREATED, null);
   }
 
   @Test
-  void put_entityUpdateWithNoChange_200(TestInfo test) throws IOException, URISyntaxException {
+  void put_entityUpdateWithNoChange_200(TestInfo test) throws IOException {
     // Create a chart with POST
-    Object request = createRequest(getEntityName(test), "description", "display", USER_OWNER1);
-    T entity = createAndCheckEntity(request, adminAuthHeaders());
+    K request = createRequest(getEntityName(test), "description", "display", USER_OWNER1);
+    T entity = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
     EntityInterface<T> entityInterface = getEntityInterface(entity);
 
     // Update chart two times successfully with PUT requests
     ChangeDescription change = getChangeDescription(entityInterface.getVersion());
-    updateAndCheckEntity(request, OK, adminAuthHeaders(), NO_CHANGE, change);
-    updateAndCheckEntity(request, OK, adminAuthHeaders(), NO_CHANGE, change);
+    updateAndCheckEntity(request, OK, ADMIN_AUTH_HEADERS, NO_CHANGE, change);
+    updateAndCheckEntity(request, OK, ADMIN_AUTH_HEADERS, NO_CHANGE, change);
   }
 
   @Test
-  void put_entityCreate_as_owner_200(TestInfo test) throws IOException, URISyntaxException {
+  void put_entityCreate_as_owner_200(TestInfo test) throws IOException {
     if (!supportsOwner) {
       return; // Entity doesn't support ownership
     }
     // Create a new entity with PUT as admin user
-    Object request = createRequest(getEntityName(test), null, null, USER_OWNER1);
-    T entity = createAndCheckEntity(request, adminAuthHeaders());
+    K request = createRequest(getEntityName(test), null, null, USER_OWNER1);
+    T entity = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
     EntityInterface<T> entityInterface = getEntityInterface(entity);
 
     // Update the entity as USER_OWNER1
@@ -689,13 +756,13 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
   }
 
   @Test
-  void put_entityUpdateOwner_200(TestInfo test) throws IOException, URISyntaxException {
+  void put_entityUpdateOwner_200(TestInfo test) throws IOException {
     if (!supportsOwner) {
       return; // Entity doesn't support ownership
     }
     // Create an entity without owner
-    Object request = createRequest(getEntityName(test), "description", "displayName", null);
-    T entity = createAndCheckEntity(request, adminAuthHeaders());
+    K request = createRequest(getEntityName(test), "description", "displayName", null);
+    T entity = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
     EntityInterface<T> entityInterface = getEntityInterface(entity);
 
     // Set TEAM_OWNER1 as owner using PUT request
@@ -703,7 +770,7 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     request = createRequest(getEntityName(test), "description", "displayName", TEAM_OWNER1);
     ChangeDescription change =
         getChangeDescription(entityInterface.getVersion()).withFieldsAdded(Collections.singletonList(fieldChange));
-    entity = updateAndCheckEntity(request, OK, adminAuthHeaders(), MINOR_UPDATE, change);
+    entity = updateAndCheckEntity(request, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
     entityInterface = getEntityInterface(entity);
     checkOwnerOwns(TEAM_OWNER1, entityInterface.getId(), true);
 
@@ -712,7 +779,7 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     fieldChange = new FieldChange().withName("owner").withOldValue(TEAM_OWNER1).withNewValue(USER_OWNER1);
     change =
         getChangeDescription(entityInterface.getVersion()).withFieldsUpdated(Collections.singletonList(fieldChange));
-    entity = updateAndCheckEntity(request, OK, adminAuthHeaders(), MINOR_UPDATE, change);
+    entity = updateAndCheckEntity(request, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
     entityInterface = getEntityInterface(entity);
     checkOwnerOwns(USER_OWNER1, entityInterface.getId(), true);
     checkOwnerOwns(TEAM_OWNER1, entityInterface.getId(), false);
@@ -720,22 +787,22 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     // Set the owner to the existing owner. No ownership change must be recorded.
     request = createRequest(getEntityName(test), "description", "displayName", USER_OWNER1);
     change = getChangeDescription(entityInterface.getVersion());
-    entity = updateAndCheckEntity(request, OK, adminAuthHeaders(), NO_CHANGE, change);
+    entity = updateAndCheckEntity(request, OK, ADMIN_AUTH_HEADERS, NO_CHANGE, change);
     entityInterface = getEntityInterface(entity);
     checkOwnerOwns(USER_OWNER1, entityInterface.getId(), true);
 
     // Remove ownership (from USER_OWNER1) using PUT request. Owner is expected to remain the same
     // and not removed.
     request = createRequest(getEntityName(test), "description", "displayName", null);
-    updateEntity(request, OK, adminAuthHeaders());
+    updateEntity(request, OK, ADMIN_AUTH_HEADERS);
     checkOwnerOwns(USER_OWNER1, entityInterface.getId(), true);
   }
 
   @Test
-  void put_entityNullDescriptionUpdate_200(TestInfo test) throws IOException, URISyntaxException {
+  void put_entityNullDescriptionUpdate_200(TestInfo test) throws IOException {
     // Create entity with null description
-    Object request = createRequest(getEntityName(test), null, "displayName", null);
-    T entity = createAndCheckEntity(request, adminAuthHeaders());
+    K request = createRequest(getEntityName(test), null, "displayName", null);
+    T entity = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
     EntityInterface<T> entityInterface = getEntityInterface(entity);
 
     // Update null description with a new description
@@ -743,14 +810,14 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     FieldChange fieldChange = new FieldChange().withName("description").withNewValue("updatedDescription");
     ChangeDescription change =
         getChangeDescription(entityInterface.getVersion()).withFieldsAdded(Collections.singletonList(fieldChange));
-    updateAndCheckEntity(request, OK, adminAuthHeaders(), MINOR_UPDATE, change);
+    updateAndCheckEntity(request, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
 
   @Test
-  void put_entityEmptyDescriptionUpdate_200(TestInfo test) throws IOException, URISyntaxException {
+  void put_entityEmptyDescriptionUpdate_200(TestInfo test) throws IOException {
     // Create entity with empty description
-    Object request = createRequest(getEntityName(test), "", "displayName", null);
-    T entity = createAndCheckEntity(request, adminAuthHeaders());
+    K request = createRequest(getEntityName(test), "", "displayName", null);
+    T entity = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
     EntityInterface<T> entityInterface = getEntityInterface(entity);
 
     // Update empty description with a new description
@@ -759,20 +826,20 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     change
         .getFieldsUpdated()
         .add(new FieldChange().withName("description").withOldValue("").withNewValue("updatedDescription"));
-    updateAndCheckEntity(request, OK, adminAuthHeaders(), MINOR_UPDATE, change);
+    updateAndCheckEntity(request, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
 
   @Test
-  void put_entityNonEmptyDescriptionUpdate_200(TestInfo test) throws IOException, URISyntaxException {
+  void put_entityNonEmptyDescriptionUpdate_200(TestInfo test) throws IOException {
     // Create entity with non-empty description
-    Object request = createRequest(getEntityName(test), "description", "displayName", null);
-    T entity = createAndCheckEntity(request, adminAuthHeaders());
+    K request = createRequest(getEntityName(test), "description", "displayName", null);
+    T entity = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
     EntityInterface<T> entityInterface = getEntityInterface(entity);
 
     // Update non-empty description with a new description
     Double oldVersion = entityInterface.getVersion();
     request = createRequest(getEntityName(test), "updatedDescription", "displayName", null);
-    entity = updateEntity(request, OK, adminAuthHeaders());
+    entity = updateEntity(request, OK, ADMIN_AUTH_HEADERS);
     entityInterface = getEntityInterface(entity);
     // For service resources, we allow update of non-empty description via PUT
     List<Class<?>> services =
@@ -787,17 +854,17 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
   }
 
   @Test
-  void put_addDeleteFollower_200(TestInfo test) throws IOException, URISyntaxException {
+  void put_addDeleteFollower_200(TestInfo test) throws IOException {
     if (!supportsFollowers) {
       return; // Entity does not support following
     }
-    Object request = createRequest(getEntityName(test), "description", "displayName", null);
-    T entity = createAndCheckEntity(request, adminAuthHeaders());
+    K request = createRequest(getEntityName(test), "description", "displayName", null);
+    T entity = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
     UUID entityId = getEntityInterface(entity).getId();
 
     // Add follower to the entity
     UserResourceTest userResourceTest = new UserResourceTest();
-    User user1 = UserResourceTest.createUser(userResourceTest.create(test, 1), userAuthHeaders());
+    User user1 = userResourceTest.createEntity(userResourceTest.createRequest(test, 1), userAuthHeaders());
     addAndCheckFollower(entityId, user1.getId(), CREATED, 1, userAuthHeaders());
 
     // Add the same user as follower and make sure no errors are thrown and return response is OK
@@ -805,7 +872,7 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     addAndCheckFollower(entityId, user1.getId(), OK, 1, userAuthHeaders());
 
     // Add a new follower to the entity
-    User user2 = UserResourceTest.createUser(userResourceTest.create(test, 2), userAuthHeaders());
+    User user2 = userResourceTest.createEntity(userResourceTest.createRequest(test, 2), userAuthHeaders());
     addAndCheckFollower(entityId, user2.getId(), CREATED, 2, userAuthHeaders());
 
     // Delete followers and make sure they are deleted
@@ -814,20 +881,20 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
   }
 
   @Test
-  void put_addFollowerDeleteEntity_200(TestInfo test) throws IOException, URISyntaxException {
+  void put_addFollowerDeleteEntity_200(TestInfo test) throws IOException {
     if (!supportsFollowers) {
       return; // Entity does not support following
     }
-    Object request = createRequest(getEntityName(test), "description", "displayName", null);
-    T entity = createAndCheckEntity(request, adminAuthHeaders());
+    K request = createRequest(getEntityName(test), "description", "displayName", null);
+    T entity = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
     UUID entityId = getEntityInterface(entity).getId();
 
     // Add follower to the entity
     UserResourceTest userResourceTest = new UserResourceTest();
-    User user1 = UserResourceTest.createUser(userResourceTest.create(test, 1), userAuthHeaders());
+    User user1 = userResourceTest.createEntity(userResourceTest.createRequest(test, 1), userAuthHeaders());
     addAndCheckFollower(entityId, user1.getId(), CREATED, 1, userAuthHeaders());
 
-    deleteEntity(entityId, adminAuthHeaders());
+    deleteEntity(entityId, ADMIN_AUTH_HEADERS);
 
     Map<String, String> queryParams =
         new HashMap<>() {
@@ -836,31 +903,31 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
           }
         };
     EntityInterface<T> entityInterface =
-        getEntityInterface(getEntity(entityId, queryParams, "followers", adminAuthHeaders()));
+        getEntityInterface(getEntity(entityId, queryParams, "followers", ADMIN_AUTH_HEADERS));
     TestUtils.existsInEntityReferenceList(entityInterface.getFollowers(), user1.getId(), true);
   }
 
   @Test
-  void put_addDeleteInvalidFollower_200(TestInfo test) throws IOException, URISyntaxException {
+  void put_addDeleteInvalidFollower_200(TestInfo test) throws IOException {
     if (!supportsFollowers) {
       return; // Entity does not support following
     }
-    Object request = createRequest(getEntityName(test), "description", "displayName", null);
-    T entity = createAndCheckEntity(request, adminAuthHeaders());
+    K request = createRequest(getEntityName(test), "description", "displayName", null);
+    T entity = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
     UUID entityId = getEntityInterface(entity).getId();
 
     // Add non-existent user as follower to the entity
     HttpResponseException exception =
         assertThrows(
             HttpResponseException.class,
-            () -> addAndCheckFollower(entityId, NON_EXISTENT_ENTITY, CREATED, 1, adminAuthHeaders()));
+            () -> addAndCheckFollower(entityId, NON_EXISTENT_ENTITY, CREATED, 1, ADMIN_AUTH_HEADERS));
     assertResponse(exception, NOT_FOUND, CatalogExceptionMessage.entityNotFound(Entity.USER, NON_EXISTENT_ENTITY));
 
     // Delete non-existent user as follower to the entity
     exception =
         assertThrows(
             HttpResponseException.class,
-            () -> deleteAndCheckFollower(entityId, NON_EXISTENT_ENTITY, 1, adminAuthHeaders()));
+            () -> deleteAndCheckFollower(entityId, NON_EXISTENT_ENTITY, 1, ADMIN_AUTH_HEADERS));
     assertResponse(exception, NOT_FOUND, CatalogExceptionMessage.entityNotFound(Entity.USER, NON_EXISTENT_ENTITY));
   }
 
@@ -868,12 +935,12 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
   // Common entity tests for PATCH operations
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   @Test
-  void patch_entityDescriptionAndTestAuthorizer(TestInfo test) throws IOException, URISyntaxException {
+  void patch_entityDescriptionAndTestAuthorizer(TestInfo test) throws IOException {
     if (!supportsPatch || !supportsAuthorizedMetadataOperations) {
       return;
     }
 
-    T entity = createEntity(createRequest(getEntityName(test), "description", null, null), adminAuthHeaders());
+    T entity = createEntity(createRequest(getEntityName(test), "description", null, null), ADMIN_AUTH_HEADERS);
 
     // Anyone can update description on unowned entity.
     entity = patchEntityAndCheckAuthorization(getEntityInterface(entity), TestUtils.ADMIN_USER_NAME, false);
@@ -909,16 +976,16 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
   }
 
   @Test
-  void patch_entityAttributes_200_ok(TestInfo test) throws IOException, URISyntaxException {
+  void patch_entityAttributes_200_ok(TestInfo test) throws IOException {
     if (!supportsPatch) {
       return;
     }
     // Create entity without description, owner
-    T entity = createEntity(createRequest(getEntityName(test), null, null, null), adminAuthHeaders());
+    T entity = createEntity(createRequest(getEntityName(test), null, null, null), ADMIN_AUTH_HEADERS);
     EntityInterface<T> entityInterface = getEntityInterface(entity);
     assertListNull(entityInterface.getDescription(), entityInterface.getOwner());
 
-    entity = getEntity(entityInterface.getId(), adminAuthHeaders());
+    entity = getEntity(entityInterface.getId(), ADMIN_AUTH_HEADERS);
     entityInterface = getEntityInterface(entity);
 
     //
@@ -944,7 +1011,7 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
       change.getFieldsAdded().add(new FieldChange().withName("tags").withNewValue(entityInterface.getTags()));
     }
 
-    entity = patchEntityAndCheck(entity, origJson, adminAuthHeaders(), MINOR_UPDATE, change);
+    entity = patchEntityAndCheck(entity, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
     entityInterface = getEntityInterface(entity);
     entityInterface.setOwner(TEAM_OWNER1); // Get rid of href and name in the response for owner
 
@@ -977,7 +1044,7 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
       change.getFieldsAdded().add(new FieldChange().withName("tags").withNewValue(List.of(TIER1_TAG_LABEL)));
     }
 
-    entity = patchEntityAndCheck(entity, origJson, adminAuthHeaders(), MINOR_UPDATE, change);
+    entity = patchEntityAndCheck(entity, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
     entityInterface = getEntityInterface(entity);
 
     entityInterface.setOwner(USER_OWNER1); // Get rid of href and name in the response for owner
@@ -1004,23 +1071,22 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
       change.getFieldsDeleted().add(new FieldChange().withName("tags").withOldValue(removedTags));
     }
 
-    patchEntityAndCheck(entity, origJson, adminAuthHeaders(), MINOR_UPDATE, change);
+    patchEntityAndCheck(entity, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
 
   @Test
-  void patch_deleted_attribute_disallowed_400(TestInfo test)
-      throws HttpResponseException, JsonProcessingException, URISyntaxException {
+  void patch_deleted_attribute_disallowed_400(TestInfo test) throws HttpResponseException, JsonProcessingException {
     if (!supportsPatch) {
       return;
     }
     // `deleted` attribute can't be set to true in PATCH operation & can only be done using DELETE operation
-    T entity = createEntity(createRequest(getEntityName(test), "", "", null), adminAuthHeaders());
+    T entity = createEntity(createRequest(getEntityName(test), "", "", null), ADMIN_AUTH_HEADERS);
     EntityInterface<T> entityInterface = getEntityInterface(entity);
     String json = JsonUtils.pojoToJson(entity);
     entityInterface.setDeleted(true);
     HttpResponseException exception =
         assertThrows(
-            HttpResponseException.class, () -> patchEntity(entityInterface.getId(), json, entity, adminAuthHeaders()));
+            HttpResponseException.class, () -> patchEntity(entityInterface.getId(), json, entity, ADMIN_AUTH_HEADERS));
     assertResponse(exception, BAD_REQUEST, CatalogExceptionMessage.readOnlyAttribute(entityType, "deleted"));
   }
 
@@ -1030,42 +1096,41 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
   @Test
   void delete_nonExistentEntity_404() {
     HttpResponseException exception =
-        assertThrows(HttpResponseException.class, () -> deleteEntity(NON_EXISTENT_ENTITY, adminAuthHeaders()));
+        assertThrows(HttpResponseException.class, () -> deleteEntity(NON_EXISTENT_ENTITY, ADMIN_AUTH_HEADERS));
     assertResponse(exception, NOT_FOUND, entityNotFound(entityType, NON_EXISTENT_ENTITY));
   }
 
   @Test
-  void delete_entity_as_admin_200(TestInfo test) throws IOException, URISyntaxException {
-    Object request = createRequest(getEntityName(test), "", "", null);
-    T entity = createEntity(request, adminAuthHeaders());
-    deleteAndCheckEntity(entity, adminAuthHeaders());
+  void delete_entity_as_admin_200(TestInfo test) throws IOException {
+    K request = createRequest(getEntityName(test), "", "", null);
+    T entity = createEntity(request, ADMIN_AUTH_HEADERS);
+    deleteAndCheckEntity(entity, ADMIN_AUTH_HEADERS);
   }
 
   @Test
-  void delete_entity_as_non_admin_401(TestInfo test) throws HttpResponseException, URISyntaxException {
-    Object request = createRequest(getEntityName(test), "", "", null);
-    T entity = createEntity(request, adminAuthHeaders());
+  void delete_entity_as_non_admin_401(TestInfo test) throws HttpResponseException {
+    K request = createRequest(getEntityName(test), "", "", null);
+    T entity = createEntity(request, ADMIN_AUTH_HEADERS);
     HttpResponseException exception =
-        assertThrows(
-            HttpResponseException.class, () -> deleteAndCheckEntity(entity, authHeaders("test@open-metadata.org")));
+        assertThrows(HttpResponseException.class, () -> deleteAndCheckEntity(entity, TEST_AUTH_HEADERS));
     assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
   }
 
   /** Soft delete an entity and then use PUT request to restore it back */
   @Test
-  void delete_put_entity_200(TestInfo test) throws IOException, URISyntaxException {
-    Object request = createRequest(getEntityName(test), "", "", null);
-    T entity = createEntity(request, adminAuthHeaders());
+  void delete_put_entity_200(TestInfo test) throws IOException {
+    K request = createRequest(getEntityName(test), "", "", null);
+    T entity = createEntity(request, ADMIN_AUTH_HEADERS);
     EntityInterface<T> entityInterface = getEntityInterface(entity);
 
     // Soft delete the entity
-    deleteAndCheckEntity(entity, adminAuthHeaders());
+    deleteAndCheckEntity(entity, ADMIN_AUTH_HEADERS);
     Double version = EntityUtil.nextVersion(entityInterface.getVersion()); // Version changes during soft-delete
 
     // Send PUT request (with no changes) to restore the entity from soft deleted state
     ChangeDescription change = getChangeDescription(version);
     change.getFieldsUpdated().add(new FieldChange().withName("deleted").withNewValue(false).withOldValue(true));
-    updateAndCheckEntity(request, Response.Status.OK, adminAuthHeaders(), MINOR_UPDATE, change);
+    updateAndCheckEntity(request, Response.Status.OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
 
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1077,21 +1142,21 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     HttpResponseException exception =
         assertThrows(
             HttpResponseException.class,
-            () -> getChangeEvents("invalidEntity", entityType, null, System.currentTimeMillis(), adminAuthHeaders()));
+            () -> getChangeEvents("invalidEntity", entityType, null, System.currentTimeMillis(), ADMIN_AUTH_HEADERS));
     assertResponse(exception, BAD_REQUEST, "Invalid entity invalidEntity in query param entityCreated");
 
     // Invalid entityUpdated list
     exception =
         assertThrows(
             HttpResponseException.class,
-            () -> getChangeEvents(null, "invalidEntity", entityType, System.currentTimeMillis(), adminAuthHeaders()));
+            () -> getChangeEvents(null, "invalidEntity", entityType, System.currentTimeMillis(), ADMIN_AUTH_HEADERS));
     assertResponse(exception, BAD_REQUEST, "Invalid entity invalidEntity in query param entityUpdated");
 
     // Invalid entityDeleted list
     exception =
         assertThrows(
             HttpResponseException.class,
-            () -> getChangeEvents(entityType, null, "invalidEntity", System.currentTimeMillis(), adminAuthHeaders()));
+            () -> getChangeEvents(entityType, null, "invalidEntity", System.currentTimeMillis(), ADMIN_AUTH_HEADERS));
     assertResponse(exception, BAD_REQUEST, "Invalid entity invalidEntity in query param entityDeleted");
   }
 
@@ -1140,7 +1205,12 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     return TestUtils.get(target, entityClass, authHeaders);
   }
 
-  protected final T getEntityByName(
+  public final T getEntityByName(String name, String fields, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    return getEntityByName(name, null, fields, authHeaders);
+  }
+
+  public final T getEntityByName(
       String name, Map<String, String> queryParams, String fields, Map<String, String> authHeaders)
       throws HttpResponseException {
     WebTarget target = getResourceByName(name);
@@ -1151,11 +1221,11 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     return TestUtils.get(target, entityClass, authHeaders);
   }
 
-  public final T createEntity(Object createRequest, Map<String, String> authHeaders) throws HttpResponseException {
+  public final T createEntity(K createRequest, Map<String, String> authHeaders) throws HttpResponseException {
     return TestUtils.post(getCollection(), createRequest, entityClass, authHeaders);
   }
 
-  public final T updateEntity(Object updateRequest, Status status, Map<String, String> authHeaders)
+  public final T updateEntity(K updateRequest, Status status, Map<String, String> authHeaders)
       throws HttpResponseException {
     return TestUtils.put(getCollection(), updateRequest, entityClass, status, authHeaders);
   }
@@ -1217,7 +1287,7 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     assertResponse(() -> getEntity(id, authHeaders), NOT_FOUND, entityNotFound(entityType, id));
   }
 
-  public final T createAndCheckEntity(Object create, Map<String, String> authHeaders) throws IOException {
+  public final T createAndCheckEntity(K create, Map<String, String> authHeaders) throws IOException {
     // Validate an entity that is created has all the information set in create request
     String updatedBy = TestUtils.getPrincipal(authHeaders);
     T entity = createEntity(create, authHeaders);
@@ -1240,7 +1310,7 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
   }
 
   protected final T updateAndCheckEntity(
-      Object request,
+      K request,
       Status status,
       Map<String, String> authHeaders,
       UpdateType updateType,
@@ -1611,10 +1681,10 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
       UUID ownerId = owner.getId();
       List<EntityReference> ownsList;
       if (owner.getType().equals(Entity.USER)) {
-        User user = new UserResourceTest().getEntity(ownerId, "owns", adminAuthHeaders());
+        User user = new UserResourceTest().getEntity(ownerId, "owns", ADMIN_AUTH_HEADERS);
         ownsList = user.getOwns();
       } else if (owner.getType().equals(Entity.TEAM)) {
-        Team team = TeamResourceTest.getTeam(ownerId, "owns", adminAuthHeaders());
+        Team team = new TeamResourceTest().getEntity(ownerId, "owns", ADMIN_AUTH_HEADERS);
         ownsList = team.getOwns();
       } else {
         throw new IllegalArgumentException("Invalid owner type " + owner.getType());

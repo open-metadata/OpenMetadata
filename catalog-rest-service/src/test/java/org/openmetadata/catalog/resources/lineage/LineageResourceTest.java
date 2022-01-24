@@ -19,8 +19,8 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.catalog.security.SecurityUtil.authHeaders;
+import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_USER_NAME;
-import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 
 import java.io.IOException;
@@ -71,33 +71,36 @@ public class LineageResourceTest extends CatalogApplicationTest {
     TableResourceTest tableResourceTest = new TableResourceTest();
     tableResourceTest.setup(test); // Initialize TableResourceTest for using helper methods
     for (int i = 0; i < TABLE_COUNT; i++) {
-      CreateTable createTable = tableResourceTest.create(test, i);
-      TABLES.add(tableResourceTest.createEntity(createTable, adminAuthHeaders()));
+      CreateTable createTable = tableResourceTest.createRequest(test, i);
+      TABLES.add(tableResourceTest.createEntity(createTable, ADMIN_AUTH_HEADERS));
     }
   }
 
   @Test
   void put_delete_lineage_withAuthorizer(TestInfo test) throws HttpResponseException {
     // Random user cannot update lineage.
-    User RANDOM_USER =
-        UserResourceTest.createUser(
-            UserResourceTest.create(test.getDisplayName() + "_lineage_user"), adminAuthHeaders());
+    UserResourceTest userResourceTest = new UserResourceTest();
+    User randomUser =
+        userResourceTest.createEntity(
+            userResourceTest.createRequest(test.getDisplayName() + "_lineage_user", "", "", null), ADMIN_AUTH_HEADERS);
 
     // User with Data Steward role. Data Steward role has a default policy to allow update for lineage.
+    RoleResourceTest roleResourceTest = new RoleResourceTest();
     Role dataStewardRole =
-        RoleResourceTest.getRoleByName(DATA_STEWARD_ROLE_NAME, RoleResource.FIELDS, adminAuthHeaders());
+        roleResourceTest.getEntityByName(DATA_STEWARD_ROLE_NAME, RoleResource.FIELDS, ADMIN_AUTH_HEADERS);
     User userWithDataStewardRole =
-        UserResourceTest.createUser(
-            UserResourceTest.create(test.getDisplayName() + "_lineage_user_data_steward")
+        userResourceTest.createEntity(
+            userResourceTest
+                .createRequest(test.getDisplayName() + "_lineage_user_data_steward", "", "", null)
                 .withRoles(List.of(dataStewardRole.getId())),
-            adminAuthHeaders());
+            ADMIN_AUTH_HEADERS);
 
     // Admins are able to add or delete edges.
     checkAuthorization(ADMIN_USER_NAME, false);
     // User with Data Steward role is able to add or delete edges.
     checkAuthorization(userWithDataStewardRole.getName(), false);
     // Random user is not able to add or delete edges.
-    checkAuthorization(RANDOM_USER.getName(), true);
+    checkAuthorization(randomUser.getName(), true);
   }
 
   private void checkAuthorization(String userName, boolean shouldThrowException) throws HttpResponseException {
@@ -163,21 +166,21 @@ public class LineageResourceTest extends CatalogApplicationTest {
     };
 
     // GET lineage by id
-    EntityLineage lineage = getLineage(Entity.TABLE, TABLES.get(4).getId(), 3, 3, adminAuthHeaders());
+    EntityLineage lineage = getLineage(Entity.TABLE, TABLES.get(4).getId(), 3, 3, ADMIN_AUTH_HEADERS);
     assertEdges(lineage, expectedUpstreamEdges, expectedDownstreamEdges);
 
     // GET lineage by fqn
-    lineage = getLineageByName(Entity.TABLE, TABLES.get(4).getFullyQualifiedName(), 3, 3, adminAuthHeaders());
+    lineage = getLineageByName(Entity.TABLE, TABLES.get(4).getFullyQualifiedName(), 3, 3, ADMIN_AUTH_HEADERS);
     assertEdges(lineage, expectedUpstreamEdges, expectedDownstreamEdges);
 
     // Test table4 partial lineage with various upstream and downstream depths
-    lineage = getLineage(Entity.TABLE, TABLES.get(4).getId(), 0, 0, adminAuthHeaders());
+    lineage = getLineage(Entity.TABLE, TABLES.get(4).getId(), 0, 0, ADMIN_AUTH_HEADERS);
     assertEdges(
         lineage, Arrays.copyOfRange(expectedUpstreamEdges, 0, 0), Arrays.copyOfRange(expectedDownstreamEdges, 0, 0));
-    lineage = getLineage(Entity.TABLE, TABLES.get(4).getId(), 1, 1, adminAuthHeaders());
+    lineage = getLineage(Entity.TABLE, TABLES.get(4).getId(), 1, 1, ADMIN_AUTH_HEADERS);
     assertEdges(
         lineage, Arrays.copyOfRange(expectedUpstreamEdges, 0, 3), Arrays.copyOfRange(expectedDownstreamEdges, 0, 3));
-    lineage = getLineage(Entity.TABLE, TABLES.get(4).getId(), 2, 2, adminAuthHeaders());
+    lineage = getLineage(Entity.TABLE, TABLES.get(4).getId(), 2, 2, ADMIN_AUTH_HEADERS);
     assertEdges(
         lineage, Arrays.copyOfRange(expectedUpstreamEdges, 0, 4), Arrays.copyOfRange(expectedDownstreamEdges, 0, 4));
 
@@ -195,7 +198,7 @@ public class LineageResourceTest extends CatalogApplicationTest {
     deleteEdge(TABLES.get(4), TABLES.get(8));
     deleteEdge(TABLES.get(5), TABLES.get(6));
     deleteEdge(TABLES.get(6), TABLES.get(7));
-    lineage = getLineage(Entity.TABLE, TABLES.get(4).getId(), 2, 2, adminAuthHeaders());
+    lineage = getLineage(Entity.TABLE, TABLES.get(4).getId(), 2, 2, ADMIN_AUTH_HEADERS);
     assertTrue(lineage.getUpstreamEdges().isEmpty());
     assertTrue(lineage.getDownstreamEdges().isEmpty());
   }
@@ -209,7 +212,7 @@ public class LineageResourceTest extends CatalogApplicationTest {
   }
 
   public void addEdge(Table from, Table to) throws HttpResponseException {
-    addEdge(from, to, adminAuthHeaders());
+    addEdge(from, to, ADMIN_AUTH_HEADERS);
   }
 
   private void addEdge(Table from, Table to, Map<String, String> authHeaders) throws HttpResponseException {
@@ -222,7 +225,7 @@ public class LineageResourceTest extends CatalogApplicationTest {
   }
 
   public void deleteEdge(Table from, Table to) throws HttpResponseException {
-    deleteEdge(from, to, adminAuthHeaders());
+    deleteEdge(from, to, ADMIN_AUTH_HEADERS);
   }
 
   private void deleteEdge(Table from, Table to, Map<String, String> authHeaders) throws HttpResponseException {

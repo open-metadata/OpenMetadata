@@ -25,11 +25,10 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.openmetadata.catalog.resources.teams.RoleResourceTest.createRole;
-import static org.openmetadata.catalog.resources.teams.TeamResourceTest.createTeam;
 import static org.openmetadata.catalog.security.SecurityUtil.authHeaders;
+import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
+import static org.openmetadata.catalog.util.TestUtils.TEST_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
-import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
 import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
 import static org.openmetadata.catalog.util.TestUtils.assertListNull;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
@@ -37,7 +36,6 @@ import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -60,7 +58,7 @@ import org.openmetadata.catalog.entity.teams.Role;
 import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
-import org.openmetadata.catalog.jdbi3.RoleRepository;
+import org.openmetadata.catalog.jdbi3.RoleRepository.RoleEntityInterface;
 import org.openmetadata.catalog.jdbi3.TeamRepository.TeamEntityInterface;
 import org.openmetadata.catalog.jdbi3.UserRepository.UserEntityInterface;
 import org.openmetadata.catalog.resources.EntityResourceTest;
@@ -80,7 +78,7 @@ import org.openmetadata.catalog.util.TestUtils;
 import org.openmetadata.catalog.util.TestUtils.UpdateType;
 
 @Slf4j
-public class UserResourceTest extends EntityResourceTest<User> {
+public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   final Profile PROFILE = new Profile().withImages(new ImageList().withImage(URI.create("http://image.com")));
 
   public UserResourceTest() {
@@ -90,26 +88,27 @@ public class UserResourceTest extends EntityResourceTest<User> {
   @Test
   void post_userWithoutEmail_400_badRequest(TestInfo test) {
     // Create user with mandatory email field null
-    CreateUser create = create(test).withEmail(null);
+    CreateUser create = createRequest(test).withEmail(null);
     HttpResponseException exception =
-        assertThrows(HttpResponseException.class, () -> createUser(create, adminAuthHeaders()));
+        assertThrows(HttpResponseException.class, () -> createEntity(create, ADMIN_AUTH_HEADERS));
     assertResponse(exception, BAD_REQUEST, "[email must not be null]");
 
     // Create user with mandatory email field empty
     create.withEmail("");
-    exception = assertThrows(HttpResponseException.class, () -> createUser(create, adminAuthHeaders()));
+    exception = assertThrows(HttpResponseException.class, () -> createEntity(create, ADMIN_AUTH_HEADERS));
     TestUtils.assertResponseContains(exception, BAD_REQUEST, "email must match \"^\\S+@\\S+\\.\\S+$\"");
     TestUtils.assertResponseContains(exception, BAD_REQUEST, "email size must be between 6 and 127");
 
     // Create user with mandatory email field with invalid email address
     create.withEmail("invalidEmail");
-    exception = assertThrows(HttpResponseException.class, () -> createUser(create, adminAuthHeaders()));
+    exception = assertThrows(HttpResponseException.class, () -> createEntity(create, ADMIN_AUTH_HEADERS));
     TestUtils.assertResponseContains(exception, BAD_REQUEST, "[email must match \"^\\S+@\\S+\\.\\S+$\"]");
   }
 
   @Test
   void post_validUser_200_ok_without_login(TestInfo test) {
-    CreateUser create = create(test, 6).withDisplayName("displayName").withEmail("test@email.com").withIsAdmin(true);
+    CreateUser create =
+        createRequest(test, 6).withDisplayName("displayName").withEmail("test@email.com").withIsAdmin(true);
 
     HttpResponseException exception =
         assertThrows(HttpResponseException.class, () -> createAndCheckEntity(create, null));
@@ -119,27 +118,27 @@ public class UserResourceTest extends EntityResourceTest<User> {
   @Test
   void post_validUser_200_ok(TestInfo test) throws IOException {
     // Create user with different optional fields
-    CreateUser create = create(test, 1);
-    createAndCheckEntity(create, adminAuthHeaders());
+    CreateUser create = createRequest(test, 1);
+    createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
 
-    create = create(test, 2).withDisplayName("displayName");
-    createAndCheckEntity(create, adminAuthHeaders());
+    create = createRequest(test, 2).withDisplayName("displayName");
+    createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
 
-    create = create(test, 3).withProfile(PROFILE);
-    createAndCheckEntity(create, adminAuthHeaders());
+    create = createRequest(test, 3).withProfile(PROFILE);
+    createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
 
-    create = create(test, 5).withDisplayName("displayName").withProfile(PROFILE).withIsBot(true);
-    createAndCheckEntity(create, adminAuthHeaders());
+    create = createRequest(test, 5).withDisplayName("displayName").withProfile(PROFILE).withIsBot(true);
+    createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
 
-    create = create(test, 6).withDisplayName("displayName").withProfile(PROFILE).withIsAdmin(true);
-    createAndCheckEntity(create, adminAuthHeaders());
+    create = createRequest(test, 6).withDisplayName("displayName").withProfile(PROFILE).withIsAdmin(true);
+    createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
   }
 
   @Test
   void put_validUser_200_ok(TestInfo test) throws IOException {
     // Create user with different optional fields
-    CreateUser create = create(test, 1);
-    User user = updateAndCheckEntity(create, CREATED, adminAuthHeaders(), UpdateType.CREATED, null);
+    CreateUser create = createRequest(test, 1);
+    User user = updateAndCheckEntity(create, CREATED, ADMIN_AUTH_HEADERS, UpdateType.CREATED, null);
 
     // Update the user information using PUT
     String oldEmail = create.getEmail();
@@ -153,41 +152,48 @@ public class UserResourceTest extends EntityResourceTest<User> {
     change
         .getFieldsUpdated()
         .add(new FieldChange().withName("email").withOldValue(oldEmail).withNewValue("test1@email.com"));
-    updateAndCheckEntity(update, OK, adminAuthHeaders(), MINOR_UPDATE, change);
+    updateAndCheckEntity(update, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
 
   @Test
   void post_validAdminUser_Non_Admin_401(TestInfo test) {
     CreateUser create =
-        create(test, 6).withName("test").withDisplayName("displayName").withEmail("test@email.com").withIsAdmin(true);
+        createRequest(test, 6)
+            .withName("test")
+            .withDisplayName("displayName")
+            .withEmail("test@email.com")
+            .withIsAdmin(true);
 
     HttpResponseException exception =
-        assertThrows(
-            HttpResponseException.class, () -> createAndCheckEntity(create, authHeaders("test@open-metadata.org")));
+        assertThrows(HttpResponseException.class, () -> createAndCheckEntity(create, TEST_AUTH_HEADERS));
     assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
   }
 
   @Test
   void post_validAdminUser_200_ok(TestInfo test) throws IOException {
     CreateUser create =
-        create(test, 6).withName("test1").withDisplayName("displayName").withEmail("test1@email.com").withIsAdmin(true);
-    createAndCheckEntity(create, adminAuthHeaders());
+        createRequest(test, 6)
+            .withName("test1")
+            .withDisplayName("displayName")
+            .withEmail("test1@email.com")
+            .withIsAdmin(true);
+    createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
   }
 
   @Test
   void post_validUserWithTeams_200_ok(TestInfo test) throws IOException {
     // Create user with different optional fields
     TeamResourceTest teamResourceTest = new TeamResourceTest();
-    Team team1 = createTeam(teamResourceTest.create(test, 1), adminAuthHeaders());
-    Team team2 = createTeam(teamResourceTest.create(test, 2), adminAuthHeaders());
+    Team team1 = teamResourceTest.createEntity(teamResourceTest.createRequest(test, 1), ADMIN_AUTH_HEADERS);
+    Team team2 = teamResourceTest.createEntity(teamResourceTest.createRequest(test, 2), ADMIN_AUTH_HEADERS);
     List<UUID> teams = Arrays.asList(team1.getId(), team2.getId());
-    CreateUser create = create(test).withTeams(teams);
-    User user = createAndCheckEntity(create, adminAuthHeaders());
+    CreateUser create = createRequest(test).withTeams(teams);
+    User user = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
 
     // Ensure Team has relationship to this user
-    team1 = TeamResourceTest.getTeam(team1.getId(), "users", adminAuthHeaders());
+    team1 = teamResourceTest.getEntity(team1.getId(), "users", ADMIN_AUTH_HEADERS);
     assertEquals(user.getId(), team1.getUsers().get(0).getId());
-    team2 = TeamResourceTest.getTeam(team2.getId(), "users", adminAuthHeaders());
+    team2 = teamResourceTest.getEntity(team2.getId(), "users", ADMIN_AUTH_HEADERS);
     assertEquals(user.getId(), team2.getUsers().get(0).getId());
   }
 
@@ -195,11 +201,11 @@ public class UserResourceTest extends EntityResourceTest<User> {
   void post_validUserWithRoles_200_ok(TestInfo test) throws IOException {
     // Create user with different optional fields
     RoleResourceTest roleResourceTest = new RoleResourceTest();
-    Role role1 = createRole(roleResourceTest.create(test, 1), adminAuthHeaders());
-    Role role2 = createRole(roleResourceTest.create(test, 2), adminAuthHeaders());
+    Role role1 = roleResourceTest.createEntity(roleResourceTest.createRequest(test, 1), ADMIN_AUTH_HEADERS);
+    Role role2 = roleResourceTest.createEntity(roleResourceTest.createRequest(test, 2), ADMIN_AUTH_HEADERS);
     List<UUID> roles = Arrays.asList(role1.getId(), role2.getId());
-    CreateUser create = create(test).withRoles(roles);
-    User user = createAndCheckEntity(create, adminAuthHeaders());
+    CreateUser create = createRequest(test).withRoles(roles);
+    User user = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
 
     // Ensure User has relationship to these roles
     String[] expectedRoles = roles.stream().map(UUID::toString).sorted().toArray(String[]::new);
@@ -211,20 +217,20 @@ public class UserResourceTest extends EntityResourceTest<User> {
   @Test
   void get_listUsersWithTeams_200_ok(TestInfo test) throws IOException {
     TeamResourceTest teamResourceTest = new TeamResourceTest();
-    Team team1 = createTeam(teamResourceTest.create(test, 1), adminAuthHeaders());
-    Team team2 = createTeam(teamResourceTest.create(test, 2), adminAuthHeaders());
+    Team team1 = teamResourceTest.createEntity(teamResourceTest.createRequest(test, 1), ADMIN_AUTH_HEADERS);
+    Team team2 = teamResourceTest.createEntity(teamResourceTest.createRequest(test, 2), ADMIN_AUTH_HEADERS);
     List<UUID> teams = List.of(team1.getId(), team2.getId());
     List<UUID> team = List.of(team1.getId());
 
     // user0 is part of no teams
     // user1 is part of team1
     // user2 is part of team1, and team2
-    CreateUser create = create(test, 0);
-    User user0 = createAndCheckEntity(create, adminAuthHeaders());
-    create = create(test, 1).withTeams(team);
-    User user1 = createAndCheckEntity(create, adminAuthHeaders());
-    create = create(test, 2).withTeams(teams);
-    User user2 = createAndCheckEntity(create, adminAuthHeaders());
+    CreateUser create = createRequest(test, 0);
+    User user0 = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    create = createRequest(test, 1).withTeams(team);
+    User user1 = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    create = createRequest(test, 2).withTeams(teams);
+    User user2 = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
 
     Predicate<User> isUser0 = u -> u.getId().equals(user0.getId());
     Predicate<User> isUser1 = u -> u.getId().equals(user1.getId());
@@ -236,7 +242,7 @@ public class UserResourceTest extends EntityResourceTest<User> {
             put("team", team1.getName());
           }
         };
-    ResultList<User> users = listEntities(queryParams, 100_000, null, null, adminAuthHeaders());
+    ResultList<User> users = listEntities(queryParams, 100_000, null, null, ADMIN_AUTH_HEADERS);
     assertEquals(2, users.getData().size());
     assertTrue(users.getData().stream().anyMatch(isUser1));
     assertTrue(users.getData().stream().anyMatch(isUser2));
@@ -247,11 +253,11 @@ public class UserResourceTest extends EntityResourceTest<User> {
             put("team", team2.getName());
           }
         };
-    users = listEntities(queryParams, 100_000, null, null, adminAuthHeaders());
+    users = listEntities(queryParams, 100_000, null, null, ADMIN_AUTH_HEADERS);
     assertEquals(1, users.getData().size());
     assertTrue(users.getData().stream().anyMatch(isUser2));
 
-    users = listEntities(null, 100_000, null, null, adminAuthHeaders());
+    users = listEntities(null, 100_000, null, null, ADMIN_AUTH_HEADERS);
     assertTrue(users.getData().stream().anyMatch(isUser0));
     assertTrue(users.getData().stream().anyMatch(isUser1));
     assertTrue(users.getData().stream().anyMatch(isUser2));
@@ -259,30 +265,30 @@ public class UserResourceTest extends EntityResourceTest<User> {
 
   @Test
   void get_userWithInvalidFields_400_BadRequest(TestInfo test) throws HttpResponseException {
-    User user = createUser(create(test), adminAuthHeaders());
+    User user = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
 
     // Empty query field .../users?fields=
     HttpResponseException exception =
-        assertThrows(HttpResponseException.class, () -> getEntity(user.getId(), "test", adminAuthHeaders()));
+        assertThrows(HttpResponseException.class, () -> getEntity(user.getId(), "test", ADMIN_AUTH_HEADERS));
     TestUtils.assertResponseContains(exception, BAD_REQUEST, "Invalid field name");
 
     // .../users?fields=invalidField
     exception =
-        assertThrows(HttpResponseException.class, () -> getEntity(user.getId(), "invalidField", adminAuthHeaders()));
+        assertThrows(HttpResponseException.class, () -> getEntity(user.getId(), "invalidField", ADMIN_AUTH_HEADERS));
     assertResponse(exception, BAD_REQUEST, CatalogExceptionMessage.invalidField("invalidField"));
   }
 
   /**
-   * @see EntityResourceTest#put_addDeleteFollower_200 test for tests related to GET user with owns field parameter
-   * @see EntityResourceTest#put_addDeleteFollower_200 for tests related getting user with follows list
+   * @see EntityResourceTest put_addDeleteFollower_200 test for tests related to GET user with owns field parameter
+   * @see EntityResourceTest put_addDeleteFollower_200 for tests related getting user with follows list
    * @see TableResourceTest also tests GET user returns owns list
    */
   @Test
   void patch_userNameChange_as_another_user_401(TestInfo test) throws HttpResponseException, JsonProcessingException {
     // Ensure username can't be changed using patch
     User user =
-        createUser(
-            create(test, 7).withName("test23").withDisplayName("displayName").withEmail("test23@email.com"),
+        createEntity(
+            createRequest(test, 7).withName("test23").withDisplayName("displayName").withEmail("test23@email.com"),
             authHeaders("test23@email.com"));
     String userJson = JsonUtils.pojoToJson(user);
     user.setDisplayName("newName");
@@ -295,8 +301,8 @@ public class UserResourceTest extends EntityResourceTest<User> {
   void patch_makeAdmin_as_another_user_401(TestInfo test) throws HttpResponseException, JsonProcessingException {
     // Ensure username can't be changed using patch
     User user =
-        createUser(
-            create(test, 6).withName("test2").withDisplayName("displayName").withEmail("test2@email.com"),
+        createEntity(
+            createRequest(test, 6).withName("test2").withDisplayName("displayName").withEmail("test2@email.com"),
             authHeaders("test2@email.com"));
     String userJson = JsonUtils.pojoToJson(user);
     user.setIsAdmin(Boolean.TRUE);
@@ -309,33 +315,36 @@ public class UserResourceTest extends EntityResourceTest<User> {
   void patch_userNameChange_as_same_user_200_ok(TestInfo test) throws HttpResponseException, JsonProcessingException {
     // Ensure username can't be changed using patch
     User user =
-        createUser(
-            create(test, 6).withName("test").withDisplayName("displayName").withEmail("test@email.com"),
+        createEntity(
+            createRequest(test, 6).withName("test").withDisplayName("displayName").withEmail("test@email.com"),
             authHeaders("test@email.com"));
     String userJson = JsonUtils.pojoToJson(user);
     String newDisplayName = "newDisplayName";
     user.setDisplayName(newDisplayName); // Update the name
-    user = patchUser(userJson, user, adminAuthHeaders()); // Patch the user
+    user = patchUser(userJson, user, ADMIN_AUTH_HEADERS); // Patch the user
     assertEquals(newDisplayName, user.getDisplayName());
   }
 
   @Test
   void patch_userAttributes_as_admin_200_ok(TestInfo test) throws IOException {
     // Create user without any attributes - ***Note*** isAdmin by default is false.
-    User user = createUser(create(test), adminAuthHeaders());
+    User user = createEntity(createRequest(test).withProfile(null), ADMIN_AUTH_HEADERS);
     assertListNull(user.getDisplayName(), user.getIsBot(), user.getProfile(), user.getTimezone());
 
     TeamResourceTest teamResourceTest = new TeamResourceTest();
     EntityReference team1 =
-        new TeamEntityInterface(createTeam(teamResourceTest.create(test, 1), adminAuthHeaders()))
+        new TeamEntityInterface(
+                teamResourceTest.createEntity(teamResourceTest.createRequest(test, 1), ADMIN_AUTH_HEADERS))
             .getEntityReference()
             .withHref(null);
     EntityReference team2 =
-        new TeamEntityInterface(createTeam(teamResourceTest.create(test, 2), adminAuthHeaders()))
+        new TeamEntityInterface(
+                teamResourceTest.createEntity(teamResourceTest.createRequest(test, 2), ADMIN_AUTH_HEADERS))
             .getEntityReference()
             .withHref(null);
     EntityReference team3 =
-        new TeamEntityInterface(createTeam(teamResourceTest.create(test, 3), adminAuthHeaders()))
+        new TeamEntityInterface(
+                teamResourceTest.createEntity(teamResourceTest.createRequest(test, 3), ADMIN_AUTH_HEADERS))
             .getEntityReference()
             .withHref(null);
     List<EntityReference> teams = Arrays.asList(team1, team2);
@@ -343,7 +352,8 @@ public class UserResourceTest extends EntityResourceTest<User> {
 
     RoleResourceTest roleResourceTest = new RoleResourceTest();
     EntityReference role1 =
-        new RoleRepository.RoleEntityInterface(createRole(roleResourceTest.create(test, 1), adminAuthHeaders()))
+        new RoleEntityInterface(
+                roleResourceTest.createEntity(roleResourceTest.createRequest(test, 1), ADMIN_AUTH_HEADERS))
             .getEntityReference()
             .withHref(null);
     List<EntityReference> roles1 = Arrays.asList(role1);
@@ -369,7 +379,7 @@ public class UserResourceTest extends EntityResourceTest<User> {
     change.getFieldsAdded().add(new FieldChange().withName("displayName").withNewValue("displayName"));
     change.getFieldsAdded().add(new FieldChange().withName("profile").withNewValue(profile));
     change.getFieldsAdded().add(new FieldChange().withName("isBot").withNewValue(false));
-    user = patchEntityAndCheck(user, origJson, adminAuthHeaders(), MINOR_UPDATE, change);
+    user = patchEntityAndCheck(user, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     //
     // Replace the attributes
@@ -379,7 +389,8 @@ public class UserResourceTest extends EntityResourceTest<User> {
     Profile profile1 = new Profile().withImages(new ImageList().withImage(URI.create("http://image2.com")));
 
     EntityReference role2 =
-        new RoleRepository.RoleEntityInterface(createRole(roleResourceTest.create(test, 2), adminAuthHeaders()))
+        new RoleEntityInterface(
+                roleResourceTest.createEntity(roleResourceTest.createRequest(test, 2), ADMIN_AUTH_HEADERS))
             .getEntityReference()
             .withHref(null);
     List<EntityReference> roles2 = Arrays.asList(role2);
@@ -407,7 +418,7 @@ public class UserResourceTest extends EntityResourceTest<User> {
     change.getFieldsUpdated().add(new FieldChange().withName("profile").withOldValue(profile).withNewValue(profile1));
     change.getFieldsUpdated().add(new FieldChange().withName("isBot").withOldValue(false).withNewValue(true));
 
-    user = patchEntityAndCheck(user, origJson, adminAuthHeaders(), MINOR_UPDATE, change);
+    user = patchEntityAndCheck(user, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     //
     // Remove the attributes
@@ -429,36 +440,37 @@ public class UserResourceTest extends EntityResourceTest<User> {
     change.getFieldsDeleted().add(new FieldChange().withName("displayName").withOldValue("displayName1"));
     change.getFieldsDeleted().add(new FieldChange().withName("profile").withOldValue(profile1));
     change.getFieldsDeleted().add(new FieldChange().withName("isBot").withOldValue(true).withNewValue(null));
-    patchEntityAndCheck(user, origJson, adminAuthHeaders(), MINOR_UPDATE, change);
+    patchEntityAndCheck(user, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
 
   @Test
   void delete_validUser_as_admin_200(TestInfo test) throws IOException {
     TeamResourceTest teamResourceTest = new TeamResourceTest();
-    Team team = createTeam(teamResourceTest.create(test), adminAuthHeaders());
+    Team team = teamResourceTest.createEntity(teamResourceTest.createRequest(test), ADMIN_AUTH_HEADERS);
     List<UUID> teamIds = Collections.singletonList(team.getId());
 
-    CreateUser create = create(test).withProfile(PROFILE).withTeams(teamIds);
-    User user = createUser(create, adminAuthHeaders());
+    // Create user with teams
+    CreateUser create = createRequest(test).withProfile(PROFILE).withTeams(teamIds);
+    User user = createEntity(create, ADMIN_AUTH_HEADERS);
 
     // Add user as follower to a table
     TableResourceTest tableResourceTest = new TableResourceTest();
     Table table = tableResourceTest.createEntity(test, 1);
-    tableResourceTest.addAndCheckFollower(table.getId(), user.getId(), CREATED, 1, adminAuthHeaders());
+    tableResourceTest.addAndCheckFollower(table.getId(), user.getId(), CREATED, 1, ADMIN_AUTH_HEADERS);
 
     // Delete user
-    deleteAndCheckEntity(user, adminAuthHeaders());
+    deleteAndCheckEntity(user, ADMIN_AUTH_HEADERS);
 
     // Make sure the user is no longer following the table
-    team = TeamResourceTest.getTeam(team.getId(), "users", adminAuthHeaders());
+    team = teamResourceTest.getEntity(team.getId(), "users", ADMIN_AUTH_HEADERS);
     assertTrue(team.getUsers().isEmpty());
-    tableResourceTest.checkFollowerDeleted(table.getId(), user.getId(), adminAuthHeaders());
+    tableResourceTest.checkFollowerDeleted(table.getId(), user.getId(), ADMIN_AUTH_HEADERS);
 
     // User can no longer follow other entities
     HttpResponseException exception =
         assertThrows(
             HttpResponseException.class,
-            () -> tableResourceTest.addAndCheckFollower(table.getId(), user.getId(), CREATED, 1, adminAuthHeaders()));
+            () -> tableResourceTest.addAndCheckFollower(table.getId(), user.getId(), CREATED, 1, ADMIN_AUTH_HEADERS));
     assertResponse(exception, NOT_FOUND, CatalogExceptionMessage.entityNotFound("user", user.getId()));
 
     // TODO deactivated user can't be made owner
@@ -476,25 +488,6 @@ public class UserResourceTest extends EntityResourceTest<User> {
     return patchUser(updated.getId(), originalJson, updated, headers);
   }
 
-  public CreateUser create(TestInfo test) {
-    return create(getEntityName(test));
-  }
-
-  public CreateUser create(TestInfo test, int index) {
-    return create(getEntityName(test, index));
-  }
-
-  public static CreateUser create(String name) {
-    // user part of the email should be less than 64 in length
-    String emailUser = name == null || name.isEmpty() ? UUID.randomUUID().toString() : name;
-    emailUser = emailUser.length() > 64 ? emailUser.substring(0, 64) : emailUser;
-    return new CreateUser().withName(name).withEmail(emailUser + "@open-metadata.org");
-  }
-
-  public static User createUser(CreateUser create, Map<String, String> authHeaders) throws HttpResponseException {
-    return TestUtils.post(CatalogApplicationTest.getResource("users"), create, User.class, authHeaders);
-  }
-
   /** Validate returned fields GET .../users/{id}?fields="..." or GET .../users/name/{name}?fields="..." */
   @Override
   public void validateGetWithDifferentFields(User user, boolean byName) throws HttpResponseException {
@@ -502,8 +495,8 @@ public class UserResourceTest extends EntityResourceTest<User> {
     String fields = "profile";
     user =
         byName
-            ? getEntityByName(user.getName(), null, fields, adminAuthHeaders())
-            : getEntity(user.getId(), fields, adminAuthHeaders());
+            ? getEntityByName(user.getName(), fields, ADMIN_AUTH_HEADERS)
+            : getEntity(user.getId(), fields, ADMIN_AUTH_HEADERS);
     assertNotNull(user.getProfile());
     assertNull(user.getTeams());
 
@@ -511,19 +504,22 @@ public class UserResourceTest extends EntityResourceTest<User> {
     fields = "profile, teams";
     user =
         byName
-            ? getEntityByName(user.getName(), null, fields, adminAuthHeaders())
-            : getEntity(user.getId(), fields, adminAuthHeaders());
+            ? getEntityByName(user.getName(), fields, ADMIN_AUTH_HEADERS)
+            : getEntity(user.getId(), fields, ADMIN_AUTH_HEADERS);
     assertListNotNull(user.getProfile(), user.getTeams());
   }
 
   @Override
-  public Object createRequest(String name, String description, String displayName, EntityReference owner) {
-    return create(name)
+  public CreateUser createRequest(String name, String description, String displayName, EntityReference owner) {
+    // user part of the email should be less than 64 in length
+    String emailUser = name == null || name.isEmpty() ? UUID.randomUUID().toString() : name;
+    emailUser = emailUser.length() > 64 ? emailUser.substring(0, 64) : emailUser;
+    return new CreateUser()
+        .withName(name)
+        .withEmail(emailUser + "@open-metadata.org")
         .withDescription(description)
         .withDisplayName(displayName)
-        .withProfile(PROFILE)
-        .withTeams(List.of(TEAM1.getId()))
-        .withRoles(List.of(ROLE1.getId()));
+        .withProfile(PROFILE);
   }
 
   @Override
@@ -531,15 +527,15 @@ public class UserResourceTest extends EntityResourceTest<User> {
     LocationResourceTest locationResourceTest = new LocationResourceTest();
     EntityReference userRef = new EntityReference().withId(user.getId()).withType("user");
     locationResourceTest.createEntity(
-        locationResourceTest.createRequest(getEntityName(test, 0), null, null, userRef), adminAuthHeaders());
+        locationResourceTest.createRequest(getEntityName(test, 0), null, null, userRef), ADMIN_AUTH_HEADERS);
     locationResourceTest.createEntity(
-        locationResourceTest.createRequest(getEntityName(test, 1), null, null, TEAM_OWNER1), adminAuthHeaders());
+        locationResourceTest.createRequest(getEntityName(test, 1), null, null, TEAM_OWNER1), ADMIN_AUTH_HEADERS);
     return user;
   }
 
   @Override
   protected void validateDeletedEntity(
-      Object create, User userBeforeDeletion, User userAfterDeletion, Map<String, String> authHeaders)
+      CreateUser create, User userBeforeDeletion, User userAfterDeletion, Map<String, String> authHeaders)
       throws HttpResponseException {
     super.validateDeletedEntity(create, userBeforeDeletion, userAfterDeletion, authHeaders);
 
@@ -556,13 +552,7 @@ public class UserResourceTest extends EntityResourceTest<User> {
   }
 
   @Override
-  public EntityReference getContainer(Object createRequest) throws URISyntaxException {
-    return null; // No container entity
-  }
-
-  @Override
-  public void validateCreatedEntity(User user, Object request, Map<String, String> authHeaders) {
-    CreateUser createRequest = (CreateUser) request;
+  public void validateCreatedEntity(User user, CreateUser createRequest, Map<String, String> authHeaders) {
     validateCommonEntityFields(
         getEntityInterface(user), createRequest.getDescription(), TestUtils.getPrincipal(authHeaders), null);
 
@@ -599,7 +589,7 @@ public class UserResourceTest extends EntityResourceTest<User> {
   }
 
   @Override
-  public void validateUpdatedEntity(User user, Object request, Map<String, String> authHeaders) {
+  public void validateUpdatedEntity(User user, CreateUser request, Map<String, String> authHeaders) {
     validateCreatedEntity(user, request, authHeaders);
   }
 
@@ -649,6 +639,7 @@ public class UserResourceTest extends EntityResourceTest<User> {
       Profile actualProfile = JsonUtils.readValue(actual.toString(), Profile.class);
       assertEquals(expectedProfile, actualProfile);
     } else if (fieldName.equals("teams") || fieldName.equals("roles")) {
+      @SuppressWarnings("unchecked")
       List<EntityReference> expectedList = (List<EntityReference>) expected;
       List<EntityReference> actualList = JsonUtils.readObjects(actual.toString(), EntityReference.class);
       assertEquals(expectedList, actualList);
