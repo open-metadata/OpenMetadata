@@ -6,10 +6,6 @@ This document summarizes information relevant to OpenMetadata committers and con
 [how-to-contribute.md](how-to-contribute.md)
 {% endcontent-ref %}
 
-{% content-ref url="coding-style.md" %}
-[coding-style.md](coding-style.md)
-{% endcontent-ref %}
-
 {% content-ref url="build-code-run-tests.md" %}
 [build-code-run-tests.md](build-code-run-tests.md)
 {% endcontent-ref %}
