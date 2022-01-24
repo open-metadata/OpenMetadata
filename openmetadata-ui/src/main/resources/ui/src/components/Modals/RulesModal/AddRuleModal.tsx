@@ -101,6 +101,7 @@ const AddRuleModal: FC<AddRuleProps> = ({
                     'focus:tw-outline-none focus:tw-border-focus hover:tw-border-hover tw-h-10 tw-bg-white',
                     { 'tw-cursor-not-allowed tw-opacity-60': isEditing }
                   )}
+                  data-testid="select-operation"
                   disabled={isEditing}
                   name="operation"
                   value={data.operation}
@@ -123,6 +124,7 @@ const AddRuleModal: FC<AddRuleProps> = ({
                 className="tw-text-sm tw-appearance-none tw-border tw-border-main
                 tw-rounded tw-w-full tw-py-2 tw-px-3 tw-text-grey-body  tw-leading-tight
                 focus:tw-outline-none focus:tw-border-focus hover:tw-border-hover tw-h-10 tw-bg-white"
+                data-testid="select-access"
                 name="access"
                 value={access}
                 onChange={(e) => setAccess(e.target.value as RuleAccess)}>
