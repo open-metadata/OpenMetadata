@@ -109,7 +109,7 @@ Select it and click "OK". Now run/debug the application.
 
 ## Coding Style
 
-1. [Refer to coding guidelines](coding-style.md)
+1. [Refer to coding guidelines](docs/open-source-community/developer/backend/coding-style.md)
 2.  Configure IntelliJ to disable the \[wild-card imports]
 
     ([https://www.jetbrains.com/help/idea/creating-and-optimizing-imports.html#disable-wildcard-imports](https://www.jetbrains.com/help/idea/creating-and-optimizing-imports.html#disable-wildcard-imports))
