@@ -24,8 +24,8 @@ Type: `object`
   - Metadata version of the entity.
   - $ref: [../type/entityHistory.json#/definitions/entityVersion](../types/entityhistory.md#entityversion)
 - **updatedAt**
-  - Last update time corresponding to the new version of the entity.
-  - $ref: [../type/basic.json#/definitions/dateTime](../types/basic.md#datetime)
+  - Last update time corresponding to the new version of the entity in Unix epoch time milliseconds.
+  - $ref: [../type/basic.json#/definitions/timestamp](../types/basic.md#timestamp)
 - **updatedBy**
   - User who made the update.
   - Type: `string`
@@ -35,5 +35,10 @@ Type: `object`
 - **changeDescription**
   - Change that lead to this version of the entity.
   - $ref: [../type/entityHistory.json#/definitions/changeDescription](../types/entityhistory.md#changedescription)
+- **deleted**
+  - When `true` indicates the entity has been soft deleted.
+  - Type: `boolean`
+  - Default: _false_
 
-_This document was updated on: Tuesday, December 14, 2021_
+
+_This document was updated on: Tuesday, January 25, 2022_

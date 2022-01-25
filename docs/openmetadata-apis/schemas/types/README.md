@@ -18,6 +18,10 @@ OpenMetadata supports many common types reused across different schemas. Definin
 [dailycount.md](dailycount.md)
 {% endcontent-ref %}
 
+{% content-ref url="databaseconnectionconfig.md" %}
+[databaseconnectionconfig.md](databaseconnectionconfig.md)
+{% endcontent-ref %}
+
 {% content-ref url="entityhistory.md" %}
 [entityhistory.md](entityhistory.md)
 {% endcontent-ref %}
@@ -30,8 +34,16 @@ OpenMetadata supports many common types reused across different schemas. Definin
 [entityreference.md](entityreference.md)
 {% endcontent-ref %}
 
+{% content-ref url="entityrelationship.md" %}
+[entityrelationship.md](entityrelationship.md)
+{% endcontent-ref %}
+
 {% content-ref url="entityusage.md" %}
 [entityusage.md](entityusage.md)
+{% endcontent-ref %}
+
+{% content-ref url="include.md" %}
+[include.md](include.md)
 {% endcontent-ref %}
 
 {% content-ref url="jdbcconnection.md" %}

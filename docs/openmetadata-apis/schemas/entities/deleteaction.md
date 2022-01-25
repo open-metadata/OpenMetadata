@@ -9,14 +9,14 @@ Type: `object`
 This schema <u>does not</u> accept additional properties.
 
 ## Properties
-- **daysAfterCreation**
-  - Number of days after creation of the entity that the deletion should be triggered.
-  - Type: `integer`
-  - Range:  &ge; 1
-- **daysAfterModification**
-  - Number of days after last modification of the entity that the deletion should be triggered.
-  - Type: `integer`
-  - Range:  &ge; 1
+ - **daysAfterCreation**
+	 - Number of days after creation of the entity that the deletion should be triggered.
+	 - Type: `integer`
+	 - Range:  &ge; 1
+ - **daysAfterModification**
+	 - Number of days after last modification of the entity that the deletion should be triggered.
+	 - Type: `integer`
+	 - Range:  &ge; 1
 
 
-_This document was updated on: Tuesday, December 14, 2021_
+_This document was updated on: Tuesday, January 25, 2022_
