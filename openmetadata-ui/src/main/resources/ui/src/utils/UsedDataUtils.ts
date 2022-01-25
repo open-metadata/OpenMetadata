@@ -31,7 +31,7 @@ const getAllTeams = (): void => {
 };
 
 export const fetchAllUsers = () => {
-  getAllUsersList('profile,teams');
+  getAllUsersList('profile,teams,roles');
   getAllTeams();
   // TODO: uncomment below line to update users list in real time.
   // setInterval(getAllUsersList, TIMEOUT.USER_LIST);
