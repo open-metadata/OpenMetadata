@@ -283,7 +283,7 @@ public class PipelineServiceResource {
       throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     PipelineService service = getService(update, securityContext);
-    PutResponse<PipelineService> response = dao.createOrUpdate(uriInfo, service);
+    PutResponse<PipelineService> response = dao.createOrUpdate(uriInfo, service, true);
     return response.toResponse();
   }
 

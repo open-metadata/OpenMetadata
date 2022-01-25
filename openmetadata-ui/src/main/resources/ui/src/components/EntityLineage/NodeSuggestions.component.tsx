@@ -76,7 +76,7 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
                     displayName: entity.name,
                     id: entity.id,
                     type: entity.entityType as string,
-                    name: entity.name,
+                    name: entity.fullyQualifiedName,
                   });
                 }}>
                 {entity.database

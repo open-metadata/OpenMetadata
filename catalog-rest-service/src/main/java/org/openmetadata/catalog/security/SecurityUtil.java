@@ -55,6 +55,24 @@ public final class SecurityUtil {
     }
   }
 
+  /** This helper function checks if user has permission to perform the given metadata operation. */
+  public static void checkAdminRoleOrPermissions(
+      Authorizer authorizer,
+      SecurityContext securityContext,
+      EntityReference entityReference,
+      MetadataOperation metadataOperation) {
+    Principal principal = securityContext.getUserPrincipal();
+    AuthenticationContext authenticationCtx = SecurityUtil.getAuthenticationContext(principal);
+
+    if (authorizer.isAdmin(authenticationCtx) || authorizer.isBot(authenticationCtx)) {
+      return;
+    }
+
+    if (!authorizer.hasPermissions(authenticationCtx, entityReference, metadataOperation)) {
+      throw new AuthorizationException("Principal: " + principal + " does not have permission to " + metadataOperation);
+    }
+  }
+
   /**
    * Most REST API requests should yield in a single metadata operation. There are cases where the JSON patch request
    * may yield multiple metadata operations. This helper function checks if user has permission to perform the given set
@@ -65,7 +83,9 @@ public final class SecurityUtil {
     Principal principal = securityContext.getUserPrincipal();
     AuthenticationContext authenticationCtx = SecurityUtil.getAuthenticationContext(principal);
 
-    if (authorizer.isAdmin(authenticationCtx) || authorizer.isBot(authenticationCtx)) return;
+    if (authorizer.isAdmin(authenticationCtx) || authorizer.isBot(authenticationCtx)) {
+      return;
+    }
 
     List<MetadataOperation> metadataOperations = JsonPatchUtils.getMetadataOperations(patch);
     for (MetadataOperation metadataOperation : metadataOperations) {

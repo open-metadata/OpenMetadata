@@ -48,6 +48,7 @@ export interface PipeLineDetailsProp {
   slashedPipelineName: TitleBreadcrumbProps['titleLinks'];
   entityLineage: EntityLineage;
   tasks: Task[];
+  deleted?: boolean;
   setActiveTabHandler: (value: number) => void;
   followPipelineHandler: () => void;
   unfollowPipelineHandler: () => void;

@@ -13,19 +13,26 @@
 
 import classNames from 'classnames';
 import cronstrue from 'cronstrue';
+import { isEmpty } from 'lodash';
 import { StepperStepType } from 'Models';
 import { utc } from 'moment';
 import React, { Fragment, ReactNode, useEffect, useState } from 'react';
-import { IngestionType } from '../../enums/service.enum';
-import { getCurrentDate } from '../../utils/CommonUtils';
-import { getIngestionTypeList } from '../../utils/ServiceUtils';
+import {
+  AirflowPipeline,
+  ConfigObject,
+} from '../../generated/operations/pipelines/airflowPipeline';
+import { useAuth } from '../../hooks/authHooks';
+import {
+  getCurrentDate,
+  getCurrentUserId,
+  getSeparator,
+} from '../../utils/CommonUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import { Button } from '../buttons/Button/Button';
 import CronEditor from '../common/CronEditor/CronEditor';
 import IngestionStepper from '../IngestionStepper/IngestionStepper.component';
 import {
   IngestionModalProps,
-  ServiceData,
   ValidationErrorMsg,
 } from './IngestionModal.interface';
 
@@ -38,10 +45,9 @@ const errorMsg = (value: string) => {
 };
 
 const STEPS: Array<StepperStepType> = [
-  { name: 'Ingestion details', step: 1 },
-  { name: 'Connector config', step: 2 },
-  { name: 'Scheduling', step: 3 },
-  { name: 'Review and Deploy', step: 4 },
+  { name: 'Ingestion config', step: 1 },
+  { name: 'Scheduling', step: 2 },
+  { name: 'Review and Deploy', step: 3 },
 ];
 
 const requiredField = (label: string) => (
@@ -66,7 +72,7 @@ const PreviewSection = ({
   return (
     <div className={className}>
       <p className="tw-font-medium tw-px-1 tw-mb-2">{header}</p>
-      <div className="tw-grid tw-gap-4 tw-grid-cols-3 tw-place-content-center tw-pl-6">
+      <div className="tw-grid tw-gap-4 tw-grid-cols-2 tw-place-content-center tw-pl-6">
         {data.map((d, i) => (
           <div key={i}>
             <div className="tw-text-xs tw-font-normal tw-text-grey-muted">
@@ -80,36 +86,25 @@ const PreviewSection = ({
   );
 };
 
-const getServiceName = (service: string) => {
-  return service.split('$$').splice(1).join('$$');
-};
-
 const getIngestionName = (name: string) => {
   const nameString = name.trim().replace(/\s+/g, '_');
 
   return nameString.toLowerCase();
 };
 
-const setService = (
-  serviceList: Array<ServiceData>,
-  currentservice: string
-) => {
-  const service = serviceList.find((s) => s.name === currentservice);
-
-  return service ? `${service?.serviceType}$$${service?.name}` : '';
-};
-
 const IngestionModal: React.FC<IngestionModalProps> = ({
   isUpdating,
   header,
-  serviceList = [], // TODO: remove default assignment after resolving prop validation warning
+  service,
+  ingestionTypes,
   ingestionList,
   onCancel,
   addIngestion,
   updateIngestion,
   selectedIngestion,
 }: IngestionModalProps) => {
-  const [activeStep, setActiveStep] = useState<number>(isUpdating ? 2 : 1);
+  const { isAdminUser } = useAuth();
+  const [activeStep, setActiveStep] = useState<number>(1);
 
   const [startDate, setStartDate] = useState<string>(
     utc(selectedIngestion?.startDate).format('YYYY-MM-DD') || getCurrentDate()
@@ -121,44 +116,40 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
   );
 
   const [ingestionName, setIngestionName] = useState<string>(
-    selectedIngestion?.displayName || ''
+    selectedIngestion?.name || service || ''
   );
   const [ingestionType, setIngestionType] = useState<string>(
-    selectedIngestion?.ingestionType || ''
+    selectedIngestion?.pipelineType || ''
   );
-  const [ingestionService, setIngestionService] = useState<string>(
-    setService(serviceList, selectedIngestion?.service?.name as string) || ''
+  const [pipelineConfig] = useState(
+    (selectedIngestion?.pipelineConfig.config || {}) as ConfigObject
   );
-
-  const [username, setUsername] = useState<string>(
-    selectedIngestion?.connectorConfig?.username || ''
+  const [tableIncludeFilter, setTableIncludeFilter] = useState(
+    pipelineConfig.tableFilterPattern?.includes?.join(',') || ''
   );
-  const [password, setPassword] = useState<string>(
-    selectedIngestion?.connectorConfig?.password || ''
+  const [tableExcludesFilter, setTableExcludesFilter] = useState(
+    pipelineConfig.tableFilterPattern?.excludes?.join(',') || ''
   );
-  const [host, setHost] = useState<string>(
-    selectedIngestion?.connectorConfig?.host || ''
+  const [schemaIncludeFilter, setSchemaIncludeFilter] = useState(
+    pipelineConfig.schemaFilterPattern?.includes?.join(',') || ''
   );
-  const [database, setDatabase] = useState<string>(
-    selectedIngestion?.connectorConfig?.database || ''
+  const [schemaExcludesFilter, setSchemaExcludesFilter] = useState(
+    pipelineConfig.schemaFilterPattern?.excludes?.join(',') || ''
   );
-  const [includeFilterPattern, setIncludeFilterPattern] = useState<
-    Array<string>
-  >(selectedIngestion?.connectorConfig?.includeFilterPattern || []);
-  const [excludeFilterPattern, setExcludeFilterPattern] = useState<
-    Array<string>
-  >(selectedIngestion?.connectorConfig?.excludeFilterPattern || []);
   const [includeViews, setIncludeViews] = useState<boolean>(
-    selectedIngestion?.connectorConfig?.includeViews || true
+    pipelineConfig.includeViews || true
+  );
+  const [ingestSampleData, setIngestSampleData] = useState<boolean>(
+    pipelineConfig.generateSampleData || true
   );
   const [excludeDataProfiler, setExcludeDataProfiler] = useState<boolean>(
-    selectedIngestion?.connectorConfig?.enableDataProfiler || false
+    pipelineConfig.enableDataProfiler || false
   );
 
   const [ingestionSchedule, setIngestionSchedule] = useState<string>(
     selectedIngestion?.scheduleInterval || '5 * * * *'
   );
-  const [isPasswordVisible, setIspasswordVisible] = useState<boolean>(false);
+
   const [showErrorMsg, setShowErrorMsg] = useState<ValidationErrorMsg>({
     selectService: false,
     name: false,
@@ -171,16 +162,6 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
     isPipelineExists: false,
     isPipelineNameExists: false,
   });
-
-  const isPipelineExists = () => {
-    return ingestionList.some(
-      (i) =>
-        i.service.name === getServiceName(ingestionService) &&
-        i.ingestionType === ingestionType &&
-        i.service.name !== selectedIngestion?.name &&
-        i.service.displayName === selectedIngestion?.ingestionType
-    );
-  };
 
   const isPipeLineNameExists = () => {
     return ingestionList.some(
@@ -197,35 +178,12 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
     const name = event.target.name;
 
     switch (name) {
-      case 'name':
-        setIngestionName(value);
-
-        break;
-      case 'selectService':
-        setIngestionService(value);
-        setIngestionType('');
-
-        break;
       case 'ingestionType':
         setIngestionType(value);
+        setIngestionName(`${service}_${value}`);
 
         break;
-      case 'username':
-        setUsername(value);
 
-        break;
-      case 'password':
-        setPassword(value);
-
-        break;
-      case 'host':
-        setHost(value);
-
-        break;
-      case 'database':
-        setDatabase(value);
-
-        break;
       case 'ingestionSchedule':
         setIngestionSchedule(value);
 
@@ -244,32 +202,15 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
     let isValid = false;
     switch (activeStep) {
       case 1:
-        isValid = Boolean(
-          ingestionName &&
-            ingestionService &&
-            ingestionType &&
-            !isPipelineExists()
-        );
+        isValid = Boolean(ingestionName && ingestionType);
         setShowErrorMsg({
           ...showErrorMsg,
           name: !ingestionName,
           ingestionType: !ingestionType,
-          selectService: !ingestionService,
         });
 
         break;
       case 2:
-        isValid = Boolean(username && password && host && database);
-        setShowErrorMsg({
-          ...showErrorMsg,
-          username: !username,
-          password: !password,
-          host: !host,
-          database: !database,
-        });
-
-        break;
-      case 3:
         isValid = Boolean(ingestionSchedule);
         setShowErrorMsg({
           ...showErrorMsg,
@@ -294,17 +235,16 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
                 {requiredField('Name:')}
               </label>
               <input
-                className={classNames('tw-form-inputs tw-px-3 tw-py-1', {
-                  'tw-cursor-not-allowed': isUpdating,
-                })}
+                disabled
+                className={classNames(
+                  'tw-form-inputs tw-px-3 tw-py-1 tw-cursor-not-allowed'
+                )}
                 data-testid="name"
                 id="name"
                 name="name"
                 placeholder="Ingestion name"
-                readOnly={isUpdating}
                 type="text"
                 value={ingestionName}
-                onChange={handleValidation}
               />
               {showErrorMsg.name && errorMsg('Ingestion Name is required')}
               {showErrorMsg.isPipelineNameExists &&
@@ -312,165 +252,122 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
             </Field>
 
             <Field>
-              <label className="tw-block" htmlFor="selectService">
-                {requiredField('Select Service:')}
-              </label>
-              <select
-                className={classNames('tw-form-inputs tw-px-3 tw-py-1', {
-                  'tw-cursor-not-allowed': isUpdating,
-                })}
-                data-testid="select-service"
-                disabled={isUpdating}
-                id="selectService"
-                name="selectService"
-                value={ingestionService}
-                onChange={handleValidation}>
-                <option value="">Select Service</option>
-                {serviceList.map((service, index) => (
-                  <option
-                    key={index}
-                    value={`${service.serviceType}$$${service.name}`}>
-                    {service.name}
-                  </option>
-                ))}
-              </select>
-              {showErrorMsg.selectService && errorMsg('Service is required')}
-            </Field>
-            <Field>
               <label className="tw-block " htmlFor="ingestionType">
                 {requiredField('Type of ingestion:')}
               </label>
               <select
                 className={classNames('tw-form-inputs tw-px-3 tw-py-1', {
-                  'tw-cursor-not-allowed': !ingestionService,
+                  'tw-cursor-not-allowed': isUpdating,
                 })}
                 data-testid="ingestion-type"
-                disabled={!ingestionService || isUpdating}
+                disabled={isUpdating}
                 id="ingestionType"
                 name="ingestionType"
                 value={ingestionType}
                 onChange={handleValidation}>
                 <option value="">Select ingestion type</option>
-                {(
-                  getIngestionTypeList(ingestionService?.split('$$')?.[0]) || []
-                ).map((service, index) => (
-                  <option key={index} value={service}>
-                    {service}
+                {ingestionTypes.map((option, i) => (
+                  <option key={i} value={option}>
+                    {option}
                   </option>
                 ))}
               </select>
               {showErrorMsg.ingestionType &&
                 errorMsg('Ingestion Type is required')}
-              {showErrorMsg.isPipelineExists &&
-                errorMsg(
-                  `Ingestion with service ${getServiceName(
-                    ingestionService
-                  )} and ingestion-type ${ingestionType} already exists `
-                )}
             </Field>
-          </Fragment>
-        );
 
-      case 2:
-        return (
-          <Fragment>
             <Field>
-              <label className="tw-block" htmlFor="username">
-                {requiredField('Username:')}
-              </label>
-              <input
-                className="tw-form-inputs tw-px-3 tw-py-1"
-                data-testid="user-name"
-                id="username"
-                name="username"
-                placeholder="User name"
-                type="text"
-                value={username}
-                onChange={handleValidation}
-              />
-              {showErrorMsg.username && errorMsg('Username is required')}
+              {getSeparator('Table Filter Pattern')}
+              <div className="tw-grid tw-grid-cols-2 tw-gap-x-4 tw-mt-1">
+                <div>
+                  <label
+                    className="tw-block"
+                    htmlFor="tableIncludeFilterPattern">
+                    Include:
+                  </label>
+                  <input
+                    className="tw-form-inputs tw-px-3 tw-py-1"
+                    data-testid="include-filter-pattern"
+                    id="tableIncludeFilterPattern"
+                    name="tableIncludeFilterPattern"
+                    placeholder="Include filter patterns comma seperated"
+                    type="text"
+                    value={tableIncludeFilter}
+                    onChange={(e) => {
+                      setTableIncludeFilter(e.target.value);
+                    }}
+                  />
+                </div>
+                <div>
+                  <label
+                    className="tw-block"
+                    htmlFor="tableExcludeFilterPattern">
+                    Exclude:
+                  </label>
+                  <input
+                    className="tw-form-inputs tw-px-3 tw-py-1"
+                    data-testid="exclude-filter-pattern"
+                    id="tableExcludeFilterPattern"
+                    name="tableExcludeFilterPattern"
+                    placeholder="Exclude filter patterns comma seperated"
+                    type="text"
+                    value={tableExcludesFilter}
+                    onChange={(e) => {
+                      setTableExcludesFilter(e.target.value);
+                    }}
+                  />
+                </div>
+              </div>
             </Field>
+
             <Field>
-              <label className="tw-block" htmlFor="password">
-                {requiredField('Password:')}
-              </label>
-              <input
-                className="tw-form-inputs tw-px-3 tw-py-1"
-                data-testid="password"
-                id="password"
-                name="password"
-                placeholder="Password"
-                type="password"
-                value={password}
-                onChange={handleValidation}
-              />
-              {showErrorMsg.password && errorMsg('Password is required')}
+              {getSeparator('Schema Filter Pattern')}
+              <div className="tw-grid tw-grid-cols-2 tw-gap-x-4 tw-mt-1">
+                <div>
+                  <label
+                    className="tw-block"
+                    htmlFor="schemaIncludeFilterPattern">
+                    Include:
+                  </label>
+                  <input
+                    className="tw-form-inputs tw-px-3 tw-py-1"
+                    data-testid="schema-include-filter-pattern"
+                    id="schemaIncludeFilterPattern"
+                    name="schemaIncludeFilterPattern"
+                    placeholder="Include filter patterns comma seperated"
+                    type="text"
+                    value={schemaIncludeFilter}
+                    onChange={(e) => {
+                      setSchemaIncludeFilter(e.target.value);
+                    }}
+                  />
+                </div>
+                <div>
+                  <label
+                    className="tw-block"
+                    htmlFor="schemaExcludeFilterPattern">
+                    Exclude:
+                  </label>
+                  <input
+                    className="tw-form-inputs tw-px-3 tw-py-1"
+                    data-testid="schema-exclude-filter-pattern"
+                    id="schemaExcludeFilterPattern"
+                    name="schemaExcludeFilterPattern"
+                    placeholder="Exclude filter patterns comma seperated"
+                    type="text"
+                    value={schemaExcludesFilter}
+                    onChange={(e) => {
+                      setSchemaExcludesFilter(e.target.value);
+                    }}
+                  />
+                </div>
+              </div>
             </Field>
+
             <Field>
-              <label className="tw-block" htmlFor="host">
-                {requiredField('Host:')}
-              </label>
-              <input
-                className="tw-form-inputs tw-px-3 tw-py-1"
-                data-testid="host"
-                id="host"
-                name="host"
-                placeholder="Host"
-                type="text"
-                value={host}
-                onChange={handleValidation}
-              />
-              {showErrorMsg.host && errorMsg('Host is required')}
-            </Field>
-            <Field>
-              <label className="tw-block" htmlFor="database">
-                {requiredField('Database:')}
-              </label>
-              <input
-                className="tw-form-inputs tw-px-3 tw-py-1"
-                data-testid="database"
-                id="database"
-                name="database"
-                placeholder="Database"
-                type="text"
-                value={database}
-                onChange={handleValidation}
-              />
-              {showErrorMsg.database && errorMsg('Database is required')}
-            </Field>
-            <Field>
-              <label className="tw-block" htmlFor="includeFilterPattern">
-                Include Filter Patterns:
-              </label>
-              <input
-                className="tw-form-inputs tw-px-3 tw-py-1"
-                data-testid="include-filter-pattern"
-                id="includeFilterPattern"
-                name="includeFilterPattern"
-                placeholder="Include filter patterns comma seperated"
-                type="text"
-                value={includeFilterPattern}
-                onChange={(e) => setIncludeFilterPattern([e.target.value])}
-              />
-            </Field>
-            <Field>
-              <label className="tw-block" htmlFor="excludeFilterPattern">
-                Exclude Filter Patterns:
-              </label>
-              <input
-                className="tw-form-inputs tw-px-3 tw-py-1"
-                data-testid="exclude-filter-pattern"
-                id="excludeFilterPattern"
-                name="excludeFilterPattern"
-                placeholder="Exclude filter patterns comma seperated"
-                type="text"
-                value={excludeFilterPattern}
-                onChange={(e) => setExcludeFilterPattern([e.target.value])}
-              />
-            </Field>
-            <Field>
+              <hr className="tw-pb-4 tw-mt-7" />
               <div className="tw-flex tw-justify-between">
-                <Fragment>
+                <div className="tw-flex tw-gap-1">
                   <label>Include views:</label>
                   <div
                     className={classNames(
@@ -481,8 +378,8 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
                     onClick={() => setIncludeViews(!includeViews)}>
                     <div className="switch" />
                   </div>
-                </Fragment>
-                <Fragment>
+                </div>
+                <div className="tw-flex tw-gap-1">
                   <label>Enable data profiler:</label>
                   <div
                     className={classNames(
@@ -495,12 +392,26 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
                     }>
                     <div className="switch" />
                   </div>
-                </Fragment>
+                </div>
+                <div className="tw-flex tw-gap-1">
+                  <label>Ingest sample data</label>
+                  <div
+                    className={classNames(
+                      'toggle-switch',
+                      ingestSampleData ? 'open' : null
+                    )}
+                    data-testid="ingest-sample-data"
+                    onClick={() => {
+                      setIngestSampleData(!ingestSampleData);
+                    }}>
+                    <div className="switch" />
+                  </div>
+                </div>
               </div>
             </Field>
           </Fragment>
         );
-      case 3:
+      case 2:
         return (
           <Fragment>
             <div className="tw-mt-4" data-testid="schedule-interval">
@@ -539,7 +450,7 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
             </div>
           </Fragment>
         );
-      case 4:
+      case 3:
         return (
           <Fragment>
             <div
@@ -549,60 +460,78 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
                 className="tw-mb-4 tw-mt-4"
                 data={[
                   { key: 'Name', value: ingestionName },
-                  {
-                    key: 'Service Type',
-                    value: getServiceName(ingestionService),
-                  },
                   { key: 'Ingestion Type', value: ingestionType },
                 ]}
                 header="Ingestion Details"
               />
-              <PreviewSection
-                className="tw-mb-4 tw-mt-6"
-                data={[
-                  { key: 'Username', value: username },
-                  {
-                    key: 'Password',
-                    value: (
-                      <div>
-                        <span
-                          className={classNames({
-                            'tw-align-middle': !isPasswordVisible,
-                          })}>
-                          {isPasswordVisible
-                            ? password
-                            : ''.padStart(password.length, '*')}
-                        </span>
-                        <i
-                          className={classNames(
-                            'far tw-text-grey-body tw-ml-2',
-                            {
-                              'fa-eye-slash': isPasswordVisible,
-                            },
 
-                            { 'fa-eye ': !isPasswordVisible }
-                          )}
-                          onClick={() => setIspasswordVisible((pre) => !pre)}
-                        />
-                      </div>
-                    ),
-                  },
-                  { key: 'Host', value: host },
-                  { key: 'Database', value: database },
-                  { key: 'Include views', value: includeViews ? 'Yes' : 'No' },
-                  {
-                    key: 'Enable Data Profiler',
-                    value: excludeDataProfiler ? 'Yes' : 'No',
-                  },
-                ]}
-                header="Connector Config"
-              />
+              {(!isEmpty(tableIncludeFilter) ||
+                !isEmpty(tableExcludesFilter)) && (
+                <PreviewSection
+                  className="tw-mb-4 tw-mt-4"
+                  data={[
+                    {
+                      key: 'Include',
+                      value: !isEmpty(tableIncludeFilter)
+                        ? tableIncludeFilter
+                        : 'None',
+                    },
+                    {
+                      key: 'Exclude',
+                      value: !isEmpty(tableExcludesFilter)
+                        ? tableExcludesFilter
+                        : 'None',
+                    },
+                  ]}
+                  header="Table Filter Patterns"
+                />
+              )}
+
+              {(!isEmpty(schemaIncludeFilter) ||
+                !isEmpty(schemaExcludesFilter)) && (
+                <PreviewSection
+                  className="tw-mb-4 tw-mt-4"
+                  data={[
+                    {
+                      key: 'Include',
+                      value: !isEmpty(schemaIncludeFilter)
+                        ? schemaIncludeFilter
+                        : 'None',
+                    },
+                    {
+                      key: 'Exclude',
+                      value: !isEmpty(schemaExcludesFilter)
+                        ? schemaExcludesFilter
+                        : 'None',
+                    },
+                  ]}
+                  header="Schema Filter Patterns"
+                />
+              )}
+
               <PreviewSection
                 className="tw-mt-6"
-                data={[]}
+                data={[
+                  {
+                    key: 'Ingestion name',
+                    value: ingestionName,
+                  },
+                  {
+                    key: 'Include views',
+                    value: includeViews ? 'Yes' : 'No',
+                  },
+                  {
+                    key: 'Enable data profiler',
+                    value: excludeDataProfiler ? 'Yes' : 'No',
+                  },
+                  {
+                    key: 'Ingest sample data',
+                    value: ingestSampleData ? 'Yes' : 'No',
+                  },
+                ]}
                 header="Scheduling"
               />
-              <p className="tw-pl-6">
+              <p className="tw-pl-6 tw-pt-4 tw-pb-5">
                 {cronstrue.toString(ingestionSchedule || '', {
                   use24HourTimeFormat: true,
                   verbose: true,
@@ -618,37 +547,69 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
   };
 
   const onSaveHandler = (triggerIngestion = false) => {
-    const ingestionData = {
-      ingestionType: ingestionType as IngestionType,
-      displayName: ingestionName,
-      name: getIngestionName(ingestionName),
-      service: { name: getServiceName(ingestionService), id: '', type: '' },
-      startDate: startDate || getCurrentDate(),
-      endDate: endDate || '',
-      scheduleInterval: ingestionSchedule,
-      forceDeploy: true,
-      connectorConfig: {
-        database: database,
-        enableDataProfiler: excludeDataProfiler,
-        excludeFilterPattern: excludeFilterPattern,
-        host: host,
-        includeFilterPattern: includeFilterPattern,
-        includeViews: includeViews,
-        password: password,
-        username: username,
+    const ingestionObj: AirflowPipeline = {
+      name: ingestionName,
+      pipelineConfig: {
+        schema: selectedIngestion?.pipelineConfig.schema,
+        config: {
+          includeViews: includeViews,
+          generateSampleData: ingestSampleData,
+          enableDataProfiler: excludeDataProfiler,
+          schemaFilterPattern:
+            !isEmpty(schemaIncludeFilter) || !isEmpty(schemaExcludesFilter)
+              ? {
+                  includes: !isEmpty(schemaIncludeFilter)
+                    ? schemaIncludeFilter.split(',')
+                    : undefined,
+                  excludes: !isEmpty(schemaExcludesFilter)
+                    ? schemaExcludesFilter.split(',')
+                    : undefined,
+                }
+              : undefined,
+          tableFilterPattern:
+            !isEmpty(tableIncludeFilter) || !isEmpty(tableExcludesFilter)
+              ? {
+                  includes: !isEmpty(tableIncludeFilter)
+                    ? tableIncludeFilter.split(',')
+                    : undefined,
+                  excludes: !isEmpty(tableExcludesFilter)
+                    ? tableExcludesFilter.split(',')
+                    : undefined,
+                }
+              : undefined,
+        },
       },
+      service: {
+        type: selectedIngestion?.service.type || '',
+        id: selectedIngestion?.service.id || '',
+      },
+      owner: {
+        id: selectedIngestion?.owner?.id || getCurrentUserId(),
+        type: selectedIngestion?.owner?.type || isAdminUser ? 'admin' : 'user',
+      },
+      scheduleInterval: ingestionSchedule,
+      startDate: startDate as unknown as Date,
+      endDate: endDate as unknown as Date,
+      forceDeploy: true,
+      pipelineType:
+        selectedIngestion?.pipelineType ||
+        (ingestionType as AirflowPipeline['pipelineType']),
     };
-    addIngestion?.(ingestionData, triggerIngestion);
-    updateIngestion?.(ingestionData, triggerIngestion);
+
+    if (isUpdating) {
+      updateIngestion?.(ingestionObj, triggerIngestion);
+    } else {
+      addIngestion?.(ingestionObj, triggerIngestion);
+    }
   };
 
   useEffect(() => {
     setShowErrorMsg({
       ...showErrorMsg,
-      isPipelineExists: isPipelineExists(),
+      // isPipelineExists: isPipelineExists(),
       isPipelineNameExists: isPipeLineNameExists(),
     });
-  }, [ingestionType, ingestionService, ingestionName]);
+  }, [ingestionType, ingestionName]);
 
   useEffect(() => {
     if (endDate) {
@@ -687,7 +648,11 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
           </div>
         </div>
         <div className="tw-modal-body" data-testid="modal-body">
-          <IngestionStepper activeStep={activeStep} steps={STEPS} />
+          <IngestionStepper
+            activeStep={activeStep}
+            stepperLineClassName="edit-ingestion-line"
+            steps={STEPS}
+          />
 
           <form className="tw-min-w-full" data-testid="form">
             <div className="tw-px-4">{getActiveStepFields(activeStep)}</div>
@@ -709,7 +674,7 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
             <span>Previous</span>
           </Button>
 
-          {activeStep === 4 ? (
+          {activeStep === 3 ? (
             <div className="tw-flex">
               <Button
                 data-testid="deploy-button"

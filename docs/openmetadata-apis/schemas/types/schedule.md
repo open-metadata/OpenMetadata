@@ -7,11 +7,12 @@ This schema defines the type used for the schedule. The schedule has a start tim
 Type: `object`
 
 ## Properties
-- **startDate**
-  - Start date and time of the schedule.
-  - $ref: [basic.json#/definitions/dateTime](basic.md#datetime)
-- **repeatFrequency**
-  - Repeat frequency in ISO 8601 duration format. Example - 'P23DT23H'.
-  - $ref: [basic.json#/definitions/duration](basic.md#duration)
+ - **startDate**
+	 - Start date and time of the schedule.
+	 - $ref: [basic.json#/definitions/dateTime](basic.md#datetime)
+ - **repeatFrequency**
+	 - Repeat frequency in ISO 8601 duration format. Example - 'P23DT23H'.
+	 - $ref: [basic.json#/definitions/duration](basic.md#duration)
 
-_This document was updated on: Tuesday, December 14, 2021_
+
+_This document was updated on: Tuesday, January 25, 2022_

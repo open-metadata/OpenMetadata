@@ -97,7 +97,7 @@ public class SlackWebhookEventPublisher extends AbstractEventPublisher {
       operation = "created";
     } else if (event.getEventType().equals(EventType.ENTITY_UPDATED)) {
       operation = "updated";
-    } else if (event.getEventType().equals(EventType.ENTITY_DELETED)) {
+    } else if (event.getEventType().equals(EventType.ENTITY_SOFT_DELETED)) {
       operation = "deleted";
     }
     return String.format(headerTxt, event.getUserName(), operation, entityUrl);
@@ -137,14 +137,17 @@ public class SlackWebhookEventPublisher extends AbstractEventPublisher {
     ChangeDescription changeDescription = event.getChangeDescription();
     if (changeDescription.getFieldsUpdated() != null && !changeDescription.getFieldsUpdated().isEmpty()) {
       for (FieldChange fieldChange : changeDescription.getFieldsUpdated()) {
-        SlackAttachment attachment = new SlackAttachment();
-        attachment.setTitle("Updated " + fieldChange.getName());
-        if (fieldChange.getName().equals("owner")) {
-          attachment.setText(parseOwnership((String) fieldChange.getOldValue(), (String) fieldChange.getNewValue()));
-        } else {
-          attachment.setText((String) fieldChange.getNewValue());
+        // when the entity is deleted we will get deleted set as true. We do not need to parse this for slack messages.
+        if (!fieldChange.getName().equals("deleted")) {
+          SlackAttachment attachment = new SlackAttachment();
+          attachment.setTitle("Updated " + fieldChange.getName());
+          if (fieldChange.getName().equals("owner")) {
+            attachment.setText(parseOwnership((String) fieldChange.getOldValue(), (String) fieldChange.getNewValue()));
+          } else {
+            attachment.setText((String) fieldChange.getNewValue());
+          }
+          attachments.add(attachment);
         }
-        attachments.add(attachment);
       }
     }
     return attachments;

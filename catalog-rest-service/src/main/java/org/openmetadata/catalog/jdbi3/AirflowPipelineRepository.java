@@ -96,7 +96,7 @@ public class AirflowPipelineRepository extends EntityRepository<AirflowPipeline>
     EntityReference service = airflowPipeline.getService();
 
     // Don't store owner, dashboard, href and tags as JSON. Build it on the fly based on relationships
-    airflowPipeline.withOwner(null).withHref(null);
+    airflowPipeline.withOwner(null).withService(null).withHref(null);
 
     store(airflowPipeline.getId(), airflowPipeline, update);
 

@@ -96,7 +96,7 @@ class ColumnTypeParser:
         "MONEY": "NUMBER",
         "NCHAR": "CHAR",
         "NTEXT": "TEXT",
-        "NULL": "NULL",
+        "NULL": "VARCHAR",
         "NUMBER": "NUMBER",
         "NUMERIC": "NUMERIC",
         "NVARCHAR": "VARCHAR",

@@ -297,6 +297,16 @@ export const errorMsg = (value: string) => {
   );
 };
 
+export const getSeparator = (title: string | JSX.Element) => {
+  return (
+    <span className="tw-flex tw-py-2 tw-text-grey-muted">
+      <hr className="tw-mt-2.5 tw-w-full" />
+      {title && <span className="tw-px-0.5 tw-min-w-max">{title}</span>}
+      <hr className="tw-mt-2.5 tw-w-full" />
+    </span>
+  );
+};
+
 export const getImages = (imageUri: string) => {
   const imagesObj: typeof imageTypes = imageTypes;
   for (const type in imageTypes) {

@@ -130,13 +130,16 @@ airflowConfiguration:
 
 slackEventPublishers:
   - name: "slack events"
-    webhookUrl: "slackIncomingWebhook"
+    webhookUrl: "slackIncomingWebhook URL"
     openMetadataUrl: http://${SERVER_HOST:-localhost}:${SERVER_PORT:-8585}
     filters:
       - eventType: "entityCreated"
         entities:
          - "*"
       - eventType: "entityUpdated"
+        entities:
+         - "*"
+      - eventType: "entitySoftDeleted"
         entities:
          - "*"
       - eventType: "entityDeleted"

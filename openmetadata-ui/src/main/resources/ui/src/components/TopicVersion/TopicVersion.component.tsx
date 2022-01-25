@@ -42,6 +42,7 @@ const TopicVersion: FC<TopicVersionProp> = ({
   tier,
   slashedTopicName,
   versionList,
+  deleted = false,
   backHandler,
   versionHandler,
 }: TopicVersionProp) => {
@@ -264,6 +265,7 @@ const TopicVersion: FC<TopicVersionProp> = ({
           <div className={classNames('version-data')}>
             <EntityPageInfo
               isVersionSelected
+              deleted={deleted}
               entityName={currentVersionData.name ?? ''}
               extraInfo={getExtraInfo()}
               followersList={[]}

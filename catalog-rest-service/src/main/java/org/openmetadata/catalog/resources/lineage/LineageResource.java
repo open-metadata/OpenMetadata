@@ -23,7 +23,6 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
-import java.util.Objects;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
 import javax.validation.constraints.Min;
@@ -40,14 +39,18 @@ import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
+import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
+import lombok.NonNull;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.lineage.AddLineage;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.LineageRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.Authorizer;
+import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityLineage;
+import org.openmetadata.catalog.type.MetadataOperation;
 
 @Path("/v1/lineage")
 @Api(value = "Lineage resource", tags = "Lineage resource")
@@ -56,10 +59,11 @@ import org.openmetadata.catalog.type.EntityLineage;
 @Collection(name = "lineage")
 public class LineageResource {
   private final LineageRepository dao;
+  private final Authorizer authorizer;
 
-  public LineageResource(CollectionDAO dao, Authorizer authorizer) {
-    Objects.requireNonNull(dao, "LineageRepository must not be null");
+  public LineageResource(@NonNull CollectionDAO dao, Authorizer authorizer) {
     this.dao = new LineageRepository(dao);
+    this.authorizer = authorizer;
   }
 
   @GET
@@ -149,7 +153,11 @@ public class LineageResource {
         @ApiResponse(responseCode = "200"),
         @ApiResponse(responseCode = "404", description = "Entity for instance {id} is not found")
       })
-  public Response addLineage(@Context UriInfo uriInfo, @Valid AddLineage addLineage) throws IOException {
+  public Response addLineage(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid AddLineage addLineage)
+      throws IOException {
+    SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, null, MetadataOperation.UpdateLineage);
+
     dao.addLineage(addLineage);
     return Response.status(Status.OK).build();
   }
@@ -166,6 +174,7 @@ public class LineageResource {
       })
   public Response deleteLineage(
       @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
       @Parameter(
               description = "Entity type of upstream entity of the edge",
               required = true,
@@ -183,6 +192,8 @@ public class LineageResource {
       @Parameter(description = "Entity id", required = true, schema = @Schema(type = "string")) @PathParam("toId")
           String toId)
       throws IOException {
+    SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, null, MetadataOperation.UpdateLineage);
+
     boolean deleted = dao.deleteLineage(fromEntity, fromId, toEntity, toId);
     if (!deleted) {
       return Response.status(NOT_FOUND)

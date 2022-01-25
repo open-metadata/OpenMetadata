@@ -598,6 +598,7 @@ const EntityVersionPage: FunctionComponent = () => {
           <TopicVersion
             backHandler={backHandler}
             currentVersionData={currentVersionData}
+            deleted={currentVersionData.deleted}
             isVersionLoading={isVersionLoading}
             owner={owner}
             slashedTopicName={slashedEntityName}
@@ -615,6 +616,7 @@ const EntityVersionPage: FunctionComponent = () => {
           <DashboardVersion
             backHandler={backHandler}
             currentVersionData={currentVersionData}
+            deleted={currentVersionData.deleted}
             isVersionLoading={isVersionLoading}
             owner={owner}
             slashedDashboardName={slashedEntityName}
@@ -632,6 +634,7 @@ const EntityVersionPage: FunctionComponent = () => {
           <PipelineVersion
             backHandler={backHandler}
             currentVersionData={currentVersionData}
+            deleted={currentVersionData.deleted}
             isVersionLoading={isVersionLoading}
             owner={owner}
             slashedPipelineName={slashedEntityName}

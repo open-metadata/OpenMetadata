@@ -9,32 +9,34 @@ Type: `object`
 This schema <u>does not</u> accept additional properties.
 
 ## Properties
-- **id** `required`
-  - Unique identifier that identifies an entity instance.
-  - $ref: [basic.json#/definitions/uuid](basic.md#uuid)
-- **type** `required`
-  - Entity type/class name - Examples: `database`, `table`, `metrics`, `databaseService`, `dashboardService`...
-  - Type: `string`
-- **name**
-  - Name of the entity instance. For entities such as tables, databases where the name is not unique, fullyQualifiedName is returned in this field.
-  - Type: `string`
-- **description**
-  - Optional description of entity.
-  - Type: `string`
-- **displayName**
-  - Display Name that identifies this entity.
-  - Type: `string`
-- **href**
-  - Link to the entity resource.
-  - $ref: [basic.json#/definitions/href](basic.md#href)
+ - **id** `required`
+	 - Unique identifier that identifies an entity instance.
+	 - $ref: [basic.json#/definitions/uuid](basic.md#uuid)
+ - **type** `required`
+	 - Entity type/class name - Examples: `database`, `table`, `metrics`, `databaseService`, `dashboardService`...
+	 - Type: `string`
+ - **name**
+	 - Name of the entity instance. For entities such as tables, databases where the name is not unique, fullyQualifiedName is returned in this field.
+	 - Type: `string`
+ - **description**
+	 - Optional description of entity.
+	 - Type: `string`
+ - **displayName**
+	 - Display Name that identifies this entity.
+	 - Type: `string`
+ - **href**
+	 - Link to the entity resource.
+	 - $ref: [basic.json#/definitions/href](basic.md#href)
 
 
 ## Type definitions in this schema
-
 ### entityReferenceList
 
-- Type: `array`
-  - **Items**
-  - $ref: [entityReference.json](entityreference.md)
+ - Type: `array`
+	 - **Items**
+	 - $ref: [entityReference.json](entityreference.md)
 
-_This document was updated on: Tuesday, December 14, 2021_
+
+
+
+_This document was updated on: Tuesday, January 25, 2022_

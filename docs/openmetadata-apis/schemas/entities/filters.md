@@ -7,24 +7,24 @@
 ## Type definitions in this schema
 ### prefix
 
-- Prefix path of the entity.
-- Type: `string`
+ - Prefix path of the entity.
+ - Type: `string`
 
 
 ### regex
 
-- Regex that matches the entity.
-- Type: `string`
+ - Regex that matches the entity.
+ - Type: `string`
 
 
-### filters
+### tags
 
-- The set of filters that are used to match on entities. A logical AND operation is applied across all filters.
-- Type: `array`
-- Item Count:  &ge; 1
-    - **Items**
-
-
+ - Set of tags to match on (OR among all tags).
+ - Type: `array`
+	 - **Items**
+	 - $ref: [../tags/tagCategory.json#/definitions/tagName](tagcategory.md#tagname)
 
 
-_This document was updated on: Tuesday, December 14, 2021_
+
+
+_This document was updated on: Tuesday, January 25, 2022_

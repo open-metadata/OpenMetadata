@@ -17,11 +17,12 @@ import { isEmpty } from 'lodash';
 import { observer } from 'mobx-react';
 import { Match } from 'Models';
 import React, { useEffect, useState } from 'react';
-import { useHistory, useLocation, useRouteMatch } from 'react-router-dom';
+import { Link, useHistory, useLocation, useRouteMatch } from 'react-router-dom';
 import appState from '../../AppState';
 import { getVersion } from '../../axiosAPIs/miscAPI';
 import {
   getExplorePathWithSearch,
+  getTeamDetailsPath,
   navLinkSettings,
   ROUTES,
 } from '../../constants/constants';
@@ -126,23 +127,52 @@ const Appbar: React.FC = (): JSX.Element => {
     },
   ];
 
-  const getUserDisplayName = () => {
-    const name = isAuthDisabled
-      ? appState.users?.length > 0
-        ? appState.users[0].displayName
-        : 'User'
-      : appState.userDetails.displayName || appState.userDetails.name;
+  const getUserData = () => {
+    const currentUser = isAuthDisabled
+      ? appState.users[0]
+      : appState.userDetails;
+
+    const name = currentUser?.displayName || currentUser?.name || 'User';
+
+    const roles = currentUser?.roles;
+
+    const teams = currentUser?.teams;
 
     return (
-      <span data-testid="greeting-text">
+      <div data-testid="greeting-text">
         <span className="tw-font-medium">{name}</span>
-      </span>
+        <hr className="tw-my-1.5" />
+        {(roles?.length ?? 0) > 0 ? (
+          <div>
+            <div className="tw-font-medium tw-text-xs">Roles</div>
+            {roles?.map((r, i) => (
+              <p className="tw-text-grey-muted" key={i}>
+                {r.displayName}
+              </p>
+            ))}
+          </div>
+        ) : null}
+        <hr className="tw-my-1.5" />
+        {(teams?.length ?? 0) > 0 ? (
+          <div>
+            <span className="tw-font-medium tw-text-xs">Teams</span>
+            {teams?.map((t, i) => (
+              <p key={i}>
+                <Link to={getTeamDetailsPath(t.name as string)}>
+                  {t.displayName}
+                </Link>
+              </p>
+            ))}
+            <hr className="tw-mt-1.5" />
+          </div>
+        ) : null}
+      </div>
     );
   };
 
   const profileDropdown = [
     {
-      name: getUserDisplayName(),
+      name: getUserData(),
       to: '',
       disabled: false,
       icon: <></>,

@@ -281,7 +281,7 @@ public class MessagingServiceResource {
       throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     MessagingService service = getService(update, securityContext);
-    PutResponse<MessagingService> response = dao.createOrUpdate(uriInfo, service);
+    PutResponse<MessagingService> response = dao.createOrUpdate(uriInfo, service, true);
     return response.toResponse();
   }
 
