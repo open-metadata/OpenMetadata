@@ -800,24 +800,21 @@ export const AddServiceModal: FunctionComponent<Props> = ({
             />
             {showErrorMsg.url && errorMsg('Host name is required')}
           </div>
-          <div className="tw-flex">
-            <div>:</div>
-            <div>
-              <label className="tw-block tw-form-label" htmlFor="port">
-                {requiredField('Port:')}
-              </label>
-              <input
-                className="tw-form-inputs tw-px-3 tw-py-1"
-                data-testid="port"
-                id="port"
-                name="port"
-                placeholder="port"
-                type="text"
-                value={port}
-                onChange={handleValidation}
-              />
-              {showErrorMsg.port && errorMsg('Port is required')}
-            </div>
+          <div className="">
+            <label className="tw-block tw-form-label" htmlFor="port">
+              {requiredField('Port:')}
+            </label>
+            <input
+              className="tw-form-inputs tw-px-3 tw-py-1"
+              data-testid="port"
+              id="port"
+              name="port"
+              placeholder="port"
+              type="text"
+              value={port}
+              onChange={handleValidation}
+            />
+            {showErrorMsg.port && errorMsg('Port is required')}
           </div>
         </div>
         <Field>
