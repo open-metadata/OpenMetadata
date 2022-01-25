@@ -12,7 +12,14 @@
  */
 
 import { AxiosResponse } from 'axios';
-import { Bucket, ServiceCollection, ServiceData, ServiceTypes } from 'Models';
+import {
+  Bucket,
+  DynamicFormFieldType,
+  DynamicObj,
+  ServiceCollection,
+  ServiceData,
+  ServiceTypes,
+} from 'Models';
 import { getServiceDetails, getServices } from '../axiosAPIs/serviceAPI';
 import { ServiceDataObj } from '../components/Modals/AddServiceModal/AddServiceModal';
 import {
@@ -391,4 +398,27 @@ export const getIsIngestionEnable = (serviceCategory: ServiceCategory) => {
   }
 
   return false;
+};
+
+export const getKeyValuePair = (obj: DynamicObj) => {
+  const newObj = Object.entries(obj).map((v) => {
+    return {
+      key: v[0],
+      value: v[1],
+    };
+  });
+
+  return newObj;
+};
+
+export const getKeyValueObject = (arr: DynamicFormFieldType[]) => {
+  const keyValuePair: DynamicObj = {};
+
+  arr.forEach((obj) => {
+    if (obj.key && obj.value) {
+      keyValuePair[obj.key] = obj.value;
+    }
+  });
+
+  return keyValuePair;
 };

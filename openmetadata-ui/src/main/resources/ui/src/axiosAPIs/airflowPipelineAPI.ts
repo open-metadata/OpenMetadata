@@ -22,14 +22,15 @@ export const addAirflowPipeline = (
 export const getAirflowPipelines = (
   arrQueryFields: Array<string>,
   serviceFilter?: string,
+  extraFilter = '',
   paging?: string
 ): Promise<AxiosResponse> => {
-  const service = `service=${serviceFilter}`;
+  const service = serviceFilter ? `service=${serviceFilter}` : '';
   const url = `${getURLWithQueryFields(
     '/airflowPipeline',
     arrQueryFields,
     service
-  )}${paging ? paging : ''}`;
+  )}${extraFilter ? extraFilter : ''}${paging ? paging : ''}`;
 
   return APIClient({ method: 'get', url, baseURL: operationsBaseUrl });
 };
