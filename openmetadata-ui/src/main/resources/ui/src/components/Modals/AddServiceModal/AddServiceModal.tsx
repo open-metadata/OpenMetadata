@@ -396,7 +396,7 @@ export const AddServiceModal: FunctionComponent<Props> = ({
       case 'name':
         setName(value);
         setIngestionTypeList(
-          ingestionTypeList?.map((d, i) => {
+          ingestionTypeList?.map((d) => {
             return {
               ...d,
               ingestionName: `${value}_${PipelineType.Metadata}`,
