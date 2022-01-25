@@ -275,7 +275,7 @@ public class DashboardServiceResource {
       throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     DashboardService service = getService(update, securityContext);
-    PutResponse<DashboardService> response = dao.createOrUpdate(uriInfo, service);
+    PutResponse<DashboardService> response = dao.createOrUpdate(uriInfo, service, true);
     return response.toResponse();
   }
 

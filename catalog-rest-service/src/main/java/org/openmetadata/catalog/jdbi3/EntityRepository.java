@@ -364,8 +364,14 @@ public abstract class EntityRepository<T> {
     return createNewEntity(entity);
   }
 
-  @Transaction
   public final PutResponse<T> createOrUpdate(UriInfo uriInfo, T updated) throws IOException, ParseException {
+    // By default, do not allow updates on original description or display names of entities
+    return createOrUpdate(uriInfo, updated, false);
+  }
+
+  @Transaction
+  public final PutResponse<T> createOrUpdate(UriInfo uriInfo, T updated, boolean allowEdits)
+      throws IOException, ParseException {
     prepare(updated);
     // Check if there is any original, deleted or not
     T original = JsonUtils.readValue(dao.findJsonByFqn(getFullyQualifiedName(updated), Include.ALL), entityClass);
@@ -380,7 +386,7 @@ public abstract class EntityRepository<T> {
 
     // Update the attributes and relationships of an entity
     EntityUpdater entityUpdater = getUpdater(original, updated, Operation.PUT);
-    entityUpdater.update();
+    entityUpdater.update(allowEdits);
     String change = entityUpdater.fieldsChanged() ? RestUtil.ENTITY_UPDATED : RestUtil.ENTITY_NO_CHANGE;
     return new PutResponse<>(Status.OK, withHref(uriInfo, updated), change);
   }
@@ -853,15 +859,19 @@ public abstract class EntityRepository<T> {
       this.operation = operation;
     }
 
-    /** Compare original and updated entities and perform updates. Update the entity version and track changes. */
     public final void update() throws IOException {
+      update(false);
+    }
+
+    /** Compare original and updated entities and perform updates. Update the entity version and track changes. */
+    public final void update(boolean allowEdits) throws IOException {
       if (operation.isDelete()) { // DELETE Operation
         updateDeleted();
       } else { // PUT or PATCH operations
         updated.setId(original.getId());
         updateDeleted();
-        updateDescription();
-        updateDisplayName();
+        updateDescription(allowEdits);
+        updateDisplayName(allowEdits);
         updateOwner();
         updateTags(updated.getFullyQualifiedName(), "tags", original.getTags(), updated.getTags());
         entitySpecificUpdate();
@@ -875,8 +885,11 @@ public abstract class EntityRepository<T> {
       // Default implementation. Override this to add any entity specific field updates
     }
 
-    private void updateDescription() throws JsonProcessingException {
-      if (operation.isPut() && original.getDescription() != null && !original.getDescription().isEmpty()) {
+    private void updateDescription(boolean allowEdits) throws JsonProcessingException {
+      if (operation.isPut()
+          && original.getDescription() != null
+          && !original.getDescription().isEmpty()
+          && !allowEdits) {
         // Update description only when stored is empty to retain user authored descriptions
         updated.setDescription(original.getDescription());
         return;
@@ -900,8 +913,11 @@ public abstract class EntityRepository<T> {
       }
     }
 
-    private void updateDisplayName() throws JsonProcessingException {
-      if (operation.isPut() && original.getDisplayName() != null && !original.getDisplayName().isEmpty()) {
+    private void updateDisplayName(boolean allowEdits) throws JsonProcessingException {
+      if (operation.isPut()
+          && original.getDisplayName() != null
+          && !original.getDisplayName().isEmpty()
+          && !allowEdits) {
         // Update displayName only when stored is empty to retain user authored descriptions
         updated.setDisplayName(original.getDisplayName());
         return;
