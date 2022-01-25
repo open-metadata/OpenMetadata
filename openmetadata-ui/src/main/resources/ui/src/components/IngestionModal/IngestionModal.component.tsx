@@ -21,7 +21,6 @@ import {
   AirflowPipeline,
   ConfigObject,
 } from '../../generated/operations/pipelines/airflowPipeline';
-import { useAuth } from '../../hooks/authHooks';
 import {
   getCurrentDate,
   getCurrentUserId,
@@ -103,7 +102,6 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
   updateIngestion,
   selectedIngestion,
 }: IngestionModalProps) => {
-  const { isAdminUser } = useAuth();
   const [activeStep, setActiveStep] = useState<number>(1);
 
   const [startDate, setStartDate] = useState<string>(
@@ -585,7 +583,7 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
       },
       owner: {
         id: selectedIngestion?.owner?.id || getCurrentUserId(),
-        type: selectedIngestion?.owner?.type || isAdminUser ? 'admin' : 'user',
+        type: selectedIngestion?.owner?.type || 'user',
       },
       scheduleInterval: ingestionSchedule,
       startDate: startDate as unknown as Date,
