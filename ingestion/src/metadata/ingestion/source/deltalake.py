@@ -85,7 +85,7 @@ class DeltaLakeSource(Source):
                 fqn = f"{self.config.service_name}.{self.config.database}.{schema}.{table_name}"
                 if table.tableType and table.tableType.lower() != "view":
                     table_description = self._fetch_table_description(table_name)
-                    table = Table(
+                    table_entity = Table(
                         id=uuid.uuid4(),
                         name=table_name,
                         tableType=table.tableType,
@@ -95,7 +95,7 @@ class DeltaLakeSource(Source):
                     )
                 else:
                     view_definition = self._fetch_view_schema(table_name)
-                    table = Table(
+                    table_entity = Table(
                         id=uuid.uuid4(),
                         name=table_name,
                         tableType=table.tableType,
@@ -106,7 +106,7 @@ class DeltaLakeSource(Source):
                     )
 
                 table_and_db = OMetaDatabaseAndTable(
-                    table=table, database=self._get_database(schema)
+                    table=table_entity, database=self._get_database(schema)
                 )
                 yield table_and_db
             except Exception as err:
@@ -114,7 +114,6 @@ class DeltaLakeSource(Source):
                 self.status.warnings.append(
                     "{}.{}".format(self.config.service_name, table.name)
                 )
-                continue
 
     def _get_database(self, schema: str) -> Database:
         return Database(
@@ -129,7 +128,6 @@ class DeltaLakeSource(Source):
             return table_detail.asDict()
         except Exception as e:
             logging.error(e)
-            return None
 
     def _fetch_view_schema(self, view_name: str) -> Optional[Dict]:
         describe_output = []
