@@ -14,7 +14,12 @@
 import classNames from 'classnames';
 import cronstrue from 'cronstrue';
 import { isEmpty, isUndefined } from 'lodash';
-import { ServiceTypes, StepperStepType } from 'Models';
+import {
+  DynamicFormFieldType,
+  DynamicObj,
+  ServiceTypes,
+  StepperStepType,
+} from 'Models';
 import React, {
   Fragment,
   FunctionComponent,
@@ -39,17 +44,19 @@ import { DatabaseService } from '../../../generated/entity/services/databaseServ
 import { MessagingService } from '../../../generated/entity/services/messagingService';
 import { PipelineService } from '../../../generated/entity/services/pipelineService';
 import { PipelineType } from '../../../generated/operations/pipelines/airflowPipeline';
-import { useAuth } from '../../../hooks/authHooks';
 import {
   errorMsg,
   getCurrentDate,
   getCurrentUserId,
   getSeparator,
   getServiceLogo,
+  requiredField,
 } from '../../../utils/CommonUtils';
 import {
   getIngestionTypeList,
   getIsIngestionEnable,
+  getKeyValueObject,
+  getKeyValuePair,
 } from '../../../utils/ServiceUtils';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 // import { fromISOString } from '../../../utils/ServiceUtils';
@@ -59,10 +66,6 @@ import MarkdownWithPreview from '../../common/editor/MarkdownWithPreview';
 import RichTextEditorPreviewer from '../../common/rich-text-editor/RichTextEditorPreviewer';
 import IngestionStepper from '../../IngestionStepper/IngestionStepper.component';
 // import { serviceType } from '../../../constants/services.const';
-
-type DynamicObj = {
-  [key: string]: string;
-};
 
 export type DataObj = {
   id?: string;
@@ -186,11 +189,6 @@ type IngestionListType = {
   id: number;
 };
 
-type DynamicFormFieldType = {
-  key: string;
-  value: string;
-};
-
 const STEPS_FOR_DATABASE_SERVICE: Array<StepperStepType> = [
   { name: 'Select Service Type', step: 1 },
   { name: 'Configure Service', step: 2 },
@@ -210,13 +208,6 @@ export const Field = ({ children }: { children: React.ReactNode }) => {
   return <div className="tw-mt-4">{children}</div>;
 };
 
-const requiredField = (label: string, excludeSpace = false) => (
-  <>
-    {label}{' '}
-    <span className="tw-text-red-500">{!excludeSpace && <>&nbsp;</>}*</span>
-  </>
-);
-
 const generateName = (data: Array<ServiceDataObj>) => {
   const newArr: string[] = [];
   data.forEach((d) => {
@@ -224,18 +215,6 @@ const generateName = (data: Array<ServiceDataObj>) => {
   });
 
   return newArr;
-};
-
-const getKeyValueObject = (arr: DynamicFormFieldType[]) => {
-  const keyValuePair: DynamicObj = {};
-
-  arr.forEach((obj) => {
-    if (obj.key && obj.value) {
-      keyValuePair[obj.key] = obj.value;
-    }
-  });
-
-  return keyValuePair;
 };
 
 const PreviewSection = ({
@@ -266,17 +245,6 @@ const PreviewSection = ({
 
 const INGESTION_SCHEDULER_INITIAL_VALUE = '5 * * * *';
 
-const getKeyValuePair = (obj: DynamicObj) => {
-  const newObj = Object.entries(obj).map((v) => {
-    return {
-      key: v[0],
-      value: v[1],
-    };
-  });
-
-  return newObj;
-};
-
 export const AddServiceModal: FunctionComponent<Props> = ({
   header,
   serviceName,
@@ -285,7 +253,6 @@ export const AddServiceModal: FunctionComponent<Props> = ({
   onCancel,
   serviceList,
 }: Props) => {
-  const { isAdminUser } = useAuth();
   const [isIngestionEnable] = useState(
     getIsIngestionEnable(serviceName as ServiceCategory)
   );
@@ -619,7 +586,7 @@ export const AddServiceModal: FunctionComponent<Props> = ({
                 },
                 owner: {
                   id: getCurrentUserId(),
-                  type: isAdminUser ? 'admin' : 'user',
+                  type: 'user',
                 },
                 scheduleInterval: value.repeatFrequency,
                 startDate: value.startDate as unknown as Date,
@@ -915,7 +882,10 @@ export const AddServiceModal: FunctionComponent<Props> = ({
               </div>
               <button
                 className="focus:tw-outline-none tw-mt-3 tw-w-1/12"
-                onClick={() => removeConnectionOptionFields(i)}>
+                onClick={(e) => {
+                  removeConnectionOptionFields(i);
+                  e.preventDefault();
+                }}>
                 <SVGIcons
                   alt="delete"
                   icon="icon-delete"
@@ -978,7 +948,10 @@ export const AddServiceModal: FunctionComponent<Props> = ({
               </div>
               <button
                 className="focus:tw-outline-none tw-mt-3 tw-w-1/12"
-                onClick={() => removeConnectionArgumentFields(i)}>
+                onClick={(e) => {
+                  removeConnectionArgumentFields(i);
+                  e.preventDefault();
+                }}>
                 <SVGIcons
                   alt="delete"
                   icon="icon-delete"

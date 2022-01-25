@@ -15,7 +15,7 @@ import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { isNil, isUndefined } from 'lodash';
-import { Paging } from 'Models';
+import { Paging, ServicesData } from 'Models';
 import React, { Fragment, FunctionComponent, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import {
@@ -33,7 +33,6 @@ import { getTopics } from '../../axiosAPIs/topicsAPI';
 import Description from '../../components/common/description/Description';
 import IngestionError from '../../components/common/error/IngestionError';
 import NextPrevious from '../../components/common/next-previous/NextPrevious';
-import PopOver from '../../components/common/popover/PopOver';
 import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
 import TabsPane from '../../components/common/TabsPane/TabsPane';
 import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-breadcrumb.component';
@@ -41,13 +40,11 @@ import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/t
 import PageContainer from '../../components/containers/PageContainer';
 import Ingestion from '../../components/Ingestion/Ingestion.component';
 import Loader from '../../components/Loader/Loader';
+import ServiceConfig from '../../components/ServiceConfig/ServiceConfig';
 import Tags from '../../components/tags/tags';
 import { pagingObject } from '../../constants/constants';
 import { SearchIndex } from '../../enums/search.enum';
-import {
-  DashboardServiceType,
-  ServiceCategory,
-} from '../../enums/service.enum';
+import { ServiceCategory } from '../../enums/service.enum';
 import { Dashboard } from '../../generated/entity/data/dashboard';
 import { Database } from '../../generated/entity/data/database';
 import { Pipeline } from '../../generated/entity/data/pipeline';
@@ -62,6 +59,7 @@ import {
   Schema,
 } from '../../generated/operations/pipelines/airflowPipeline';
 import { EntityReference } from '../../generated/type/entityReference';
+import { useAuth } from '../../hooks/authHooks';
 import useToastContext from '../../hooks/useToastContext';
 import { isEven } from '../../utils/CommonUtils';
 import {
@@ -69,7 +67,6 @@ import {
   getServiceCategoryFromType,
   serviceTypeLogo,
 } from '../../utils/ServiceUtils';
-import SVGIcons from '../../utils/SvgUtils';
 import { getEntityLink, getUsagePercentile } from '../../utils/TableUtils';
 
 type Data = Database & Topic & Dashboard;
@@ -83,6 +80,7 @@ const ServicePage: FunctionComponent = () => {
     string,
     string
   >;
+  const { isAdminUser, isAuthDisabled } = useAuth();
   const [serviceName, setServiceName] = useState(
     serviceCategory || getServiceCategoryFromType(serviceType)
   );
@@ -147,6 +145,19 @@ const ServicePage: FunctionComponent = () => {
       position: 2,
       count: ingestions.length,
     },
+    {
+      name: 'Connection Config',
+      icon: {
+        alt: 'sample_data',
+        name: 'sample-data',
+        title: 'Sample Data',
+        selectedName: 'sample-data-color',
+      },
+
+      isProtected: !isAdminUser && !isAuthDisabled,
+      isHidden: !isAdminUser && !isAuthDisabled,
+      position: 3,
+    },
   ];
 
   const activeTabHandler = (tabValue: number) => {
@@ -167,7 +178,7 @@ const ServicePage: FunctionComponent = () => {
   };
 
   const getAllIngestionWorkflows = (paging?: string) => {
-    getAirflowPipelines(['owner, tags, status'], serviceFQN, paging)
+    getAirflowPipelines(['owner, tags, status'], serviceFQN, '', paging)
       .then((res) => {
         if (res.data.data) {
           setIngestions(res.data.data);
@@ -301,6 +312,17 @@ const ServicePage: FunctionComponent = () => {
       });
   };
 
+  const handleConfigUpdate = (updatedData: ServicesData) => {
+    return new Promise<void>((resolve, reject) => {
+      updateService(serviceName, serviceDetails?.id, updatedData)
+        .then((res: AxiosResponse) => {
+          setServiceDetails(res.data);
+          resolve();
+        })
+        .catch(() => reject());
+    });
+  };
+
   const fetchDatabases = (paging?: string) => {
     setIsloading(true);
     getDatabases(serviceFQN, paging, ['owner', 'usageSummary'])
@@ -422,203 +444,6 @@ const ServicePage: FunctionComponent = () => {
       case ServiceCategory.DATABASE_SERVICES:
       default:
         return `/database/${fqn}`;
-    }
-  };
-
-  const getOptionalFields = (): JSX.Element => {
-    switch (serviceName) {
-      case ServiceCategory.MESSAGING_SERVICES: {
-        return (
-          <>
-            <span>
-              <span className="tw-text-grey-muted tw-font-normal">
-                Brokers :
-              </span>{' '}
-              <span className="tw-pl-1tw-font-normal ">
-                {serviceDetails?.brokers?.length ? (
-                  <>
-                    {serviceDetails.brokers.slice(0, 3).join(', ')}
-                    {serviceDetails.brokers.length > 3 ? (
-                      <PopOver
-                        html={
-                          <div className="tw-text-left">
-                            {serviceDetails.brokers
-                              .slice(3)
-                              .map((broker, index) => (
-                                <Fragment key={index}>
-                                  <span className="tw-block tw-py-1">
-                                    {broker}
-                                  </span>
-                                </Fragment>
-                              ))}
-                          </div>
-                        }
-                        position="bottom"
-                        theme="light"
-                        trigger="click">
-                        <span className="show-more tw-ml-1">...</span>
-                      </PopOver>
-                    ) : null}
-                  </>
-                ) : (
-                  '--'
-                )}
-              </span>
-              <span className="tw-mx-3 tw-text-grey-muted">•</span>
-            </span>
-            <span>
-              <span className="tw-text-grey-muted tw-font-normal">
-                Schema registry :
-              </span>{' '}
-              <span className="tw-pl-1tw-font-normal ">
-                {serviceDetails?.schemaRegistry ? (
-                  <a
-                    className="link-text"
-                    href={serviceDetails.schemaRegistry}
-                    rel="noopener noreferrer"
-                    target="_blank">
-                    <>
-                      <span className="tw-mr-1">
-                        {serviceDetails.schemaRegistry}
-                      </span>
-                      <SVGIcons
-                        alt="external-link"
-                        className="tw-align-middle"
-                        icon="external-link"
-                        width="12px"
-                      />
-                    </>
-                  </a>
-                ) : (
-                  '--'
-                )}
-              </span>
-              <span className="tw-mx-3 tw-text-grey-muted">•</span>
-            </span>
-          </>
-        );
-      }
-      case ServiceCategory.DASHBOARD_SERVICES: {
-        let elemFields: JSX.Element;
-        switch (serviceType) {
-          // case DashboardServiceType.REDASH:
-          //   {
-          //     // TODO: add Redash fields if required
-          //   }
-
-          //   break;
-          case DashboardServiceType.TABLEAU:
-            {
-              elemFields = (
-                <>
-                  <span>
-                    <span className="tw-text-grey-muted tw-font-normal">
-                      Site Url :
-                    </span>{' '}
-                    <span className="tw-pl-1tw-font-normal ">
-                      {serviceDetails?.dashboardUrl ? (
-                        <a
-                          className="link-text"
-                          href={serviceDetails.dashboardUrl}
-                          rel="noopener noreferrer"
-                          target="_blank">
-                          <>
-                            <span className="tw-mr-1">
-                              {serviceDetails.dashboardUrl}
-                            </span>
-                            <SVGIcons
-                              alt="external-link"
-                              className="tw-align-middle"
-                              icon="external-link"
-                              width="12px"
-                            />
-                          </>
-                        </a>
-                      ) : (
-                        '--'
-                      )}
-                    </span>
-                    <span className="tw-mx-3 tw-text-grey-muted">•</span>
-                  </span>
-                </>
-              );
-            }
-
-            break;
-          default: {
-            elemFields = (
-              <span>
-                <span className="tw-text-grey-muted tw-font-normal">
-                  Dashboard Url :
-                </span>{' '}
-                <span className="tw-pl-1tw-font-normal ">
-                  {serviceDetails?.dashboardUrl ? (
-                    <a
-                      className="link-text"
-                      href={serviceDetails.dashboardUrl}
-                      rel="noopener noreferrer"
-                      target="_blank">
-                      <>
-                        <span className="tw-mr-1">
-                          {serviceDetails.dashboardUrl}
-                        </span>
-                        <SVGIcons
-                          alt="external-link"
-                          className="tw-align-middle"
-                          icon="external-link"
-                          width="12px"
-                        />
-                      </>
-                    </a>
-                  ) : (
-                    '--'
-                  )}
-                </span>
-                <span className="tw-mx-3 tw-text-grey-muted">•</span>
-              </span>
-            );
-          }
-        }
-
-        return elemFields;
-      }
-      case ServiceCategory.PIPELINE_SERVICES:
-        return (
-          <span>
-            <span className="tw-text-grey-muted tw-font-normal">
-              Pipeline Url :
-            </span>{' '}
-            <span className="tw-pl-1tw-font-normal ">
-              {serviceDetails?.pipelineUrl ? (
-                <a
-                  className="link-text"
-                  href={serviceDetails.pipelineUrl}
-                  rel="noopener noreferrer"
-                  target="_blank">
-                  <>
-                    <span className="tw-mr-1">
-                      {serviceDetails.pipelineUrl}
-                    </span>
-                    <SVGIcons
-                      alt="external-link"
-                      className="tw-align-middle"
-                      icon="external-link"
-                      width="12px"
-                    />
-                  </>
-                </a>
-              ) : (
-                '--'
-              )}
-            </span>
-            <span className="tw-mx-3 tw-text-grey-muted">•</span>
-          </span>
-        );
-
-      case ServiceCategory.DATABASE_SERVICES:
-      default: {
-        return <></>;
-      }
     }
   };
 
@@ -853,32 +678,8 @@ const ServicePage: FunctionComponent = () => {
           <div className="tw-px-4" data-testid="service-page">
             <TitleBreadcrumb titleLinks={slashedTableName} />
 
-            <div className="tw-flex tw-gap-1 tw-mb-2 tw-mt-1 tw-ml-7">
-              {getOptionalFields()}
-              {/* <span>
-                <span className="tw-text-grey-muted tw-font-normal">
-                  Ingestion :
-                </span>{' '}
-                <span className="tw-pl-1 tw-font-normal">
-                  {' '}
-                  {serviceDetails?.ingestionSchedule?.repeatFrequency
-                    ? getFrequencyTime(
-                        serviceDetails.ingestionSchedule.repeatFrequency
-                      )
-                    : '--'}
-                </span>
-              </span>
-              <span className="tw-mx-3 tw-text-grey-muted">•</span>
-              <span>
-                <span className="tw-text-grey-muted tw-font-normal">
-                  {getCountLabel()} :
-                </span>{' '}
-                <span className="tw-pl-1 tw-font-normal">{instanceCount}</span>
-              </span> */}
-            </div>
-
             <div
-              className="tw-my-3 tw-ml-2"
+              className="tw-my-2 tw-ml-2"
               data-testid="description-container">
               <Description
                 blurWithBodyBG
@@ -990,6 +791,14 @@ const ServicePage: FunctionComponent = () => {
                     <IngestionError />
                   )}
                 </div>
+              )}
+
+              {activeTab === 3 && (isAdminUser || isAuthDisabled) && (
+                <ServiceConfig
+                  data={serviceDetails as ServicesData}
+                  handleUpdate={handleConfigUpdate}
+                  serviceCategory={serviceName as ServiceCategory}
+                />
               )}
             </div>
           </div>
