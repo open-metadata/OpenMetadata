@@ -386,16 +386,6 @@ const DashboardDetailsPage = () => {
     return new Promise<void>((resolve, reject) => {
       addLineage(edge)
         .then(() => {
-          getLineageByFQN(dashboardFQN, EntityType.DASHBOARD)
-            .then((res: AxiosResponse) => {
-              setEntityLineage(res.data);
-            })
-            .catch(() => {
-              showToast({
-                variant: 'error',
-                body: `Error while getting entity lineage`,
-              });
-            });
           resolve();
         })
         .catch(() => {
@@ -409,25 +399,17 @@ const DashboardDetailsPage = () => {
   };
 
   const removeLineageHandler = (data: EdgeData) => {
-    deleteLineageEdge(data.fromEntity, data.fromId, data.toEntity, data.toId)
-      .then(() => {
-        getLineageByFQN(dashboardFQN, EntityType.DASHBOARD)
-          .then((res: AxiosResponse) => {
-            setEntityLineage(res.data);
-          })
-          .catch(() => {
-            showToast({
-              variant: 'error',
-              body: `Error while getting entity lineage`,
-            });
-          });
-      })
-      .catch(() => {
-        showToast({
-          variant: 'error',
-          body: `Error while removing edge`,
-        });
+    deleteLineageEdge(
+      data.fromEntity,
+      data.fromId,
+      data.toEntity,
+      data.toId
+    ).catch(() => {
+      showToast({
+        variant: 'error',
+        body: `Error while removing edge`,
       });
+    });
   };
 
   useEffect(() => {
