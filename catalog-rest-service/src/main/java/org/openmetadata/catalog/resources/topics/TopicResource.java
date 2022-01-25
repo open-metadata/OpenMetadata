@@ -412,7 +412,7 @@ public class TopicResource {
         @ApiResponse(responseCode = "404", description = "Topic for instance {id} is not found")
       })
   public Response delete(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("id") String id)
-      throws IOException {
+      throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     DeleteResponse<Topic> response = dao.delete(securityContext.getUserPrincipal().getName(), id);
     return response.toResponse();

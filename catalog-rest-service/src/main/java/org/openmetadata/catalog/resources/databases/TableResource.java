@@ -375,7 +375,7 @@ public class TableResource {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the table", schema = @Schema(type = "string")) @PathParam("id") String id)
-      throws IOException {
+      throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     DeleteResponse<Table> response = dao.delete(securityContext.getUserPrincipal().getName(), id);
     return response.toResponse();
