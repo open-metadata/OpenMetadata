@@ -293,7 +293,7 @@ public class DatabaseServiceResource {
       throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     DatabaseService service = getService(update, securityContext);
-    PutResponse<DatabaseService> response = dao.createOrUpdate(uriInfo, service);
+    PutResponse<DatabaseService> response = dao.createOrUpdate(uriInfo, service, true);
     return response.toResponse();
   }
 
