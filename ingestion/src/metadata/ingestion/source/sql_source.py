@@ -506,7 +506,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                         col_data_length = self._check_col_length(
                             col_type, column["type"]
                         )
-                        if col_type == "NULL":
+                        if col_type == "NULL" or col_type is None:
                             col_type = "VARCHAR"
                             data_type_display = "varchar"
                             logger.warning(
@@ -567,7 +567,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
             return None
 
     def _check_col_length(self, datatype, col_raw_type):
-        if datatype.upper() in {
+        if datatype is not None and datatype.upper() in {
             "CHAR",
             "VARCHAR",
             "BINARY",
