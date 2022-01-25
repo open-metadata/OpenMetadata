@@ -299,7 +299,7 @@ public class DashboardServiceResource {
           boolean recursive,
       @Parameter(description = "Id of the dashboard service", schema = @Schema(type = "string")) @PathParam("id")
           String id)
-      throws IOException {
+      throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     DeleteResponse<DashboardService> response = dao.delete(securityContext.getUserPrincipal().getName(), id, recursive);
     return response.toResponse();

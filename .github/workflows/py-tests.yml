@@ -16,12 +16,12 @@ on:
     branches: [main]
     paths:
       - ingestion/**
-      - catalog-rest-service/src/main/resources/json/schema/**
+      - catalog-rest-service/**
   pull_request_target:
     branches: [main]
     paths:
       - ingestion/**
-      - catalog-rest-service/src/main/resources/json/schema/**
+      - catalog-rest-service/**
 
 jobs:
   py-run-tests:

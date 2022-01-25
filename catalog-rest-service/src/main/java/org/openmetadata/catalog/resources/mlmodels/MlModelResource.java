@@ -406,7 +406,7 @@ public class MlModelResource {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the ML Model", schema = @Schema(type = "string")) @PathParam("id") String id)
-      throws IOException {
+      throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     DeleteResponse<MlModel> response = dao.delete(securityContext.getUserPrincipal().getName(), id);
     return response.toResponse();

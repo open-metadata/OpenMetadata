@@ -317,7 +317,7 @@ public class DatabaseServiceResource {
           boolean recursive,
       @Parameter(description = "Id of the database service", schema = @Schema(type = "string")) @PathParam("id")
           String id)
-      throws IOException {
+      throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     DeleteResponse<DatabaseService> response = dao.delete(securityContext.getUserPrincipal().getName(), id, recursive);
     return response.toResponse();

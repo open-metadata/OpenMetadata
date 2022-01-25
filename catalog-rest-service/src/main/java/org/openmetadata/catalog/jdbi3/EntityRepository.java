@@ -451,12 +451,13 @@ public abstract class EntityRepository<T> {
   }
 
   @Transaction
-  public final DeleteResponse<T> delete(String updatedBy, String id) throws IOException {
+  public final DeleteResponse<T> delete(String updatedBy, String id) throws IOException, ParseException {
     return delete(updatedBy, id, false);
   }
 
   @Transaction
-  public final DeleteResponse<T> delete(String updatedBy, String id, boolean recursive) throws IOException {
+  public final DeleteResponse<T> delete(String updatedBy, String id, boolean recursive)
+      throws IOException, ParseException {
     // Validate entity
     String json = dao.findJsonById(id, Include.NON_DELETED);
     if (json == null) {
@@ -464,6 +465,8 @@ public abstract class EntityRepository<T> {
     }
 
     T original = JsonUtils.readValue(json, entityClass);
+    setFields(original, putFields);
+
     // If an entity being deleted contains other **non-deleted** children entities, it can't be deleted
     List<EntityReference> contains =
         daoCollection
