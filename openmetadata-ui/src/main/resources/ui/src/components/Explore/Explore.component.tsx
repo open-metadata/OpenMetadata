@@ -74,6 +74,8 @@ const Explore: React.FC<ExploreProps> = ({
   handlePathChange,
   handleSearchText,
   fetchData,
+  showDeleted,
+  onShowDeleted,
   updateTableCount,
   updateTopicCount,
   updateDashboardCount,
@@ -143,6 +145,10 @@ const Explore: React.FC<ExploreProps> = ({
         return { ...prevState, [type]: filter };
       });
     }
+  };
+
+  const handleShowDeleted = (checked: boolean) => {
+    onShowDeleted(checked);
   };
 
   const onClearFilterHandler = (type: string[]) => {
@@ -482,7 +488,7 @@ const Explore: React.FC<ExploreProps> = ({
       resetFilters();
       fetchTableData();
     }
-  }, [searchText, searchIndex]);
+  }, [searchText, searchIndex, showDeleted]);
 
   useEffect(() => {
     if (searchResult) {
@@ -549,6 +555,8 @@ const Explore: React.FC<ExploreProps> = ({
           <FacetFilter
             aggregations={getAggrWithDefaultValue(aggregations, visibleFilters)}
             filters={getFacetedFilter()}
+            showDeletedOnly={showDeleted}
+            onSelectDeleted={handleShowDeleted}
             onSelectHandler={handleSelectedFilter}
           />
         )}

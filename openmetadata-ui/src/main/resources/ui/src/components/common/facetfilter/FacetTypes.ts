@@ -15,24 +15,26 @@ import { AggregationType, FilterObject } from 'Models';
 
 export type FacetProp = {
   aggregations: Array<AggregationType>;
+  filters: FilterObject;
+  showDeletedOnly?: boolean;
   onSelectHandler: (
     checked: boolean,
     name: string,
     type: keyof FilterObject
   ) => void;
-  filters: FilterObject;
   onClearFilter?: (value: keyof FilterObject) => void;
   onSelectAllFilter?: (
     type: keyof FilterObject,
     filters: Array<string>
   ) => void;
+  onSelectDeleted?: (checked: boolean) => void;
 };
 
 export type FilterContainerProp = {
   name: string;
-  count: number;
+  count?: number;
   onSelect: (checked: boolean, name: string, type: keyof FilterObject) => void;
   isSelected: boolean;
-  type: keyof FilterObject;
+  type?: keyof FilterObject;
   isDisabled?: boolean;
 };

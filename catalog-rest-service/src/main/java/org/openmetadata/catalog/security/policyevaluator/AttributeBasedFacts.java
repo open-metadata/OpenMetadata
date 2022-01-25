@@ -20,8 +20,8 @@ import org.openmetadata.catalog.util.EntityInterface;
 class AttributeBasedFacts {
 
   @NonNull private User user;
-  @NonNull private Object entity;
   @NonNull private MetadataOperation operation;
+  private Object entity; // Entity can be null in some cases, where the operation may not be on a specific entity.
 
   // Do not allow anything external or the builder itself change the value of facts.
   // Individual Fact(s) within facts may be changed by the RulesEngine.
@@ -49,7 +49,10 @@ class AttributeBasedFacts {
     return user.getRoles().stream().map(EntityReference::getName).collect(Collectors.toList());
   }
 
-  private List<String> getEntityTags(@NonNull Object entity) {
+  private List<String> getEntityTags(Object entity) {
+    if (entity == null) {
+      return Collections.emptyList();
+    }
     List<TagLabel> entityTags = null;
     try {
       EntityInterface<?> entityInterface = Entity.getEntityInterface(entity);
@@ -63,7 +66,10 @@ class AttributeBasedFacts {
     return entityTags.stream().map(TagLabel::getTagFQN).collect(Collectors.toList());
   }
 
-  private static String getEntityType(@NonNull Object entity) {
+  private static String getEntityType(Object entity) {
+    if (entity == null) {
+      return ""; // Fact cannot be null. getFacts will throw NPE if this is null.
+    }
     String entityType = Entity.getEntityTypeFromObject(entity);
     if (entityType == null) {
       LOG.warn("could not find entity type for the given entity {}", entity);

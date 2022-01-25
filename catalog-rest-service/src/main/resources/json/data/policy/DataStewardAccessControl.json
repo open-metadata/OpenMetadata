@@ -16,6 +16,14 @@
       "priority": 1000
     },
     {
+      "name": "DataStewardRoleAccessControlPolicy-UpdateLineage",
+      "userRoleAttr": "DataSteward",
+      "operation": "UpdateLineage",
+      "allow": true,
+      "enabled": true,
+      "priority": 1000
+    },
+    {
       "name": "DataStewardRoleAccessControlPolicy-UpdateOwner",
       "userRoleAttr": "DataSteward",
       "operation": "UpdateOwner",

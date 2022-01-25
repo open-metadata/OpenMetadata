@@ -64,7 +64,9 @@ def get_database_service_or_create(
         return service
     else:
         password = (
-            config.password.get_secret_value() if hasattr(config, "password") else None
+            config.password.get_secret_value()
+            if hasattr(config, "password") and config.password
+            else None
         )
         service = {
             "databaseConnection": {
