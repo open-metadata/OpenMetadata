@@ -527,28 +527,48 @@ export const getSummary = (
 ) => {
   const fieldsAdded = [...(changeDescription?.fieldsAdded || [])];
   const fieldsDeleted = [...(changeDescription?.fieldsDeleted || [])];
-  const fieldsUpdated = [...(changeDescription?.fieldsUpdated || [])];
+  const fieldsUpdated = [
+    ...(changeDescription?.fieldsUpdated?.filter(
+      (field) => field.name !== 'deleted'
+    ) || []),
+  ];
+  const isDeleteUpdated = [
+    ...(changeDescription?.fieldsUpdated?.filter(
+      (field) => field.name === 'deleted'
+    ) || []),
+  ];
 
   return (
     <Fragment>
+      {isDeleteUpdated?.length > 0 ? (
+        <p className="tw-mb-2">
+          {isDeleteUpdated
+            .map((field) => {
+              return field.newValue
+                ? 'Entity has been deleted'
+                : 'Entity has been restored';
+            })
+            .join(', ')}
+        </p>
+      ) : null}
       {fieldsAdded?.length > 0 ? (
         <p className="tw-mb-2">
           {`${isPrefix ? '+ Added' : ''} ${fieldsAdded
-            ?.map(summaryFormatter)
+            .map(summaryFormatter)
             .join(', ')} ${!isPrefix ? `has been added` : ''}`}{' '}
         </p>
       ) : null}
       {fieldsUpdated?.length ? (
         <p className="tw-mb-2">
           {`${isPrefix ? 'Edited' : ''} ${fieldsUpdated
-            ?.map(summaryFormatter)
+            .map(summaryFormatter)
             .join(', ')} ${!isPrefix ? `has been updated` : ''}`}{' '}
         </p>
       ) : null}
       {fieldsDeleted?.length ? (
         <p className="tw-mb-2">
           {`${isPrefix ? '- Removed' : ''} ${fieldsDeleted
-            ?.map(summaryFormatter)
+            .map(summaryFormatter)
             .join(', ')} ${!isPrefix ? `has been Deleted` : ''}`}{' '}
         </p>
       ) : null}

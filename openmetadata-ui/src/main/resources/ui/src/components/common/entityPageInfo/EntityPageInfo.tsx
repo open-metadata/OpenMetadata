@@ -144,7 +144,7 @@ const EntityPageInfo = ({
     return (
       <div
         className="tw-flex tw-h-6 tw-ml-2 tw-mt-2"
-        onClick={() => !deleted && versionHandler?.()}>
+        onClick={() => versionHandler?.()}>
         <span
           className={classNames(
             'tw-flex tw-border tw-border-primary tw-rounded',
