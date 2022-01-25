@@ -142,9 +142,7 @@ const EntityPageInfo = ({
 
   const getVersionButton = (version: string) => {
     return (
-      <div
-        className="tw-flex tw-h-6 tw-ml-2 tw-mt-2"
-        onClick={() => !deleted && versionHandler?.()}>
+      <div className="tw-flex tw-h-6 tw-ml-2 tw-mt-2" onClick={versionHandler}>
         <span
           className={classNames(
             'tw-flex tw-border tw-border-primary tw-rounded',
@@ -157,10 +155,7 @@ const EntityPageInfo = ({
               'tw-text-xs tw-border-r tw-font-medium tw-py-1 tw-px-2 tw-rounded-l focus:tw-outline-none',
               !isUndefined(isVersionSelected)
                 ? 'tw-border-white'
-                : 'tw-border-primary',
-              {
-                'tw-cursor-not-allowed': deleted,
-              }
+                : 'tw-border-primary'
             )}
             data-testid="version-button">
             <SVGIcons
@@ -171,12 +166,7 @@ const EntityPageInfo = ({
           </button>
 
           <span
-            className={classNames(
-              'tw-text-xs tw-border-l-0 tw-font-medium tw-py-1 tw-px-2 tw-rounded-r tw-cursor-pointer',
-              {
-                'tw-cursor-not-allowed': deleted,
-              }
-            )}
+            className="tw-text-xs tw-border-l-0 tw-font-medium tw-py-1 tw-px-2 tw-rounded-r tw-cursor-pointer"
             data-testid="getversions">
             {parseFloat(version).toFixed(1)}
           </span>

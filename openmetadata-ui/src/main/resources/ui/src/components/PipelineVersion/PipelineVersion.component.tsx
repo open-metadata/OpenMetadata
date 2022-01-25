@@ -44,6 +44,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
   tier,
   slashedPipelineName,
   versionList,
+  deleted = false,
   backHandler,
   versionHandler,
 }: PipelineVersionProp) => {
@@ -219,6 +220,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
           <div className={classNames('version-data')}>
             <EntityPageInfo
               isVersionSelected
+              deleted={deleted}
               entityName={currentVersionData.name ?? ''}
               extraInfo={getExtraInfo()}
               followersList={[]}
