@@ -606,7 +606,21 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
   }, [selectedEdge, confirmDelete]);
 
   useEffect(() => {
-    setLineageData(entityLineage);
+    setLineageData((pre) => ({
+      ...pre,
+      nodes: [
+        ...(pre.nodes as EntityReference[]),
+        ...(entityLineage.nodes as EntityReference[]),
+      ],
+      downstreamEdges: [
+        ...(pre.downstreamEdges as EntityEdge[]),
+        ...(entityLineage.downstreamEdges as EntityEdge[]),
+      ],
+      upstreamEdges: [
+        ...(pre.upstreamEdges as EntityEdge[]),
+        ...(entityLineage.upstreamEdges as EntityEdge[]),
+      ],
+    }));
   }, [entityLineage]);
 
   return (
