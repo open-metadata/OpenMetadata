@@ -23,6 +23,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
+import { ONLY_NUMBER_REGEX } from '../../../constants/constants';
 import { serviceTypes } from '../../../constants/services.const';
 import {
   DashboardServiceType,
@@ -37,6 +38,7 @@ import {
 import { DatabaseService } from '../../../generated/entity/services/databaseService';
 import { MessagingService } from '../../../generated/entity/services/messagingService';
 import { PipelineService } from '../../../generated/entity/services/pipelineService';
+import { PipelineType } from '../../../generated/operations/pipelines/airflowPipeline';
 import { useAuth } from '../../../hooks/authHooks';
 import {
   errorMsg,
@@ -146,6 +148,7 @@ type ErrorMsg = {
   selectService: boolean;
   name: boolean;
   url?: boolean;
+  port?: boolean;
   driverClass?: boolean;
   broker?: boolean;
   dashboardUrl?: boolean;
@@ -296,7 +299,12 @@ export const AddServiceModal: FunctionComponent<Props> = ({
   const [existingNames] = useState(generateName(serviceList));
   const [selectService, setSelectService] = useState(data?.serviceType || '');
   const [name, setName] = useState(data?.name || '');
-  const [url, setUrl] = useState(data?.databaseConnection?.hostPort || '');
+  const [url, setUrl] = useState(
+    data?.databaseConnection?.hostPort.split(':')[0] || ''
+  );
+  const [port, setPort] = useState(
+    data?.databaseConnection?.hostPort.split(':')[1] || ''
+  );
   const [database, setDatabase] = useState(
     data?.databaseConnection?.database || ''
   );
@@ -329,6 +337,7 @@ export const AddServiceModal: FunctionComponent<Props> = ({
     selectService: false,
     name: false,
     url: false,
+    port: false,
     driverClass: false,
     broker: false,
     dashboardUrl: false,
@@ -386,11 +395,26 @@ export const AddServiceModal: FunctionComponent<Props> = ({
 
       case 'name':
         setName(value);
+        setIngestionTypeList(
+          ingestionTypeList?.map((d) => {
+            return {
+              ...d,
+              ingestionName: `${value}_${PipelineType.Metadata}`,
+            };
+          })
+        );
 
         break;
 
       case 'url':
         setUrl(value);
+
+        break;
+
+      case 'port':
+        if (ONLY_NUMBER_REGEX.test(value) || value === '') {
+          setPort(value);
+        }
 
         break;
 
@@ -452,7 +476,7 @@ export const AddServiceModal: FunctionComponent<Props> = ({
           dataObj = {
             ...dataObj,
             databaseConnection: {
-              hostPort: url,
+              hostPort: `${url}:${port}`,
               connectionArguments: getKeyValueObject(connectionArguments),
               connectionOptions: getKeyValueObject(connectionOptions),
               database: database,
@@ -556,7 +580,7 @@ export const AddServiceModal: FunctionComponent<Props> = ({
                     generateSampleData: value.ingestSampleData,
                     enableDataProfiler: value.enableDataProfiler,
                     schemaFilterPattern:
-                      !isEmpty(schemaIncludePattern) &&
+                      !isEmpty(schemaIncludePattern) ||
                       !isEmpty(schemaExcludePattern)
                         ? {
                             includes: !isEmpty(schemaIncludePattern)
@@ -572,7 +596,7 @@ export const AddServiceModal: FunctionComponent<Props> = ({
                           }
                         : undefined,
                     tableFilterPattern:
-                      !isEmpty(tableIncludePattern) &&
+                      !isEmpty(tableIncludePattern) ||
                       !isEmpty(tableExcludePattern)
                         ? {
                             includes: !isEmpty(tableIncludePattern)
@@ -625,10 +649,11 @@ export const AddServiceModal: FunctionComponent<Props> = ({
           setMsg = {
             ...setMsg,
             url: !url,
+            port: !port,
           };
         }
 
-        isValid = Boolean(url);
+        isValid = Boolean(url && port);
 
         break;
       case ServiceCategory.MESSAGING_SERVICES:
@@ -759,21 +784,37 @@ export const AddServiceModal: FunctionComponent<Props> = ({
     return (
       <>
         <div className="tw-mt-4 tw-grid tw-grid-cols-3 tw-gap-2 ">
-          <div className="tw-col-span-3">
+          <div className="tw-col-span-2">
             <label className="tw-block tw-form-label" htmlFor="url">
-              {requiredField('Host Port:')}
+              {requiredField('Host:')}
             </label>
             <input
               className="tw-form-inputs tw-px-3 tw-py-1"
               data-testid="url"
               id="url"
               name="url"
-              placeholder="http(s)://hostname:port"
+              placeholder="hostname"
               type="text"
               value={url}
               onChange={handleValidation}
             />
-            {showErrorMsg.url && errorMsg('Host port is required')}
+            {showErrorMsg.url && errorMsg('Host name is required')}
+          </div>
+          <div className="">
+            <label className="tw-block tw-form-label" htmlFor="port">
+              {requiredField('Port:')}
+            </label>
+            <input
+              className="tw-form-inputs tw-px-3 tw-py-1"
+              data-testid="port"
+              id="port"
+              name="port"
+              placeholder="port"
+              type="text"
+              value={port}
+              onChange={handleValidation}
+            />
+            {showErrorMsg.port && errorMsg('Port is required')}
           </div>
         </div>
         <Field>
@@ -1271,8 +1312,12 @@ export const AddServiceModal: FunctionComponent<Props> = ({
       case ServiceCategory.DATABASE_SERVICES:
         data = [
           {
-            key: 'Host Port',
+            key: 'Host',
             value: url,
+          },
+          {
+            key: 'Port',
+            value: port,
           },
         ];
 
@@ -1553,7 +1598,7 @@ export const AddServiceModal: FunctionComponent<Props> = ({
         if (ingestionTypeList) {
           let noErrorListCount = 0;
           const newFormValue = ingestionTypeList.map((value) => {
-            if (isEmpty(value.ingestionName)) {
+            if (isEmpty(value.ingestionName) && value.isIngestionActive) {
               isValid = false;
 
               return {
@@ -1707,11 +1752,9 @@ export const AddServiceModal: FunctionComponent<Props> = ({
                         {requiredField('Ingestion name:')}
                       </label>
                       <input
+                        disabled
                         className={classNames(
-                          'tw-form-inputs tw-px-3 tw-py-1',
-                          {
-                            'tw-cursor-not-allowed': false,
-                          }
+                          'tw-form-inputs tw-px-3 tw-py-1 tw-cursor-not-allowed'
                         )}
                         data-testid="ingestionName"
                         id="ingestionName"
@@ -1719,18 +1762,11 @@ export const AddServiceModal: FunctionComponent<Props> = ({
                         placeholder="Ingestion name"
                         type="text"
                         value={type.ingestionName}
-                        onChange={(e) => {
-                          const newFormValues = [...ingestionTypeList];
-                          newFormValues[id].ingestionName = e.target.value;
-                          newFormValues[id].showError = Boolean(e.target.value);
-                          setIngestionTypeList(newFormValues);
-                        }}
                       />
                       {type.showError &&
+                        type.isIngestionActive &&
                         isEmpty(type.ingestionName) &&
                         errorMsg('Ingestion Name is required')}
-                      {/* {showErrorMsg.isPipelineNameExists &&
-                        errorMsg(`Ingestion with similar name already exists.`)} */}
                     </Field>
                     <Field>
                       {getSeparator('Table Filter Pattern')}
@@ -1994,9 +2030,9 @@ export const AddServiceModal: FunctionComponent<Props> = ({
 
               {Boolean(ingestionTypeList && ingestionTypeList.length) && (
                 <Fragment>
-                  {ingestionTypeList?.map((value) => {
+                  {ingestionTypeList?.map((value, i) => {
                     return value.isIngestionActive ? (
-                      <>
+                      <Fragment key={i}>
                         <PreviewSection
                           className="tw-mb-4 tw-mt-4"
                           data={[
@@ -2082,10 +2118,8 @@ export const AddServiceModal: FunctionComponent<Props> = ({
                             header="Schema Filter Patterns"
                           />
                         )}
-                      </>
-                    ) : (
-                      <></>
-                    );
+                      </Fragment>
+                    ) : null;
                   })}
                 </Fragment>
               )}

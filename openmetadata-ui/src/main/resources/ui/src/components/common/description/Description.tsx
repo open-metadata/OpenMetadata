@@ -39,7 +39,7 @@ const Description = ({
   owner,
   hasEditAccess,
   onDescriptionEdit,
-  description,
+  description = '',
   isEdit,
   onCancel,
   onDescriptionUpdate,

@@ -24,7 +24,7 @@ export const getAirflowPipelines = (
   serviceFilter?: string,
   paging?: string
 ): Promise<AxiosResponse> => {
-  const service = `"service="${serviceFilter}`;
+  const service = `service=${serviceFilter}`;
   const url = `${getURLWithQueryFields(
     '/airflowPipeline',
     arrQueryFields,

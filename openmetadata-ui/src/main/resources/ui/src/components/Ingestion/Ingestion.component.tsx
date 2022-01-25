@@ -15,13 +15,7 @@ import classNames from 'classnames';
 import cronstrue from 'cronstrue';
 import { capitalize, isNil, lowerCase } from 'lodash';
 import React, { Fragment, useCallback, useState } from 'react';
-import { Link } from 'react-router-dom';
-import {
-  getServiceDetailsPath,
-  TITLE_FOR_NON_ADMIN_ACTION,
-} from '../../constants/constants';
-import { NoDataFoundPlaceHolder } from '../../constants/services.const';
-import { ServiceCategory } from '../../enums/service.enum';
+import { TITLE_FOR_NON_ADMIN_ACTION } from '../../constants/constants';
 import {
   AirflowPipeline,
   ConfigObject,
@@ -42,6 +36,7 @@ import { Props } from './ingestion.interface';
 
 const Ingestion: React.FC<Props> = ({
   serviceType = '',
+  serviceName,
   ingestionList,
   serviceList,
   deleteIngestion,
@@ -183,13 +178,6 @@ const Ingestion: React.FC<Props> = ({
     setIsConfirmationModalOpen(true);
   };
 
-  const getServiceTypeFromName = (serviceName = ''): string => {
-    return (
-      serviceList.find((service) => service.name === serviceName)
-        ?.serviceType || ''
-    );
-  };
-
   const getSearchedIngestions = useCallback(() => {
     const sText = lowerCase(searchText);
 
@@ -290,7 +278,6 @@ const Ingestion: React.FC<Props> = ({
                 <tr className="tableHead-row" data-testid="table-header">
                   <th className="tableHead-cell">Name</th>
                   <th className="tableHead-cell">Type</th>
-                  <th className="tableHead-cell">Service</th>
                   <th className="tableHead-cell">Schedule</th>
                   <th className="tableHead-cell">Recent Runs</th>
                   {/* <th className="tableHead-cell">Next Run</th> */}
@@ -307,17 +294,6 @@ const Ingestion: React.FC<Props> = ({
                     key={index}>
                     <td className="tableBody-cell">{ingestion.name}</td>
                     <td className="tableBody-cell">{ingestion.pipelineType}</td>
-                    <td className="tableBody-cell">
-                      <Link
-                        to={getServiceDetailsPath(
-                          ingestion.service.name as string,
-                          getServiceTypeFromName(ingestion.service.name),
-                          // TODO: Add logic below to select service-cat if necessary
-                          ServiceCategory.DATABASE_SERVICES
-                        )}>
-                        {ingestion.service.name}
-                      </Link>
-                    </td>
                     <td className="tableBody-cell">
                       <PopOver
                         html={
@@ -414,9 +390,6 @@ const Ingestion: React.FC<Props> = ({
         ) : (
           <div className="tw-flex tw-items-center tw-flex-col">
             <div className="tw-mt-24">
-              <img alt="No Service" src={NoDataFoundPlaceHolder} width={250} />
-            </div>
-            <div className="tw-mt-11">
               <p className="tw-text-lg tw-text-center">
                 {`No ingestion workflows found ${
                   searchText ? `for "${searchText}"` : ''
@@ -436,7 +409,7 @@ const Ingestion: React.FC<Props> = ({
           ingestionList={ingestionList}
           ingestionTypes={getAirflowPipelineTypeOption()}
           name=""
-          service=""
+          service={serviceName}
           serviceList={serviceList.map((s) => ({
             name: s.name,
             serviceType: s.serviceType,
@@ -452,6 +425,7 @@ const Ingestion: React.FC<Props> = ({
           ingestionList={ingestionList}
           ingestionTypes={getAirflowPipelineTypes(serviceType) || []}
           selectedIngestion={updateSelection.ingestion}
+          service={serviceName}
           serviceList={serviceList.map((s) => ({
             name: s.name,
             serviceType: s.serviceType,

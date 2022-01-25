@@ -27,7 +27,6 @@ import {
   getCurrentUserId,
   getSeparator,
 } from '../../utils/CommonUtils';
-import { getIngestionTypeList } from '../../utils/ServiceUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import { Button } from '../buttons/Button/Button';
 import CronEditor from '../common/CronEditor/CronEditor';
@@ -87,10 +86,6 @@ const PreviewSection = ({
   );
 };
 
-const getServiceName = (service: string) => {
-  return service.split('$$').splice(1).join('$$');
-};
-
 const getIngestionName = (name: string) => {
   const nameString = name.trim().replace(/\s+/g, '_');
 
@@ -100,7 +95,7 @@ const getIngestionName = (name: string) => {
 const IngestionModal: React.FC<IngestionModalProps> = ({
   isUpdating,
   header,
-  serviceList = [], // TODO: remove default assignment after resolving prop validation warning
+  service,
   ingestionTypes,
   ingestionList,
   onCancel,
@@ -121,13 +116,10 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
   );
 
   const [ingestionName, setIngestionName] = useState<string>(
-    selectedIngestion?.name || ''
+    selectedIngestion?.name || service || ''
   );
   const [ingestionType, setIngestionType] = useState<string>(
     selectedIngestion?.pipelineType || ''
-  );
-  const [ingestionService, setIngestionService] = useState<string>(
-    selectedIngestion?.service.name || ''
   );
   const [pipelineConfig] = useState(
     (selectedIngestion?.pipelineConfig.config || {}) as ConfigObject
@@ -171,16 +163,6 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
     isPipelineNameExists: false,
   });
 
-  const isPipelineExists = () => {
-    return ingestionList.some(
-      (i) =>
-        i.service.name === getServiceName(ingestionService) &&
-        i.pipelineType === ingestionType &&
-        i.service.name !== selectedIngestion?.name &&
-        i.service.displayName === selectedIngestion?.pipelineType
-    );
-  };
-
   const isPipeLineNameExists = () => {
     return ingestionList.some(
       (i) =>
@@ -196,17 +178,9 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
     const name = event.target.name;
 
     switch (name) {
-      case 'name':
-        setIngestionName(value);
-
-        break;
-      case 'selectService':
-        setIngestionService(value);
-        setIngestionType('');
-
-        break;
       case 'ingestionType':
         setIngestionType(value);
+        setIngestionName(`${service}_${value}`);
 
         break;
 
@@ -228,28 +202,14 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
     let isValid = false;
     switch (activeStep) {
       case 1:
-        isValid = Boolean(
-          ingestionName && ingestionType && !isPipelineExists()
-        );
+        isValid = Boolean(ingestionName && ingestionType);
         setShowErrorMsg({
           ...showErrorMsg,
           name: !ingestionName,
           ingestionType: !ingestionType,
-          selectService: !ingestionService,
         });
 
         break;
-      // case 2:
-      //   isValid = Boolean(username && password && host && database);
-      //   setShowErrorMsg({
-      //     ...showErrorMsg,
-      //     username: !username,
-      //     password: !password,
-      //     host: !host,
-      //     database: !database,
-      //   });
-
-      //   break;
       case 2:
         isValid = Boolean(ingestionSchedule);
         setShowErrorMsg({
@@ -267,91 +227,6 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
 
   const getActiveStepFields = (activeStep: number) => {
     switch (activeStep) {
-      case 10:
-        return (
-          <Fragment>
-            <Field>
-              <label className="tw-block" htmlFor="name">
-                {requiredField('Name:')}
-              </label>
-              <input
-                className={classNames('tw-form-inputs tw-px-3 tw-py-1', {
-                  'tw-cursor-not-allowed': isUpdating,
-                })}
-                data-testid="name"
-                id="name"
-                name="name"
-                placeholder="Ingestion name"
-                readOnly={isUpdating}
-                type="text"
-                value={ingestionName}
-                onChange={handleValidation}
-              />
-              {showErrorMsg.name && errorMsg('Ingestion Name is required')}
-              {showErrorMsg.isPipelineNameExists &&
-                errorMsg(`Ingestion with similar name already exists.`)}
-            </Field>
-
-            <Field>
-              <label className="tw-block" htmlFor="selectService">
-                {requiredField('Select Service:')}
-              </label>
-              <select
-                className={classNames('tw-form-inputs tw-px-3 tw-py-1', {
-                  'tw-cursor-not-allowed': isUpdating,
-                })}
-                data-testid="select-service"
-                disabled={isUpdating}
-                id="selectService"
-                name="selectService"
-                value={ingestionService}
-                onChange={handleValidation}>
-                <option value="">Select Service</option>
-                {serviceList.map((service, index) => (
-                  <option
-                    key={index}
-                    value={`${service.serviceType}$$${service.name}`}>
-                    {service.name}
-                  </option>
-                ))}
-              </select>
-              {showErrorMsg.selectService && errorMsg('Service is required')}
-            </Field>
-            <Field>
-              <label className="tw-block " htmlFor="ingestionType">
-                {requiredField('Type of ingestion:')}
-              </label>
-              <select
-                className={classNames('tw-form-inputs tw-px-3 tw-py-1', {
-                  'tw-cursor-not-allowed': !ingestionService,
-                })}
-                data-testid="ingestion-type"
-                disabled={!ingestionService || isUpdating}
-                id="ingestionType"
-                name="ingestionType"
-                value={ingestionType}
-                onChange={handleValidation}>
-                <option value="">Select ingestion type</option>
-                {(
-                  getIngestionTypeList(ingestionService?.split('$$')?.[0]) || []
-                ).map((service, index) => (
-                  <option key={index} value={service}>
-                    {service}
-                  </option>
-                ))}
-              </select>
-              {showErrorMsg.ingestionType &&
-                errorMsg('Ingestion Type is required')}
-              {showErrorMsg.isPipelineExists &&
-                errorMsg(
-                  `Ingestion with service ${getServiceName(
-                    ingestionService
-                  )} and ingestion-type ${ingestionType} already exists `
-                )}
-            </Field>
-          </Fragment>
-        );
-
       case 1:
         return (
           <Fragment>
@@ -360,17 +235,16 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
                 {requiredField('Name:')}
               </label>
               <input
-                className={classNames('tw-form-inputs tw-px-3 tw-py-1', {
-                  'tw-cursor-not-allowed': isUpdating,
-                })}
+                disabled
+                className={classNames(
+                  'tw-form-inputs tw-px-3 tw-py-1 tw-cursor-not-allowed'
+                )}
                 data-testid="name"
                 id="name"
                 name="name"
                 placeholder="Ingestion name"
-                readOnly={isUpdating}
                 type="text"
                 value={ingestionName}
-                onChange={handleValidation}
               />
               {showErrorMsg.name && errorMsg('Ingestion Name is required')}
               {showErrorMsg.isPipelineNameExists &&
@@ -400,12 +274,6 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
               </select>
               {showErrorMsg.ingestionType &&
                 errorMsg('Ingestion Type is required')}
-              {showErrorMsg.isPipelineExists &&
-                errorMsg(
-                  `Ingestion with service ${getServiceName(
-                    ingestionService
-                  )} and ingestion-type ${ingestionType} already exists `
-                )}
             </Field>
 
             <Field>
@@ -679,27 +547,6 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
   };
 
   const onSaveHandler = (triggerIngestion = false) => {
-    // const ingestionData = {
-    //   ingestionType: ingestionType,
-    //   displayName: ingestionName,
-    //   name: getIngestionName(ingestionName),
-    //   service: { name: getServiceName(ingestionService), id: '', type: '' },
-    //   startDate: startDate || getCurrentDate(),
-    //   endDate: endDate || '',
-    //   scheduleInterval: ingestionSchedule,
-    //   forceDeploy: true,
-    //   connectorConfig: {
-    //     database: database,
-    //     enableDataProfiler: excludeDataProfiler,
-    //     excludeFilterPattern: excludeFilterPattern,
-    //     host: host,
-    //     includeFilterPattern: includeFilterPattern,
-    //     includeViews: includeViews,
-    //     password: password,
-    //     username: username,
-    //   },
-    // };
-
     const ingestionObj: AirflowPipeline = {
       name: ingestionName,
       pipelineConfig: {
@@ -762,7 +609,7 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
       // isPipelineExists: isPipelineExists(),
       isPipelineNameExists: isPipeLineNameExists(),
     });
-  }, [ingestionType, ingestionService, ingestionName]);
+  }, [ingestionType, ingestionName]);
 
   useEffect(() => {
     if (endDate) {

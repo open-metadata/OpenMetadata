@@ -50,6 +50,7 @@ export interface IngestionData {
 
 export interface Props {
   serviceType?: string;
+  serviceName?: string;
   paging: Paging;
   ingestionList: Array<AirflowPipeline>;
   serviceList: Array<DatabaseService>;

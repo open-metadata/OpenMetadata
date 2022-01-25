@@ -65,7 +65,6 @@ import { EntityReference } from '../../generated/type/entityReference';
 import useToastContext from '../../hooks/useToastContext';
 import { isEven } from '../../utils/CommonUtils';
 import {
-  getFrequencyTime,
   getIsIngestionEnable,
   getServiceCategoryFromType,
   serviceTypeLogo,
@@ -108,9 +107,23 @@ const ServicePage: FunctionComponent = () => {
   const [ingestionPaging, setIngestionPaging] = useState<Paging>({} as Paging);
   const showToast = useToastContext();
 
+  const getCountLabel = () => {
+    switch (serviceName) {
+      case ServiceCategory.DASHBOARD_SERVICES:
+        return 'Dashboards';
+      case ServiceCategory.MESSAGING_SERVICES:
+        return 'Topics';
+      case ServiceCategory.PIPELINE_SERVICES:
+        return 'Pipelines';
+      case ServiceCategory.DATABASE_SERVICES:
+      default:
+        return 'Databases';
+    }
+  };
+
   const tabs = [
     {
-      name: 'Database',
+      name: getCountLabel(),
       icon: {
         alt: 'schema',
         name: 'icon-database',
@@ -119,6 +132,7 @@ const ServicePage: FunctionComponent = () => {
       },
       isProtected: false,
       position: 1,
+      count: instanceCount,
     },
     {
       name: 'Ingestions',
@@ -131,6 +145,7 @@ const ServicePage: FunctionComponent = () => {
       isHidden: !isIngestionEnable,
       isProtected: false,
       position: 2,
+      count: ingestions.length,
     },
   ];
 
@@ -152,7 +167,7 @@ const ServicePage: FunctionComponent = () => {
   };
 
   const getAllIngestionWorkflows = (paging?: string) => {
-    getAirflowPipelines(['owner, tags, status'], serviceName, paging)
+    getAirflowPipelines(['owner, tags, status'], serviceFQN, paging)
       .then((res) => {
         if (res.data.data) {
           setIngestions(res.data.data);
@@ -412,19 +427,6 @@ const ServicePage: FunctionComponent = () => {
 
   const getOptionalFields = (): JSX.Element => {
     switch (serviceName) {
-      case ServiceCategory.DATABASE_SERVICES: {
-        return (
-          <span>
-            <span className="tw-text-grey-muted tw-font-normal">
-              Driver Class :
-            </span>{' '}
-            <span className="tw-pl-1tw-font-normal ">
-              {serviceDetails?.jdbc?.driverClass || '--'}
-            </span>
-            <span className="tw-mx-3 tw-text-grey-muted">•</span>
-          </span>
-        );
-      }
       case ServiceCategory.MESSAGING_SERVICES: {
         return (
           <>
@@ -613,6 +615,7 @@ const ServicePage: FunctionComponent = () => {
           </span>
         );
 
+      case ServiceCategory.DATABASE_SERVICES:
       default: {
         return <></>;
       }
@@ -841,20 +844,6 @@ const ServicePage: FunctionComponent = () => {
     getAllIngestionWorkflows(pagingString);
   };
 
-  const getCountLabel = () => {
-    switch (serviceName) {
-      case ServiceCategory.DASHBOARD_SERVICES:
-        return 'Dashboards';
-      case ServiceCategory.MESSAGING_SERVICES:
-        return 'Topics';
-      case ServiceCategory.PIPELINE_SERVICES:
-        return 'Pipelines';
-      case ServiceCategory.DATABASE_SERVICES:
-      default:
-        return 'Databases';
-    }
-  };
-
   return (
     <>
       {isLoading ? (
@@ -866,7 +855,7 @@ const ServicePage: FunctionComponent = () => {
 
             <div className="tw-flex tw-gap-1 tw-mb-2 tw-mt-1 tw-ml-7">
               {getOptionalFields()}
-              <span>
+              {/* <span>
                 <span className="tw-text-grey-muted tw-font-normal">
                   Ingestion :
                 </span>{' '}
@@ -885,7 +874,7 @@ const ServicePage: FunctionComponent = () => {
                   {getCountLabel()} :
                 </span>{' '}
                 <span className="tw-pl-1 tw-font-normal">{instanceCount}</span>
-              </span>
+              </span> */}
             </div>
 
             <div
@@ -992,6 +981,7 @@ const ServicePage: FunctionComponent = () => {
                       paging={ingestionPaging}
                       pagingHandler={ingestionPagingHandler}
                       serviceList={serviceList}
+                      serviceName={serviceFQN}
                       serviceType={serviceDetails?.serviceType}
                       triggerIngestion={triggerIngestionById}
                       updateIngestion={updateIngestion}
