@@ -307,7 +307,7 @@ public class PipelineServiceResource {
           boolean recursive,
       @Parameter(description = "Id of the pipeline service", schema = @Schema(type = "string")) @PathParam("id")
           String id)
-      throws IOException {
+      throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     DeleteResponse<PipelineService> response = dao.delete(securityContext.getUserPrincipal().getName(), id, recursive);
     return response.toResponse();

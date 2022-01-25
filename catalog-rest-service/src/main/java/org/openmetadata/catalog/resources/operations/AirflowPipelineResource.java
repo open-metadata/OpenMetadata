@@ -431,7 +431,7 @@ public class AirflowPipelineResource {
         @ApiResponse(responseCode = "404", description = "ingestion for instance {id} is not found")
       })
   public Response delete(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("id") String id)
-      throws IOException {
+      throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     DeleteResponse<AirflowPipeline> response = dao.delete(securityContext.getUserPrincipal().getName(), id);
     return response.toResponse();

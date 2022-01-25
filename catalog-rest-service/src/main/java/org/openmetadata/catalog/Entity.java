@@ -202,7 +202,7 @@ public final class Entity {
   }
 
   public static void deleteEntity(String updatedBy, String entity, UUID entityId, boolean recursive)
-      throws IOException {
+      throws IOException, ParseException {
     EntityRepository<?> dao = ENTITY_REPOSITORY_MAP.get(entity);
     if (dao == null) {
       throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entity));

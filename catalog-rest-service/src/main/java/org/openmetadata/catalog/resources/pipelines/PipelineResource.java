@@ -415,7 +415,7 @@ public class PipelineResource {
         @ApiResponse(responseCode = "404", description = "Pipeline for instance {id} is not found")
       })
   public Response delete(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("id") String id)
-      throws IOException {
+      throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     DeleteResponse<Pipeline> response = dao.delete(securityContext.getUserPrincipal().getName(), id);
     return response.toResponse();
