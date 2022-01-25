@@ -15,14 +15,16 @@
         "SuggestTags",
         "UpdateDescription",
         "UpdateOwner",
-        "UpdateTags"
+        "UpdateTags",
+        "UpdateLineage"
       ],
       "javaEnums": [
         {"name":"SuggestDescription"},
         {"name":"SuggestTags"},
         {"name":"UpdateDescription"},
         {"name":"UpdateOwner"},
-        {"name":"UpdateTags"}
+        {"name":"UpdateTags"},
+        {"name":"UpdateLineage"}
       ]
     }
   },
