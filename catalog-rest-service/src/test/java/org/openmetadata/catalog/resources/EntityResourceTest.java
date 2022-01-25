@@ -775,8 +775,8 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     entity = updateEntity(request, OK, adminAuthHeaders());
     entityInterface = getEntityInterface(entity);
     // For service resources, we allow update of non-empty description via PUT
-    List<Class<?>> services = Arrays.asList(
-            DatabaseService.class, PipelineService.class, DashboardService.class, MessagingService.class);
+    List<Class<?>> services =
+        Arrays.asList(DatabaseService.class, PipelineService.class, DashboardService.class, MessagingService.class);
     if (services.contains(entity.getClass())) {
       assertNotEquals(oldVersion, entityInterface.getVersion()); // Version did change
       assertEquals("updatedDescription", entityInterface.getDescription()); // Description did change
