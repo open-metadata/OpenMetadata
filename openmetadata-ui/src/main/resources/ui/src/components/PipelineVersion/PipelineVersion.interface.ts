@@ -26,6 +26,7 @@ export interface PipelineVersionProp {
   slashedPipelineName: TitleBreadcrumbProps['titleLinks'];
   topicFQN: string;
   versionList: EntityHistory;
+  deleted?: boolean;
   backHandler: () => void;
   versionHandler: (v: string) => void;
 }

@@ -44,6 +44,7 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
   tier,
   slashedDashboardName,
   versionList,
+  deleted = false,
   backHandler,
   versionHandler,
 }: DashboardVersionProp) => {
@@ -219,6 +220,7 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
           <div className={classNames('version-data')}>
             <EntityPageInfo
               isVersionSelected
+              deleted={deleted}
               entityName={currentVersionData.name ?? ''}
               extraInfo={getExtraInfo()}
               followersList={[]}
