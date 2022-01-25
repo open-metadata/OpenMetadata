@@ -284,7 +284,7 @@ const EntityPageInfo = ({
         ))}
       </div>
       <div className="tw-flex tw-flex-wrap tw-pt-1 tw-ml-7 tw-group">
-        {(!isEditable || !isTagEditable) && (
+        {(!isEditable || !isTagEditable || deleted) && (
           <>
             {(tags.length > 0 || !isEmpty(tier)) && (
               <SVGIcons
@@ -347,7 +347,7 @@ const EntityPageInfo = ({
             )}
           </>
         )}
-        {isTagEditable && (
+        {isTagEditable && !deleted && (
           <NonAdminAction
             html={getHtmlForNonAdminAction(Boolean(owner))}
             isOwner={hasEditAccess}

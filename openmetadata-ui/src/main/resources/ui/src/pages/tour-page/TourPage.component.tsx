@@ -146,6 +146,7 @@ const TourPage = () => {
             searchQuery=""
             searchResult={exploreSearchResult as unknown as ExploreSearchData}
             searchText=""
+            showDeleted={false}
             sortValue=""
             tab=""
             tabCounts={explorePageCounts}
@@ -154,6 +155,9 @@ const TourPage = () => {
             updatePipelineCount={handleCountChange}
             updateTableCount={handleCountChange}
             updateTopicCount={handleCountChange}
+            onShowDeleted={() => {
+              return;
+            }}
           />
         );
 

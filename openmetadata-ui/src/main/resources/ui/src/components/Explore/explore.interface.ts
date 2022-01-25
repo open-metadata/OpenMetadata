@@ -39,6 +39,7 @@ export interface ExploreProps {
   tab: string;
   error: string;
   searchQuery: string;
+  showDeleted: boolean;
   fetchCount: () => void;
   handlePathChange: (path: string) => void;
   handleSearchText: (text: string) => void;
@@ -48,5 +49,6 @@ export interface ExploreProps {
   updatePipelineCount: (count: number) => void;
   updateDbtModelCount: (count: number) => void;
   fetchData: (value: SearchDataFunctionType[]) => void;
+  onShowDeleted: (checked: boolean) => void;
   searchResult: ExploreSearchData | undefined;
 }

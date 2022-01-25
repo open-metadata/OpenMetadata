@@ -58,7 +58,11 @@ export const getTopicByFqn: Function = (
   fqn: string,
   arrQueryFields: string
 ): Promise<AxiosResponse> => {
-  const url = getURLWithQueryFields(`/topics/name/${fqn}`, arrQueryFields);
+  const url = getURLWithQueryFields(
+    `/topics/name/${fqn}`,
+    arrQueryFields,
+    'include=all'
+  );
 
   return APIClient.get(url);
 };
