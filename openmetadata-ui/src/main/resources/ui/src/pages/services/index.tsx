@@ -58,6 +58,7 @@ import {
 import { DatabaseService } from '../../generated/entity/services/databaseService';
 import { MessagingService } from '../../generated/entity/services/messagingService';
 import { PipelineService } from '../../generated/entity/services/pipelineService';
+import { PipelineType } from '../../generated/operations/pipelines/airflowPipeline';
 import { useAuth } from '../../hooks/authHooks';
 import useToastContext from '../../hooks/useToastContext';
 import {
@@ -65,7 +66,6 @@ import {
   getCountBadge,
   getServiceLogo,
 } from '../../utils/CommonUtils';
-import { getFrequencyTime } from '../../utils/ServiceUtils';
 import SVGIcons from '../../utils/SvgUtils';
 
 type ServiceRecord = {
@@ -261,13 +261,23 @@ const ServicesPage = () => {
                 ...ingestion.service,
                 id: serviceId,
               },
+              pipelineType: PipelineType.Metadata,
             });
           });
 
-          Promise.allSettled(promises).then(() => {
-            setIsModalOpen(false);
-            setEditData(undefined);
-          });
+          Promise.allSettled(promises).then(
+            (response: PromiseSettledResult<AxiosResponse>[]) => {
+              response.map((data) => {
+                data.status === 'rejected' &&
+                  showToast({
+                    variant: 'error',
+                    body: data.reason || 'Something went wrong!',
+                  });
+              });
+              setIsModalOpen(false);
+              setEditData(undefined);
+            }
+          );
         } else {
           setIsModalOpen(false);
           setEditData(undefined);
@@ -551,18 +561,7 @@ const ServicesPage = () => {
                             )}
                           </div>
                           {getOptionalFields(service)}
-                          <div
-                            className="tw-mb-1"
-                            data-testid="service-ingestion">
-                            <label className="tw-mb-0">Ingestion:</label>
-                            <span className=" tw-ml-1 tw-font-normal tw-text-grey-body">
-                              {service.ingestionSchedule?.repeatFrequency
-                                ? getFrequencyTime(
-                                    service.ingestionSchedule.repeatFrequency
-                                  )
-                                : '--'}
-                            </span>
-                          </div>
+
                           <div className="" data-testid="service-type">
                             <label className="tw-mb-0">Type:</label>
                             <span className=" tw-ml-1 tw-font-normal tw-text-grey-body">

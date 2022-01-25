@@ -51,6 +51,8 @@ const PLACEHOLDER_ROUTE_ENTITY_FQN = ':entityFQN';
 
 export const pagingObject = { after: '', before: '' };
 
+export const ONLY_NUMBER_REGEX = /^[0-9\b]+$/;
+
 /* eslint-disable @typescript-eslint/camelcase */
 export const tiers = [
   { key: 'Tier.Tier1', doc_count: 0 },
