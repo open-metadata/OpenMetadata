@@ -130,7 +130,7 @@ airflowConfiguration:
 
 slackEventPublishers:
   - name: "slack events"
-    webhookUrl: "https://hooks.slack.com/services/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"
+    webhookUrl: "slackIncomingWebhook URL"
     openMetadataUrl: http://${SERVER_HOST:-localhost}:${SERVER_PORT:-8585}
     filters:
       - eventType: "entityCreated"
