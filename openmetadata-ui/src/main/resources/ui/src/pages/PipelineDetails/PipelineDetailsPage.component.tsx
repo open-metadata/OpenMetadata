@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { AxiosResponse } from 'axios';
+import { AxiosError, AxiosResponse } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
 import { observer } from 'mobx-react';
 import {
@@ -107,6 +107,7 @@ const PipelineDetailsPage = () => {
   const [leafNodes, setLeafNodes] = useState<LeafNodes>({} as LeafNodes);
 
   const [currentVersion, setCurrentVersion] = useState<string>();
+  const [deleted, setDeleted] = useState<boolean>(false);
 
   const activeTabHandler = (tabValue: number) => {
     const currentTabIndex = tabValue - 1;
@@ -148,12 +149,29 @@ const PipelineDetailsPage = () => {
     });
   };
 
+  const getLineageData = () => {
+    getLineageByFQN(pipelineFQN, EntityType.PIPELINE)
+      .then((res: AxiosResponse) => {
+        setEntityLineage(res.data);
+      })
+      .catch((err: AxiosError) => {
+        showToast({
+          variant: 'error',
+          body: err.message ?? 'Error while fetching lineage data',
+        });
+      })
+      .finally(() => {
+        setIsLineageLoading(false);
+      });
+  };
+
   const fetchPipelineDetail = (pipelineFQN: string) => {
     setLoading(true);
     getPipelineByFqn(pipelineFQN, ['owner', 'followers', 'tags', 'tasks'])
       .then((res: AxiosResponse) => {
         const {
           id,
+          deleted,
           description,
           followers,
           fullyQualifiedName,
@@ -176,6 +194,7 @@ const PipelineDetailsPage = () => {
         setTier(getTierTags(tags));
         setTags(getTagsWithoutTier(tags));
         setServiceType(serviceType);
+        setDeleted(deleted);
         setSlashedPipelineName([
           {
             name: service.name,
@@ -201,6 +220,13 @@ const PipelineDetailsPage = () => {
           serviceType: serviceType,
           timestamp: 0,
         });
+
+        if (!deleted) {
+          getLineageData();
+        } else {
+          setIsLineageLoading(false);
+        }
+
         setPipelineUrl(pipelineUrl);
         setTasks(tasks);
       })
@@ -343,14 +369,6 @@ const PipelineDetailsPage = () => {
 
   useEffect(() => {
     fetchPipelineDetail(pipelineFQN);
-    setActiveTab(getCurrentPipelineTab(tab));
-    getLineageByFQN(pipelineFQN, EntityType.PIPELINE)
-      .then((res: AxiosResponse) => {
-        setEntityLineage(res.data);
-      })
-      .finally(() => {
-        setIsLineageLoading(false);
-      });
   }, [pipelineFQN]);
 
   useEffect(() => {
@@ -365,6 +383,7 @@ const PipelineDetailsPage = () => {
         <PipelineDetails
           activeTab={activeTab}
           addLineageHandler={addLineageHandler}
+          deleted={deleted}
           description={description}
           descriptionUpdateHandler={descriptionUpdateHandler}
           entityLineage={entityLineage}

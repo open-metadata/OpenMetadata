@@ -18,7 +18,8 @@ export const getSearchAPIQuery = (
   filters: string,
   sortField: string,
   sortOrder: string,
-  searchIndex: string
+  searchIndex: string,
+  onlyDeleted = false
 ): string => {
   const start = (from - 1) * size;
   const query = queryString
@@ -29,7 +30,9 @@ export const getSearchAPIQuery = (
 
   return `q=${query}${
     filters ? ` AND ${filters}` : ''
-  }&from=${start}&size=${size}${sortField ? `&sort_field=${sortField}` : ''}${
-    sortOrder ? `&sort_order=${sortOrder}` : ''
-  }${searchIndex ? `&index=${searchIndex}` : ''}`;
+  }&from=${start}&size=${size}${onlyDeleted ? '&deleted=true' : ''}${
+    sortField ? `&sort_field=${sortField}` : ''
+  }${sortOrder ? `&sort_order=${sortOrder}` : ''}${
+    searchIndex ? `&index=${searchIndex}` : ''
+  }`;
 };

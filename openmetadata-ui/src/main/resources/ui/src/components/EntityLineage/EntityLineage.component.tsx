@@ -77,6 +77,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
   loadNodeHandler,
   lineageLeafNodes,
   isNodeLoading,
+  deleted,
   addLineageHandler,
   removeLineageHandler,
 }: EntityLineageProp) => {
@@ -585,41 +586,43 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
                 <CustomControls
                   className="tw-absolute tw-top-1 tw-right-1 tw-bottom-full tw-ml-4 tw-mt-4"
                   fitViewParams={{ minZoom: 0.5, maxZoom: 2.5 }}>
-                  <ControlButton
-                    className={classNames(
-                      'tw-h-9 tw-w-9 tw-rounded-full tw-px-1 tw-shadow-lg tw-cursor-pointer',
-                      {
-                        'tw-bg-primary': isEditMode,
-                        'tw-bg-primary-hover-lite': !isEditMode,
-                      }
-                    )}
-                    onClick={() => {
-                      setEditMode((pre) => !pre);
-                      setSelectedNode({} as SelectedNode);
-                      setIsDrawerOpen(false);
-                      setNewAddedNode({} as FlowElement);
-                    }}>
-                    {loading ? (
-                      <Loader size="small" type="white" />
-                    ) : status === 'success' ? (
-                      <i
-                        aria-hidden="true"
-                        className="fa fa-check tw-text-white"
-                      />
-                    ) : (
-                      <SVGIcons
-                        alt="icon-edit-lineag"
-                        className="tw--mt-1"
-                        data-testid="edit-lineage"
-                        icon={
-                          !isEditMode
-                            ? 'icon-edit-lineage-color'
-                            : 'icon-edit-lineage'
+                  {!deleted && (
+                    <ControlButton
+                      className={classNames(
+                        'tw-h-9 tw-w-9 tw-rounded-full tw-px-1 tw-shadow-lg tw-cursor-pointer',
+                        {
+                          'tw-bg-primary': isEditMode,
+                          'tw-bg-primary-hover-lite': !isEditMode,
                         }
-                        width="14"
-                      />
-                    )}
-                  </ControlButton>
+                      )}
+                      onClick={() => {
+                        setEditMode((pre) => !pre && !deleted);
+                        setSelectedNode({} as SelectedNode);
+                        setIsDrawerOpen(false);
+                        setNewAddedNode({} as FlowElement);
+                      }}>
+                      {loading ? (
+                        <Loader size="small" type="white" />
+                      ) : status === 'success' ? (
+                        <i
+                          aria-hidden="true"
+                          className="fa fa-check tw-text-white"
+                        />
+                      ) : (
+                        <SVGIcons
+                          alt="icon-edit-lineag"
+                          className="tw--mt-1"
+                          data-testid="edit-lineage"
+                          icon={
+                            !isEditMode
+                              ? 'icon-edit-lineage-color'
+                              : 'icon-edit-lineage'
+                          }
+                          width="14"
+                        />
+                      )}
+                    </ControlButton>
+                  )}
                 </CustomControls>
                 {isEditMode ? (
                   <Background

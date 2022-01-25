@@ -71,6 +71,7 @@ const DashboardDetails = ({
   loadNodeHandler,
   versionHandler,
   version,
+  deleted,
   addLineageHandler,
   removeLineageHandler,
 }: DashboardDetailsProps) => {
@@ -131,6 +132,7 @@ const DashboardDetails = ({
         selectedName: 'icon-managecolor',
       },
       isProtected: true,
+      isHidden: deleted,
       protectedState: !owner || hasEditAccess(),
       position: 3,
     },
@@ -318,6 +320,7 @@ const DashboardDetails = ({
         <div className="tw-px-6 tw-w-full tw-h-full tw-flex tw-flex-col">
           <EntityPageInfo
             isTagEditable
+            deleted={deleted}
             entityName={entityName}
             extraInfo={extraInfo}
             followHandler={followDashboard}
@@ -352,6 +355,7 @@ const DashboardDetails = ({
                         entityName={entityName}
                         hasEditAccess={hasEditAccess()}
                         isEdit={isEdit}
+                        isReadOnly={deleted}
                         owner={owner}
                         onCancel={onCancel}
                         onDescriptionEdit={onDescriptionEdit}
@@ -413,25 +417,27 @@ const DashboardDetails = ({
                                       </span>
                                     )}
                                   </div>
-                                  <NonAdminAction
-                                    html={getHtmlForNonAdminAction(
-                                      Boolean(owner)
-                                    )}
-                                    isOwner={hasEditAccess()}
-                                    position="top">
-                                    <button
-                                      className="tw-self-start tw-w-8 tw-h-auto tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none"
-                                      onClick={() =>
-                                        handleUpdateChart(chart, index)
-                                      }>
-                                      <SVGIcons
-                                        alt="edit"
-                                        icon="icon-edit"
-                                        title="Edit"
-                                        width="10px"
-                                      />
-                                    </button>
-                                  </NonAdminAction>
+                                  {!deleted && (
+                                    <NonAdminAction
+                                      html={getHtmlForNonAdminAction(
+                                        Boolean(owner)
+                                      )}
+                                      isOwner={hasEditAccess()}
+                                      position="top">
+                                      <button
+                                        className="tw-self-start tw-w-8 tw-h-auto tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none"
+                                        onClick={() =>
+                                          handleUpdateChart(chart, index)
+                                        }>
+                                        <SVGIcons
+                                          alt="edit"
+                                          icon="icon-edit"
+                                          title="Edit"
+                                          width="10px"
+                                        />
+                                      </button>
+                                    </NonAdminAction>
+                                  )}
                                 </div>
                               </div>
                             </td>
@@ -442,44 +448,61 @@ const DashboardDetails = ({
                                   handleEditChartTag(chart, index);
                                 }
                               }}>
-                              <NonAdminAction
-                                html={getHtmlForNonAdminAction(Boolean(owner))}
-                                isOwner={hasEditAccess()}
-                                position="left"
-                                trigger="click">
-                                <TagsContainer
-                                  editable={editChartTags?.index === index}
-                                  selectedTags={chart.tags as EntityTags[]}
-                                  tagList={tagList}
-                                  type="label"
-                                  onCancel={() => {
-                                    handleChartTagSelection();
-                                  }}
-                                  onSelectionChange={(tags) => {
-                                    handleChartTagSelection(tags);
-                                  }}>
-                                  {chart.tags?.length ? (
-                                    <button
-                                      className="tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none"
-                                      data-testid="edit-tags">
-                                      <SVGIcons
-                                        alt="edit"
-                                        icon="icon-edit"
-                                        title="Edit"
-                                        width="10px"
-                                      />
-                                    </button>
-                                  ) : (
-                                    <span className="tw-opacity-60 group-hover:tw-opacity-100 tw-text-grey-muted group-hover:tw-text-primary">
+                              {deleted ? (
+                                <div className="tw-flex tw-flex-wrap">
+                                  {chart.tags?.map(
+                                    (tag: TagLabel, i: number) => (
                                       <Tags
-                                        startWith="+ "
-                                        tag="Add tag"
-                                        type="outlined"
+                                        key={i}
+                                        startWith="#"
+                                        tag={tag}
+                                        type="label"
                                       />
-                                    </span>
+                                    )
                                   )}
-                                </TagsContainer>
-                              </NonAdminAction>
+                                </div>
+                              ) : (
+                                <NonAdminAction
+                                  html={getHtmlForNonAdminAction(
+                                    Boolean(owner)
+                                  )}
+                                  isOwner={hasEditAccess()}
+                                  position="left"
+                                  trigger="click">
+                                  <TagsContainer
+                                    editable={editChartTags?.index === index}
+                                    selectedTags={chart.tags as EntityTags[]}
+                                    tagList={tagList}
+                                    type="label"
+                                    onCancel={() => {
+                                      handleChartTagSelection();
+                                    }}
+                                    onSelectionChange={(tags) => {
+                                      handleChartTagSelection(tags);
+                                    }}>
+                                    {chart.tags?.length ? (
+                                      <button
+                                        className="tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none"
+                                        data-testid="edit-tags">
+                                        <SVGIcons
+                                          alt="edit"
+                                          icon="icon-edit"
+                                          title="Edit"
+                                          width="10px"
+                                        />
+                                      </button>
+                                    ) : (
+                                      <span className="tw-opacity-60 group-hover:tw-opacity-100 tw-text-grey-muted group-hover:tw-text-primary">
+                                        <Tags
+                                          startWith="+ "
+                                          tag="Add tag"
+                                          type="outlined"
+                                        />
+                                      </span>
+                                    )}
+                                  </TagsContainer>
+                                </NonAdminAction>
+                              )}
                             </td>
                           </tr>
                         ))}
@@ -492,6 +515,7 @@ const DashboardDetails = ({
                 <div className="tw-h-full">
                   <Entitylineage
                     addLineageHandler={addLineageHandler}
+                    deleted={deleted}
                     entityLineage={entityLineage}
                     isNodeLoading={isNodeLoading}
                     lineageLeafNodes={lineageLeafNodes}
@@ -500,7 +524,7 @@ const DashboardDetails = ({
                   />
                 </div>
               )}
-              {activeTab === 3 && (
+              {activeTab === 3 && !deleted && (
                 <div>
                   <ManageTabComponent
                     currentTier={tier?.tagFQN}
