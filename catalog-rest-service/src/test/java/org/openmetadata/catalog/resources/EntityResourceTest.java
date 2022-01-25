@@ -49,6 +49,7 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -79,6 +80,7 @@ import org.openmetadata.catalog.api.services.CreateMessagingService.MessagingSer
 import org.openmetadata.catalog.api.services.CreatePipelineService;
 import org.openmetadata.catalog.api.services.CreatePipelineService.PipelineServiceType;
 import org.openmetadata.catalog.api.services.CreateStorageService;
+import org.openmetadata.catalog.entity.services.DashboardService;
 import org.openmetadata.catalog.entity.services.DatabaseService;
 import org.openmetadata.catalog.entity.services.MessagingService;
 import org.openmetadata.catalog.entity.services.PipelineService;
@@ -772,8 +774,16 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     request = createRequest(getEntityName(test), "updatedDescription", "displayName", null);
     entity = updateEntity(request, OK, adminAuthHeaders());
     entityInterface = getEntityInterface(entity);
-    assertEquals(oldVersion, entityInterface.getVersion()); // Version did not change
-    assertEquals("description", entityInterface.getDescription()); // Description did not change
+    // For service resources, we allow update of non-empty description via PUT
+    List<Class<?>> services =
+        Arrays.asList(DatabaseService.class, PipelineService.class, DashboardService.class, MessagingService.class);
+    if (services.contains(entity.getClass())) {
+      assertNotEquals(oldVersion, entityInterface.getVersion()); // Version did change
+      assertEquals("updatedDescription", entityInterface.getDescription()); // Description did change
+    } else {
+      assertEquals(oldVersion, entityInterface.getVersion()); // Version did not change
+      assertEquals("description", entityInterface.getDescription()); // Description did not change
+    }
   }
 
   @Test
