@@ -57,7 +57,7 @@ import { fetchAllUsers } from '../utils/UsedDataUtils';
 import { AuthProviderProps, OidcUser } from './AuthProvider.interface';
 
 const cookieStorage = new CookieStorage();
-const userAPIQueryFields = 'profile, teams';
+const userAPIQueryFields = 'profile,teams,roles';
 
 const getAuthenticator = (type: ComponentType, userManager: UserManager) => {
   return makeAuthenticator({
