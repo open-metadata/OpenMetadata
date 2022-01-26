@@ -22,6 +22,7 @@ import {
   PipelineType,
 } from '../../generated/operations/pipelines/airflowPipeline';
 import { useAuth } from '../../hooks/authHooks';
+import useToastContext from '../../hooks/useToastContext';
 import { isEven } from '../../utils/CommonUtils';
 import { getAirflowPipelineTypes } from '../../utils/ServiceUtils';
 import { Button } from '../buttons/Button/Button';
@@ -39,6 +40,7 @@ const Ingestion: React.FC<Props> = ({
   serviceName,
   ingestionList,
   serviceList,
+  isRequiredDetailsAvailable,
   deleteIngestion,
   triggerIngestion,
   addIngestion,
@@ -47,6 +49,7 @@ const Ingestion: React.FC<Props> = ({
   pagingHandler,
 }: Props) => {
   const { isAdminUser, isAuthDisabled } = useAuth();
+  const showToast = useToastContext();
   const [searchText, setSearchText] = useState('');
   const [currTriggerId, setCurrTriggerId] = useState({ id: '', state: '' });
   const [isAdding, setIsAdding] = useState<boolean>(false);
@@ -63,6 +66,7 @@ const Ingestion: React.FC<Props> = ({
     state: '',
     ingestion: {} as AirflowPipeline,
   });
+  const noConnectionMsg = `${serviceName} doesn't have connection details filled in. Please add the details before scheduling an ingestion job.`;
 
   const handleSearchAction = (searchValue: string) => {
     setSearchText(searchValue);
@@ -178,6 +182,17 @@ const Ingestion: React.FC<Props> = ({
     setIsConfirmationModalOpen(true);
   };
 
+  const handleAddIngestionClick = () => {
+    if (!getAirflowPipelineTypeOption().length) {
+      showToast({
+        variant: 'info',
+        body: `${serviceName} already has all the supported ingestion jobs added.`,
+      });
+    } else {
+      setIsAdding(true);
+    }
+  };
+
   const getSearchedIngestions = useCallback(() => {
     const sText = lowerCase(searchText);
 
@@ -238,6 +253,14 @@ const Ingestion: React.FC<Props> = ({
     <Fragment>
       <div className="tw-px-4" data-testid="ingestion-container">
         <div className="tw-flex">
+          {!isRequiredDetailsAvailable && (
+            <div className="tw-rounded tw-bg-error-lite tw-text-error tw-font-medium tw-px-4 tw-py-1 tw-mb-4 tw-flex tw-items-center tw-gap-1">
+              <i className="fas fa-exclamation-circle" />
+              <p> {noConnectionMsg} </p>
+            </div>
+          )}
+        </div>
+        <div className="tw-flex">
           <div className="tw-w-4/12">
             {searchText || getSearchedIngestions().length > 0 ? (
               <Searchbar
@@ -249,28 +272,27 @@ const Ingestion: React.FC<Props> = ({
             ) : null}
           </div>
           <div className="tw-w-8/12 tw-flex tw-justify-end">
-            <NonAdminAction
-              position="bottom"
-              title={TITLE_FOR_NON_ADMIN_ACTION}>
-              <Button
-                className={classNames('tw-h-8 tw-rounded tw-mb-2', {
-                  'tw-opacity-40':
-                    (!isAdminUser && !isAuthDisabled) ||
-                    !getAirflowPipelineTypeOption().length,
-                })}
-                data-testid="add-new-ingestion-button"
-                disabled={!getAirflowPipelineTypeOption().length}
-                size="small"
-                theme="primary"
-                variant="contained"
-                onClick={() => setIsAdding(true)}>
-                Add Ingestion
-              </Button>
-            </NonAdminAction>
+            {isRequiredDetailsAvailable && (
+              <NonAdminAction
+                position="bottom"
+                title={TITLE_FOR_NON_ADMIN_ACTION}>
+                <Button
+                  className={classNames('tw-h-8 tw-rounded tw-mb-2', {
+                    'tw-opacity-40': !isAdminUser && !isAuthDisabled,
+                  })}
+                  data-testid="add-new-ingestion-button"
+                  size="small"
+                  theme="primary"
+                  variant="contained"
+                  onClick={handleAddIngestionClick}>
+                  Add Ingestion
+                </Button>
+              </NonAdminAction>
+            )}
           </div>
         </div>
         {getSearchedIngestions().length ? (
-          <div className="tw-table-responsive tw-my-6">
+          <div className="tw-table-responsive tw-mb-6">
             <table
               className="tw-bg-white tw-w-full tw-mb-4"
               data-testid="ingestion-table">
@@ -324,7 +346,7 @@ const Ingestion: React.FC<Props> = ({
                         position="bottom"
                         title={TITLE_FOR_NON_ADMIN_ACTION}>
                         <div className="tw-flex">
-                          <div
+                          <button
                             className="link-text tw-mr-2"
                             data-testid="run"
                             onClick={() =>
@@ -342,10 +364,11 @@ const Ingestion: React.FC<Props> = ({
                             ) : (
                               'Run'
                             )}
-                          </div>
-                          <div
+                          </button>
+                          <button
                             className="link-text tw-mr-2"
                             data-testid="edit"
+                            disabled={!isRequiredDetailsAvailable}
                             onClick={() => handleUpdate(ingestion)}>
                             {updateSelection.id === ingestion.id ? (
                               updateSelection.state === 'success' ? (
@@ -356,8 +379,8 @@ const Ingestion: React.FC<Props> = ({
                             ) : (
                               'Edit'
                             )}
-                          </div>
-                          <div
+                          </button>
+                          <button
                             className="link-text tw-mr-2"
                             data-testid="delete"
                             onClick={() =>
@@ -375,7 +398,7 @@ const Ingestion: React.FC<Props> = ({
                             ) : (
                               'Delete'
                             )}
-                          </div>
+                          </button>
                         </div>
                       </NonAdminAction>
                     </td>
@@ -389,13 +412,15 @@ const Ingestion: React.FC<Props> = ({
           </div>
         ) : (
           <div className="tw-flex tw-items-center tw-flex-col">
-            <div className="tw-mt-24">
-              <p className="tw-text-lg tw-text-center">
-                {`No ingestion workflows found ${
-                  searchText ? `for "${searchText}"` : ''
-                }`}
-              </p>
-            </div>
+            {isRequiredDetailsAvailable && ingestionList.length === 0 && (
+              <div className="tw-mt-24">
+                <p className="tw-text-lg tw-text-center">
+                  {`No ingestion workflows found ${
+                    searchText ? `for "${searchText}"` : ''
+                  }`}
+                </p>
+              </div>
+            )}
           </div>
         )}
       </div>

@@ -300,17 +300,25 @@ const ServicesPage = () => {
   };
 
   const handleDelete = (id: string) => {
-    deleteService(serviceName, id).then((res: AxiosResponse) => {
-      if (res.statusText === 'OK') {
-        const updatedServiceList = serviceList.filter((s) => s.id !== id);
-        setServices({ ...services, [serviceName]: updatedServiceList });
-        setServicesCount((pre) => ({
-          ...servicesCount,
-          [serviceName]: pre[serviceName] - 1,
-        }));
-        setServiceList(updatedServiceList);
-      }
-    });
+    deleteService(serviceName, id)
+      .then((res: AxiosResponse) => {
+        if (res.statusText === 'OK') {
+          const updatedServiceList = serviceList.filter((s) => s.id !== id);
+          setServices({ ...services, [serviceName]: updatedServiceList });
+          setServicesCount((pre) => ({
+            ...servicesCount,
+            [serviceName]: pre[serviceName] - 1,
+          }));
+          setServiceList(updatedServiceList);
+        }
+      })
+      .catch((err: AxiosError) => {
+        const errMsg = err.response?.data.message || 'Something went wrong!';
+        showToast({
+          variant: 'error',
+          body: errMsg,
+        });
+      });
 
     handleCancelConfirmationModal();
   };
@@ -618,12 +626,16 @@ const ServicesPage = () => {
                       }`}
                     </p>
                     <p className="tw-text-lg tw-text-center">
-                      <button
-                        className="link-text tw-underline"
-                        data-testid="add-service-button"
-                        onClick={handleAddService}>
-                        Click here
-                      </button>{' '}
+                      <NonAdminAction
+                        position="bottom"
+                        title={TITLE_FOR_NON_ADMIN_ACTION}>
+                        <button
+                          className="link-text tw-underline"
+                          data-testid="add-service-button"
+                          onClick={handleAddService}>
+                          Click here
+                        </button>
+                      </NonAdminAction>{' '}
                       to add new {servicesDisplayName[serviceName]}
                     </p>
                   </div>

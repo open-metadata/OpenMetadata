@@ -65,6 +65,7 @@ import { isEven } from '../../utils/CommonUtils';
 import {
   getIsIngestionEnable,
   getServiceCategoryFromType,
+  isRequiredDetailsAvailableForIngestion,
   serviceTypeLogo,
 } from '../../utils/ServiceUtils';
 import { getEntityLink, getUsagePercentile } from '../../utils/TableUtils';
@@ -189,7 +190,7 @@ const ServicePage: FunctionComponent = () => {
         }
       })
       .catch((err: AxiosError) => {
-        const msg = err.message;
+        const msg = err.response?.data.message;
         showToast({
           variant: 'error',
           body: msg ?? `Error while getting ingestion workflow`,
@@ -212,7 +213,7 @@ const ServicePage: FunctionComponent = () => {
           }
         })
         .catch((err: AxiosError) => {
-          const msg = err.message;
+          const msg = err.response?.data.message;
           showToast({
             variant: 'error',
             body:
@@ -234,7 +235,7 @@ const ServicePage: FunctionComponent = () => {
           getAllIngestionWorkflows();
         })
         .catch((err: AxiosError) => {
-          const msg = err.message;
+          const msg = err.response?.data.message;
           showToast({
             variant: 'error',
             body:
@@ -264,7 +265,7 @@ const ServicePage: FunctionComponent = () => {
           }
         })
         .catch((err: AxiosError) => {
-          const msg = err.message;
+          const msg = err.response?.data.message;
           showToast({
             variant: 'error',
             body:
@@ -307,6 +308,11 @@ const ServicePage: FunctionComponent = () => {
         const errMsg = err.response?.data?.message ?? '';
         if (errMsg.includes('Connection refused')) {
           setConnectionAvailable(false);
+        } else {
+          showToast({
+            variant: 'error',
+            body: errMsg ?? `Error while adding ingestion workflow`,
+          });
         }
         setIsloading(false);
       });
@@ -779,6 +785,10 @@ const ServicePage: FunctionComponent = () => {
                       addIngestion={addIngestionWorkflowHandler}
                       deleteIngestion={deleteIngestionById}
                       ingestionList={ingestions}
+                      isRequiredDetailsAvailable={isRequiredDetailsAvailableForIngestion(
+                        serviceName as ServiceCategory,
+                        serviceDetails as ServicesData
+                      )}
                       paging={ingestionPaging}
                       pagingHandler={ingestionPagingHandler}
                       serviceList={serviceList}
