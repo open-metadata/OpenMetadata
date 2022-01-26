@@ -172,6 +172,7 @@ const TourPage = () => {
             description={mockDatasetData.description}
             descriptionUpdateHandler={handleCountChange}
             entityLineage={mockDatasetData.entityLineage}
+            entityLineageHandler={handleCountChange}
             entityName={mockDatasetData.entityName}
             followTableHandler={handleCountChange}
             followers={mockDatasetData.followers}
