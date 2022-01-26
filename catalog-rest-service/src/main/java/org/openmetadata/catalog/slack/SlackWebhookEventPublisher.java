@@ -53,7 +53,6 @@ public class SlackWebhookEventPublisher extends AbstractEventPublisher {
   @Override
   public void publish(ChangeEventList events) throws EventPublisherException {
     for (ChangeEvent event : events.getData()) {
-      LOG.info("log event {}", event);
       try {
         SlackMessage slackMessage = buildSlackMessage(event);
         Response response =
@@ -65,8 +64,7 @@ public class SlackWebhookEventPublisher extends AbstractEventPublisher {
           throw new SlackRetriableException(response.getStatusInfo().getReasonPhrase());
         }
       } catch (Exception e) {
-        LOG.error("Failed to publish event {} to slack ", event);
-        throw new EventPublisherException(e.getMessage());
+        LOG.error("Failed to publish event {} to slack due to {} ", event, e.getMessage());
       }
     }
   }
@@ -106,7 +104,9 @@ public class SlackWebhookEventPublisher extends AbstractEventPublisher {
   private List<SlackAttachment> getAddedEventsText(ChangeEvent event) {
     List<SlackAttachment> attachments = new ArrayList<>();
     ChangeDescription changeDescription = event.getChangeDescription();
-    if (changeDescription.getFieldsAdded() != null && !changeDescription.getFieldsAdded().isEmpty()) {
+    if (changeDescription != null
+        && changeDescription.getFieldsAdded() != null
+        && !changeDescription.getFieldsAdded().isEmpty()) {
       for (FieldChange fieldChange : changeDescription.getFieldsAdded()) {
         SlackAttachment attachment = new SlackAttachment();
         StringBuilder title = new StringBuilder();
@@ -135,7 +135,9 @@ public class SlackWebhookEventPublisher extends AbstractEventPublisher {
   private List<SlackAttachment> getUpdatedEventsText(ChangeEvent event) {
     List<SlackAttachment> attachments = new ArrayList<>();
     ChangeDescription changeDescription = event.getChangeDescription();
-    if (changeDescription.getFieldsUpdated() != null && !changeDescription.getFieldsUpdated().isEmpty()) {
+    if (changeDescription != null
+        && changeDescription.getFieldsUpdated() != null
+        && !changeDescription.getFieldsUpdated().isEmpty()) {
       for (FieldChange fieldChange : changeDescription.getFieldsUpdated()) {
         // when the entity is deleted we will get deleted set as true. We do not need to parse this for slack messages.
         if (!fieldChange.getName().equals("deleted")) {
@@ -156,7 +158,9 @@ public class SlackWebhookEventPublisher extends AbstractEventPublisher {
   private List<SlackAttachment> getDeletedEventsText(ChangeEvent event) {
     List<SlackAttachment> attachments = new ArrayList<>();
     ChangeDescription changeDescription = event.getChangeDescription();
-    if (changeDescription.getFieldsDeleted() != null && !changeDescription.getFieldsDeleted().isEmpty()) {
+    if (changeDescription != null
+        && changeDescription.getFieldsDeleted() != null
+        && !changeDescription.getFieldsDeleted().isEmpty()) {
       for (FieldChange fieldChange : changeDescription.getFieldsDeleted()) {
         SlackAttachment attachment = new SlackAttachment();
         StringBuilder title = new StringBuilder();
