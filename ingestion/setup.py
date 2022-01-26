@@ -44,6 +44,7 @@ base_requirements = {
     "cryptography",
     "Jinja2>=2.11.3, <3.0",
     "PyYAML",
+    "jsonschema",
 }
 
 report_requirements = {
@@ -95,7 +96,6 @@ plugins: Dict[str, Set[str]] = {
         "psycopg2-binary",
         "GeoAlchemy2",
     },
-    "data-profiler": {"openmetadata-data-profiler"},
     "snowflake": {"snowflake-sqlalchemy<=1.3.2"},
     "snowflake-usage": {"snowflake-sqlalchemy<=1.3.2"},
     "sample-entity": {"faker~=8.1.1"},
@@ -134,7 +134,7 @@ test = {
 build_options = {"includes": ["_cffi_backend"]}
 setup(
     name="openmetadata-ingestion",
-    version="0.8.0",
+    version="0.8.1",
     url="https://open-metadata.org/",
     author="OpenMetadata Committers",
     license="Apache License 2.0",

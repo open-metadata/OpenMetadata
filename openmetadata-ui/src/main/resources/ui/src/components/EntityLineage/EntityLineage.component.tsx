@@ -47,10 +47,10 @@ import useToastContext from '../../hooks/useToastContext';
 import {
   dragHandle,
   getDataLabel,
+  getDeletedLineagePlaceholder,
   getLayoutedElements,
   getLineageData,
   getModalBodyText,
-  getNoLineageDataPlaceholder,
   onLoad,
   onNodeContextMenu,
   onNodeMouseEnter,
@@ -84,6 +84,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
   deleted,
   addLineageHandler,
   removeLineageHandler,
+  entityLineageHandler,
 }: EntityLineageProp) => {
   const showToast = useToastContext();
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
@@ -180,21 +181,28 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
       removeLineageHandler(edgeData);
       // eslint-disable-next-line @typescript-eslint/no-use-before-define
       setElements((es) => es.filter((e) => e.id !== data.id));
-      setLineageData((pre) => {
-        const newDownStreamEdges = pre.downstreamEdges?.filter(
-          (d) => d.toEntity !== data.target.id
-        );
-        const newUpStreamEdges = pre.upstreamEdges?.filter(
-          (d) => d.toEntity !== data.target.id
-        );
-        const newNodes = pre.nodes?.filter((n) => n.id !== data.target.id);
 
-        return {
-          ...pre,
-          downstreamEdges: newDownStreamEdges,
-          upstreamEdges: newUpStreamEdges,
-          nodes: newNodes,
-        };
+      const newDownStreamEdges = lineageData.downstreamEdges?.filter(
+        (dn) =>
+          !lineageData.downstreamEdges?.find(
+            () =>
+              edgeData.fromId === dn.fromEntity && edgeData.toId === dn.toEntity
+          )
+      );
+      const newUpStreamEdges = lineageData.upstreamEdges?.filter(
+        (up) =>
+          !lineageData.upstreamEdges?.find(
+            () =>
+              edgeData.fromId === up.fromEntity && edgeData.toId === up.toEntity
+          )
+      );
+
+      setNewAddedNode({} as FlowElement);
+      setSelectedEntity({} as EntityReference);
+      entityLineageHandler({
+        ...lineageData,
+        downstreamEdges: newDownStreamEdges,
+        upstreamEdges: newUpStreamEdges,
       });
     }
   };
@@ -316,51 +324,48 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
         },
       },
     };
-
+    setElements((els) =>
+      addEdge({ ...params, arrowHeadType: ArrowHeadType.ArrowClosed }, els)
+    );
     setTimeout(() => {
       addLineageHandler(newEdge)
         .then(() => {
           setStatus('success');
           setLoading(false);
           setTimeout(() => {
-            setElements((els) =>
-              addEdge(
-                { ...params, arrowHeadType: ArrowHeadType.ArrowClosed },
-                els
-              )
-            );
-            setLineageData((pre) => {
-              return {
-                ...pre,
-                nodes: selectedEntity
-                  ? [...(pre.nodes as Array<EntityReference>), selectedEntity]
-                  : pre.nodes,
-                downstreamEdges:
-                  !isUndefined(downstreamNode) ||
-                  sourceNode?.id === pre.entity.id
-                    ? [
-                        ...(pre.downstreamEdges as EntityEdge[]),
-                        {
-                          fromEntity: sourceNode?.id,
-                          toEntity: targetNode?.id,
-                        },
-                      ]
-                    : pre.downstreamEdges,
-                upstreamEdges:
-                  isUndefined(downstreamNode) &&
-                  sourceNode?.id !== pre.entity.id
-                    ? [
-                        ...(pre.upstreamEdges as EntityEdge[]),
-                        {
-                          fromEntity: sourceNode?.id,
-                          toEntity: targetNode?.id,
-                        },
-                      ]
-                    : pre.upstreamEdges,
-              };
+            entityLineageHandler({
+              ...lineageData,
+              nodes: selectedEntity
+                ? [
+                    ...(lineageData.nodes as Array<EntityReference>),
+                    selectedEntity,
+                  ]
+                : lineageData.nodes,
+              downstreamEdges:
+                !isUndefined(downstreamNode) ||
+                sourceNode?.id === lineageData.entity.id
+                  ? [
+                      ...(lineageData.downstreamEdges as EntityEdge[]),
+                      {
+                        fromEntity: sourceNode?.id,
+                        toEntity: targetNode?.id,
+                      },
+                    ]
+                  : lineageData.downstreamEdges,
+              upstreamEdges:
+                isUndefined(downstreamNode) &&
+                sourceNode?.id !== lineageData.entity.id
+                  ? [
+                      ...(lineageData.upstreamEdges as EntityEdge[]),
+                      {
+                        fromEntity: sourceNode?.id,
+                        toEntity: targetNode?.id,
+                      },
+                    ]
+                  : lineageData.upstreamEdges,
             });
             setStatus('initial');
-          }, 1000);
+          }, 100);
           setNewAddedNode({} as FlowElement);
           setSelectedEntity({} as EntityReference);
         })
@@ -606,27 +611,14 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
   }, [selectedEdge, confirmDelete]);
 
   useEffect(() => {
-    setLineageData((pre) => ({
-      ...pre,
-      nodes: [
-        ...(pre.nodes as EntityReference[]),
-        ...(entityLineage.nodes as EntityReference[]),
-      ],
-      downstreamEdges: [
-        ...(pre.downstreamEdges as EntityEdge[]),
-        ...(entityLineage.downstreamEdges as EntityEdge[]),
-      ],
-      upstreamEdges: [
-        ...(pre.upstreamEdges as EntityEdge[]),
-        ...(entityLineage.upstreamEdges as EntityEdge[]),
-      ],
-    }));
+    if (!isEmpty(entityLineage)) {
+      setLineageData(entityLineage);
+    }
   }, [entityLineage]);
 
   return (
     <Fragment>
-      {(entityLineage?.downstreamEdges ?? []).length > 0 ||
-      (entityLineage?.upstreamEdges ?? []).length > 0 ? (
+      {!deleted ? (
         <div className="tw-relative tw-h-full tw--mx-4 tw--mt-4">
           <div className="tw-w-full tw-h-full" ref={reactFlowWrapper}>
             <ReactFlowProvider>
@@ -751,7 +743,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
           ) : null}
         </div>
       ) : (
-        getNoLineageDataPlaceholder()
+        getDeletedLineagePlaceholder()
       )}
     </Fragment>
   );
