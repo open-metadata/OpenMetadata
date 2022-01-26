@@ -190,7 +190,7 @@ const ServicePage: FunctionComponent = () => {
         }
       })
       .catch((err: AxiosError) => {
-        const msg = err.message;
+        const msg = err.response?.data.message;
         showToast({
           variant: 'error',
           body: msg ?? `Error while getting ingestion workflow`,
@@ -213,7 +213,7 @@ const ServicePage: FunctionComponent = () => {
           }
         })
         .catch((err: AxiosError) => {
-          const msg = err.message;
+          const msg = err.response?.data.message;
           showToast({
             variant: 'error',
             body:
@@ -235,7 +235,7 @@ const ServicePage: FunctionComponent = () => {
           getAllIngestionWorkflows();
         })
         .catch((err: AxiosError) => {
-          const msg = err.message;
+          const msg = err.response?.data.message;
           showToast({
             variant: 'error',
             body:
@@ -265,7 +265,7 @@ const ServicePage: FunctionComponent = () => {
           }
         })
         .catch((err: AxiosError) => {
-          const msg = err.message;
+          const msg = err.response?.data.message;
           showToast({
             variant: 'error',
             body:
@@ -308,6 +308,11 @@ const ServicePage: FunctionComponent = () => {
         const errMsg = err.response?.data?.message ?? '';
         if (errMsg.includes('Connection refused')) {
           setConnectionAvailable(false);
+        } else {
+          showToast({
+            variant: 'error',
+            body: errMsg ?? `Error while adding ingestion workflow`,
+          });
         }
         setIsloading(false);
       });
