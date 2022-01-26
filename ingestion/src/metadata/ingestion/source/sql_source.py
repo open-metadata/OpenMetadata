@@ -118,7 +118,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                 return True
         # Catch any errors during profiling init and continue ingestion
         except Exception as exc:  # pylint: disable=broad-except
-            traceback.print_exc()
+            logger.debug(traceback.print_exc())
             logger.error(f"Error loading profiler {repr(exc)}")
         return False
 
