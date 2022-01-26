@@ -94,7 +94,7 @@ const getIngestionName = (name: string) => {
 const IngestionModal: React.FC<IngestionModalProps> = ({
   isUpdating,
   header,
-  service,
+  service = '',
   ingestionTypes,
   ingestionList,
   onCancel,
@@ -114,7 +114,9 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
   );
 
   const [ingestionName, setIngestionName] = useState<string>(
-    selectedIngestion?.name || `${service}_${ingestionTypes[0]}` || ''
+    selectedIngestion?.name ||
+      `${service.trim().replace(/\s+/g, '_')}_${ingestionTypes[0]}` ||
+      ''
   );
   const [ingestionType, setIngestionType] = useState<string>(
     selectedIngestion?.pipelineType || ingestionTypes[0] || ''
@@ -159,6 +161,7 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
     ingestionSchedule: false,
     isPipelineExists: false,
     isPipelineNameExists: false,
+    isInvalidName: false,
   });
 
   const isPipeLineNameExists = () => {
@@ -252,6 +255,8 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
               {showErrorMsg.name && errorMsg('Ingestion Name is required')}
               {showErrorMsg.isPipelineNameExists &&
                 errorMsg(`Ingestion with similar name already exists.`)}
+              {showErrorMsg.isInvalidName &&
+                errorMsg(`Ingestion name with space is invalid.`)}
             </Field>
 
             <Field>
@@ -611,6 +616,7 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
       ...showErrorMsg,
       // isPipelineExists: isPipelineExists(),
       isPipelineNameExists: isPipeLineNameExists(),
+      isInvalidName: Boolean(ingestionName.match(/\s+/)),
     });
   }, [ingestionType, ingestionName]);
 

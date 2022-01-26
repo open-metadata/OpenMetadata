@@ -366,7 +366,9 @@ export const AddServiceModal: FunctionComponent<Props> = ({
           ingestionTypeList?.map((d) => {
             return {
               ...d,
-              ingestionName: `${value}_${PipelineType.Metadata}`,
+              ingestionName: `${value.trim().replace(/\s+/g, '_')}_${
+                PipelineType.Metadata
+              }`,
             };
           })
         );

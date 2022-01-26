@@ -51,4 +51,5 @@ export interface ValidationErrorMsg {
   ingestionSchedule: boolean;
   isPipelineExists: boolean;
   isPipelineNameExists: boolean;
+  isInvalidName: boolean;
 }
