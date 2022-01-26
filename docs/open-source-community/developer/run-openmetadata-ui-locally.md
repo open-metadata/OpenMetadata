@@ -6,7 +6,7 @@ description: This guide will help you to run OpenMetadata UI locally.
 
 ### **Pre-requisites**
 
-Before proceeding, ensure that you have installed the node and npm with the versions given below.
+Before proceeding, ensure that you have installed the node and yarn with the versions given below.
 
 ```
 "node": ">=10.0.0",
@@ -29,7 +29,7 @@ Using the command below, spin up the server locally from the directory.`openmeta
 
 ### **Steps to Run OpenMetadata UI**
 
-Once the node and npm is installed in the system, you can go ahead and perform the following steps to run OpenMetadata UI.
+Once the node and yarn is installed in the system, you can go ahead and perform the following steps to run OpenMetadata UI.
 
 **Step 1**: Run the given command to install the required dependencies.
 
