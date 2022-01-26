@@ -44,7 +44,7 @@ base_requirements = {
     "cryptography",
     "Jinja2>=2.11.3, <3.0",
     "PyYAML",
-    "jsonschema~=4.4.0",
+    "jsonschema",
 }
 
 report_requirements = {
