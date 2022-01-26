@@ -94,7 +94,7 @@ const getIngestionName = (name: string) => {
 const IngestionModal: React.FC<IngestionModalProps> = ({
   isUpdating,
   header,
-  service,
+  service = '',
   ingestionTypes,
   ingestionList,
   onCancel,
@@ -114,7 +114,9 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
   );
 
   const [ingestionName, setIngestionName] = useState<string>(
-    selectedIngestion?.name || `${service}_${ingestionTypes[0]}` || ''
+    selectedIngestion?.name ||
+      `${service.trim().replace(/\s+/g, '_')}_${ingestionTypes[0]}` ||
+      ''
   );
   const [ingestionType, setIngestionType] = useState<string>(
     selectedIngestion?.pipelineType || ingestionTypes[0] || ''
