@@ -58,7 +58,7 @@ const SigninPage = () => {
     }
 
     return ssoBrandName ? (
-      <button className="tw-signin-button">
+      <button className="tw-signin-button tw-mx-auto">
         <SVGIcons alt={`${ssoBrandName} Logo`} icon={ssoBrandLogo} width="30" />
         <span className="tw-ml-3 tw-font-medium tw-text-grey-muted tw-text-xl">
           Sign in with {ssoBrandName}
@@ -75,13 +75,10 @@ const SigninPage = () => {
 
   return (
     <div className="tw-flex tw-bg-body-main tw-h-screen">
-      <div className="tw-w-5/12 tw-ml-14">
-        <div className="tw-mt-10">
+      <div className="tw-w-5/12">
+        <div className="tw-mt-52 tw-text-center">
           <SVGIcons alt="OpenMetadata Logo" icon={Icons.LOGO} width="152" />
-        </div>
-        <div className="tw-mt-44">
-          <p className="tw-text-3xl tw-font-bold tw-text-grey-muted">Log In</p>
-          <p className="tw-mt-10 tw-text-xl tw-text-grey-muted tw-font-medium tw-w-10/12">
+          <p className="tw-mt-24 tw-mx-auto tw-text-xl tw-text-grey-muted tw-font-medium tw-w-10/12">
             Centralized Metadata Store, Discover, Collaborate and get your Data
             Right
           </p>
