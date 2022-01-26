@@ -60,6 +60,7 @@ export enum Operation {
   SuggestDescription = 'SuggestDescription',
   SuggestTags = 'SuggestTags',
   UpdateDescription = 'UpdateDescription',
+  UpdateLineage = 'UpdateLineage',
   UpdateOwner = 'UpdateOwner',
   UpdateTags = 'UpdateTags',
 }
