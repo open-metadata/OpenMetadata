@@ -65,6 +65,7 @@ import { isEven } from '../../utils/CommonUtils';
 import {
   getIsIngestionEnable,
   getServiceCategoryFromType,
+  isRequiredDetailsAvailableForIngestion,
   serviceTypeLogo,
 } from '../../utils/ServiceUtils';
 import { getEntityLink, getUsagePercentile } from '../../utils/TableUtils';
@@ -779,6 +780,10 @@ const ServicePage: FunctionComponent = () => {
                       addIngestion={addIngestionWorkflowHandler}
                       deleteIngestion={deleteIngestionById}
                       ingestionList={ingestions}
+                      isRequiredDetailsAvailable={isRequiredDetailsAvailableForIngestion(
+                        serviceName as ServiceCategory,
+                        serviceDetails as ServicesData
+                      )}
                       paging={ingestionPaging}
                       pagingHandler={ingestionPagingHandler}
                       serviceList={serviceList}

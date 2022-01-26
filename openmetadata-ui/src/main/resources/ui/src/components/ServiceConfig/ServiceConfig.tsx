@@ -9,7 +9,11 @@ import {
 } from '../../enums/service.enum';
 import useToastContext from '../../hooks/useToastContext';
 import { errorMsg, requiredField } from '../../utils/CommonUtils';
-import { getKeyValueObject, getKeyValuePair } from '../../utils/ServiceUtils';
+import {
+  getHostPortDetails,
+  getKeyValueObject,
+  getKeyValuePair,
+} from '../../utils/ServiceUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import { Button } from '../buttons/Button/Button';
 import Loader from '../Loader/Loader';
@@ -44,20 +48,6 @@ type DynamicFormFieldType = {
 
 export const Field = ({ children }: { children: React.ReactNode }) => {
   return <div className="tw-mt-4">{children}</div>;
-};
-
-const getHostPortDetails = (hostport: string) => {
-  let host = '',
-    port = '';
-  const newHostPort = hostport.split(':');
-
-  port = newHostPort.splice(newHostPort.length - 1, 1).join();
-  host = newHostPort.join(':');
-
-  return {
-    host,
-    port,
-  };
 };
 
 const ServiceConfig = ({

@@ -22,6 +22,7 @@ import {
   PipelineType,
 } from '../../generated/operations/pipelines/airflowPipeline';
 import { useAuth } from '../../hooks/authHooks';
+import useToastContext from '../../hooks/useToastContext';
 import { isEven } from '../../utils/CommonUtils';
 import { getAirflowPipelineTypes } from '../../utils/ServiceUtils';
 import { Button } from '../buttons/Button/Button';
@@ -39,6 +40,7 @@ const Ingestion: React.FC<Props> = ({
   serviceName,
   ingestionList,
   serviceList,
+  isRequiredDetailsAvailable,
   deleteIngestion,
   triggerIngestion,
   addIngestion,
@@ -47,6 +49,7 @@ const Ingestion: React.FC<Props> = ({
   pagingHandler,
 }: Props) => {
   const { isAdminUser, isAuthDisabled } = useAuth();
+  const showToast = useToastContext();
   const [searchText, setSearchText] = useState('');
   const [currTriggerId, setCurrTriggerId] = useState({ id: '', state: '' });
   const [isAdding, setIsAdding] = useState<boolean>(false);
@@ -178,6 +181,22 @@ const Ingestion: React.FC<Props> = ({
     setIsConfirmationModalOpen(true);
   };
 
+  const handleAddIngestionClick = () => {
+    if (!isRequiredDetailsAvailable) {
+      showToast({
+        variant: 'error',
+        body: `${serviceName} doesn't have connection details filled in. Please add the details before scheduling an ingestion job.`,
+      });
+    } else if (!getAirflowPipelineTypeOption().length) {
+      showToast({
+        variant: 'info',
+        body: `${serviceName} already has all the supported ingestion jobs added.`,
+      });
+    } else {
+      setIsAdding(true);
+    }
+  };
+
   const getSearchedIngestions = useCallback(() => {
     const sText = lowerCase(searchText);
 
@@ -254,16 +273,13 @@ const Ingestion: React.FC<Props> = ({
               title={TITLE_FOR_NON_ADMIN_ACTION}>
               <Button
                 className={classNames('tw-h-8 tw-rounded tw-mb-2', {
-                  'tw-opacity-40':
-                    (!isAdminUser && !isAuthDisabled) ||
-                    !getAirflowPipelineTypeOption().length,
+                  'tw-opacity-40': !isAdminUser && !isAuthDisabled,
                 })}
                 data-testid="add-new-ingestion-button"
-                disabled={!getAirflowPipelineTypeOption().length}
                 size="small"
                 theme="primary"
                 variant="contained"
-                onClick={() => setIsAdding(true)}>
+                onClick={handleAddIngestionClick}>
                 Add Ingestion
               </Button>
             </NonAdminAction>

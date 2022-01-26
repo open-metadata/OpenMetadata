@@ -77,6 +77,7 @@ describe('Test Ingestion page', () => {
         ingestionList={
           mockIngestionWorkFlow.data.data as unknown as AirflowPipeline[]
         }
+        isRequiredDetailsAvailable={false}
         paging={mockPaging}
         pagingHandler={mockPaginghandler}
         serviceList={[]}
@@ -113,6 +114,7 @@ describe('Test Ingestion page', () => {
         ingestionList={
           mockIngestionWorkFlow.data.data as unknown as AirflowPipeline[]
         }
+        isRequiredDetailsAvailable={false}
         paging={mockPaging}
         pagingHandler={mockPaginghandler}
         serviceList={[]}
@@ -163,6 +165,7 @@ describe('Test Ingestion page', () => {
         ingestionList={
           mockIngestionWorkFlow.data.data as unknown as AirflowPipeline[]
         }
+        isRequiredDetailsAvailable={false}
         paging={mockPagingAfter}
         pagingHandler={mockPaginghandler}
         serviceList={[]}
@@ -192,6 +195,7 @@ describe('Test Ingestion page', () => {
         ingestionList={
           mockIngestionWorkFlow.data.data as unknown as AirflowPipeline[]
         }
+        isRequiredDetailsAvailable={false}
         paging={mockPagingAfter}
         pagingHandler={mockPaginghandler}
         serviceList={[]}
