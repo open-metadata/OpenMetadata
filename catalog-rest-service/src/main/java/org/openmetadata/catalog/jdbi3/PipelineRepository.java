@@ -358,8 +358,11 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
         updatedTask.setDescription(origTask.getDescription());
         return;
       }
-      recordChange(
-          "tasks." + origTask.getName() + ".description", origTask.getDescription(), updatedTask.getDescription());
+      // Don't record a change if descriptions are the same
+      if (!origTask.getDescription().equals(updatedTask.getDescription())) {
+        recordChange(
+            "tasks." + origTask.getName() + ".description", origTask.getDescription(), updatedTask.getDescription());
+      }
     }
   }
 }
