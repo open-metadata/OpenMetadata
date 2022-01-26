@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import classNames from 'classnames';
 import React, { useState } from 'react';
 import { activeLink, normalLink } from '../../utils/styleconstant';
 import { dropdownIcon as DropdownIcon } from '../../utils/svgconstant';
@@ -85,7 +86,12 @@ const DropDown: React.FC<DropDownProp> = ({
                       if (selectedItems?.includes(item.value as string)) {
                         return (
                           <p
-                            className="tw-bg-gray-200 tw-rounded tw-px-1 tw-text-grey-body tw-truncate tw-w-52 tw-align-middle"
+                            className={classNames(
+                              'tw-bg-gray-200 tw-rounded tw-px-1 tw-text-grey-body tw-truncate tw-align-middle',
+                              {
+                                'tw-w-52': (item.name as string)?.length > 32,
+                              }
+                            )}
                             key={item.value}
                             style={{ margin: '2px' }}
                             title={item.name as string}>
