@@ -161,6 +161,7 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
     ingestionSchedule: false,
     isPipelineExists: false,
     isPipelineNameExists: false,
+    isInvalidName: false,
   });
 
   const isPipeLineNameExists = () => {
@@ -254,6 +255,8 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
               {showErrorMsg.name && errorMsg('Ingestion Name is required')}
               {showErrorMsg.isPipelineNameExists &&
                 errorMsg(`Ingestion with similar name already exists.`)}
+              {showErrorMsg.isInvalidName &&
+                errorMsg(`Ingestion name with space is invalid.`)}
             </Field>
 
             <Field>
@@ -613,6 +616,7 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
       ...showErrorMsg,
       // isPipelineExists: isPipelineExists(),
       isPipelineNameExists: isPipeLineNameExists(),
+      isInvalidName: Boolean(ingestionName.match(/\s+/)),
     });
   }, [ingestionType, ingestionName]);
 
