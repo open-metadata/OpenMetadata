@@ -24,6 +24,7 @@ import { getServiceDetails, getServices } from '../axiosAPIs/serviceAPI';
 import { ServiceDataObj } from '../components/Modals/AddServiceModal/AddServiceModal';
 import {
   AIRFLOW,
+  arrServiceTypes,
   ATHENA,
   BIGQUERY,
   GLUE,
@@ -198,17 +199,28 @@ const getAllServiceList = (
   });
 };
 
-export const getAllServices = (): Promise<Array<ServiceDataObj>> => {
+export const getAllServices = (
+  onlyVisibleServices = true
+): Promise<Array<ServiceDataObj>> => {
   return new Promise<Array<ServiceDataObj>>((resolve, reject) => {
     getServiceDetails().then((res: AxiosResponse) => {
       let allServiceCollectionArr: Array<ServiceCollection> = [];
       if (res.data.data?.length) {
-        allServiceCollectionArr = res.data.data.map((service: ServiceData) => {
-          return {
-            name: service.collection.name,
-            value: service.collection.name,
-          };
-        });
+        const arrServiceCat: Array<{ name: string; value: string }> =
+          res.data.data.map((service: ServiceData) => {
+            return {
+              name: service.collection.name,
+              value: service.collection.name,
+            };
+          });
+
+        if (onlyVisibleServices) {
+          allServiceCollectionArr = arrServiceCat.filter((service) =>
+            arrServiceTypes.includes(service.name as ServiceTypes)
+          );
+        } else {
+          allServiceCollectionArr = arrServiceCat;
+        }
       }
       getAllServiceList(allServiceCollectionArr)
         .then((res) => resolve(res))
