@@ -118,11 +118,8 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                 return True
         # Catch any errors during profiling init and continue ingestion
         except Exception as exc:  # pylint: disable=broad-except
-            logger.error(
-                f"Error loading profiler {exc}"
-                "DataProfiler configuration is enabled. Please make sure you ran "
-                "pip install 'openmetadata-ingestion[data-profiler]'"
-            )
+            logger.debug(traceback.print_exc())
+            logger.debug(f"Error loading profiler {repr(exc)}")
         return False
 
     def prepare(self):
