@@ -49,7 +49,7 @@ const AddRuleModal: FC<AddRuleProps> = ({
   const [isEnabled, setIsEnabled] = useState<boolean>(
     Boolean(initialData.enabled)
   );
-  const onChangeHadler = (
+  const onChangeHandler = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
     e.persist();
@@ -105,10 +105,13 @@ const AddRuleModal: FC<AddRuleProps> = ({
                   disabled={isEditing}
                   name="operation"
                   value={data.operation}
-                  onChange={onChangeHadler}>
+                  onChange={onChangeHandler}>
                   <option value="">Select Operation</option>
                   <option value={Operation.UpdateDescription}>
                     Update Description
+                  </option>
+                  <option value={Operation.UpdateLineage}>
+                    Update Lineage
                   </option>
                   <option value={Operation.UpdateOwner}>Update Owner</option>
                   <option value={Operation.UpdateTags}>Update Tags</option>
