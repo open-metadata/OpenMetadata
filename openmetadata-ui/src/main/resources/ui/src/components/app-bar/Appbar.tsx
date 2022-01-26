@@ -150,9 +150,9 @@ const Appbar: React.FC = (): JSX.Element => {
                 {r.displayName}
               </p>
             ))}
+            <hr className="tw-my-1.5" />
           </div>
         ) : null}
-        <hr className="tw-my-1.5" />
         {(teams?.length ?? 0) > 0 ? (
           <div>
             <span className="tw-font-medium tw-text-xs">Teams</span>
