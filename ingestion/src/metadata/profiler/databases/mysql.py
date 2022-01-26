@@ -19,7 +19,7 @@ class MySQLExpressions(SQLExpressions):
     regex_like_pattern_expr = "{} regexp '{}'"
 
 
-class MySQL(DatabaseCommon):
+class Mysql(DatabaseCommon):
     config: MySQLConfig = None
     sql_exprs: MySQLExpressions = MySQLExpressions()
 
