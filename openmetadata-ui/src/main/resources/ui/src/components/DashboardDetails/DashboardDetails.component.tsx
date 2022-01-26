@@ -74,6 +74,7 @@ const DashboardDetails = ({
   deleted,
   addLineageHandler,
   removeLineageHandler,
+  entityLineageHandler,
 }: DashboardDetailsProps) => {
   const { isAuthDisabled } = useAuth();
   const [isEdit, setIsEdit] = useState(false);
@@ -517,6 +518,7 @@ const DashboardDetails = ({
                     addLineageHandler={addLineageHandler}
                     deleted={deleted}
                     entityLineage={entityLineage}
+                    entityLineageHandler={entityLineageHandler}
                     isNodeLoading={isNodeLoading}
                     lineageLeafNodes={lineageLeafNodes}
                     loadNodeHandler={loadNodeHandler}

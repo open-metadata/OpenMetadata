@@ -60,4 +60,5 @@ export interface PipeLineDetailsProp {
   versionHandler: () => void;
   addLineageHandler: (edge: Edge) => Promise<void>;
   removeLineageHandler: (data: EdgeData) => void;
+  entityLineageHandler: (lineage: EntityLineage) => void;
 }
