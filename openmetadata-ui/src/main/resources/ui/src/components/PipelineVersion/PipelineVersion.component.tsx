@@ -156,7 +156,8 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
       {
         key: `${currentVersionData.serviceType} Url`,
         value: currentVersionData.pipelineUrl,
-        placeholderText: currentVersionData.name,
+        placeholderText:
+          currentVersionData.displayName ?? currentVersionData.name,
         isLink: true,
         openInNewTab: true,
       },
@@ -221,7 +222,9 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
             <EntityPageInfo
               isVersionSelected
               deleted={deleted}
-              entityName={currentVersionData.name ?? ''}
+              entityName={
+                currentVersionData.displayName ?? currentVersionData.name ?? ''
+              }
               extraInfo={getExtraInfo()}
               followersList={[]}
               tags={getTags()}

@@ -250,7 +250,8 @@ const EntityVersionPage: FunctionComponent = () => {
           ['owner', 'tags', 'charts']
         )
           .then((res: AxiosResponse) => {
-            const { id, owner, tags, name, service, serviceType } = res.data;
+            const { id, owner, tags, displayName, service, serviceType } =
+              res.data;
             setEntityState(tags, owner, res.data, [
               {
                 name: service.name,
@@ -264,7 +265,7 @@ const EntityVersionPage: FunctionComponent = () => {
                 imgSrc: serviceType ? serviceTypeLogo(serviceType) : undefined,
               },
               {
-                name: name,
+                name: displayName,
                 url: '',
                 activeTitle: true,
               },
@@ -299,7 +300,8 @@ const EntityVersionPage: FunctionComponent = () => {
           ['owner', 'tags', 'tasks']
         )
           .then((res: AxiosResponse) => {
-            const { id, owner, tags, name, service, serviceType } = res.data;
+            const { id, owner, tags, displayName, service, serviceType } =
+              res.data;
             setEntityState(tags, owner, res.data, [
               {
                 name: service.name,
@@ -313,7 +315,7 @@ const EntityVersionPage: FunctionComponent = () => {
                 imgSrc: serviceType ? serviceTypeLogo(serviceType) : undefined,
               },
               {
-                name: name,
+                name: displayName,
                 url: '',
                 activeTitle: true,
               },
@@ -469,7 +471,7 @@ const EntityVersionPage: FunctionComponent = () => {
           getPartialNameFromFQN(entityFQN, ['service', 'database'], '.')
         )
           .then((res: AxiosResponse) => {
-            const { id, name, service, serviceType } = res.data;
+            const { id, displayName, service, serviceType } = res.data;
             getDashboardVersion(id, version)
               .then((vRes: AxiosResponse) => {
                 const { owner, tags } = vRes.data;
@@ -488,7 +490,7 @@ const EntityVersionPage: FunctionComponent = () => {
                       : undefined,
                   },
                   {
-                    name: name,
+                    name: displayName,
                     url: '',
                     activeTitle: true,
                   },
@@ -521,7 +523,7 @@ const EntityVersionPage: FunctionComponent = () => {
           getPartialNameFromFQN(entityFQN, ['service', 'database'], '.')
         )
           .then((res: AxiosResponse) => {
-            const { id, name, service, serviceType } = res.data;
+            const { id, displayName, service, serviceType } = res.data;
             getPipelineVersion(id, version)
               .then((vRes: AxiosResponse) => {
                 const { owner, tags } = vRes.data;
@@ -540,7 +542,7 @@ const EntityVersionPage: FunctionComponent = () => {
                       : undefined,
                   },
                   {
-                    name: name,
+                    name: displayName,
                     url: '',
                     activeTitle: true,
                   },

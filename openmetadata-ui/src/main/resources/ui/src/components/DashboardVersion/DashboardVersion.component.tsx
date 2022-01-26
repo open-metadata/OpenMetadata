@@ -156,7 +156,8 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
       {
         key: `${currentVersionData.serviceType} Url`,
         value: currentVersionData.dashboardUrl,
-        placeholderText: currentVersionData.name,
+        placeholderText:
+          currentVersionData.displayName ?? currentVersionData.name,
         isLink: true,
         openInNewTab: true,
       },
@@ -221,7 +222,9 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
             <EntityPageInfo
               isVersionSelected
               deleted={deleted}
-              entityName={currentVersionData.name ?? ''}
+              entityName={
+                currentVersionData.displayName ?? currentVersionData.name ?? ''
+              }
               extraInfo={getExtraInfo()}
               followersList={[]}
               tags={getTags()}
