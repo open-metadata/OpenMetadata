@@ -18,6 +18,7 @@ import {
   DynamicObj,
   ServiceCollection,
   ServiceData,
+  ServicesData,
   ServiceTypes,
 } from 'Models';
 import { getServiceDetails, getServices } from '../axiosAPIs/serviceAPI';
@@ -433,4 +434,41 @@ export const getKeyValueObject = (arr: DynamicFormFieldType[]) => {
   });
 
   return keyValuePair;
+};
+
+export const getHostPortDetails = (hostport: string) => {
+  let host = '',
+    port = '';
+  const newHostPort = hostport.split(':');
+
+  port = newHostPort.splice(newHostPort.length - 1, 1).join();
+  host = newHostPort.join(':');
+
+  return {
+    host,
+    port,
+  };
+};
+
+export const isRequiredDetailsAvailableForIngestion = (
+  serviceCategory: ServiceCategory,
+  data: ServicesData
+) => {
+  switch (serviceCategory) {
+    case ServiceCategory.DATABASE_SERVICES: {
+      const hostPort = getHostPortDetails(
+        data.databaseConnection?.hostPort || ''
+      );
+
+      return Boolean(hostPort.host && hostPort.port);
+    }
+
+    case ServiceCategory.MESSAGING_SERVICES:
+    case ServiceCategory.PIPELINE_SERVICES:
+    case ServiceCategory.DASHBOARD_SERVICES:
+      return false;
+
+    default:
+      return true;
+  }
 };

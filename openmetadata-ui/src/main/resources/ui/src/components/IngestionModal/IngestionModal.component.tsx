@@ -114,10 +114,10 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
   );
 
   const [ingestionName, setIngestionName] = useState<string>(
-    selectedIngestion?.name || service || ''
+    selectedIngestion?.name || `${service}_${ingestionTypes[0]}` || ''
   );
   const [ingestionType, setIngestionType] = useState<string>(
-    selectedIngestion?.pipelineType || ''
+    selectedIngestion?.pipelineType || ingestionTypes[0] || ''
   );
   const [pipelineConfig] = useState(
     (selectedIngestion?.pipelineConfig.config || {}) as ConfigObject
@@ -186,6 +186,10 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
         setIngestionSchedule(value);
 
         break;
+      case 'name':
+        setIngestionName(value);
+
+        break;
 
       default:
         break;
@@ -233,16 +237,17 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
                 {requiredField('Name:')}
               </label>
               <input
-                disabled
-                className={classNames(
-                  'tw-form-inputs tw-px-3 tw-py-1 tw-cursor-not-allowed'
-                )}
+                className={classNames('tw-form-inputs tw-px-3 tw-py-1', {
+                  'tw-cursor-not-allowed': isUpdating,
+                })}
                 data-testid="name"
                 id="name"
                 name="name"
                 placeholder="Ingestion name"
+                readOnly={isUpdating}
                 type="text"
                 value={ingestionName}
+                onChange={handleValidation}
               />
               {showErrorMsg.name && errorMsg('Ingestion Name is required')}
               {showErrorMsg.isPipelineNameExists &&
