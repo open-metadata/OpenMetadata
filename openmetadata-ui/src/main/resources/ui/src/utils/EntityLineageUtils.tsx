@@ -441,6 +441,13 @@ export const getNoLineageDataPlaceholder = () => {
     </div>
   );
 };
+export const getDeletedLineagePlaceholder = () => {
+  return (
+    <div className="tw-mt-4 tw-ml-4 tw-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8">
+      <span>Lineage data is not available for deleted entities.</span>
+    </div>
+  );
+};
 
 const dagreGraph = new dagre.graphlib.Graph();
 dagreGraph.setDefaultEdgeLabel(() => ({}));

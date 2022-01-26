@@ -185,6 +185,10 @@ const DashboardDetailsPage = () => {
     }
   };
 
+  const entityLineageHandler = (lineage: EntityLineage) => {
+    setEntityLineage(lineage);
+  };
+
   const loadNodeHandler = (node: EntityReference, pos: LineagePos) => {
     setNodeLoading({ id: node.id, state: true });
     getLineageByFQN(node.name, node.type).then((res: AxiosResponse) => {
@@ -438,6 +442,7 @@ const DashboardDetailsPage = () => {
           description={description}
           descriptionUpdateHandler={descriptionUpdateHandler}
           entityLineage={entityLineage}
+          entityLineageHandler={entityLineageHandler}
           entityName={displayName}
           followDashboardHandler={followDashboard}
           followers={followers}
