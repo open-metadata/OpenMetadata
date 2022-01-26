@@ -66,7 +66,7 @@
     * [Dashboard Service](openmetadata-apis/schemas/entities/dashboardservice.md)
     * [Database](openmetadata-apis/schemas/entities/database.md)
     * [Database Service](openmetadata-apis/schemas/entities/databaseservice.md)
-    *
+    * [DBT Model](openmetadata-apis/schemas/entities/dashboardservice.md)
     * [Delete Action](openmetadata-apis/schemas/entities/deleteaction.md)
     * [Feed](openmetadata-apis/schemas/entities/thread.md)
     * [Filters](openmetadata-apis/schemas/entities/filters.md)
@@ -130,7 +130,7 @@
 * [Community](open-source-community/community.md)
 * [Developer](open-source-community/developer/README.md)
   * [How to Contribute](open-source-community/developer/how-to-contribute.md)
-  * [Backend](open-source-community/developer/backend.md)
+  * [Backend](open-source-community/developer/backend/README.md)
   * [Build the code & run tests](open-source-community/developer/build-code-run-tests.md)
   * [Quick Start Guide](open-source-community/developer/quick-start-guide.md)
   * [Build a Connector](open-source-community/developer/build-a-connector/README.md)
