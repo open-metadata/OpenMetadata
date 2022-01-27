@@ -54,7 +54,11 @@ Most OpenMetadata releases will require you to migrate your data to updated sche
 ./bin/openmetadata.sh stop
 ```
 
-### 5. Migrate database schemas and Elasticsearch indexes
+### 5. Backup your metadata
+
+Follow the [Backup Metadata](backup-metadata.md) guide to ensure you have a restorable copy of your metadata before procedding further.&#x20;
+
+### 6. Migrate database schemas and Elasticsearch indexes
 
 The `bootstrap/bootstrap_storage.sh` script enables you to perform a number of operations on the OpenMetadata database (in MySQL) and index (in Elasticsearch).
 
@@ -66,7 +70,7 @@ Migrate your data using this script by running the following command.
 
 This will migrate the OpenMetadata database schema to the new version you are upgrading to. It will also migrate the Elasticsearch index to this version.
 
-### 6. Restart the OpenMetadata server
+### 7. Restart the OpenMetadata server
 
 Once you've migrated your data to the new version, restart the OpenMetadata server using the new release binaries. You may restart the server by running the following command.
 
@@ -74,7 +78,7 @@ Once you've migrated your data to the new version, restart the OpenMetadata serv
 ./bin/openmetadata.sh start
 ```
 
-### 7. Re-index data in Elasticsearch&#x20;
+### 8. Re-index data in Elasticsearch&#x20;
 
 Copy the following template to a configuration file named `metadata_to_es.json` or use an existing `metadata_to_es.json` file from the last time you installed or updated OpenMetadata.
 
@@ -115,7 +119,7 @@ Ensure your `metadata_to_es.json` file is configured properly for your OpenMetad
 metadata ingest -c metadata_to_es.json pipeline
 ```
 
-### 8. Upgrade all your connectors
+### 9. Upgrade all your connectors
 
 If you are ingesting data manually using OpenMetadata connectors, upgrade all your connectors by running the following command for each connector. You will need to replace `<connectorname>` in the command below by the name of the connector you are upgrading.
 
