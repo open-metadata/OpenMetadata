@@ -117,6 +117,10 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                     )
                 return True
         # Catch any errors during profiling init and continue ingestion
+        except ModuleNotFoundError as err:
+            logger.error(
+                f"Profiling not available for this databaseService: {str(err)}"
+            )
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.print_exc())
             logger.debug(f"Error loading profiler {repr(exc)}")
