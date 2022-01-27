@@ -344,7 +344,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
       // Update the task descriptions
       for (Task updated : updatedTasks) {
         Task stored = origTasks.stream().filter(c -> taskMatch.test(c, updated)).findAny().orElse(null);
-        if (stored == null) { // New task added
+        if (stored == null || updated == null) { // New task added
           continue;
         }
 
@@ -359,7 +359,9 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
         return;
       }
       // Don't record a change if descriptions are the same
-      if (!origTask.getDescription().equals(updatedTask.getDescription())) {
+      if (origTask != null
+          && ((origTask.getDescription() != null && !origTask.getDescription().equals(updatedTask.getDescription()))
+              || updatedTask.getDescription() != null)) {
         recordChange(
             "tasks." + origTask.getName() + ".description", origTask.getDescription(), updatedTask.getDescription());
       }
