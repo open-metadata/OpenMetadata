@@ -56,7 +56,7 @@ Most OpenMetadata releases will require you to migrate your data to updated sche
 
 ### 5. Migrate database schemas and Elasticsearch indexes
 
-The `bootstrap/bootstrap_storage.sh` script enables you to perform a number of operations on the OpenMetadata database (in MySQL) and index (in Elasticsearch).&#x20;
+The `bootstrap/bootstrap_storage.sh` script enables you to perform a number of operations on the OpenMetadata database (in MySQL) and index (in Elasticsearch).
 
 Migrate your data using this script by running the following command.
 
@@ -74,7 +74,48 @@ Once you've migrated your data to the new version, restart the OpenMetadata serv
 ./bin/openmetadata.sh start
 ```
 
-### 7. Upgrade all your connectors
+### 7. Re-index data in Elasticsearch&#x20;
+
+Copy the following template to a configuration file named `metadata_to_es.json` or use an existing `metadata_to_es.json` file from the last time you installed or updated OpenMetadata.
+
+```json
+{
+  "source": {
+    "type": "metadata",
+    "config": {
+      "include_tables": "true",
+      "include_topics": "true",
+      "include_dashboards": "true",
+      "limit_records": 10
+    }
+  },
+  "sink": {
+    "type": "elasticsearch",
+    "config": {
+      "index_tables": "true",
+      "index_topics": "true",
+      "index_dashboards": "true",
+      "es_host": "localhost",
+      "es_port": 9200
+    }
+  },
+  "metadata_server": {
+    "type": "metadata-server",
+    "config": {
+      "api_endpoint": "http://localhost:8585/api",
+      "auth_provider_type": "no-auth"
+    }
+  }
+}
+```
+
+Ensure your `metadata_to_es.json` file is configured properly for your OpenMetadata deployment. E.g., make sure the host name and ports for Elasticsearch and OpenMetadata are set to the correct values. Run the following command to re-index migrated data following the updated schema.
+
+```bash
+metadata ingest -c metadata_to_es.json pipeline
+```
+
+### 8. Upgrade all your connectors
 
 If you are ingesting data manually using OpenMetadata connectors, upgrade all your connectors by running the following command for each connector. You will need to replace `<connectorname>` in the command below by the name of the connector you are upgrading.
 
@@ -123,4 +164,3 @@ Memory usage: 58 of 1024M
 ```
 
 Once repair is successful, continue with the procedure above by rerunning the command in Step 5 and continuing from there.
-
