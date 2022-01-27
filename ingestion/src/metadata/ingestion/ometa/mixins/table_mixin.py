@@ -97,7 +97,7 @@ class OMetaTableMixin:
         resp = self.client.post(
             f"/usage/table/{table.id.__root__}", data=table_usage_request.json()
         )
-        logger.debug("published table usage {}".format(resp))
+        logger.debug("published table usage %s", resp)
 
     def publish_frequently_joined_with(
         self, table: Table, table_join_request: TableJoins
@@ -108,9 +108,9 @@ class OMetaTableMixin:
         :param table: Table Entity to update
         :param table_join_request: Join data to add
         """
-        logger.info("table join request {}".format(table_join_request.json()))
+        logger.info("table join request %s", table_join_request.json())
         resp = self.client.put(
             f"{self.get_suffix(Table)}/{table.id.__root__}/joins",
             data=table_join_request.json(),
         )
-        logger.debug("published frequently joined with {}".format(resp))
+        logger.debug("published frequently joined with %s", resp)

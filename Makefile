@@ -25,7 +25,7 @@ isort:
 	isort $(PY_SOURCE) --skip $(PY_SOURCE)/metadata/generated --profile black --multi-line 3
 
 lint:
-	find $(PY_SOURCE) -path $(PY_SOURCE)/metadata/generated -prune -false -o -type f -name "*.py" | xargs pylint
+	find $(PY_SOURCE) -path $(PY_SOURCE)/metadata/generated -prune -false -o -type f -name "*.py" | xargs pylint --ignore-paths=$(PY_SOURCE)/metadata_server/ --max-line-length=88 --extension-pkg-whitelist='pydantic'
 
 black:
 	black $(PY_SOURCE) --exclude $(PY_SOURCE)/metadata/generated

@@ -136,6 +136,7 @@ def get_xlets(
     return None
 
 
+# pylint: disable=too-many-arguments
 def create_pipeline_entity(
     dag_properties: Dict[str, str],
     task_properties: Dict[str, str],
@@ -202,6 +203,7 @@ def create_pipeline_entity(
     return client.create_or_update(create_pipeline)
 
 
+# pylint: disable=too-many-arguments,too-many-locals
 def parse_lineage_to_openmetadata(
     config: OpenMetadataLineageConfig,
     context: Dict,

@@ -63,9 +63,8 @@ logger = logging.getLogger(__name__)
 
 
 # The naming convention is T for Entity Types and C for Create Types
-T = TypeVar("T", bound=BaseModel)
-C = TypeVar("C", bound=BaseModel)
-
+T = TypeVar("T", bound=BaseModel)  # pylint: disable=invalid-name
+C = TypeVar("C", bound=BaseModel)  # pylint: disable=invalid-name
 
 class MissingEntityTypeException(Exception):
     """
@@ -81,6 +80,14 @@ class InvalidEntityException(Exception):
 
 
 class EntityList(Generic[T], BaseModel):
+    """
+    Pydantic Entity list model
+
+    Attributes
+        entities (List): list of entities
+        total (int):
+        after (str):
+    """
     entities: List[T]
     total: int
     after: str = None
@@ -380,8 +387,9 @@ class OpenMetadata(
             return entity(**resp)
         except APIError as err:
             logger.error(
-                f"GET {entity.__name__} for {path}. "
-                + f"Error {err.status_code} - {err}"
+                "GET %s for %s."
+                "Error %s - %s", entity.__name__, path,
+                err.status_code, err
             )
             return None
 
@@ -405,9 +413,10 @@ class OpenMetadata(
                 href=instance.href,
             )
 
-        logger.error(f"Cannot find the Entity {fqdn}")
+        logger.error("Cannot find the Entity %s", fqdn)
         return None
 
+    # pylint: disable=too-many-arguments,dangerous-default-value
     def list_entities(
         self,
         entity: Type[T],
@@ -450,8 +459,7 @@ class OpenMetadata(
 
         if self._use_raw_data:
             return resp
-        else:
-            return EntityVersionHistory(**resp)
+        return EntityVersionHistory(**resp)
 
     def list_services(self, entity: Type[T]) -> List[EntityList[T]]:
         """
@@ -465,7 +473,17 @@ class OpenMetadata(
         return [entity(**p) for p in resp["data"]]
 
     def delete(self, entity: Type[T], entity_id: Union[str, basic.Uuid]) -> None:
+        """
+        API call to delete an entity from entity ID
+
+        Args
+            entity (T): entity Type
+            entity_id (basic.Uuid): entity ID
+        Returns
+            None
+        """
         self.client.delete(f"{self.get_suffix(entity)}/{uuid_to_str(entity_id)}")
+
 
     def compute_percentile(self, entity: Union[Type[T], str], date: str) -> None:
         """
@@ -473,7 +491,7 @@ class OpenMetadata(
         """
         entity_name = get_entity_type(entity)
         resp = self.client.post(f"/usage/compute.percentile/{entity_name}/{date}")
-        logger.debug("published compute percentile {}".format(resp))
+        logger.debug("published compute percentile %s", resp)
 
     def list_tags_by_category(self, category: str) -> List[Tag]:
         """
@@ -489,4 +507,10 @@ class OpenMetadata(
         return self.client.get("/health-check")["status"] == "healthy"
 
     def close(self):
+        """
+        Closing connection
+
+        Returns
+            None
+        """
         self.client.close()
