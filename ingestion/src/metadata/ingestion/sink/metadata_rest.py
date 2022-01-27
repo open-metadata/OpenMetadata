@@ -349,7 +349,7 @@ class MetadataRestSink(Sink[Entity]):
         except (APIError, ValidationError) as err:
             logger.error(f"Failed to ingest Policy {ometa_policy.policy.name}")
             logger.error(err)
-            traceback.print_exc()
+            _exc()
             self.status.failure(f"Policy: {ometa_policy.policy.name}")
 
     def _create_location(self, location: Location) -> Location:
