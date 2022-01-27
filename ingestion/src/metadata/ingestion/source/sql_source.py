@@ -226,7 +226,6 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                         )
                 # Catch any errors during the profile runner and continue
                 except Exception as err:
-                    logger.error(repr(err))
                     logger.error(err)
                 # check if we have any model to associate with
                 table_entity.dataModel = self._get_data_model(schema, table_name)
@@ -239,7 +238,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                     "{}.{}".format(self.config.get_service_name(), table_name)
                 )
             except Exception as err:
-                traceback.print_exc()
+                logger.debug(traceback.print_exc())
                 logger.error(err)
                 self.status.failures.append(
                     "{}.{}".format(self.config.service_name, table_name)
@@ -483,13 +482,15 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                         "raw_data_type" in column
                         and column["raw_data_type"] is not None
                     ):
+
                         column["raw_data_type"] = self.parse_raw_data_type(
                             column["raw_data_type"]
                         )
-                        parsed_string = ColumnTypeParser._parse_datatype_string(
-                            column["raw_data_type"]
-                        )
-                        parsed_string["name"] = column["name"]
+                        if not column["raw_data_type"].startswith(schema):
+                            parsed_string = ColumnTypeParser._parse_datatype_string(
+                                column["raw_data_type"]
+                            )
+                            parsed_string["name"] = column["name"]
                     else:
                         col_type = ColumnTypeParser.get_column_type(column["type"])
                         if col_type == "ARRAY" and re.match(
@@ -511,7 +512,9 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                             col_type = "VARCHAR"
                             data_type_display = "varchar"
                             logger.warning(
-                                f"Unknown type {column['type']} mapped to VARCHAR: {column['name']} {column['type']}"
+                                "Unknown type {} mapped to VARCHAR: {}".format(
+                                    repr(column["type"]), column["name"]
+                                )
                             )
                         col_data_length = (
                             1 if col_data_length is None else col_data_length
@@ -558,7 +561,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                         col_dict = Column(**parsed_string)
                         om_column = col_dict
                 except Exception as err:
-                    logger.error(traceback.print_exc())
+                    logger.debug(traceback.print_exc())
                     logger.error(f"{err} : {column}")
                     continue
                 table_columns.append(om_column)
@@ -568,12 +571,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
             return None
 
     def _check_col_length(self, datatype, col_raw_type):
-        if datatype is not None and datatype.upper() in {
-            "CHAR",
-            "VARCHAR",
-            "BINARY",
-            "VARBINARY",
-        }:
+        if datatype and datatype.upper() in {"CHAR", "VARCHAR", "BINARY", "VARBINARY"}:
             return col_raw_type.length if col_raw_type.length else 1
 
     def run_data_profiler(self, table: str, schema: str) -> TableProfile:
