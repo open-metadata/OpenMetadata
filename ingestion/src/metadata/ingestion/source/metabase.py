@@ -195,7 +195,7 @@ class MetabaseSource(Source[Entity]):
                     )
                     yield lineage
             except Exception as err:
-                logger.error(traceback.print_exc())
+                logger.debug(traceback.print_exc())
 
     def req_get(self, path):
         return requests.get(self.config.host_port + path, headers=self.metabase_session)
