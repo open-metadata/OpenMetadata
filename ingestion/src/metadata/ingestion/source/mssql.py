@@ -17,6 +17,7 @@ from metadata.ingestion.source.sql_source_common import SQLConnectionConfig
 
 class MssqlConfig(SQLConnectionConfig):
     """MSSQL config -- extends SQLConnectionConfig class"""
+
     host_port = "localhost:1433"
     scheme = "mssql+pytds"
     service_type = "MSSQL"

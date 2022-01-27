@@ -49,6 +49,7 @@ logger: logging.Logger = logging.getLogger(__name__)
 
 class MetabaseSourceConfig(ConfigModel):
     """Metabase pydantic config model"""
+
     username: str
     password: SecretStr
     host_port: str
@@ -78,6 +79,7 @@ class MetabaseSource(Source[Entity]):
         charts:
         metric_charts:
     """
+
     config: MetabaseSourceConfig
     metadata_config: MetadataServerConfig
     status: SQLSourceStatus

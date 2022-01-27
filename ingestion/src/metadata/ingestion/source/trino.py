@@ -36,6 +36,7 @@ class TrinoConfig(SQLConnectionConfig):
         catalog:
         database:
     """
+
     host_port = "localhost:8080"
     scheme = "trino"
     service_type = "Trino"
@@ -75,9 +76,12 @@ class TrinoSource(SQLSource):
         metadata_config:
         ctx
     """
+
     def __init__(self, config, metadata_config, ctx):
         try:
-            from sqlalchemy_trino import dbapi  # pylint: disable=import-outside-toplevel,unused-import
+            from sqlalchemy_trino import (
+                dbapi,  # pylint: disable=import-outside-toplevel,unused-import
+            )
         except ModuleNotFoundError:
             click.secho(
                 "Trino source dependencies are missing. Please run\n"

@@ -29,6 +29,7 @@ logger = logging.getLogger(__name__)
 
 class MetadataTablesRestSourceConfig(ConfigModel):
     """Metadata Table Rest pydantic config model"""
+
     include_tables: Optional[bool] = True
     include_topics: Optional[bool] = True
     include_dashboards: Optional[bool] = True
@@ -45,6 +46,7 @@ class MetadataSourceStatus(SourceStatus):
         failures:
         warnings:
     """
+
     success: List[str] = field(default_factory=list)
     failures: List[str] = field(default_factory=list)
     warnings: List[str] = field(default_factory=list)
@@ -108,6 +110,7 @@ class MetadataSource(Source[Entity]):
         tables:
         topics:
     """
+
     config: MetadataTablesRestSourceConfig
     report: SourceStatus
 

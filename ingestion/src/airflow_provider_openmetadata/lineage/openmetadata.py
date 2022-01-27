@@ -26,7 +26,6 @@ from airflow_provider_openmetadata.lineage.utils import (
     get_xlets,
     parse_lineage_to_openmetadata,
 )
-
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 if TYPE_CHECKING:
@@ -80,6 +79,7 @@ def is_airflow_version_1() -> bool:
         from airflow.hooks.base_hook import BaseHook
 
         return True
+
 
 # pylint: disable=too-few-public-methods
 class OpenMetadataLineageBackend(LineageBackend):

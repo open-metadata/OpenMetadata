@@ -37,6 +37,7 @@ class SupersetConfig(ConfigModel):
         provider (str):
         options (dict):
     """
+
     url: str = "localhost:8088"
     username: Optional[str] = None
     password: Optional[SecretStr] = None

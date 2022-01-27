@@ -47,6 +47,7 @@ class TableEntities(BaseModel):
     """
     Table entity pydantic model
     """
+
     tables: List[Table]
     total: int
     after: str = None
@@ -56,6 +57,7 @@ class TopicEntities(BaseModel):
     """
     Topic entity pydantic model
     """
+
     topics: List[Topic]
     total: int
     after: str = None
@@ -65,6 +67,7 @@ class DashboardEntities(BaseModel):
     """
     Dashboard entity pydantic model
     """
+
     dashboards: List[Dashboard]
     total: int
     after: str = None
@@ -74,6 +77,7 @@ class PipelineEntities(BaseModel):
     """
     Pipeline entity pydantic model
     """
+
     pipelines: List[Pipeline]
     total: int
     after: str = None
@@ -83,6 +87,7 @@ class MetadataServerConfig(ConfigModel):
     """
     Metadata Server pydantic config model
     """
+
     api_endpoint: str
     api_version: str = "v1"
     retry: int = 3
@@ -108,6 +113,7 @@ class NoOpAuthenticationProvider(AuthenticationProvider):
     Attributes:
         config (MetadataServerConfig)
     """
+
     def __init__(self, config: MetadataServerConfig):
         self.config = config
 
@@ -129,6 +135,7 @@ class GoogleAuthenticationProvider(AuthenticationProvider):
     Attributes:
         config (MetadataServerConfig)
     """
+
     def __init__(self, config: MetadataServerConfig):
         self.config = config
 
@@ -184,6 +191,7 @@ class Auth0AuthenticationProvider(AuthenticationProvider):
     Attributes:
         config (MetadataServerConfig)
     """
+
     def __init__(self, config: MetadataServerConfig):
         self.config = config
 

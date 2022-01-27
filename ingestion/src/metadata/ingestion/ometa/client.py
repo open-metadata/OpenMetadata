@@ -100,6 +100,7 @@ class ClientConfig(ConfigModel):
     raw_data: Optional[bool] = False
     allow_redirects: Optional[bool] = False
 
+
 # pylint: disable=too-many-instance-attributes
 class REST:
     """
@@ -151,8 +152,10 @@ class REST:
             except RetryException:
                 retry_wait = self._retry_wait * (total_retries - retry + 1)
                 logger.warning(
-                    "sleep %s seconds and retrying %s "
-                    "%s more time(s)...", retry_wait, url, retry
+                    "sleep %s seconds and retrying %s " "%s more time(s)...",
+                    retry_wait,
+                    url,
+                    retry,
                 )
                 time.sleep(retry_wait)
                 retry -= 1

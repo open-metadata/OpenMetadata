@@ -146,6 +146,7 @@ class SupersetSource(Source[Entity]):
         service:
 
     """
+
     config: SupersetConfig
     metadata_config: MetadataServerConfig
     status: SourceStatus

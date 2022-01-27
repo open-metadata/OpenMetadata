@@ -66,6 +66,7 @@ logger = logging.getLogger(__name__)
 T = TypeVar("T", bound=BaseModel)  # pylint: disable=invalid-name
 C = TypeVar("C", bound=BaseModel)  # pylint: disable=invalid-name
 
+
 class MissingEntityTypeException(Exception):
     """
     We are receiving an Entity Type[T] not covered
@@ -88,6 +89,7 @@ class EntityList(Generic[T], BaseModel):
         total (int):
         after (str):
     """
+
     entities: List[T]
     total: int
     after: str = None
@@ -387,9 +389,11 @@ class OpenMetadata(
             return entity(**resp)
         except APIError as err:
             logger.error(
-                "GET %s for %s."
-                "Error %s - %s", entity.__name__, path,
-                err.status_code, err
+                "GET %s for %s." "Error %s - %s",
+                entity.__name__,
+                path,
+                err.status_code,
+                err,
             )
             return None
 
@@ -483,7 +487,6 @@ class OpenMetadata(
             None
         """
         self.client.delete(f"{self.get_suffix(entity)}/{uuid_to_str(entity_id)}")
-
 
     def compute_percentile(self, entity: Union[Type[T], str], date: str) -> None:
         """

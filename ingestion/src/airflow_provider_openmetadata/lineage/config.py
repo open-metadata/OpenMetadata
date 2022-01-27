@@ -32,6 +32,7 @@ class OpenMetadataLineageConfig(ConfigModel):
         auth_provider_type (str):
         secret_key (str):
     """
+
     airflow_service_name: str = "airflow"
     api_endpoint: str = "http://localhost:8585"
     auth_provider_type: str = "no-auth"

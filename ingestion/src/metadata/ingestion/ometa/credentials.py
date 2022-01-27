@@ -31,6 +31,7 @@ class URL(str):
     Attributes:
         value (value):
     """
+
     def __new__(cls, *value):
         """
         note: we use *value and v0 to allow an empty URL string

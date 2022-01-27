@@ -29,6 +29,7 @@ class QueryParserProcessorConfig(ConfigModel):
     """
     Query parser pydantic configuration model
     """
+
     filter: Optional[str] = None
 
 
@@ -49,6 +50,7 @@ class QueryParserProcessor(Processor):
         metadata_config (MetadataServerConfig):
         status (ProcessorStatus):
     """
+
     config: QueryParserProcessorConfig
     status: ProcessorStatus
 

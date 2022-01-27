@@ -39,6 +39,7 @@ logger: logging.Logger = logging.getLogger(__name__)
 
 class GcsSourceConfig(ConfigModel):
     """GCS source pydantic config module"""
+
     service_name: str
 
 
@@ -56,6 +57,7 @@ class GcsSource(Source[Entity]):
         service:
         gcs:
     """
+
     config: GcsSourceConfig
     status: SourceStatus
 

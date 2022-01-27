@@ -53,6 +53,7 @@ class SnowflakeUsageSource(Source[TableQuery]):
         SERVICE_TYPE (str):
         DEFAULT_CLUSTER_SOURCE (str):
     """
+
     # SELECT statement from mysql information_schema
     # to extract table and column metadata
     SQL_STATEMENT = SNOWFLAKE_SQL_STATEMENT

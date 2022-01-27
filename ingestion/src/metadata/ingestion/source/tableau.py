@@ -14,7 +14,7 @@ Tableau source module
 
 import logging
 import uuid
-from typing import Iterable, Optional, List
+from typing import Iterable, List, Optional
 
 import dateutil.parser as dateparser
 from pydantic import SecretStr
@@ -41,6 +41,7 @@ logger = logging.getLogger(__name__)
 
 class TableauSourceConfig(ConfigModel):
     """Tableau pydantic source model"""
+
     username: str
     password: SecretStr
     server: str
@@ -70,6 +71,7 @@ class TableauSource(Source[Entity]):
         dashboard:
         all_dashboard_details:
     """
+
     config: TableauSourceConfig
     metadata_config: MetadataServerConfig
     status: SourceStatus
@@ -137,7 +139,7 @@ class TableauSource(Source[Entity]):
 
     @staticmethod
     def get_owner(owner) -> List[DashboardOwner]:
-        """ Get dashboard owner
+        """Get dashboard owner
 
         Args:
             owner:
