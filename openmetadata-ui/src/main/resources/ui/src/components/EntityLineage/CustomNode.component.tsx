@@ -13,12 +13,13 @@
 
 import classNames from 'classnames';
 import React, { CSSProperties, Fragment } from 'react';
-import { Handle, Position, HandleProps } from 'react-flow-renderer';
+import { Handle, HandleProps, Position } from 'react-flow-renderer';
 
 const handleStyles = { borderRadius: '50%', position: 'absolute', top: 10 };
 const getHandle = (
   nodeType: string,
-  isConnectable: HandleProps['isConnectable']
+  isConnectable: HandleProps['isConnectable'],
+  isNewNode = false
 ) => {
   if (nodeType === 'output') {
     return (
@@ -44,13 +45,25 @@ const getHandle = (
         <Handle
           isConnectable={isConnectable}
           position={Position.Left}
-          style={{ ...handleStyles, left: '-14px' } as CSSProperties}
+          style={
+            {
+              ...handleStyles,
+              left: '-14px',
+              top: isNewNode ? 13 : handleStyles.top,
+            } as CSSProperties
+          }
           type="target"
         />
         <Handle
           isConnectable={isConnectable}
           position={Position.Right}
-          style={{ ...handleStyles, right: '-14px' } as CSSProperties}
+          style={
+            {
+              ...handleStyles,
+              right: '-14px',
+              top: isNewNode ? 13 : handleStyles.top,
+            } as CSSProperties
+          }
           type="source"
         />
       </Fragment>
@@ -63,11 +76,11 @@ const CustomNode = (props: any) => {
   /* eslint-disable-next-line */
   const { data, type, isConnectable } = props;
   /* eslint-disable-next-line */
-  const { label, columns } = data;
+  const { label, columns, isNewNode } = data;
 
   return (
     <div className="tw-relative nowheel ">
-      {getHandle(type, isConnectable)}
+      {getHandle(type, isConnectable, isNewNode)}
       {/* Node label could be simple text or reactNode */}
       <div className={classNames('tw-px-2')}>{label}</div>
 

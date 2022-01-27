@@ -47,8 +47,15 @@ const CheckBoxDropDownList = ({
                   checked={selectedItems?.includes(item.value as string)}
                   className="tw-ml-3 tw-mr-2 tw-align-middle custom-checkbox"
                   type="checkbox"
+                  onChange={() => {
+                    return;
+                  }}
                 />
-                <p className="tw-inline-block">{item.name}</p>
+                <p
+                  className="tw-inline-block tw-truncate tw-w-52 tw-align-middle"
+                  title={item.name as string}>
+                  {item.name}
+                </p>
               </div>
             ) : (
               <Fragment />

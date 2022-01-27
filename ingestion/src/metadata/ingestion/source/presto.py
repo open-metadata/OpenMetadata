@@ -12,7 +12,8 @@
 from urllib.parse import quote_plus
 
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
-from metadata.ingestion.source.sql_source import SQLConnectionConfig, SQLSource
+from metadata.ingestion.source.sql_source import SQLSource
+from metadata.ingestion.source.sql_source_common import SQLConnectionConfig
 
 
 class PrestoConfig(SQLConnectionConfig):
@@ -28,6 +29,7 @@ class PrestoConfig(SQLConnectionConfig):
             url += f"{quote_plus(self.username)}"
             if self.password:
                 url += f":{quote_plus(self.password.get_secret_value())}"
+            url += "@"
         url += f"{self.host_port}"
         url += f"/{self.catalog}"
         if self.database:

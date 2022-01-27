@@ -13,7 +13,6 @@
 
 package org.openmetadata.catalog.resources.teams;
 
-import com.google.inject.Inject;
 import io.dropwizard.jersey.PATCH;
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
@@ -30,7 +29,6 @@ import java.security.GeneralSecurityException;
 import java.text.ParseException;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -56,6 +54,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.teams.CreateUser;
 import org.openmetadata.catalog.entity.teams.User;
@@ -66,20 +65,20 @@ import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
+import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.RestUtil;
+import org.openmetadata.catalog.util.RestUtil.DeleteResponse;
 import org.openmetadata.catalog.util.RestUtil.PatchResponse;
 import org.openmetadata.catalog.util.ResultList;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
+@Slf4j
 @Path("/v1/users")
 @Api(value = "User collection", tags = "User collection")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "users")
 public class UserResource {
-  public static final Logger LOG = LoggerFactory.getLogger(UserResource.class);
   public static final String COLLECTION_PATH = "v1/users/";
   private final UserRepository dao;
   private final Authorizer authorizer;
@@ -92,7 +91,6 @@ public class UserResource {
     return user;
   }
 
-  @Inject
   public UserResource(CollectionDAO dao, Authorizer authorizer) {
     Objects.requireNonNull(dao, "UserRepository must not be null");
     this.dao = new UserRepository(dao);
@@ -149,16 +147,22 @@ public class UserResource {
           String before,
       @Parameter(description = "Returns list of users after this cursor", schema = @Schema(type = "string"))
           @QueryParam("after")
-          String after)
+          String after,
+      @Parameter(
+              description = "Include all, deleted, or non-deleted entities.",
+              schema = @Schema(implementation = Include.class))
+          @QueryParam("include")
+          @DefaultValue("non-deleted")
+          Include include)
       throws IOException, GeneralSecurityException, ParseException {
     RestUtil.validateCursors(before, after);
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
 
     ResultList<User> users;
     if (before != null) { // Reverse paging
-      users = dao.listBefore(uriInfo, fields, teamParam, limitParam, before);
+      users = dao.listBefore(uriInfo, fields, teamParam, limitParam, before, include);
     } else { // Forward paging or first page
-      users = dao.listAfter(uriInfo, fields, teamParam, limitParam, after);
+      users = dao.listAfter(uriInfo, fields, teamParam, limitParam, after, include);
     }
     Optional.ofNullable(users.getData()).orElse(Collections.emptyList()).forEach(u -> addHref(uriInfo, u));
     return users;
@@ -206,10 +210,16 @@ public class UserResource {
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
-          String fieldsParam)
+          String fieldsParam,
+      @Parameter(
+              description = "Include all, deleted, or non-deleted entities.",
+              schema = @Schema(implementation = Include.class))
+          @QueryParam("include")
+          @DefaultValue("non-deleted")
+          Include include)
       throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
-    User user = dao.get(uriInfo, id, fields);
+    User user = dao.get(uriInfo, id, fields, include);
     return addHref(uriInfo, user);
   }
 
@@ -235,10 +245,16 @@ public class UserResource {
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
-          String fieldsParam)
+          String fieldsParam,
+      @Parameter(
+              description = "Include all, deleted, or non-deleted entities.",
+              schema = @Schema(implementation = Include.class))
+          @QueryParam("include")
+          @DefaultValue("non-deleted")
+          Include include)
       throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
-    User user = dao.getByName(uriInfo, name, fields);
+    User user = dao.getByName(uriInfo, name, fields, include);
     return addHref(uriInfo, user);
   }
 
@@ -312,7 +328,8 @@ public class UserResource {
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createUser(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateUser create) throws IOException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateUser create)
+      throws IOException, ParseException {
     if (create.getIsAdmin() != null && create.getIsAdmin()) {
       SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     }
@@ -398,10 +415,10 @@ public class UserResource {
         @ApiResponse(responseCode = "404", description = "User for instance {id} is not found")
       })
   public Response delete(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("id") String id)
-      throws IOException {
+      throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    dao.delete(UUID.fromString(id), false);
-    return Response.ok().build();
+    DeleteResponse<User> response = dao.delete(securityContext.getUserPrincipal().getName(), id);
+    return response.toResponse();
   }
 
   private User getUser(SecurityContext securityContext, CreateUser create) throws IOException {
@@ -416,7 +433,7 @@ public class UserResource {
         .withProfile(create.getProfile())
         .withTimezone(create.getTimezone())
         .withUpdatedBy(securityContext.getUserPrincipal().getName())
-        .withUpdatedAt(new Date())
+        .withUpdatedAt(System.currentTimeMillis())
         .withTeams(dao.validateTeams(create.getTeams()))
         .withRoles(dao.validateRoles(create.getRoles()));
   }

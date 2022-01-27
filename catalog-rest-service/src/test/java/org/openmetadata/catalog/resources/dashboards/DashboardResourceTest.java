@@ -37,6 +37,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -64,6 +65,7 @@ import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.TestUtils;
 
+@Slf4j
 public class DashboardResourceTest extends EntityResourceTest<Dashboard> {
   public static EntityReference SUPERSET_REFERENCE;
   public static EntityReference LOOKER_REFERENCE;
@@ -77,6 +79,7 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard> {
         DashboardList.class,
         "dashboards",
         DashboardResource.FIELDS,
+        true,
         true,
         true,
         true);
@@ -225,12 +228,6 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard> {
   }
 
   @Test
-  void delete_emptyDashboard_200_ok(TestInfo test) throws HttpResponseException {
-    Dashboard dashboard = createDashboard(create(test), adminAuthHeaders());
-    deleteEntity(dashboard.getId(), adminAuthHeaders());
-  }
-
-  @Test
   void delete_nonEmptyDashboard_4xx() {
     // TODO
   }
@@ -247,7 +244,7 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard> {
     String fields = "owner";
     dashboard =
         byName
-            ? getEntityByName(dashboard.getFullyQualifiedName(), fields, adminAuthHeaders())
+            ? getEntityByName(dashboard.getFullyQualifiedName(), null, fields, adminAuthHeaders())
             : getEntity(dashboard.getId(), fields, adminAuthHeaders());
     // We always return the service
     assertListNotNull(dashboard.getOwner(), dashboard.getService(), dashboard.getServiceType());
@@ -257,7 +254,7 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard> {
     fields = "owner,charts,usageSummary";
     dashboard =
         byName
-            ? getEntityByName(dashboard.getFullyQualifiedName(), fields, adminAuthHeaders())
+            ? getEntityByName(dashboard.getFullyQualifiedName(), null, fields, adminAuthHeaders())
             : getEntity(dashboard.getId(), fields, adminAuthHeaders());
     assertListNotNull(
         dashboard.getOwner(),
@@ -273,6 +270,7 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard> {
       List<UUID> expectedChartReferences =
           expectedCharts.stream().map(EntityReference::getId).collect(Collectors.toList());
       List<UUID> actualChartReferences = new ArrayList<>();
+      assertNotNull(dashboard.getCharts(), "dashboard should have charts");
       dashboard
           .getCharts()
           .forEach(
@@ -289,8 +287,8 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard> {
     return create(getEntityName(test));
   }
 
-  public CreateDashboard create(String entityName) {
-    return new CreateDashboard().withName(entityName).withService(SUPERSET_REFERENCE);
+  public CreateDashboard create(String name) {
+    return new CreateDashboard().withName(name).withService(SUPERSET_REFERENCE);
   }
 
   @Override

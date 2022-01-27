@@ -15,6 +15,7 @@ import classNames from 'classnames';
 import { cloneDeep } from 'lodash';
 import {
   AggregationType,
+  Bucket,
   FilterObject,
   FormatedTableData,
   SearchResponse,
@@ -73,6 +74,8 @@ const Explore: React.FC<ExploreProps> = ({
   handlePathChange,
   handleSearchText,
   fetchData,
+  showDeleted,
+  onShowDeleted,
   updateTableCount,
   updateTopicCount,
   updateDashboardCount,
@@ -144,6 +147,10 @@ const Explore: React.FC<ExploreProps> = ({
     }
   };
 
+  const handleShowDeleted = (checked: boolean) => {
+    onShowDeleted(checked);
+  };
+
   const onClearFilterHandler = (type: string[]) => {
     setFilters((prevFilters) => {
       const updatedFilter = type.reduce((filterObj, type) => {
@@ -169,18 +176,21 @@ const Explore: React.FC<ExploreProps> = ({
       for (const newAgg of newAggregations) {
         for (const oldAgg of oldAggs) {
           if (newAgg.title === oldAgg.title) {
-            for (const oldBucket of oldAgg.buckets) {
-              let docCount = 0;
-              for (const newBucket of newAgg.buckets) {
-                if (newBucket.key === oldBucket.key) {
-                  docCount = newBucket.doc_count;
+            const buckets = cloneDeep(oldAgg.buckets)
+              .map((item) => {
+                // eslint-disable-next-line @typescript-eslint/camelcase
+                return { ...item, doc_count: 0 };
+              })
+              .concat(newAgg.buckets);
+            const bucketHashmap = buckets.reduce((obj, item) => {
+              obj[item.key]
+                ? // eslint-disable-next-line @typescript-eslint/camelcase
+                  (obj[item.key].doc_count += item.doc_count)
+                : (obj[item.key] = { ...item });
 
-                  break;
-                }
-              }
-              // eslint-disable-next-line @typescript-eslint/camelcase
-              oldBucket.doc_count = docCount;
-            }
+              return obj;
+            }, {} as { [key: string]: Bucket });
+            oldAgg.buckets = Object.values(bucketHashmap);
           }
         }
       }
@@ -439,7 +449,7 @@ const Explore: React.FC<ExploreProps> = ({
 
   const getData = () => {
     if (!isMounting.current && previsouIndex === getCurrentIndex(tab)) {
-      forceSetAgg.current = false;
+      forceSetAgg.current = !isFilterSelected;
       fetchTableData();
     }
   };
@@ -475,9 +485,10 @@ const Explore: React.FC<ExploreProps> = ({
   useEffect(() => {
     forceSetAgg.current = true;
     if (!isMounting.current) {
+      resetFilters();
       fetchTableData();
     }
-  }, [searchText, searchIndex]);
+  }, [searchText, searchIndex, showDeleted]);
 
   useEffect(() => {
     if (searchResult) {
@@ -505,7 +516,7 @@ const Explore: React.FC<ExploreProps> = ({
           'tags'
         );
         const aggDatabase = getAggregationList(
-          searchResult.resAggTag.data.aggregations,
+          searchResult.resAggDatabase.data.aggregations,
           'database'
         );
 
@@ -544,6 +555,8 @@ const Explore: React.FC<ExploreProps> = ({
           <FacetFilter
             aggregations={getAggrWithDefaultValue(aggregations, visibleFilters)}
             filters={getFacetedFilter()}
+            showDeletedOnly={showDeleted}
+            onSelectDeleted={handleShowDeleted}
             onSelectHandler={handleSelectedFilter}
           />
         )}

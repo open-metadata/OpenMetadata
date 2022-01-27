@@ -23,10 +23,9 @@ export interface User {
    */
   changeDescription?: ChangeDescription;
   /**
-   * When true indicates the user has been deactivated. Users are deactivated instead of
-   * deleted.
+   * When `true` indicates the entity has been soft deleted.
    */
-  deactivated?: boolean;
+  deleted?: boolean;
   /**
    * Used for user biography.
    */
@@ -69,6 +68,10 @@ export interface User {
    */
   profile?: Profile;
   /**
+   * Roles that the user has been assigned.
+   */
+  roles?: EntityReference[];
+  /**
    * Teams that the user belongs to.
    */
   teams?: EntityReference[];
@@ -77,9 +80,10 @@ export interface User {
    */
   timezone?: string;
   /**
-   * Last update time corresponding to the new version of the entity.
+   * Last update time corresponding to the new version of the entity in Unix epoch time
+   * milliseconds.
    */
-  updatedAt?: Date;
+  updatedAt?: number;
   /**
    * User who made the update.
    */

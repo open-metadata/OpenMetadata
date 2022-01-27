@@ -13,25 +13,28 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import static org.openmetadata.catalog.util.EntityUtil.toBoolean;
+
 import java.io.IOException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.UUID;
+import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.mapper.RowMapper;
 import org.jdbi.v3.core.statement.StatementContext;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
+import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.type.DailyCount;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.EntityUsage;
+import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.UsageDetails;
 import org.openmetadata.catalog.type.UsageStats;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
+@Slf4j
 public class UsageRepository {
-  private static final Logger LOG = LoggerFactory.getLogger(UsageRepository.class);
   private final CollectionDAO dao;
 
   public UsageRepository(CollectionDAO dao) {
@@ -71,14 +74,18 @@ public class UsageRepository {
     dao.usageDAO().computePercentile(entityType, date);
   }
 
-  private void addUsage(String entityType, String entityId, DailyCount usage) {
+  private void addUsage(String entityType, String entityId, DailyCount usage) throws IOException {
     // Insert usage record
     dao.usageDAO().insert(usage.getDate(), entityId, entityType, usage.getCount());
 
     // If table usage was reported, add the usage count to database
     if (entityType.equalsIgnoreCase(Entity.TABLE)) {
+      // we accept usage for deleted entities
+      Table table = dao.tableDAO().findEntityById(UUID.fromString(entityId), Include.ALL);
+      Include include = table.getDeleted() ? Include.DELETED : Include.NON_DELETED;
       List<String> databaseIds =
-          dao.relationshipDAO().findFrom(entityId, entityType, Relationship.CONTAINS.ordinal(), Entity.DATABASE);
+          dao.relationshipDAO()
+              .findFrom(entityId, entityType, Relationship.CONTAINS.ordinal(), Entity.DATABASE, toBoolean(include));
       dao.usageDAO().insertOrUpdateCount(usage.getDate(), databaseIds.get(0), Entity.DATABASE, usage.getCount());
     }
   }

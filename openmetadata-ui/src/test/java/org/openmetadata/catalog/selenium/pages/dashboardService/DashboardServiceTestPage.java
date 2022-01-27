@@ -64,7 +64,7 @@ public class DashboardServiceTestPage {
     Events.click(webDriver, By.cssSelector("[data-testid='closeWhatsNew']")); // Close What's new
     Events.click(webDriver, By.cssSelector("[data-testid='menu-button'][id='menu-button-Settings']")); // Setting
     Events.click(webDriver, By.cssSelector("[data-testid='menu-item-Services']")); // Setting/Services
-    Events.click(webDriver, By.xpath("(//button[@data-testid='tab'])[3]"));
+    Events.click(webDriver, By.xpath("(//div[@data-testid='tab'])[3]"));
     Thread.sleep(waitTime);
   }
 

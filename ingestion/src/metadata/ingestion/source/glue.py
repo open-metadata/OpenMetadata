@@ -17,7 +17,7 @@ from typing import Iterable
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.location import Location, LocationType
 from metadata.generated.schema.entity.data.pipeline import Pipeline, Task
-from metadata.generated.schema.entity.data.table import Column, Table
+from metadata.generated.schema.entity.data.table import Column, Table, TableType
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
@@ -27,9 +27,9 @@ from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
-from metadata.ingestion.source.sql_source import SQLSourceStatus
-from metadata.utils.aws_client import AWSClientConfigModel, AWSClient
-from metadata.utils.column_helpers import check_column_complex_type
+from metadata.ingestion.source.sql_source_common import SQLSourceStatus
+from metadata.utils.aws_client import AWSClient, AWSClientConfigModel
+from metadata.utils.column_type_parser import ColumnTypeParser
 from metadata.utils.helpers import (
     get_database_service_or_create,
     get_pipeline_service_or_create,
@@ -75,7 +75,7 @@ class GlueSource(Source[Entity]):
                 "serviceType": "Glue",
                 "pipelineUrl": self.config.endpoint_url
                 if self.config.endpoint_url is not None
-                else f"https://glue.{ self.config.region_name }.amazonaws.com",
+                else f"https://glue.{self.config.region_name}.amazonaws.com",
             },
             metadata_config,
         )
@@ -116,31 +116,20 @@ class GlueSource(Source[Entity]):
         yield from self.ingest_pipelines()
 
     def get_columns(self, column_data):
-        row_order = 0
-        for column in column_data["Columns"]:
+        for index, column in enumerate(column_data["Columns"]):
             if column["Type"].lower().startswith("union"):
                 column["Type"] = column["Type"].replace(" ", "")
-            (
-                col_type,
-                data_type_display,
-                arr_data_type,
-                children,
-            ) = check_column_complex_type(
-                self.status, self.dataset_name, column["Type"].lower(), column["Name"]
+            parsed_string = ColumnTypeParser._parse_datatype_string(
+                column["Type"].lower()
             )
-            yield Column(
-                name=column["Name"].replace(".", "_DOT_")[:128],
-                description="",
-                dataType=col_type,
-                dataTypeDisplay="{}({})".format(col_type, 1)
-                if data_type_display is None
-                else f"{data_type_display}",
-                ordinalPosition=row_order,
-                children=children,
-                arrayDataType=arr_data_type,
-                dataLength=1,
-            )
-            row_order += 1
+            if isinstance(parsed_string, list):
+                parsed_string = {}
+                parsed_string["dataTypeDisplay"] = str(column["Type"])
+                parsed_string["dataType"] = "UNION"
+            parsed_string["name"] = column["Name"][:64]
+            parsed_string["ordinalPosition"] = index
+            parsed_string["dataLength"] = parsed_string.get("dataLength", 1)
+            yield Column(**parsed_string)
 
     def ingest_tables(self, next_tables_token=None) -> Iterable[OMetaDatabaseAndTable]:
         try:
@@ -171,6 +160,13 @@ class GlueSource(Source[Entity]):
                         id=self.storage_service.id, type="storageService"
                     ),
                 )
+
+                table_type: TableType = TableType.Regular
+                if table["TableType"] == "EXTERNAL_TABLE":
+                    table_type = TableType.External
+                elif table["TableType"] == "VIRTUAL_VIEW":
+                    table_type = TableType.View
+
                 table_entity = Table(
                     id=uuid.uuid4(),
                     name=table["Name"][:128],
@@ -179,6 +175,7 @@ class GlueSource(Source[Entity]):
                     else "",
                     fullyQualifiedName=fqn,
                     columns=table_columns,
+                    tableType=table_type,
                 )
                 table_and_db = OMetaDatabaseAndTable(
                     table=table_entity,

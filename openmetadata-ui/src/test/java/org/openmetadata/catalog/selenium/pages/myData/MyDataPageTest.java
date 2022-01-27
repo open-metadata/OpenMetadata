@@ -138,7 +138,7 @@ public class MyDataPageTest {
     Events.click(webDriver, By.cssSelector("[data-testid='tables']")); // Tables
     Events.sendKeys(webDriver, By.cssSelector("[data-testid='searchBox']"), table);
     Events.click(webDriver, By.cssSelector("[data-testid='data-name'][id='bigquery_gcpshopifydim_product_variant']"));
-    Events.click(webDriver, By.xpath("(//button[@data-testid='tab'])[4]")); // Manage
+    Events.click(webDriver, By.xpath("(//button[@data-testid='tab'])[5]")); // Manage
     Events.click(webDriver, By.cssSelector("[data-testid='owner-dropdown']")); // Owner
     Events.click(webDriver, By.xpath("//div[@data-testid='dropdown-list']//div[2]//button[2]"));
     Events.click(webDriver, By.cssSelector("[data-testid='list-item']")); // Select User/Team
@@ -200,8 +200,8 @@ public class MyDataPageTest {
     Events.click(webDriver, By.cssSelector("[data-testid='image']"));
     Thread.sleep(2000);
     try {
-      WebElement spaceSearch = wait.until(ExpectedConditions.presenceOfElementLocated(
-          By.cssSelector("[data-testid='Recently-Search- ']")));
+      WebElement spaceSearch =
+          wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("[data-testid='Recently-Search- ']")));
       if (spaceSearch.isDisplayed()) {
         throw new Exception("Spaces are captured in Recent Search");
       }

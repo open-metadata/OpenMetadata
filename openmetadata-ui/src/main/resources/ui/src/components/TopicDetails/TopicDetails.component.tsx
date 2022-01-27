@@ -56,6 +56,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   tagUpdateHandler,
   version,
   versionHandler,
+  deleted,
 }: TopicDetailsProps) => {
   const { isAuthDisabled } = useAuth();
   const [isEdit, setIsEdit] = useState(false);
@@ -139,6 +140,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
         selectedName: 'icon-managecolor',
       },
       isProtected: true,
+      isHidden: deleted,
       protectedState: !owner || hasEditAccess(),
       position: 3,
     },
@@ -275,6 +277,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       <div className="tw-px-6 tw-w-full tw-h-full tw-flex tw-flex-col">
         <EntityPageInfo
           isTagEditable
+          deleted={deleted}
           entityName={entityName}
           extraInfo={extraInfo}
           followHandler={followTopic}
@@ -308,6 +311,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
                       entityName={entityName}
                       hasEditAccess={hasEditAccess()}
                       isEdit={isEdit}
+                      isReadOnly={deleted}
                       owner={owner}
                       onCancel={onCancel}
                       onDescriptionEdit={onDescriptionEdit}
@@ -326,7 +330,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
                 <SchemaEditor value={JSON.stringify(getConfigObject())} />
               </div>
             )}
-            {activeTab === 3 && (
+            {activeTab === 3 && !deleted && (
               <div>
                 <ManageTabComponent
                   currentTier={tier?.tagFQN}

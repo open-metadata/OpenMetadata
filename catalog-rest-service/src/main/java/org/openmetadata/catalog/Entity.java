@@ -15,6 +15,7 @@ package org.openmetadata.catalog;
 
 import java.io.IOException;
 import java.net.URI;
+import java.text.ParseException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -24,17 +25,25 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import javax.ws.rs.core.UriInfo;
+import lombok.NonNull;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
+import org.openmetadata.catalog.exception.UnhandledServerException;
 import org.openmetadata.catalog.jdbi3.EntityDAO;
 import org.openmetadata.catalog.jdbi3.EntityRepository;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.EntityInterface;
+import org.openmetadata.catalog.util.EntityUtil;
+import org.openmetadata.catalog.util.EntityUtil.Fields;
 
+@Slf4j
 public final class Entity {
   private static final Map<String, EntityDAO<?>> DAO_MAP = new HashMap<>();
   private static final Map<String, EntityRepository<?>> ENTITY_REPOSITORY_MAP = new HashMap<>();
   private static final Map<String, String> CANONICAL_ENTITY_NAME_MAP = new HashMap<>();
+  private static final Map<Class<?>, EntityRepository<?>> CLASS_ENTITY_REPOSITORY_MAP = new HashMap<>();
 
   //
   // Services
@@ -77,16 +86,18 @@ public final class Entity {
   //
   // Operations
   //
-  public static final String INGESTION = "ingestion";
+  public static final String AIRFLOW_PIPELINE = "airflowPipeline";
   public static final String WEBHOOK = "webhook";
 
   private Entity() {}
 
-  public static <T> void registerEntity(String entity, EntityDAO<T> dao, EntityRepository<T> entityRepository) {
+  public static <T> void registerEntity(
+      Class clazz, String entity, EntityDAO<T> dao, EntityRepository<T> entityRepository) {
     DAO_MAP.put(entity, dao);
     ENTITY_REPOSITORY_MAP.put(entity, entityRepository);
     CANONICAL_ENTITY_NAME_MAP.put(entity.toLowerCase(Locale.ROOT), entity);
-    System.out.println("Registering entity " + entity);
+    CLASS_ENTITY_REPOSITORY_MAP.put(clazz, entityRepository);
+    LOG.info("Registering entity {}", entity);
   }
 
   public static EntityReference getEntityReference(String entity, UUID id) throws IOException {
@@ -106,12 +117,12 @@ public final class Entity {
   }
 
   public static <T> EntityReference getEntityReference(T entity) {
-    String entityName = getEntityNameFromObject(entity);
+    String entityType = getEntityTypeFromObject(entity);
 
     @SuppressWarnings("unchecked")
-    EntityRepository<T> entityRepository = (EntityRepository<T>) ENTITY_REPOSITORY_MAP.get(entityName);
+    EntityRepository<T> entityRepository = (EntityRepository<T>) ENTITY_REPOSITORY_MAP.get(entityType);
     if (entityRepository == null) {
-      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entityName));
+      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entityType));
     }
     return entityRepository.getEntityInterface(entity).getEntityReference();
   }
@@ -124,10 +135,10 @@ public final class Entity {
     if (ref == null) {
       return null;
     }
-    String entityName = ref.getType();
-    EntityRepository<?> entityRepository = ENTITY_REPOSITORY_MAP.get(entityName);
+    String entityType = ref.getType();
+    EntityRepository<?> entityRepository = ENTITY_REPOSITORY_MAP.get(entityType);
     if (entityRepository == null) {
-      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entityName));
+      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entityType));
     }
     URI href = entityRepository.getHref(uriInfo, ref.getId());
     return ref.withHref(href);
@@ -137,28 +148,102 @@ public final class Entity {
     if (entity == null) {
       return null;
     }
-    String entityName = getEntityNameFromObject(entity);
-    @SuppressWarnings("unchecked")
-    EntityRepository<T> entityRepository = (EntityRepository<T>) ENTITY_REPOSITORY_MAP.get(entityName);
-    if (entityRepository == null) {
-      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entityName));
-    }
+    String entityType = getEntityTypeFromObject(entity);
+    EntityRepository<T> entityRepository = getEntityRepository(entityType);
     return entityRepository.getEntityInterface(entity);
   }
 
-  public static void deleteEntity(String entity, UUID entityId, boolean recursive) throws IOException {
+  /**
+   * Retrieve the entity using id from given entity reference and fields
+   *
+   * @return entity object eg: {@link org.openmetadata.catalog.entity.data.Table}, {@link
+   *     org.openmetadata.catalog.entity.data.Topic}, etc
+   */
+  public static <T> T getEntity(EntityReference entityReference, EntityUtil.Fields fields)
+      throws IOException, ParseException {
+    return getEntity(entityReference, fields, Include.NON_DELETED);
+  }
+
+  /**
+   * Retrieve the entity using id from given entity reference and fields
+   *
+   * @return entity object eg: {@link org.openmetadata.catalog.entity.data.Table}, {@link
+   *     org.openmetadata.catalog.entity.data.Topic}, etc
+   */
+  public static <T> T getEntity(EntityReference entityReference, EntityUtil.Fields fields, Include include)
+      throws IOException, ParseException {
+    if (entityReference == null) {
+      return null;
+    }
+
+    EntityRepository<?> entityRepository = Entity.getEntityRepository(entityReference.getType());
+    @SuppressWarnings("unchecked")
+    T entity = (T) entityRepository.get(null, entityReference.getId().toString(), fields, include);
+    if (entity == null) {
+      throw EntityNotFoundException.byMessage(
+          CatalogExceptionMessage.entityNotFound(entityReference.getType(), entityReference.getId()));
+    }
+    return entity;
+  }
+
+  /**
+   * Retrieve the corresponding entity repository for a given entity name.
+   *
+   * @param entityType type of entity, eg: {@link Entity#TABLE}, {@link Entity#TOPIC}, etc
+   * @return entity repository corresponding to the entity name
+   */
+  public static <T> EntityRepository<T> getEntityRepository(@NonNull String entityType) {
+    @SuppressWarnings("unchecked")
+    EntityRepository<T> entityRepository = (EntityRepository<T>) ENTITY_REPOSITORY_MAP.get(entityType);
+    if (entityRepository == null) {
+      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entityType));
+    }
+    return entityRepository;
+  }
+
+  public static void deleteEntity(String updatedBy, String entity, UUID entityId, boolean recursive)
+      throws IOException, ParseException {
     EntityRepository<?> dao = ENTITY_REPOSITORY_MAP.get(entity);
     if (dao == null) {
       throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entity));
     }
-    dao.delete(entityId, recursive);
+    dao.delete(updatedBy, entityId.toString(), recursive);
   }
 
-  public static <T> String getEntityNameFromClass(Class<T> clz) {
+  public static <T> EntityRepository<T> getEntityRepositoryForClass(@NonNull Class<T> clazz) {
+    EntityRepository<T> entityRepository = (EntityRepository<T>) CLASS_ENTITY_REPOSITORY_MAP.get(clazz);
+    if (entityRepository == null) {
+      throw new UnhandledServerException(
+          String.format(
+              "Class %s is not an Entity class and it doesn't have a EntityRepository companion",
+              clazz.getSimpleName()));
+    }
+    return entityRepository;
+  }
+
+  /**
+   * Utility method to create the decorator from an Entity or EntityReference instance. By Entity class we don't mean
+   * Entity.java but the entity classes generated from JSONSchema files like DatabaseService, Database, Table, and so
+   * on.
+   *
+   * @param object must be an Entity class instance with a companion EntityRepository or an EntityReference
+   * @param <T> must be the Entity class of this entity or object if multiple results are possible.
+   * @return the decorator
+   */
+  public static <T> EntityRepository<T>.EntityHelper helper(@NonNull Object object) throws IOException, ParseException {
+    T entity = (T) object;
+    if (object instanceof EntityReference) {
+      entity = getEntity((EntityReference) object, Fields.EMPTY_FIELDS);
+    }
+    EntityRepository<T> entityRepository = (EntityRepository<T>) getEntityRepositoryForClass(entity.getClass());
+    return entityRepository.getEntityHandler(entity);
+  }
+
+  public static <T> String getEntityTypeFromClass(Class<T> clz) {
     return CANONICAL_ENTITY_NAME_MAP.get(clz.getSimpleName().toLowerCase(Locale.ROOT));
   }
 
-  public static String getEntityNameFromObject(Object object) {
+  public static String getEntityTypeFromObject(Object object) {
     return CANONICAL_ENTITY_NAME_MAP.get(object.getClass().getSimpleName().toLowerCase(Locale.ROOT));
   }
 

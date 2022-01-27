@@ -13,12 +13,15 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import static org.openmetadata.catalog.Entity.helper;
+import static org.openmetadata.catalog.util.EntityUtil.toBoolean;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.net.URI;
+import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -69,7 +72,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
   }
 
   @Override
-  public Dashboard setFields(Dashboard dashboard, Fields fields) throws IOException {
+  public Dashboard setFields(Dashboard dashboard, Fields fields) throws IOException, ParseException {
     dashboard.setDisplayName(dashboard.getDisplayName());
     dashboard.setService(getService(dashboard));
     dashboard.setOwner(fields.contains("owner") ? getOwner(dashboard) : null);
@@ -94,16 +97,8 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
         .withId(original.getId());
   }
 
-  private EntityReference getService(Dashboard dashboard) throws IOException {
-    EntityReference ref =
-        EntityUtil.getService(
-            daoCollection.relationshipDAO(), Entity.DASHBOARD, dashboard.getId(), Entity.DASHBOARD_SERVICE);
-    if (ref != null) {
-      DashboardService service = getService(ref.getId(), ref.getType());
-      ref.setName(service.getName());
-      ref.setDescription(service.getDescription());
-    }
-    return ref;
+  private EntityReference getService(Dashboard dashboard) throws IOException, ParseException {
+    return helper(dashboard).getContainer(Entity.DASHBOARD_SERVICE);
   }
 
   private void populateService(Dashboard dashboard) throws IOException {
@@ -180,8 +175,8 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
   }
 
   @Override
-  public EntityUpdater getUpdater(Dashboard original, Dashboard updated, boolean patchOperation) {
-    return new DashboardUpdater(original, updated, patchOperation);
+  public EntityUpdater getUpdater(Dashboard original, Dashboard updated, Operation operation) {
+    return new DashboardUpdater(original, updated, operation);
   }
 
   private List<EntityReference> getCharts(Dashboard dashboard) throws IOException {
@@ -190,7 +185,14 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     }
     String dashboardId = dashboard.getId().toString();
     List<String> chartIds =
-        daoCollection.relationshipDAO().findTo(dashboardId, Entity.DASHBOARD, Relationship.HAS.ordinal(), Entity.CHART);
+        daoCollection
+            .relationshipDAO()
+            .findTo(
+                dashboardId,
+                Entity.DASHBOARD,
+                Relationship.HAS.ordinal(),
+                Entity.CHART,
+                toBoolean(toInclude(dashboard)));
     List<EntityReference> charts = new ArrayList<>();
     for (String chartId : chartIds) {
       charts.add(daoCollection.chartDAO().findEntityReferenceById(UUID.fromString(chartId)));
@@ -258,6 +260,11 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     }
 
     @Override
+    public Boolean isDeleted() {
+      return entity.getDeleted();
+    }
+
+    @Override
     public EntityReference getOwner() {
       return entity.getOwner();
     }
@@ -283,7 +290,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     }
 
     @Override
-    public Date getUpdatedAt() {
+    public long getUpdatedAt() {
       return entity.getUpdatedAt();
     }
 
@@ -334,7 +341,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     }
 
     @Override
-    public void setUpdateDetails(String updatedBy, Date updatedAt) {
+    public void setUpdateDetails(String updatedBy, long updatedAt) {
       entity.setUpdatedBy(updatedBy);
       entity.setUpdatedAt(updatedAt);
     }
@@ -373,8 +380,8 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
 
   /** Handles entity updated from PUT and POST operation. */
   public class DashboardUpdater extends EntityUpdater {
-    public DashboardUpdater(Dashboard original, Dashboard updated, boolean patchOperation) {
-      super(original, updated, patchOperation);
+    public DashboardUpdater(Dashboard original, Dashboard updated, Operation operation) {
+      super(original, updated, operation);
     }
 
     @Override

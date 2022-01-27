@@ -356,6 +356,9 @@ export const feedSummaryFromatter = (
     }
 
     case fieldChange?.name === 'owner': {
+      const ownerName =
+        getOwnerName(newValue?.id as string) ||
+        getOwnerName(value?.id as string);
       const ownerText =
         !isEmpty(oldValue) && !isEmpty(newValue) ? (
           <Fragment>
@@ -363,11 +366,11 @@ export const feedSummaryFromatter = (
               <Link
                 className="tw-pl-1"
                 to={getTeamDetailsPath(newValue?.name || '')}>
-                {getOwnerName(newValue?.id as string)}
+                <span title={ownerName}>{ownerName}</span>
               </Link>
             ) : (
-              <span className="tw-pl-1">
-                {getOwnerName(newValue?.id as string)}
+              <span className="tw-pl-1" title={ownerName}>
+                {ownerName}
               </span>
             )}
           </Fragment>
@@ -377,18 +380,22 @@ export const feedSummaryFromatter = (
               <Link
                 className="tw-pl-1"
                 to={getTeamDetailsPath(value?.name || '')}>
-                {getOwnerName(value?.id as string)}
+                <span title={ownerName}>{ownerName}</span>
               </Link>
             ) : (
-              <span className="tw-pl-1">
-                {getOwnerName(value?.id as string)}
+              <span className="tw-pl-1" title={ownerName}>
+                {ownerName}
               </span>
             )}
           </Fragment>
         );
       summary = (
-        <p key={uniqueId()}>
-          {`Assigned Ownership to`}
+        <p
+          className={classNames('tw-truncate', {
+            'tw-w-52': ownerName.length > 32,
+          })}
+          key={uniqueId()}>
+          {`Assigned ownership to`}
           {ownerText}
         </p>
       );
@@ -416,7 +423,7 @@ export const feedSummaryFromatter = (
     case fieldChange?.name === 'followers': {
       summary = (
         <p key={uniqueId()}>{`${
-          fieldChange?.newValue ? 'Started Following' : 'Unfollowed'
+          fieldChange?.newValue ? 'Started following' : 'Unfollowed'
         } ${_entityName}`}</p>
       );
 
@@ -443,6 +450,21 @@ export const getFeedSummary = (
 
   return (
     <Fragment>
+      {fieldsDeleted?.length ? (
+        <div className="tw-mb-2">
+          {fieldsDeleted?.map((d) => (
+            <Fragment key={uniqueId()}>
+              {feedSummaryFromatter(
+                d,
+                ChangeType.REMOVED,
+                entityName,
+                entityType,
+                entityFQN
+              )}
+            </Fragment>
+          ))}
+        </div>
+      ) : null}
       {fieldsAdded?.length > 0 ? (
         <div className="tw-mb-2">
           {fieldsAdded?.map((a) => (
@@ -465,21 +487,6 @@ export const getFeedSummary = (
               {feedSummaryFromatter(
                 u,
                 ChangeType.UPDATED,
-                entityName,
-                entityType,
-                entityFQN
-              )}
-            </Fragment>
-          ))}
-        </div>
-      ) : null}
-      {fieldsDeleted?.length ? (
-        <div className="tw-mb-2">
-          {fieldsDeleted?.map((d) => (
-            <Fragment key={uniqueId()}>
-              {feedSummaryFromatter(
-                d,
-                ChangeType.REMOVED,
                 entityName,
                 entityType,
                 entityFQN
@@ -520,28 +527,48 @@ export const getSummary = (
 ) => {
   const fieldsAdded = [...(changeDescription?.fieldsAdded || [])];
   const fieldsDeleted = [...(changeDescription?.fieldsDeleted || [])];
-  const fieldsUpdated = [...(changeDescription?.fieldsUpdated || [])];
+  const fieldsUpdated = [
+    ...(changeDescription?.fieldsUpdated?.filter(
+      (field) => field.name !== 'deleted'
+    ) || []),
+  ];
+  const isDeleteUpdated = [
+    ...(changeDescription?.fieldsUpdated?.filter(
+      (field) => field.name === 'deleted'
+    ) || []),
+  ];
 
   return (
     <Fragment>
+      {isDeleteUpdated?.length > 0 ? (
+        <p className="tw-mb-2">
+          {isDeleteUpdated
+            .map((field) => {
+              return field.newValue
+                ? 'Entity has been deleted'
+                : 'Entity has been restored';
+            })
+            .join(', ')}
+        </p>
+      ) : null}
       {fieldsAdded?.length > 0 ? (
         <p className="tw-mb-2">
           {`${isPrefix ? '+ Added' : ''} ${fieldsAdded
-            ?.map(summaryFormatter)
+            .map(summaryFormatter)
             .join(', ')} ${!isPrefix ? `has been added` : ''}`}{' '}
         </p>
       ) : null}
       {fieldsUpdated?.length ? (
         <p className="tw-mb-2">
           {`${isPrefix ? 'Edited' : ''} ${fieldsUpdated
-            ?.map(summaryFormatter)
+            .map(summaryFormatter)
             .join(', ')} ${!isPrefix ? `has been updated` : ''}`}{' '}
         </p>
       ) : null}
       {fieldsDeleted?.length ? (
         <p className="tw-mb-2">
           {`${isPrefix ? '- Removed' : ''} ${fieldsDeleted
-            ?.map(summaryFormatter)
+            .map(summaryFormatter)
             .join(', ')} ${!isPrefix ? `has been Deleted` : ''}`}{' '}
         </p>
       ) : null}

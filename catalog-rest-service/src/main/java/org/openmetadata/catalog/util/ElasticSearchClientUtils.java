@@ -11,6 +11,7 @@ import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.security.cert.CertificateException;
 import javax.net.ssl.SSLContext;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.http.HttpHost;
 import org.apache.http.auth.AuthScope;
@@ -22,13 +23,10 @@ import org.apache.http.ssl.SSLContexts;
 import org.elasticsearch.client.RestClient;
 import org.elasticsearch.client.RestClientBuilder;
 import org.elasticsearch.client.RestHighLevelClient;
-import org.openmetadata.catalog.ElasticSearchConfiguration;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.openmetadata.catalog.elasticsearch.ElasticSearchConfiguration;
 
+@Slf4j
 public final class ElasticSearchClientUtils {
-  private static final Logger LOG = LoggerFactory.getLogger(ElasticSearchClientUtils.class);
-
   private ElasticSearchClientUtils() {}
 
   public static RestHighLevelClient createElasticSearchClient(ElasticSearchConfiguration esConfig) {

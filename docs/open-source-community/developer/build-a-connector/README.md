@@ -28,10 +28,6 @@ In the cases where we need aggregation over the records, we can use the **stage*
 [setup.md](setup.md)
 {% endcontent-ref %}
 
-{% content-ref url="setup.md" %}
-[setup.md](setup.md)
-{% endcontent-ref %}
-
 {% content-ref url="source.md" %}
 [source.md](source.md)
 {% endcontent-ref %}

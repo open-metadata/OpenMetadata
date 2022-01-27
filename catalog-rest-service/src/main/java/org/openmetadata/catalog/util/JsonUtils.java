@@ -13,6 +13,8 @@
 
 package org.openmetadata.catalog.util;
 
+import static org.openmetadata.catalog.util.RestUtil.DATE_TIME_FORMAT;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
@@ -43,7 +45,7 @@ public final class JsonUtils {
     OBJECT_MAPPER = new ObjectMapper();
     // Ensure the date-time fields are serialized in ISO-8601 format
     OBJECT_MAPPER.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
-    OBJECT_MAPPER.setDateFormat(RestUtil.DATE_TIME_FORMAT);
+    OBJECT_MAPPER.setDateFormat(DATE_TIME_FORMAT);
     OBJECT_MAPPER.registerModule(new JSR353Module());
   }
 
@@ -96,6 +98,13 @@ public final class JsonUtils {
       list.add(readValue(json, clz));
     }
     return list;
+  }
+
+  public static <T> T convertValue(Object object, Class<T> clz) {
+    if (object == null) {
+      return null;
+    }
+    return OBJECT_MAPPER.convertValue(object, clz);
   }
 
   /** Applies the patch on original object and returns the updated object */

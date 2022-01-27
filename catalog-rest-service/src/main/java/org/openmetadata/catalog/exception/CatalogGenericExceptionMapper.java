@@ -29,17 +29,18 @@ import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.ext.ExceptionMapper;
+import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.statement.UnableToExecuteStatementException;
 import org.openmetadata.catalog.security.AuthenticationException;
 import org.openmetadata.catalog.security.AuthorizationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+@Slf4j
 public class CatalogGenericExceptionMapper implements ExceptionMapper<Throwable> {
-  private static final Logger LOG = LoggerFactory.getLogger(CatalogGenericExceptionMapper.class);
-
   @Override
   public Response toResponse(Throwable ex) {
+    LOG.debug(ex.getMessage());
     if (ex instanceof ProcessingException || ex instanceof IllegalArgumentException) {
       final Response response = BadRequestException.of().getResponse();
       return Response.fromResponse(response)
@@ -59,7 +60,7 @@ public class CatalogGenericExceptionMapper implements ExceptionMapper<Throwable>
           .type(MediaType.APPLICATION_JSON_TYPE)
           .entity(new ErrorMessage(NOT_FOUND.getStatusCode(), ex.getMessage()))
           .build();
-    } else if (ex instanceof IngestionPipelineDeploymentException) {
+    } else if (ex instanceof AirflowPipelineDeploymentException) {
       return Response.status(BAD_REQUEST)
           .type(MediaType.APPLICATION_JSON_TYPE)
           .entity(new ErrorMessage(BAD_REQUEST.getStatusCode(), ex.getMessage()))

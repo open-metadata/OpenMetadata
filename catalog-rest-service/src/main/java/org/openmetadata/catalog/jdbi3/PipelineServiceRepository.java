@@ -15,7 +15,6 @@ package org.openmetadata.catalog.jdbi3;
 
 import java.io.IOException;
 import java.net.URI;
-import java.util.Date;
 import java.util.UUID;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.services.PipelineService;
@@ -77,8 +76,8 @@ public class PipelineServiceRepository extends EntityRepository<PipelineService>
   }
 
   @Override
-  public EntityUpdater getUpdater(PipelineService original, PipelineService updated, boolean patchOperation) {
-    return new PipelineServiceUpdater(original, updated, patchOperation);
+  public EntityUpdater getUpdater(PipelineService original, PipelineService updated, Operation operation) {
+    return new PipelineServiceUpdater(original, updated, operation);
   }
 
   public static class PipelineServiceEntityInterface implements EntityInterface<PipelineService> {
@@ -104,6 +103,11 @@ public class PipelineServiceRepository extends EntityRepository<PipelineService>
     }
 
     @Override
+    public Boolean isDeleted() {
+      return entity.getDeleted();
+    }
+
+    @Override
     public String getFullyQualifiedName() {
       return entity.getName();
     }
@@ -119,7 +123,7 @@ public class PipelineServiceRepository extends EntityRepository<PipelineService>
     }
 
     @Override
-    public Date getUpdatedAt() {
+    public long getUpdatedAt() {
       return entity.getUpdatedAt();
     }
 
@@ -164,7 +168,7 @@ public class PipelineServiceRepository extends EntityRepository<PipelineService>
     }
 
     @Override
-    public void setUpdateDetails(String updatedBy, Date updatedAt) {
+    public void setUpdateDetails(String updatedBy, long updatedAt) {
       entity.setUpdatedBy(updatedBy);
       entity.setUpdatedAt(updatedAt);
     }
@@ -187,8 +191,8 @@ public class PipelineServiceRepository extends EntityRepository<PipelineService>
   }
 
   public class PipelineServiceUpdater extends EntityUpdater {
-    public PipelineServiceUpdater(PipelineService original, PipelineService updated, boolean patchOperation) {
-      super(original, updated, patchOperation);
+    public PipelineServiceUpdater(PipelineService original, PipelineService updated, Operation operation) {
+      super(original, updated, operation);
     }
 
     @Override

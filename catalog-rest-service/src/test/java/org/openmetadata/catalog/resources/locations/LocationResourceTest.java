@@ -33,6 +33,7 @@ import java.util.List;
 import java.util.Map;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response.Status;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -48,9 +49,19 @@ import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.TestUtils;
 
+@Slf4j
 public class LocationResourceTest extends EntityResourceTest<Location> {
   public LocationResourceTest() {
-    super(Entity.LOCATION, Location.class, LocationList.class, "locations", LocationResource.FIELDS, true, true, true);
+    super(
+        Entity.LOCATION,
+        Location.class,
+        LocationList.class,
+        "locations",
+        LocationResource.FIELDS,
+        true,
+        true,
+        true,
+        true);
   }
 
   @BeforeAll
@@ -183,21 +194,6 @@ public class LocationResourceTest extends EntityResourceTest<Location> {
   }
 
   @Test
-  void delete_location_200_ok(TestInfo test) throws HttpResponseException {
-    Location location = createLocation(create(test), adminAuthHeaders());
-    deleteEntity(location.getId(), adminAuthHeaders());
-  }
-
-  @Test
-  void delete_location_as_non_admin_401(TestInfo test) throws HttpResponseException {
-    Location location = createLocation(create(test), adminAuthHeaders());
-    HttpResponseException exception =
-        assertThrows(
-            HttpResponseException.class, () -> deleteEntity(location.getId(), authHeaders("test@open-metadata.org")));
-    assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
-  }
-
-  @Test
   void post_locationWithoutRequiredFields_4xx(TestInfo test) {
     HttpResponseException exception =
         assertThrows(
@@ -260,7 +256,7 @@ public class LocationResourceTest extends EntityResourceTest<Location> {
     String fields = "owner";
     location =
         byName
-            ? getEntityByName(location.getFullyQualifiedName(), fields, adminAuthHeaders())
+            ? getEntityByName(location.getFullyQualifiedName(), null, fields, adminAuthHeaders())
             : getEntity(location.getId(), fields, adminAuthHeaders());
     assertListNotNull(location.getOwner(), location.getService(), location.getServiceType());
     // TODO add other fields

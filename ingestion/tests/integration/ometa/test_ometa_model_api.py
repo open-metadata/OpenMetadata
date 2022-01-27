@@ -35,11 +35,11 @@ from metadata.generated.schema.entity.data.mlmodel import (
 )
 from metadata.generated.schema.entity.data.table import Column, DataType, Table
 from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseConnection,
     DatabaseService,
     DatabaseServiceType,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.generated.schema.type.jdbcConnection import JdbcInfo
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 
@@ -193,27 +193,27 @@ class OMetaModelTest(TestCase):
         """
 
         service = CreateDatabaseServiceEntityRequest(
-            name="test-service-table",
+            name="test-service-table-ml",
             serviceType=DatabaseServiceType.MySQL,
-            jdbc=JdbcInfo(driverClass="jdbc", connectionUrl="jdbc://localhost"),
+            databaseConnection=DatabaseConnection(hostPort="localhost:8000"),
         )
         service_entity = self.metadata.create_or_update(data=service)
 
         create_db = CreateDatabaseEntityRequest(
-            name="test-db",
+            name="test-db-ml",
             service=EntityReference(id=service_entity.id, type="databaseService"),
         )
         create_db_entity = self.metadata.create_or_update(data=create_db)
 
         create_table1 = CreateTableEntityRequest(
-            name="test",
+            name="test-ml",
             database=create_db_entity.id,
             columns=[Column(name="education", dataType=DataType.STRING)],
         )
         table1_entity = self.metadata.create_or_update(data=create_table1)
 
         create_table2 = CreateTableEntityRequest(
-            name="another_test",
+            name="another_test-ml",
             database=create_db_entity.id,
             columns=[Column(name="age", dataType=DataType.INT)],
         )
@@ -230,8 +230,8 @@ class OMetaModelTest(TestCase):
                         FeatureSource(
                             name="age",
                             dataType=FeatureSourceDataType.integer,
-                            dataSource=EntityReference(
-                                id=table2_entity.id, type="table"
+                            dataSource=self.metadata.get_entity_reference(
+                                entity=Table, fqdn=table2_entity.fullyQualifiedName
                             ),
                         )
                     ],
@@ -243,15 +243,15 @@ class OMetaModelTest(TestCase):
                         FeatureSource(
                             name="age",
                             dataType=FeatureSourceDataType.integer,
-                            dataSource=EntityReference(
-                                id=table2_entity.id, type="table"
+                            dataSource=self.metadata.get_entity_reference(
+                                entity=Table, fqdn=table2_entity.fullyQualifiedName
                             ),
                         ),
                         FeatureSource(
                             name="education",
                             dataType=FeatureSourceDataType.string,
-                            dataSource=EntityReference(
-                                id=table1_entity.id, type="table"
+                            dataSource=self.metadata.get_entity_reference(
+                                entity=Table, fqdn=table1_entity.fullyQualifiedName
                             ),
                         ),
                         FeatureSource(
@@ -265,6 +265,7 @@ class OMetaModelTest(TestCase):
                 MlHyperParameter(name="regularisation", value="0.5"),
                 MlHyperParameter(name="random", value="hello"),
             ],
+            target="myTarget",
         )
 
         res = self.metadata.create_or_update(data=model)
@@ -281,3 +282,48 @@ class OMetaModelTest(TestCase):
         self.metadata.delete(entity=Table, entity_id=table2_entity.id)
         self.metadata.delete(entity=Database, entity_id=create_db_entity.id)
         self.metadata.delete(entity=DatabaseService, entity_id=service_entity.id)
+
+    def test_list_versions(self):
+        """
+        test list MLmodel entity versions
+        """
+        self.metadata.create_or_update(data=self.create)
+
+        # Find by name
+        res_name = self.metadata.get_by_name(
+            entity=MlModel, fqdn=self.entity.fullyQualifiedName
+        )
+
+        res = self.metadata.get_list_entity_versions(
+            entity=MlModel, entity_id=res_name.id.__root__
+        )
+        assert res
+
+    def test_get_entity_version(self):
+        """
+        test get MLModel entity version
+        """
+        self.metadata.create_or_update(data=self.create)
+
+        # Find by name
+        res_name = self.metadata.get_by_name(
+            entity=MlModel, fqdn=self.entity.fullyQualifiedName
+        )
+        res = self.metadata.get_entity_version(
+            entity=MlModel, entity_id=res_name.id.__root__, version=0.1
+        )
+
+        # check we get the correct version requested and the correct entity ID
+        assert res.version.__root__ == 0.1
+        assert res.id == res_name.id
+
+    def test_get_entity_ref(self):
+        """
+        test get EntityReference
+        """
+        res = self.metadata.create_or_update(data=self.create)
+        entity_ref = self.metadata.get_entity_reference(
+            entity=MlModel, fqdn=res.fullyQualifiedName
+        )
+
+        assert res.id == entity_ref.id

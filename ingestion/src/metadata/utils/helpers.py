@@ -12,6 +12,8 @@
 from datetime import datetime, timedelta
 from typing import List
 
+from pydantic import SecretStr
+
 from metadata.generated.schema.api.services.createDashboardService import (
     CreateDashboardServiceEntityRequest,
 )
@@ -61,10 +63,23 @@ def get_database_service_or_create(
     if service:
         return service
     else:
+        password = (
+            config.password.get_secret_value()
+            if hasattr(config, "password") and config.password
+            else None
+        )
         service = {
-            "jdbc": {
-                "connectionUrl": f"jdbc://{config.host_port}",
-                "driverClass": "jdbc",
+            "databaseConnection": {
+                "hostPort": config.host_port if hasattr(config, "host_port") else None,
+                "username": config.username if hasattr(config, "username") else None,
+                "password": password,
+                "database": config.database if hasattr(config, "database") else None,
+                "connectionOptions": config.options
+                if hasattr(config, "options")
+                else None,
+                "connectionArguments": config.connect_args
+                if hasattr(config, "connect_args")
+                else None,
             },
             "name": config.service_name,
             "description": "",

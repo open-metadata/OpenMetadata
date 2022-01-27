@@ -23,11 +23,11 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import javax.ws.rs.core.Response;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
@@ -47,27 +47,30 @@ import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.type.Webhook;
 import org.openmetadata.catalog.type.Webhook.Status;
 import org.openmetadata.catalog.util.EntityInterface;
+import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
 import org.openmetadata.catalog.util.TestUtils.UpdateType;
 
+@Slf4j
 public class WebhookResourceTest extends EntityResourceTest<Webhook> {
-  public static List<EventFilter> ALL_EVENTS_FILTER = new ArrayList<>();
+  public static final List<EventFilter> ALL_EVENTS_FILTER;
 
   static {
-    ALL_EVENTS_FILTER.add(new EventFilter().withEventType(EventType.ENTITY_CREATED).withEntities(List.of("*")));
-    ALL_EVENTS_FILTER.add(new EventFilter().withEventType(EventType.ENTITY_UPDATED).withEntities(List.of("*")));
-    ALL_EVENTS_FILTER.add(new EventFilter().withEventType(EventType.ENTITY_DELETED).withEntities(List.of("*")));
+    ALL_EVENTS_FILTER =
+        List.of(
+            new EventFilter().withEventType(EventType.ENTITY_CREATED).withEntities(List.of("*")),
+            new EventFilter().withEventType(EventType.ENTITY_UPDATED).withEntities(List.of("*")),
+            new EventFilter().withEventType(EventType.ENTITY_DELETED).withEntities(List.of("*")));
   }
 
   public WebhookResourceTest() {
-    super(Entity.WEBHOOK, Webhook.class, WebhookList.class, "webhook", "", false, false, false);
+    super(Entity.WEBHOOK, Webhook.class, WebhookList.class, "webhook", "", false, false, false, false);
     supportsPatch = false;
   }
 
   @Test
-  void post_webhookEnabledStateChange(TestInfo test)
-      throws URISyntaxException, IOException, InterruptedException {
+  void post_webhookEnabledStateChange(TestInfo test) throws URISyntaxException, IOException, InterruptedException {
     //
     // Create webhook in disabled state. It will not start webhook publisher
     //
@@ -186,7 +189,8 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook> {
         .withEventFilters(ALL_EVENTS_FILTER)
         .withEndpoint(URI.create(uri))
         .withBatchSize(100)
-        .withEnabled(false);
+        .withEnabled(false)
+        .withSecretKey("webhookTest");
   }
 
   @Override
@@ -201,7 +205,9 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook> {
     validateCommonEntityFields(
         getEntityInterface(webhook), createRequest.getDescription(), TestUtils.getPrincipal(authHeaders), null);
     assertEquals(createRequest.getName(), webhook.getName());
-    assertEquals(createRequest.getEventFilters(), webhook.getEventFilters());
+    ArrayList<EventFilter> filters = new ArrayList<>(createRequest.getEventFilters());
+    EntityUtil.addSoftDeleteFilter(filters);
+    assertEquals(filters, webhook.getEventFilters());
   }
 
   @Override
@@ -269,8 +275,8 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook> {
     assertNotNull(callbackEvents);
     assertNotNull(callbackEvents.peek());
     List<ChangeEvent> actualEvents =
-        getChangeEvents("*", "*", "*", callbackEvents.peek().getDateTime(), adminAuthHeaders()).getData();
-    waitAndCheckForEvents(callbackEvents, actualEvents, 10, 100);
+        getChangeEvents("*", "*", "*", callbackEvents.peek().getTimestamp(), adminAuthHeaders()).getData();
+    waitAndCheckForEvents(actualEvents, callbackEvents, 15, 250);
     assertWebhookStatusSuccess("healthy");
   }
 
@@ -280,15 +286,15 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook> {
     // For the entity all the webhooks registered for created events have the right number of events
     List<ChangeEvent> callbackEvents =
         webhookCallbackResource.getEntityCallbackEvents(EventType.ENTITY_CREATED, entity);
-    Date date = callbackEvents.get(0).getDateTime();
-    List<ChangeEvent> events = getChangeEvents(entity, null, null, date, adminAuthHeaders()).getData();
+    long timestamp = callbackEvents.get(0).getTimestamp();
+    List<ChangeEvent> events = getChangeEvents(entity, null, null, timestamp, adminAuthHeaders()).getData();
     waitAndCheckForEvents(callbackEvents, events, 30, 100);
 
     // For the entity all the webhooks registered for updated events have the right number of events
     callbackEvents = webhookCallbackResource.getEntityCallbackEvents(EventType.ENTITY_UPDATED, entity);
     // Use previous date if no update events
-    date = callbackEvents.size() > 0 ? callbackEvents.get(0).getDateTime() : date;
-    events = getChangeEvents(null, entity, null, date, adminAuthHeaders()).getData();
+    timestamp = callbackEvents.size() > 0 ? callbackEvents.get(0).getTimestamp() : timestamp;
+    events = getChangeEvents(null, entity, null, timestamp, adminAuthHeaders()).getData();
     waitAndCheckForEvents(callbackEvents, events, 30, 100);
 
     // TODO add delete event support
@@ -314,8 +320,8 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook> {
     assertNotNull(callbackEvents.peek());
 
     List<ChangeEvent> actualEvents =
-        getChangeEvents("*", "*", "*", callbackEvents.peek().getDateTime(), adminAuthHeaders()).getData();
-    waitAndCheckForEvents(callbackEvents, actualEvents, 30, 100);
+        getChangeEvents("*", "*", "*", callbackEvents.peek().getTimestamp(), adminAuthHeaders()).getData();
+    waitAndCheckForEvents(actualEvents, callbackEvents, 30, 100);
 
     // Check all webhook status
     assertWebhookStatusSuccess("slowServer");
@@ -345,14 +351,14 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook> {
   }
 
   public void assertWebhookStatusSuccess(String name) throws HttpResponseException {
-    Webhook webhook = getEntityByName(name, "", adminAuthHeaders());
+    Webhook webhook = getEntityByName(name, null, "", adminAuthHeaders());
     assertEquals(Status.STARTED, webhook.getStatus());
     assertNull(webhook.getFailureDetails());
   }
 
   public void assertWebhookStatus(String name, Status status, Integer statusCode, String failedReason)
       throws HttpResponseException {
-    Webhook webhook = getEntityByName(name, "", adminAuthHeaders());
+    Webhook webhook = getEntityByName(name, null, "", adminAuthHeaders());
     assertEquals(status, webhook.getStatus());
     assertEquals(statusCode, webhook.getFailureDetails().getLastFailedStatusCode());
     assertEquals(failedReason, webhook.getFailureDetails().getLastFailedReason());
@@ -370,19 +376,11 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook> {
       expected.forEach(
           c1 ->
               LOG.info(
-                  "expected {}:{}:{}:{}",
-                  c1.getDateTime().getTime(),
-                  c1.getEventType(),
-                  c1.getEntityType(),
-                  c1.getEntityId()));
+                  "expected {}:{}:{}:{}", c1.getTimestamp(), c1.getEventType(), c1.getEntityType(), c1.getEntityId()));
       received.forEach(
           c1 ->
               LOG.info(
-                  "received {}:{}:{}:{}",
-                  c1.getDateTime().getTime(),
-                  c1.getEventType(),
-                  c1.getEntityType(),
-                  c1.getEntityId()));
+                  "received {}:{}:{}:{}", c1.getTimestamp(), c1.getEventType(), c1.getEntityType(), c1.getEntityId()));
     }
     assertEquals(expected.size(), received.size());
   }

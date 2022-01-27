@@ -26,6 +26,10 @@ export interface Ingestion {
   concurrency?: number;
   connectorConfig: ConnectorConfig;
   /**
+   * When `true` indicates the entity has been soft deleted.
+   */
+  deleted?: boolean;
+  /**
    * Description of the workflow.
    */
   description?: string;
@@ -99,9 +103,10 @@ export interface Ingestion {
    */
   tags?: TagLabel[];
   /**
-   * Last update time corresponding to the new version of the entity.
+   * Last update time corresponding to the new version of the entity in Unix epoch time
+   * milliseconds.
    */
-  updatedAt?: Date;
+  updatedAt?: number;
   /**
    * User who made the update.
    */

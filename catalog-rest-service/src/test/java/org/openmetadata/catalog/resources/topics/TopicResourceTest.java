@@ -30,6 +30,7 @@ import java.util.Map;
 import java.util.UUID;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response.Status;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
@@ -50,10 +51,11 @@ import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.TestUtils;
 import org.openmetadata.catalog.util.TestUtils.UpdateType;
 
+@Slf4j
 public class TopicResourceTest extends EntityResourceTest<Topic> {
 
   public TopicResourceTest() {
-    super(Entity.TOPIC, Topic.class, TopicList.class, "topics", TopicResource.FIELDS, true, true, true);
+    super(Entity.TOPIC, Topic.class, TopicList.class, "topics", TopicResource.FIELDS, true, true, true, true);
   }
 
   @Test
@@ -239,12 +241,6 @@ public class TopicResourceTest extends EntityResourceTest<Topic> {
   }
 
   @Test
-  void delete_emptyTopic_200_ok(TestInfo test) throws HttpResponseException {
-    Topic topic = createTopic(create(test), adminAuthHeaders());
-    deleteEntity(topic.getId(), adminAuthHeaders());
-  }
-
-  @Test
   void delete_nonEmptyTopic_4xx() {
     // TODO
   }
@@ -282,8 +278,8 @@ public class TopicResourceTest extends EntityResourceTest<Topic> {
     return create(getEntityName(test));
   }
 
-  private CreateTopic create(String entityName) {
-    return new CreateTopic().withName(entityName).withService(KAFKA_REFERENCE).withPartitions(1);
+  private CreateTopic create(String name) {
+    return new CreateTopic().withName(name).withService(KAFKA_REFERENCE).withPartitions(1);
   }
 
   @Override

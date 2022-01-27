@@ -79,6 +79,10 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   lineageLeafNodes,
   isNodeLoading,
   dataModel,
+  deleted,
+  addLineageHandler,
+  removeLineageHandler,
+  entityLineageHandler,
 }: DatasetDetailsProps) => {
   const { isAuthDisabled } = useAuth();
   const [isEdit, setIsEdit] = useState(false);
@@ -134,6 +138,17 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
       position: 1,
     },
     {
+      name: 'Sample Data',
+      icon: {
+        alt: 'sample_data',
+        name: 'sample-data',
+        title: 'Sample Data',
+        selectedName: 'sample-data-color',
+      },
+      isProtected: false,
+      position: 2,
+    },
+    {
       name: 'Profiler',
       icon: {
         alt: 'profiler',
@@ -142,7 +157,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
         selectedName: 'icon-profilercolor',
       },
       isProtected: false,
-      position: 2,
+      position: 3,
     },
     {
       name: 'Lineage',
@@ -153,7 +168,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
         selectedName: 'icon-lineagecolor',
       },
       isProtected: false,
-      position: 3,
+      position: 4,
     },
     {
       name: 'DBT',
@@ -165,17 +180,6 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
       },
       isProtected: false,
       isHidden: !dataModel?.sql,
-      position: 4,
-    },
-    {
-      name: 'Sample Data',
-      icon: {
-        alt: 'sample_data',
-        name: 'sample-data',
-        title: 'Sample Data',
-        selectedName: 'sample-data-color',
-      },
-      isProtected: false,
       position: 5,
     },
     {
@@ -187,6 +191,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
         selectedName: 'icon-managecolor',
       },
       isProtected: true,
+      isHidden: deleted,
       protectedState: !owner || hasEditAccess(),
       position: 6,
     },
@@ -235,7 +240,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
     },
     { key: 'Tier', value: tier?.tagFQN ? tier.tagFQN.split('.')[1] : '' },
     { value: usage },
-    { value: `${weeklyUsageCount} queries past week` },
+    { value: `${weeklyUsageCount} queries` },
     {
       key: 'Columns',
       value:
@@ -389,6 +394,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
     <PageContainer>
       <div className="tw-px-6 tw-w-full tw-h-full tw-flex tw-flex-col">
         <EntityPageInfo
+          deleted={deleted}
           entityName={entityName}
           extraInfo={extraInfo}
           followHandler={followTable}
@@ -421,6 +427,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                     entityName={entityName}
                     hasEditAccess={hasEditAccess()}
                     isEdit={isEdit}
+                    isReadOnly={deleted}
                     owner={owner}
                     onCancel={onCancel}
                     onDescriptionEdit={onDescriptionEdit}
@@ -442,6 +449,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                     )}
                     columns={columns}
                     hasEditAccess={hasEditAccess()}
+                    isReadOnly={deleted}
                     joins={tableJoinData.columnJoins as ColumnJoins[]}
                     owner={owner}
                     sampleData={sampleData}
@@ -451,6 +459,11 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
               </div>
             )}
             {activeTab === 2 && (
+              <div id="sampleDataDetails">
+                <SampleDataTable sampleData={getSampleDataWithType()} />
+              </div>
+            )}
+            {activeTab === 3 && (
               <div>
                 <TableProfiler
                   columns={columns.map((col) => ({
@@ -461,7 +474,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                 />
               </div>
             )}
-            {activeTab === 3 && (
+            {activeTab === 4 && (
               <div
                 className={classNames(
                   location.pathname.includes(ROUTES.TOUR)
@@ -470,14 +483,18 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                 )}
                 id="lineageDetails">
                 <Entitylineage
+                  addLineageHandler={addLineageHandler}
+                  deleted={deleted}
                   entityLineage={entityLineage}
+                  entityLineageHandler={entityLineageHandler}
                   isNodeLoading={isNodeLoading}
                   lineageLeafNodes={lineageLeafNodes}
                   loadNodeHandler={loadNodeHandler}
+                  removeLineageHandler={removeLineageHandler}
                 />
               </div>
             )}
-            {activeTab === 4 && Boolean(dataModel?.sql) && (
+            {activeTab === 5 && Boolean(dataModel?.sql) && (
               <div className="tw-border tw-border-main tw-rounded-md tw-py-4 tw-h-full cm-h-full">
                 <SchemaEditor
                   className="tw-h-full"
@@ -486,12 +503,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                 />
               </div>
             )}
-            {activeTab === 5 && (
-              <div>
-                <SampleDataTable sampleData={getSampleDataWithType()} />
-              </div>
-            )}
-            {activeTab === 6 && (
+            {activeTab === 6 && !deleted && (
               <div>
                 <ManageTab
                   currentTier={tier?.tagFQN}

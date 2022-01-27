@@ -26,6 +26,7 @@ import { EntityLineage } from '../../generated/type/entityLineage';
 import { EntityReference } from '../../generated/type/entityReference';
 import { TagLabel } from '../../generated/type/tagLabel';
 import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
+import { Edge, EdgeData } from '../EntityLineage/EntityLineage.interface';
 
 export interface ChartType extends Chart {
   displayName: string;
@@ -50,6 +51,7 @@ export interface DashboardDetailsProps {
   followers: Array<User>;
   dashboardTags: Array<EntityTags>;
   slashedDashboardName: TitleBreadcrumbProps['titleLinks'];
+  deleted?: boolean;
   setActiveTabHandler: (value: number) => void;
   followDashboardHandler: () => void;
   unfollowDashboardHandler: () => void;
@@ -68,4 +70,7 @@ export interface DashboardDetailsProps {
   tagUpdateHandler: (updatedDashboard: Dashboard) => void;
   loadNodeHandler: (node: EntityReference, pos: LineagePos) => void;
   versionHandler: () => void;
+  addLineageHandler: (edge: Edge) => Promise<void>;
+  removeLineageHandler: (data: EdgeData) => void;
+  entityLineageHandler: (lineage: EntityLineage) => void;
 }

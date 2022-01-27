@@ -25,6 +25,10 @@ export interface MessagingService {
    */
   changeDescription?: ChangeDescription;
   /**
+   * When `true` indicates the entity has been soft deleted.
+   */
+  deleted?: boolean;
+  /**
    * Description of a messaging service instance.
    */
   description?: string;
@@ -58,9 +62,10 @@ export interface MessagingService {
    */
   serviceType: MessagingServiceType;
   /**
-   * Last update time corresponding to the new version of the entity.
+   * Last update time corresponding to the new version of the entity in Unix epoch time
+   * milliseconds.
    */
-  updatedAt?: Date;
+  updatedAt?: number;
   /**
    * User who made the update.
    */

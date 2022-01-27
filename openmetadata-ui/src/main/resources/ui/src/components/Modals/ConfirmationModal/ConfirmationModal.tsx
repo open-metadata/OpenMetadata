@@ -16,7 +16,7 @@ import React from 'react';
 import { ReactNode } from 'react-markdown';
 import { Button } from '../../buttons/Button/Button';
 type Props = {
-  cancelText: string;
+  cancelText: string | ReactNode;
   confirmText: string | ReactNode;
   bodyText: string;
   header: string;

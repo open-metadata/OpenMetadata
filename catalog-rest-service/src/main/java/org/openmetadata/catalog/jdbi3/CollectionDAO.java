@@ -13,6 +13,8 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import static org.openmetadata.catalog.util.EntityUtil.toBoolean;
+
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Arrays;
@@ -47,6 +49,7 @@ import org.openmetadata.catalog.entity.services.StorageService;
 import org.openmetadata.catalog.entity.teams.Role;
 import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
+import org.openmetadata.catalog.jdbi3.AirflowPipelineRepository.AirflowPipelineEntityInterface;
 import org.openmetadata.catalog.jdbi3.BotsRepository.BotsEntityInterface;
 import org.openmetadata.catalog.jdbi3.ChartRepository.ChartEntityInterface;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.TagDAO.TagLabelMapper;
@@ -70,8 +73,9 @@ import org.openmetadata.catalog.jdbi3.TeamRepository.TeamEntityInterface;
 import org.openmetadata.catalog.jdbi3.TopicRepository.TopicEntityInterface;
 import org.openmetadata.catalog.jdbi3.UserRepository.UserEntityInterface;
 import org.openmetadata.catalog.jdbi3.WebhookRepository.WebhookEntityInterface;
-import org.openmetadata.catalog.operations.workflows.Ingestion;
+import org.openmetadata.catalog.operations.pipelines.AirflowPipeline;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.type.UsageDetails;
 import org.openmetadata.catalog.type.UsageStats;
@@ -137,7 +141,7 @@ public interface CollectionDAO {
   PolicyDAO policyDAO();
 
   @CreateSqlObject
-  IngestionDAO ingestionDAO();
+  AirflowPipelineDAO airflowPipelineDAO();
 
   @CreateSqlObject
   DatabaseServiceDAO dbServiceDAO();
@@ -341,65 +345,93 @@ public interface CollectionDAO {
     //
     @SqlQuery(
         "SELECT toId, toEntity FROM entity_relationship "
-            + "WHERE fromId = :fromId AND fromEntity = :fromEntity AND relation = :relation AND deleted = false "
+            + "WHERE fromId = :fromId AND fromEntity = :fromEntity AND relation = :relation "
+            + "AND (deleted = :deleted OR :deleted IS NULL) "
             + "ORDER BY toId")
     @RegisterRowMapper(ToEntityReferenceMapper.class)
     List<EntityReference> findTo(
-        @Bind("fromId") String fromId, @Bind("fromEntity") String fromEntity, @Bind("relation") int relation);
+        @Bind("fromId") String fromId,
+        @Bind("fromEntity") String fromEntity,
+        @Bind("relation") int relation,
+        @Bind("deleted") Boolean deleted);
+
+    @SqlQuery(
+        "SELECT toId, toEntity FROM entity_relationship "
+            + "WHERE fromId = :fromId AND fromEntity = :fromEntity AND relation = :relation AND toEntity = :toEntity "
+            + "AND (deleted = :deleted OR :deleted IS NULL) "
+            + "ORDER BY toId")
+    @RegisterRowMapper(ToEntityReferenceMapper.class)
+    List<EntityReference> findToReference(
+        @Bind("fromId") String fromId,
+        @Bind("fromEntity") String fromEntity,
+        @Bind("relation") int relation,
+        @Bind("toEntity") String toEntity,
+        @Bind("deleted") Boolean deleted);
 
     @SqlQuery(
         "SELECT toId FROM entity_relationship "
-            + "WHERE fromId = :fromId AND fromEntity = :fromEntity AND relation = :relation AND toEntity = :toEntity AND deleted = false "
+            + "WHERE fromId = :fromId AND fromEntity = :fromEntity AND relation = :relation AND toEntity = :toEntity "
+            + "AND (deleted = :deleted OR :deleted IS NULL) "
             + "ORDER BY toId")
     List<String> findTo(
         @Bind("fromId") String fromId,
         @Bind("fromEntity") String fromEntity,
         @Bind("relation") int relation,
-        @Bind("toEntity") String toEntity);
+        @Bind("toEntity") String toEntity,
+        @Bind("deleted") Boolean deleted);
 
     @SqlQuery(
         "SELECT count(*) FROM entity_relationship "
             + "WHERE fromId = :fromId AND fromEntity = :fromEntity AND relation = :relation "
             + "AND (toEntity = :toEntity || :toEntity IS NULL) "
-            + "AND deleted = false "
+            + "AND (deleted = :deleted OR :deleted IS NULL) "
             + "ORDER BY fromId")
     int findToCount(
         @Bind("fromId") String fromId,
         @Bind("fromEntity") String fromEntity,
         @Bind("relation") int relation,
-        @Bind("toEntity") String toEntity);
+        @Bind("toEntity") String toEntity,
+        @Bind("deleted") Boolean deleted);
 
     //
     // Find from operations
     //
     @SqlQuery(
         "SELECT fromId FROM entity_relationship "
-            + "WHERE toId = :toId AND toEntity = :toEntity AND relation = :relation AND fromEntity = :fromEntity AND deleted = false "
+            + "WHERE toId = :toId AND toEntity = :toEntity AND relation = :relation AND fromEntity = :fromEntity "
+            + "AND (deleted = :deleted OR :deleted IS NULL) "
             + "ORDER BY fromId")
     List<String> findFrom(
         @Bind("toId") String toId,
         @Bind("toEntity") String toEntity,
         @Bind("relation") int relation,
-        @Bind("fromEntity") String fromEntity);
+        @Bind("fromEntity") String fromEntity,
+        @Bind("deleted") Boolean deleted);
 
     @SqlQuery(
         "SELECT fromId, fromEntity FROM entity_relationship "
-            + "WHERE toId = :toId AND toEntity = :toEntity AND relation = :relation AND deleted =  false "
+            + "WHERE toId = :toId AND toEntity = :toEntity AND relation = :relation "
+            + "AND (deleted = :deleted OR :deleted IS NULL) "
             + "ORDER BY fromId")
     @RegisterRowMapper(FromEntityReferenceMapper.class)
     List<EntityReference> findFrom(
-        @Bind("toId") String toId, @Bind("toEntity") String toEntity, @Bind("relation") int relation);
+        @Bind("toId") String toId,
+        @Bind("toEntity") String toEntity,
+        @Bind("relation") int relation,
+        @Bind("deleted") Boolean deleted);
 
     @SqlQuery(
         "SELECT fromId, fromEntity FROM entity_relationship "
-            + "WHERE toId = :toId AND toEntity = :toEntity AND relation = :relation AND fromEntity = :fromEntity AND deleted = false "
+            + "WHERE toId = :toId AND toEntity = :toEntity AND relation = :relation AND fromEntity = :fromEntity "
+            + "AND (deleted = :deleted OR :deleted IS NULL) "
             + "ORDER BY fromId")
     @RegisterRowMapper(FromEntityReferenceMapper.class)
     List<EntityReference> findFromEntity(
         @Bind("toId") String toId,
         @Bind("toEntity") String toEntity,
         @Bind("relation") int relation,
-        @Bind("fromEntity") String fromEntity);
+        @Bind("fromEntity") String fromEntity,
+        @Bind("deleted") Boolean deleted);
 
     //
     // Delete Operations
@@ -408,7 +440,7 @@ public interface CollectionDAO {
         "DELETE from entity_relationship WHERE fromId = :fromId "
             + "AND fromEntity = :fromEntity AND toId = :toId AND toEntity = :toEntity "
             + "AND relation = :relation")
-    void delete(
+    int delete(
         @Bind("fromId") String fromId,
         @Bind("fromEntity") String fromEntity,
         @Bind("toId") String toId,
@@ -419,7 +451,7 @@ public interface CollectionDAO {
     @SqlUpdate(
         "DELETE from entity_relationship WHERE fromId = :fromId AND fromEntity = :fromEntity "
             + "AND relation = :relation AND toEntity = :toEntity")
-    void deleteFrom(
+    int deleteFrom(
         @Bind("fromId") String fromId,
         @Bind("fromEntity") String fromEntity,
         @Bind("relation") int relation,
@@ -429,14 +461,14 @@ public interface CollectionDAO {
     @SqlUpdate(
         "DELETE from entity_relationship WHERE fromId = :fromId AND fromEntity = :fromEntity "
             + "AND relation = :relation")
-    void deleteFrom(
+    int deleteFrom(
         @Bind("fromId") String fromId, @Bind("fromEntity") String fromEntity, @Bind("relation") int relation);
 
     // Delete all the entity relationship toId <-- relation --  entity of type fromEntity
     @SqlUpdate(
         "DELETE from entity_relationship WHERE toId = :toId AND toEntity = :toEntity AND relation = :relation "
             + "AND fromEntity = :fromEntity")
-    void deleteTo(
+    int deleteTo(
         @Bind("toId") String toId,
         @Bind("toEntity") String toEntity,
         @Bind("relation") int relation,
@@ -445,12 +477,15 @@ public interface CollectionDAO {
     @SqlUpdate(
         "DELETE from entity_relationship WHERE (toId = :id AND toEntity = :entity) OR "
             + "(fromId = :id AND toEntity = :entity)")
-    void deleteAll(@Bind("id") String id, @Bind("entity") String entity);
+    int deleteAll(@Bind("id") String id, @Bind("entity") String entity);
 
     @SqlUpdate(
         "UPDATE entity_relationship SET deleted = true WHERE (toId = :id AND toEntity = :entity) "
             + "OR (fromId = :id AND fromEntity = :entity)")
     void softDeleteAll(@Bind("id") String id, @Bind("entity") String entity);
+
+    @SqlUpdate("UPDATE entity_relationship SET deleted = false WHERE toId = :id OR fromId = :id")
+    void recoverSoftDeleteAll(@Bind("id") String id);
   }
 
   interface FeedDAO {
@@ -654,15 +689,15 @@ public interface CollectionDAO {
     }
   }
 
-  interface PipelineDAO extends EntityDAO<Pipeline> {
+  interface AirflowPipelineDAO extends EntityDAO<AirflowPipeline> {
     @Override
     default String getTableName() {
-      return "pipeline_entity";
+      return "airflow_pipeline_entity";
     }
 
     @Override
-    default Class<Pipeline> getEntityClass() {
-      return Pipeline.class;
+    default Class<AirflowPipeline> getEntityClass() {
+      return AirflowPipeline.class;
     }
 
     @Override
@@ -671,8 +706,8 @@ public interface CollectionDAO {
     }
 
     @Override
-    default EntityReference getEntityReference(Pipeline entity) {
-      return new PipelineEntityInterface(entity).getEntityReference();
+    default EntityReference getEntityReference(AirflowPipeline entity) {
+      return new AirflowPipelineEntityInterface(entity).getEntityReference();
     }
   }
 
@@ -832,15 +867,15 @@ public interface CollectionDAO {
         @Bind("after") String after);
   }
 
-  interface IngestionDAO extends EntityDAO<Ingestion> {
+  interface PipelineDAO extends EntityDAO<Pipeline> {
     @Override
     default String getTableName() {
-      return "ingestion_entity";
+      return "pipeline_entity";
     }
 
     @Override
-    default Class<Ingestion> getEntityClass() {
-      return Ingestion.class;
+    default Class<Pipeline> getEntityClass() {
+      return Pipeline.class;
     }
 
     @Override
@@ -849,8 +884,8 @@ public interface CollectionDAO {
     }
 
     @Override
-    default EntityReference getEntityReference(Ingestion entity) {
-      return new IngestionRepository.IngestionEntityInterface(entity).getEntityReference();
+    default EntityReference getEntityReference(Pipeline entity) {
+      return new PipelineEntityInterface(entity).getEntityReference();
     }
   }
 
@@ -1113,18 +1148,20 @@ public interface CollectionDAO {
     @SqlQuery("SELECT json FROM user_entity WHERE email = :email")
     String findByEmail(@Bind("email") String email);
 
-    default int listCount(String team) {
-      return listCount(getTableName(), getNameColumn(), team, Relationship.HAS.ordinal());
+    default int listCount(String team, Include include) {
+      return listCount(getTableName(), getNameColumn(), team, Relationship.HAS.ordinal(), toBoolean(include));
     }
 
     @Override
-    default List<String> listBefore(String team, int limit, String before) {
-      return listBefore(getTableName(), getNameColumn(), team, limit, before, Relationship.HAS.ordinal());
+    default List<String> listBefore(String team, int limit, String before, Include include) {
+      return listBefore(
+          getTableName(), getNameColumn(), team, limit, before, Relationship.HAS.ordinal(), toBoolean(include));
     }
 
     @Override
-    default List<String> listAfter(String team, int limit, String after) {
-      return listAfter(getTableName(), getNameColumn(), team, limit, after, Relationship.HAS.ordinal());
+    default List<String> listAfter(String team, int limit, String after, Include include) {
+      return listAfter(
+          getTableName(), getNameColumn(), team, limit, after, Relationship.HAS.ordinal(), toBoolean(include));
     }
 
     @SqlQuery(
@@ -1133,13 +1170,16 @@ public interface CollectionDAO {
             + "FROM user_entity ue "
             + "LEFT JOIN entity_relationship er on ue.id = er.toId "
             + "LEFT JOIN team_entity te on te.id = er.fromId and er.relation = :relation "
-            + "WHERE (ue.deleted = false AND (te.name = :team OR :team IS NULL)) "
+            + "WHERE (te.name = :team OR :team IS NULL) "
+            + "AND (ue.deleted = :deleted OR :deleted IS NULL) "
+            + "AND (er.deleted = :deleted OR :deleted IS NULL OR (:team IS NULL AND er.deleted IS NULL)) "
             + "GROUP BY ue.id) subquery")
     int listCount(
         @Define("table") String table,
         @Define("nameColumn") String nameColumn,
         @Bind("team") String team,
-        @Bind("relation") int relation);
+        @Bind("relation") int relation,
+        @Bind("deleted") Boolean deleted);
 
     @SqlQuery(
         "SELECT json FROM ("
@@ -1147,8 +1187,10 @@ public interface CollectionDAO {
             + "FROM user_entity ue "
             + "LEFT JOIN entity_relationship er on ue.id = er.toId "
             + "LEFT JOIN team_entity te on te.id = er.fromId and er.relation = :relation "
-            + "WHERE (ue.deleted = false AND (te.name = :team OR :team IS NULL)) AND "
-            + "ue.<nameColumn> < :before "
+            + "WHERE (te.name = :team OR :team IS NULL) "
+            + "AND (ue.deleted = :deleted OR :deleted IS NULL) "
+            + "AND (er.deleted = :deleted OR :deleted IS NULL OR (:team IS NULL AND er.deleted IS NULL)) "
+            + "AND ue.<nameColumn> < :before "
             + "GROUP BY ue.<nameColumn>, ue.json "
             + "ORDER BY ue.<nameColumn> DESC "
             + "LIMIT :limit"
@@ -1159,15 +1201,18 @@ public interface CollectionDAO {
         @Bind("team") String team,
         @Bind("limit") int limit,
         @Bind("before") String before,
-        @Bind("relation") int relation);
+        @Bind("relation") int relation,
+        @Bind("deleted") Boolean deleted);
 
     @SqlQuery(
         "SELECT ue.json "
             + "FROM user_entity ue "
             + "LEFT JOIN entity_relationship er on ue.id = er.toId "
             + "LEFT JOIN team_entity te on te.id = er.fromId and er.relation = :relation "
-            + "WHERE (ue.deleted = false AND (te.name = :team OR :team IS NULL)) AND "
-            + "ue.<nameColumn> > :after "
+            + "WHERE (te.name = :team OR :team IS NULL) "
+            + "AND (ue.deleted = :deleted OR :deleted IS NULL) "
+            + "AND (er.deleted = :deleted OR :deleted IS NULL OR (:team IS NULL AND er.deleted IS NULL)) "
+            + "AND ue.<nameColumn> > :after "
             + "GROUP BY ue.json "
             + "ORDER BY ue.<nameColumn> "
             + "LIMIT :limit")
@@ -1177,36 +1222,37 @@ public interface CollectionDAO {
         @Bind("team") String team,
         @Bind("limit") int limit,
         @Bind("after") String after,
-        @Bind("relation") int relation);
+        @Bind("relation") int relation,
+        @Bind("deleted") Boolean deleted);
   }
 
   interface ChangeEventDAO {
     @SqlUpdate("INSERT INTO change_event (json) VALUES (:json)")
     void insert(@Bind("json") String json);
 
-    default List<String> list(String eventType, List<String> entityTypes, String dateTime) {
+    default List<String> list(String eventType, List<String> entityTypes, long timestamp) {
       if (entityTypes == null) {
         return Collections.emptyList();
       }
       if (entityTypes.get(0).equals("*")) {
-        return listWithoutEntityFilter(eventType, dateTime);
+        return listWithoutEntityFilter(eventType, timestamp);
       }
-      return listWithEntityFilter(eventType, entityTypes, dateTime);
+      return listWithEntityFilter(eventType, entityTypes, timestamp);
     }
 
     @SqlQuery(
         "SELECT json FROM change_event WHERE "
-            + "eventType = :eventType AND (entityType IN (<entityTypes>)) AND dateTime >= :dateTime "
-            + "ORDER BY dateTime ASC")
+            + "eventType = :eventType AND (entityType IN (<entityTypes>)) AND eventTime >= :timestamp "
+            + "ORDER BY eventTime ASC")
     List<String> listWithEntityFilter(
         @Bind("eventType") String eventType,
         @BindList("entityTypes") List<String> entityTypes,
-        @Bind("dateTime") String dateTime);
+        @Bind("timestamp") long timestamp);
 
     @SqlQuery(
         "SELECT json FROM change_event WHERE "
-            + "eventType = :eventType AND dateTime >= :dateTime "
-            + "ORDER BY dateTime ASC")
-    List<String> listWithoutEntityFilter(@Bind("eventType") String eventType, @Bind("dateTime") String dateTime);
+            + "eventType = :eventType AND eventTime >= :timestamp "
+            + "ORDER BY eventTime ASC")
+    List<String> listWithoutEntityFilter(@Bind("eventType") String eventType, @Bind("timestamp") long timestamp);
   }
 }

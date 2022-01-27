@@ -8,21 +8,23 @@
   "definitions": {
     "operation": {
       "javaType": "org.openmetadata.catalog.type.MetadataOperation",
-      "description": "This schema defines all possible operations on metadata of data entities",
+      "description": "This schema defines all possible operations on metadata of data entities.",
       "type": "string",
       "enum": [
         "SuggestDescription",
         "SuggestTags",
         "UpdateDescription",
         "UpdateOwner",
-        "UpdateTags"
+        "UpdateTags",
+        "UpdateLineage"
       ],
       "javaEnums": [
         {"name":"SuggestDescription"},
         {"name":"SuggestTags"},
         {"name":"UpdateDescription"},
         {"name":"UpdateOwner"},
-        {"name":"UpdateTags"}
+        {"name":"UpdateTags"},
+        {"name":"UpdateLineage"}
       ]
     }
   },
@@ -32,17 +34,17 @@
       "type": "string"
     },
     "entityTypeAttr": {
-      "description": "Entity type that the rule should match on",
+      "description": "Entity type that the rule should match on.",
       "type": "string",
       "default": null
     },
     "entityTagAttr": {
-      "description": "Entity tag that the rule should match on",
+      "description": "Entity tag that the rule should match on.",
       "$ref": "../../../type/tagLabel.json#/definitions/tagFQN",
       "default": null
     },
     "userRoleAttr": {
-      "description": "Role of the user that the rule should match on",
+      "description": "Role of the user that the rule should match on.",
       "$ref": "../../teams/team.json#/definitions/teamName",
       "default": null
     },
@@ -57,9 +59,9 @@
       "default": false
     },
     "priority": {
-      "description": "Priority of this rule among other rules in this policy.",
+      "description": "Priority of this rule among all rules across all policies.",
       "type": "integer",
-      "default": 0
+      "default": 250000
     },
     "enabled": {
       "description": "Is the rule enabled.",

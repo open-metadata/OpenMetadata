@@ -17,7 +17,6 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 import org.openmetadata.catalog.Entity;
@@ -77,8 +76,8 @@ public class MessagingServiceRepository extends EntityRepository<MessagingServic
   }
 
   @Override
-  public EntityUpdater getUpdater(MessagingService original, MessagingService updated, boolean patchOperation) {
-    return new MessagingServiceUpdater(original, updated, patchOperation);
+  public EntityUpdater getUpdater(MessagingService original, MessagingService updated, Operation operation) {
+    return new MessagingServiceUpdater(original, updated, operation);
   }
 
   public static class MessagingServiceEntityInterface implements EntityInterface<MessagingService> {
@@ -104,6 +103,11 @@ public class MessagingServiceRepository extends EntityRepository<MessagingServic
     }
 
     @Override
+    public Boolean isDeleted() {
+      return entity.getDeleted();
+    }
+
+    @Override
     public String getFullyQualifiedName() {
       return entity.getName();
     }
@@ -119,7 +123,7 @@ public class MessagingServiceRepository extends EntityRepository<MessagingServic
     }
 
     @Override
-    public Date getUpdatedAt() {
+    public long getUpdatedAt() {
       return entity.getUpdatedAt();
     }
 
@@ -164,7 +168,7 @@ public class MessagingServiceRepository extends EntityRepository<MessagingServic
     }
 
     @Override
-    public void setUpdateDetails(String updatedBy, Date updatedAt) {
+    public void setUpdateDetails(String updatedBy, long updatedAt) {
       entity.setUpdatedBy(updatedBy);
       entity.setUpdatedAt(updatedAt);
     }
@@ -187,8 +191,8 @@ public class MessagingServiceRepository extends EntityRepository<MessagingServic
   }
 
   public class MessagingServiceUpdater extends EntityUpdater {
-    public MessagingServiceUpdater(MessagingService original, MessagingService updated, boolean patchOperation) {
-      super(original, updated, patchOperation);
+    public MessagingServiceUpdater(MessagingService original, MessagingService updated, Operation operation) {
+      super(original, updated, operation);
     }
 
     @Override

@@ -23,13 +23,12 @@ import com.lmax.disruptor.util.DaemonThreadFactory;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.type.ChangeEvent;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
+@Slf4j
 /** Change event PubSub built based on LMAX Disruptor. */
 public class EventPubSub {
-  private static final Logger LOG = LoggerFactory.getLogger(EventPubSub.class);
   private static Disruptor<ChangeEventHolder> disruptor;
   private static ExecutorService executor;
   private static RingBuffer<ChangeEventHolder> ringBuffer;

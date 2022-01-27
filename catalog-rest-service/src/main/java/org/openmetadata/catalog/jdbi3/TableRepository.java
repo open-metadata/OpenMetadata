@@ -13,6 +13,11 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import static org.openmetadata.catalog.Entity.DATABASE;
+import static org.openmetadata.catalog.Entity.DATABASE_SERVICE;
+import static org.openmetadata.catalog.Entity.LOCATION;
+import static org.openmetadata.catalog.Entity.TABLE;
+import static org.openmetadata.catalog.Entity.helper;
 import static org.openmetadata.catalog.jdbi3.Relationship.JOINED_WITH;
 import static org.openmetadata.common.utils.CommonUtil.parseDate;
 
@@ -34,14 +39,13 @@ import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.BiPredicate;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.binary.Hex;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
-import org.openmetadata.catalog.Entity;
+import org.openmetadata.catalog.entity.data.Database;
 import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.entity.services.DatabaseService;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
-import org.openmetadata.catalog.exception.EntityNotFoundException;
-import org.openmetadata.catalog.jdbi3.DatabaseServiceRepository.DatabaseServiceEntityInterface;
 import org.openmetadata.catalog.resources.databases.TableResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.Column;
@@ -63,11 +67,9 @@ import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.common.utils.CommonUtil;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
+@Slf4j
 public class TableRepository extends EntityRepository<Table> {
-  static final Logger LOG = LoggerFactory.getLogger(TableRepository.class);
   // Table fields that can be patched in a PATCH request
   static final Fields TABLE_PATCH_FIELDS = new Fields(TableResource.FIELD_LIST, "owner,columns,tags,tableConstraints");
   // Table fields that can be updated in a PUT request
@@ -77,7 +79,7 @@ public class TableRepository extends EntityRepository<Table> {
   public TableRepository(CollectionDAO dao) {
     super(
         TableResource.COLLECTION_PATH,
-        Entity.TABLE,
+        TABLE,
         Table.class,
         dao.tableDAO(),
         dao,
@@ -90,7 +92,7 @@ public class TableRepository extends EntityRepository<Table> {
 
   @Override
   public Table setFields(Table table, Fields fields) throws IOException, ParseException {
-    table.setDatabase(getDatabase(table.getId()));
+    table.setDatabase(getDatabase(table));
     table.setService(getService(table));
     table.setTableConstraints(fields.contains("tableConstraints") ? table.getTableConstraints() : null);
     table.setOwner(fields.contains("owner") ? getOwner(table) : null);
@@ -103,7 +105,7 @@ public class TableRepository extends EntityRepository<Table> {
     table.setSampleData(fields.contains("sampleData") ? getSampleData(table) : null);
     table.setViewDefinition(fields.contains("viewDefinition") ? table.getViewDefinition() : null);
     table.setTableProfile(fields.contains("tableProfile") ? getTableProfile(table) : null);
-    table.setLocation(fields.contains("location") ? getLocation(table.getId()) : null);
+    table.setLocation(fields.contains("location") ? getLocation(table) : null);
     table.setTableQueries(fields.contains("tableQueries") ? getQueries(table) : null);
     return table;
   }
@@ -206,12 +208,10 @@ public class TableRepository extends EntityRepository<Table> {
     Table table = daoCollection.tableDAO().findEntityById(tableId);
     EntityReference location = daoCollection.locationDAO().findEntityReferenceById(locationId);
     // A table has only one location.
+    daoCollection.relationshipDAO().deleteFrom(tableId.toString(), TABLE, Relationship.HAS.ordinal(), LOCATION);
     daoCollection
         .relationshipDAO()
-        .deleteFrom(tableId.toString(), Entity.TABLE, Relationship.HAS.ordinal(), Entity.LOCATION);
-    daoCollection
-        .relationshipDAO()
-        .insert(tableId.toString(), locationId.toString(), Entity.TABLE, Entity.LOCATION, Relationship.HAS.ordinal());
+        .insert(tableId.toString(), locationId.toString(), TABLE, LOCATION, Relationship.HAS.ordinal());
     setFields(table, Fields.EMPTY_FIELDS);
     return table.withLocation(location);
   }
@@ -272,12 +272,7 @@ public class TableRepository extends EntityRepository<Table> {
 
   @Transaction
   public void deleteLocation(String tableId) {
-    daoCollection.relationshipDAO().deleteFrom(tableId, Entity.TABLE, Relationship.HAS.ordinal(), Entity.LOCATION);
-  }
-
-  @Transaction
-  public EntityReference getOwnerReference(Table table) throws IOException {
-    return EntityUtil.populateOwner(daoCollection.userDAO(), daoCollection.teamDAO(), table.getOwner());
+    daoCollection.relationshipDAO().deleteFrom(tableId, TABLE, Relationship.HAS.ordinal(), LOCATION);
   }
 
   private void setColumnFQN(String parentFQN, List<Column> columns) {
@@ -305,16 +300,19 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   @Override
-  public void prepare(Table table) throws IOException {
-    table.setDatabase(daoCollection.databaseDAO().findEntityReferenceById(table.getDatabase().getId()));
-    populateService(table);
+  public void prepare(Table table) throws IOException, ParseException {
+    Database database = helper(table).findEntity("database", DATABASE);
+    table.setDatabase(helper(database).toEntityReference());
+    DatabaseService databaseService = helper(database).findEntity("service", DATABASE_SERVICE);
+    table.setService(helper(databaseService).toEntityReference());
+    table.setServiceType(databaseService.getServiceType());
 
     // Set data in table entity based on database relationship
     table.setFullyQualifiedName(getFQN(table));
     setColumnFQN(table.getFullyQualifiedName(), table.getColumns());
 
     // Check if owner is valid and set the relationship
-    table.setOwner(EntityUtil.populateOwner(daoCollection.userDAO(), daoCollection.teamDAO(), table.getOwner()));
+    table.setOwner(helper(table).validateOwnerOrNull());
 
     // Validate table tags and add derived tags to the list
     table.setTags(EntityUtil.addDerivedTags(daoCollection.tagDAO(), table.getTags()));
@@ -323,37 +321,19 @@ public class TableRepository extends EntityRepository<Table> {
     addDerivedTags(table.getColumns());
   }
 
-  private DatabaseService getService(UUID serviceId, String entityType) throws IOException {
-    if (entityType.equalsIgnoreCase(Entity.DATABASE_SERVICE)) {
-      return daoCollection.dbServiceDAO().findEntityById(serviceId);
-    }
-    throw new IllegalArgumentException(CatalogExceptionMessage.invalidServiceEntity(entityType, Entity.TABLE));
+  private EntityReference getDatabase(Table table) throws IOException, ParseException {
+    return helper(table).getContainer(DATABASE);
   }
 
-  private EntityReference getService(Table table) throws IOException {
-    EntityReference ref =
-        EntityUtil.getService(
-            daoCollection.relationshipDAO(), Entity.DATABASE, table.getDatabase().getId(), Entity.DATABASE_SERVICE);
-    DatabaseService service = getService(ref.getId(), ref.getType());
-    ref.setName(service.getName());
-    ref.setDescription(service.getDescription());
-    return ref;
+  // It must be called after getDatabase.
+  private EntityReference getService(Table table) throws IOException, ParseException {
+    Database database = helper(table).findEntity("database");
+    DatabaseService databaseService = helper(database).findEntity("service");
+    return helper(databaseService).toEntityReference();
   }
 
-  private void populateService(Table table) throws IOException {
-    // Find database service from the database that table is contained in
-    String serviceId =
-        daoCollection
-            .relationshipDAO()
-            .findFrom(
-                table.getDatabase().getId().toString(),
-                Entity.DATABASE,
-                Relationship.CONTAINS.ordinal(),
-                Entity.DATABASE_SERVICE)
-            .get(0);
-    DatabaseService service = daoCollection.dbServiceDAO().findEntityById(UUID.fromString(serviceId));
-    table.setService(new DatabaseServiceEntityInterface(service).getEntityReference());
-    table.setServiceType(service.getServiceType());
+  private EntityReference getLocation(Table table) throws IOException, ParseException {
+    return helper(table).getHasOrNull(LOCATION);
   }
 
   @Override
@@ -384,18 +364,18 @@ public class TableRepository extends EntityRepository<Table> {
     String databaseId = table.getDatabase().getId().toString();
     daoCollection
         .relationshipDAO()
-        .insert(databaseId, table.getId().toString(), Entity.DATABASE, Entity.TABLE, Relationship.CONTAINS.ordinal());
+        .insert(databaseId, table.getId().toString(), DATABASE, TABLE, Relationship.CONTAINS.ordinal());
 
     // Add table owner relationship
-    EntityUtil.setOwner(daoCollection.relationshipDAO(), table.getId(), Entity.TABLE, table.getOwner());
+    EntityUtil.setOwner(daoCollection.relationshipDAO(), table.getId(), TABLE, table.getOwner());
 
     // Add tag to table relationship
     applyTags(table);
   }
 
   @Override
-  public EntityUpdater getUpdater(Table original, Table updated, boolean patchOperation) {
-    return new TableUpdater(original, updated, patchOperation);
+  public EntityUpdater getUpdater(Table original, Table updated, Operation operation) {
+    return new TableUpdater(original, updated, operation);
   }
 
   List<Column> cloneWithoutTags(List<Column> columns) {
@@ -438,31 +418,6 @@ public class TableRepository extends EntityRepository<Table> {
     // Add table level tags by adding tag to table relationship
     super.applyTags(table);
     applyTags(table.getColumns());
-  }
-
-  private EntityReference getDatabase(UUID tableId) throws IOException {
-    // Find database for the table
-    List<String> result =
-        daoCollection
-            .relationshipDAO()
-            .findFrom(tableId.toString(), Entity.TABLE, Relationship.CONTAINS.ordinal(), Entity.DATABASE);
-    if (result.size() != 1) {
-      throw EntityNotFoundException.byMessage(String.format("Database for table %s Not found", tableId));
-    }
-    return daoCollection.databaseDAO().findEntityReferenceById(UUID.fromString(result.get(0)));
-  }
-
-  private EntityReference getLocation(UUID tableId) throws IOException {
-    // Find the location of the table
-    List<String> result =
-        daoCollection
-            .relationshipDAO()
-            .findTo(tableId.toString(), Entity.TABLE, Relationship.HAS.ordinal(), Entity.LOCATION);
-    if (result.size() == 1) {
-      return daoCollection.locationDAO().findEntityReferenceById(UUID.fromString(result.get(0)));
-    } else {
-      return null;
-    }
   }
 
   private void getColumnTags(boolean setTags, List<Column> columns) {
@@ -701,6 +656,11 @@ public class TableRepository extends EntityRepository<Table> {
     }
 
     @Override
+    public Boolean isDeleted() {
+      return entity.getDeleted();
+    }
+
+    @Override
     public EntityReference getOwner() {
       return entity.getOwner();
     }
@@ -726,7 +686,7 @@ public class TableRepository extends EntityRepository<Table> {
     }
 
     @Override
-    public Date getUpdatedAt() {
+    public long getUpdatedAt() {
       return entity.getUpdatedAt();
     }
 
@@ -737,7 +697,7 @@ public class TableRepository extends EntityRepository<Table> {
           .withName(getFullyQualifiedName())
           .withDescription(getDescription())
           .withDisplayName(getDisplayName())
-          .withType(Entity.TABLE);
+          .withType(TABLE);
     }
 
     @Override
@@ -781,7 +741,7 @@ public class TableRepository extends EntityRepository<Table> {
     }
 
     @Override
-    public void setUpdateDetails(String updatedBy, Date updatedAt) {
+    public void setUpdateDetails(String updatedBy, long updatedAt) {
       entity.setUpdatedBy(updatedBy);
       entity.setUpdatedAt(updatedAt);
     }
@@ -815,8 +775,8 @@ public class TableRepository extends EntityRepository<Table> {
 
   /** Handles entity updated from PUT and POST operation. */
   public class TableUpdater extends EntityUpdater {
-    public TableUpdater(Table original, Table updated, boolean patchOperation) {
-      super(original, updated, patchOperation);
+    public TableUpdater(Table original, Table updated, Operation operation) {
+      super(original, updated, operation);
     }
 
     @Override
@@ -890,7 +850,7 @@ public class TableRepository extends EntityRepository<Table> {
     }
 
     private void updateColumnDescription(Column origColumn, Column updatedColumn) throws JsonProcessingException {
-      if (!patchOperation && origColumn.getDescription() != null && !origColumn.getDescription().isEmpty()) {
+      if (operation.isPut() && origColumn.getDescription() != null && !origColumn.getDescription().isEmpty()) {
         // Update description only when stored is empty to retain user authored descriptions
         updatedColumn.setDescription(origColumn.getDescription());
         return;

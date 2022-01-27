@@ -11,26 +11,36 @@
  *  limitations under the License.
  */
 
+import { AxiosResponse } from 'axios';
 import AppState from '../AppState';
-import { getTeams, getUsers } from '../axiosAPIs/userAPI';
+import { getRoles } from '../axiosAPIs/rolesAPI';
+import { getTeams } from '../axiosAPIs/teamsAPI';
+import { getUsers } from '../axiosAPIs/userAPI';
 import { API_RES_MAX_SIZE } from '../constants/constants';
 
 // Moving this code here from App.tsx
 const getAllUsersList = (arrQueryFields = ''): void => {
   getUsers(arrQueryFields, API_RES_MAX_SIZE).then((res) => {
-    AppState.users = res.data.data;
+    AppState.updateUsers(res.data.data);
   });
 };
 
 const getAllTeams = (): void => {
-  getTeams().then((res) => {
-    AppState.userTeams = res.data.data;
+  getTeams().then((res: AxiosResponse) => {
+    AppState.updateUserTeam(res.data.data);
+  });
+};
+
+const getAllRoles = (): void => {
+  getRoles().then((res: AxiosResponse) => {
+    AppState.updateUserRole(res.data.data);
   });
 };
 
 export const fetchAllUsers = () => {
-  getAllUsersList('profile,teams');
+  getAllUsersList('profile,teams,roles');
   getAllTeams();
+  getAllRoles();
   // TODO: uncomment below line to update users list in real time.
   // setInterval(getAllUsersList, TIMEOUT.USER_LIST);
 };

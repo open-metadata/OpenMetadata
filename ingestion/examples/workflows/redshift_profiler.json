@@ -1,0 +1,16 @@
+{
+  "profiler": {
+    "type": "redshift",
+    "config": {
+      "host_port": "cluster.name.region.redshift.amazonaws.com:5439",
+      "username": "username",
+      "password": "strong_password",
+      "database": "warehouse",
+      "db_schema": "public",
+      "service_name": "aws_redshift",
+      "schema_filter_pattern": {
+        "excludes": ["information_schema.*"]
+      }
+    }
+  }
+}

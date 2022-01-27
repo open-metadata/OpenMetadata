@@ -33,6 +33,7 @@ import static org.openmetadata.catalog.type.ColumnDataType.CHAR;
 import static org.openmetadata.catalog.type.ColumnDataType.FLOAT;
 import static org.openmetadata.catalog.type.ColumnDataType.INT;
 import static org.openmetadata.catalog.type.ColumnDataType.STRUCT;
+import static org.openmetadata.catalog.util.EntityUtil.tagLabelMatch;
 import static org.openmetadata.catalog.util.RestUtil.DATE_FORMAT;
 import static org.openmetadata.catalog.util.TestUtils.NON_EXISTENT_ENTITY;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType;
@@ -59,6 +60,7 @@ import java.util.Map;
 import java.util.UUID;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response.Status;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.MethodOrderer;
@@ -79,6 +81,7 @@ import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.jdbi3.TableRepository.TableEntityInterface;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.databases.TableResource.TableList;
+import org.openmetadata.catalog.resources.locations.LocationResourceTest;
 import org.openmetadata.catalog.resources.services.DatabaseServiceResourceTest;
 import org.openmetadata.catalog.resources.tags.TagResourceTest;
 import org.openmetadata.catalog.type.ChangeDescription;
@@ -100,12 +103,14 @@ import org.openmetadata.catalog.type.TableJoins;
 import org.openmetadata.catalog.type.TableProfile;
 import org.openmetadata.catalog.type.TableType;
 import org.openmetadata.catalog.type.TagLabel;
+import org.openmetadata.catalog.type.TagLabel.LabelType;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.TestUtils;
 
+@Slf4j
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class TableResourceTest extends EntityResourceTest<Table> {
   public static Database DATABASE;
@@ -117,7 +122,7 @@ public class TableResourceTest extends EntityResourceTest<Table> {
           getColumn("c3", BIGINT, USER_BANK_ACCOUNT_TAG_LABEL));
 
   public TableResourceTest() {
-    super(Entity.TABLE, Table.class, TableList.class, "tables", TableResource.FIELDS, true, true, true);
+    super(Entity.TABLE, Table.class, TableList.class, "tables", TableResource.FIELDS, true, true, true, true);
   }
 
   @BeforeAll
@@ -762,10 +767,9 @@ public class TableResourceTest extends EntityResourceTest<Table> {
   @Test
   void put_tableProfile_200(TestInfo test) throws IOException {
     Table table = createAndCheckEntity(create(test), adminAuthHeaders());
-    ColumnProfile c1Profile =
-        new ColumnProfile().withName("c1").withMax("100.0").withMin("10.0").withUniqueCount(100.0);
-    ColumnProfile c2Profile = new ColumnProfile().withName("c2").withMax("99.0").withMin("20.0").withUniqueCount(89.0);
-    ColumnProfile c3Profile = new ColumnProfile().withName("c3").withMax("75.0").withMin("25.0").withUniqueCount(77.0);
+    ColumnProfile c1Profile = new ColumnProfile().withName("c1").withMax(100.0).withMin(10.0).withUniqueCount(100.0);
+    ColumnProfile c2Profile = new ColumnProfile().withName("c2").withMax(99.0).withMin(20.0).withUniqueCount(89.0);
+    ColumnProfile c3Profile = new ColumnProfile().withName("c3").withMax(75.0).withMin(25.0).withUniqueCount(77.0);
     // Add column profiles
     List<ColumnProfile> columnProfiles = List.of(c1Profile, c2Profile, c3Profile);
     TableProfile tableProfile =
@@ -814,10 +818,10 @@ public class TableResourceTest extends EntityResourceTest<Table> {
   void put_tableInvalidTableProfileData_4xx(TestInfo test) throws IOException {
     Table table = createAndCheckEntity(create(test), adminAuthHeaders());
 
-    ColumnProfile c1Profile = new ColumnProfile().withName("c1").withMax("100").withMin("10.0").withUniqueCount(100.0);
-    ColumnProfile c2Profile = new ColumnProfile().withName("c2").withMax("99.0").withMin("20.0").withUniqueCount(89.0);
+    ColumnProfile c1Profile = new ColumnProfile().withName("c1").withMax(100.0).withMin(10.0).withUniqueCount(100.0);
+    ColumnProfile c2Profile = new ColumnProfile().withName("c2").withMax(99.0).withMin(20.0).withUniqueCount(89.0);
     ColumnProfile c3Profile =
-        new ColumnProfile().withName("invalidColumn").withMax("75").withMin("25").withUniqueCount(77.0);
+        new ColumnProfile().withName("invalidColumn").withMax(75.0).withMin(25.0).withUniqueCount(77.0);
     List<ColumnProfile> columnProfiles = List.of(c1Profile, c2Profile, c3Profile);
     TableProfile tableProfile =
         new TableProfile()
@@ -928,6 +932,35 @@ public class TableResourceTest extends EntityResourceTest<Table> {
   }
 
   @Test
+  void get_deletedTableWithDeleteLocation(TestInfo test) throws IOException {
+    Object create = createRequest(getEntityName(test), "description", "displayName", USER_OWNER1);
+    // Create first time using POST
+    Table table = beforeDeletion(test, createEntity(create, adminAuthHeaders()));
+    Table tableBeforeDeletion = getEntity(table.getId(), null, TableResource.FIELDS, adminAuthHeaders());
+    // delete both
+    deleteAndCheckEntity(table, adminAuthHeaders());
+    new LocationResourceTest().deleteEntity(tableBeforeDeletion.getLocation().getId(), adminAuthHeaders());
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("include", "deleted");
+    Table tableAfterDeletion = getEntity(table.getId(), queryParams, TableResource.FIELDS, adminAuthHeaders());
+    validateDeletedEntity(create, tableBeforeDeletion, tableAfterDeletion, adminAuthHeaders());
+  }
+
+  @Test
+  void get_TableWithDeleteLocation(TestInfo test) throws HttpResponseException {
+    Object create = createRequest(getEntityName(test), "description", "displayName", USER_OWNER1);
+    // Create first time using POST
+    Table table = beforeDeletion(test, createEntity(create, adminAuthHeaders()));
+    Table tableBeforeDeletion = getEntity(table.getId(), null, TableResource.FIELDS, adminAuthHeaders());
+    // delete both
+    new LocationResourceTest().deleteEntity(tableBeforeDeletion.getLocation().getId(), adminAuthHeaders());
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("include", "all");
+    Table tableAfterDeletion = getEntity(table.getId(), queryParams, TableResource.FIELDS, adminAuthHeaders());
+    assertNull(tableAfterDeletion.getLocation());
+  }
+
+  @Test
   @Order(1) // Run this test first as other tables created in other tests will interfere with listing
   void get_tableListWithDifferentFields_200_OK(TestInfo test) throws IOException {
     CreateTable create =
@@ -1017,24 +1050,9 @@ public class TableResourceTest extends EntityResourceTest<Table> {
     assertFields(tableList1.getData(), fields1);
   }
 
-  @Test
-  void delete_table_200_ok(TestInfo test) throws HttpResponseException {
-    Table table = createEntity(create(test), adminAuthHeaders());
-    deleteEntity(table.getId(), adminAuthHeaders());
-  }
-
-  @Test
-  void delete_table_as_non_admin_401(TestInfo test) throws HttpResponseException {
-    Table table = createEntity(create(test), adminAuthHeaders());
-    HttpResponseException exception =
-        assertThrows(
-            HttpResponseException.class, () -> deleteEntity(table.getId(), authHeaders("test@open-metadata.org")));
-    assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
-  }
-
   /**
-   * @see EntityResourceTest#patch_entityAttributes_200_ok(TestInfo) for other patch related tests for patching display,
-   *     description, owner, and tags
+   * See EntityResourceTest#patch_entityAttributes_200_ok(TestInfo) for other patch related tests for patching display,
+   * description, owner, and tags
    */
   @Test
   void patch_tableAttributes_200_ok(TestInfo test) throws IOException {
@@ -1047,9 +1065,6 @@ public class TableResourceTest extends EntityResourceTest<Table> {
                 .withConstraintType(ConstraintType.UNIQUE)
                 .withColumns(List.of(COLUMNS.get(0).getName())));
 
-    //
-    // Add description, tableType, and tableConstraints when previously they were null
-    //
     String originalJson = JsonUtils.pojoToJson(table);
     ChangeDescription change = getChangeDescription(table.getVersion());
 
@@ -1146,6 +1161,38 @@ public class TableResourceTest extends EntityResourceTest<Table> {
   }
 
   @Test
+  void patch_tableColumnTags_200_ok(TestInfo test) throws IOException {
+    Column c1 = getColumn("c1", INT, null);
+    CreateTable create = create(test).withColumns(List.of(c1));
+    Table table = createAndCheckEntity(create, adminAuthHeaders());
+
+    // Add a primary tag and derived tag both. The tag list must include derived tags only once.
+    String json = JsonUtils.pojoToJson(table);
+    table.getColumns().get(0).withTags(List.of(PERSONAL_DATA_TAG_LABEL, USER_ADDRESS_TAG_LABEL));
+    Table updatedTable = patchEntity(table.getId(), json, table, adminAuthHeaders());
+
+    // Ensure only three tag labels are found - Manual tags PersonalData.Personal, User.Address
+    // and a derived tag PII.Sensitive
+    List<TagLabel> updateTags = updatedTable.getColumns().get(0).getTags();
+    assertEquals(3, updateTags.size());
+
+    TagLabel userAddress =
+        updateTags.stream().filter(t -> tagLabelMatch.test(t, USER_ADDRESS_TAG_LABEL)).findAny().orElse(null);
+    assertNotNull(userAddress);
+    assertEquals(LabelType.MANUAL, userAddress.getLabelType());
+
+    TagLabel personData =
+        updateTags.stream().filter(t -> tagLabelMatch.test(t, PERSONAL_DATA_TAG_LABEL)).findAny().orElse(null);
+    assertNotNull(personData);
+    assertEquals(LabelType.MANUAL, personData.getLabelType());
+
+    TagLabel piiSensitive =
+        updateTags.stream().filter(t -> tagLabelMatch.test(t, PII_SENSITIVE_TAG_LABEL)).findAny().orElse(null);
+    assertNotNull(piiSensitive);
+    assertEquals(LabelType.DERIVED, piiSensitive.getLabelType());
+  }
+
+  @Test
   void put_addDeleteLocation_200(TestInfo test) throws IOException {
     Table table = createAndCheckEntity(create(test), adminAuthHeaders());
 
@@ -1156,6 +1203,27 @@ public class TableResourceTest extends EntityResourceTest<Table> {
     addAndCheckLocation(table, location.getId(), OK, userAuthHeaders());
     // Delete location and make sure it is deleted
     deleteAndCheckLocation(table, userAuthHeaders());
+  }
+
+  @Test
+  void put_addLocationAndDeleteTable_200(TestInfo test) throws IOException {
+    Table table = createAndCheckEntity(create(test), adminAuthHeaders());
+
+    // Add location to the table
+    CreateLocation create =
+        new CreateLocation().withName(getLocationName(test)).withService(AWS_STORAGE_SERVICE_REFERENCE);
+    Location location = createLocation(create, adminAuthHeaders());
+    addAndCheckLocation(table, location.getId(), OK, userAuthHeaders());
+    deleteAndCheckEntity(table, adminAuthHeaders());
+    Map<String, String> queryParams =
+        new HashMap<>() {
+          {
+            put("include", "all");
+          }
+        };
+    table = getEntity(table.getId(), queryParams, "location", adminAuthHeaders());
+    assertNotNull(table.getLocation(), "The location is missing");
+    assertEquals(location.getId(), table.getLocation().getId(), "The locations are different");
   }
 
   private void deleteAndCheckLocation(Table table, Map<String, String> authHeaders) throws HttpResponseException {
@@ -1174,7 +1242,7 @@ public class TableResourceTest extends EntityResourceTest<Table> {
     WebTarget target = CatalogApplicationTest.getResource(String.format("tables/%s/location", table.getId()));
     TestUtils.put(target, locationId.toString(), status, authHeaders);
 
-    // GET .../tables/{tableId} returns newly added follower
+    // GET .../tables/{tableId} returns newly added location
     Table getTable = getEntity(table.getId(), "location", authHeaders);
     TestUtils.validateEntityReference(getTable.getLocation());
     assertEquals(
@@ -1228,7 +1296,7 @@ public class TableResourceTest extends EntityResourceTest<Table> {
     // GET .../tables/{id}
     table =
         byName
-            ? getEntityByName(table.getFullyQualifiedName(), null, adminAuthHeaders())
+            ? getEntityByName(table.getFullyQualifiedName(), null, null, adminAuthHeaders())
             : getEntity(table.getId(), null, adminAuthHeaders());
     assertFields(table, null);
 
@@ -1236,7 +1304,7 @@ public class TableResourceTest extends EntityResourceTest<Table> {
     String fields = "columns,tableConstraints";
     table =
         byName
-            ? getEntityByName(table.getFullyQualifiedName(), fields, adminAuthHeaders())
+            ? getEntityByName(table.getFullyQualifiedName(), null, fields, adminAuthHeaders())
             : getEntity(table.getId(), fields, adminAuthHeaders());
     assertFields(table, fields);
 
@@ -1244,7 +1312,7 @@ public class TableResourceTest extends EntityResourceTest<Table> {
     fields = "columns,usageSummary,owner,tags";
     table =
         byName
-            ? getEntityByName(table.getFullyQualifiedName(), fields, adminAuthHeaders())
+            ? getEntityByName(table.getFullyQualifiedName(), null, fields, adminAuthHeaders())
             : getEntity(table.getId(), fields, adminAuthHeaders());
     assertEquals(table.getOwner().getId(), USER_OWNER1.getId());
     assertEquals(table.getOwner().getType(), USER_OWNER1.getType());
@@ -1289,11 +1357,11 @@ public class TableResourceTest extends EntityResourceTest<Table> {
     return create(getEntityName(test, index));
   }
 
-  public CreateTable create(String entityName) {
+  public CreateTable create(String name) {
     TableConstraint constraint =
         new TableConstraint().withConstraintType(ConstraintType.UNIQUE).withColumns(List.of(COLUMNS.get(0).getName()));
     return new CreateTable()
-        .withName(entityName)
+        .withName(name)
         .withDatabase(DATABASE.getId())
         .withColumns(COLUMNS)
         .withTableConstraints(List.of(constraint));
@@ -1376,6 +1444,16 @@ public class TableResourceTest extends EntityResourceTest<Table> {
   }
 
   @Override
+  public Table beforeDeletion(TestInfo test, Table table) throws HttpResponseException {
+    // Add location to the table
+    CreateLocation create =
+        new CreateLocation().withName(getLocationName(test)).withService(AWS_STORAGE_SERVICE_REFERENCE);
+    Location location = createLocation(create, adminAuthHeaders());
+    addAndCheckLocation(table, location.getId(), OK, userAuthHeaders());
+    return table;
+  }
+
+  @Override
   public EntityReference getContainer(Object createRequest) throws URISyntaxException {
     return Entity.getEntityReference(DATABASE); // TODO clean this up
   }
@@ -1404,6 +1482,15 @@ public class TableResourceTest extends EntityResourceTest<Table> {
   public void validateUpdatedEntity(Table updated, Object request, Map<String, String> authHeaders)
       throws HttpResponseException {
     validateCreatedEntity(updated, request, authHeaders);
+  }
+
+  @Override
+  protected void validateDeletedEntity(
+      Object create, Table entityBeforeDeletion, Table entityAfterDeletion, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    super.validateDeletedEntity(create, entityBeforeDeletion, entityAfterDeletion, authHeaders);
+
+    assertReference(entityBeforeDeletion.getLocation(), entityAfterDeletion.getLocation());
   }
 
   @Override

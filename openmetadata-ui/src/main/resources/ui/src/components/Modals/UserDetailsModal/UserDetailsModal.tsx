@@ -12,15 +12,20 @@
  */
 
 import classNames from 'classnames';
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { Role } from '../../../generated/entity/teams/role';
 import { User } from '../../../generated/entity/teams/user';
+import { getSeparator } from '../../../utils/CommonUtils';
 import { Button } from '../../buttons/Button/Button';
 import Avatar from '../../common/avatar/Avatar';
+import DropDown from '../../dropdown/DropDown';
+import { DropDownListItem } from '../../dropdown/types';
 type UserDetailsModalProp = {
   userData: User;
   onCancel: () => void;
-  onSave: () => void;
+  onSave: (roles: Array<string>) => void;
   header: string;
+  roles: Array<Role>;
 };
 
 const UserDetailsModal = ({
@@ -28,7 +33,51 @@ const UserDetailsModal = ({
   onCancel,
   onSave,
   header,
+  roles = [],
 }: UserDetailsModalProp) => {
+  const [selectedRoles, setSelectedRoles] = useState<Array<string | undefined>>(
+    []
+  );
+  const getRolesData = (roles: Array<Role>) => {
+    return [
+      ...roles.map((role: Role) => {
+        return {
+          name: role.displayName,
+          value: role.id,
+        };
+      }),
+      {
+        name: 'Admin',
+        value: 'admin',
+      },
+    ];
+  };
+
+  const selectedRolesHandler = (id?: string) => {
+    setSelectedRoles((prevState: Array<string | undefined>) => {
+      if (prevState.includes(id as string)) {
+        const selectedRole = [...prevState];
+        const index = selectedRole.indexOf(id as string);
+        selectedRole.splice(index, 1);
+
+        return selectedRole;
+      } else {
+        return [...prevState, id];
+      }
+    });
+  };
+
+  useEffect(() => {
+    setSelectedRoles(
+      [
+        userData.isAdmin ? 'admin' : undefined,
+        ...(userData.roles?.map((role) => role.id) as Array<
+          string | undefined
+        >),
+      ].filter(Boolean)
+    );
+  }, [userData]);
+
   return (
     <dialog className="tw-modal" data-testid="modal-container">
       <div className="tw-modal-backdrop" onClick={() => onCancel()} />
@@ -62,11 +111,11 @@ const UserDetailsModal = ({
               <span
                 className={classNames(
                   'tw-text-xs tw-border tw-px-1 tw-py-0.5 tw-rounded',
-                  userData.deactivated
+                  userData.deleted
                     ? 'tw-border-grey-muted'
                     : 'tw-border-success'
                 )}>
-                {userData.deactivated ? (
+                {userData.deleted ? (
                   <span className="tw-text-grey-muted">Inactive</span>
                 ) : (
                   <span className="tw-text-success">Active</span>
@@ -77,11 +126,23 @@ const UserDetailsModal = ({
               <span className="tw-mr-1">{userData.name}</span>|
               <span className="tw-ml-1">{userData.email}</span>
             </p>
-            <p className="tw-mb-4 tw-font-normal">
-              Role: {userData.isAdmin ? 'Admin' : 'User'}
-            </p>
-            {userData.teams && <div className="tw-filter-seperator tw-w-5/6" />}
-            <p className="tw-w-4/5 tw-mx-auto">
+            <div className="tw-my-4 tw-w-full">
+              {getSeparator('Roles')}
+              <div className="tw-w-full">
+                <DropDown
+                  className={classNames('tw-bg-white', {
+                    'tw-bg-gray-100 tw-cursor-not-allowed': roles.length === 0,
+                  })}
+                  dropDownList={getRolesData(roles) as DropDownListItem[]}
+                  label="User"
+                  selectedItems={selectedRoles as Array<string>}
+                  type="checkbox"
+                  onSelect={(_e, value) => selectedRolesHandler(value)}
+                />
+              </div>
+            </div>
+            <div className="tw-w-full tw-mx-auto">
+              {userData.teams && getSeparator('Teams')}
               <span className="tw-flex tw-justify-center tw-flex-wrap">
                 {userData.teams && userData.teams.length > 0 ? (
                   userData.teams.map((team, i) => (
@@ -95,7 +156,7 @@ const UserDetailsModal = ({
                   <p>This user is not a part of any team!</p>
                 )}
               </span>
-            </p>
+            </div>
           </div>
         </div>
         <div className="tw-modal-footer" data-testid="cta-container">
@@ -112,8 +173,8 @@ const UserDetailsModal = ({
             theme="primary"
             type="submit"
             variant="contained"
-            onClick={onSave}>
-            {userData.isAdmin ? 'Revoke Admin Privileges' : 'Make Admin'}
+            onClick={() => onSave(selectedRoles as Array<string>)}>
+            Save
           </Button>
         </div>
       </div>

@@ -21,11 +21,50 @@ export interface SelectedNode {
   name: string;
   type: string;
   id?: string;
+  entityId: string;
 }
 
 export interface EntityLineageProp {
   isNodeLoading: LoadingNodeState;
   lineageLeafNodes: LeafNodes;
   entityLineage: EntityLineage;
+  deleted?: boolean;
   loadNodeHandler: (node: EntityReference, pos: LineagePos) => void;
+  addLineageHandler: (edge: Edge) => Promise<void>;
+  removeLineageHandler: (data: EdgeData) => void;
+  entityLineageHandler: (lineage: EntityLineage) => void;
+}
+
+export interface Edge {
+  edge: {
+    fromEntity: {
+      id: string;
+      type: string;
+    };
+    toEntity: {
+      id: string;
+      type: string;
+    };
+  };
+}
+
+export interface EdgeData {
+  fromEntity: string;
+  fromId: string;
+  toEntity: string;
+  toId: string;
+}
+
+export interface CustomEdgeData {
+  id: string;
+  source: string;
+  target: string;
+  sourceType: string;
+  targetType: string;
+}
+
+export interface SelectedEdge {
+  id: string;
+  source: EntityReference;
+  target: EntityReference;
 }
