@@ -25,7 +25,7 @@ OpenMetadata release binaries are maintained as GitHub releases. To download a s
 Using the command line tool or application of your choice, extract the release binaries. For example, to extract using tar, run the following command.
 
 ```
-tar xfz openmetadata-0.7.1.tar.gz
+tar xfz openmetadata-0.8.0.tar.gz
 ```
 
 This will create a directory with the same name as the download file minus the `.tar` and `.gz` extensions.
@@ -41,7 +41,7 @@ cd openmetadata-x.x.x
 For example, to navigate into the directory created by issuing the tar command above, you would run the following command.
 
 ```
-cd openmetadata-0.7.1
+cd openmetadata-0.8.0
 ```
 
 ### 4. Stop the OpenMetadata server
