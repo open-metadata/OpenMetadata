@@ -63,8 +63,8 @@ logger = logging.getLogger(__name__)
 
 
 # The naming convention is T for Entity Types and C for Create Types
-T = TypeVar("T", bound=BaseModel)  # pylint: disable=invalid-name
-C = TypeVar("C", bound=BaseModel)  # pylint: disable=invalid-name
+T = TypeVar("T", bound=BaseModel)
+C = TypeVar("C", bound=BaseModel)
 
 
 class MissingEntityTypeException(Exception):

@@ -31,11 +31,8 @@ precommit_install:  ## Install the project's precommit hooks from .pre-commit-co
 	@echo "Make sure to first run install_test first"
 	pre-commit install
 
-isort:
-	isort $(PY_SOURCE) --skip $(PY_SOURCE)/metadata/generated --profile black --multi-line 3
-
 lint: ## Python Checkstyle
-	find $(PY_SOURCE) -path $(PY_SOURCE)/metadata/generated -prune -false -o -type f -name "*.py" | xargs pylint --ignore-paths=$(PY_SOURCE)/metadata_server/ --max-line-length=88 --extension-pkg-whitelist='pydantic'
+	find $(PY_SOURCE) -path $(PY_SOURCE)/metadata/generated -prune -false -o -type f -name "*.py" | xargs pylint --ignore-paths=$(PY_SOURCE)/metadata_server/
 
 .PHONY: py_format
 py_format:  ## Run black and isort to format the Python codebase
